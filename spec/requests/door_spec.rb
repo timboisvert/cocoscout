@@ -39,29 +39,76 @@ RSpec.describe "Door", type: :request do
 
   describe "who gets in" do
     it "lists today's shows first, then the ones coming up" do
-      production = create(:production, organization: org)
-      tonight = create(:ticket_listing, organization: org, status: "on_sale",
-                       show: create(:show, production: production, date_and_time: Time.current.end_of_day - 1.hour))
-      later = create(:ticket_listing, organization: org, status: "on_sale",
-                     show: create(:show, production: production, date_and_time: 3.days.from_now))
-      grant(door_person, "box_office")
-      sign_in(door_person)
+      # A fixed evening clear of the file's own show, so "the morning of"
+      # doesn't depend on when the suite runs.
+      day = 10.days.from_now.to_date
+      at = ->(offset, hour, minute) { (day + offset).in_time_zone.change(hour: hour, min: minute) }
+      travel_to(at.call(0, 19, 15)) do
+        production = create(:production, organization: org)
+        tonight = create(:ticket_listing, organization: org, status: "on_sale",
+                         show: create(:show, production: production, date_and_time: at.call(0, 19, 30)))
+        later = create(:ticket_listing, organization: org, status: "on_sale",
+                       show: create(:show, production: production, date_and_time: at.call(3, 20, 0)))
+        grant(door_person, "box_office")
+        sign_in(door_person)
 
-      # Tonight's show, whose door is open, with its counts; then every show
-      # coming up, each opening to sell ahead (Tim, 2026-10-23), whatever
-      # the organization's "Door in the app" setting.
-      get door_index_path
-      body = response.body
-      expect(body).to include(">On now<", door_path(tonight), "Checked in", "Comped", "Available", "Open the door")
-      expect(body).not_to include(">Seats<")
-      expect(body).to include(">Coming up<", door_path(later), "The door opens the morning of")
+        # Tonight's show, whose door is open, with its counts; then every show
+        # coming up, each opening to sell ahead (Tim, 2026-10-23), whatever
+        # the organization's "Door in the app" setting.
+        get door_index_path
+        body = response.body
+        expect(body).to include(">On now<", door_path(tonight), "Checked in", "Comped", "Available", "Open the door")
+        expect(body).not_to include(">Seats<")
+        expect(body).to include(">Coming up<", door_path(later), "The door opens the morning of")
+      end
 
       # Nothing on: the next show leads, and opens too.
-      travel_to((later.show.date_and_time - 2.days).change(hour: 12)) do
+      travel_to(at.call(1, 12, 0)) do
         sign_in(door_person)
         get door_index_path
-        expect(response.body).to include("Nothing on right now", "Next for you", door_path(later))
+        expect(response.body).to include("Nothing on right now", "Next for you")
         expect(response.body).not_to include(">Coming up<")
+      end
+    end
+
+    # The big pink card goes to the shows people are arriving for: an hour
+    # before the start to half an hour after (Tim, 2026-10-24). Other open
+    # doors are small. Last night's lineup: 7:00, 7:30, 9:00 and 9:00.
+    it "gives the big pink card to the shows people are arriving for, and only those" do
+      production = create(:production, organization: org)
+      day = 10.days.from_now.to_date # clear of the file's own show
+      at = ->(hour, minute) { day.in_time_zone.change(hour: hour, min: minute) }
+      seven, seven_thirty, nine_a, nine_b = [ [ 19, 0 ], [ 19, 30 ], [ 21, 0 ], [ 21, 0 ] ].map do |hour, minute|
+        create(:ticket_listing, organization: org, status: "on_sale",
+               show: create(:show, production: production, date_and_time: at.call(hour, minute)))
+      end
+      grant(door_person, "box_office")
+      big = ->(body) { body.scan(/<a [^>]*border-2 border-pink-500[^>]*href="([^"]+)"|<a [^>]*href="([^"]+)"[^>]*border-2 border-pink-500/).flatten.compact }
+
+      # 7:45: the 7:30 crowd is arriving; 7:00 has been on 45 minutes; the 9:00s are over an hour off.
+      travel_to(at.call(19, 45)) do
+        sign_in(door_person)
+        get door_index_path
+        expect(big.call(response.body)).to eq([ door_path(seven_thirty) ])
+        expect(response.body.scan("Open the door").size).to eq(1)
+        # The arriving show leads; the rest follow by start time.
+        expect(response.body.index(door_path(seven_thirty))).to be < response.body.index(door_path(seven))
+        expect(response.body).to include(door_path(nine_a), door_path(nine_b))
+      end
+
+      # 8:05: both 9:00s are arriving; 7:30 is past its half hour.
+      travel_to(at.call(20, 5)) do
+        sign_in(door_person)
+        get door_index_path
+        expect(big.call(response.body)).to contain_exactly(door_path(nine_a), door_path(nine_b))
+      end
+
+      # 3 PM: every door is open, nobody's arriving yet, so everything is small.
+      travel_to(at.call(15, 0)) do
+        sign_in(door_person)
+        get door_index_path
+        expect(response.body).to include(">On now<")
+        expect(big.call(response.body)).to be_empty
       end
     end
 

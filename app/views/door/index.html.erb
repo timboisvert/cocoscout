@@ -9,10 +9,11 @@
 <% if @on_now.any? %>
   <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500">On now</h2>
   <div class="mt-2 space-y-2">
-    <% @on_now.each_with_index do |listing, index| %>
+    <% @on_now.each do |listing| %>
       <% show = listing.show %>
       <% counts = @counts[listing.id] %>
-      <% lead = index.zero? %>
+      <%# Big and pink while people are arriving: an hour before to half an hour after the start. %>
+      <% lead = @arriving_ids.include?(listing.id) %>
       <%= link_to door_path(listing), class: "block rounded-2xl bg-white transition-colors #{lead ? 'border-2 border-pink-500 p-4' : 'border border-gray-200 px-4 py-3 hover:border-pink-400'}" do %>
         <div class="flex items-start gap-3">
           <div class="min-w-0 flex-1">

@@ -33,7 +33,11 @@ class DoorController < ApplicationController
       render :choose and return
     end
 
+    # Shows people are arriving for lead, in the big pink card; the other open
+    # doors follow, small (Tim, 2026-10-24).
     @on_now = on_now_everywhere.select { |listing| listing.organization_id == @organization.id }
+                               .sort_by { |listing| [ DoorTonight.arriving?(listing, at: now) ? 0 : 1, listing.show.date_and_time ] }
+    @arriving_ids = @on_now.select { |listing| DoorTonight.arriving?(listing, at: now) }.map(&:id)
     today = DoorTonight.listings([ @organization.id ]).includes(:organization, :production, show: %i[location space_rental])
                        .where(shows: { date_and_time: now..DoorTonight.night_ends(now) }).to_a
     @later_tonight = (today - @on_now).select { |listing| DoorTonight.phase(listing, at: now) == :before }
