@@ -55,26 +55,22 @@ class VacancyInvitationMailer < ApplicationMailer
   def send_in_app_message(rendered)
     return unless @person.present? && @person.user.present?
 
-    # Find a sender for the message (production team member)
-    sender = find_sender
-
+    # An automated notice: no personal sender, ever. It shows as the
+    # production, and replies go to the production team. (It used to borrow
+    # whichever org member came back first, so cast saw it "from" a random
+    # person and their replies landed in that person's inbox.)
     MessageService.send_direct(
       template_key: "vacancy_invitation", push_body: rendered[:push_body],
-      sender: sender,
+      sender: nil,
       recipient_person: @person,
       subject: rendered[:subject],
       body: rendered[:body],
       production: @production,
-      organization: @production.organization
+      organization: @production.organization,
+      system_generated: true
     )
   rescue => e
     Rails.logger.error("Failed to send vacancy invitation message: #{e.message}")
-  end
-
-  def find_sender
-    # Try to find a team member to send from
-    @production.production_permissions.includes(:user).first&.user ||
-      @production.organization.organization_roles.includes(:user).first&.user
   end
 
   def find_email_batch_id
