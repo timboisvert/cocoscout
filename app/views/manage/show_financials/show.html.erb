@@ -28,12 +28,17 @@
 
   # Contract split info for third-party productions
   is_third_party = @production.type_third_party?
-  contract = is_third_party ? @production.contract : nil
+  # The contract that booked this show, as ContractPaymentSyncService finds it,
+  # so this split is the one the settlement pays.
+  contract = is_third_party ? (@show.space_rental&.contract || @production.contract) : nil
   is_revenue_share = contract&.revenue_share?
-  our_pct = is_revenue_share ? contract.revenue_share_percentage : nil
-  their_pct = is_revenue_share ? contract.contractor_share_percentage : nil
-  our_share_amount = is_revenue_share && has_data ? (gross_revenue * our_pct / 100.0).round(2) : nil
-  contractor_share_amount = is_revenue_share && has_data ? (gross_revenue * their_pct / 100.0).round(2) : nil
+  # A deal splits only what it says it splits (tickets, by default) — products
+  # sold with the tickets aren't part of it.
+  split_revenue = is_revenue_share ? contract.settled_revenue(@show_financials) : nil
+  our_pct = is_revenue_share ? contract.our_share_for(@show) : nil
+  their_pct = is_revenue_share ? 100.0 - our_pct : nil
+  our_share_amount = is_revenue_share && has_data ? (split_revenue * our_pct / 100.0).round(2) : nil
+  contractor_share_amount = is_revenue_share && has_data ? (split_revenue - our_share_amount).round(2) : nil
 
   # Page title: the show's own name when it has one beyond the suggestion, otherwise "[event type]: [full date] at [time]"
   page_title = @show.name_subtitle.presence || "#{@show.event_type.titleize}: #{@show.date_and_time.strftime('%B %-d, %Y')} at #{@show.date_and_time.strftime('%-I:%M %p')}"
@@ -180,8 +185,8 @@
                   </div>
                   <div class="space-y-2">
                     <div class="flex justify-between text-sm">
-                      <span class="text-gray-600">Gross Revenue</span>
-                      <span class="font-medium text-gray-900"><%= number_to_currency(gross_revenue) %></span>
+                      <span class="text-gray-600"><%= contract.settled_revenue_label %></span>
+                      <span class="font-medium text-gray-900"><%= number_to_currency(split_revenue) %></span>
                     </div>
                     <div class="flex justify-between text-sm">
                       <span class="text-green-700">Your Share (<%= our_pct.to_i %>%)</span>

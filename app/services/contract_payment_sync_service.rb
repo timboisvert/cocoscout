@@ -118,7 +118,7 @@ class ContractPaymentSyncService
   # Bring one settlement in line with the shows it covers: its amount, and on
   # a minus-fee deal which way it faces.
   def settle(payment, shows, pending_count: 0)
-    show_details = shows.map { |s| [ s, s.show_financials.total_revenue ] }
+    show_details = shows.map { |s| [ s, @contract.settled_revenue(s.show_financials) ] }
     remainder = settled_amount_for(shows)
     update_payment(payment, remainder.abs, show_details, pending_count: pending_count)
     face_the_money!(payment, remainder, shows)
@@ -166,7 +166,7 @@ class ContractPaymentSyncService
 
     label = period_label_for(payment, shows)
     if remainder.negative?
-      revenue = shows.sum { |s| s.show_financials.total_revenue }
+      revenue = shows.sum { |s| @contract.settled_revenue(s.show_financials) }
       fee = @contract.flat_fee_for_shows(shows)
       money = ActionController::Base.helpers.method(:number_to_currency)
       payment.update!(

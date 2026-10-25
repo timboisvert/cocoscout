@@ -830,12 +830,12 @@ RSpec.describe Contract, type: :model do
             draft_data: {
               "bookings" => [ booking(date: "2026-03-06") ],
               "payment_structure" => "revenue_share",
-              "payment_config" => { "revenue_our_share" => 60, "revenue_source" => "door_sales" },
+              "payment_config" => { "revenue_our_share" => 60, "revenue_source" => "ticket_sales" },
               "payments" => [ { "amount" => 0, "amount_tbd" => true, "due_date" => "2026-03-06" } ]
             })
 
           html = contract.send(:license_schedule_html)
-          expect(html).to include("60% of door sales")
+          expect(html).to include("60% of ticket sales")
           expect(html).not_to include("TBD")
         end
       end

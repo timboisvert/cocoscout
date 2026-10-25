@@ -575,7 +575,7 @@ class ContractPayment < ApplicationRecord
     shows_with_data = linked_shows.select { |s| s.show_financials&.has_data? }
     return nil if shows_with_data.empty?
 
-    total_revenue = shows_with_data.sum { |s| s.show_financials.total_revenue }
+    total_revenue = shows_with_data.sum { |s| contract.settled_revenue(s.show_financials) }
     config = contract.draft_payment_config
     structure = contract.draft_payment_structure
 
@@ -585,7 +585,7 @@ class ContractPayment < ApplicationRecord
       # Show by show: a date can have its own share (Review the dates).
       calculated = shows_with_data.sum do |show|
         show_pct = direction_incoming? ? contract.our_share_for(show) : contract.their_share_for(show)
-        show.show_financials.total_revenue * show_pct / 100.0
+        contract.settled_revenue(show.show_financials) * show_pct / 100.0
       end.round(2)
       { amount: calculated, explanation: "#{pct.round(0)}% of revenue" }
     when "per_event"

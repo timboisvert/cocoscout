@@ -79,9 +79,9 @@ RSpec.describe Contract, "revenue share methods", type: :model do
         create(:show_financials, :complete, show: show2, ticket_revenue: 500.0, other_revenue: 100.0)
       end
 
-      it "calculates total confirmed revenue" do
+      it "sums the ticket revenue, leaving other revenue out of the split" do
         summary = contract.revenue_share_summary
-        expect(summary[:confirmed_revenue]).to eq(1600.0)
+        expect(summary[:confirmed_revenue]).to eq(1500.0)
       end
 
       it "counts confirmed shows" do
@@ -91,17 +91,32 @@ RSpec.describe Contract, "revenue share methods", type: :model do
 
       it "calculates the org share (70%)" do
         summary = contract.revenue_share_summary
-        expect(summary[:our_share]).to eq(1120.0) # 1600 * 0.70
+        expect(summary[:our_share]).to eq(1050.0) # 1500 * 0.70
       end
 
       it "calculates the contractor share (30%)" do
         summary = contract.revenue_share_summary
-        expect(summary[:contractor_share]).to eq(480.0) # 1600 * 0.30
+        expect(summary[:contractor_share]).to eq(450.0) # 1500 * 0.30
       end
 
       it "reports zero pending" do
         summary = contract.revenue_share_summary
         expect(summary[:pending_count]).to eq(0)
+      end
+    end
+
+    context "when the deal splits tickets and products" do
+      before do
+        contract.draft_data["payment_config"]["revenue_source"] = "tickets_and_products"
+        contract.save!
+        show = create(:show, production: production, date_and_time: 1.week.ago)
+        create(:show_financials, :complete, show: show, ticket_revenue: 500.0, other_revenue: 100.0)
+      end
+
+      it "splits other revenue too" do
+        summary = contract.revenue_share_summary
+        expect(summary[:confirmed_revenue]).to eq(600.0)
+        expect(summary[:contractor_share]).to eq(180.0)
       end
     end
 

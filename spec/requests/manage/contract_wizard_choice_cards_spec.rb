@@ -49,6 +49,23 @@ RSpec.describe "Financials step choice cards", type: :request do
     expect(response.body).to match(/data-contract-payments-target="revenueOurShare"[^>]*value="30"/)
   end
 
+  # Show 2070, Oct 25: a split is on tickets only unless the deal says otherwise.
+  it "offers tickets only (the default) or tickets and products to split" do
+    get manage_payments_contract_wizard_path(contract)
+
+    values = response.body.scan(/name="revenue_source_choice" value="([^"]+)"/).flatten
+    expect(values).to eq(%w[ticket_sales tickets_and_products])
+    expect(response.body).to match(/name="revenue_source_choice" value="ticket_sales"[^>]*checked/m)
+  end
+
+  it "reads the old Everything card as tickets and products" do
+    contract.update_draft_step(:payment_config, { "revenue_source" => "total_revenue" })
+
+    get manage_payments_contract_wizard_path(contract)
+
+    expect(response.body).to match(/name="revenue_source_choice" value="tickets_and_products"[^>]*checked/m)
+  end
+
   it "carries no running payment summary — the review step covers that" do
     get manage_payments_contract_wizard_path(contract)
 

@@ -110,7 +110,7 @@
   fee_working = nil
   if !is_incoming && contract.ticket_revenue_minus_fee? && !awaiting_amount && folded_items.empty? && payment.amount.to_f.positive?
     working_shows = contract.shows_for_payment(payment)
-    sold = working_shows.sum { |s| s.show_financials&.total_revenue.to_f }
+    sold = working_shows.sum { |s| contract.settled_revenue(s.show_financials) }
     fee_taken = (sold - payment.amount.to_f).round(2)
     if fee_taken.positive?
       sold_label = working_shows.one? ? "Ticket sales — #{working_shows.first.date_and_time.strftime('%b %-d')}" : "Ticket sales"
@@ -596,11 +596,11 @@
             <% suggestion[:shows].each do |show| %>
               <div class="flex justify-between text-sm">
                 <span class="text-blue-600"><%= show.date_and_time.strftime("%b %-d") %> — <%= show.display_name %></span>
-                <span class="font-medium text-blue-900"><%= number_to_currency(show.show_financials.total_revenue) %></span>
+                <span class="font-medium text-blue-900"><%= number_to_currency(contract.settled_revenue(show.show_financials)) %></span>
               </div>
             <% end %>
             <div class="flex justify-between text-sm font-semibold border-t border-blue-200 mt-1 pt-1">
-              <span class="text-blue-700">Total Revenue</span>
+              <span class="text-blue-700"><%= contract.settled_revenue_label %></span>
               <span class="text-blue-900"><%= number_to_currency(suggestion[:total_revenue]) %></span>
             </div>
           </div>
@@ -692,11 +692,11 @@
             <% suggestion[:shows].each do |show| %>
               <div class="flex justify-between text-sm">
                 <span class="text-blue-600"><%= show.date_and_time.strftime("%b %-d") %> — <%= show.display_name %></span>
-                <span class="font-medium text-blue-900"><%= number_to_currency(show.show_financials.total_revenue) %></span>
+                <span class="font-medium text-blue-900"><%= number_to_currency(contract.settled_revenue(show.show_financials)) %></span>
               </div>
             <% end %>
             <div class="flex justify-between text-sm font-semibold border-t border-blue-200 mt-1 pt-1">
-              <span class="text-blue-700">Total Revenue</span>
+              <span class="text-blue-700"><%= contract.settled_revenue_label %></span>
               <span class="text-blue-900"><%= number_to_currency(suggestion[:total_revenue]) %></span>
             </div>
           </div>

@@ -341,13 +341,10 @@
         <label class="block text-sm font-medium text-gray-700 mb-1.5">What are we splitting?</label>
         <%= render "manage/contract_wizard/choice_cards",
               name: "revenue_source_choice", target: "revenueSource", columns: 2,
-              selected: existing_payment_config["revenue_source"].presence || "ticket_sales",
+              selected: Contract.normalized_revenue_source(existing_payment_config["revenue_source"]),
               options: [
-                { value: "ticket_sales", title: "Ticket sales", help: "Everything sold in advance and at the door." },
-                { value: "door_sales", title: "Door sales", help: "Only what's taken on the night." },
-                { value: "bar_sales", title: "Bar and concessions", help: "Drinks and snacks, not tickets." },
-                { value: "merchandise", title: "Merchandise", help: "Shirts, posters, anything sold at the table." },
-                { value: "total_revenue", title: "Everything", help: "All of it, from every source." }
+                { value: "ticket_sales", title: "Tickets only", help: "Products sold with the tickets stay with whoever sold them." },
+                { value: "tickets_and_products", title: "Tickets and products", help: "Products and other revenue are split the same way." }
               ] %>
       </div>
 

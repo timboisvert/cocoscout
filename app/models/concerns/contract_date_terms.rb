@@ -227,7 +227,7 @@ module ContractDateTerms
   def settled_share_amount(shows)
     they_sell = draft_payment_config["who_sells_tickets"] == "contractor"
     shows.sum do |show|
-      revenue = show.show_financials&.total_revenue.to_f
+      revenue = settled_revenue(show.show_financials)
       pct = they_sell ? our_share_for(show) : their_share_for(show)
       revenue * pct / 100.0
     end.round(2)
