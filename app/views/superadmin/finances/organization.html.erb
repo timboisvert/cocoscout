@@ -11,7 +11,7 @@
 
   <div class="mt-4 flex flex-wrap items-center gap-2">
     <span class="inline-flex rounded-full border px-2 py-0.5 text-xs <%= plan_tone(@org) %>"><%= plan_words(@org) %></span>
-    <span class="text-xs text-gray-500"><%= CocoScoutBalance.pooled?(@org) ? "Ticketing on: one balance for all its money" : "Ticketing off: course and contract money goes out on its payout runs" %></span>
+    <span class="text-xs text-gray-500"><%= CocoScoutBalance.pooled?(@org) ? "Pro: one balance for all its money" : "Not Pro: course money goes out on its payout runs" %></span>
   </div>
 
   <% b = s.balance %>

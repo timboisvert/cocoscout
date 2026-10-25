@@ -19,9 +19,13 @@
 #               released back, which the next run spends through
 #               PayoutFundingCredit, not from here).
 #
-# Pooling is on for theaters with ticketing switched on. Anyone else keeps
-# today's remittance: course and contract money rides the payout run to
-# their own Stripe account, and only ticket money (none) is spendable here.
+# Pooling is on for every Pro organization, ticketing or not (Tim,
+# 2026-10-25: "incoming payments would all just go into our balance"): the
+# balance page is Pro, and every Pro organization can reach it. A non-Pro
+# organization (courses only) has no balance page, so it keeps the old
+# remittance: its course share rides the payout run to its own Stripe account.
+# One that leaves Pro falls back the same way, and ContractPaymentCollection
+# .remit_pending! sends on what's unremitted.
 class CocoScoutBalance
   SETTLE_AFTER = TicketBalance::SETTLE_AFTER
   OTHER_CREDITS = %w[course_registration contract_payment].freeze
@@ -37,7 +41,7 @@ class CocoScoutBalance
   end
 
   def self.pooled?(organization)
-    organization.ticketing_profile&.enabled? == true
+    organization.feature_available?(:ticketing) || organization.ticketing_profile&.enabled? == true
   end
 
   def self.summary(organization)

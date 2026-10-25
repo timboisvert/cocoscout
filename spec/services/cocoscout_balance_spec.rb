@@ -2,10 +2,11 @@
 
 require "rails_helper"
 
-# Stage G: one balance for all the money CocoScout holds for a theater with
-# ticketing on. Course and contract money stop riding the payout run to the
-# theater's own Stripe account; they settle into the balance, fund runs and
-# can be withdrawn. Theaters without ticketing keep today's remittance.
+# Stage G: one balance for all the money CocoScout holds for a Pro
+# organization, ticketing on or not (since 2026-10-25). Course and contract
+# money stop riding the payout run to its own Stripe account; they settle into
+# the balance, fund runs and can be withdrawn. An organization that isn't Pro
+# has no balance page, so it keeps the old remittance.
 RSpec.describe CocoScoutBalance do
   let(:owner) { create(:user) }
   let(:org) { create(:organization, :pro, owner: owner, stripe_account_id: "acct_sg", payouts_enabled: true) }
@@ -108,7 +109,19 @@ RSpec.describe CocoScoutBalance do
     end
   end
 
-  context "without ticketing" do
+  context "a Pro organization without ticketing" do
+    it "keeps course money in the balance too" do
+      course_sale(10_000, at: 3.days.ago)
+      result = CoursePayoutRunService.add_to_run!(payout_for(9_000), added_by: owner)
+      expect(result.batch.items.where(payee: org)).to be_empty
+      expect(described_class.pooled?(org)).to be(true)
+      expect(described_class.available_cents(org)).to eq(9_000)
+    end
+  end
+
+  context "an organization that isn't Pro" do
+    before { org.update!(comped_indefinitely: false) }
+
     it "remits course money on the run as before, and the balance stays ticket money only" do
       course_sale(10_000, at: 3.days.ago)
       result = CoursePayoutRunService.add_to_run!(payout_for(9_000), added_by: owner)

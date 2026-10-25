@@ -29,7 +29,10 @@ RSpec.describe "Manage::CourseOfferingPayouts", type: :request do
     expect(response.body).not_to include("Venmo")
   end
 
+  # Courses aren't Pro: an organization without Pro has no balance, so its
+  # remainder rides the run. (A Pro one keeps it in its CocoScout balance.)
   it "adds the org's remainder to the performer payout run (the one rail)" do
+    org.update!(comped_indefinitely: false)
     make_payable(org)
     get manage_course_offering_payout_path(offering) # sets up the payout, as the UI does
 

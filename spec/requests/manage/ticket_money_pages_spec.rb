@@ -105,7 +105,10 @@ RSpec.describe "Manage ticketing money", type: :request do
       org.update!(stripe_customer_id: "cus_sg", funding_payment_method_id: "pm_sg", funding_payment_method_type: "card")
       order = travel_to(5.days.ago) { sold(1) }
       listing.update!(released_at: 3.days.ago)
-      BalanceWithdrawal.create!(organization: org, amount_cents: 2_000, status: "sent")
+      # As BalanceWithdrawalService does it: the withdrawal and its ledger debit.
+      withdrawal = BalanceWithdrawal.create!(organization: org, amount_cents: 2_000, status: "sent")
+      OrgCashEntry.post!(organization: org, entry_type: "transfer", amount_cents: -2_000,
+                         source: withdrawal, description: "Withdrawal to your bank")
 
       get manage_ticket_order_refund_path(order.id), params: { ticket_ids: order.tickets.pluck(:id), keep_fees: "0" }
       expect(response.body).to include("Add $20.92 and refund")

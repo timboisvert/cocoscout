@@ -43,7 +43,8 @@ RSpec.describe "Manage ticketing settings", type: :request do
       get manage_ticketing_settings_section_path(section: "box_office")
       expect(response.body).to include("Open your box office?", manage_ticketing_open_box_office_path)
       expect(TicketingProfile.for(org).enabled?).to be(false)
-      expect(CocoScoutBalance.pooled?(org)).to be(false)
+      # A Pro organization's money already pools, box office open or not.
+      expect(CocoScoutBalance.pooled?(org)).to be(true)
 
       post manage_ticketing_open_box_office_path
       expect(response).to redirect_to(manage_ticketing_path)

@@ -21,6 +21,11 @@ RSpec.describe "Manage remitting collected contract money", type: :request do
 
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
+  # Since 2026-10-25 a Pro organization's collected money stays in its
+  # CocoScout balance (see the block below). The run path is for one that
+  # doesn't pool, such as an organization that has left Pro.
+  before { allow(CocoScoutBalance).to receive(:pooled?).and_return(false) }
+
   describe "the payment page" do
     it "offers Add to payout run once the org can receive payouts" do
       org.update!(stripe_account_id: "acct_org", payouts_enabled: true)
@@ -74,13 +79,13 @@ RSpec.describe "Manage remitting collected contract money", type: :request do
     end
   end
 
-  # Stars & Garters, Oct 25: with ticketing on, collected money stays in the
-  # organization's CocoScout balance and never rides a run. The page offered
-  # Add to payout run, said Added, and nothing changed.
-  describe "an organization that pools its money (ticketing on)" do
+  # Stars & Garters, Oct 25: collected money stays in the organization's
+  # CocoScout balance and never rides a run. The page offered Add to payout
+  # run, said Added, and nothing changed.
+  describe "a Pro organization, whose money pools" do
     before do
+      allow(CocoScoutBalance).to receive(:pooled?).and_call_original
       org.update!(stripe_account_id: "acct_org", payouts_enabled: true)
-      TicketingProfile.for(org).update!(enabled: true)
     end
 
     it "says the money is in the CocoScout balance, with no Add to payout run" do
