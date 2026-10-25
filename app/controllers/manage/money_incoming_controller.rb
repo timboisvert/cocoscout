@@ -127,6 +127,11 @@ module Manage
     # button on a collected payment.
     def remit
       @payment = find_payment
+      if @payment.remittance_stage == :in_balance
+        redirect_to manage_money_incoming_payment_path(@payment),
+                    notice: "This money is already in your CocoScout balance."
+        return
+      end
       unless @payment.remittance_stage == :to_pay
         redirect_to manage_money_incoming_payment_path(@payment),
                     alert: "This payment isn't waiting to be remitted."
@@ -140,8 +145,15 @@ module Manage
 
       ContractPaymentCollection.remit_to_organization!(@payment)
       batch = @payment.reload.payout_contribution&.payout_batch
+      # The remit skips quietly when there's nothing to send; never say Added
+      # when nothing was.
+      unless batch
+        redirect_to manage_money_incoming_payment_path(@payment),
+                    alert: "There's nothing to add to a payout run for this payment."
+        return
+      end
       redirect_to manage_money_incoming_payment_path(@payment),
-                  notice: "Added to your payout run#{" — pay it out to send it to your bank" if batch&.open?}."
+                  notice: "Added to your payout run#{" — pay it out to send it to your bank" if batch.open?}."
     end
 
     # Email the payer their invoice, PDF attached, with an optional note from

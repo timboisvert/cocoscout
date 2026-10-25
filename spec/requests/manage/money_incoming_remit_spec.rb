@@ -74,6 +74,44 @@ RSpec.describe "Manage remitting collected contract money", type: :request do
     end
   end
 
+  # Stars & Garters, Oct 25: with ticketing on, collected money stays in the
+  # organization's CocoScout balance and never rides a run. The page offered
+  # Add to payout run, said Added, and nothing changed.
+  describe "an organization that pools its money (ticketing on)" do
+    before do
+      org.update!(stripe_account_id: "acct_org", payouts_enabled: true)
+      TicketingProfile.for(org).update!(enabled: true)
+    end
+
+    it "says the money is in the CocoScout balance, with no Add to payout run" do
+      get manage_money_incoming_payment_path(payment)
+
+      body = response.body
+      expect(body).to include("is in your CocoScout balance")
+      expect(body).to include(manage_ticket_balance_path)
+      expect(body).not_to include("Add to payout run")
+    end
+
+    it "says so on the contract's paid row too" do
+      get manage_contract_path(contract)
+
+      expect(response.body).to include("In your CocoScout balance")
+      expect(response.body).not_to include("Add to payout run")
+    end
+
+    it "never claims a remit that didn't happen" do
+      post manage_remit_money_incoming_payment_path(payment)
+
+      expect(payment.reload.payout_contribution).to be_nil
+      expect(flash[:notice]).to eq("This money is already in your CocoScout balance.")
+    end
+
+    it "leaves the money off Payouts' awaiting list" do
+      payouts = MoneyTodoService.new(user: owner, organization: org).payouts
+      expect(payouts.to_s).not_to include("collected for you")
+    end
+  end
+
   describe "the contract page" do
     it "offers Add to payout run on the paid row" do
       org.update!(stripe_account_id: "acct_org", payouts_enabled: true)

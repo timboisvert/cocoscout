@@ -261,6 +261,9 @@
                 <%= link_to "Held for you — connect a bank", manage_money_incoming_payment_path(payment),
                       class: "inline-flex items-center rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-200 transition-colors" %>
               <% end %>
+            <% when :in_balance %>
+              <%= link_to "In your CocoScout balance", manage_ticket_balance_path,
+                    class: "inline-flex items-center rounded-md bg-green-100 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-200 transition-colors" %>
             <% when :in_draft %>
               <%= link_to "In payout run", manage_payout_batch_path(payment.payout_contribution.payout_batch),
                     class: "inline-flex items-center rounded-md bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200 transition-colors" %>

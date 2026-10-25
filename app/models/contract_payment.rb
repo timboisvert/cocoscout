@@ -315,12 +315,15 @@ class ContractPayment < ApplicationRecord
 
   # Where the org's remittance of this collected money stands: :to_pay (not on
   # a run yet — including a failed run handing it back), :in_draft, :in_flight,
-  # or :paid once it reached the org's bank. Nil for money we never held.
+  # or :paid once it reached the org's bank. :in_balance when the org pools
+  # (ticketing on): the money stays in its CocoScout balance and never rides a
+  # run, so there's nothing to add (Stars & Garters, 2026-10-25: "Add to payout
+  # run" said Added and did nothing). Nil for money we never held.
   def remittance_stage
     return nil unless collected_online?
 
     contribution = payout_contribution
-    return :to_pay unless contribution
+    return (CocoScoutBalance.pooled?(contract.organization) ? :in_balance : :to_pay) unless contribution
 
     MoneyTodoService.payout_bucket(contribution.payout_batch,
                                    paid: contribution.payout_batch_item&.paid? || false)
