@@ -119,6 +119,49 @@ RSpec.describe CocoScoutBalance do
     end
   end
 
+  # Pooling outlasts the plan: an organization that leaves Pro keeps its one
+  # ledger, and LapsedBalanceSweepJob sends its balance on each day.
+  context "an organization that has left Pro" do
+    before do
+      expect(described_class.pooled?(org)).to be(true) # seen while Pro: stamped
+      org.update!(comped_indefinitely: false)
+      allow(Stripe::Transfer).to receive(:create).and_return(Stripe::Transfer.construct_from(id: "tr_sweep"))
+    end
+
+    it "still pools" do
+      expect(org.reload.balance_pooled_at).to be_present
+      expect(described_class.pooled?(org.reload)).to be(true)
+    end
+
+    it "has its spendable balance sent to its bank by the daily sweep" do
+      course_sale(10_000, at: 3.days.ago)
+      expect(described_class.available_cents(org)).to eq(9_000)
+
+      LapsedBalanceSweepJob.perform_now
+
+      expect(org.balance_withdrawals.sole).to have_attributes(amount_cents: 9_000, automatic: true)
+      expect(described_class.available_cents(org)).to eq(0)
+    end
+
+    it "leaves a Pro organization's balance alone" do
+      org.update!(comped_indefinitely: true)
+      course_sale(10_000, at: 3.days.ago)
+
+      LapsedBalanceSweepJob.perform_now
+
+      expect(org.balance_withdrawals).to be_empty
+    end
+
+    it "waits while there's no bank to send it to" do
+      org.update!(payouts_enabled: false)
+      course_sale(10_000, at: 3.days.ago)
+
+      LapsedBalanceSweepJob.perform_now
+
+      expect(org.balance_withdrawals).to be_empty
+    end
+  end
+
   context "an organization that isn't Pro" do
     before { org.update!(comped_indefinitely: false) }
 

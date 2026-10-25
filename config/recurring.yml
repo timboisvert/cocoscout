@@ -187,6 +187,12 @@ production:
     class: BalanceAutoWithdrawJob
     schedule: at 7am every day America/Chicago
 
+  # An organization that left Pro can't open its balance page, so its
+  # balance goes to its bank each day.
+  lapsed_balance_sweep:
+    class: LapsedBalanceSweepJob
+    schedule: at 7:30am every day America/Chicago
+
   # The books checked against the cash ledger and tax lines they summarize.
   books_reconciliation:
     class: BooksReconciliationJob

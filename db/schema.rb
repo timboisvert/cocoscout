@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_22_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_25_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1707,6 +1707,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_120000) do
     t.date "sales_tax_set_aside_since", default: -> { "CURRENT_DATE" }
     t.string "stripe_terminal_location_id"
     t.boolean "staff_see_ticket_counts", default: true, null: false
+    t.datetime "balance_pooled_at"
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
     t.index ["organization_talent_pool_id"], name: "index_organizations_on_organization_talent_pool_id"
     t.index ["owner_id"], name: "index_organizations_on_owner_id"
