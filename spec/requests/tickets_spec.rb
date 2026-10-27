@@ -218,6 +218,16 @@ RSpec.describe "Public ticketing", type: :request do
       expect(response.body).to include('"@type":"Event"').and include('"price":"21.42"')
     end
 
+    # Search Console, 2026-10-27: Events missing a description, and offers
+    # missing validFrom.
+    it "gives search engines a description and when each ticket went on sale, even with none written" do
+      [ listing, listing.production_ticketing, production ].compact.each { |r| r.update_columns(description: nil) if r.has_attribute?(:description) }
+      get event_path
+      data = JSON.parse(response.body[%r{<script type="application/ld\+json">(.*?)</script>}m, 1])
+      expect(data["description"]).to start_with(data["name"])
+      expect(data["offers"]).to all(include("validFrom" => listing.created_at.iso8601))
+    end
+
     it "shows a hidden tier only with its code" do
       listing.ticket_tiers.create!(name: "Industry", price_cents: 1_000, hidden: true, unlock_code: "INDUSTRY")
       get event_path
