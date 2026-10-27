@@ -1,31 +1,17 @@
 # frozen_string_literal: true
 
-# The ACH debit that was funding a payout run bounced. Nobody was told before —
+# The bank debit that was funding a payout run bounced. Nobody was told before —
 # the run just sat there marked failed while everyone assumed money was moving,
 # and the payees had already been told their money was on its way.
 class PayoutFundingFailedNotificationJob < ApplicationJob
+  include PayoutRunManagerNotice
+
   queue_as :default
 
   def perform(payout_batch_id)
     batch = PayoutBatch.find_by(id: payout_batch_id)
     return unless batch&.funding_status == "failed"
 
-    recipients = batch.organization.payout_notification_users.filter_map(&:person)
-    return if recipients.empty?
-
-    ContentTemplateService.deliver(
-      template_key: "payout_funding_failed",
-      variables: {
-        organization_name: batch.organization.name,
-        total: ActionController::Base.helpers.number_to_currency(batch.total_cents / 100.0),
-        people_count: ActionController::Base.helpers.pluralize(batch.items.count, "person"),
-        payout_run_url: Rails.application.routes.url_helpers.manage_payout_batch_path(batch)
-      },
-      sender: nil,
-      recipients: recipients,
-      organization: batch.organization,
-      # The organization's chosen people (Money settings), as a Notification (V1.1 plan §9).
-      notification: { category: "pay", kind: "payout_funding_failed", path: Rails.application.routes.url_helpers.manage_payout_batch_path(batch) }
-    )
+    notify_managers(batch, template_key: "payout_funding_failed", variables: {})
   end
 end

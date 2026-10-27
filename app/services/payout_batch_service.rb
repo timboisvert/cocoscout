@@ -235,8 +235,10 @@ class PayoutBatchService
       # PaymentIntent at all — the balance already holds the money, so the run
       # advances straight to paying.
       batch.update!(status: "funding", funding_status: "succeeded", funding_payment_intent_id: nil)
-      advance_funding!(batch, "succeeded")
-      PayoutRunSubmittedNotificationJob.perform_later(batch.id)
+      advance_funding!(batch, "succeeded", at_submit: true)
+      # Funded in this same request: the submitted notice says so, and no
+      # separate funded notice follows.
+      PayoutRunSubmittedNotificationJob.perform_later(batch.id, funded: true)
       return batch
     end
 
@@ -267,10 +269,12 @@ class PayoutBatchService
       metadata: { payout_batch_id: batch.id, organization_id: org.id }
     }, { idempotency_key: "payout-run-funding-#{batch.id}-#{attempt}" })
     batch.update!(status: "funding", funding_payment_intent_id: intent.id, funding_status: intent.status)
-    advance_funding!(batch, intent.status, funded_cents: intent.amount)
+    advance_funding!(batch, intent.status, funded_cents: intent.amount, at_submit: true)
     # The run is submitted — tell the org's chosen managers (who's being paid,
     # how much, expected deposit window). Async; no recipients chosen = no-op.
-    PayoutRunSubmittedNotificationJob.perform_later(batch.id)
+    # A card settles here and now, so the words say "submitted and funded";
+    # an ACH debit gets its own funded notice when the webhook lands.
+    PayoutRunSubmittedNotificationJob.perform_later(batch.id, funded: batch.funded_at.present?)
     batch
   rescue Stripe::StripeError => e
     # The debit never happened — give back any credit this attempt consumed so
@@ -324,9 +328,18 @@ class PayoutBatchService
   # the shared Stripe balance, credited to the org's cash ledger on success.
   # (Runs covered entirely by funding credit pass no intent and post nothing —
   # their money is already in the ledger.)
-  def self.advance_funding!(batch, intent_status, funded_cents: nil)
+  #
+  # funded_at is stamped the first time the run is funded, and guards the
+  # "your run is funded" notice to the organization's chosen people: Stripe
+  # repeats webhooks, and a run that's already funded is left alone (its
+  # transfers went; pay_remaining! is the retry path). at_submit: funding
+  # settled inside fund! itself, so the submitted notice carries the news
+  # and no funded notice is sent.
+  def self.advance_funding!(batch, intent_status, funded_cents: nil, at_submit: false)
     case intent_status
     when "succeeded"
+      return batch if batch.funded_at.present?
+
       if funded_cents.to_i.positive?
         OrgCashEntry.post!(
           organization: batch.organization,
@@ -336,7 +349,8 @@ class PayoutBatchService
           description: "Funding for payout run ##{batch.id}"
         )
       end
-      batch.update!(status: "funded", funding_status: "succeeded")
+      batch.update!(status: "funded", funding_status: "succeeded", funded_at: Time.current)
+      PayoutRunFundedNotificationJob.perform_later(batch.id) unless at_submit
       process!(batch)
     when "processing", "requires_action"
       batch.update!(funding_status: intent_status)
@@ -353,7 +367,9 @@ class PayoutBatchService
   # (status "partially_paid") and goes out via #pay_remaining! once they
   # connect. A run only reads "completed" when every item is actually paid.
   def self.process!(batch)
-    batch.update!(status: "processing")
+    # Back to paying: the completion notice that follows is a new one (an
+    # earlier "partly paid" run that now pays everyone gets "everyone's paid").
+    batch.update!(status: "processing", completion_notified_at: nil)
 
     source_charge, source_remaining, source_group = funding_charge_for(batch)
     transfer_group = "org_#{batch.organization_id}"
@@ -496,12 +512,23 @@ class PayoutBatchService
   # A funded run stays open until every person in it is paid: all paid →
   # completed (and only then stamped completed_at); anything still pending or
   # failed → partially_paid, waiting for #pay_remaining!.
+  #
+  # Finishing a paying pass tells the organization's chosen people once
+  # (completion_notified_at): "everyone's paid", or who's still waiting on
+  # bank details. A run that was already completed or partly paid and is
+  # re-judged (a payout came back, a close-out) isn't a new completion, and
+  # those have their own notices.
+  FINISHED_STATUSES = %w[completed partially_paid].freeze
+
   def self.finalize_status!(batch)
-    if batch.items.where.not(status: "paid").none?
-      batch.update!(status: "completed", completed_at: Time.current)
-    else
-      batch.update!(status: "partially_paid", completed_at: nil)
-    end
+    was_paying = !FINISHED_STATUSES.include?(batch.status)
+    status = batch.items.where.not(status: "paid").none? ? "completed" : "partially_paid"
+    batch.update!(status: status, completed_at: status == "completed" ? Time.current : nil)
+    return batch unless was_paying && batch.completion_notified_at.nil?
+
+    batch.update!(completion_notified_at: Time.current)
+    PayoutRunCompletedNotificationJob.perform_later(batch.id, status)
+    batch
   end
 
   # Pay whoever in this already-funded run has become payable since the last

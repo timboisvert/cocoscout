@@ -381,6 +381,27 @@ RSpec.describe "StripeWebhooksController", type: :request do
     end
   end
 
+  describe "payment_intent.succeeded — the funding debit settled" do
+    it "funds the run and tells the organization once, however often Stripe repeats itself" do
+      allow(Stripe::PaymentIntent).to receive(:retrieve).and_return(double("pi", amount: 5_000, latest_charge: "py_1"))
+      allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_fund"))
+      funding = org.payout_batches.create!(kind: "staff_pay", status: "funding", trigger: "manual",
+                                           funding_payment_intent_id: "pi_fund", funding_status: "processing",
+                                           total_cents: 5_000, payday: Date.current)
+      funding.items.create!(payee: payee, amount_cents: 5_000, status: "pending")
+
+      intent = Stripe::PaymentIntent.construct_from(id: "pi_fund", amount: 5_000)
+      deliver("payment_intent.succeeded", intent)
+      deliver("payment_intent.succeeded", intent)
+
+      funded = enqueued_jobs.select { |j| j["job_class"] == "PayoutRunFundedNotificationJob" }
+      expect(funded.map { |j| j["arguments"] }).to eq([ [ funding.id ] ])
+      expect(funding.reload.funded_at).to be_present
+      expect(funding.status).to eq("completed")
+      expect(enqueued_jobs.count { |j| j["job_class"] == "PayoutRunCompletedNotificationJob" }).to eq(1)
+    end
+  end
+
   describe "payment_intent.payment_failed — the funding debit bounced" do
     it "marks the run failed and tells somebody" do
       funding = org.payout_batches.create!(kind: "staff_pay", status: "funding", trigger: "manual",

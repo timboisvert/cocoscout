@@ -469,6 +469,88 @@ RSpec.describe PayoutBatchService do
     end
   end
 
+  describe "the organization's notices" do
+    include ActiveJob::TestHelper
+
+    before do
+      org.update!(stripe_customer_id: "cus_1", funding_payment_method_id: "pm_1", funding_payment_method_type: "us_bank_account")
+      allow(Stripe::PaymentIntent).to receive(:retrieve).and_return(double("pi", amount: 5000, latest_charge: "py_fund"))
+      allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_1"))
+    end
+
+    after { clear_enqueued_jobs }
+
+    def enqueued(job_class)
+      enqueued_jobs.select { |j| j["job_class"] == job_class.name }.map { |j| j["arguments"] }
+    end
+
+    it "a card settles at once: submitted-and-funded, no funded notice, then everyone's paid" do
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_card", status: "succeeded", amount: 5000))
+
+      batch = PayoutBatchService.build_for(organization: org)
+      PayoutBatchService.fund!(batch, method: "card")
+
+      expect(batch.reload.funded_at).to be_present
+      expect(batch.completion_notified_at).to be_present
+      expect(enqueued(PayoutRunSubmittedNotificationJob)).to eq([ [ batch.id, { "funded" => true, "_aj_ruby2_keywords" => [ "funded" ] } ] ])
+      expect(enqueued(PayoutRunFundedNotificationJob)).to be_empty
+      expect(enqueued(PayoutRunCompletedNotificationJob)).to eq([ [ batch.id, "completed" ] ])
+    end
+
+    it "an ACH debit: submitted now, funded once when the webhook lands (however often it repeats)" do
+      allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_ach", status: "processing", amount: 5000))
+
+      batch = PayoutBatchService.build_for(organization: org)
+      PayoutBatchService.fund!(batch, method: "ach")
+      expect(batch.reload.funded_at).to be_nil
+      expect(enqueued(PayoutRunSubmittedNotificationJob)).to eq([ [ batch.id, { "funded" => false, "_aj_ruby2_keywords" => [ "funded" ] } ] ])
+
+      PayoutBatchService.advance_funding!(batch, "succeeded", funded_cents: 5000)
+      funded_at = batch.reload.funded_at
+      expect(funded_at).to be_present
+      expect(batch.status).to eq("completed")
+
+      travel_to(1.hour.from_now) { PayoutBatchService.advance_funding!(batch.reload, "succeeded", funded_cents: 5000) }
+      expect(batch.reload.funded_at).to eq(funded_at)
+      expect(enqueued(PayoutRunFundedNotificationJob)).to eq([ [ batch.id ] ])
+      expect(enqueued(PayoutRunCompletedNotificationJob)).to eq([ [ batch.id, "completed" ] ])
+    end
+
+    it "partly paid once, then everyone's paid when Pay remaining finishes the run" do
+      batch = org.payout_batches.create!(kind: "payout", status: "funded", trigger: "manual", funding_status: "succeeded",
+                                         funding_payment_intent_id: "pi_f", total_cents: 8000, funded_at: Time.current)
+      batch.items.create!(payee: ready, amount_cents: 5000, status: "pending")
+      batch.items.create!(payee: not_connected, amount_cents: 3000, status: "pending")
+
+      PayoutBatchService.process!(batch)
+      expect(batch.reload.status).to eq("partially_paid")
+      expect(enqueued(PayoutRunCompletedNotificationJob)).to eq([ [ batch.id, "partially_paid" ] ])
+
+      # A pass that pays nobody new is not a new completion.
+      PayoutBatchService.pay_remaining!(batch)
+      expect(enqueued(PayoutRunCompletedNotificationJob)).to eq([ [ batch.id, "partially_paid" ], [ batch.id, "partially_paid" ] ])
+      clear_enqueued_jobs
+
+      not_connected.update!(stripe_account_id: "acct_now", payouts_enabled: true)
+      PayoutBatchService.pay_remaining!(batch.reload)
+      expect(batch.reload.status).to eq("completed")
+      expect(enqueued(PayoutRunCompletedNotificationJob)).to eq([ [ batch.id, "completed" ] ])
+    end
+
+    it "a payout coming back re-judges the run without a new completion notice" do
+      batch = org.payout_batches.create!(kind: "payout", status: "funded", trigger: "manual", funding_status: "succeeded",
+                                         total_cents: 5000, funded_at: Time.current)
+      item = batch.items.create!(payee: ready, amount_cents: 5000, status: "pending")
+      PayoutBatchService.process!(batch)
+      expect(batch.reload.status).to eq("completed")
+      clear_enqueued_jobs
+
+      PayoutBatchService.return_item!(item.reload, reason: "Account closed")
+      expect(batch.reload.status).to eq("partially_paid")
+      expect(enqueued(PayoutRunCompletedNotificationJob)).to be_empty
+    end
+  end
+
   describe "reversal" do
     it "restores the balance when a paid item is marked failed" do
       allow(Stripe::Transfer).to receive(:create).and_return(double("transfer", id: "tr_2"))

@@ -1,37 +1,28 @@
 # frozen_string_literal: true
 
-# Emails the org's chosen managers when a payout run is submitted (funded):
-# who's being paid and how much (names + amounts, no line-item breakdown),
-# the expected deposit window, and a link to the run. Copy lives in the
-# "payout_run_submitted" ContentTemplate.
+# Email for a payout run: the manager notices (submitted, funded, everyone's
+# paid, partly paid, the funding debit bounced, a payout came back) and the
+# payee's "on its way". Copy lives in ContentTemplates; it arrives rendered.
 class PayoutBatchMailer < ApplicationMailer
   include ActionView::Helpers::SanitizeHelper
-  include ActionView::Helpers::NumberHelper
 
-  def submitted(batch:, user:)
-    @batch = batch
-    # For ApplicationMailer's tracking headers (user / org scoping in email logs).
-    @user = user
-    @organization = batch.organization
-    return unless user&.email_address
+  # One of the manager notices, to one of the people Money settings →
+  # Notifications names. The signature is what ContentTemplateService's email
+  # channel calls:
+  #   mailer_class.send(method, person, production, body, subject, email_batch_id:)
+  # organization_id rides in params (deliver_later keeps them) so the footer
+  # and the email log name the organization.
+  def manager_notice(person, production, body, subject, email_batch_id: nil)
+    @person = person
+    @user = person.user
+    @production = production
+    @organization = Organization.find_by(id: params[:organization_id]) if params.is_a?(Hash) && params[:organization_id]
+    @email_batch_id = email_batch_id
+    return if person.email.blank?
 
-    earliest, latest = batch.expected_deposit_range
-    items = batch.items.includes(:payee).order(amount_cents: :desc)
-
-    template = ContentTemplateService.render("payout_run_submitted", {
-      recipient_name: user.person&.name&.split&.first || user.email_address.split("@").first,
-      organization_name: batch.organization.name,
-      run_kind: batch.kind_label,
-      total: number_to_currency(batch.total_cents / 100.0),
-      people_count: "#{items.size} #{items.size == 1 ? 'payee' : 'payees'}",
-      expected_window: "#{earliest.strftime('%B %-d')} – #{latest.strftime('%B %-d, %Y')}",
-      payee_lines: payee_lines_html(items),
-      payout_run_url: manage_payout_batch_url(batch)
-    })
-
-    mail(to: user.email_address, subject: template[:subject]) do |format|
-      format.html { render html: template[:body].html_safe, layout: "mailer" }
-      format.text { render plain: strip_tags(template[:body]).gsub(/\s+/, " ").strip }
+    mail(to: person.email, subject: subject) do |format|
+      format.html { render html: body.html_safe, layout: "mailer" }
+      format.text { render plain: plain_text_from(body) }
     end
   end
 
@@ -63,18 +54,5 @@ class PayoutBatchMailer < ApplicationMailer
     strip_tags(with_breaks)
       .split("\n").map(&:strip).join("\n")
       .gsub(/\n{3,}/, "\n\n").strip
-  end
-
-  # One row per payee: name + amount. Deliberately no per-line breakdown —
-  # the linked run page carries the full detail.
-  def payee_lines_html(items)
-    rows = items.map do |item|
-      name = ERB::Util.html_escape(item.payee&.name || "Payee")
-      amount = number_to_currency(item.amount_cents / 100.0)
-      "<tr><td style=\"padding: 6px 16px 6px 0; color: #111827;\">#{name}</td>" \
-        "<td style=\"padding: 6px 0; text-align: right; color: #111827; font-weight: 600;\">#{amount}</td></tr>"
-    end
-    '<table style="width: 100%; border-collapse: collapse; background-color: #f9fafb; border-radius: 12px; padding: 16px; margin: 16px 0;"><tbody>' \
-      "#{rows.join}</tbody></table>"
   end
 end
