@@ -1,25 +1,36 @@
 <%#
-  Home's Actions box (Tim, 2026-10-28: "a box that says actions, and each
-  of those is one line, keep it simple"): one line per thing waiting, its
-  link on the right, the same at every width. Only what has something in
-  it. Built by Manage::ManageController#home_status_items.
+  Home's Actions box (Tim, 2026-10-28): one line per thing waiting, the
+  topic on the left, the words, a chevron, and the whole line is the link.
+  Lines where someone's missing are tinted. Only what has something in it.
+  Built by Manage::ManageController#home_status_items; ?all_actions=1 adds
+  an example of every kind.
 %>
 <% if @home_status.any? %>
+  <% examples = @home_status.any? { |i| i[:example] } %>
   <section class="mb-4 bg-white border border-gray-200 rounded-lg overflow-hidden" aria-labelledby="home-actions-title" data-home-actions>
-    <h2 id="home-actions-title" class="px-4 py-2 text-sm font-semibold text-gray-900 border-b border-gray-200">Actions</h2>
+    <h2 id="home-actions-title" class="px-4 py-2 text-sm font-semibold text-gray-900 border-b border-gray-200 flex items-center justify-between gap-3">
+      Actions
+      <% if examples %><span class="text-xs font-normal text-gray-500">every kind, as examples · <%= link_to "back to the real ones", manage_path, class: "text-pink-600" %></span><% end %>
+    </h2>
     <div class="divide-y divide-gray-100">
       <% @home_status.each do |item| %>
-        <% action = item[:action] || {} %>
-        <div class="flex items-center gap-3 px-4 min-h-[44px] py-1.5 text-sm" data-status="<%= item[:key] %>">
-          <span class="w-2 h-2 rounded-full flex-shrink-0 <%= HomeHelper::PILL_DOTS[item[:tone]] %>" aria-hidden="true"></span>
-          <span class="flex-1 min-w-0 text-gray-900"><%= item[:text] %><% if item[:detail].present? %><span class="text-gray-500"> · <%= item[:detail] %></span><% end %></span>
-          <% if action[:modal] %>
-            <button type="button" class="flex-shrink-0 text-pink-600 hover:text-pink-700 font-medium cursor-pointer bg-transparent border-0 p-0"
-                    data-controller="modal" data-action="click->modal#open" data-modal-id="<%= action[:modal] %>"><%= action[:text] %></button>
-          <% elsif action[:path] %>
-            <%= link_to action[:text], action[:path], class: "flex-shrink-0 text-pink-600 hover:text-pink-700 font-medium" %>
-          <% end %>
-        </div>
+        <%
+          action = item[:action] || {}
+          alert = item[:tone] == :red
+          row = "flex items-center gap-3 px-4 min-h-[44px] py-1.5 w-full text-left text-sm cursor-pointer #{alert ? 'bg-pink-50 hover:bg-pink-100' : 'hover:bg-gray-50'}"
+          inner = capture do
+        %>
+          <span class="w-[74px] sm:w-20 flex-shrink-0 text-[10.5px] font-semibold uppercase tracking-wide <%= alert ? 'text-pink-700' : 'text-gray-500' %>"><%= item[:topic] %></span>
+          <span class="flex-1 min-w-0 text-gray-900"><%= item[:text] %><% if item[:detail].present? %><span class="text-gray-500"> · <%= item[:detail] %></span><% end %><% if item[:example] %><span class="text-gray-400"> (example)</span><% end %></span>
+          <svg class="w-4 h-4 text-gray-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+        <% end %>
+        <% if action[:modal] %>
+          <button type="button" class="<%= row %> bg-transparent border-0" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= action[:modal] %>" data-status="<%= item[:key] %>"><%= inner %></button>
+        <% elsif action[:path] %>
+          <%= link_to action[:path], class: row, data: { status: item[:key] } do %><%= inner %><% end %>
+        <% else %>
+          <div class="<%= row %>" data-status="<%= item[:key] %>"><%= inner %></div>
+        <% end %>
       <% end %>
     </div>
   </section>

@@ -110,27 +110,36 @@ module Manage
       render "home"
     end
 
-    # The status bar ("Needs attention", on every width): one pill per thing
-    # waiting, only when it has something in it. Each is { text:, tone:,
-    # action: { text:, path: | modal: }, key: }. Tones: :red (someone's
-    # missing), :amber (something open), :pink (waiting on you), :gray.
+    # Home's Actions box: one line per thing waiting, only when it has
+    # something in it. Each is { key:, topic:, tone:, text:, detail:,
+    # action: { path: | modal: } }; the whole line is the link. Topics
+    # group the lines; within a topic the red ones (someone's missing)
+    # come first. ?all_actions=1 (a superadmin, or development) adds an
+    # example of every kind, to see them all at once (Tim, 2026-10-28).
+    TOPIC_ORDER = %w[Casting Sign-ups Staffing Ticketing Money Contracts].freeze
+    TONE_ORDER = { red: 0, amber: 1, pink: 2, gray: 3 }.freeze
+
     def home_status_items(pro_manager)
       items = []
       v = @all_open_vacancies.size
       if v.positive?
-        items << { key: "vacancies", tone: :red, text: "#{v} open #{'vacancy'.pluralize(v)}",
+        items << { key: "vacancies", topic: "Casting", tone: :red, text: "#{v} open #{'vacancy'.pluralize(v)}",
                    detail: @all_open_vacancies.first(2).map { |x| "#{x[:role]&.name}, #{x[:show].date_and_time.strftime('%a %b %-d')}" }.join(" · "),
-                   action: v == 1 ? { text: "Review", path: manage_casting_vacancy_path(@all_open_vacancies.first[:production], @all_open_vacancies.first[:vacancy]) }
-                                  : { text: "Review", modal: "home-vacancies" } }
+                   action: v == 1 ? { path: manage_casting_vacancy_path(@all_open_vacancies.first[:production], @all_open_vacancies.first[:vacancy]) }
+                                  : { modal: "home-vacancies" } }
+      end
+      if (n = @home.unnotified_shows.size).positive?
+        items << { key: "notify", topic: "Casting", tone: :amber,
+                   text: n == 1 ? "#{@home.unnotified_shows.first.production&.name}'s cast hasn't been notified" : "#{n} shows' cast not notified yet",
+                   action: { path: manage_casting_path } }
       end
       if @total_audition_signups.positive?
-        items << { key: "signups", tone: :pink, text: "#{@total_audition_signups} audition #{'sign-up'.pluralize(@total_audition_signups)} to review",
-                   action: { text: "Review", path: manage_signups_path } }
+        items << { key: "signups", topic: "Sign-ups", tone: :pink, text: "#{@total_audition_signups} audition #{'sign-up'.pluralize(@total_audition_signups)} to review",
+                   action: { path: manage_signups_path } }
       end
-      if (form = @all_sign_up_forms.first) && form[:instance]&.show
-        count = form[:instance].registration_count || 0
-        items << { key: "registrations", tone: :pink, text: "#{count} registered for #{form[:instance].show.date_and_time.strftime('%A')}'s #{form[:form].name}",
-                   action: { text: "Sign-ups", path: manage_signups_form_path(form[:production], form[:form]) } }
+      if (form = @all_sign_up_forms.first) && form[:instance]&.show && (count = form[:instance].registration_count.to_i).positive?
+        items << { key: "registrations", topic: "Sign-ups", tone: :pink, text: "#{count} registered for #{form[:instance].show.date_and_time.strftime('%A')}'s #{form[:form].name}",
+                   action: { path: manage_signups_form_path(form[:production], form[:form]) } }
       end
       if @home.staffing_on?
         words = []
@@ -139,32 +148,55 @@ module Manage
         words << "#{d} can't make it" if d.positive?
         words << "#{@home.open_slots} open #{'slot'.pluralize(@home.open_slots)}" if words.empty? && @home.open_slots.positive?
         if words.any?
-          items << { key: "staffing", tone: d.positive? ? :red : :amber, text: words.join(" · "),
-                     action: { text: "Scheduling", path: manage_staffing_scheduling_path(week_start: @week_start.to_s) } }
+          items << { key: "staffing", topic: "Staffing", tone: d.positive? ? :red : :amber, text: words.join(" · "),
+                     action: { path: manage_staffing_scheduling_path(week_start: @week_start.to_s) } }
         end
+      end
+      if @home_attention && @home_attention[:hours].positive?
+        items << { key: "hours", topic: "Staffing", tone: :gray, text: "#{@home_attention[:hours]} #{'hour'.pluralize(@home_attention[:hours])} to approve",
+                   action: { path: manage_staffing_timesheets_path } }
       end
       if @home.tickets_on?
         TicketingDashboard.new(Current.organization).alerts.each_with_index do |alert, i|
           first = alert.actions.first
-          items << { key: "ticketing-#{i}", tone: alert.tone == :amber ? :amber : :pink, text: alert.headline,
-                     action: first && { text: first[:text], path: first[:path] } }
+          items << { key: "ticketing-#{i}", topic: "Ticketing", tone: alert.tone == :amber ? :amber : :pink, text: alert.headline,
+                     action: first && { path: first[:path] } }
         end
-      end
-      if (n = @home.unnotified_shows.size).positive?
-        items << { key: "notify", tone: :amber, text: n == 1 ? "#{@home.unnotified_shows.first.production&.name}'s cast hasn't been notified" : "#{n} shows' cast not notified yet",
-                   action: { text: "Casting", path: manage_casting_path } }
       end
       if @home_attention
         a = @home_attention
-        items << { key: "financials", tone: :gray, text: "#{a[:financials]} #{'show'.pluralize(a[:financials])} that need financials", action: { text: "Financials", path: manage_money_financials_path } } if a[:financials].positive?
-        items << { key: "pay", tone: :pink, text: "#{helpers.number_to_currency(a[:payouts_amount])} to pay", action: { text: "Pay people", path: manage_money_payouts_path } } if a[:payouts].positive?
-        items << { key: "hours", tone: :gray, text: "#{a[:hours]} #{'hour'.pluralize(a[:hours])} to approve", action: { text: "Approve", path: manage_staffing_timesheets_path } } if a[:hours].positive?
+        items << { key: "financials", topic: "Money", tone: :gray, text: "#{a[:financials]} #{'show'.pluralize(a[:financials])} that need financials", action: { path: manage_money_financials_path } } if a[:financials].positive?
+        items << { key: "pay", topic: "Money", tone: :pink, text: "#{helpers.number_to_currency(a[:payouts_amount])} to pay", action: { path: manage_money_payouts_path } } if a[:payouts].positive?
       end
       if pro_manager && Current.organization.feature_available?(:contracts)
         c = Current.organization.contracts.where(signing_state: "out_for_signature").count
-        items << { key: "contracts", tone: :gray, text: "#{c} #{'contract'.pluralize(c)} out for signature", action: { text: "Contracts", path: manage_contracts_path } } if c.positive?
+        items << { key: "contracts", topic: "Contracts", tone: :gray, text: "#{c} #{'contract'.pluralize(c)} out for signature", action: { path: manage_contracts_path } } if c.positive?
       end
-      items
+      items.concat(home_status_examples(items.map { |i| i[:key] })) if params[:all_actions].present? && (Rails.env.development? || Current.user.superadmin?)
+      items.sort_by { |i| [ TOPIC_ORDER.index(i[:topic]) || 99, TONE_ORDER[i[:tone]] || 9 ] }
+    end
+
+    # One of every kind the box can show, for looking at them all at once.
+    def home_status_examples(present)
+      [
+        { key: "vacancies", topic: "Casting", tone: :red, text: "2 open vacancies", detail: "Host, Thu Oct 29 · Ghoul, Sat Oct 31", action: { path: manage_casting_path } },
+        { key: "notify", topic: "Casting", tone: :amber, text: "3 shows' cast not notified yet", action: { path: manage_casting_path } },
+        { key: "signups", topic: "Sign-ups", tone: :pink, text: "12 audition sign-ups to review", action: { path: manage_signups_path } },
+        { key: "registrations", topic: "Sign-ups", tone: :pink, text: "9 registered for Saturday's Open mic", action: { path: manage_signups_path } },
+        { key: "staffing", topic: "Staffing", tone: :red, text: "Staffing is a draft · 1 can't make it", action: { path: manage_staffing_scheduling_path } },
+        { key: "staffing-open", topic: "Staffing", tone: :amber, text: "3 open slots", action: { path: manage_staffing_scheduling_path } },
+        { key: "hours", topic: "Staffing", tone: :gray, text: "4 hours to approve", action: { path: manage_staffing_timesheets_path } },
+        { key: "ticketing-box", topic: "Ticketing", tone: :pink, text: "Your box office isn't open yet", action: { path: manage_ticketing_path } },
+        { key: "ticketing-canceled", topic: "Ticketing", tone: :amber, text: "Halloween o' Weens is canceled but people hold tickets", action: { path: manage_ticketing_path } },
+        { key: "ticketing-moved", topic: "Ticketing", tone: :amber, text: "Laugh-Along, Live! moved after people bought tickets", action: { path: manage_ticketing_path } },
+        { key: "ticketing-refund", topic: "Ticketing", tone: :amber, text: "1 refund didn't go through", action: { path: manage_ticketing_path } },
+        { key: "ticketing-dispute", topic: "Ticketing", tone: :amber, text: "1 disputed charge", action: { path: manage_ticketing_path } },
+        { key: "ticketing-drafts", topic: "Ticketing", tone: :amber, text: "2 shows in the next two weeks aren't on sale", action: { path: manage_ticketing_path } },
+        { key: "ticketing-withdrawal", topic: "Ticketing", tone: :amber, text: "A withdrawal to your bank didn't go through", action: { path: manage_ticketing_path } },
+        { key: "financials", topic: "Money", tone: :gray, text: "2 shows that need financials", action: { path: manage_money_financials_path } },
+        { key: "pay", topic: "Money", tone: :pink, text: "$380.00 to pay", action: { path: manage_money_payouts_path } },
+        { key: "contracts", topic: "Contracts", tone: :gray, text: "1 contract out for signature", action: { path: manage_contracts_path } }
+      ].reject { |i| present.include?(i[:key]) }.map { |i| i.merge(example: true) }
     end
 
     def ensure_user_is_manager

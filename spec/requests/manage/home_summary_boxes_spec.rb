@@ -35,7 +35,7 @@ RSpec.describe "Manage home actions: auditions and sign-ups", type: :request do
     it "counts the sign-ups to review, linking to Sign-ups" do
       pill = bar.at_css("[data-status='signups']")
       expect(pill.text).to include("1 audition sign-up to review")
-      expect(pill.at_css("a")["href"]).to eq(manage_signups_path)
+      expect(pill["href"]).to eq(manage_signups_path)
     end
   end
 
@@ -44,10 +44,13 @@ RSpec.describe "Manage home actions: auditions and sign-ups", type: :request do
     let!(:sign_up_form) { create(:sign_up_form, production: production) }
     let!(:instance) { create(:sign_up_form_instance, sign_up_form: sign_up_form, show: show) }
 
-    it "says who's registered for the next event, linking to the form" do
+    it "says nothing while nobody's registered, then who's registered for the next event, linking to the form" do
+      expect(bar).to be_nil
+      slot = create(:sign_up_slot, sign_up_form: sign_up_form, sign_up_form_instance: instance)
+      create(:sign_up_registration, sign_up_slot: slot)
       pill = bar.at_css("[data-status='registrations']")
-      expect(pill.text).to include("registered for #{show.date_and_time.strftime('%A')}'s #{sign_up_form.name}")
-      expect(pill.at_css("a")["href"]).to eq(manage_signups_form_path(production, sign_up_form))
+      expect(pill.text).to include("Sign-ups", "1 registered for #{show.date_and_time.strftime('%A')}'s #{sign_up_form.name}")
+      expect(pill["href"]).to eq(manage_signups_form_path(production, sign_up_form))
     end
   end
 
