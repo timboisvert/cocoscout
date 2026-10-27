@@ -57,6 +57,10 @@ RSpec.describe "Manage::Reports", type: :request do
   describe "ticketing reports" do
     let(:superadmin) { create(:user, email_address: "boisvert@gmail.com", password: password) }
 
+    # Mid-month, so the show five days out lands in this month's report (it
+    # fell into next month, and off the page, in a month's last five days).
+    around { |example| travel_to(Time.zone.now.change(day: 10, hour: 12)) { example.run } }
+
     before do
       create(:organization_role, :manager, user: superadmin, organization: org)
       TicketingProfile.for(org).update!(enabled: true)
