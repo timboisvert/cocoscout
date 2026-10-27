@@ -2,9 +2,9 @@
 
 require "rails_helper"
 
-# The Home status bar says something about auditions and sign-ups only when
-# there's something to say (they were summary boxes; pills since 2026-10-27).
-RSpec.describe "Manage home status bar: auditions and sign-ups", type: :request do
+# Home's Actions box says something about auditions and sign-ups only when
+# there's something to say (summary boxes once; one line each since 2026-10-28).
+RSpec.describe "Manage home actions: auditions and sign-ups", type: :request do
   let(:password) { "Password123!" }
   let(:owner) { create(:user, password: password) }
   let!(:owner_role) { create(:organization_role, :manager, user: owner, organization: org) }
@@ -16,13 +16,13 @@ RSpec.describe "Manage home status bar: auditions and sign-ups", type: :request 
   def bar
     get manage_path
     expect(response).to have_http_status(:ok)
-    Nokogiri::HTML(response.body).at_css("[data-status-bar]")
+    Nokogiri::HTML(response.body).at_css("[data-home-actions]")
   end
 
   context "on Pro with nothing going on" do
     let!(:org) { create(:organization, :pro, owner: owner) }
 
-    it "has no status bar at all" do
+    it "has no Actions box at all" do
       expect(bar).to be_nil
     end
   end
@@ -54,7 +54,7 @@ RSpec.describe "Manage home status bar: auditions and sign-ups", type: :request 
   context "on the Producer plan with no sign-up forms" do
     let!(:org) { create(:organization, owner: owner) }
 
-    it "has no status bar" do
+    it "has no Actions box" do
       expect(bar).to be_nil
     end
   end

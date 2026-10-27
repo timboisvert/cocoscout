@@ -119,6 +119,7 @@ module Manage
       v = @all_open_vacancies.size
       if v.positive?
         items << { key: "vacancies", tone: :red, text: "#{v} open #{'vacancy'.pluralize(v)}",
+                   detail: @all_open_vacancies.first(2).map { |x| "#{x[:role]&.name}, #{x[:show].date_and_time.strftime('%a %b %-d')}" }.join(" · "),
                    action: v == 1 ? { text: "Review", path: manage_casting_vacancy_path(@all_open_vacancies.first[:production], @all_open_vacancies.first[:vacancy]) }
                                   : { text: "Review", modal: "home-vacancies" } }
       end

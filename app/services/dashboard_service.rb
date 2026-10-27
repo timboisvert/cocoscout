@@ -35,10 +35,11 @@ class DashboardService
                                              .reorder(nil).group("shows.production_id").maximum(:updated_at)
     role_max = Role.where(production_id: ids, show_id: nil).reorder(nil).group(:production_id).maximum(:updated_at)
     form_max = SignUpForm.where(production_id: ids).reorder(nil).group(:production_id).maximum(:updated_at)
+    registration_fp = registration_fingerprints(ids)
 
     production_by_key = productions.to_h do |production|
       key = [
-        "dashboard_v5",
+        "dashboard_v6",
         production.id,
         production.updated_at.to_i,
         show_max[production.id]&.to_i,
@@ -46,7 +47,8 @@ class DashboardService
         vacancy_max[production.id]&.to_i,
         assignment_max[production.id]&.to_i,
         role_max[production.id]&.to_i,
-        form_max[production.id]&.to_i
+        form_max[production.id]&.to_i,
+        registration_fp[production.id]
       ]
       [ key, production ]
     end
@@ -153,6 +155,26 @@ class DashboardService
     }
   end
 
+  # Registrations per production as "count-latest": a removed registration
+  # leaves no newer timestamp behind, so the count has to be in the key too
+  # (Tim, 2026-10-28: Home still said "1 registered" after he removed it).
+  # Both ways a registration reaches its form: through its slot, or straight
+  # to an instance (the queue).
+  def self.registration_fingerprints(ids)
+    counts = Hash.new(0)
+    latest = {}
+    [ { sign_up_slot: :sign_up_form }, { sign_up_form_instance: :sign_up_form } ].each do |path|
+      SignUpRegistration.joins(path).where(sign_up_forms: { production_id: ids }).reorder(nil)
+                        .group("sign_up_forms.production_id")
+                        .pluck(Arel.sql("sign_up_forms.production_id, COUNT(*), MAX(sign_up_registrations.updated_at)"))
+                        .each do |production_id, count, max|
+        counts[production_id] += count
+        latest[production_id] = [ latest[production_id], max ].compact.max
+      end
+    end
+    ids.index_with { |id| "#{counts[id]}-#{latest[id]&.to_i}" }
+  end
+
   def cache_key
     # Cache key includes production ID and relevant timestamps. Must stay in
     # lockstep with the bulk key construction in .generate_all above.
@@ -163,7 +185,7 @@ class DashboardService
     max_role_updated = @production.roles.maximum(:updated_at)
     max_sign_up_form_updated = @production.sign_up_forms.maximum(:updated_at)
     [
-      "dashboard_v5",
+      "dashboard_v6",
       @production.id,
       @production.updated_at.to_i,
       max_show_updated&.to_i,
@@ -171,7 +193,8 @@ class DashboardService
       max_vacancy_updated&.to_i,
       max_assignment_updated&.to_i,
       max_role_updated&.to_i,
-      max_sign_up_form_updated&.to_i
+      max_sign_up_form_updated&.to_i,
+      self.class.registration_fingerprints([ @production.id ])[@production.id]
     ]
   end
 

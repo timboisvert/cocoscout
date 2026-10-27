@@ -1,27 +1,28 @@
 <%#
-  Home's status bar ("Needs attention", on desktop; the phone stacks the
-  same items in _needs_attention): one pill per thing waiting, each with
-  the one action behind it. Only what has something in it. Built by
-  Manage::ManageController#home_status_items.
+  Home's Actions box (Tim, 2026-10-28: "a box that says actions, and each
+  of those is one line, keep it simple"): one line per thing waiting, its
+  link on the right, the same at every width. Only what has something in
+  it. Built by Manage::ManageController#home_status_items.
 %>
 <% if @home_status.any? %>
-  <div class="hidden sm:flex flex-wrap items-center gap-2 mb-3 rounded-xl border border-gray-200 bg-white px-3 py-2" data-status-bar aria-label="Needs attention">
-    <% @home_status.each_with_index do |item, i| %>
-      <span class="inline-flex items-center gap-2 rounded-full border pl-2.5 pr-1 py-1 text-[13px] font-medium <%= HomeHelper::PILL_TONES[item[:tone]] %>" data-status="<%= item[:key] %>">
-        <span class="w-2 h-2 rounded-full flex-shrink-0 <%= HomeHelper::PILL_DOTS[item[:tone]] %>"></span>
-        <span><%= item[:text] %></span>
-        <% if (action = item[:action]) %>
-          <% primary = i.zero? && item[:tone] == :red %>
-          <% classes = "rounded-full border px-2.5 py-0.5 text-xs font-medium cursor-pointer #{primary ? 'bg-pink-500 border-pink-500 text-white hover:bg-pink-600' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}" %>
+  <section class="mb-4 bg-white border border-gray-200 rounded-lg overflow-hidden" aria-labelledby="home-actions-title" data-home-actions>
+    <h2 id="home-actions-title" class="px-4 py-2 text-sm font-semibold text-gray-900 border-b border-gray-200">Actions</h2>
+    <div class="divide-y divide-gray-100">
+      <% @home_status.each do |item| %>
+        <% action = item[:action] || {} %>
+        <div class="flex items-center gap-3 px-4 min-h-[44px] py-1.5 text-sm" data-status="<%= item[:key] %>">
+          <span class="w-2 h-2 rounded-full flex-shrink-0 <%= HomeHelper::PILL_DOTS[item[:tone]] %>" aria-hidden="true"></span>
+          <span class="flex-1 min-w-0 text-gray-900"><%= item[:text] %><% if item[:detail].present? %><span class="text-gray-500"> · <%= item[:detail] %></span><% end %></span>
           <% if action[:modal] %>
-            <button type="button" class="<%= classes %>" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= action[:modal] %>"><%= action[:text] %></button>
-          <% else %>
-            <%= link_to action[:text], action[:path], class: classes %>
+            <button type="button" class="flex-shrink-0 text-pink-600 hover:text-pink-700 font-medium cursor-pointer bg-transparent border-0 p-0"
+                    data-controller="modal" data-action="click->modal#open" data-modal-id="<%= action[:modal] %>"><%= action[:text] %></button>
+          <% elsif action[:path] %>
+            <%= link_to action[:text], action[:path], class: "flex-shrink-0 text-pink-600 hover:text-pink-700 font-medium" %>
           <% end %>
-        <% end %>
-      </span>
-    <% end %>
-  </div>
+        </div>
+      <% end %>
+    </div>
+  </section>
 <% end %>
 
 <%# The vacancies, when there's more than one to review. %>

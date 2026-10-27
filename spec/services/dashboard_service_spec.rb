@@ -58,6 +58,26 @@ RSpec.describe DashboardService do
     end
   end
 
+  # Tim (2026-10-28): Home still said "1 registered" after he removed the
+  # registration. A removed row leaves no newer timestamp, so the key also
+  # carries the count.
+  describe "the cache key and sign-up registrations" do
+    it "changes when a registration is added, and again when it's removed" do
+      form = create(:sign_up_form, production: production)
+      instance = create(:sign_up_form_instance, sign_up_form: form, show: create(:show, production: production, date_and_time: 1.week.from_now))
+      slot = create(:sign_up_slot, sign_up_form: form, sign_up_form_instance: instance)
+      before = service.send(:cache_key)
+
+      registration = create(:sign_up_registration, sign_up_slot: slot)
+      with = described_class.new(production).send(:cache_key)
+      expect(with).not_to eq(before)
+
+      registration.destroy!
+      expect(described_class.new(production).send(:cache_key)).not_to eq(with)
+      expect(described_class.generate_all([ production ]).keys).to eq([ production.id ])
+    end
+  end
+
   describe "open_calls_summary" do
     context "with no audition cycle" do
       it "returns empty summary" do

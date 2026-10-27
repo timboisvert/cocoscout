@@ -7,10 +7,9 @@
   <%= render "shared/module_header", title: "Home" %>
 
   <% if @production_dashboards.any? %>
-    <%# On a phone: the Needs attention stack, the welcome guide, then one
-        day show by show. On desktop: the status bar, the guide, the week. %>
-    <%= render "manage/manage/needs_attention", items: @home_status %>
-    <%= render "manage/manage/status_bar" %>
+    <%# Actions (one line per thing waiting), the welcome guide, then the
+        week show by show (one day at a time on a phone). %>
+    <%= render "manage/manage/actions" %>
 
     <%
       # Shown to anyone with a production until they dismiss it. Creating a

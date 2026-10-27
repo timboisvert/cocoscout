@@ -64,7 +64,7 @@ RSpec.describe "Production Home, show by show", type: :request do
       sat_chip = doc.at_css("[data-home-show='#{sat_show.id}'] [data-chip='cast']")
       expect(sat_chip["data-tone"]).to eq("bad")
       expect(sat_chip.text).to include("1 open")
-      expect(doc.at_css("[data-status-bar] [data-status='vacancies']").text).to include("1 open vacancy")
+      expect(doc.at_css("[data-home-actions] [data-status='vacancies']").text).to include("1 open vacancy")
     end
 
     it "say where staffing stands once the organization has roles, and nothing on the Producer plan" do
@@ -80,14 +80,14 @@ RSpec.describe "Production Home, show by show", type: :request do
       expect(thu_chip.text).to include("1/2")
       sat_chip = doc.at_css("[data-home-show='#{sat_show.id}'] [data-chip='staffing']")
       expect(sat_chip.text).to include("No shifts")
-      expect(doc.at_css("[data-status-bar] [data-status='staffing']").text).to include("Staffing is a draft")
+      expect(doc.at_css("[data-home-actions] [data-status='staffing']").text).to include("Staffing is a draft")
       modal = doc.at_css("#show-modal-#{thu_show.id}")
       expect(modal.text).to include("Bartender", "Gus Lee", "+ Staff")
 
       shift.shift_assignments.first.decline!(reason: "Family thing")
       doc = page(week_start: week_start.to_s)
       expect(doc.at_css("[data-home-show='#{thu_show.id}'] [data-chip='staffing']")["data-tone"]).to eq("bad")
-      expect(doc.at_css("[data-status-bar] [data-status='staffing']").text).to include("1 can't make it")
+      expect(doc.at_css("[data-home-actions] [data-status='staffing']").text).to include("1 can't make it")
 
       org.update!(comped_indefinitely: false)
       doc = page(week_start: week_start.to_s)
