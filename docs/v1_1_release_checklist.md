@@ -27,8 +27,12 @@ side can go out before the V1.1 apps and V1 phones won't notice.
 
 - [ ] Merge `refs/heads/v1.1` into `main` (no conflicts expected; `main`
       hasn't moved on the same files, but check).
-- [ ] Deploy. The deploy runs the three Notifications migrations and
-      `AddLastModeToUsers` (all additive, nullable, no backfill).
+- [ ] Deploy. The deploy runs the three Notifications migrations,
+      `AddLastModeToUsers`, the mailing-list migrations, and the two payout
+      notice migrations (`AddNoticeStampsToPayoutBatches`: `funded_at` and
+      `completion_notified_at`; `AddPayoutRunLifecycleTemplates`: the
+      submitted, funded, completed and partly-paid templates, so no rake
+      seed to run). All additive, nullable, no backfill.
 - [ ] After the deploy, nothing to run in `kamal console`: no backfills.
       (The payee-details console block from `docs/after_v1.md` is separate
       and still waiting.)
