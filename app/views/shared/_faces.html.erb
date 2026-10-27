@@ -1,0 +1,36 @@
+<%#
+  People as a row of headshot squares, the name on hover (the casting
+  board's way; Tim, 2026-10-27: "for performers it should be"). Initials
+  stand in for a missing headshot.
+
+  Locals:
+    people  the People
+    size    Tailwind size classes (default "w-8 h-8")
+    max     show this many, then "+N" (default: all)
+    ring    lambda(person) => extra classes (a red ring for someone who
+            can't make it), optional
+%>
+<%
+  size = local_assigns.fetch(:size, "w-8 h-8")
+  max = local_assigns[:max]
+  ring = local_assigns[:ring]
+  shown = max ? people.first(max) : people
+  text = size.include?("w-6") ? "text-[9px]" : (size.include?("w-10") ? "text-xs" : "text-[10px]")
+%>
+<span class="inline-flex flex-wrap items-center gap-1" data-faces>
+  <% shown.each do |person| %>
+    <% v = person.safe_headshot_variant(:thumb) %>
+    <% extra = ring ? ring.call(person) : "" %>
+    <% if v %>
+      <span data-controller="tooltip" data-tooltip-text="<%= person.name %>" class="inline-flex">
+        <%= image_tag v, alt: person.name, class: "#{size} rounded-lg object-cover #{extra}" %>
+      </span>
+    <% else %>
+      <span data-controller="tooltip" data-tooltip-text="<%= person.name %>"
+            class="<%= size %> rounded-lg bg-gray-200 text-gray-700 flex items-center justify-center font-bold <%= text %> <%= extra %>" aria-label="<%= person.name %>"><%= person.initials %></span>
+    <% end %>
+  <% end %>
+  <% if max && people.size > max %>
+    <span class="<%= size %> rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center font-semibold <%= text %>">+<%= people.size - max %></span>
+  <% end %>
+</span>

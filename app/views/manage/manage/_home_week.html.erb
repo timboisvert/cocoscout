@@ -1,0 +1,89 @@
+<%#
+  Home on desktop (Design B, Tim 2026-10-27): the days across the top, a
+  slim row per show stacked by time under its day, three state chips on
+  each. Seven days, or three (the toggle). A day with nothing on it narrows
+  to a sliver.
+%>
+<%
+  days = @home.days
+  rows_by_day = @home.rows_by_day
+  three = @home_days == 3
+  busy = days.index_with { |d| rows_by_day[d].any? }
+  busy = days.index_with { true } if three || busy.values.none?
+  columns = days.map { |d| busy[d] ? "minmax(0, 1fr)" : "44px" }.join(" ")
+  slim_bg = "background: repeating-linear-gradient(135deg, #fafafa 0, #fafafa 6px, #f3f4f6 6px, #f3f4f6 12px);"
+  label = if three
+    "#{days.first.strftime('%a, %b %-d')} – #{days.last.strftime('%a, %b %-d')}"
+  elsif @week_start.month == @week_end.month
+    "#{@week_start.strftime('%b %-d')} – #{@week_end.strftime('%-d, %Y')}"
+  else
+    "#{@week_start.strftime('%b %-d')} – #{@week_end.strftime('%b %-d, %Y')}"
+  end
+%>
+<div class="hidden sm:flex items-center justify-between gap-3 mb-3 flex-wrap">
+  <% if three %>
+    <%= render "shared/week_picker", label: label, months: @calendar_months, pick: :day,
+          prev_path: home_day_path(days.first - 3), next_path: home_day_path(days.first + 3),
+          today_path: (days.include?(Date.current) ? nil : home_day_path(Date.current)), today_text: "Today",
+          day_path: ->(d) { home_day_path(d) }, selected_day: days.first, show_dates: @show_dates %>
+  <% else %>
+    <%= render "shared/week_picker", label: label, months: @calendar_months,
+          prev_path: home_week_path(@week_start - 7), next_path: home_week_path(@week_start + 7),
+          today_path: (@week_start == Date.current.beginning_of_week ? nil : manage_path(days: 7)),
+          week_path: ->(monday) { home_week_path(monday) }, selected_week: @week_start,
+          week_statuses: @week_statuses, legend: @home.staffing_on? %>
+  <% end %>
+  <span class="inline-flex rounded-md border border-gray-300 overflow-hidden bg-white" role="group" aria-label="Days shown" data-days-toggle>
+    <%= link_to "7 days", manage_path(days: 7, day: (three ? days.first.iso8601 : nil)), class: "px-2.5 py-1 text-xs font-medium #{three ? 'text-gray-700 hover:bg-gray-50' : 'bg-pink-500 text-white'}" %>
+    <%= link_to "3 days", manage_path(days: 3, day: (three ? nil : (@range.cover?(Date.current) ? Date.current : @week_start).iso8601)), class: "px-2.5 py-1 text-xs font-medium #{three ? 'bg-pink-500 text-white' : 'text-gray-700 hover:bg-gray-50'}" %>
+  </span>
+</div>
+
+<div class="hidden sm:block bg-white border border-gray-300 rounded-lg shadow-sm overflow-x-auto" data-home-week>
+  <div class="grid gap-px bg-gray-200" style="grid-template-columns: <%= columns %>;">
+    <% days.each do |day| %>
+      <% today = day == Date.current %>
+      <% rows = rows_by_day[day] %>
+      <% if busy[day] %>
+        <div class="px-2 py-1.5 <%= today ? 'bg-pink-50' : 'bg-gray-50' %>" data-day-header="<%= day.iso8601 %>">
+          <div class="text-[11px] font-semibold uppercase <%= today ? 'text-pink-700' : 'text-pink-600' %>"><%= day.strftime("%a") %><%= " · Today" if today %></div>
+          <div class="text-lg font-bold text-gray-900 leading-tight"><%= day.day %></div>
+          <div class="text-[11px] text-gray-500 truncate">
+            <% if rows.any? %>
+              <%= pluralize(rows.size, "show") %><% if (sold = rows.sum { |r| r.tickets&.stats&.sold.to_i }).positive? %> · <%= sold %> sold<% end %>
+            <% else %>
+              Nothing yet
+            <% end %>
+          </div>
+        </div>
+      <% else %>
+        <div class="py-1.5 text-center <%= today ? 'bg-pink-50' : 'bg-gray-50' %>" title="Nothing on <%= day.strftime("%A, %b %-d") %>">
+          <div class="text-[10px] font-semibold uppercase text-gray-400"><%= day.strftime("%a") %></div>
+          <div class="text-sm font-bold text-gray-400"><%= day.day %></div>
+        </div>
+      <% end %>
+    <% end %>
+
+    <% days.each do |day| %>
+      <% if busy[day] %>
+        <div class="bg-white p-1.5 flex flex-col gap-1.5 min-h-[120px]" data-day-column="<%= day.iso8601 %>">
+          <% rows_by_day[day].each do |row| %>
+            <%= render "manage/manage/show_row", row: row, size: :grid %>
+          <% end %>
+        </div>
+      <% else %>
+        <div style="<%= slim_bg %>"></div>
+      <% end %>
+    <% end %>
+  </div>
+</div>
+<% if @home.tickets_on? || @home.staffing_on? || @home.rows.any? { |r| r.cast } %>
+  <div class="hidden sm:flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 px-1 text-[11px] text-gray-500" data-home-legend>
+    <span>Each show: <%= [ ("tickets" if @home.tickets_on?), ("staffing" if @home.staffing_on?), "cast" ].compact.join(" · ") %>.</span>
+    <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span>nothing to do</span>
+    <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span>something open</span>
+    <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span>someone's missing</span>
+    <% if @home.tickets_on? %><span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-pink-500"></span>happening now</span><% end %>
+    <span>Click a show for the detail.</span>
+  </div>
+<% end %>

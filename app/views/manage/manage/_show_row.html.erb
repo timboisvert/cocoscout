@@ -1,0 +1,46 @@
+<%#
+  One show on Home (Design B, Tim 2026-10-27): its time and name, then three
+  state chips (tickets · staffing · cast), each tinted by its state. Green:
+  nothing to do; amber: something open; red: someone's missing; pink:
+  happening now. The whole row opens the show's modal (show-modal-<id>),
+  which says who.
+
+  Locals:
+    row   a HomeWeek::Row
+    size  :grid (the desktop week; short words) or :phone (long words)
+%>
+<%
+  show = row.show
+  phone = local_assigns[:size] == :phone
+  chips = [
+    [ "tickets", home_ticket_chip(row.tickets), "M3 9a2 2 0 002-2V5h14v2a2 2 0 002 2v6a2 2 0 00-2 2v2H5v-2a2 2 0 00-2-2V9z" ],
+    [ "staffing", home_staffing_chip(row.staffing), "M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z" ],
+    [ "cast", home_cast_chip(row.cast), "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" ]
+  ].select { |_k, chip, _i| chip }
+  venue = show.location_space&.name || show.location&.name
+  live = row.tickets&.live?
+  tone = show.canceled ? "border-gray-200 bg-gray-50" : (live ? "border-pink-300 bg-white ring-2 ring-pink-100" : "border-gray-200 bg-white hover:border-pink-200")
+%>
+<button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="show-modal-<%= show.id %>"
+        class="w-full text-left rounded-lg border <%= tone %> <%= phone ? 'px-3 py-2.5' : 'px-1.5 py-1' %> flex flex-col gap-1 cursor-pointer"
+        data-home-show="<%= show.id %>" aria-label="<%= show.display_name %>, <%= show.date_and_time.strftime("%-l:%M %p") %>">
+  <span class="flex items-baseline gap-1.5 min-w-0 w-full <%= phone ? 'text-sm' : 'text-[11.5px]' %>">
+    <span class="font-bold tabular-nums flex-shrink-0 text-gray-900"><%= show.date_and_time.strftime("%-l:%M") %></span>
+    <span class="font-semibold truncate min-w-0 <%= show.canceled ? 'line-through text-gray-500' : 'text-gray-900' %>"><%= show.production&.name %><%= " · #{show.secondary_name}" if show.secondary_name.present? && phone %></span>
+    <% if show.canceled %>
+      <span class="flex-shrink-0 text-[11px] font-semibold text-red-700">Canceled</span>
+    <% elsif phone && venue %>
+      <span class="flex-shrink-0 text-[11px] text-gray-500"><%= venue %></span>
+    <% end %>
+  </span>
+  <% if chips.any? %>
+    <span class="flex flex-wrap gap-1">
+      <% chips.each do |key, (chip_tone, short, long), icon| %>
+        <span class="inline-flex items-center gap-1 rounded-full border px-1.5 py-px font-semibold whitespace-nowrap <%= phone ? 'text-[11px]' : 'text-[10.5px]' %> <%= HomeHelper::CHIP_TONES[chip_tone] %>" data-chip="<%= key %>" data-tone="<%= chip_tone %>">
+          <svg class="<%= phone ? 'w-3 h-3' : 'w-2.5 h-2.5' %> flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="<%= icon %>"/></svg>
+          <%= phone ? long : short %>
+        </span>
+      <% end %>
+    </span>
+  <% end %>
+</button>

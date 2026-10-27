@@ -46,7 +46,19 @@
 
   <%# === The week (desktop) and Apply regulars. A phone picks a day instead. === %>
   <div class="<%= 'max-sm:hidden' unless @regulars_enabled && @regulars_matches.any? %> flex items-center justify-between mb-3 flex-wrap gap-2">
-    <%= render "manage/staffing/week_picker" %>
+    <%
+      week_label = if @week_start.year == @week_end.year && @week_start.month == @week_end.month
+        "#{@week_start.strftime('%b %-d')} – #{@week_end.strftime('%-d, %Y')}"
+      else
+        "#{@week_start.strftime('%b %-d')} – #{@week_end.strftime('%b %-d, %Y')}"
+      end
+    %>
+    <%= render "shared/week_picker", label: week_label, months: @calendar_months,
+          prev_path: manage_staffing_scheduling_path(week_start: (@week_start - 7.days).to_s),
+          next_path: manage_staffing_scheduling_path(week_start: (@week_start + 7.days).to_s),
+          today_path: (@week_start == Date.current.beginning_of_week ? nil : manage_staffing_scheduling_path),
+          week_path: ->(monday) { manage_staffing_scheduling_path(week_start: monday.to_s) },
+          selected_week: @week_start, week_statuses: @week_statuses %>
     <% if @regulars_enabled && @regulars_matches.any? %>
       <%= render "shared/button", text: "Apply regulars (#{@regulars_matches.size})",
             variant: "outline-pink", size: "small", icon: "star", type: :button,

@@ -1,18 +1,27 @@
 <%#
-  One small month for the scheduling calendars. Two ways to pick:
-    pick: :week  each week is one row and one link (?week_start=), the chosen
-                 week a pink band, a dot at the row's end for the week's
-                 status (green published, amber draft, red open slots)
-    pick: :day   each day is a link (?day=), a pink dot under days with
-                 shows, the chosen day filled, today ringed
+  One small month for a week or day picker (Scheduling's week calendar and
+  jump sheet, Home's too). Two ways to pick:
+    pick: :week  each week is one row and one link, the chosen week a pink
+                 band, a dot at the row's end for the week's status (green
+                 published, amber draft, red open slots)
+    pick: :day   each day is a link, a pink dot under days with shows, the
+                 chosen day filled, today ringed
 
   Locals:
-    month  any Date in the month
-    pick   :week or :day
+    month          any Date in the month
+    pick           :week or :day
+    week_path      lambda(Date monday) => path          (pick: :week)
+    selected_week  the Date the chosen week starts     (pick: :week)
+    week_statuses  { monday => :open | :draft | :published }, optional
+    day_path       lambda(Date) => path                 (pick: :day)
+    selected_day   the chosen Date                      (pick: :day)
+    show_dates     a Set of Dates with shows, optional
 %>
 <%
   first = month.beginning_of_month
   weeks = (first.beginning_of_week..first.end_of_month.end_of_week).each_slice(7).to_a
+  statuses = local_assigns[:week_statuses] || {}
+  dates = local_assigns[:show_dates] || Set.new
   status_dot = { open: "bg-red-500", draft: "bg-amber-400", published: "bg-green-500" }
   status_word = { open: "open slots", draft: "draft", published: "published" }
 %>
@@ -25,9 +34,9 @@
     <div class="space-y-0.5">
       <% weeks.each do |week| %>
         <% monday = week.first %>
-        <% chosen = monday == @week_start %>
-        <% status = @week_statuses[monday] %>
-        <%= link_to manage_staffing_scheduling_path(week_start: monday.to_s),
+        <% chosen = monday == selected_week %>
+        <% status = statuses[monday] %>
+        <%= link_to week_path.call(monday),
               class: "relative grid grid-cols-7 items-center pr-4 rounded-md h-8 text-sm tabular-nums text-center #{chosen ? 'bg-pink-500 text-white font-semibold' : 'text-gray-800 hover:bg-pink-50'}",
               title: "Week of #{monday.strftime("%b %-d")}#{" · #{status_word[status]}" if status}",
               data: { week_row: monday.iso8601 } do %>
@@ -46,12 +55,12 @@
         <% if d.month != first.month %>
           <span></span>
         <% else %>
-          <% chosen = d == @selected_day %>
-          <%= link_to manage_staffing_scheduling_path(day: d.iso8601),
+          <% chosen = d == selected_day %>
+          <%= link_to day_path.call(d),
                 class: "mx-auto w-10 h-10 rounded-full flex flex-col items-center justify-center text-sm tabular-nums #{chosen ? 'bg-pink-500 text-white font-semibold' : 'text-gray-800 hover:bg-pink-50'} #{'ring-2 ring-pink-300' if d == Date.current && !chosen}",
                 aria: { label: d.strftime("%A, %B %-d") }, data: { jump_day: d.iso8601 } do %>
             <span class="leading-none"><%= d.day %></span>
-            <span class="w-1 h-1 mt-0.5 rounded-full <%= @show_dates.include?(d) ? (chosen ? 'bg-white' : 'bg-pink-500') : 'bg-transparent' %>"></span>
+            <span class="w-1 h-1 mt-0.5 rounded-full <%= dates.include?(d) ? (chosen ? 'bg-white' : 'bg-pink-500') : 'bg-transparent' %>"></span>
           <% end %>
         <% end %>
       <% end %>

@@ -1,35 +1,56 @@
 <%#
-  Production Home's "Needs attention" stack, on a phone (V1.1 plan §4):
-  one tappable line per thing waiting, before the agenda. Only what has
-  something in it. Locals: vacancies, audition_signups (counts), attention
-  (the controller's money and hours counts, or nil off Pro / for non-managers).
+  Production Home's "Needs attention" stack, on a phone (V1.1 plan §4): one
+  tappable line per thing waiting, before the day. The same items as the
+  desktop status bar (Manage::ManageController#home_status_items), only
+  what has something in it. Locals: items; or, from a production's
+  dashboard, the old vacancies / audition_signups / attention, turned into
+  the same items here.
 %>
 <%
-  rows = []
-  if vacancies.size.positive?
-    rows << { label: "Open #{'vacancy'.pluralize(vacancies.size)}", count: vacancies.size,
-              detail: vacancies.first(2).map { |v| "#{v[:role].name}, #{v[:show].date_and_time.strftime('%a %b %-d')}" }.join(" · "),
-              path: vacancies.size == 1 ? manage_casting_vacancy_path(vacancies.first[:production], vacancies.first[:vacancy]) : "#open-vacancies", alert: true }
-  end
-  rows << { label: "Audition sign-ups to review", count: audition_signups, path: manage_signups_path } if audition_signups.positive?
-  if attention
-    rows << { label: "Shows that need financials", count: attention[:financials], path: manage_money_financials_path } if attention[:financials].positive?
-    rows << { label: "To pay", count: attention[:payouts], detail: "#{number_to_currency(attention[:payouts_amount])} still unpaid", path: manage_money_payouts_path } if attention[:payouts].positive?
-    rows << { label: "Hours to approve", count: attention[:hours], path: manage_staffing_timesheets_path } if attention[:hours].positive?
+  items = local_assigns[:items] || begin
+    rows = []
+    vac = Array(local_assigns[:vacancies])
+    if vac.any?
+      rows << { key: "vacancies", tone: :red, text: "#{vac.size} open #{'vacancy'.pluralize(vac.size)}",
+                detail: vac.first(2).map { |v| "#{v[:role].name}, #{v[:show].date_and_time.strftime('%a %b %-d')}" }.join(" · "),
+                action: { path: vac.size == 1 ? manage_casting_vacancy_path(vac.first[:production], vac.first[:vacancy]) : "#open-vacancies" } }
+    end
+    n = local_assigns[:audition_signups].to_i
+    rows << { key: "signups", tone: :pink, text: "#{n} audition #{'sign-up'.pluralize(n)} to review", action: { path: manage_signups_path } } if n.positive?
+    if (a = local_assigns[:attention])
+      rows << { key: "financials", tone: :gray, text: "#{a[:financials]} #{'show'.pluralize(a[:financials])} that need financials", action: { path: manage_money_financials_path } } if a[:financials].to_i.positive?
+      rows << { key: "pay", tone: :pink, text: "#{number_to_currency(a[:payouts_amount])} to pay", action: { path: manage_money_payouts_path } } if a[:payouts].to_i.positive?
+      rows << { key: "hours", tone: :gray, text: "#{a[:hours]} #{'hour'.pluralize(a[:hours])} to approve", action: { path: manage_staffing_timesheets_path } } if a[:hours].to_i.positive?
+    end
+    rows
   end
 %>
-<% if rows.any? %>
+<% if items.any? %>
   <section class="sm:hidden mb-5" aria-labelledby="needs-attention-title" data-needs-attention>
     <h2 id="needs-attention-title" class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Needs attention</h2>
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100">
-      <% rows.each do |row| %>
-        <%= link_to row[:path], class: "flex items-center gap-3 min-h-[56px] px-4 py-2.5 #{row[:alert] ? 'bg-pink-50' : ''}" do %>
-          <span class="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full text-sm font-bold <%= row[:alert] ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-800' %>"><%= row[:count] %></span>
+      <% items.each do |item| %>
+        <%
+          action = item[:action] || {}
+          alert = item[:tone] == :red
+          count = item[:text][/\A\$?[\d,]+(?:\.\d+)?/]
+          label = count ? item[:text].sub(/\A\$?[\d,]+(?:\.\d+)?\s*/, "").sub(/\A[a-z]/, &:upcase) : item[:text]
+          row = "flex items-center gap-3 min-h-[56px] px-4 py-2.5 w-full text-left #{alert ? 'bg-pink-50' : ''}"
+          inner = capture do
+        %>
+          <% if count %><span class="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full text-sm font-bold <%= alert ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-800' %>"><%= count %></span><% end %>
           <span class="min-w-0 flex-1">
-            <span class="block text-[15px] font-semibold text-gray-900"><%= row[:label] %></span>
-            <% if row[:detail].present? %><span class="block text-xs text-gray-600 truncate"><%= row[:detail] %></span><% end %>
+            <span class="block text-[15px] font-semibold text-gray-900"><%= label %></span>
+            <% if item[:detail].present? %><span class="block text-xs text-gray-600 truncate"><%= item[:detail] %></span><% end %>
           </span>
           <svg class="w-4 h-4 text-gray-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+        <% end %>
+        <% if action[:modal] %>
+          <button type="button" class="<%= row %>" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= action[:modal] %>" data-status="<%= item[:key] %>"><%= inner %></button>
+        <% elsif action[:path] %>
+          <%= link_to action[:path], class: row, data: { status: item[:key] } do %><%= inner %><% end %>
+        <% else %>
+          <div class="<%= row %>" data-status="<%= item[:key] %>"><%= inner %></div>
         <% end %>
       <% end %>
     </div>

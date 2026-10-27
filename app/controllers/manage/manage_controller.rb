@@ -6,6 +6,7 @@ module Manage
   # that production mode opens inside the app for generation-2 builds.
   class ManageController < ApplicationController
     include Manage::PaidFeatureGate
+    include Manage::WeekLoaders
     include OrganizationContext
 
     # My's own trackers; Manage keeps its own (track_last_dashboard,
@@ -58,122 +59,111 @@ module Manage
       )
       @production_dashboards = DashboardService.generate_all(@productions)
 
-      # Calendar: month navigation
-      @current_month = if params[:month].present?
-        Date.parse(params[:month]).in_time_zone.beginning_of_month
+      # What the dashboards say across every production: the open audition
+      # calls, the live sign-up forms (soonest next event first) and the open
+      # vacancies, for the status bar.
+      @all_open_calls, @all_sign_up_forms, @all_open_vacancies = [], [], []
+      @productions.each do |production|
+        dashboard = @production_dashboards[production.id] or next
+        dashboard[:open_calls][:with_auditionees].each { |c| @all_open_calls << c.merge(production: production) }
+        dashboard[:sign_up_forms].each { |f| @all_sign_up_forms << f.merge(production: production) }
+        dashboard[:open_vacancies].each { |v| @all_open_vacancies << v.merge(production: production) }
+      end
+      @total_audition_signups = @all_open_calls.sum { |c| c[:auditionee_count] }
+      @all_sign_up_forms.sort_by! { |f| f[:instance]&.show&.date_and_time || 100.years.from_now }
+
+      # The week, show by show (Design B, Tim 2026-10-27): seven days from
+      # the week's Monday, or three days from the day asked for (?days=3,
+      # remembered). A phone works one day at a time (?day=).
+      @home_days = params[:days].present? ? (params[:days].to_s == "3" ? 3 : 7) : (session[:home_days] == "3" ? 3 : 7)
+      session[:home_days] = @home_days.to_s if params[:days].present?
+      requested_day = parse_day(params[:day])
+      if @home_days == 3
+        @selected_day = requested_day || Date.current
+        @range = (@selected_day..(@selected_day + 2))
+        @week_start = @selected_day.beginning_of_week
       else
-        Time.current.beginning_of_month
+        @week_start = requested_day ? requested_day.beginning_of_week : parse_week_start(params[:week_start])
+        @range = (@week_start..(@week_start + 6))
       end
-      cal_start = Time.current.beginning_of_month
-      cal_end = 12.months.from_now.end_of_month
-      real_current_month = Time.current.beginning_of_month
+      @week_end = @week_start + 6
+      shows = shows_in_range(@range, productions: @productions, canceled: true)
+      @selected_day ||= requested_day ||
+        (@range.cover?(Date.current) ? Date.current : nil) ||
+        shows.first&.date_and_time&.to_date || @range.first
+      pro_manager = Current.organization.on_paid_plan? && (Current.user.superadmin? || Current.organization.manageable_by?(Current.user))
+      @home = HomeWeek.new(organization: Current.organization, user: Current.user, days: @range.to_a,
+                           shows: shows, show_cast: build_show_cast(shows), pro_manager: pro_manager)
+      @calendar_months = calendar_months_around(@week_start)
+      @show_dates = calendar_show_dates(@calendar_months.first.beginning_of_week, @calendar_months.last.end_of_month.end_of_week, productions: @productions)
+      @week_statuses = @home.staffing_on? ? calendar_week_statuses(@calendar_months.first.beginning_of_week, @calendar_months.last.end_of_month.end_of_week) : {}
 
-      # When we're in the final stretch of a month, a plain single-month grid hides
-      # the upcoming weekend that spills into the next month — it reads as "nothing
-      # going on this weekend," which is deceptive. In that window we fold this month
-      # and the next into one view: the landing view shows the rest of this month PLUS
-      # all of next month, the forward arrow jumps to the month *after* next (the
-      # folded month isn't its own stop), and stepping back from there returns here.
-      days_left_in_month = (Time.current.end_of_month.to_date - Date.current).to_i
-      tail_of_month = days_left_in_month < 7
-      @calendar_combined = tail_of_month && @current_month == real_current_month
 
-      if tail_of_month && @current_month == real_current_month
-        @prev_month = @current_month - 1.month
-        @next_month = real_current_month + 2.months          # skip the folded next month
-      elsif tail_of_month && @current_month == real_current_month + 2.months
-        @prev_month = real_current_month                     # back to the combined this/next view
-        @next_month = @current_month + 1.month
-      else
-        @prev_month = @current_month - 1.month
-        @next_month = @current_month + 1.month
-      end
-      @can_go_prev = @prev_month >= cal_start
-      @can_go_next = @next_month <= cal_end
-
-      # The last month rendered in the grid — two months when combined.
-      @calendar_last_month = @calendar_combined ? (real_current_month + 1.month) : @current_month
-
-      # Nav-arrow labels. When a target IS the combined this/next view, label the
-      # arrow with both months ("Jul / Aug") so stepping back into it is obvious.
-      combined_short = "#{real_current_month.strftime('%b')} / #{(real_current_month + 1.month).strftime('%b')}"
-      @prev_month_label = (tail_of_month && @prev_month == real_current_month) ? combined_short : @prev_month.strftime("%b")
-      @next_month_label = (tail_of_month && @next_month == real_current_month) ? combined_short : @next_month.strftime("%b")
-
-      # Heading: "July / August 2026" when combined, else "July 2026".
-      @calendar_heading =
-        if @calendar_combined
-          if @current_month.year == @calendar_last_month.year
-            "#{@current_month.strftime('%B')} / #{@calendar_last_month.strftime('%B %Y')}"
-          else
-            "#{@current_month.strftime('%B %Y')} / #{@calendar_last_month.strftime('%B %Y')}"
-          end
-        else
-          @current_month.strftime("%B %Y")
-        end
-
-      # Calendar: load shows for the displayed range (all productions including courses)
-      month_start = @current_month.beginning_of_month.beginning_of_day
-      month_end = @calendar_last_month.end_of_month.end_of_day
-      all_production_ids = @productions.map(&:id)
-
-      # Build a lookup for course productions → their first course offering
-      course_production_ids = @productions.select(&:type_course?).map(&:id)
-      @course_offering_by_production = if course_production_ids.any?
-        CourseOffering.where(production_id: course_production_ids)
-                      .group_by(&:production_id)
-                      .transform_values(&:first)
-      else
-        {}
-      end
-
-      calendar_shows = Show.where(production_id: all_production_ids)
-                           .where(date_and_time: month_start..month_end)
-                           .includes(:location, :production)
-                           .order(date_and_time: :asc)
-
-      @calendar_events = calendar_shows.map do |show|
-        production = show.production
-        if production.type_course?
-          color = "purple"
-          offering = @course_offering_by_production[production.id]
-          path = offering ? manage_course_offering_path(offering) : manage_show_path(production, show)
-        else
-          # Everything else colors by the event's own nature (show/rehearsal/
-          # meeting) — whether it's an in-house production or a third-party
-          # rental is irrelevant on this calendar.
-          color = case show.event_type
-          when "rehearsal" then "blue"
-          when "meeting" then "green"
-          else "pink"
-          end
-          path = manage_show_path(production, show)
-        end
-        {
-          date: show.date_and_time.to_date,
-          time: show.date_and_time,
-          title: production.name,
-          path: path,
-          color: color,
-          production: production,
-          canceled: show.canceled?,
-          hour: show.date_and_time.hour,
-          minute: show.date_and_time.min,
-          duration_hours: (show.duration_minutes || 120) / 60.0
-        }
-      end
-
-      @events_by_date = @calendar_events.group_by { |e| e[:date] }
-
-      # The phone's "Needs attention" stack (V1.1 plan §4, Home): the money and
-      # hours waiting, for the managers who handle them on Pro.
-      if Current.organization.on_paid_plan? && (Current.user.superadmin? || Current.organization.manageable_by?(Current.user))
+      # The money and hours waiting, for the managers who handle them on Pro.
+      if pro_manager
         todo = MoneyTodoService.new(user: Current.user, organization: Current.organization, row_limit: 0)
         @home_attention = { financials: todo.financials.count.to_i, payouts: todo.payouts.count.to_i, payouts_amount: todo.payouts.amount,
                             hours: Current.organization.staff_time_entries.pending.count }
       end
+      @home_status = home_status_items(pro_manager)
 
       render "home"
+    end
+
+    # The status bar ("Needs attention", on every width): one pill per thing
+    # waiting, only when it has something in it. Each is { text:, tone:,
+    # action: { text:, path: | modal: }, key: }. Tones: :red (someone's
+    # missing), :amber (something open), :pink (waiting on you), :gray.
+    def home_status_items(pro_manager)
+      items = []
+      v = @all_open_vacancies.size
+      if v.positive?
+        items << { key: "vacancies", tone: :red, text: "#{v} open #{'vacancy'.pluralize(v)}",
+                   action: v == 1 ? { text: "Review", path: manage_casting_vacancy_path(@all_open_vacancies.first[:production], @all_open_vacancies.first[:vacancy]) }
+                                  : { text: "Review", modal: "home-vacancies" } }
+      end
+      if @total_audition_signups.positive?
+        items << { key: "signups", tone: :pink, text: "#{@total_audition_signups} audition #{'sign-up'.pluralize(@total_audition_signups)} to review",
+                   action: { text: "Review", path: manage_signups_path } }
+      end
+      if (form = @all_sign_up_forms.first) && form[:instance]&.show
+        count = form[:instance].registration_count || 0
+        items << { key: "registrations", tone: :pink, text: "#{count} registered for #{form[:instance].show.date_and_time.strftime('%A')}'s #{form[:form].name}",
+                   action: { text: "Sign-ups", path: manage_signups_form_path(form[:production], form[:form]) } }
+      end
+      if @home.staffing_on?
+        words = []
+        words << "Staffing is a draft" if @home.staffing_draft?
+        d = @home.declined_this_range.size
+        words << "#{d} can't make it" if d.positive?
+        words << "#{@home.open_slots} open #{'slot'.pluralize(@home.open_slots)}" if words.empty? && @home.open_slots.positive?
+        if words.any?
+          items << { key: "staffing", tone: d.positive? ? :red : :amber, text: words.join(" · "),
+                     action: { text: "Scheduling", path: manage_staffing_scheduling_path(week_start: @week_start.to_s) } }
+        end
+      end
+      if @home.tickets_on?
+        TicketingDashboard.new(Current.organization).alerts.each_with_index do |alert, i|
+          first = alert.actions.first
+          items << { key: "ticketing-#{i}", tone: alert.tone == :amber ? :amber : :pink, text: alert.headline,
+                     action: first && { text: first[:text], path: first[:path] } }
+        end
+      end
+      if (n = @home.unnotified_shows.size).positive?
+        items << { key: "notify", tone: :amber, text: n == 1 ? "#{@home.unnotified_shows.first.production&.name}'s cast hasn't been notified" : "#{n} shows' cast not notified yet",
+                   action: { text: "Casting", path: manage_casting_path } }
+      end
+      if @home_attention
+        a = @home_attention
+        items << { key: "financials", tone: :gray, text: "#{a[:financials]} #{'show'.pluralize(a[:financials])} that need financials", action: { text: "Financials", path: manage_money_financials_path } } if a[:financials].positive?
+        items << { key: "pay", tone: :pink, text: "#{helpers.number_to_currency(a[:payouts_amount])} to pay", action: { text: "Pay people", path: manage_money_payouts_path } } if a[:payouts].positive?
+        items << { key: "hours", tone: :gray, text: "#{a[:hours]} #{'hour'.pluralize(a[:hours])} to approve", action: { text: "Approve", path: manage_staffing_timesheets_path } } if a[:hours].positive?
+      end
+      if pro_manager && Current.organization.feature_available?(:contracts)
+        c = Current.organization.contracts.where(signing_state: "out_for_signature").count
+        items << { key: "contracts", tone: :gray, text: "#{c} #{'contract'.pluralize(c)} out for signature", action: { text: "Contracts", path: manage_contracts_path } } if c.positive?
+      end
+      items
     end
 
     def ensure_user_is_manager

@@ -1,0 +1,48 @@
+<%#
+  Home's status bar ("Needs attention", on desktop; the phone stacks the
+  same items in _needs_attention): one pill per thing waiting, each with
+  the one action behind it. Only what has something in it. Built by
+  Manage::ManageController#home_status_items.
+%>
+<% if @home_status.any? %>
+  <div class="hidden sm:flex flex-wrap items-center gap-2 mb-3 rounded-xl border border-gray-200 bg-white px-3 py-2" data-status-bar aria-label="Needs attention">
+    <% @home_status.each_with_index do |item, i| %>
+      <span class="inline-flex items-center gap-2 rounded-full border pl-2.5 pr-1 py-1 text-[13px] font-medium <%= HomeHelper::PILL_TONES[item[:tone]] %>" data-status="<%= item[:key] %>">
+        <span class="w-2 h-2 rounded-full flex-shrink-0 <%= HomeHelper::PILL_DOTS[item[:tone]] %>"></span>
+        <span><%= item[:text] %></span>
+        <% if (action = item[:action]) %>
+          <% primary = i.zero? && item[:tone] == :red %>
+          <% classes = "rounded-full border px-2.5 py-0.5 text-xs font-medium cursor-pointer #{primary ? 'bg-pink-500 border-pink-500 text-white hover:bg-pink-600' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}" %>
+          <% if action[:modal] %>
+            <button type="button" class="<%= classes %>" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= action[:modal] %>"><%= action[:text] %></button>
+          <% else %>
+            <%= link_to action[:text], action[:path], class: classes %>
+          <% end %>
+        <% end %>
+      </span>
+    <% end %>
+  </div>
+<% end %>
+
+<%# The vacancies, when there's more than one to review. %>
+<% if @all_open_vacancies.size > 1 %>
+  <%= render layout: "shared/sheet", locals: { id: "home-vacancies", title: "Open vacancies" } do %>
+    <div class="-mx-4 sm:-mx-6 -my-5 divide-y divide-gray-100">
+      <% @all_open_vacancies.each do |v| %>
+        <% vacated = v[:vacancy].vacated_by %>
+        <div class="flex items-start gap-3 px-4 sm:px-6 py-3" data-vacancy-row>
+          <% if vacated.respond_to?(:safe_headshot_variant) %>
+            <%= render "shared/faces", people: [ vacated ], size: "w-9 h-9", ring: ->(_p) { "ring-2 ring-red-300" } %>
+          <% end %>
+          <span class="flex-1 min-w-0 text-sm">
+            <span class="block font-semibold text-gray-900"><%= v[:role]&.name %> · <%= v[:production].name %></span>
+            <span class="block text-gray-600"><%= v[:show].date_and_time.strftime("%a, %b %-d · %-l:%M %p") %><%= " · +#{v[:affected_shows].size - 1} more" if v[:is_linked] && v[:affected_shows].size > 1 %></span>
+            <span class="block text-red-700 mt-0.5"><%= vacated ? "#{vacated.name} can't make it" : "Open" %> · <%= v[:invitations_count].zero? ? "nobody invited yet" : "#{v[:invitations_count]} invited, #{v[:invitations_count] - v[:pending_invitations_count]} answered" %></span>
+          </span>
+          <%= render "shared/button", text: "Review", variant: "primary", size: "xs", type: :link, path: manage_casting_vacancy_path(v[:production], v[:vacancy]) %>
+        </div>
+      <% end %>
+      <div class="px-4 sm:px-6 py-3 text-sm"><%= link_to "All vacancies on the casting board", manage_casting_path, class: "text-pink-600 hover:text-pink-700" %></div>
+    </div>
+  <% end %>
+<% end %>

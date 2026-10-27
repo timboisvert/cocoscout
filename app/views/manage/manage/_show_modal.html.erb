@@ -1,0 +1,110 @@
+<%#
+  What a show's row opens (show-modal-<id>): the show, with its tickets,
+  who's working it and who's cast, each with its link on. Performers are a
+  row of faces (shared/faces); staff are named.
+
+  Locals:
+    row  a HomeWeek::Row
+%>
+<%
+  show = row.show
+  venue = show.location_space&.name || show.location&.name
+  hours = "#{show.date_and_time.strftime("%-l:%M")}–#{show.ends_at.strftime("%-l:%M %p")}"
+  call_time = show.call_time_enabled? && show.call_time ? show.call_time.strftime("%-l:%M %p") : nil
+  footer = capture do
+    render "shared/button", text: "Open the show", variant: "secondary", size: "small", type: :link, path: manage_show_path(show.production, show)
+  end
+  section = "px-4 sm:px-6 py-3 border-t border-gray-100 first:border-t-0"
+  heading = "flex items-center justify-between gap-3 mb-1.5"
+  icon = "w-3.5 h-3.5 text-pink-600 flex-shrink-0"
+%>
+<%= render layout: "shared/sheet", locals: { id: "show-modal-#{show.id}", title: "#{[ show.production&.name, show.secondary_name.presence ].compact.join(' · ')} · #{show.date_and_time.strftime('%a, %b %-d')}", footer: footer } do %>
+  <div class="-mx-4 sm:-mx-6 -my-5" data-show-modal="<%= show.id %>">
+    <div class="<%= section %> text-sm text-gray-600">
+      <%= hours %><%= " · #{venue}" if venue %><%= " · call #{call_time}" if call_time %>
+      <% if show.canceled %><span class="ml-2 font-semibold text-red-700">Canceled</span><% end %>
+    </div>
+
+    <% if (t = row.tickets) %>
+      <% stats = t.stats %>
+      <div class="<%= section %>">
+        <div class="<%= heading %>">
+          <span class="text-sm font-semibold text-gray-900 inline-flex items-center gap-1.5"><svg class="<%= icon %>" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M3 9a2 2 0 002-2V5h14v2a2 2 0 002 2v6a2 2 0 00-2 2v2H5v-2a2 2 0 00-2-2V9z"/></svg>Tickets</span>
+          <%= link_to "Open the listing", manage_ticket_listing_path(t.listing), class: "text-xs text-pink-600 hover:text-pink-700" %>
+        </div>
+        <dl class="text-sm space-y-0.5">
+          <% if t.draft? %>
+            <div class="flex justify-between gap-3"><dt class="text-gray-500">On sale</dt><dd class="font-semibold text-amber-700">Not yet · it's a draft</dd></div>
+          <% else %>
+            <div class="flex justify-between gap-3"><dt class="text-gray-500">Sold</dt><dd class="text-gray-900"><%= stats.sold %><%= " of #{stats.capacity}" if stats.capacity %> · <%= number_to_currency(stats.gross_cents / 100.0, precision: 0) %><%= " · #{stats.comps} comps" if stats.comps.positive? %></dd></div>
+          <% end %>
+          <% if t.live? %>
+            <div class="flex justify-between gap-3"><dt class="text-gray-500">Tonight</dt><dd class="font-semibold text-green-700">Door open · <%= stats.checked_in %> checked in · <%= link_to "Work the door", door_index_path, class: "text-pink-600 hover:text-pink-700" %></dd></div>
+          <% elsif stats.no_shows %>
+            <div class="flex justify-between gap-3"><dt class="text-gray-500">Came</dt><dd class="text-gray-900"><%= stats.checked_in %> checked in · <%= stats.no_shows %> didn't come</dd></div>
+          <% end %>
+        </dl>
+      </div>
+    <% end %>
+
+    <% if (s = row.staffing) %>
+      <div class="<%= section %>">
+        <div class="<%= heading %>">
+          <span class="text-sm font-semibold text-gray-900 inline-flex items-center gap-1.5"><svg class="<%= icon %>" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z"/></svg>Staffing<% if @home.staffing_draft? %><span class="text-[10px] font-semibold uppercase tracking-wide text-amber-700 bg-amber-50 border border-amber-200 rounded px-1 ml-1">Draft</span><% end %></span>
+          <%= link_to "Scheduling, #{show.date_and_time.strftime('%A')}", manage_staffing_scheduling_path(day: show.date_and_time.to_date.iso8601), class: "text-xs text-pink-600 hover:text-pink-700" %>
+        </div>
+        <% if s.none? %>
+          <p class="text-sm text-amber-700 font-medium">No shifts yet. <%= link_to "Add them on Scheduling", manage_staffing_scheduling_path(day: show.date_and_time.to_date.iso8601), class: "underline" %>.</p>
+        <% else %>
+          <div class="space-y-1 text-sm">
+            <% s.shifts.each do |shift| %>
+              <div class="flex items-center gap-2 flex-wrap" data-modal-shift="<%= shift.id %>">
+                <span class="w-28 flex-shrink-0 text-gray-600 text-xs"><%= shift.house_role.name %></span>
+                <span class="w-24 flex-shrink-0 text-gray-500 text-xs tabular-nums"><%= shift_compact_range(shift) %></span>
+                <% if shift.covered_by_renter? %>
+                  <span class="text-blue-800">Renter: <%= shift.renter_name.presence || "covered" %></span>
+                <% elsif shift.not_needed? %>
+                  <span class="text-gray-500 italic">Not needed</span>
+                <% else %>
+                  <% shift.shift_assignments.each do |a| %>
+                    <span class="<%= a.declined? ? 'text-red-700 font-semibold' : 'text-gray-900' %>"><%= a.person.name %><%= " can't make it" if a.declined? %></span>
+                  <% end %>
+                  <% shift.remaining_slots.times do %>
+                    <span class="text-pink-600 font-medium border border-dashed border-pink-300 rounded px-1.5 text-xs">+ Staff</span>
+                  <% end %>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if (c = row.cast) %>
+      <div class="<%= section %>">
+        <div class="<%= heading %>">
+          <span class="text-sm font-semibold text-gray-900 inline-flex items-center gap-1.5"><svg class="<%= icon %>" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"/></svg>Cast</span>
+          <%= link_to "Casting board", manage_casting_production_path(show.production), class: "text-xs text-pink-600 hover:text-pink-700" %>
+        </div>
+        <% c.vacancies.each do |v| %>
+          <% vacated = v.vacated_by %>
+          <div class="flex items-center gap-2 text-sm mb-1.5" data-modal-vacancy="<%= v.id %>">
+            <% if vacated.respond_to?(:safe_headshot_variant) %>
+              <%= render "shared/faces", people: [ vacated ], size: "w-7 h-7", ring: ->(_p) { "ring-2 ring-red-300" } %>
+            <% end %>
+            <span class="min-w-0 flex-1"><span class="font-semibold text-red-700"><%= v.role&.name %> open</span><span class="text-gray-600"> · <%= vacated ? "#{vacated.name} can't make it" : "nobody yet" %><%= " · #{v.invitations.size} invited" if v.invitations.size.positive? %></span></span>
+            <%= render "shared/button", text: "Review", variant: "primary", size: "xs", type: :link, path: manage_casting_vacancy_path(show.production, v) %>
+          </div>
+        <% end %>
+        <% if c.people.any? %>
+          <div class="flex items-center gap-3 flex-wrap">
+            <%= render "shared/faces", people: c.people.sort_by { |p| p.name.to_s }, size: "w-8 h-8" %>
+            <span class="text-xs text-gray-600"><%= c.assigned %> of <%= [ c.roles_count, c.assigned ].max %> cast<%= c.unnotified.positive? ? " · #{c.unnotified} not notified yet" : " · all notified" %></span>
+          </div>
+        <% elsif c.roles_count.positive? %>
+          <p class="text-sm text-amber-700 font-medium">Nobody cast yet · <%= c.roles_count %> <%= "role".pluralize(c.roles_count) %></p>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+<% end %>

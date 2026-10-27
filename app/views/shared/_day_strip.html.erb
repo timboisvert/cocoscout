@@ -1,0 +1,67 @@
+<%#
+  A phone's day control (Scheduling, Home): the day's name, which opens a
+  "Pick a day" sheet (a month at a time, dots on days with shows, Today),
+  and a strip of seven days with the chosen one in the middle, three either
+  side, across weeks. The page around it handles swiping (day_swipe).
+
+  Locals:
+    day         the chosen Date
+    day_path    lambda(Date) => path
+    show_dates  a Set of Dates with shows (the dots)
+    busy        lambda(Date) => true when the day has anything on it (a
+                white card in the strip); default: show_dates
+    months      the Dates (one per month) the sheet can page through
+    id          the sheet's DOM id (default "day-jump")
+%>
+<%
+  strip = ((day - 3)..(day + 3)).to_a
+  busy = local_assigns[:busy] || ->(d) { show_dates.include?(d) }
+  id = local_assigns.fetch(:id, "day-jump")
+  jump_index = months.index(day.beginning_of_month) || 0
+  jump_footer = capture do
+    render "shared/button", text: "Today", variant: "secondary", size: "medium", type: :link, path: day_path.call(Date.current)
+  end
+%>
+<button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= id %>"
+        class="w-full flex items-center justify-center gap-1.5 text-[17px] font-semibold text-gray-900 py-1 cursor-pointer bg-transparent border-0"
+        aria-label="<%= day.strftime("%A, %B %-d") %>: pick another day" data-phone-day-title>
+  <%= day.strftime("%A, %b %-d") %>
+  <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
+</button>
+
+<nav class="grid grid-cols-7 gap-1" aria-label="Days" data-day-strip>
+  <% strip.each do |d| %>
+    <% on = d == day %>
+    <%= link_to day_path.call(d),
+          class: "flex flex-col items-center gap-0.5 rounded-lg py-1.5 min-h-[56px] #{on ? 'bg-pink-500 text-white' : (busy.call(d) ? 'bg-white border border-gray-200 text-gray-900' : 'text-gray-400')}",
+          aria: { label: d.strftime("%A, %b %-d"), current: (on ? "date" : nil) }, data: { strip_day: d.iso8601 } do %>
+      <span class="text-[10px] font-semibold uppercase"><%= d.strftime("%a") %></span>
+      <span class="text-base font-bold leading-none <%= 'underline decoration-2 underline-offset-2' if d == Date.current && !on %>"><%= d.day %></span>
+      <span class="w-1.5 h-1.5 rounded-full <%= show_dates.include?(d) ? (on ? 'bg-white' : 'bg-pink-500') : 'bg-transparent' %>"></span>
+    <% end %>
+  <% end %>
+</nav>
+
+<%# Tap the day's name: any date, a month at a time. %>
+<div class="sm:hidden">
+  <%= render layout: "shared/sheet", locals: { id: id, title: "Pick a day", footer: jump_footer } do %>
+    <div data-controller="month-pager" data-month-pager-index-value="<%= jump_index %>" data-month-pager-per-page-value="1">
+      <div class="relative z-10 flex items-center justify-between -mt-1 mb-1">
+        <button type="button" data-month-pager-target="prev" data-action="month-pager#prev" aria-label="Previous month"
+                class="w-11 h-11 rounded-full inline-flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 cursor-pointer">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+        </button>
+        <button type="button" data-month-pager-target="next" data-action="month-pager#next" aria-label="Next month"
+                class="w-11 h-11 rounded-full inline-flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 cursor-pointer">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+        </button>
+      </div>
+      <div class="-mt-10">
+        <% months.each do |month| %>
+          <%= render "shared/mini_month", month: month, pick: :day, day_path: day_path, selected_day: day, show_dates: show_dates %>
+        <% end %>
+      </div>
+      <p class="mt-3 text-xs text-gray-500 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-pink-500"></span>Days with shows</p>
+    </div>
+  <% end %>
+</div>

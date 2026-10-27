@@ -1,0 +1,69 @@
+<%#
+  The week control on desktop (Scheduling, Home): previous, the range itself
+  (which opens a two-month calendar where a click goes there), next, and
+  This week. No clicking Next eight times.
+
+  Locals:
+    label          the words on the button ("Oct 26 – Nov 1, 2026")
+    prev_path, next_path
+    today_path     the "This week" (or "Today") link; nil hides it
+    today_text     default "This week"
+    months         the Dates (one per month) the calendar can page through
+    pick           :week (default) or :day: what a click in the calendar picks
+    week_path      lambda(monday) => path, selected_week         (pick: :week)
+    week_statuses  { monday => status }, optional                 (pick: :week)
+    day_path       lambda(date) => path, selected_day, show_dates (pick: :day)
+    legend         true (default) draws the status legend         (pick: :week)
+%>
+<%
+  pick = local_assigns.fetch(:pick, :week)
+  focus = pick == :week ? selected_week : selected_day
+  start_index = (months.index(focus.beginning_of_month) || 0).clamp(0, [ months.size - 2, 0 ].max)
+  legend = local_assigns.fetch(:legend, pick == :week)
+%>
+<div class="hidden sm:flex items-center gap-2" data-week-picker>
+  <%= render "shared/button", text: "", icon: "chevron-left", variant: "secondary", size: "small", type: :link,
+        path: prev_path, title: pick == :week ? "Previous week" : "Earlier" %>
+  <div class="relative" data-controller="dropdown">
+    <%= render "shared/button", text: label, icon: "calendar", variant: "secondary", size: "small", type: :button,
+          data: { action: "dropdown#toggle" }, classes: "font-semibold" %>
+    <div data-dropdown-target="menu"
+         class="hidden absolute left-0 top-full mt-2 z-50 w-[540px] bg-white border border-gray-200 rounded-xl shadow-[0_16px_40px_rgba(17,24,39,0.16)] p-4"
+         data-controller="month-pager" data-month-pager-index-value="<%= start_index %>" data-month-pager-per-page-value="2">
+      <div class="flex items-center justify-between mb-2">
+        <button type="button" data-month-pager-target="prev" data-action="month-pager#prev" aria-label="Earlier months"
+                class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-30 cursor-pointer">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+        </button>
+        <span class="text-xs text-gray-500"><%= pick == :week ? "Pick a week" : "Pick a day" %></span>
+        <button type="button" data-month-pager-target="next" data-action="month-pager#next" aria-label="Later months"
+                class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-30 cursor-pointer">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+        </button>
+      </div>
+      <div class="grid grid-cols-2 gap-6">
+        <% months.each do |month| %>
+          <% if pick == :week %>
+            <%= render "shared/mini_month", month: month, pick: :week, week_path: week_path, selected_week: selected_week, week_statuses: local_assigns[:week_statuses] %>
+          <% else %>
+            <%= render "shared/mini_month", month: month, pick: :day, day_path: day_path, selected_day: selected_day, show_dates: local_assigns[:show_dates] %>
+          <% end %>
+        <% end %>
+      </div>
+      <% if legend %>
+        <div class="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 text-[11px] text-gray-500">
+          <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-green-500"></span>Published</span>
+          <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400"></span>Draft</span>
+          <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-red-500"></span>Open slots</span>
+        </div>
+      <% elsif pick == :day %>
+        <p class="mt-3 pt-3 border-t border-gray-100 text-[11px] text-gray-500 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-pink-500"></span>Days with shows</p>
+      <% end %>
+    </div>
+  </div>
+  <%= render "shared/button", text: "", icon: "chevron-right", variant: "secondary", size: "small", type: :link,
+        path: next_path, title: pick == :week ? "Next week" : "Later" %>
+  <% if today_path %>
+    <%= render "shared/button", text: local_assigns.fetch(:today_text, "This week"), variant: "ghost", size: "small", type: :link, path: today_path %>
+  <% end %>
+</div>

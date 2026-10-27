@@ -12,7 +12,6 @@
   day_shifts = @shifts_by_day[day] || []
   stats = shift_slot_stats(day_shifts)
   role_order = @house_roles.each_with_index.to_h { |r, i| [ r.id, i ] }
-  strip = ((day - 3)..(day + 3)).to_a
   busy_day = ->(d) { @week_start <= d && d <= @week_end ? (@shows_by_day[d].present? || @shifts_by_day[d].present?) : @show_dates.include?(d) }
   pct = stats[:total].positive? ? (100.0 * stats[:staffed] / stats[:total]).round : 0
   meter = stats[:declined].positive? ? "bg-red-500" : (pct >= 100 ? "bg-green-500" : "bg-amber-400")
@@ -22,25 +21,8 @@
      data-day-swipe-prev-url-value="<%= manage_staffing_scheduling_path(day: (day - 1).iso8601) %>"
      data-day-swipe-next-url-value="<%= manage_staffing_scheduling_path(day: (day + 1).iso8601) %>"
      data-action="touchstart->day-swipe#start touchend->day-swipe#end">
-  <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="scheduling-jump"
-          class="w-full flex items-center justify-center gap-1.5 text-[17px] font-semibold text-gray-900 py-1 cursor-pointer bg-transparent border-0"
-          aria-label="<%= day.strftime("%A, %B %-d") %>: pick another day" data-phone-day-title>
-    <%= day.strftime("%A, %b %-d") %>
-    <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
-  </button>
-
-  <nav class="grid grid-cols-7 gap-1" aria-label="Days" data-day-strip>
-    <% strip.each do |d| %>
-      <% on = d == day %>
-      <%= link_to manage_staffing_scheduling_path(day: d.iso8601),
-            class: "flex flex-col items-center gap-0.5 rounded-lg py-1.5 min-h-[56px] #{on ? 'bg-pink-500 text-white' : (busy_day.call(d) ? 'bg-white border border-gray-200 text-gray-900' : 'text-gray-400')}",
-            aria: { label: d.strftime("%A, %b %-d"), current: (on ? "date" : nil) }, data: { strip_day: d.iso8601 } do %>
-        <span class="text-[10px] font-semibold uppercase"><%= d.strftime("%a") %></span>
-        <span class="text-base font-bold leading-none <%= 'underline decoration-2 underline-offset-2' if d == Date.current && !on %>"><%= d.day %></span>
-        <span class="w-1.5 h-1.5 rounded-full <%= @show_dates.include?(d) ? (on ? 'bg-white' : 'bg-pink-500') : 'bg-transparent' %>"></span>
-      <% end %>
-    <% end %>
-  </nav>
+  <%= render "shared/day_strip", day: day, id: "scheduling-jump", show_dates: @show_dates, months: @calendar_months, busy: busy_day,
+        day_path: ->(d) { manage_staffing_scheduling_path(day: d.iso8601) } %>
 
   <% if day_shows.any? || day_shifts.any? %>
     <div class="bg-white border border-gray-200 rounded-lg px-3 py-2 flex items-center gap-2.5 text-xs" data-day-summary>
@@ -81,38 +63,6 @@
       <% day_shows.each do |show| %>
         <div class="py-0.5"><%= render "manage/staffing/show_line", show: show, popover: false, venue: true %></div>
       <% end %>
-    </div>
-  <% end %>
-</div>
-
-<%# Tap the day's name: any date, a month at a time. %>
-<%
-  jump_months = @calendar_months
-  jump_index = jump_months.index(@selected_day.beginning_of_month) || 0
-  jump_footer = capture do
-    render "shared/button", text: "Today", variant: "secondary", size: "medium", type: :link,
-           path: manage_staffing_scheduling_path(day: Date.current.iso8601)
-  end
-%>
-<div class="sm:hidden">
-  <%= render layout: "shared/sheet", locals: { id: "scheduling-jump", title: "Pick a day", footer: jump_footer } do %>
-    <div data-controller="month-pager" data-month-pager-index-value="<%= jump_index %>" data-month-pager-per-page-value="1">
-      <div class="relative z-10 flex items-center justify-between -mt-1 mb-1">
-        <button type="button" data-month-pager-target="prev" data-action="month-pager#prev" aria-label="Previous month"
-                class="w-11 h-11 rounded-full inline-flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 cursor-pointer">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
-        </button>
-        <button type="button" data-month-pager-target="next" data-action="month-pager#next" aria-label="Next month"
-                class="w-11 h-11 rounded-full inline-flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 cursor-pointer">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
-        </button>
-      </div>
-      <div class="-mt-10">
-        <% jump_months.each do |month| %>
-          <%= render "manage/staffing/mini_month", month: month, pick: :day %>
-        <% end %>
-      </div>
-      <p class="mt-3 text-xs text-gray-500 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-pink-500"></span>Days with shows</p>
     </div>
   <% end %>
 </div>

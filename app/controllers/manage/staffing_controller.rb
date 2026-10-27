@@ -6,6 +6,7 @@ module Manage
   # (Manage::Staffing::StaffController) live under app/controllers/manage/staffing/.
   class StaffingController < Manage::ManageController
     include Manage::SchedulingReturn
+    include Manage::WeekLoaders
 
     before_action :ensure_org_owner_or_manager
 
@@ -14,7 +15,7 @@ module Manage
     # without this it's three queries per face — and the same person's face is
     # drawn several times per page. .variant itself neither queries nor
     # processes; the image is generated later, on its own request.
-    HEADSHOT_PRELOAD = { profile_headshots: { image_attachment: :blob } }.freeze
+    HEADSHOT_PRELOAD = Manage::WeekLoaders::HEADSHOT_PRELOAD
 
     # The Staffing landing is now the people-first hub: the org's staff list with
     # onboarding status. The weekly schedule moved to #scheduling.
@@ -103,7 +104,7 @@ module Manage
         @week_start
       # The days the week calendar and the phone's jump sheet can reach, with
       # what each holds: dots on days with shows, a status per week.
-      @calendar_months = (-3..4).map { |i| @week_start.beginning_of_month + i.months }
+      @calendar_months = calendar_months_around(@week_start)
       @calendar_from = @calendar_months.first.beginning_of_week
       @calendar_to = @calendar_months.last.end_of_month.end_of_week
       @show_dates = calendar_show_dates(@calendar_from, @calendar_to)
@@ -485,74 +486,6 @@ module Manage
       end.join
     end
 
-    # Which calendar day a shift belongs to on the schedule. Source-linked shifts
-    # (generated from a show or rental) follow their source's day, so a show at
-    # 12:00 AM whose shift starts 11:00 PM the previous evening still groups with
-    # the show's day. Falls back to the shift's own start date for free-standing
-    # shifts, or when the source's day lands outside the visible week.
-    def staffing_day_for(shift, week_range)
-      anchor = shift.source.try(:date_and_time) || shift.source.try(:starts_at)
-      day = anchor&.to_date
-      return day if day && week_range.cover?(day)
-
-      shift.starts_at.to_date
-    end
-
-    def parse_week_start(value)
-      Date.parse(value.to_s).beginning_of_week
-    rescue ArgumentError, TypeError
-      Date.current.beginning_of_week
-    end
-
-    def parse_day(value)
-      return nil if value.blank?
-
-      Date.iso8601(value.to_s)
-    rescue ArgumentError, TypeError
-      nil
-    end
-
-    # Dates with a show on them, for the calendar dots.
-    def calendar_show_dates(from, to)
-      ::Show.joins(:production)
-            .where(productions: { organization_id: Current.organization.id })
-            .where(date_and_time: from.beginning_of_day..to.end_of_day)
-            .where(canceled: [ false, nil ])
-            .pluck(:date_and_time)
-            .map { |t| t.in_time_zone.to_date }
-            .to_set
-    end
-
-    # { week_start => :open | :draft | :published } for every week with a
-    # shift: open when a shift still needs someone, else published or draft.
-    def calendar_week_statuses(from, to)
-      shifts = Current.organization.shifts
-                      .where(starts_at: from.beginning_of_day..to.end_of_day)
-                      .pluck(:id, :starts_at, :required_count, :coverage_mode)
-      return {} if shifts.empty?
-
-      assigned = ShiftAssignment.active.where(shift_id: shifts.map(&:first)).group(:shift_id).count
-      published = Current.organization.staffing_finalizations
-                         .where(week_start: from..to).where.not(finalized_at: nil)
-                         .pluck(:week_start).to_set
-      shifts.group_by { |_id, starts_at, _req, _mode| starts_at.in_time_zone.to_date.beginning_of_week }
-            .transform_values do |rows|
-              open = rows.any? { |id, _s, required, mode| mode == "needs_assignment" && assigned.fetch(id, 0) < required }
-              open ? :open : nil
-            end
-            .to_h { |week, status| [ week, status || (published.include?(week) ? :published : :draft) ] }
-    end
-
-    # Staff who declined ("can't make it") an upcoming shift for this org.
-    def declined_upcoming_assignments
-      ShiftAssignment.declined
-        .joins(:shift)
-        .where(shifts: { organization_id: Current.organization.id })
-        .where("shifts.ends_at >= ?", Time.current)
-        .includes(shift: [ :house_role, :additional_roles, :source, :shift_assignments, { shows: :production } ], person: HEADSHOT_PRELOAD)
-        .order("shifts.starts_at ASC")
-        .to_a
-    end
     # { show_id => [role names] } for every show in the loaded week that lacks
     # a fully staffed shift covering it for an applicable show-specific role.
     # "Applicable" respects venue scoping: a role tied to another location is
@@ -600,16 +533,6 @@ module Manage
       result
     end
 
-    def shows_in_range(range)
-      ::Show.joins(:production)
-            .where(productions: { organization_id: Current.organization.id })
-            .where(date_and_time: range.first.beginning_of_day..range.last.end_of_day)
-            .where(canceled: [ false, nil ])
-            .includes(:production, :location, :location_space, :space_rental)
-            .order(:date_and_time)
-            .to_a
-    end
-
     # [{ person:, shift_count:, notifiable: }] for the finalize modal, sorted by
     # name. notifiable is false for staff without an account (can't be messaged).
     # Staff manager-tree used by both the standalone org-chart page and the
@@ -635,46 +558,6 @@ module Manage
       by_person.map { |person, count|
         { person: person, shift_count: count, notifiable: person&.user.present? }
       }.sort_by { |r| r[:person].name.to_s }
-    end
-
-    # { show_id => [Person, ...] } — direct cast plus members of any cast groups.
-    # Queries the join table directly: the Show#cast_people scope references the
-    # join table by name, which breaks under eager preloading.
-    def build_show_cast(shows)
-      return {} if shows.empty?
-
-      show_ids = shows.map(&:id)
-
-      # Two passes of ids first, then one load of the people. A polymorphic
-      # belongs_to can't carry nested includes, so preloading headshots through
-      # :assignable isn't available — and the same person often appears on
-      # several shows, so loading them once is the cheaper shape anyway.
-      direct = ShowPersonRoleAssignment
-        .where(show_id: show_ids, assignable_type: "Person")
-        .pluck(:show_id, :assignable_id)
-
-      group_ids_by_show = ShowPersonRoleAssignment
-        .where(show_id: show_ids, assignable_type: "Group")
-        .pluck(:show_id, :assignable_id)
-      members_by_group = if group_ids_by_show.any?
-        GroupMembership.where(group_id: group_ids_by_show.map(&:last))
-                       .pluck(:group_id, :person_id)
-                       .group_by(&:first)
-                       .transform_values { |rows| rows.map(&:last) }
-      else
-        {}
-      end
-
-      person_ids = direct.map(&:last) + members_by_group.values.flatten
-      people = Person.where(id: person_ids.uniq).includes(HEADSHOT_PRELOAD).index_by(&:id)
-
-      result = Hash.new { |h, k| h[k] = [] }
-      direct.each { |show_id, person_id| (person = people[person_id]) && result[show_id] << person }
-      group_ids_by_show.each do |show_id, group_id|
-        members_by_group.fetch(group_id, []).each { |pid| (person = people[pid]) && result[show_id] << person }
-      end
-
-      result.transform_values(&:uniq)
     end
 
     # { "YYYY-MM-DD" => { "<person_id>" => ["Production (7:00 PM)", ...] } }
