@@ -1,7 +1,7 @@
 <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
   <div class="px-6 py-4 border-b border-gray-200">
     <h2 class="text-lg font-semibold text-gray-900">Payout run alerts</h2>
-    <p class="text-sm text-gray-600 mt-1">Pick the managers who should get an email when a payout run is submitted — who's being paid, how much, and when deposits should land. If no one is selected, no emails are sent.</p>
+    <p class="text-sm text-gray-600 mt-1">Pick the managers who should hear about each payout run, as a notification and an email: when it's submitted (who's being paid, how much, and when deposits should land), when the money comes in from your bank and payments go out, when everyone's paid or some are still waiting on bank details, and when the bank debit doesn't go through. If no one is selected, no one is told.</p>
   </div>
   <%= form_with url: manage_money_settings_notifications_path, method: :patch, class: "px-6 py-5" do %>
     <% if @notification_managers.any? %>

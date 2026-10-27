@@ -178,19 +178,17 @@ RSpec.describe "Manage::PayoutBatches", type: :request do
     end
   end
 
-  describe "submitted notification email" do
+  describe "the submitted notice" do
     include ActiveJob::TestHelper
+
+    let!(:owner_person) { create(:person, name: "Olive Owner", user: owner, email: owner.email_address) }
 
     before do
       allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded", amount: 5000))
+      allow(Stripe::PaymentIntent).to receive(:retrieve).and_return(double("pi", amount: 5000, latest_charge: "py_1"))
       allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_1"))
-      ContentTemplate.create!(
-        key: "payout_run_submitted", name: "Payout Run Submitted",
-        subject: "Payout run submitted — {{total}} to {{people_count}}",
-        body: "<p>{{payee_lines}}</p><p>Expected {{expected_window}}</p><p><a href=\"{{payout_run_url}}\">View the payout run</a></p>",
-        category: "notifications", channel: "email", active: true
-      )
       org.update!(payout_notification_user_ids: [ owner.id ])
+      ActionMailer::Base.deliveries.clear
     end
 
     after { clear_enqueued_jobs }
@@ -202,27 +200,36 @@ RSpec.describe "Manage::PayoutBatches", type: :request do
       b
     end
 
-    it "emails the chosen managers with names, amounts, the window, and a link" do
+    it "reaches the chosen managers as a Notification and an email, with names, amounts, the window, and a link" do
       expect { post manage_fund_payout_batch_path(batch) }
-        .to have_enqueued_job(PayoutRunSubmittedNotificationJob).with(batch.id)
+        .to have_enqueued_job(PayoutRunSubmittedNotificationJob).with(batch.id, funded: true)
 
-      expect { perform_enqueued_jobs(only: PayoutRunSubmittedNotificationJob) }
-        .to change { ActionMailer::Base.deliveries.count }.by(1)
+      # The job records the Notification and hands the email to the mail queue.
+      expect {
+        perform_enqueued_jobs(only: PayoutRunSubmittedNotificationJob)
+        perform_enqueued_jobs(only: ActionMailer::MailDeliveryJob)
+      }.to change { ActionMailer::Base.deliveries.count }.by(1).and change(Notification, :count).by(1)
+
+      notification = owner.notifications.last
+      expect(notification.category).to eq("pay")
+      expect(notification.kind).to eq("payout_run_submitted")
+      expect(notification.path).to eq(manage_payout_batch_path(batch))
+      expect(notification.title).to include("submitted and funded")
 
       mail = ActionMailer::Base.deliveries.last
       expect(mail.to).to eq([ owner.email_address ])
       expect(mail.subject).to include("$40.00").and include("1 payee")
-      raw = mail.to_s
-      expect(raw).to include("Ready Rita")
-      expect(raw).to include("$40.00")
-      expect(raw).to include("payout-runs/#{batch.id}")
+      html = mail.html_part.body.decoded
+      expect(html).to include("Ready Rita").and include("$40.00").and include("payout-runs/#{batch.id}")
     end
 
     it "sends nothing when no recipients are chosen" do
       org.update!(payout_notification_user_ids: [])
       post manage_fund_payout_batch_path(batch)
-      expect { perform_enqueued_jobs(only: PayoutRunSubmittedNotificationJob) }
-        .not_to change { ActionMailer::Base.deliveries.count }
+      expect {
+        perform_enqueued_jobs(only: PayoutRunSubmittedNotificationJob)
+        perform_enqueued_jobs(only: ActionMailer::MailDeliveryJob)
+      }.to not_change { ActionMailer::Base.deliveries.count }.and not_change(Notification, :count)
     end
   end
 

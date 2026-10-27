@@ -18,6 +18,16 @@ RSpec.describe "Manage::MoneySettings", type: :request do
       expect(response.body).to include("Zelle").and include("Venmo")
     end
 
+    it "lists the four payout run notices the chosen managers get" do
+      get manage_money_settings_section_path(section: "notifications")
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("as a notification and an email")
+      expect(response.body).to include("when it's submitted")
+        .and include("when the money comes in from your bank and payments go out")
+        .and include("when everyone's paid or some are still waiting on bank details")
+        .and include("when the bank debit doesn't go through")
+    end
+
     it "redirects an unknown section to the default" do
       get manage_money_settings_section_path(section: "bogus")
       expect(response).to redirect_to(manage_money_settings_section_path(section: "offline_methods"))
