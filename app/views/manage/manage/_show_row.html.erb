@@ -1,6 +1,7 @@
 <%#
-  One show on Home (Design B, Tim 2026-10-27): its time and name, then three
-  state chips (tickets · staffing · cast), each tinted by its state. Green:
+  One show on Home (Design B, Tim 2026-10-27): its time and name, then its
+  state chips (sign-ups when it takes them · tickets · staffing · cast),
+  each tinted by its state. Green:
   nothing to do; amber: something open; red: someone's missing; pink:
   happening now. The whole row opens the show's modal (show-modal-<id>),
   which says who.
@@ -13,6 +14,7 @@
   show = row.show
   phone = local_assigns[:size] == :phone
   chips = [
+    [ "signups", home_signups_chip(row.signups), "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 7h6m-6 4h4" ],
     [ "tickets", home_ticket_chip(row.tickets), "M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z" ],
     [ "staffing", home_staffing_chip(row.staffing), "M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z" ],
     [ "cast", home_cast_chip(row.cast), "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" ]
@@ -37,7 +39,7 @@
     <span class="flex flex-wrap gap-1">
       <% chips.each do |key, (chip_tone, short, long), icon| %>
         <span class="inline-flex items-center gap-1 rounded-full border px-1.5 py-px font-semibold whitespace-nowrap <%= phone ? 'text-[11px]' : 'text-[10.5px]' %> <%= HomeHelper::CHIP_TONES[chip_tone] %>" data-chip="<%= key %>" data-tone="<%= chip_tone %>">
-          <svg class="<%= phone ? 'w-3.5 h-3.5' : 'w-3 h-3' %> flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="<%= key == 'tickets' ? 2 : 2.4 %>" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="<%= icon %>"/></svg>
+          <svg class="<%= phone ? 'w-3.5 h-3.5' : 'w-3 h-3' %> flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="<%= key.in?(%w[tickets signups]) ? 2 : 2.4 %>" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="<%= icon %>"/></svg>
           <%= phone ? long : short %>
         </span>
       <% end %>

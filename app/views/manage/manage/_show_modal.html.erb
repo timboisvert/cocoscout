@@ -25,6 +25,18 @@
       <% if show.canceled %><span class="ml-2 font-semibold text-red-700">Canceled</span><% end %>
     </div>
 
+    <% if (su = row.signups) %>
+      <div class="<%= section %>">
+        <div class="<%= heading %>">
+          <span class="text-sm font-semibold text-gray-900 inline-flex items-center gap-1.5"><svg class="<%= icon %>" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 7h6m-6 4h4"/></svg>Sign-ups</span>
+          <%= link_to "Open the sign-ups", manage_signups_form_path(show.production, su.form), class: "text-xs text-pink-600 hover:text-pink-700" %>
+        </div>
+        <dl class="text-sm space-y-0.5">
+          <div class="flex justify-between gap-3"><dt class="text-gray-500"><%= su.form.name %></dt><dd class="<%= su.count.zero? ? 'font-semibold text-amber-700' : 'text-gray-900' %>"><%= su.count.zero? ? "Nobody registered yet" : "#{su.count} registered" %><%= " of #{su.capacity} spots" if su.capacity.positive? %><%= " · #{su.queued} in the queue" if su.queued.positive? %></dd></div>
+        </dl>
+      </div>
+    <% end %>
+
     <% if (t = row.tickets) %>
       <% stats = t.stats %>
       <div class="<%= section %>">

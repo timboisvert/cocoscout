@@ -12,7 +12,11 @@
 # Each row's :tickets, :staffing and :cast is nil when that part doesn't
 # apply to the organization, so the page draws nothing for it.
 class HomeWeek
-  Row = Data.define(:show, :tickets, :staffing, :cast)
+  Row = Data.define(:show, :signups, :tickets, :staffing, :cast)
+  # A show taking sign-ups (an open mic): who's registered, of how many spots.
+  Signups = Data.define(:instance, :count, :capacity, :queued) do
+    def form = instance.sign_up_form
+  end
   Tickets = Data.define(:listing, :stats, :phase) do
     def draft? = listing.status == "draft"
     def canceled? = listing.status == "canceled" || listing.show.canceled
@@ -40,6 +44,7 @@ class HomeWeek
     @pro_manager = pro_manager
     load_shifts
     load_listings
+    load_signups
     load_cast
   end
 
@@ -81,7 +86,28 @@ class HomeWeek
   private
 
   def row_for(show)
-    Row.new(show: show, tickets: tickets_for(show), staffing: staffing_for(show), cast: cast_for(show))
+    Row.new(show: show, signups: signups_for(show), tickets: tickets_for(show), staffing: staffing_for(show), cast: cast_for(show))
+  end
+
+  # --- Sign-ups -----------------------------------------------------------
+
+  def load_signups
+    @instance_by_show = if shows.any?
+      SignUpFormInstance.where(show_id: shows.map(&:id))
+                        .includes(:sign_up_form, sign_up_slots: :sign_up_registrations)
+                        .to_a.index_by(&:show_id)
+    else
+      {}
+    end
+    ids = @instance_by_show.values.map(&:id)
+    @queued_by_instance = ids.any? ? SignUpRegistration.queued.where(sign_up_form_instance_id: ids).group(:sign_up_form_instance_id).count : {}
+  end
+
+  def signups_for(show)
+    instance = @instance_by_show[show.id]
+    return nil unless instance
+
+    Signups.new(instance: instance, count: instance.registration_count, capacity: instance.total_capacity, queued: @queued_by_instance.fetch(instance.id, 0))
   end
 
   # --- Tickets ------------------------------------------------------------

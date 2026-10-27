@@ -21,6 +21,19 @@ module HomeHelper
 
   PILL_DOTS = { red: "bg-red-600", amber: "bg-amber-500", pink: "bg-pink-500", green: "bg-green-500", gray: "bg-gray-400" }.freeze
 
+  # [tone, short words, long words] for a show's sign-ups, or nil without a form.
+  def home_signups_chip(signups)
+    return nil unless signups
+
+    of = signups.capacity.positive? ? " of #{signups.capacity}" : ""
+    queue = signups.queued.positive? ? " · #{signups.queued} in the queue" : ""
+    if signups.count.zero?
+      [ :warn, "0 registered", "Nobody registered yet#{of}" ]
+    else
+      [ :none, "#{signups.count} registered", "#{signups.count} registered#{of}#{queue}" ]
+    end
+  end
+
   # [tone, short words, long words] for a show's tickets, or nil without any.
   def home_ticket_chip(tickets)
     return nil unless tickets

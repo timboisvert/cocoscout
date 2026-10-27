@@ -137,10 +137,6 @@ module Manage
         items << { key: "signups", topic: "Sign-ups", tone: :pink, text: "#{@total_audition_signups} audition #{'sign-up'.pluralize(@total_audition_signups)} to review",
                    action: { path: manage_signups_path } }
       end
-      if (form = @all_sign_up_forms.first) && form[:instance]&.show && (count = form[:instance].registration_count.to_i).positive?
-        items << { key: "registrations", topic: "Sign-ups", tone: :pink, text: "#{count} registered for #{form[:instance].show.date_and_time.strftime('%A')}'s #{form[:form].name}",
-                   action: { path: manage_signups_form_path(form[:production], form[:form]) } }
-      end
       if @home.staffing_on?
         words = []
         words << "Staffing is a draft" if @home.staffing_draft?
@@ -157,7 +153,10 @@ module Manage
                    action: { path: manage_staffing_timesheets_path } }
       end
       if @home.tickets_on?
-        TicketingDashboard.new(Current.organization).alerts.each_with_index do |alert, i|
+        # Not the two that nag rather than ask (Tim, 2026-10-28): the box
+        # office not open yet, and drafts not on sale yet.
+        alerts = TicketingDashboard.new(Current.organization).alerts.reject { |a| a.eyebrow.in?([ "Not open yet", "Not on sale yet" ]) }
+        alerts.each_with_index do |alert, i|
           first = alert.actions.first
           items << { key: "ticketing-#{i}", topic: "Ticketing", tone: alert.tone == :amber ? :amber : :pink, text: alert.headline,
                      action: first && { path: first[:path] } }
@@ -182,16 +181,13 @@ module Manage
         { key: "vacancies", topic: "Casting", tone: :red, text: "2 open vacancies", detail: "Host, Thu Oct 29 · Ghoul, Sat Oct 31", action: { path: manage_casting_path } },
         { key: "notify", topic: "Casting", tone: :amber, text: "3 shows' cast not notified yet", action: { path: manage_casting_path } },
         { key: "signups", topic: "Sign-ups", tone: :pink, text: "12 audition sign-ups to review", action: { path: manage_signups_path } },
-        { key: "registrations", topic: "Sign-ups", tone: :pink, text: "9 registered for Saturday's Open mic", action: { path: manage_signups_path } },
         { key: "staffing", topic: "Staffing", tone: :red, text: "Staffing is a draft · 1 can't make it", action: { path: manage_staffing_scheduling_path } },
         { key: "staffing-open", topic: "Staffing", tone: :amber, text: "3 open slots", action: { path: manage_staffing_scheduling_path } },
         { key: "hours", topic: "Staffing", tone: :gray, text: "4 hours to approve", action: { path: manage_staffing_timesheets_path } },
-        { key: "ticketing-box", topic: "Ticketing", tone: :pink, text: "Your box office isn't open yet", action: { path: manage_ticketing_path } },
         { key: "ticketing-canceled", topic: "Ticketing", tone: :amber, text: "Halloween o' Weens is canceled but people hold tickets", action: { path: manage_ticketing_path } },
         { key: "ticketing-moved", topic: "Ticketing", tone: :amber, text: "Laugh-Along, Live! moved after people bought tickets", action: { path: manage_ticketing_path } },
         { key: "ticketing-refund", topic: "Ticketing", tone: :amber, text: "1 refund didn't go through", action: { path: manage_ticketing_path } },
         { key: "ticketing-dispute", topic: "Ticketing", tone: :amber, text: "1 disputed charge", action: { path: manage_ticketing_path } },
-        { key: "ticketing-drafts", topic: "Ticketing", tone: :amber, text: "2 shows in the next two weeks aren't on sale", action: { path: manage_ticketing_path } },
         { key: "ticketing-withdrawal", topic: "Ticketing", tone: :amber, text: "A withdrawal to your bank didn't go through", action: { path: manage_ticketing_path } },
         { key: "financials", topic: "Money", tone: :gray, text: "2 shows that need financials", action: { path: manage_money_financials_path } },
         { key: "pay", topic: "Money", tone: :pink, text: "$380.00 to pay", action: { path: manage_money_payouts_path } },

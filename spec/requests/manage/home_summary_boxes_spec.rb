@@ -44,13 +44,18 @@ RSpec.describe "Manage home actions: auditions and sign-ups", type: :request do
     let!(:sign_up_form) { create(:sign_up_form, production: production) }
     let!(:instance) { create(:sign_up_form_instance, sign_up_form: sign_up_form, show: show) }
 
-    it "says nothing while nobody's registered, then who's registered for the next event, linking to the form" do
+    it "is no action at all: the show's row carries the registrations instead" do
       expect(bar).to be_nil
       slot = create(:sign_up_slot, sign_up_form: sign_up_form, sign_up_form_instance: instance)
       create(:sign_up_registration, sign_up_slot: slot)
-      pill = bar.at_css("[data-status='registrations']")
-      expect(pill.text).to include("Sign-ups", "1 registered for #{show.date_and_time.strftime('%A')}'s #{sign_up_form.name}")
-      expect(pill["href"]).to eq(manage_signups_form_path(production, sign_up_form))
+      get manage_path(week_start: show.date_and_time.to_date.beginning_of_week.to_s)
+      doc = Nokogiri::HTML(response.body)
+      expect(doc.at_css("[data-home-actions]")).to be_nil
+      chip = doc.at_css("[data-home-show='#{show.id}'] [data-chip='signups']")
+      expect(chip.text).to include("1 registered")
+      modal = doc.at_css("#show-modal-#{show.id}")
+      expect(modal.text).to include("Sign-ups", sign_up_form.name, "1 registered")
+      expect(modal.at_css("a[href='#{manage_signups_form_path(production, sign_up_form)}']")).to be_present
     end
   end
 
