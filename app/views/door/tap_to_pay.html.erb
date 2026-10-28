@@ -16,7 +16,8 @@
     words and picture, how this iPhone stands, Set up (Apple's terms, then
     the guide), the guide again, and Apple's disclaimer behind "Terms apply." %>
 <div data-controller="tap-to-pay-setup bridge--tap-to-pay"
-     data-action="tap-to-pay-setup:status->bridge--tap-to-pay#status tap-to-pay:state->tap-to-pay-setup#state"
+     data-action="tap-to-pay-setup:status->bridge--tap-to-pay#status tap-to-pay-setup:start->bridge--tap-to-pay#enable tap-to-pay:state->tap-to-pay-setup#state"
+     data-tap-to-pay-setup-start-value="<%= params[:setup].present? %>"
      data-bridge--tap-to-pay-connection-token-url-value="<%= door_tap_to_pay_token_path(organization_id: @organization.id) %>"
      data-bridge--tap-to-pay-location-id-value="<%= @location_id %>"
      data-bridge--tap-to-pay-can-accept-terms-value="<%= @can_accept_terms %>">

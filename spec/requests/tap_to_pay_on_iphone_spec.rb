@@ -60,6 +60,18 @@ RSpec.describe "Tap to Pay on iPhone", type: :request do
     expect(response.parsed_body).to eq("secret" => "pst_1")
   end
 
+  it "starts setting up on its own when opened from the awareness page's Get started, so Apple's terms come next" do
+    sign_in(seller)
+    get door_tap_to_pay_path, headers: in_app
+    setup = Nokogiri::HTML(response.body).at_css("[data-controller~='tap-to-pay-setup']")
+    expect(setup["data-tap-to-pay-setup-start-value"]).to eq("false")
+    expect(setup["data-action"]).to include("tap-to-pay-setup:start->bridge--tap-to-pay#enable")
+
+    get door_tap_to_pay_path(setup: 1), headers: in_app
+    setup = Nokogiri::HTML(response.body).at_css("[data-controller~='tap-to-pay-setup']")
+    expect(setup["data-tap-to-pay-setup-start-value"]).to eq("true")
+  end
+
   it "is for nobody else: someone who only checks people in, or an organization without it switched on" do
     sign_in(checker)
     get door_tap_to_pay_path, headers: in_app
