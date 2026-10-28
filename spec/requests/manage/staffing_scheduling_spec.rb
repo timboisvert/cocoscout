@@ -117,6 +117,38 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
   # Three shows in a row, one tech working all of them: the modal's show
   # checklist creates that as ONE shift — anchored to the first show, the rest
   # recorded as extra covered shows (the same shape merging produces).
+  # A private party that isn't a CocoScout production still needs a bartender:
+  # every day of the week is on the page, shows or not.
+  describe "a day with nothing on" do
+    let!(:role) { create(:house_role, organization: org, name: "Bartender", role_type: :house) }
+    let(:empty_day) { week_start + 4 }
+
+    it "still gets a row with + Add shift, defaulting to the evening" do
+      get manage_staffing_scheduling_path(week_start: week_start.to_s)
+      row = Nokogiri::HTML(response.body).at_css("#day-#{empty_day.iso8601}")
+      expect(row).to be_present
+      expect(row.text).to include("Nothing scheduled")
+      button = row.at_css("[data-action='click->shift-add#open']")
+      expect(JSON.parse(button["data-role-defaults"])[role.id.to_s]["starts_at"]).to eq(empty_day.in_time_zone.change(hour: 17).strftime("%Y-%m-%dT%H:%M"))
+    end
+
+    it "takes a shift with no show behind it, and the day becomes a full row" do
+      expect {
+        post manage_create_staffing_shift_path, params: { shift: {
+          house_role_id: role.id, required_count: 1, coverage_mode: "needs_assignment",
+          starts_at: empty_day.in_time_zone.change(hour: 18).iso8601,
+          ends_at: empty_day.in_time_zone.change(hour: 23).iso8601
+        } }
+      }.to change(Shift, :count).by(1)
+      expect(Shift.last.source).to be_nil
+
+      get manage_staffing_scheduling_path(week_start: week_start.to_s)
+      row = Nokogiri::HTML(response.body).at_css("#day-#{empty_day.iso8601}")
+      expect(row.text).not_to include("Nothing scheduled")
+      expect(row.text).to include("Bartender")
+    end
+  end
+
   describe "creating one shift that covers several shows" do
     let!(:tech) { create(:house_role, organization: org, name: "Booth Tech", role_type: :show_specific) }
 
@@ -240,7 +272,8 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
       expect(body).to include("+ Add role")
       # The day still has exactly one plain "open on nothing" trigger: the new
       # column at the end. Everything else opens on a role.
-      expect(body.scan("shift-add#open\"").size).to eq(1)
+      day_row = Nokogiri::HTML(body).at_css("#day-#{show_day.iso8601}")
+      expect(day_row.css("[data-action='click->shift-add#open']").size).to eq(1)
     end
 
     it "keeps the plain add when the day has no shifts to sit under" do
