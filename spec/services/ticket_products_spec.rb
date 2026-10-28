@@ -115,6 +115,7 @@ RSpec.describe "Ticket products", type: :service do
   end
 
   it "sells products for cash at the door only when the production says so, never on a comp, and hands them over" do
+    open_every_door!
     door = TicketDoor.new(listing, create(:user))
     # Off by default: a pre-sold bottle isn't a door item.
     expect(listing.product_offers(at_door: true)).to be_empty

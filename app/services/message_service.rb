@@ -203,6 +203,10 @@ class MessageService
       # Default visibility if still not set
       visibility ||= :personal
 
+      # HARD RULE: an automated notification is never "from" a real person.
+      # Every message is made here, so this is the one place that enforces it.
+      sender = nil unless personal_sender?(sender, system_generated: system_generated)
+
       # Create the message (skip automatic notification - we'll call it after subscriptions exist)
       message = Message.new(
         sender: sender,
@@ -315,6 +319,27 @@ class MessageService
         visibility: reply_visibility,
         organization: root.organization
       )
+    end
+
+    private
+
+    # A message keeps a person as its sender only when that person is the one
+    # sending it right now — signed in, in this request, writing or clicking
+    # Send. Anything automated (flagged system_generated), anything a job
+    # sends (no one is signed in), and any "borrowed" sender (an org owner or
+    # the first team member standing in) goes out with no sender, so it
+    # shows as the production or "Automated Notification".
+    def personal_sender?(sender, system_generated:)
+      return false if system_generated
+
+      acting_user = Current.user
+      return false unless acting_user
+
+      case sender
+      when User then sender.id == acting_user.id
+      when Person then sender.user_id == acting_user.id
+      else false
+      end
     end
   end
 end

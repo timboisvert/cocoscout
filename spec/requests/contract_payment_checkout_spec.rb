@@ -145,8 +145,20 @@ RSpec.describe "Contract payment checkout", type: :request do
       end
     end
 
-    it "marks it paid and queues the org's remittance, net of Stripe's fee" do
+    it "marks it paid and puts it in a Pro organization's CocoScout balance, net of Stripe's fee" do
       org.update!(stripe_account_id: "acct_org", payouts_enabled: true)
+
+      ContractPaymentCollection.settle!(payment, stripe_session)
+
+      expect(payment.reload).to be_status_paid
+      expect(PayoutContribution.where(source: payment)).to be_empty
+      expect(payment.remittance_stage).to eq(:in_balance)
+      # $250 collected less $10 in processing fees.
+      expect(OrgCashEntry.where(source: payment, entry_type: "contract_payment").sum(:amount_cents)).to eq(24_000)
+    end
+
+    it "marks it paid and queues the remittance for an organization that isn't Pro" do
+      org.update!(stripe_account_id: "acct_org", payouts_enabled: true, comped_indefinitely: false)
 
       ContractPaymentCollection.settle!(payment, stripe_session)
 
@@ -165,7 +177,7 @@ RSpec.describe "Contract payment checkout", type: :request do
     end
 
     it "settles once even if the webhook and the success page both arrive" do
-      org.update!(stripe_account_id: "acct_org", payouts_enabled: true)
+      org.update!(stripe_account_id: "acct_org", payouts_enabled: true, comped_indefinitely: false)
 
       expect(ContractPaymentCollection.settle!(payment, stripe_session)).to be(true)
       expect(ContractPaymentCollection.settle!(payment, stripe_session)).to be(false)

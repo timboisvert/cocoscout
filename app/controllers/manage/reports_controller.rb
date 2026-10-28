@@ -85,17 +85,25 @@ module Manage
       report = ticket_report
       s = report.summary
       rows = report.by_show.map do |row|
-        [ "#{row.listing.display_title} · #{row.listing.show.date_and_time.strftime('%a %b %-d')}", row.tickets, row.comps,
-          row.gross_cents / 100.0, row.product_cents / 100.0, row.refunded_cents / 100.0, row.net_cents / 100.0, row.money_state ]
+        [ "#{row.listing.display_title} · #{row.listing.show.date_and_time.strftime('%a %b %-d')}", row.tickets, row.outside, row.comps,
+          row.gross_cents / 100.0, row.outside_cents / 100.0, row.product_cents / 100.0, row.refunded_cents / 100.0, row.net_cents / 100.0,
+          row.money_state ]
       end
       render_report(
         key: :ticket_sales_by_show, title: "Ticket Sales by Show",
-        subtitle: "Tickets, sales, products, refunds and what you keep, per show. Sales are face value, before fees and tax.",
-        stats: ticket_stats(s),
-        columns: [ col("Show"), col("Tickets", :number), col("Comps", :number), col("Ticket sales", :currency), col("Products", :currency),
-                   col("Refunded", :currency), col("You keep", :currency), col("Money") ],
+        subtitle: "Tickets, sales, products, refunds and what you keep, per show, with what sold on other sites. " \
+                  "Sales are face value, before fees and tax. Other sites count by the day of the show.",
+        stats: [
+          { label: "Tickets sold", value: s.tickets + s.outside },
+          { label: "Ticket sales", value: format_currency((s.gross_cents + s.outside_cents) / 100.0) },
+          { label: "Refunded", value: format_currency(s.refunded_cents / 100.0) },
+          { label: "You keep", value: format_currency(s.net_cents / 100.0) }
+        ],
+        columns: [ col("Show"), col("Sold here", :number), col("Other sites", :number), col("Comps", :number), col("Ticket sales", :currency),
+                   col("Other sites' sales", :currency), col("Products", :currency), col("Refunded", :currency), col("You keep", :currency), col("Money") ],
         rows: rows,
-        total_row: [ "Total", s.tickets, s.comps, s.gross_cents / 100.0, s.product_cents / 100.0, s.refunded_cents / 100.0, s.net_cents / 100.0, nil ],
+        total_row: [ "Total", s.tickets, s.outside, s.comps, s.gross_cents / 100.0, s.outside_cents / 100.0, s.product_cents / 100.0,
+                     s.refunded_cents / 100.0, s.net_cents / 100.0, nil ],
         filters: ticket_filters(report)
       )
     end

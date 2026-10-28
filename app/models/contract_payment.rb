@@ -315,12 +315,15 @@ class ContractPayment < ApplicationRecord
 
   # Where the org's remittance of this collected money stands: :to_pay (not on
   # a run yet — including a failed run handing it back), :in_draft, :in_flight,
-  # or :paid once it reached the org's bank. Nil for money we never held.
+  # or :paid once it reached the org's bank. :in_balance when the org pools
+  # (ticketing on): the money stays in its CocoScout balance and never rides a
+  # run, so there's nothing to add (Stars & Garters, 2026-10-25: "Add to payout
+  # run" said Added and did nothing). Nil for money we never held.
   def remittance_stage
     return nil unless collected_online?
 
     contribution = payout_contribution
-    return :to_pay unless contribution
+    return (CocoScoutBalance.pooled?(contract.organization) ? :in_balance : :to_pay) unless contribution
 
     MoneyTodoService.payout_bucket(contribution.payout_batch,
                                    paid: contribution.payout_batch_item&.paid? || false)
@@ -575,7 +578,7 @@ class ContractPayment < ApplicationRecord
     shows_with_data = linked_shows.select { |s| s.show_financials&.has_data? }
     return nil if shows_with_data.empty?
 
-    total_revenue = shows_with_data.sum { |s| s.show_financials.total_revenue }
+    total_revenue = shows_with_data.sum { |s| contract.settled_revenue(s.show_financials) }
     config = contract.draft_payment_config
     structure = contract.draft_payment_structure
 
@@ -585,7 +588,7 @@ class ContractPayment < ApplicationRecord
       # Show by show: a date can have its own share (Review the dates).
       calculated = shows_with_data.sum do |show|
         show_pct = direction_incoming? ? contract.our_share_for(show) : contract.their_share_for(show)
-        show.show_financials.total_revenue * show_pct / 100.0
+        contract.settled_revenue(show.show_financials) * show_pct / 100.0
       end.round(2)
       { amount: calculated, explanation: "#{pct.round(0)}% of revenue" }
     when "per_event"

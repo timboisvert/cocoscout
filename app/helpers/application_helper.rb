@@ -1,6 +1,20 @@
 # frozen_string_literal: true
 
 module ApplicationHelper
+  CANONICAL_HOST = "https://cocoscout.com"
+
+  # Every page names its one address for search engines: cocoscout.com (the
+  # apps' host), not www, and no query string. Google listed the same pages
+  # under both hosts as duplicates (Search Console, 2026-10-22). A page that
+  # names its own in :head keeps it: the mics pages, and the ticket pages,
+  # which pass the path of the date being shown.
+  def canonical_link_tag(path = nil)
+    return if path.nil? && content_for(:head).to_s.include?('rel="canonical"')
+
+    base = Rails.env.production? ? CANONICAL_HOST : request.base_url
+    tag.link(rel: "canonical", href: "#{base}#{path || request.path}")
+  end
+
   # `impersonating?` / `impersonator_user_id` live on ApplicationController
   # (exposed via helper_method) so controllers and views share one definition.
 

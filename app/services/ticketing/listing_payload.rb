@@ -52,6 +52,12 @@ module Ticketing
       }
     end
 
+    # When this ticket could first be bought: the later of the tier's own
+    # start and the date's, else when the date was listed.
+    def on_sale_from(tier)
+      [ tier.sales_start_at, @listing.on_sale_at ].compact.max || @listing.created_at
+    end
+
     def tier_payload(tier, inventory)
       {
         id: tier.id,
@@ -60,7 +66,8 @@ module Ticketing
         price_cents: tier.price_cents,
         all_in_price_cents: TicketPricing.all_in_price_cents(@listing, tier),
         remaining: inventory.remaining(tier: tier),
-        selling: tier.selling?
+        selling: tier.selling?,
+        on_sale_from: on_sale_from(tier)&.iso8601
       }
     end
   end

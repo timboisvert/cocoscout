@@ -44,10 +44,10 @@ module Manage
     end
 
     # POST ticketing/settings/open: the organization opens its own box office
-    # (Tim, 2026-10-06). The public pages and checkout go live, and from here
-    # on course and contract money collected online joins the CocoScout
-    # balance (CocoScoutBalance.pooled?). Closing it again is a superadmin's
-    # call, on the same tab.
+    # (Tim, 2026-10-06). The public pages and checkout go live. (Course and
+    # contract money already pools for every Pro organization —
+    # CocoScoutBalance.pooled?.) Closing it again is a superadmin's call, on
+    # the same tab.
     # The Refunds tab: the policy buyers see, for every production that
     # doesn't set its own (RefundPolicy).
     def update_refunds

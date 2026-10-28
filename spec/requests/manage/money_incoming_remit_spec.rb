@@ -21,6 +21,11 @@ RSpec.describe "Manage remitting collected contract money", type: :request do
 
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
+  # Since 2026-10-25 a Pro organization's collected money stays in its
+  # CocoScout balance (see the block below). The run path is for one that
+  # doesn't pool, such as an organization that has left Pro.
+  before { allow(CocoScoutBalance).to receive(:pooled?).and_return(false) }
+
   describe "the payment page" do
     it "offers Add to payout run once the org can receive payouts" do
       org.update!(stripe_account_id: "acct_org", payouts_enabled: true)
@@ -71,6 +76,44 @@ RSpec.describe "Manage remitting collected contract money", type: :request do
 
       expect(payment.reload.payout_contribution).to be_nil
       expect(flash[:alert]).to include("Connect your organization's bank")
+    end
+  end
+
+  # Stars & Garters, Oct 25: collected money stays in the organization's
+  # CocoScout balance and never rides a run. The page offered Add to payout
+  # run, said Added, and nothing changed.
+  describe "a Pro organization, whose money pools" do
+    before do
+      allow(CocoScoutBalance).to receive(:pooled?).and_call_original
+      org.update!(stripe_account_id: "acct_org", payouts_enabled: true)
+    end
+
+    it "says the money is in the CocoScout balance, with no Add to payout run" do
+      get manage_money_incoming_payment_path(payment)
+
+      body = response.body
+      expect(body).to include("is in your CocoScout balance")
+      expect(body).to include(manage_ticket_balance_path)
+      expect(body).not_to include("Add to payout run")
+    end
+
+    it "says so on the contract's paid row too" do
+      get manage_contract_path(contract)
+
+      expect(response.body).to include("In your CocoScout balance")
+      expect(response.body).not_to include("Add to payout run")
+    end
+
+    it "never claims a remit that didn't happen" do
+      post manage_remit_money_incoming_payment_path(payment)
+
+      expect(payment.reload.payout_contribution).to be_nil
+      expect(flash[:notice]).to eq("This money is already in your CocoScout balance.")
+    end
+
+    it "leaves the money off Payouts' awaiting list" do
+      payouts = MoneyTodoService.new(user: owner, organization: org).payouts
+      expect(payouts.to_s).not_to include("collected for you")
     end
   end
 

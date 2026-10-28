@@ -199,7 +199,8 @@ class TicketOrderMailer < ApplicationMailer
       refund_amount: ActiveSupport::NumberHelper.number_to_currency(amount_cents.to_i / 100.0),
       ticket_count: ActionController::Base.helpers.pluralize(count, "ticket"),
       order_code: order.code,
-      order_url: routes.tickets_order_url(token: order.token, **url_options)
+      order_url: routes.tickets_order_url(token: order.token, **url_options),
+      refund_message: refund&.buyer_message.to_s.strip
     }
   end
 

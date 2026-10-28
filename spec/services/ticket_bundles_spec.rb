@@ -66,6 +66,7 @@ RSpec.describe "Ticket bundles" do
   end
 
   it "gives a bundle as four General tickets, and sells one at the door the same way" do
+    open_every_door!
     TicketComps.give!(listing, [ TicketComps::Guest.new(name: "Guest Gail", email: nil, tier: pack, quantity: 1) ], by: create(:user), email_them: false)
     expect(Ticket.where(ticket_tier: general, bundle_tier: pack).count).to eq(4)
 

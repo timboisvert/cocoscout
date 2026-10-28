@@ -5,7 +5,10 @@ import UIKit
 /// a full-screen page shown once to each person who can sell with it, built
 /// from Apple's Hero banner (its photograph, in TapToPayHero) and Apple's
 /// own words (Marketing Guide, US, Sept 2026). "Get started" opens Tap to
-/// Pay on iPhone's page; "Terms apply." opens Apple's full disclaimer.
+/// Pay on iPhone's page and starts setting it up there, so Apple's terms
+/// come right after this page (Apple's review, Case-ID 22828656); "Terms
+/// apply." opens Apple's marketing disclaimer, headed so it can't be taken
+/// for terms of our own.
 @MainActor
 enum TapToPaySplash {
     private static func shownKey(_ info: TapToPayInfo) -> String { "TapToPay.splashShown.\(info.userKey)" }
@@ -18,7 +21,7 @@ enum TapToPaySplash {
 
         var screen: UIViewController?
         let view = SplashView(
-            getStarted: { screen?.dismiss(animated: true) { open(info.settingsPath) } },
+            getStarted: { screen?.dismiss(animated: true) { open(info.settingsPath + "?setup=1") } },
             notNow: { screen?.dismiss(animated: true) }
         )
         let hosting = UIHostingController(rootView: view)
@@ -83,10 +86,15 @@ enum TapToPaySplash {
             .background(Color.white.ignoresSafeArea())
             .sheet(isPresented: $showingTerms) {
                 ScrollView {
-                    Text(TapToPaySplash.fullDisclaimer)
-                        .font(.system(size: 14))
-                        .foregroundStyle(Tailwind.gray700)
-                        .padding(24)
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("About Tap to Pay on iPhone")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(Color.black)
+                        Text(TapToPaySplash.fullDisclaimer)
+                            .font(.system(size: 14))
+                            .foregroundStyle(Tailwind.gray700)
+                    }
+                    .padding(24)
                 }
                 .presentationDetents([.medium, .large])
             }

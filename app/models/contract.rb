@@ -1618,9 +1618,9 @@ class Contract < ApplicationRecord
     confirmed_shows = all_shows.select { |s| s.show_financials&.has_data? }
     pending_shows = all_shows - confirmed_shows
 
-    confirmed_revenue = confirmed_shows.sum { |s| s.show_financials.total_revenue }
+    confirmed_revenue = confirmed_shows.sum { |s| settled_revenue(s.show_financials) }
     # Show by show: a date can have its own share (Review the dates).
-    our_share_amount = confirmed_shows.sum { |s| s.show_financials.total_revenue * our_share_for(s) / 100.0 }.round(2)
+    our_share_amount = confirmed_shows.sum { |s| settled_revenue(s.show_financials) * our_share_for(s) / 100.0 }.round(2)
     contractor_share_amount = (confirmed_revenue - our_share_amount).round(2)
 
     @revenue_share_summary = {
@@ -1642,7 +1642,7 @@ class Contract < ApplicationRecord
     confirmed_shows = all_shows.select { |s| s.show_financials&.has_data? }
     pending_shows = all_shows - confirmed_shows
 
-    confirmed_revenue = confirmed_shows.sum { |s| s.show_financials.total_revenue }
+    confirmed_revenue = confirmed_shows.sum { |s| settled_revenue(s.show_financials) }
     # The fee is charged per show, so what we've actually earned so far tracks
     # the shows whose numbers are in — it doesn't sit at the full contract fee
     # while half the run is still unreported.
@@ -1679,7 +1679,7 @@ class Contract < ApplicationRecord
     shows = Array(shows)
     return 0.0 if shows.empty?
 
-    revenue = shows.sum { |s| s.show_financials&.total_revenue.to_f }
+    revenue = shows.sum { |s| settled_revenue(s.show_financials) }
     (revenue - flat_fee_for_shows(shows)).round(2)
   end
 
@@ -2014,6 +2014,38 @@ class Contract < ApplicationRecord
   def revenue_share_percentage
     return nil unless revenue_share?
     draft_payment_config["revenue_our_share"].to_f
+  end
+
+  # What a revenue share is split on: the deal's "What are we splitting?"
+  # answer. A tickets-minus-fee deal is always on ticket revenue.
+  REVENUE_SOURCES = %w[ticket_sales tickets_and_products].freeze
+
+  # Tickets only, unless the deal says tickets and products. "total_revenue"
+  # was the old "Everything" card; door, bar and merchandise cards were offered
+  # but never worked out separately, so they read as tickets.
+  def self.normalized_revenue_source(value)
+    %w[tickets_and_products total_revenue].include?(value.to_s) ? "tickets_and_products" : "ticket_sales"
+  end
+
+  def revenue_source
+    return "ticket_sales" if ticket_revenue_minus_fee?
+
+    self.class.normalized_revenue_source(draft_payment_config["revenue_source"])
+  end
+
+  # What #settled_revenue is called on screen.
+  def settled_revenue_label
+    revenue_source == "tickets_and_products" ? "Tickets and products" : "Ticket revenue"
+  end
+
+  # The part of one night's revenue this deal settles on. Tickets only by
+  # default: products sold with tickets are other revenue, and they stay with
+  # whoever sold them (Tim, 2026-10-25; a 60/40 split on show 2070 was handing
+  # over 40% of the bottles too).
+  def settled_revenue(financials)
+    return 0.0 unless financials
+
+    revenue_source == "tickets_and_products" ? financials.total_revenue.to_f : financials.primary_revenue.to_f
   end
 
   # --- Payment model v2: who sells tickets + settlement basis ---
@@ -2537,11 +2569,7 @@ class Contract < ApplicationRecord
   # A revenue share reads as the venue's cut, e.g. "50% of ticket sales".
   def license_revenue_share_rent(cfg)
     share = (cfg["revenue_our_share"].presence || 50).to_i
-    source = {
-      "ticket_sales" => "ticket sales", "door_sales" => "door sales",
-      "bar_sales" => "bar & concessions", "merchandise" => "merchandise",
-      "total_revenue" => "total revenue"
-    }[cfg["revenue_source"]] || "ticket sales"
+    source = Contract.normalized_revenue_source(cfg["revenue_source"]) == "tickets_and_products" ? "ticket sales and products" : "ticket sales"
     "#{share}% of #{source}"
   end
 
@@ -2591,11 +2619,7 @@ class Contract < ApplicationRecord
   def deal_summary_revenue_share(cfg, lines)
     our = cfg["revenue_our_share"].presence || 50
     their = cfg["revenue_their_share"].presence || (100 - our.to_i)
-    source = {
-      "ticket_sales" => "ticket sales", "door_sales" => "door sales",
-      "bar_sales" => "bar and concessions", "merchandise" => "merchandise",
-      "total_revenue" => "all revenue"
-    }[cfg["revenue_source"]] || "ticket sales"
+    source = Contract.normalized_revenue_source(cfg["revenue_source"]) == "tickets_and_products" ? "ticket sales and products" : "ticket sales"
     lines << { label: "How the money works", value: "Revenue share on #{source} — we keep #{our}%, they keep #{their}%" }
 
     if cfg["revenue_guarantee"].to_s == "true" && cfg["revenue_guarantee_amount"].to_f.positive?

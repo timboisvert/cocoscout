@@ -84,16 +84,29 @@ RSpec.describe ContractPaymentSyncService, type: :service do
         expect(payment.amount).to eq(999.0)
       end
 
-      it "includes other revenue in the calculation" do
+      # Show 2070, Oct 25: products sold with tickets were split 60/40 with the
+      # tickets. A deal splits what it says it splits — ticket sales by default.
+      it "splits only the ticket revenue, not products or other revenue" do
         show = create(:show, production: production, date_and_time: Date.new(2026, 3, 15).to_time)
         create(:show_financials, :complete, show: show, ticket_revenue: 800.0, other_revenue: 200.0)
         payment = create(:contract_payment, :revenue_share_tbd, contract: contract, due_date: Date.new(2026, 3, 16))
 
         described_class.new(show).call
 
-        payment.reload
-        # Total revenue = 1000, contractor gets 20% = 200
-        expect(payment.amount).to eq(200.0)
+        # Tickets = 800, contractor gets 20% = 160
+        expect(payment.reload.amount).to eq(160.0)
+      end
+
+      it "splits other revenue too when the deal splits tickets and products" do
+        contract.draft_data["payment_config"]["revenue_source"] = "tickets_and_products"
+        contract.save!
+        show = create(:show, production: production, date_and_time: Date.new(2026, 3, 15).to_time)
+        create(:show_financials, :complete, show: show, ticket_revenue: 800.0, other_revenue: 200.0)
+        payment = create(:contract_payment, :revenue_share_tbd, contract: contract, due_date: Date.new(2026, 3, 16))
+
+        described_class.new(show).call
+
+        expect(payment.reload.amount).to eq(200.0)
       end
 
       it "keeps TBD when show has no real financial data" do

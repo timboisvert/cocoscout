@@ -95,6 +95,8 @@
               <% else %>
                 Connect your organization's bank and we'll send it straight to you.
               <% end %>
+            <% when :in_balance %>
+              They paid via CocoScout, so <strong><%= number_to_currency(@payment.remittable_cents / 100.0) %></strong> is in your CocoScout balance<%= " (#{number_to_currency(@payment.amount)} less card processing)" if @payment.stripe_fee_cents.to_i.positive? %>. It pays for your payout runs, and you can withdraw it to your bank whenever you like.
             <% when :in_draft %>
               <strong><%= number_to_currency(@payment.remittable_cents / 100.0) %></strong> is on your payout run — pay out the run and it lands in your bank.
             <% when :in_flight %>
@@ -111,6 +113,8 @@
           <% elsif stage == :to_pay %>
             <%= render "shared/button", text: "Connect your bank", variant: "primary", size: "small",
                   path: manage_course_settings_connect_path(return_to: manage_money_incoming_payment_path(@payment)), method: :post, form: { data: { turbo: false } } %>
+          <% elsif stage == :in_balance %>
+            <%= link_to "View your balance", manage_ticket_balance_path, class: "text-sm text-pink-600 hover:text-pink-700" %>
           <% else %>
             <%= link_to "View this payout run", manage_payout_batch_path(@payment.payout_contribution.payout_batch), class: "text-sm text-pink-600 hover:text-pink-700" %>
           <% end %>

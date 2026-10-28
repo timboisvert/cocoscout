@@ -15,6 +15,11 @@ module DoorTonight
   AFTER_END = 1.hour
   # Before this hour, a show belongs to the night before (a 1 AM show is Friday night's).
   NIGHT_ROLLOVER = 6
+  # The arrival rush (Tim, 2026-10-24): an hour before a show starts until half
+  # an hour after, when people are actually at the door. The Door's list gives
+  # these the big pink card; every other open door is a small one.
+  ARRIVING_BEFORE = 1.hour
+  ARRIVING_AFTER = 30.minutes
 
   def self.listings_for(user, at: Time.current)
     listings(TicketingDoorAccess.organizations_for(user).map(&:id))
@@ -67,6 +72,12 @@ module DoorTonight
     return :after if at > window.end
 
     listing.selling?(at) ? :presale : :door
+  end
+
+  # Whether people are arriving for this show now (see ARRIVING_BEFORE).
+  def self.arriving?(listing, at: Time.current)
+    starts = listing.show.date_and_time
+    ((starts - ARRIVING_BEFORE)..(starts + ARRIVING_AFTER)).cover?(at)
   end
 
   def self.door_open?(listing, at: Time.current)

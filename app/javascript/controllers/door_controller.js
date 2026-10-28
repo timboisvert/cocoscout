@@ -14,7 +14,7 @@ export default class extends Controller {
                       "modeButton", "listPanel", "scanPanel", "filterInput", "filterChip", "deliverChip", "results", "party", "nobody",
                       "sellPanel", "passHolders"]
     static values = { checkInUrl: String, statsUrl: String, listUrl: String, undoUrl: String, deliveriesUrl: String, listingId: Number,
-                      passesUrl: String, inApp: Boolean }
+                      passesUrl: String, inApp: Boolean, ahead: Boolean }
 
     static BANNER_CLASSES = {
         admitted: "bg-green-600 text-white",
@@ -28,7 +28,10 @@ export default class extends Controller {
         this.filterState = "all"
         // The app's scanner is full screen, so it opens on a tap, never by
         // itself as the page loads.
-        this.applyMode(this.rememberedMode(), { start: !this.inAppValue })
+        // Before the door opens there's nothing to scan: box office opens on
+        // Sell, everyone else on the list.
+        const first = this.aheadValue ? (this.hasSellPanelTarget ? "sell" : "list") : this.rememberedMode()
+        this.applyMode(first, { start: !this.inAppValue })
         this.applyFilter()
         this.pollTimer = setInterval(() => this.refreshStats(), 5000)
         this.listTimer = setInterval(() => this.refreshList(), 30000)
@@ -58,7 +61,7 @@ export default class extends Controller {
 
     applyMode(mode, { start = true } = {}) {
         const sellable = this.hasSellPanelTarget
-        this.mode = mode === "scan" ? "scan" : (mode === "sell" && sellable ? "sell" : "list")
+        this.mode = mode === "scan" && !this.aheadValue ? "scan" : (mode === "sell" && sellable ? "sell" : "list")
         this.modeButtonTargets.forEach((button) => {
             const on = button.dataset.mode === this.mode
             button.setAttribute("aria-pressed", on)
@@ -67,7 +70,7 @@ export default class extends Controller {
         this.listPanelTarget.classList.toggle("hidden", this.mode !== "list")
         this.scanPanelTarget.classList.toggle("hidden", this.mode !== "scan")
         if (sellable) this.sellPanelTarget.classList.toggle("hidden", this.mode !== "sell")
-        if (this.mode !== "sell") {
+        if (this.mode !== "sell" && !this.aheadValue) {
             try { window.localStorage.setItem(this.modeKey(), this.mode) } catch (_e) { /* fine without */ }
         }
         if (this.mode !== "scan") this.stopScanning()
@@ -165,6 +168,7 @@ export default class extends Controller {
 
     // The "To deliver" line, fresh from the server.
     async refreshDeliveries() {
+        if (this.aheadValue) return
         if (!this.hasDeliveriesTarget || !this.deliveriesUrlValue) return
         try {
             const response = await fetch(this.deliveriesUrlValue, { headers: { Accept: "text/html" }, credentials: "same-origin" })

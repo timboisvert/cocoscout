@@ -31,22 +31,25 @@ RSpec.describe "My work availability", type: :request do
     end
 
     it "shows what's been said" do
-      StaffAvailabilityWriter.new(person).set_weekdays!([ 1 ], state: "hours", windows: [ { from: "17:00", to: "00:00" } ])
-      StaffAvailabilityWriter.new(person).set_weekdays!([ 2 ], state: "hours", windows: [ { from: "18:00", to: "23:00" } ])
-      StaffAvailabilityWriter.new(person).save_exception!(starts_on: day, ends_on: day + 3, state: "off", note: "Lisbon")
-      StaffAvailabilityWriter.new(person).confirm!
+      # Mid-month, so the change (a week out) lands on the calendar shown.
+      travel_to Time.zone.local(2026, 9, 10, 12) do
+        StaffAvailabilityWriter.new(person).set_weekdays!([ 1 ], state: "hours", windows: [ { from: "17:00", to: "00:00" } ])
+        StaffAvailabilityWriter.new(person).set_weekdays!([ 2 ], state: "hours", windows: [ { from: "18:00", to: "23:00" } ])
+        StaffAvailabilityWriter.new(person).save_exception!(starts_on: day, ends_on: day + 3, state: "off", note: "Lisbon")
+        StaffAvailabilityWriter.new(person).confirm!
 
-      get my_work_availability_path
+        get my_work_availability_path
 
-      # Every day says itself under its bar: a day part by name, else the hours.
-      expect(response.body).to include("All evening").and include("6p – 11p").and include("All day").and include("Off")
-      expect(response.body).to include("After 5:00 PM")
-      expect(response.body).to include("Lisbon")
-      # A change carries its dates and note on the calendar cells it covers.
-      expect(response.body).to include(%(data-change-starts-on="#{day.iso8601}")).and include(%(data-change-note="Lisbon"))
-      # Confirmed: a green check, not the button.
-      expect(response.body).to include("My availability is up to date").and include("Confirmed through")
-      expect(response.body).not_to include("Confirm my availability")
+        # Every day says itself under its bar: a day part by name, else the hours.
+        expect(response.body).to include("All evening").and include("6p – 11p").and include("All day").and include("Off")
+        expect(response.body).to include("After 5:00 PM")
+        expect(response.body).to include("Lisbon")
+        # A change carries its dates and note on the calendar cells it covers.
+        expect(response.body).to include(%(data-change-starts-on="#{day.iso8601}")).and include(%(data-change-note="Lisbon"))
+        # Confirmed: a green check, not the button.
+        expect(response.body).to include("My availability is up to date").and include("Confirmed through")
+        expect(response.body).not_to include("Confirm my availability")
+      end
     end
 
     it "offers the confirm button until they say it's up to date" do

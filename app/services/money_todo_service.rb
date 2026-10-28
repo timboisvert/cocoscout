@@ -415,6 +415,10 @@ class MoneyTodoService
                               .where(contracts: { organization_id: organization.id })
                               .includes({ payout_contribution: [ :payout_batch, :payout_batch_item ] }, :contract)
                               .to_a
+    # An organization that pools keeps collected money in its CocoScout
+    # balance; it isn't awaiting any payout. One that was remitted before the
+    # organization pooled still shows until its run finishes.
+    payments.reject! { |p| p.payout_contribution.nil? } if CocoScoutBalance.pooled?(organization)
     return [] if payments.empty?
 
     by_col = payments.group_by do |p|

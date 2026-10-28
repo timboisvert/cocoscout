@@ -93,6 +93,31 @@ RSpec.describe "Ticket sales viewers", type: :request do
     expect(response.body).to include(my_ticket_sale_path(listing), my_ticket_sale_path(later))
   end
 
+  # Prod, 2026-10-22: a producer with more than 60 upcoming shared shows got
+  # a 500 (figures were fetched for only the first 60 rows). Now the next 30
+  # dates show with "Show more", and the past goes a page at a time.
+  it "shows upcoming dates 30 at a time and the past a page at a time" do
+    org.ticket_sales_viewers.create!(user: producer, scope: production, granted_by: superadmin)
+    upcoming = Array.new(61) { |i| create(:ticket_listing, organization: org, show: create(:show, production: production, date_and_time: (6 + i).days.from_now)) }
+    past = Array.new(31) { |i| create(:ticket_listing, organization: org, show: create(:show, production: production, date_and_time: (2 + i).days.ago)) }
+    links = -> { response.body.scan(%r{href="/my/ticket-sales/(\d+)"}).flatten.map(&:to_i) }
+
+    sign_in(producer)
+    get my_ticket_sales_path
+    expect(response).to have_http_status(:ok)
+    expect(links.call).to eq([ listing.id ] + upcoming.first(29).map(&:id) + past.first(30).map(&:id))
+    expect(response.body).to include("Show more", my_ticket_sales_path(upcoming: 60, anchor: "upcoming-more"), "Page 1 of 2")
+
+    get my_ticket_sales_path(upcoming: 60)
+    expect(links.call.first(60)).to eq([ listing.id ] + upcoming.first(59).map(&:id))
+    expect(response.body).to include("Show more")
+
+    get my_ticket_sales_path(upcoming: 90, past_page: 2)
+    expect(links.call).to eq([ listing.id ] + upcoming.map(&:id) + [ past.last.id ])
+    expect(response.body).not_to include("Show more")
+    expect(response.body).to include("Page 2 of 2")
+  end
+
   it "lets a contract's contractor see their shows' sales unless the contract says not, with chips on My Contracts" do
     contractor = org.contractors.create!(name: "Pat Producer", person: producer_person)
     contract = create(:contract, organization: org, production: production, contractor: contractor, status: "active")

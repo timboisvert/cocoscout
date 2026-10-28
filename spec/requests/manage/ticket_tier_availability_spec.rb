@@ -109,6 +109,7 @@ RSpec.describe "Ticket type availability on one date", type: :request do
   end
 
   it "keeps the door from selling it, while a manager can still give it as a comp" do
+    open_every_door!
     vip.update!(availability: "sold_out")
     door = TicketDoor.new(listing, owner)
     expect { door.sell({ vip.id.to_s => "1" }, kind: "cash") }.to raise_error(TicketCheckout::Error, "Pick at least one ticket.")

@@ -21,6 +21,7 @@ RSpec.describe Ticketing::ListingStats do
   end
 
   it "counts sold, comps, money, refunds, check-ins, channels, codes and the daily series" do
+    open_every_door!
     TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")
     TicketDiscountCode.create!(organization: org, ticket_listing: listing, code: "FRIENDS", kind: "fixed", amount_cents: 500, active: true)
 
@@ -55,6 +56,7 @@ RSpec.describe Ticketing::ListingStats do
   end
 
   it "reads at a glance: sold anywhere, of the seats left once comps are set aside (Tim, 2026-10-09)" do
+    open_every_door!
     buy({ general => 2 })
     door.sell({ general.id.to_s => "3" }, kind: "comp")
     tailor = org.ticket_sources.create!(name: "Ticket Tailor")

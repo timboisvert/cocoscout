@@ -14,7 +14,9 @@ RSpec.describe "Tap to Pay on iPhone", type: :request do
   let(:owner) { create(:user, password: password) }
   let(:org) { create(:organization, :pro, name: "Stars & Garters", owner: owner) }
   let!(:profile) { TicketingProfile.for(org).tap { |p| p.update!(enabled: true, tap_to_pay: true) } }
-  let(:listing) { create(:ticket_listing, organization: org) }
+  # Tonight's show, its door open: before it opens a tap is presale and
+  # needs the buyer's name and email (door_spec).
+  let(:listing) { create(:ticket_listing, organization: org, show: create(:show, production: create(:production, organization: org), date_and_time: 2.hours.from_now)) }
   let!(:general) { listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 20) }
   let(:seller) { create(:user, password: password) }
   let(:checker) { create(:user, password: password) }
@@ -56,6 +58,18 @@ RSpec.describe "Tap to Pay on iPhone", type: :request do
 
     get door_tap_to_pay_token_path(organization_id: org.id), headers: in_app
     expect(response.parsed_body).to eq("secret" => "pst_1")
+  end
+
+  it "starts setting up on its own when opened from the awareness page's Get started, so Apple's terms come next" do
+    sign_in(seller)
+    get door_tap_to_pay_path, headers: in_app
+    setup = Nokogiri::HTML(response.body).at_css("[data-controller~='tap-to-pay-setup']")
+    expect(setup["data-tap-to-pay-setup-start-value"]).to eq("false")
+    expect(setup["data-action"]).to include("tap-to-pay-setup:start->bridge--tap-to-pay#enable")
+
+    get door_tap_to_pay_path(setup: 1), headers: in_app
+    setup = Nokogiri::HTML(response.body).at_css("[data-controller~='tap-to-pay-setup']")
+    expect(setup["data-tap-to-pay-setup-start-value"]).to eq("true")
   end
 
   it "is for nobody else: someone who only checks people in, or an organization without it switched on" do

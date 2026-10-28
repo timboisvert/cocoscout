@@ -6,7 +6,9 @@ require "rails_helper"
 # undoing a mistake, and cash sales and comps at the door.
 RSpec.describe TicketDoor do
   let(:org) { create(:organization, :pro) }
-  let(:listing) { create(:ticket_listing, organization: org) }
+  # Tonight's show, its door open (DoorTonight): the door before it opens
+  # has its own examples.
+  let(:listing) { create(:ticket_listing, organization: org, show: create(:show, production: create(:production, organization: org), date_and_time: 2.hours.from_now)) }
   let!(:general) { listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 10) }
   let(:door_person) { create(:user) }
   let(:door) { described_class.new(listing, door_person) }
@@ -143,6 +145,59 @@ RSpec.describe TicketDoor do
 
       listing.update!(status: "canceled")
       expect { door.sell({ general.id.to_s => "1" }, kind: "cash") }.to raise_error(TicketCheckout::Error, /canceled/)
+    end
+  end
+
+  # Before the door opens it's presale (Tim, 2026-10-23): a named buyer with
+  # an email, what's on sale online at its online price, nobody checked in,
+  # the refund policy kept, their tickets emailed, and the books holding the
+  # sale for the show like an online one.
+  describe "#sell before the door opens" do
+    include ActiveJob::TestHelper
+
+    let(:listing) { create(:ticket_listing, organization: org, show: create(:show, production: create(:production, organization: org), date_and_time: 4.days.from_now)) }
+
+    it "sells cash ahead: on the list, not checked in, and in the books as a sale for an upcoming show" do
+      door_only = listing.ticket_tiers.create!(name: "Walk-up", price_cents: 2_500, quantity: 10, sells_at: "door")
+      expect { door.sell({ door_only.id.to_s => "1" }, kind: "cash", buyer_name: "Ana", buyer_email: "ana@example.com") }
+        .to raise_error(TicketCheckout::Error, /isn't on sale|at least one/)
+
+      order = nil
+      expect { order = door.sell({ general.id.to_s => "2" }, kind: "cash", buyer_name: "Ana Lopez", buyer_email: " Ana@Example.com ") }
+        .to have_enqueued_job(TicketOrderConfirmationJob)
+      expect([ order.channel, order.buyer_name, order.buyer_email ]).to eq([ "door_cash", "Ana Lopez", "ana@example.com" ])
+      expect(order.tickets.pluck(:status).uniq).to eq([ "valid" ])
+      expect(order.refund_policy).to be_present
+      expect(door.counts).to include(checked_in: 0, sold: 2, left: { general.id => 8 })
+
+      expect(ChartOfAccounts.account(org, :door_cash).natural_balance_cents).to eq(4_000)
+      expect(ChartOfAccounts.account(org, :ticket_income).natural_balance_cents).to eq(0)
+      expect(ChartOfAccounts.account(org, :advance_ticket_sales).natural_balance_cents).to eq(4_000)
+      expect(LedgerPosting.trial_balance(org).values.sum).to eq(0)
+
+      # The day after the show it's income, as online sales are.
+      TicketMoneyRelease.release!(listing, at: listing.show.date_and_time + 1.day)
+      expect(ChartOfAccounts.account(org, :ticket_income).natural_balance_cents).to eq(4_000)
+      expect(ChartOfAccounts.account(org, :advance_ticket_sales).natural_balance_cents).to eq(0)
+    end
+
+    it "asks for a name and a valid email, as online presale does" do
+      expect { door.sell({ general.id.to_s => "1" }, kind: "cash", buyer_name: "Ana") }.to raise_error(TicketCheckout::Error, /name and a valid email/)
+      expect { door.sell({ general.id.to_s => "1" }, kind: "comp", buyer_email: "ana@example.com") }.to raise_error(TicketCheckout::Error, /name and a valid email/)
+      expect { door.sell({ general.id.to_s => "1" }, kind: "cash", buyer_name: "Ana", buyer_email: "not-an-email") }.to raise_error(TicketCheckout::Error, /email/)
+      expect(TicketOrder.count).to eq(0)
+    end
+
+    it "comps ahead without checking them in, and sends their tickets" do
+      order = door.sell({ general.id.to_s => "1" }, kind: "comp", buyer_name: "Guest", buyer_email: "guest@example.com")
+      expect(order.tickets.pluck(:status)).to eq([ "valid" ])
+      expect(enqueued_jobs.map { |job| job["job_class"] }).to include("TicketOrderConfirmationJob")
+    end
+
+    it "says when nothing's on sale for the date yet" do
+      listing.update!(on_sale_at: 2.days.from_now)
+      expect { door.sell({ general.id.to_s => "1" }, kind: "cash", buyer_name: "Ana", buyer_email: "ana@example.com") }
+        .to raise_error(TicketCheckout::Error, /Nothing's on sale for this date yet/)
     end
   end
 end

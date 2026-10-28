@@ -117,6 +117,44 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
   # Three shows in a row, one tech working all of them: the modal's show
   # checklist creates that as ONE shift — anchored to the first show, the rest
   # recorded as extra covered shows (the same shape merging produces).
+  # A private party that isn't a CocoScout production still needs a bartender:
+  # every day of the week is on the page, shows or not.
+  describe "a day with nothing on" do
+    let!(:role) { create(:house_role, organization: org, name: "Bartender", role_type: :house) }
+    let(:empty_day) { week_start + 4 }
+
+    def page
+      get manage_staffing_scheduling_path(week_start: week_start.to_s)
+      Nokogiri::HTML(response.body)
+    end
+
+    it "still offers a shift in every role's cell, defaulting to the evening" do
+      doc = page
+      expect(doc.at_css("#day-#{empty_day.iso8601}")).to be_present
+      add = doc.at_css("[data-cell='#{role.id}-#{empty_day.iso8601}'] button[aria-label^='Add a Bartender shift']")
+      expect(add["data-action"]).to eq("click->shift-add#openForRole")
+      expect(JSON.parse(add["data-role-defaults"])[role.id.to_s]["starts_at"]).to eq(empty_day.in_time_zone.change(hour: 17).strftime("%Y-%m-%dT%H:%M"))
+      # The phone's day says so too, with its own add.
+      phone = doc.at_css("[data-phone-day='#{empty_day.iso8601}']") || doc
+      expect(phone.text).to include("Nothing scheduled this day.")
+    end
+
+    it "takes a shift with no show behind it, and the day fills out" do
+      expect {
+        post manage_create_staffing_shift_path, params: { shift: {
+          house_role_id: role.id, required_count: 1, coverage_mode: "needs_assignment",
+          starts_at: empty_day.in_time_zone.change(hour: 18).iso8601,
+          ends_at: empty_day.in_time_zone.change(hour: 23).iso8601
+        } }
+      }.to change(Shift, :count).by(1)
+      expect(Shift.last.source).to be_nil
+
+      doc = page
+      expect(doc.at_css("#day-#{empty_day.iso8601}").text).to include("0 of 1 staffed")
+      expect(doc.at_css("[data-cell='#{role.id}-#{empty_day.iso8601}'] [data-shift-chip='#{Shift.last.id}']")).to be_present
+    end
+  end
+
   describe "creating one shift that covers several shows" do
     let!(:tech) { create(:house_role, organization: org, name: "Booth Tech", role_type: :show_specific) }
 

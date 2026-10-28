@@ -12,7 +12,7 @@
 <% else %>
   <ul class="divide-y divide-gray-100">
     <% orders.each do |order| %>
-      <%= render "door/party", order: order, listing: listing %>
+      <%= render "door/party", order: order, listing: listing, ahead: listing.door_ahead? %>
     <% end %>
   </ul>
 <% end %>

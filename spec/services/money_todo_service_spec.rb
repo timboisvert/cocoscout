@@ -33,7 +33,10 @@ RSpec.describe MoneyTodoService do
         .tap { |p| p.update!(stripe_checkout_session_id: "cs_#{p.id}", stripe_fee_cents: fee_cents) }
     end
 
+    # An organization that has left Pro; a Pro one keeps this money in its
+    # balance and it isn't awaiting a payout at all.
     it "surfaces it in the payouts section, net of Stripe's fee, linking to the payment itself" do
+      org.update!(comped_indefinitely: false)
       payment = collected_payment
 
       item = service.payouts.items.find { |i| i[:kind] == :remittance }

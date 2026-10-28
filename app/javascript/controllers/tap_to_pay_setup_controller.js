@@ -5,8 +5,11 @@ import { Controller } from "@hotwired/stimulus"
 // one panel at a time: not set up (with Set up), getting ready (with its
 // progress, Apple 3.9.1), ready, or why it can't (an administrator has to
 // accept Apple's terms first, Apple 3.8.1; or what went wrong). In a browser
-// the app never answers and the page says to open it in the app.
+// the app never answers and the page says to open it in the app. Opened
+// from the app's "Get started" (?setup=1), it starts setting up on its own
+// when this iPhone isn't set up, so Apple's terms follow the awareness page.
 export default class extends Controller {
+  static values = { start: Boolean }
   static targets = ["browser", "checking", "notSetUp", "preparing", "progress", "progressText", "ready", "needsAdmin", "failed", "failedText"]
 
   connect() {
@@ -39,6 +42,10 @@ export default class extends Controller {
     }
     if (state === "failed") this.failedTextTarget.textContent = message || "Tap to Pay on iPhone couldn't be set up. Try again."
     this.show(state || "notSetUp")
+    if (this.startValue && (state || "notSetUp") === "notSetUp") {
+      this.startValue = false
+      this.dispatch("start")
+    }
   }
 
   show(name) {

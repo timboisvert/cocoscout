@@ -2,10 +2,11 @@
 
 require "rails_helper"
 
-# Stage G: one balance for all the money CocoScout holds for a theater with
-# ticketing on. Course and contract money stop riding the payout run to the
-# theater's own Stripe account; they settle into the balance, fund runs and
-# can be withdrawn. Theaters without ticketing keep today's remittance.
+# Stage G: one balance for all the money CocoScout holds for a Pro
+# organization, ticketing on or not (since 2026-10-25). Course and contract
+# money stop riding the payout run to its own Stripe account; they settle into
+# the balance, fund runs and can be withdrawn. An organization that isn't Pro
+# has no balance page, so it keeps the old remittance.
 RSpec.describe CocoScoutBalance do
   let(:owner) { create(:user) }
   let(:org) { create(:organization, :pro, owner: owner, stripe_account_id: "acct_sg", payouts_enabled: true) }
@@ -108,7 +109,62 @@ RSpec.describe CocoScoutBalance do
     end
   end
 
-  context "without ticketing" do
+  context "a Pro organization without ticketing" do
+    it "keeps course money in the balance too" do
+      course_sale(10_000, at: 3.days.ago)
+      result = CoursePayoutRunService.add_to_run!(payout_for(9_000), added_by: owner)
+      expect(result.batch.items.where(payee: org)).to be_empty
+      expect(described_class.pooled?(org)).to be(true)
+      expect(described_class.available_cents(org)).to eq(9_000)
+    end
+  end
+
+  # Pooling outlasts the plan: an organization that leaves Pro keeps its one
+  # ledger, and LapsedBalanceSweepJob sends its balance on each day.
+  context "an organization that has left Pro" do
+    before do
+      expect(described_class.pooled?(org)).to be(true) # seen while Pro: stamped
+      org.update!(comped_indefinitely: false)
+      allow(Stripe::Transfer).to receive(:create).and_return(Stripe::Transfer.construct_from(id: "tr_sweep"))
+    end
+
+    it "still pools" do
+      expect(org.reload.balance_pooled_at).to be_present
+      expect(described_class.pooled?(org.reload)).to be(true)
+    end
+
+    it "has its spendable balance sent to its bank by the daily sweep" do
+      course_sale(10_000, at: 3.days.ago)
+      expect(described_class.available_cents(org)).to eq(9_000)
+
+      LapsedBalanceSweepJob.perform_now
+
+      expect(org.balance_withdrawals.sole).to have_attributes(amount_cents: 9_000, automatic: true)
+      expect(described_class.available_cents(org)).to eq(0)
+    end
+
+    it "leaves a Pro organization's balance alone" do
+      org.update!(comped_indefinitely: true)
+      course_sale(10_000, at: 3.days.ago)
+
+      LapsedBalanceSweepJob.perform_now
+
+      expect(org.balance_withdrawals).to be_empty
+    end
+
+    it "waits while there's no bank to send it to" do
+      org.update!(payouts_enabled: false)
+      course_sale(10_000, at: 3.days.ago)
+
+      LapsedBalanceSweepJob.perform_now
+
+      expect(org.balance_withdrawals).to be_empty
+    end
+  end
+
+  context "an organization that isn't Pro" do
+    before { org.update!(comped_indefinitely: false) }
+
     it "remits course money on the run as before, and the balance stays ticket money only" do
       course_sale(10_000, at: 3.days.ago)
       result = CoursePayoutRunService.add_to_run!(payout_for(9_000), added_by: owner)

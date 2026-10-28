@@ -145,25 +145,39 @@ tries before that sees "An administrator needs to turn it on first" (3.8.1).
 
 ### Video 1: Existing user (film first)
 
-Andy films the iPhone with her phone: Apple's payment screen never shows in
-a screen recording. Keep to this order; Apple wants the Tap to Pay on
-iPhone button seen at the door before the terms are accepted. Start
-recording at the app's welcome screen.
+Apple's reply of Oct 27 (Case-ID 22828656): the videos must clearly show
+Apple's own Terms and Conditions sheet being reviewed and accepted, ideally
+right after the awareness page, and Apple's sheet only. Our first take
+showed it, but filmed in the dark and scrolled past in seconds, and the
+"Terms apply." disclaimer looked like terms of our own. So "Get started" on
+the awareness page now starts setup at once (location, then Apple's terms),
+and the disclaimer sheet is headed "About Tap to Pay on iPhone".
+
+Before it: remove the merchant ID (step 6 above) and wait 15 minutes, or
+Apple's terms won't show. Deploy main first: Get started needs the page's
+`?setup=1`. Try a screen recording first; if Apple's sheets come out black,
+have Andy film it in good light. Start recording at the app's welcome
+screen.
 
 1. Sign in as yourself.
-2. The full-screen Tap to Pay on iPhone page appears. Tap "Terms apply.",
-   swipe the disclaimer away, then tap Not now.
-3. Menu (the pink button, bottom right) → Work the door → tonight's show →
-   Sell. The Tap to Pay on iPhone button is there before the terms are
-   accepted. Don't tap it.
-4. Menu → Settings (in the pink card) → Tap to Pay on iPhone → Set up
-   Tap to Pay on iPhone. Allow location (Allow While Using App), accept
-   Apple's terms, watch the progress bar. Apple's guide opens on its own;
-   close it. The page says Ready and offers "Try it out at the door".
-   (Tapping the Tap to Pay on iPhone button at Sell before the terms also
-   opens them; either path is fine.)
-5. Menu → Settings → Tap to Pay on iPhone again → "See how": Apple's guide
-   again, from Settings. Close it and stop recording.
+2. The full-screen Tap to Pay on iPhone page appears. Tap
+   "Get started with Tap to Pay on iPhone". Don't tap "Terms apply." in
+   any video.
+3. Allow location (Allow While Using App). Apple's account sheet, then
+   Apple's Tap to Pay on iPhone Terms and Conditions: scroll through them
+   slowly, then Agree. Watch the progress bar. Apple's guide opens on its
+   own; close it. The page says Ready and offers "Try it out at the door".
+4. Menu (the pink button, bottom right) → Work the door → tonight's show →
+   Sell: the Tap to Pay on iPhone button, first among the ways to pay.
+5. Menu → Settings (in the pink card) → Tap to Pay on iPhone → "See how":
+   Apple's guide again, from Settings. Close it and stop recording.
+
+This take no longer shows the door's button before the terms are
+accepted. The Oct 19 take does, and Apple didn't object to it, so send
+both: this one as "1 Existing user" (filmed 10/28, a screen recording:
+Apple's terms come out clear in one), and "1b Existing user, before
+setup", the first 31 seconds of the Oct 19 take (sign in, Not now, the
+Sell button before the terms), cut from `not for Apple/1a existing user`.
 
 The app's menu is the My pages only (Tim, 2026-10-19): Tap to Pay on
 iPhone's setup lives on Settings, never as a menu tile.

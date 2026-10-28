@@ -322,8 +322,10 @@ export default class extends Controller {
         }
 
         // Restore revenue share config
+        // Two choices; the old "Everything" card reads as tickets and products,
+        // and every other old card as tickets only (as Contract does).
         if (this.hasRevenueSourceTarget && config.revenue_source) {
-            this.revenueSourceTarget.value = config.revenue_source
+            this.revenueSourceTarget.value = ["tickets_and_products", "total_revenue"].includes(config.revenue_source) ? "tickets_and_products" : "ticket_sales"
         }
         if (this.hasRevenueOurShareTarget && config.revenue_our_share) {
             this.revenueOurShareTarget.value = config.revenue_our_share

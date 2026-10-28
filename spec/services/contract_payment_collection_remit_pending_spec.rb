@@ -17,9 +17,17 @@ RSpec.describe ContractPaymentCollection, ".remit_pending!" do
       .tap { |p| p.update!(stripe_checkout_session_id: "cs_#{p.id}", stripe_fee_cents: 800) }
   end
 
+  it "does nothing for a Pro organization, whose money stays in its balance" do
+    collected_payment
+    org.update!(stripe_account_id: "acct_org", payouts_enabled: true)
+
+    expect(described_class.remit_pending!(org)).to eq(0)
+  end
+
+  # An organization that has left Pro: what it collected goes out on the run.
   it "queues every collected-but-unremitted payment on the org's remittance run" do
     payment = collected_payment
-    org.update!(stripe_account_id: "acct_org", payouts_enabled: true)
+    org.update!(stripe_account_id: "acct_org", payouts_enabled: true, comped_indefinitely: false)
 
     expect(described_class.remit_pending!(org)).to eq(1)
 

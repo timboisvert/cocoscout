@@ -14,6 +14,20 @@ class TicketDoor
 
   UNDO_WINDOW = 2.minutes
 
+  # The buyer's name and email for a door sale, checked: { buyer_name:,
+  # buyer_email: }. Ahead of the door opening it's presale and both are
+  # required, as online (Tim, 2026-10-23); on the night they're optional.
+  def self.buyer!(listing, name, email, error: TicketCheckout::Error)
+    name = name.to_s.squish.presence
+    email = email.to_s.strip.downcase.presence
+    if listing.door_ahead?
+      raise error, "Add their name and a valid email so we can send their tickets." if name.nil? || email.nil?
+    end
+    raise error, "Check their email address." if email && !email.match?(URI::MailTo::EMAIL_REGEXP)
+
+    { buyer_name: name, buyer_email: email }
+  end
+
   def initialize(listing, user)
     @listing = listing
     @user = user
@@ -89,9 +103,17 @@ class TicketDoor
   # CocoScout. They're checked in on the spot.
   # products: { product_id => count } bought along with cash tickets; a comp
   # carries none (a bottle is never comped from here).
-  def sell(quantities, kind:, buyer_name: nil, products: {})
+  #
+  # Ahead of the door opening (TicketListing#door_ahead?) it's presale: only
+  # what's on sale online, at its online price, to a named buyer with an
+  # email, who isn't checked in, keeps the refund policy they were shown and
+  # gets their tickets by email (Tim, 2026-10-23).
+  def sell(quantities, kind:, buyer_name: nil, buyer_email: nil, products: {})
     raise ArgumentError, "kind must be cash or comp" unless %w[cash comp].include?(kind)
     raise TicketCheckout::Error, "This show was canceled." if @listing.status == "canceled" || @listing.show.canceled
+
+    ahead = @listing.door_ahead?
+    buyer = self.class.buyer!(@listing, buyer_name, buyer_email)
     if kind == "comp"
       # The comp rules (CompRules) hold at the door too.
       raise TicketCheckout::Error, "Comps are off for this show." unless @listing.effective_comps_enabled
@@ -101,7 +123,8 @@ class TicketDoor
     end
 
     # A type marked sold out or hidden for this date isn't sold at the door either.
-    tiers = @listing.ticket_tiers.active.select(&:available?).index_by(&:id)
+    tiers = (ahead ? @listing.door_tiers : @listing.ticket_tiers.active.select(&:available?)).index_by(&:id)
+    raise TicketCheckout::Error, "Nothing's on sale for this date yet." if ahead && tiers.empty?
     requests = quantities.to_h.filter_map { |tier_id, count|
       tier = tiers[tier_id.to_i]
       count = count.to_i
@@ -114,14 +137,15 @@ class TicketDoor
     Ticketing::Inventory.reserve!(@listing, seats) do
       order = TicketOrder.create!(organization: @listing.organization, ticket_listing: @listing, status: "paid", paid_at: Time.current,
                                   channel: kind == "cash" ? "door_cash" : "comp", money_path: kind == "cash" ? "cash" : "none",
-                                  fee_mode: @listing.effective_fee_mode, buyer_name: buyer_name.to_s.squish.presence)
+                                  fee_mode: @listing.effective_fee_mode, **buyer,
+                                  refund_policy: (RefundPolicy.for(@listing).to_snapshot if ahead))
       # A 4-pack sold at the door is four tickets, everyone checked in.
+      checked_in = ahead ? { status: "valid" } : { status: "checked_in", checked_in_at: Time.current, checked_in_by: @user }
       requests.each do |tier, count|
         count.times do
           tier.seat_prices.each do |cents|
             ticket = order.tickets.create!(ticket_tier: tier.base_tier, bundle_tier: (tier if tier.bundle?), ticket_listing: @listing,
-                                           status: "checked_in", checked_in_at: Time.current, checked_in_by: @user, price_cents: cents,
-                                           discount_cents: kind == "comp" ? cents : 0)
+                                           **checked_in, price_cents: cents, discount_cents: kind == "comp" ? cents : 0)
             record_tax(order, ticket) if kind == "cash"
           end
         end
@@ -134,9 +158,10 @@ class TicketDoor
         order.ticket_order_items.update_all(status: "valid", updated_at: Time.current)
       end
       TicketCheckout.price!(order)
-      post_cash_sale!(order) if kind == "cash"
+      post_cash_sale!(order, ahead: ahead) if kind == "cash"
     end
     TicketSalesSync.sync!(@listing.show)
+    TicketOrderConfirmationJob.perform_later(order.id) if order.buyer_email.present?
     TicketingAfterSaleJob.perform_later(order.id)
     order
   rescue Ticketing::Inventory::SoldOut
@@ -155,7 +180,7 @@ class TicketDoor
       sold: held.count - comped + inventory.outside_sold,
       comped: comped,
       available: inventory.remaining,
-      left: @listing.ticket_tiers.active.select(&:door_sellable?).to_h { |tier| [ tier.id, tier.units_for(inventory.remaining(tier: tier)) ] }
+      left: @listing.door_tiers.to_h { |tier| [ tier.id, tier.units_for(inventory.remaining(tier: tier)) ] }
     }
   end
 
@@ -177,15 +202,17 @@ class TicketDoor
   end
 
   # Cash in the box: the books only (it never touches the CocoScout balance).
-  # The show is happening, so it's income now, not an advance sale.
-  def post_cash_sale!(order)
+  # The show is happening, so it's income now, not an advance sale. Sold
+  # ahead, the show isn't happening yet: the sale waits in advance sales
+  # like an online one, and TicketMoneyRelease makes it income the day after.
+  def post_cash_sale!(order, ahead: false)
     return unless order.total_cents.positive?
 
     lines = TicketOrderSettlement.sale_lines(order).map do |line|
       case line[:account]
       when :cocoscout_balance then line.merge(account: :door_cash, amount_cents: order.total_cents)
-      when :advance_ticket_sales then line.merge(account: :ticket_income)
-      when :advance_product_sales then line.merge(account: :product_income)
+      when :advance_ticket_sales then ahead ? line : line.merge(account: :ticket_income)
+      when :advance_product_sales then ahead ? line : line.merge(account: :product_income)
       else line
       end
     end

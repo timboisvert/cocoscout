@@ -1867,6 +1867,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_100100) do
     t.string "email_website_url"
     t.string "email_instagram"
     t.string "email_mailing_address"
+    t.datetime "balance_pooled_at"
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
     t.index ["organization_talent_pool_id"], name: "index_organizations_on_organization_talent_pool_id"
     t.index ["owner_id"], name: "index_organizations_on_owner_id"

@@ -57,21 +57,28 @@
       "startDate" => payload[:starts_at], "endDate" => payload[:ends_at],
       "eventStatus" => show.canceled ? "https://schema.org/EventCancelled" : "https://schema.org/EventScheduled",
       "eventAttendanceMode" => show.is_online ? "https://schema.org/OnlineEventAttendanceMode" : "https://schema.org/OfflineEventAttendanceMode",
-      "description" => description.to_s.truncate(500).presence, "image" => image_url,
+      # Search Console asks every Event for a description (2026-10-27); a date
+      # with none of its own says what and where in a line.
+      "description" => description.to_s.truncate(500).presence ||
+        [ "#{payload[:title]}#{" at #{pv[:name]}" if pv}", show.date_and_time.strftime("%A, %B %-d, %Y at %-l:%M %p") ].join(", ") + ".",
+      "image" => image_url,
       "typicalAgeRange" => (selected.effective_minimum_age && "#{selected.effective_minimum_age}-"),
       "organizer" => { "@type" => "Organization", "name" => @organization.name, "url" => tickets_box_office_url(org: @ticketing_profile.slug) },
+      "performer" => { "@type" => "PerformingGroup", "name" => @production.name },
       "location" => pv && { "@type" => "Place", "name" => pv[:name],
                             "address" => { "@type" => "PostalAddress", "streetAddress" => pv[:address1], "addressLocality" => pv[:city],
                                            "addressRegion" => pv[:state], "postalCode" => pv[:postal_code], "addressCountry" => "US" }.compact },
       "offers" => payload[:tiers].map { |tier|
         { "@type" => "Offer", "name" => tier[:name], "price" => format("%.2f", tier[:all_in_price_cents] / 100.0), "priceCurrency" => "USD",
-          "availability" => tier[:remaining]&.zero? ? "https://schema.org/SoldOut" : "https://schema.org/InStock", "url" => page_url }
+          "availability" => tier[:remaining]&.zero? ? "https://schema.org/SoldOut" : "https://schema.org/InStock", "url" => page_url,
+          "validFrom" => tier[:on_sale_from] }.compact
       }
     }.compact
   end
 %>
 <% content_for :title, "#{share_title} · #{@organization.name}" %>
 <% content_for :head do %>
+  <%= canonical_link_tag(URI(page_url).path) unless @preview %>
   <% if structured %><script type="application/ld+json"><%= json_escape(structured.to_json).html_safe %></script><% end %>
   <meta name="description" content="<%= share_description.to_s.truncate(160) %>">
   <meta property="og:title" content="<%= share_title %> · <%= @organization.name %>">

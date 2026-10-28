@@ -19,8 +19,11 @@ class TicketCheckout
   # at_door: the door selling to someone in front of them, which works after
   # online sales close and with any ticket type still on the show. via: the
   # short link code the buyer arrived through (the cs_via cookie), remembered
-  # on the order so the Links page can say what each link sold.
+  # on the order so the Links page can say what each link sold. Before the
+  # door opens (TicketListing#door_ahead?) a door sale is presale and goes
+  # exactly as an online one: what's on sale online, at its online price.
   def self.start!(listing:, quantities:, code: nil, channel: "online", client_ip: nil, referrer: nil, replacing: nil, at_door: false, via: nil, campaign: nil)
+    at_door = false if at_door && listing.door_ahead?
     if at_door
       raise Error, "This show was canceled." if listing.status == "canceled" || listing.show.canceled
     else
@@ -150,7 +153,7 @@ class TicketCheckout
     raise Error, "This order can't be changed anymore." unless order.pending?
 
     listing = order.ticket_listing
-    offers = listing.product_offers(at_door: order.channel.start_with?("door_")).index_by(&:id)
+    offers = (order.channel.start_with?("door_") ? listing.door_product_offers : listing.product_offers).index_by(&:id)
     wanted = quantities.to_h.filter_map { |id, count|
       count = count.to_i.clamp(0, MAX_PER_PRODUCT)
       [ id.to_i, count ] if count.positive? && offers.key?(id.to_i)

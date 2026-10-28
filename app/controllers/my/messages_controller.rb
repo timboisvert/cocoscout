@@ -200,10 +200,12 @@ class My::MessagesController < ApplicationController
       return
     end
 
-    # For system-generated messages with a production, reply goes to the production team
-    # This creates a NEW conversation thread (not nested under the system message)
-    # so it shows up properly in /manage/messages for the production team
-    if root_message.system_generated? && root_message.effective_production.present?
+    # For system-generated (or senderless) messages with a production, reply goes to
+    # the production team. This creates a NEW conversation thread (not nested under
+    # the system message) so it shows up properly in /manage/messages for the team.
+    # Mirrors Manage::MessagesController — a message with no sender has no one else
+    # to reply to.
+    if (root_message.system_generated? || root_message.sender.nil?) && root_message.effective_production.present?
       message = MessageService.send_to_production_team(
         production: root_message.effective_production,
         sender: Current.user,

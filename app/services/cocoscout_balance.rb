@@ -19,9 +19,14 @@
 #               released back, which the next run spends through
 #               PayoutFundingCredit, not from here).
 #
-# Pooling is on for theaters with ticketing switched on. Anyone else keeps
-# today's remittance: course and contract money rides the payout run to
-# their own Stripe account, and only ticket money (none) is spendable here.
+# Pooling is on for every Pro organization, ticketing or not (Tim,
+# 2026-10-25: "incoming payments would all just go into our balance"): the
+# balance page is Pro, and every Pro organization can reach it. A non-Pro
+# organization (courses only) that has never been Pro keeps the old
+# remittance: its course share rides the payout run to its own Stripe account.
+# Pooling sticks (organizations.balance_pooled_at): one that leaves Pro keeps
+# its one ledger, and LapsedBalanceSweepJob sends its balance to its bank
+# each day, since it can no longer open the balance page.
 class CocoScoutBalance
   SETTLE_AFTER = TicketBalance::SETTLE_AFTER
   OTHER_CREDITS = %w[course_registration contract_payment].freeze
@@ -37,7 +42,12 @@ class CocoScoutBalance
   end
 
   def self.pooled?(organization)
-    organization.ticketing_profile&.enabled? == true
+    return true if organization.balance_pooled_at.present?
+    return false unless organization.feature_available?(:ticketing) || organization.ticketing_profile&.enabled? == true
+
+    # Stamped the first time it's seen pooling, so pooling outlasts the plan.
+    organization.update_column(:balance_pooled_at, Time.current) if organization.persisted?
+    true
   end
 
   def self.summary(organization)

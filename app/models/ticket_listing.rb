@@ -134,6 +134,29 @@ class TicketListing < ApplicationRecord
     production_ticketing.product_offers
   end
 
+  # Before this date's door opens (DoorTonight :before), the door can sell
+  # ahead but checks nobody in, and sells what's on sale online at its online
+  # price (Tim, 2026-10-23).
+  def door_ahead?(at = Time.current)
+    DoorTonight.phase(self, at: at) == :before
+  end
+
+  # The ticket types the door sells: on the night, every type on the show
+  # that sells at the door; ahead, only the ones selling online right now (no
+  # door-only types, sales windows kept, no code-only ones).
+  def door_tiers(at = Time.current)
+    tiers = ticket_tiers.active
+    return tiers.select(&:door_sellable?) unless door_ahead?(at)
+    return [] unless selling?(at)
+
+    tiers.select { |tier| tier.selling?(at) && !tier.hidden? }
+  end
+
+  # The products the door sells along with tickets: online's ahead.
+  def door_product_offers(at = Time.current)
+    product_offers(at_door: !door_ahead?(at))
+  end
+
   def starts_at
     show.date_and_time
   end
