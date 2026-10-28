@@ -174,8 +174,10 @@ screen.
 
 This take no longer shows the door's button before the terms are
 accepted. The Oct 19 take does, and Apple didn't object to it, so send
-both: this one as "1 Existing user", the Oct 19 one renamed "1b Existing
-user, before setup".
+both: this one as "1 Existing user" (filmed 10/28, a screen recording:
+Apple's terms come out clear in one), and "1b Existing user, before
+setup", the first 31 seconds of the Oct 19 take (sign in, Not now, the
+Sell button before the terms), cut from `not for Apple/1a existing user`.
 
 The app's menu is the My pages only (Tim, 2026-10-19): Tap to Pay on
 iPhone's setup lives on Settings, never as a menu tile.
