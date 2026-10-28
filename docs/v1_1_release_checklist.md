@@ -7,7 +7,7 @@ built). What's left is release work, and most of it is yours.
 ## The rule
 
 V1.1 is never deployed until **both** V1 app reviews pass (iOS build 5,
-submitted 2026-10-15; Android). V1 installs read `path-configuration.json`
+submitted 2026-10-15, APPROVED 2026-10-28; Android, still in Play review). V1 installs read `path-configuration.json`
 and `native_menu`, which V1.1 leaves untouched; V1.1 builds say "nav 2" in
 their user agent and read `nav-2/path-configuration.json`, so the server
 side can go out before the V1.1 apps and V1 phones won't notice.
