@@ -40,8 +40,12 @@ RSpec.describe "Joining mailing lists at ticket checkout", type: :request do
     expect(boxes(house_order)).to eq([])
   end
 
-  it "never asks at the door" do
-    listing = listing_for(dans)
+  it "never asks at the door, once the door is open" do
+    # Before the door opens a door sale is a presale and goes as an online one
+    # (main 7472c4fe), so the show has to be tonight.
+    listing = TicketListing.create!(show: create(:show, production: dans, date_and_time: 1.hour.from_now), status: "on_sale")
+                           .tap { |l| l.ticket_tiers.create!(name: "General", price_cents: 0, quantity: 50) }
+    expect(listing.door_ahead?).to be(false)
     order = TicketCheckout.start!(listing: listing, quantities: { listing.ticket_tiers.first.id.to_s => "1" }, channel: "door_card", at_door: true)
     expect(boxes(order)).to eq([])
   end

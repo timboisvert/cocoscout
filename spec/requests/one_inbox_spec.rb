@@ -23,13 +23,18 @@ RSpec.describe "The one Messages inbox", type: :request do
   let!(:moonlight_show) { create(:production, organization: moonlight, name: "Open Mic") }
   let(:moonlight_performer) { create(:person, name: "Pat Performer", user: create(:user)) }
 
+  # A person's message keeps them as sender only while they're the one signed
+  # in (MessageService's sender guard, main 0e9a6aa5), so each thread is
+  # written as its author.
   let!(:performer_thread) do
     Current.organization = starlight
+    Current.session = create(:session, user: starlight_owner)
     MessageService.create_message(sender: starlight_owner, recipients: [ sam_person ], subject: "Your call time Friday", body: "7pm please",
                                   message_type: :direct, visibility: :personal, production: starlight_show)
   end
   let!(:production_thread) do
     Current.organization = moonlight
+    Current.session = create(:session, user: sam)
     MessageService.create_message(sender: sam, recipients: [ moonlight_performer ], subject: "Open Mic lineup", body: "You're on third",
                                   message_type: :direct, visibility: :personal, production: moonlight_show)
   end
@@ -37,6 +42,7 @@ RSpec.describe "The one Messages inbox", type: :request do
   before do
     performer_thread && production_thread
     Current.organization = nil
+    Current.session = nil
     post handle_signin_path, params: { email_address: sam.email_address, password: password }
   end
 

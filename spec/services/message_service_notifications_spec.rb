@@ -33,6 +33,7 @@ RSpec.describe "Automated notices become Notifications" do
     let(:manager) { create(:user) }
 
     def send_voiced(custom_words)
+      Current.session = create(:session, user: manager) # the manager is the one signed in and sending
       MessageService.send_direct(sender: manager, recipient_person: person, subject: "You're cast in Sketch Night", body: "<p>Call is 6:30.</p>",
                                  organization: org, template_key: "cast_notification", system_generated: true, custom_words: custom_words)
     end
