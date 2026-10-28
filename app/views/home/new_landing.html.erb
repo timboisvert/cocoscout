@@ -20,7 +20,7 @@
           <%= render "shared/button", text: "Start free", path: signup_path, variant: "primary", size: "large" %>
           <%= render "shared/button", text: "Compare plans", path: "#tiers", variant: "outline", size: "large" %>
         </div>
-        <p class="mt-5 text-sm text-slate-500">Free for producers to start · free forever for performers and staff.</p>
+        <p class="mt-5 text-sm text-slate-500">Free for producers to start · free forever for performers and staff · <a href="#app" class="font-semibold text-pink-600 hover:text-pink-700">now on iPhone and Android</a></p>
       </div>
     </section>
 
@@ -280,6 +280,8 @@
         </div>
       </div>
     </section>
+
+    <%= render "shared/marketing/get_the_app" %>
 
     <%# ============================ FINAL CTA BAND ============================ %>
     <section class="w-full bg-pink-500 text-white px-6 py-16">

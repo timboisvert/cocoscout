@@ -1,0 +1,37 @@
+<% content_for :title, "Get the CocoScout app" %>
+
+<%# cocoscout.com/app: the one address to put on a sign at the door, in a
+    message to the cast, or in an Instagram bio. A phone never sees this page
+    (HomeController#app sends it to its own store); a desktop gets both
+    badges and a QR code that scans to this same address. %>
+<div class="min-h-screen bg-[#f9f9f7]">
+  <%= render "shared/marketing/header" %>
+
+  <main class="w-full px-6 py-16 sm:py-24 bg-gradient-to-br from-pink-50 via-white to-slate-50">
+    <div class="max-w-5xl mx-auto flex flex-col md:flex-row items-center gap-12 md:gap-16">
+      <div class="flex-1 min-w-0">
+        <p class="text-pink-500 font-bold text-sm uppercase tracking-wide mb-3">The CocoScout app</p>
+        <h1 class="text-4xl sm:text-5xl font-bold text-slate-900 coustard-regular leading-tight mb-4">Your shows, your messages, your door.</h1>
+        <p class="text-lg text-slate-600 leading-relaxed mb-7">Free for performers and staff. Sign in with the account you already have.</p>
+
+        <%= render "shared/store_badges" %>
+
+        <div class="mt-8 flex items-center gap-5">
+          <div class="w-40 h-40 flex-shrink-0 rounded-xl border border-slate-200 bg-white p-2.5" data-app-qr>
+            <%= link_qr_svg(@app_url) %>
+          </div>
+          <p class="text-sm text-slate-500 max-w-xs">
+            Point your phone's camera here, or type <span class="font-semibold text-slate-800">cocoscout.com/app</span>.
+            On a phone, that address opens the store directly.
+          </p>
+        </div>
+      </div>
+
+      <div class="w-[240px] sm:w-[264px] flex-shrink-0 rounded-[44px] bg-slate-900 p-2.5 shadow-2xl">
+        <%= image_tag "app/door.png", alt: "The CocoScout app: the Door, checking people in", class: "block w-full h-auto rounded-[34px]" %>
+      </div>
+    </div>
+  </main>
+
+  <%= render "shared/marketing/footer" %>
+</div>

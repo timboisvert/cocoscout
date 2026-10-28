@@ -11,6 +11,9 @@
                                    an embedded walkthrough video (video_url).
       actions         (optional) — array of hashes handed to shared/button
                                    (text:, path:, ...). First is pink, rest secondary.
+      dismiss_text    (optional) — a secondary "Not now" button after the
+                                   actions that dismisses the guide, for a
+                                   nudge whose one action leaves the page.
       cards           (optional) — array of { icon:, text:, description:, path: }
                                    rendered as the boxed shared/module_actions
                                    grid. Use instead of (or after) a step list
@@ -32,6 +35,7 @@
   body            = local_assigns.fetch(:body)
   actions         = local_assigns.fetch(:actions, [])
   cards           = local_assigns.fetch(:cards, [])
+  dismiss_text    = local_assigns[:dismiss_text]
   variant         = local_assigns.fetch(:variant, "standard")
   default_visible = local_assigns.fetch(:default_visible, true)
   welcome         = variant == "welcome"
@@ -64,10 +68,15 @@
         <%= render "shared/module_actions", actions: cards %>
       </div>
     <% end %>
-    <% if actions.any? %>
+    <% if actions.any? || dismiss_text.present? %>
       <div class="mt-4 flex flex-wrap items-center gap-2">
         <% actions.each_with_index do |action, i| %>
           <%= render "shared/button", { variant: i.zero? ? "primary" : "secondary", size: "small" }.merge(action) %>
+        <% end %>
+        <% if dismiss_text.present? %>
+          <%= button_to guide_dismiss_path(guide_key), method: :post, class: "inline-block" do %>
+            <%= render "shared/button", text: dismiss_text, variant: "secondary", size: "small", type: :submit %>
+          <% end %>
         <% end %>
       </div>
     <% end %>

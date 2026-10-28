@@ -28,6 +28,18 @@
     </div>
   <% end %>
 
+  <%# On a phone's browser, once: get the app. One button, for this phone's
+      own store; "Not now" puts it away for good, like every intro guide.
+      Never inside the app, never on a desktop. %>
+  <% if (store = phone_store) %>
+    <%= render "shared/intro_guide",
+          guide_key: "get_the_app",
+          title: "Get the CocoScout app",
+          body: "<p>Everything here, plus a buzz when you're cast, a show changes, or someone writes. And the camera for the door.</p>".html_safe,
+          actions: [ { text: AppStores.button(store), path: AppStores.url(store), type: :link, rel: "noopener" } ],
+          dismiss_text: "Not now" %>
+  <% end %>
+
   <!-- One-shot greeting after joining an org via its public /join link -->
   <% if @just_joined_organization %>
     <%= render "shared/alert_panel",

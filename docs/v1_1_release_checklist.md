@@ -18,6 +18,13 @@ side can go out before the V1.1 apps and V1 phones won't notice.
       a phone, the one Messages inbox (pills, the For chips, opening a
       thread from the other organization asks first), the People Picker on
       the casting board and vacancies, Notifications.
+- [ ] Look over "Get the app" (built 2026-10-28): the section at the bottom
+      of `/`, `/for-performers` and `/for-producers`, the footer badges,
+      `/app` on a desktop (badges + QR) and on a phone (straight to its
+      store), the one-time nudge on My Home from a phone's browser, and the
+      two links in every email's footer. The screenshots are the V1 store
+      ones ("My Calendar"); recapture from the simulator once V1.1 is the
+      app, so they say "Home".
 - [ ] Decide the app versions. Today: iOS `MARKETING_VERSION = 1.0`,
       `CURRENT_PROJECT_VERSION = 5` (bump to 1.1 / 6 for the V1.1 build);
       Android `versionName = "1.2"`, `versionCode = 3` (bump both). The

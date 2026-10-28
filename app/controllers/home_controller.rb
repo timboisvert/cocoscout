@@ -8,7 +8,7 @@ class HomeController < ApplicationController
   # The app doesn't carry the marketing site: App Review rejects an app that
   # shows a website (and these pages sell Pro). Links to them open in Safari
   # (path-configuration.json); a redirect here lands on My, or the app's welcome screen.
-  before_action :keep_out_of_the_app, only: %i[new_landing new_performers new_producers pricing sketchfest]
+  before_action :keep_out_of_the_app, only: %i[new_landing new_performers new_producers pricing sketchfest app]
 
   # Use the public facing layout
   layout "home"
@@ -37,6 +37,16 @@ class HomeController < ApplicationController
   # page is not itself a referral — scanning the code lands on /sketchfest,
   # which does the attribution.
   def sketchfest_qr; end
+
+  # cocoscout.com/app. A phone is sent straight to its own store, so nobody
+  # on a phone ever sees two badges; everyone else gets the page with both
+  # badges and a QR code that scans to this same address.
+  def app
+    platform = AppStores.platform(request.user_agent)
+    return redirect_to AppStores.url(platform), allow_other_host: true if platform
+
+    @app_url = get_the_app_url
+  end
 
   private
 

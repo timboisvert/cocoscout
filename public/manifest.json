@@ -1,0 +1,18 @@
+{
+  "name": "CocoScout",
+  "short_name": "CocoScout",
+  "description": "Your shows, your messages, your door.",
+  "start_url": "/my",
+  "display": "browser",
+  "background_color": "#ffffff",
+  "theme_color": "#ec4899",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "prefer_related_applications": true,
+  "related_applications": [
+    { "platform": "play", "id": "com.cocoscout.app", "url": "https://play.google.com/store/apps/details?id=com.cocoscout.app" },
+    { "platform": "itunes", "url": "https://apps.apple.com/app/cocoscout/id6821995221" }
+  ]
+}

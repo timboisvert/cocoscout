@@ -37,6 +37,13 @@ module NativeAppHelper
     NativeAppVersion.production_mode?(request.user_agent)
   end
 
+  # The store this phone's web browser belongs to (:ios or :android), or nil
+  # on a desktop and inside the app itself. For "get the app" nudges that
+  # name one store, never two.
+  def phone_store
+    AppStores.platform(request.user_agent)
+  end
+
   # The Android app (Hotwire Native Android's user agent says so); the
   # iPhone app otherwise.
   def native_android?

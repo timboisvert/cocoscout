@@ -137,6 +137,8 @@
           <a href="<%= @email_settings_url %>">Email settings</a> &middot;
           <a href="mailto:<%= CocoScoutIdentity::EMAIL %>"><%= CocoScoutIdentity::EMAIL %></a>
         </p>
+        <p class="footer-note">Get the CocoScout app for your shows, messages and pay, with a buzz when something changes:
+          <a href="<%= AppStores::APP_STORE_URL %>">iPhone</a> &middot; <a href="<%= AppStores::PLAY_STORE_URL %>">Android</a></p>
         <p class="footer-note"><%= CocoScoutIdentity::LEGAL_NAME %> &middot; <%= CocoScoutIdentity::ADDRESS_LINES.join(", ") %></p>
       <% end %>
     </div>

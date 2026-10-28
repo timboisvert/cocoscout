@@ -20,7 +20,7 @@
           <%= render "shared/button", text: "Create your free account", path: signup_path, variant: "primary", size: "large" %>
           <%= render "shared/button", text: "Find a mic", path: mics_home_path, variant: "outline", size: "large" %>
         </div>
-        <p class="mt-5 text-sm text-slate-500">Free for performers and staff members. Always.</p>
+        <p class="mt-5 text-sm text-slate-500">Free for performers and staff members. Always. · <a href="#app" class="font-semibold text-pink-600 hover:text-pink-700">Now on iPhone and Android</a></p>
       </div>
     </section>
 
@@ -72,6 +72,8 @@
         </p>
       </div>
     </section>
+
+    <%= render "shared/marketing/get_the_app" %>
 
     <%# ============================ CTA BAND ============================ %>
     <section class="w-full bg-pink-500 text-white px-6 py-16">

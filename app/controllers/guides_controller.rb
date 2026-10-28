@@ -19,6 +19,7 @@ class GuidesController < ApplicationController
     ticketing_intro
     talent_welcome
     profile_intro
+    get_the_app
   ].freeze
 
   def dismiss

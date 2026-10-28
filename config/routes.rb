@@ -54,6 +54,10 @@ Rails.application.routes.draw do
   get "/privacy", to: "legal#privacy", as: "privacy"
   get "/support", to: "legal#support", as: "support"
 
+  # cocoscout.com/app: the one address for the app. A phone goes straight to
+  # its own store; a desktop sees both badges and a QR code.
+  get "/app", to: "home#app", as: "get_the_app"
+
   # Back into the iOS app from its secure sheet (Stripe bank setup).
   get "/app/return", to: "app_returns#show", as: "app_return"
 
