@@ -79,21 +79,28 @@ What's in the repo:
    - **General:** name it `Release`. Tick "Restrict editing" if offered.
    - **Environment:** Xcode "Latest Release", macOS "Latest Release". Leave
      "Clean" on.
-   - **Start Conditions:** delete the default "Branch Changes" condition. Add
-     **Tag Changes** → Tags: **Custom Tags** → "Begins with" `ios-v`. Leave
-     auto-cancel off.
+   - **Start Conditions:** delete the default "Branch Changes" condition
+     (the wizard only offers a branch, so this is an edit after saving:
+     Integrate → Manage Workflows, or ⌘9 → Cloud → right-click → Edit
+     Workflow). Add **Tag Changes** → **Custom Tags** → `ios-v`. Until it's
+     changed, every push to main builds.
    - **Actions:** delete any default Build/Test actions. Add **Archive**,
-     platform iOS, scheme **CocoScout**, Deployment Preparation **TestFlight
-     and App Store**.
+     platform iOS, scheme **CocoScout**, Deployment Preparation **App Store
+     Connect** (one choice only; the other, "TestFlight (Internal Testing
+     Only)", can never go to review, and "None" uploads nothing).
    - **Post-Actions:** add **TestFlight Internal Testing**, artifact from the
      Archive action, group: your internal testers group (create one in App
      Store Connect → TestFlight → Internal Testing if there is none; Tim
      alone is enough).
    - Optional: **Post-Actions → Notify** by email on failure.
-5. Save. Xcode Cloud doesn't build until a matching tag arrives. The first
-   run is the next version's tag. App Store Connect stops taking 1.1 builds
-   once 1.1 is released, so a trial run needs the version bumped first
-   (1.1.1 or 1.2); its build then just sits in TestFlight until chosen.
+5. Save. Xcode Cloud doesn't build until a matching tag arrives.
+
+Done 2026-10-29: workflow made, tag start condition, App Store Connect
+upload, TestFlight internal post-action. Tested with `ios-v1.1` (before the
+upload was switched on) and `ios-v1.1-2`, while 1.1 was still in review. App
+Store Connect stops taking 1.1 builds once 1.1 is released, so the next tag
+needs the version bumped first. Where to see it: Xcode's Report navigator
+(⌘9) → Cloud, or Integrate → Manage Workflows.
 
 Cost: the Apple Developer Program includes 25 compute hours a month; one
 archive takes well under one.
