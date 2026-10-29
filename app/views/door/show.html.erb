@@ -194,7 +194,7 @@
         <% if can_tap %>
           <%# Apple 5.2 to 5.4: first, never greyed out, and named Tap to Pay on iPhone beside the other ways to pay (plain Tap to Pay on Android). %>
           <%= render "shared/button", text: tap_to_pay_name, variant: "primary", size: "large", type: :submit, name: "kind", value: "tap",
-                classes: "w-full justify-center", data: { door_sell_target: "tapButton" } %>
+                classes: "w-full justify-center", never_greyed: true, data: { door_sell_target: "tapButton" } %>
         <% end %>
         <%= render "shared/button", text: card_label, variant: can_tap ? "secondary" : "primary", size: "large", type: :submit, name: "kind", value: "card",
               classes: "w-full justify-center disabled:opacity-50", data: { door_sell_target: "cardButton" } %>

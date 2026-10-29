@@ -26,6 +26,8 @@
   #            button in a modal that sits outside that form
   #   name, value: (type: :submit) sent with the form when this button
   #            submits it, for a form with several ways to submit
+  #   never_greyed: true leaves out the disabled look, for a button that
+  #            must never look greyed out (Tap to Pay, Apple 5.3)
   #
   # Variant Options:
   #   "primary" - Pink filled button (bg-pink-500 hover:bg-pink-600)
@@ -58,8 +60,10 @@
   title = local_assigns[:title]
   title_attr = title.present? ? "title=\"#{ERB::Util.html_escape(title)}\" aria-label=\"#{ERB::Util.html_escape(title)}\"".html_safe : nil
 
-  # Base classes for all buttons. A disabled button looks it, in every variant.
-  base_classes = "inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+  # Base classes for all buttons. A disabled button looks it, in every
+  # variant, unless it must never look greyed out (never_greyed).
+  base_classes = "inline-flex items-center justify-center gap-2 font-medium rounded transition-colors cursor-pointer whitespace-nowrap"
+  base_classes += " disabled:opacity-50 disabled:cursor-not-allowed" unless local_assigns[:never_greyed]
 
   # Variant-specific classes
   variant_classes = case variant
