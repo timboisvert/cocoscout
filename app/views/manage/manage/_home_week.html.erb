@@ -1,14 +1,15 @@
 <%#
   Home on desktop (Design B, Tim 2026-10-27): the days across the top, a
   slim row per show stacked by time under its day, three state chips on
-  each. Seven days, or three (the toggle). A day with nothing on it narrows
-  to a sliver.
+  each; a day with staffing and no show gets a staffing row instead. Seven
+  days, or three (the toggle). A day with nothing on it narrows to a sliver.
 %>
 <%
   days = @home.days
   rows_by_day = @home.rows_by_day
   three = @home_days == 3
-  busy = days.index_with { |d| rows_by_day[d].any? }
+  staffing_days = @home.staffing_days
+  busy = days.index_with { |d| @home.busy?(d) }
   busy = days.index_with { true } if three || busy.values.none?
   columns = days.map { |d| busy[d] ? "minmax(0, 1fr)" : "44px" }.join(" ")
   slim_bg = "background: repeating-linear-gradient(135deg, #fafafa 0, #fafafa 6px, #f3f4f6 6px, #f3f4f6 12px);"
@@ -51,6 +52,8 @@
           <div class="text-[11px] text-gray-500 truncate">
             <% if rows.any? %>
               <%= pluralize(rows.size, "show") %><% if (sold = rows.sum { |r| r.tickets&.stats&.sold.to_i }).positive? %> · <%= sold %> sold<% end %>
+            <% elsif staffing_days[day] %>
+              Staffing only
             <% else %>
               Nothing yet
             <% end %>
@@ -69,6 +72,9 @@
         <div class="bg-white p-1.5 flex flex-col gap-1.5 min-h-[120px]" data-day-column="<%= day.iso8601 %>">
           <% rows_by_day[day].each do |row| %>
             <%= render "manage/manage/show_row", row: row, size: :grid %>
+          <% end %>
+          <% if staffing_days[day] %>
+            <%= render "manage/manage/staffing_row", day: day, staffing: staffing_days[day], size: :grid %>
           <% end %>
         </div>
       <% else %>

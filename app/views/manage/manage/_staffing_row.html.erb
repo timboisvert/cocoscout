@@ -1,0 +1,43 @@
+<%#
+  A day on Home with staffing and no show (a private party that isn't a
+  show in CocoScout, a work day; Tim, 2026-10-29): one row like a show's,
+  its hours and roles, then its staffing chip. The whole row goes to that
+  day on Staffing's Scheduling.
+
+  Locals:
+    day       the Date
+    staffing  a HomeWeek::Staffing (the day's shifts)
+    size      :grid (the desktop week; short words) or :phone (long words)
+%>
+<%
+  phone = local_assigns[:size] == :phone
+  shifts = staffing.shifts
+  from = shifts.map(&:starts_at).min
+  to = shifts.map(&:ends_at).max
+  roles = shifts.map { |s| s.house_role&.name }.compact.uniq
+  people = shifts.flat_map { |s| s.shift_assignments.reject(&:declined?).map(&:person) }.uniq
+  tone, short, long = home_staffing_chip(staffing)
+  hours = "#{from.strftime('%-l:%M %p')}–#{to.strftime('%-l:%M %p')}"
+%>
+<%= link_to manage_staffing_scheduling_path(day: day.iso8601),
+      class: "w-full text-left rounded-lg border border-gray-200 bg-white hover:border-pink-200 #{phone ? 'px-3 py-2.5' : 'px-1.5 py-1'} flex flex-col gap-1",
+      data: { home_staffing_day: day.iso8601 },
+      aria: { label: "Staffing, #{day.strftime('%A, %b %-d')}, #{hours}: open Scheduling" },
+      title: ([ hours, roles.join(", ") ] + [ people.map(&:name).join(", ").presence ]).compact.join(" · ") do %>
+  <span class="flex items-baseline gap-1.5 min-w-0 w-full <%= phone ? 'text-sm' : 'text-[11.5px]' %>">
+    <span class="font-bold tabular-nums flex-shrink-0 text-gray-900"><%= from.strftime("%-l:%M") %></span>
+    <span class="font-semibold truncate min-w-0 text-gray-900">Staffing<%= " · #{roles.join(', ')}" if phone && roles.any? %></span>
+    <% if phone %>
+      <span class="flex-shrink-0 ml-auto text-[11px] text-gray-500 tabular-nums">until <%= to.strftime("%-l:%M %p") %></span>
+    <% end %>
+  </span>
+  <span class="flex flex-wrap gap-1">
+    <span class="inline-flex items-center gap-1 rounded-full border px-1.5 py-px font-semibold whitespace-nowrap <%= phone ? 'text-[11px]' : 'text-[10.5px]' %> <%= HomeHelper::CHIP_TONES[tone] %>" data-chip="staffing" data-tone="<%= tone %>">
+      <svg class="<%= phone ? 'w-3.5 h-3.5' : 'w-3 h-3' %> flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z"/></svg>
+      <%= phone ? long : short %>
+    </span>
+  </span>
+  <% if phone && people.any? %>
+    <span class="text-xs text-gray-500 truncate"><%= people.map(&:name).to_sentence %></span>
+  <% end %>
+<% end %>

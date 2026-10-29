@@ -7,6 +7,8 @@
 <%
   day = @selected_day
   rows = @home.rows_by_day[day] || []
+  staffing = @home.staffing_days[day]
+  busy_day = ->(d) { @range.cover?(d) ? @home.busy?(d) : @show_dates.include?(d) }
   sold = rows.sum { |r| r.tickets&.stats&.sold.to_i }
   needing = rows.count { |r| [ home_ticket_chip(r.tickets), home_staffing_chip(r.staffing), home_cast_chip(r.cast) ].compact.any? { |t, _s, _l| t.in?(%i[warn bad]) } }
 %>
@@ -15,7 +17,7 @@
      data-day-swipe-prev-url-value="<%= manage_path(day: (day - 1).iso8601) %>"
      data-day-swipe-next-url-value="<%= manage_path(day: (day + 1).iso8601) %>"
      data-action="touchstart->day-swipe#start touchend->day-swipe#end">
-  <%= render "shared/day_strip", day: day, id: "home-jump", show_dates: @show_dates, months: @calendar_months,
+  <%= render "shared/day_strip", day: day, id: "home-jump", show_dates: @show_dates, months: @calendar_months, busy: busy_day,
         day_path: ->(d) { manage_path(day: d.iso8601) } %>
 
   <% if rows.any? %>
@@ -26,6 +28,12 @@
     <% rows.each do |row| %>
       <%= render "manage/manage/show_row", row: row, size: :phone %>
     <% end %>
+  <% elsif staffing %>
+    <div class="flex items-center justify-between text-xs text-gray-500 px-0.5">
+      <span>Staffing only</span>
+      <span><%= pluralize(staffing.shifts.size, "shift") %></span>
+    </div>
+    <%= render "manage/manage/staffing_row", day: day, staffing: staffing, size: :phone %>
   <% else %>
     <div class="bg-white border border-gray-200 rounded-lg px-4 py-6 text-center text-sm text-gray-500">Nothing on <%= day.strftime("%A") %>.</div>
   <% end %>

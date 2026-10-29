@@ -65,6 +65,25 @@ class HomeWeek
 
   def shows_on(day) = rows_by_day.fetch(day, []).map(&:show)
 
+  # { Date => Staffing } for the days with shifts and no show (a private
+  # party that isn't a show in CocoScout, a work day): the day still gets
+  # its own row, so the work someone's paid for shows on Home (Tim,
+  # 2026-10-29). Pro managers only, like the staffing chips.
+  def staffing_days
+    @staffing_days ||= days.each_with_object({}) do |day, out|
+      next if rows_by_day[day].any?
+
+      day_shifts = @shifts_by_day[day] || []
+      next if day_shifts.empty?
+
+      stats = slot_stats(day_shifts)
+      out[day] = Staffing.new(shifts: day_shifts, staffed: stats[:staffed], total: stats[:total], declined: stats[:declined], day_has_shifts: true)
+    end
+  end
+
+  # A day with a show, or with staffing and no show.
+  def busy?(day) = rows_by_day[day].any? || staffing_days.key?(day)
+
   # The range's slots: staffed of needed, and how many can't make it.
   def week_stats
     @week_stats ||= slot_stats(shifts)
@@ -146,7 +165,12 @@ class HomeWeek
     @week_finalized = staffing_on? && @organization.staffing_finalizations.where(week_start: days.map(&:beginning_of_week).uniq)
                                                    .where.not(finalized_at: nil).exists?
     @declined_this_range = @shifts.flat_map { |s| s.shift_assignments.select(&:declined?) }
-    @shifts_by_day = @shifts.group_by { |s| (s.source.try(:date_and_time) || s.starts_at).to_date }
+    # The day Staffing's week puts each shift on (WeekLoaders#staffing_day_for):
+    # its show's or rental's day when that's in range, else its own start.
+    @shifts_by_day = @shifts.group_by do |s|
+      anchor = (s.source.try(:date_and_time) || s.source.try(:starts_at))&.to_date
+      anchor && days.include?(anchor) ? anchor : s.starts_at.to_date
+    end
   end
 
   # A shift counts for a show when it's tied to that show, or (an evening
