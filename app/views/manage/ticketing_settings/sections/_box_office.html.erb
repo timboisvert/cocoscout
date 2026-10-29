@@ -78,6 +78,14 @@
         <p class="text-xs text-gray-500 mt-1">Buyers get the time, the place and their tickets again. Each order gets one reminder, sent at 10am.</p>
       </div>
 
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <div class="text-sm font-medium text-gray-700">Attach PDF tickets</div>
+          <p class="text-xs text-gray-500 mt-1">Off, buyers get their QR codes in the email. On, the email also carries a PDF with a page per ticket, for people who like to print. Either way, they can download the PDF from their order page.</p>
+        </div>
+        <%= render "shared/toggle_switch", form: f, field: :attach_pdf_tickets, aria_label: "Attach PDF tickets" %>
+      </div>
+
       <% if profile.enabled? %>
         <div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 flex items-center justify-between gap-4">
           <div>

@@ -520,6 +520,28 @@ RSpec.describe "Public ticketing", type: :request do
       expect(TicketOrderMailer.confirmation(order).reply_to).to eq([ "box@starsandgarters.com" ])
     end
 
+    # PDF tickets (advanced ticketing §7a): a page per ticket, from the order
+    # page, whether or not the organization attaches them to the email.
+    it "downloads the tickets as a PDF from the order page, and only once they're paid for" do
+      order = buy(2)
+      get tickets_order_pdf_path(token: order.token)
+      expect(response).to redirect_to(tickets_order_path(token: order.token))
+      expect(flash[:alert]).to eq("This order has no tickets to download.")
+
+      TicketOrderSettlement.settle!(order)
+      get tickets_order_path(token: order.token)
+      expect(response.body).to include("Download tickets (PDF)", tickets_order_pdf_path(token: order.token))
+
+      get tickets_order_pdf_path(token: order.token)
+      expect(response.media_type).to eq("application/pdf")
+      expect(response.headers["Content-Disposition"]).to include("attachment", "tickets-#{order.code}.pdf")
+      expect(response.body).to start_with("%PDF")
+      expect(response.body.scan(%r{/Type /Page\b}).size).to eq(2)
+
+      get tickets_order_pdf_path(token: "not-a-token")
+      expect(response).to have_http_status(:not_found)
+    end
+
     it "lets a phone camera open a ticket from its QR code" do
       order = buy(1)
       TicketOrderSettlement.settle!(order)

@@ -31,6 +31,10 @@ class TicketingTemplates
     { "name" => "order_url", "description" => "Link to the buyer's tickets" }
   ].freeze
 
+  # Set when the organization attaches PDF tickets (attach_pdf_tickets);
+  # blank otherwise, so the line about the PDF only shows when it's there.
+  PDF_VAR = { "name" => "pdf_attached", "description" => "Set when the tickets are attached as a PDF (blank otherwise)" }.freeze
+
   def self.v(*names)
     names.map { |n| n.is_a?(Hash) ? n : { "name" => n.to_s, "description" => n.to_s.humanize } }
   end
@@ -40,18 +44,20 @@ class TicketingTemplates
     # QR each), any products, and the order link under these words.
     { key: "ticket_order_confirmation", name: "Ticket Order Confirmation", channel: "email",
       subject: "Your tickets for {{show_title}}",
-      body: %(<p>Hi {{first_name}},</p><p>You're going to <strong>{{show_title}}</strong> at {{organization_name}}. Here {{ticket_count_verb}} your {{ticket_count}}: show the codes below at the door, on your phone or printed.</p>{{#refund_policy}}<p><strong>Refund policy:</strong> {{refund_policy}}</p>{{/refund_policy}}),
-      variables: BUYER_VARS + v({ "name" => "refund_policy", "description" => "The refund policy they bought under, in full (blank for comps and free tickets)" }) },
+      body: %(<p>Hi {{first_name}},</p><p>You're going to <strong>{{show_title}}</strong> at {{organization_name}}. Here {{ticket_count_verb}} your {{ticket_count}}: show the codes below at the door, on your phone or printed.</p>{{#pdf_attached}}<p>They're attached as a PDF too, one page per ticket, if you'd like to print them.</p>{{/pdf_attached}}{{#refund_policy}}<p><strong>Refund policy:</strong> {{refund_policy}}</p>{{/refund_policy}}),
+      variables: BUYER_VARS + v({ "name" => "refund_policy", "description" => "The refund policy they bought under, in full (blank for comps and free tickets)" },
+                                PDF_VAR) },
     { key: "ticket_purchase_confirmation", name: "Ticket Purchase Confirmation (several shows)", channel: "email",
       subject: "Your tickets for {{what}}",
-      body: %(<p>Hi {{first_name}},</p><p>You're going to {{show_count}} at {{organization_name}}{{#pass_name}} with your {{pass_name}}{{/pass_name}}: {{show_list}}. Each show's tickets are below: show the codes at the door, on your phone or printed.</p>{{#refund_policy}}<p><strong>Refund policy:</strong> {{refund_policy}}</p>{{/refund_policy}}),
+      body: %(<p>Hi {{first_name}},</p><p>You're going to {{show_count}} at {{organization_name}}{{#pass_name}} with your {{pass_name}}{{/pass_name}}: {{show_list}}. Each show's tickets are below: show the codes at the door, on your phone or printed.</p>{{#pdf_attached}}<p>They're attached as a PDF too, one page per ticket, if you'd like to print them.</p>{{/pdf_attached}}{{#refund_policy}}<p><strong>Refund policy:</strong> {{refund_policy}}</p>{{/refund_policy}}),
       variables: v({ "name" => "first_name", "description" => "Buyer's first name" },
                    { "name" => "organization_name", "description" => "The theater selling the tickets" },
                    { "name" => "what", "description" => "The pass's name, or the shows' titles" },
                    { "name" => "show_count", "description" => "e.g. 2 shows" },
                    { "name" => "show_list", "description" => "Each show with its date, e.g. Breaking Dawn Part 1 (Fri, Oct 10) and Part 2 (Sat, Oct 11)" },
                    { "name" => "pass_name", "description" => "The pass, when they bought one (blank otherwise)" },
-                   { "name" => "refund_policy", "description" => "The refund policy they bought under; each show's when they differ" }) },
+                   { "name" => "refund_policy", "description" => "The refund policy they bought under; each show's when they differ" },
+                   PDF_VAR) },
     { key: "ticket_pass_bought", name: "Credit pass bought", channel: "email",
       subject: "Your {{pass_name}}",
       body: %(<p>Hi {{first_name}},</p><p>Your {{pass_name}} from {{organization_name}} is ready: {{credits_words}} for {{covers}}, to use by {{ends_on}}. Pick your shows on your pass's page below whenever you like; each credit becomes a ticket.</p>),

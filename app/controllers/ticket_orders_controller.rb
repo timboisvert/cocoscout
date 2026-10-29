@@ -45,6 +45,17 @@ class TicketOrdersController < ApplicationController
     send_data ics, filename: "#{@listing.slug}.ics", type: "text/calendar"
   end
 
+  # "Download tickets (PDF)": every ticket on the order, a page each
+  # (TicketPdf). Small enough to draw on the request, like an invoice.
+  def pdf
+    document = TicketPdf.new(@order)
+    unless @order.paid? && document.tickets?
+      return redirect_to tickets_order_path(token: @order.token, **embed_params), alert: "This order has no tickets to download."
+    end
+
+    send_data document.render, filename: TicketPdf.filename(@order), type: "application/pdf", disposition: "attachment"
+  end
+
   def resend
     TicketOrderConfirmationJob.perform_later(@order.id) if @order.paid? && @order.buyer_email.present?
     redirect_to tickets_order_path(token: @order.token, **embed_params), notice: "We've sent your tickets to #{@order.buyer_email} again."

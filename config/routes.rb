@@ -388,6 +388,7 @@ Rails.application.routes.draw do
     get  "orders/:token",              to: "ticket_orders#show",      as: "order"
     get  "orders/:token/receipt",      to: "ticket_orders#receipt",   as: "order_receipt"
     get  "orders/:token/calendar",     to: "ticket_orders#calendar",  as: "order_calendar"
+    get  "orders/:token/pdf",          to: "ticket_orders#pdf",       as: "order_pdf"
     post "orders/:token/resend",       to: "ticket_orders#resend",    as: "order_resend"
     post "orders/:token/deals/:offer", to: "ticket_orders#add_deal",  as: "order_add_deal"
     get  "orders/:token/reminders",    to: "ticket_orders#reminders", as: "order_reminders"

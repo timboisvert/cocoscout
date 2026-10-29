@@ -18,7 +18,9 @@ class TicketOrderMailer < ApplicationMailer
     @receipt = order.total_cents.positive?
     # Deals on another show they can still add (TicketCheckout.deals_after).
     @deals = TicketCheckout.deals_after(order)
-    deliver_tickets(order, **render_words("ticket_order_confirmation", self.class.ticket_variables(order)))
+    pdf = pdf_tickets(order)
+    attachments[TicketPdf.filename(order)] = { mime_type: "application/pdf", content: pdf } if pdf
+    deliver_tickets(order, **render_words("ticket_order_confirmation", self.class.ticket_variables(order).merge(pdf_attached: pdf ? "yes" : "")))
   end
 
   # A few days before the show (as many as the theater chose): the time,
@@ -63,6 +65,8 @@ class TicketOrderMailer < ApplicationMailer
     @orders = purchase.ticket_orders.select(&:paid?)
     @order = @orders.first
     pass = @order.tickets.first&.ticket_pass
+    pdf = pdf_tickets(@orders)
+    attachments["tickets.pdf"] = { mime_type: "application/pdf", content: pdf } if pdf
     shows = @orders.map { |order| "#{order.ticket_listing.display_title} (#{order.ticket_listing.show.date_and_time.strftime('%a, %b %-d')})" }
     words = render_words("ticket_purchase_confirmation", {
       first_name: @order.buyer_name.to_s.split.first.presence || "there",
@@ -71,7 +75,8 @@ class TicketOrderMailer < ApplicationMailer
       show_count: ActionController::Base.helpers.pluralize(@orders.size, "show"),
       show_list: shows.to_sentence,
       pass_name: pass&.name.to_s,
-      refund_policy: purchase_refund_words(@orders)
+      refund_policy: purchase_refund_words(@orders),
+      pdf_attached: pdf ? "yes" : ""
     })
     @intro_html = words[:body_html]
     @sections = @orders.map do |order|
@@ -228,6 +233,18 @@ class TicketOrderMailer < ApplicationMailer
   end
 
   private
+
+  # The tickets as one PDF (TicketPdf), when the organization attaches them
+  # (Ticketing → Settings → Box office). These emails go out only from
+  # TicketOrderConfirmationJob and TicketPurchaseConfirmationJob, so the PDF
+  # is drawn in a job, never on a request.
+  def pdf_tickets(orders)
+    orders = Array(orders)
+    return nil unless TicketingProfile.for(orders.first.organization).attach_pdf_tickets?
+
+    pdf = TicketPdf.new(orders)
+    pdf.render if pdf.tickets?
+  end
 
   # One policy for the whole purchase, or each show's when they differ.
   def purchase_refund_words(orders)

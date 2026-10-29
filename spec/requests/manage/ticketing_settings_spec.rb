@@ -106,6 +106,17 @@ RSpec.describe "Manage ticketing settings", type: :request do
       expect(response).to have_http_status(:unprocessable_content)
     end
 
+    it "attaches PDF tickets to the confirmation only once it's turned on" do
+      expect(TicketingProfile.for(org).attach_pdf_tickets?).to be(false)
+      get manage_ticketing_settings_section_path(section: "box_office")
+      expect(response.body).to include("Attach PDF tickets", "ticketing_profile[attach_pdf_tickets]")
+
+      patch manage_ticketing_settings_path, params: { ticketing_profile: { attach_pdf_tickets: "1" } }
+      expect(org.reload.ticketing_profile.attach_pdf_tickets?).to be(true)
+      patch manage_ticketing_settings_path, params: { ticketing_profile: { attach_pdf_tickets: "0" } }
+      expect(org.reload.ticketing_profile.attach_pdf_tickets?).to be(false)
+    end
+
     it "explains the fee switch with a real $20 ticket; the refund policy's fees are a toggle on its own tab" do
       get manage_ticketing_settings_section_path(section: "box_office")
       expect(response.body).to include("$21.42").and include("$18.62")

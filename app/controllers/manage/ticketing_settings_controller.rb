@@ -120,7 +120,7 @@ module Manage
     def update
       attrs = params.require(:ticketing_profile)
                     .permit(:slug, :support_email, :default_fee_mode, :default_max_per_order,
-                            :reminder_days_before, :enabled)
+                            :reminder_days_before, :attach_pdf_tickets, :enabled)
       # Closing a box office (or reopening it from here) is a superadmin's call;
       # managers open theirs with open_box_office.
       attrs.delete(:enabled) unless Current.user.superadmin?
