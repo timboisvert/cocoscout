@@ -63,7 +63,11 @@ What's in the repo:
 ### Tim's one-time steps (Xcode, about 15 minutes)
 
 1. Pull main, open `ios/CocoScout.xcodeproj` in Xcode.
-2. **Product → Xcode Cloud → Create Workflow…** Pick the CocoScout product
+2. **Integrate → Xcode Cloud → Create Workflow…** (Xcode 15 and later,
+   including 26.4; older guides say Product). Another way in: the Report
+   navigator (⌘9) → **Cloud** tab → Get Started. If the item is greyed out,
+   check Xcode → Settings → Accounts is signed in to the team, as Account
+   Holder, Admin or App Manager. Pick the CocoScout product
    (com.cocoscout.app, team 3Y9EQJP24Y). If Xcode asks to create the product
    in App Store Connect, it already exists: pick it.
 3. Xcode asks for access to the source: **Grant Access** to
