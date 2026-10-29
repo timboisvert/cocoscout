@@ -219,14 +219,15 @@ ActiveRecord::Base.transaction do
 
   profile = TicketingProfile.for(org)
   profile.update!(enabled: true, door_in_app: "always") # the reviewer finds the Door whatever day they look
-  # Tonight's show and the next two (three and ten days out) are on sale,
-  # each with two parties pre-sold at the box office (tickets still to
-  # scan), so the reviewer has a show at the door through a week of review.
+  # Tonight's show and the next two (three and ten days out) are on sale;
+  # tonight's has two parties sold at the door (tickets still to scan).
   listings = [ shows[1], shows[2], shows[3] ].map do |show|
     listing = TicketListing.find_by(show: show) || TicketListing.create!(show: show, status: "on_sale")
     general = listing.ticket_tiers.find_by(name: "General") || listing.ticket_tiers.create!(name: "General", price_cents: 1_500, quantity: 60)
     listing.update!(status: "on_sale")
-    if listing.ticket_orders.none?
+    # Only once the door is open: ahead of it a door sale is a presale that
+    # emails the buyer. Re-run on a later day and that day's parties are added.
+    if listing.ticket_orders.none? && !listing.door_ahead?
       door = TicketDoor.new(listing, manager_user)
       { "Avery Patel" => 2, "Sam Okafor" => 3 }.each do |name, count|
         order = door.sell({ general.id.to_s => count.to_s }, kind: "cash", buyer_name: name)
