@@ -22,7 +22,6 @@
         <% end %>
         <div class="divide-y divide-gray-100">
           <% @lists.each do |list| %>
-            <% shares = @shares[list.id] || [] %>
             <%= link_to manage_mailing_list_path(list), class: "flex items-center gap-3 px-6 py-3.5 hover:bg-gray-50 transition-colors" do %>
               <span class="min-w-0 flex-1">
                 <span class="flex flex-wrap items-center gap-2">
@@ -30,11 +29,8 @@
                   <% if list.main? %>
                     <span class="inline-flex items-center rounded-full border border-pink-200 bg-pink-50 px-2 py-0.5 text-[11px] font-medium text-pink-700">Main list</span>
                   <% end %>
-                  <% if shares.any? %>
-                    <span class="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">Shared with <%= shares.size == 1 ? shares.first.person.name : pluralize(shares.size, "person") %></span>
-                  <% end %>
                 </span>
-                <span class="block text-xs text-gray-500"><%= mailing_list_line(list, collects: @collects[list.id], shares: shares) %></span>
+                <span class="block text-xs text-gray-500"><%= mailing_list_line(list, collects: @collects[list.id]) %></span>
               </span>
               <span class="font-semibold tabular-nums text-gray-900"><%= number_with_delimiter(@counts[list.id].to_i) %></span>
               <%= chevron_svg %>

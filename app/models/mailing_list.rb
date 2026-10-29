@@ -13,8 +13,6 @@ class MailingList < ApplicationRecord
   has_many :followers, through: :mailing_list_memberships
   has_many :mailing_list_productions, dependent: :destroy
   has_many :productions, through: :mailing_list_productions
-  has_many :mailing_list_shares, dependent: :destroy
-  has_many :shared_people, through: :mailing_list_shares, source: :person
   has_many :follower_sources, dependent: :nullify
 
   normalizes :name, with: ->(name) { name.to_s.squish }

@@ -8,7 +8,7 @@
   rows = Array(rule["conditions"]).presence || [ { "type" => "bought", "target" => "any" } ]
   types = [ [ "Is on the list", "on_list" ], [ "Bought tickets to", "bought" ], [ "Never bought tickets to", "never_bought" ],
             [ "Came at least", "times_at_least" ], [ "Last bought", "last_bought" ], [ "Joined from", "joined_from" ] ]
-  kinds = [ [ "Ticket checkout", "checkout" ], [ "Added by hand", "manual" ], [ "A pasted list", "paste" ], [ "Contacts", "contacts" ], [ "A producer", "added_by_share" ] ]
+  kinds = [ [ "Ticket checkout", "checkout" ], [ "Added by hand", "manual" ], [ "A pasted list", "paste" ], [ "Contacts", "contacts" ] ]
   select_class = "px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
   row_html = lambda do |index, condition|
     capture do

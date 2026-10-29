@@ -17,7 +17,7 @@ module MailingListsHelper
   end
 
   # A list row's second line: where it collects and who can see it.
-  def mailing_list_line(list, collects:, shares:)
+  def mailing_list_line(list, collects:)
     return "Every production's checkout · added by hand" if list.main?
 
     parts = []

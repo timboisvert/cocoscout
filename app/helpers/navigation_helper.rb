@@ -138,7 +138,7 @@ module NavigationHelper
     # Mailing lists follows Ticketing: its lists fill from ticket checkout.
     if Current.user&.superadmin? || Current.organization&.manageable_by?(Current.user)
       pro_items << { label: "Mailing lists", path: manage_mailing_lists_path, icon: "mailing_lists", locked: !on_paid_plan, feature: :mailing_lists,
-                     active: %w[mailing_lists mailing_list_settings mailing_list_shares list_followers segments follower_emails].include?(controller_name) }
+                     active: %w[mailing_lists mailing_list_settings list_followers segments follower_emails].include?(controller_name) }
     end
     # The whole Pro group is for the organization's owners and managers
     # (PaidFeatureGate::MANAGER_ONLY_FEATURES); a production-team member sees
@@ -209,11 +209,6 @@ module NavigationHelper
     items << { label: "My Contracts", path: my_contracts_path, icon: "documents", active: controller_name == "contracts" } if Current.user&.has_contracts?
     items << { label: "My Payments", path: my_payments_path, icon: "payments", active: controller_name == "payments" }
     items << { label: "My Shifts", path: my_shifts_path, icon: "shifts", active: controller_name == "shifts" } if Current.user&.shows_my_shifts?
-    # Lists organizations share with them (Mailing lists, V1.1). On the
-    # website only: nothing goes in the app menu without Tim's say-so.
-    if Current.user&.has_follower_shares?
-      items << { label: "My Followers", path: my_followers_path, icon: "followers", active: controller_path == "my/followers", web_only: true }
-    end
     # No Door item here (Tim, 2026-10-17): the Door is the "Work the door"
     # bar under the menu (door_bar_item), on the website as in the app.
     # No Ticket Sales entry here (Tim, 2026-10-17): ticket information lives

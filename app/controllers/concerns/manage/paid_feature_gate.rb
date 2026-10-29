@@ -66,7 +66,6 @@ module Manage
       # Mailing lists
       "manage/mailing_lists" => :mailing_lists,
       "manage/mailing_list_settings" => :mailing_lists,
-      "manage/mailing_list_shares" => :mailing_lists,
       "manage/list_followers" => :mailing_lists,
       "manage/segments" => :mailing_lists,
       "manage/follower_emails" => :mailing_lists

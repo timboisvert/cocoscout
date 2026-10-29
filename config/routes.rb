@@ -497,10 +497,6 @@ Rails.application.routes.draw do
     get    "/documents/:id",                to: "documents#show",           as: "document"
 
     # Contracts held by this person (as a contractor's backing Person).
-    # My Followers: the lists organizations share with you (Mailing lists, V1.1).
-    get    "/followers",                    to: "followers#index",          as: "followers"
-    post   "/followers",                    to: "followers#create"
-    post   "/followers/export",             to: "followers#export",         as: "followers_export"
     get    "/contracts",                    to: "contracts#index",          as: "contracts"
     # Case 2: the contractor self-reports their own ticket sales.
     get    "/contracts/:id/report-sales",   to: "contracts#report_sales",   as: "report_contract_sales"
@@ -1712,7 +1708,7 @@ Rails.application.routes.draw do
 
     # Contractors - manage contractor records
     # Mailing lists (Pro, V1.1; Tim 2026-10-23): followers in lists, segments,
-    # emails to them, and lists shared with producers (My Followers).
+    # and emails to them.
     get    "/mailing-lists",                                  to: "mailing_lists#index",            as: "mailing_lists"
     post   "/mailing-lists",                                  to: "mailing_lists#create"
     get    "/mailing-lists/settings(/:section)",              to: "mailing_list_settings#show",     as: "mailing_list_settings"
@@ -1742,9 +1738,6 @@ Rails.application.routes.draw do
     post   "/mailing-lists/:id/followers/check",              to: "list_followers#check",           as: "check_mailing_list_followers"
     post   "/mailing-lists/:id/followers",                    to: "list_followers#create",          as: "mailing_list_followers"
     delete "/mailing-lists/:id/followers/:follower_id",       to: "list_followers#destroy",         as: "mailing_list_follower"
-    post   "/mailing-lists/:id/shares",                       to: "mailing_list_shares#create",     as: "mailing_list_shares"
-    post   "/mailing-lists/:id/shares/invite",                to: "mailing_list_shares#invite",     as: "mailing_list_shares_invite"
-    delete "/mailing-lists/:id/shares/:share_id",             to: "mailing_list_shares#destroy",    as: "mailing_list_share"
 
     resources :contractors, path: "money/contractors" do
       collection do

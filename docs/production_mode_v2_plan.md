@@ -574,6 +574,8 @@ Nothing left to build for V1.1 (2026-10-21); what remains is release work, liste
 
 ## 11. Mailing lists and My Followers (built 2026-10-23)
 
+**2026-10-28: list sharing and My Followers removed (Tim).** Mailing lists, their followers, checkout collection, segments and emails from a Pro organization all stay. What's gone: sharing a list with an outside producer, the share email, and the My Followers page (`RemoveMailingListSharing`). The lines below about sharing and My Followers are history.
+
 Tim's decisions, 2026-10-23 (design canvas "Mailing lists and My Followers"):
 a Pro module for the organization's managers; the word is "followers"; each
 organization keeps its own copy of every person; a producer a list is shared

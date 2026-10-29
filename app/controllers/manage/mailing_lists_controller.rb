@@ -3,7 +3,8 @@
 module Manage
   # Mailing lists (Pro, V1.1; Tim 2026-10-23): the module's home (lists,
   # segments, emails) and one list's page (its followers, where it collects,
-  # who can see it, and its actions).
+  # and its actions). Lists aren't shared outside the organization (Tim,
+  # 2026-10-28: My Followers is gone).
   class MailingListsController < ManageController
     before_action :set_list, only: %i[show update update_productions archive unarchive export]
 
@@ -15,7 +16,6 @@ module Manage
       @archived_lists = Current.organization.mailing_lists.where.not(archived_at: nil).order(:name).to_a
       @counts = MailingListMembership.joins(:follower).where(mailing_list_id: @lists.map(&:id), followers: { status: "subscribed" })
                                      .group(:mailing_list_id).count
-      @shares = MailingListShare.where(mailing_list_id: @lists.map(&:id)).includes(:person).group_by(&:mailing_list_id)
       @collects = MailingListProduction.where(mailing_list_id: @lists.map(&:id)).group(:mailing_list_id).count
       @follower_total = Current.organization.followers.subscribed.count
       @segments = Current.organization.segments.order(:name).to_a
@@ -43,10 +43,8 @@ module Manage
       @total = scope.count
       @followers = scope.offset((@page - 1) * PER_PAGE).limit(PER_PAGE).to_a
       @status_counts = @list.followers.group(:status).count
-      @shares = @list.mailing_list_shares.includes(:person).order(:granted_at).to_a
       @productions = @list.productions.order(:name).to_a
       @all_productions = Current.organization.productions.active.where.not(production_type: "course").order(:name).to_a
-      @suggested_people = suggested_people
     end
 
     def create
@@ -119,15 +117,6 @@ module Manage
 
     def set_list
       @list = Current.organization.mailing_lists.find(params[:id])
-    end
-
-    # The producer and contract people on the list's productions, offered
-    # first in "Change who can see it".
-    def suggested_people
-      contracts = Contract.where(production_id: @list.mailing_list_productions.select(:production_id))
-      ids = ContractPerson.where(contract_id: contracts.select(:id)).pluck(:person_id)
-      ids += Contractor.where(id: contracts.select(:contractor_id)).where.not(person_id: nil).pluck(:person_id)
-      Person.where(id: ids.uniq).where.not(id: @list.mailing_list_shares.select(:person_id)).order(:name).limit(8).to_a
     end
 
     # Tickets and money each sent email brought in, by its campaign.

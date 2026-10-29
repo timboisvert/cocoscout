@@ -2,34 +2,21 @@
 
 require "csv"
 
-# A spreadsheet of followers, emailed to whoever asked (FollowerMailer#export_ready):
-#   list_id   a manager exporting one list: everyone on it, with their status
-#   user_id   a producer exporting My Followers: everyone still following
-#             them somewhere, one row per email, a column for where each
-#             came from
+# A spreadsheet of one list's followers, with their status, emailed to the
+# manager who asked (FollowerNoticeMailer#export_ready).
 class FollowersExportJob < ApplicationJob
   queue_as :default
 
-  def perform(person_id, list_id: nil, user_id: nil)
+  def perform(person_id, list_id:)
     person = Person.find_by(id: person_id)
     return unless person&.email.present?
 
-    if list_id
-      list = MailingList.find_by(id: list_id)
-      return unless list
+    list = MailingList.find_by(id: list_id)
+    return unless list
 
-      csv, count = list_csv(list)
-      what = list.name
-      filename = "#{list.name.parameterize}-followers-#{Date.current}.csv"
-    else
-      user = User.find_by(id: user_id)
-      return unless user
-
-      csv, count = my_csv(user)
-      what = "everyone in My Followers"
-      filename = "my-followers-#{Date.current}.csv"
-    end
-    FollowerNoticeMailer.export_ready(person, what: what, count: count, csv: csv, filename: filename).deliver_now
+    csv, count = list_csv(list)
+    filename = "#{list.name.parameterize}-followers-#{Date.current}.csv"
+    FollowerNoticeMailer.export_ready(person, what: list.name, count: count, csv: csv, filename: filename).deliver_now
   end
 
   private
@@ -44,20 +31,5 @@ class FollowersExportJob < ApplicationJob
       end
     end
     [ csv, followers.size ]
-  end
-
-  def my_csv(user)
-    my = MyFollowers.new(user)
-    rows = my.rows.select(&:following?)
-    csv = CSV.generate do |out|
-      out << [ "Name", "Email", "Organizations", "Where they came from", "Since" ]
-      rows.each do |row|
-        following = row.entries.select(&:following)
-        out << [ row.name, row.email, following.map { |e| e.organization.name }.uniq.join("; "),
-                 following.flat_map { |e| e.sources.map { |s| "#{e.organization.name}: #{s.label(viewer: my.viewer)}" } }.join("; "),
-                 row.since&.to_date ]
-      end
-    end
-    [ csv, rows.size ]
   end
 end

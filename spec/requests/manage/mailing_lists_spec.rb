@@ -69,47 +69,11 @@ RSpec.describe "Mailing lists", type: :request do
     get manage_mailing_list_path(list)
     doc = Nokogiri::HTML(response.body)
     expect(doc.at_css("[data-collects-from]").text).to include("Comedy Hour", "Contract", "Send me news about Dan Feltey's shows")
-    expect(doc.at_css("[data-who-can-see]").text).to include("Only your organization's managers")
-    expect(response.body).to include("Change who can see it", "Add or remove people who see it in My Followers",
-                                     "Change where it collects", "Export", "Rename", "Archive this list")
+    expect(doc.at_css("[data-who-can-see]")).to be_nil # lists aren't shared outside the organization
+    expect(response.body).not_to include("Change who can see it", "My Followers")
+    expect(response.body).to include("Change where it collects", "Export", "Rename", "Archive this list")
     # The standard sub-page header: the breadcrumb line, not a big title.
     expect(response.body).to include(manage_mailing_lists_path, "Write an email")
-  end
-
-  it "shares a list with a producer, emails them, and takes it back" do
-    list = org.mailing_lists.create!(name: "Dan Feltey's shows")
-    # Someone with no account who isn't the organization's: not found by search, so not pickable.
-    stranger = create(:person, name: "Stranger", email: "stranger@example.com")
-    post manage_mailing_list_shares_path(list), params: { person_id: stranger.id }
-    expect(list.mailing_list_shares.reload).to be_empty
-
-    dan = create(:person, name: "Dan Feltey", email: "dan@example.com")
-    Contractor.create!(organization: org, name: "Dan Feltey Presents", email: "dan@example.com", person: dan)
-    expect { post manage_mailing_list_shares_path(list), params: { person_id: dan.id } }
-      .to have_enqueued_mail(FollowerNoticeMailer, :share_invitation)
-    share = list.mailing_list_shares.find_by!(person: dan)
-    expect(share.granted_by).to eq(owner)
-
-    delete manage_mailing_list_share_path(list, share_id: share.id)
-    expect(list.mailing_list_shares.reload).to be_empty
-  end
-
-  it "shares through the standard search or invite: anyone on CocoScout, or an email nobody has" do
-    list = org.mailing_lists.create!(name: "Dan Feltey's shows")
-    elsewhere = create(:person, name: "Babs Booker", email: "babs@example.com", user: create(:user, email_address: "babs@example.com"))
-    post manage_mailing_list_shares_path(list), params: { person_id: elsewhere.id }
-    expect(list.shared_people.reload).to include(elsewhere)
-
-    get manage_mailing_list_path(list)
-    expect(response.body).to include("anyone on CocoScout by name or exact email, or an email to invite")
-
-    expect { post manage_mailing_list_shares_invite_path(list), params: { email: "New.Producer@Example.com", name: "New Producer" } }
-      .to have_enqueued_mail(Manage::PersonMailer, :person_invitation)
-    newcomer = Person.find_by!(email: "new.producer@example.com")
-    expect(newcomer.user).to be_present
-    expect(org.people).to include(newcomer)
-    expect(list.shared_people.reload).to include(newcomer)
-    expect(flash[:notice]).to include("Invitation sent to new.producer@example.com")
   end
 
   it "adds someone from Contacts to a list" do

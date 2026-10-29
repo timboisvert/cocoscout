@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_29_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_29_100100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1323,19 +1323,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_100000) do
     t.index ["mailing_list_id", "production_id"], name: "index_mailing_list_productions_unique", unique: true
     t.index ["mailing_list_id"], name: "index_mailing_list_productions_on_mailing_list_id"
     t.index ["production_id"], name: "index_mailing_list_productions_on_production_id"
-  end
-
-  create_table "mailing_list_shares", force: :cascade do |t|
-    t.bigint "mailing_list_id", null: false
-    t.bigint "person_id", null: false
-    t.bigint "granted_by_id"
-    t.datetime "granted_at", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["granted_by_id"], name: "index_mailing_list_shares_on_granted_by_id"
-    t.index ["mailing_list_id", "person_id"], name: "index_mailing_list_shares_on_mailing_list_id_and_person_id", unique: true
-    t.index ["mailing_list_id"], name: "index_mailing_list_shares_on_mailing_list_id"
-    t.index ["person_id"], name: "index_mailing_list_shares_on_person_id"
   end
 
   create_table "mailing_lists", force: :cascade do |t|
@@ -4428,9 +4415,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_100000) do
   add_foreign_key "mailing_list_memberships", "mailing_lists"
   add_foreign_key "mailing_list_productions", "mailing_lists"
   add_foreign_key "mailing_list_productions", "productions"
-  add_foreign_key "mailing_list_shares", "mailing_lists"
-  add_foreign_key "mailing_list_shares", "people"
-  add_foreign_key "mailing_list_shares", "users", column: "granted_by_id"
   add_foreign_key "mailing_lists", "organizations"
   add_foreign_key "message_poll_options", "message_polls"
   add_foreign_key "message_poll_votes", "message_poll_options"

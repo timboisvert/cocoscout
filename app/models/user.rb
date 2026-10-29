@@ -393,11 +393,6 @@ class User < ApplicationRecord
   end
 
   # As the contractor's person or as a contract person (Contract.visible_to).
-  # Whether any organization shares a mailing list with them: My Followers.
-  def has_follower_shares?
-    MailingListShare.lists_for(self).exists?
-  end
-
   def has_contracts?
     Contract.visible_to(self).exists?
   end
