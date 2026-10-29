@@ -2,9 +2,9 @@
 
 require "rails_helper"
 
-# "Move to another date" on an order: pick the date, the tickets and what
-# each ticket type becomes, see what happens to the money, then move. The
-# buyer's pages follow them to the new date.
+# "Move tickets" on an order: pick the date (theirs, for another ticket
+# type, or another one), the tickets and what each ticket type becomes, see
+# what happens to the money, then move. The buyer's pages follow them.
 RSpec.describe "Moving tickets to another date", type: :request do
   include ActiveJob::TestHelper
 
@@ -80,11 +80,53 @@ RSpec.describe "Moving tickets to another date", type: :request do
     expect(order.reload.status).to eq("paid")
   end
 
-  it "says so when no other date is on sale" do
+  it "offers only their own date, for another ticket type, when no other date is on sale" do
     order = sold(1)
     saturday.update!(status: "paused")
     get manage_ticket_order_exchange_path(order.id)
-    expect(response.body).to include("No other dates of")
+    expect(response.body).to include("Same date, another ticket type")
+    expect(response.body).not_to include("Saturday, October 17")
+  end
+
+  # Tim, 2026-10-29: a Splatter Zone comp that should have been General
+  # Admission, fixed without canceling and comping again.
+  it "changes a comp to another ticket type on the same date, offering only types with seats" do
+    splatter = friday.ticket_tiers.create!(name: "Splatter Zone", price_cents: 4_000)
+    front = friday.ticket_tiers.create!(name: "Front Row", price_cents: 6_000, quantity: 1)
+    guests = [ TicketComps::Guest.new(name: "Dana Scully", email: "dana@example.com", tier: splatter, quantity: 1),
+               TicketComps::Guest.new(name: "Fox Mulder", email: nil, tier: front, quantity: 1) ]
+    order = TicketComps.give!(friday, guests, by: superadmin, email_them: false).first
+
+    get manage_ticket_order_path(order.id)
+    expect(response.body).to include("Move to another date or ticket type", "They stay free and get new tickets")
+
+    get manage_ticket_order_exchange_path(order.id, to_listing_id: friday.id)
+    expect(response.body).to include("Same date, another ticket type", "Splatter Zone becomes", "These tickets were free")
+    page = Nokogiri::HTML(response.body)
+    options = page.css("select[name='tiers[#{splatter.id}]'] option").to_h { |o| [ o.text, o["disabled"].present? ] }
+    expect(options).to eq("Choose a ticket type" => false, "General ($20.00)" => false, "Front Row ($60.00) · no seats left" => true)
+    expect(response.body).not_to include("Change 1 ticket")
+
+    get manage_ticket_order_exchange_path(order.id, to_listing_id: friday.id, picked: "1", ticket_ids: order.tickets.pluck(:id),
+                                                    tiers: { splatter.id => general.id })
+    expect(response.body).to include("Change 1 ticket to General", "They didn't pay for these, so the new ones are free too")
+
+    get manage_ticket_order_exchange_path(order.id, to_listing_id: friday.id, picked: "1", ticket_ids: order.tickets.pluck(:id),
+                                                    tiers: { splatter.id => front.id })
+    expect(response.body).to include("Front Row has no seats left")
+
+    expect {
+      post manage_ticket_order_exchange_path(order.id), params: { to_listing_id: friday.id, ticket_ids: order.tickets.pluck(:id),
+                                                                  tiers: { splatter.id => general.id }, email_them: "1" }
+    }.to have_enqueued_mail(TicketOrderMailer, :moved)
+    changed = TicketOrder.find_by!(exchanged_from_id: order.id)
+    expect(flash[:notice]).to eq("Changed 1 ticket to General.")
+    expect(changed.tickets.pluck(:ticket_tier_id, :ticket_listing_id)).to eq([ [ general.id, friday.id ] ])
+
+    get manage_ticket_order_path(changed.id)
+    expect(response.body).to include("Changed from another ticket type on", "order #{order.code}")
+    get manage_ticket_order_path(order.id)
+    expect(response.body).to include("1 ticket changed to another ticket type", "Changed to another ticket type")
   end
 
   it "can't reach another theater's order, or move into another theater's show" do

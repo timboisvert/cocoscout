@@ -16,8 +16,8 @@
   # Outside the refund policy, a refund takes Refund anyway and a reason.
   outside = !@check.within
   form_data = outside ? { controller: "fieldset-toggle" } : {}
-  # Words for the buyer, put in their refund email (comps aren't emailed).
-  message_field = !comp && @order.buyer_email.present?
+  # Words for the buyer, put in their refund email (or a comp's cancellation email).
+  message_field = @order.buyer_email.present?
 %>
 
 <div class="w-full mb-10">
@@ -91,7 +91,7 @@
         <% when "cash" %>
           <p>This was a cash sale at the door: hand the money back from the cash box.</p>
         <% when "none" %>
-          <p>These were comps, so no money moves. The tickets stop working and their seats come free; the guest isn't emailed.</p>
+          <p>These were comps, so no money moves. The tickets stop working and their seats come free<%= "; the guest gets an email saying so, unless you untick it below" if @order.buyer_email.present? %>.</p>
         <% else %>
           <p>It goes back to the card they paid with.
             <% if q.platform_fee_waived_cents.positive? %>
@@ -180,6 +180,13 @@
               <%= text_field_tag :reason, nil, placeholder: "Can't make it; asked by email", class: input_class %>
             <% end %>
           </div>
+          <% if comp && @order.buyer_email.present? %>
+            <label class="flex items-center gap-2 text-sm text-gray-700">
+              <%= hidden_field_tag :email_them, "0", id: nil %>
+              <%= check_box_tag :email_them, "1", true, id: "cancel_email_them", class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+              Email <%= @order.buyer_email %> that their tickets are canceled
+            </label>
+          <% end %>
           <% if message_field %>
             <%= render "manage/ticket_orders/buyer_message_field", id: "buyer_message", input_class: input_class %>
           <% end %>

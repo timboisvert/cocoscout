@@ -3,7 +3,9 @@
 require "rails_helper"
 
 # A comp that isn't coming: the order page cancels the tickets instead of
-# refunding them. No money moves, the seats come free, nobody is emailed.
+# refunding them. No money moves, the seats come free, and the guest is
+# emailed that their tickets stopped working (Tim, 2026-10-29: a revoked comp
+# sent nothing), unless the manager unticks it.
 RSpec.describe "Canceling a comp", type: :request do
   include ActiveJob::TestHelper
 
@@ -30,14 +32,20 @@ RSpec.describe "Canceling a comp", type: :request do
     expect(response.body).not_to include("Review refund")
 
     get manage_ticket_order_refund_path(order.id, ticket_ids: order.tickets.pluck(:id), item_ids: [ "" ])
-    expect(response.body).to include("Cancel 2 tickets for Dana Scully", "no money moves")
+    expect(response.body).to include("Cancel 2 tickets for Dana Scully", "no money moves", "Email dana@example.com that their tickets are canceled",
+                                     'name="buyer_message"', "Goes in the email to dana@example.com.")
 
-    expect {
-      post manage_ticket_order_refund_path(order.id), params: { ticket_ids: order.tickets.pluck(:id), item_ids: [ "" ], keep_fees: "0" }
-    }.not_to have_enqueued_job(TicketRefundEmailJob)
+    perform_enqueued_jobs(only: TicketRefundEmailJob) do
+      post manage_ticket_order_refund_path(order.id), params: { ticket_ids: order.tickets.pluck(:id), item_ids: [ "" ], keep_fees: "0",
+                                                                email_them: "1", buyer_message: "So sorry, the room shrank." }
+    end
+    mail = ActionMailer::Base.deliveries.last
+    expect(mail.to).to eq([ "dana@example.com" ])
+    expect(mail.subject).to eq("Your tickets for #{listing.display_title} were canceled")
+    expect(mail.html_part.body.decoded).to include("Stars &amp; Garters canceled your 2 tickets", "They no longer work at the door", "So sorry, the room shrank.")
     expect(response).to redirect_to(manage_ticket_order_path(order.id))
     follow_redirect!
-    expect(response.body).to include("Canceled 2 tickets for Dana Scully", "Canceled tickets")
+    expect(response.body).to include("Canceled 2 tickets for Dana Scully and let dana@example.com know", "Canceled tickets")
     expect([ order.reload.status, order.tickets.pluck(:status).uniq, order.refunded_cents ]).to eq([ "refunded", [ "void" ], 0 ])
     expect(listing.inventory.remaining).to eq(5)
     expect(OrgCashEntry.where(organization: org)).to be_empty
@@ -50,5 +58,16 @@ RSpec.describe "Canceling a comp", type: :request do
     expect(response.body).to include("line-through", ">Canceled<")
     get manage_ticket_listing_path(listing, guests: "refunded")
     expect(response.body).to include("line-through", ">Canceled<", "2 × General")
+  end
+
+  it "cancels without an email when the manager unticks it" do
+    guest = TicketComps::Guest.new(name: "Dana Scully", email: "dana@example.com", tier: general, quantity: 1)
+    order = TicketComps.give!(listing, [ guest ], by: superadmin, email_them: false).first
+
+    expect {
+      post manage_ticket_order_refund_path(order.id), params: { ticket_ids: order.tickets.pluck(:id), item_ids: [ "" ], keep_fees: "0", email_them: "0" }
+    }.not_to have_enqueued_job(TicketRefundEmailJob)
+    expect(flash[:notice]).to eq("Canceled 1 ticket for Dana Scully. The seats are free again.")
+    expect(order.reload.status).to eq("refunded")
   end
 end

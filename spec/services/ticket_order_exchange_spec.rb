@@ -136,13 +136,14 @@ RSpec.describe TicketOrderExchange do
 
   it "won't move what can't move" do
     order = sold(2)
-    expect { described_class.plan(order, target: friday) }.to raise_error(described_class::Error, /another date/)
+    # Their own date is for another ticket type: there's no default.
+    expect { described_class.plan(order, target: friday) }.to raise_error(described_class::Error, /Choose the ticket type General tickets become/)
     other = create(:ticket_listing, organization: org)
     other.ticket_tiers.create!(name: "General", price_cents: 2_000)
     expect { described_class.plan(order, target: other) }.to raise_error(described_class::Error, /another date/)
 
     saturday_general.update!(quantity: 1)
-    expect { described_class.exchange!(order, target: saturday) }.to raise_error(described_class::Error, /seats left/)
+    expect { described_class.exchange!(order, target: saturday) }.to raise_error(described_class::Error, /General has only 1 seat left/)
     expect(order.reload.status).to eq("paid")
 
     TicketDoor.new(friday, manager).check_in_order(order)
@@ -155,6 +156,106 @@ RSpec.describe TicketOrderExchange do
     result = TicketDoor.new(friday, manager).check_in(order.tickets.sole.code)
     expect(result.message).to eq("This ticket moved to another date")
   end
+  # Tim, 2026-10-29: he comped a Splatter Zone ticket for Mystery Machine
+  # Bloody Bodies when he meant General Admission, and had to cancel and comp
+  # again. The same date is a target too, for another ticket type.
+  describe "another ticket type on the same date" do
+    let!(:splatter) { friday.ticket_tiers.create!(name: "Splatter Zone", price_cents: 4_000, quantity: 2) }
+    let!(:student) { friday.ticket_tiers.create!(name: "Student", price_cents: 1_500) }
+
+    def comped(tier, count = 1)
+      guest = TicketComps::Guest.new(name: "Dana Scully", email: "dana@example.com", tier: tier, quantity: count)
+      TicketComps.give!(friday, [ guest ], by: manager, email_them: false).first
+    end
+
+    it "offers the order's own date" do
+      order = sold(1)
+      expect(described_class.targets(order)).to eq([ friday, saturday ])
+      friday.show.update!(date_and_time: 1.day.ago)
+      expect(described_class.targets(order.reload)).to eq([ friday, saturday ])
+    end
+
+    it "moves a comp to any type, still free, with no money and an email that says what changed" do
+      order = comped(splatter)
+      exchange = nil
+      perform_enqueued_jobs(only: ActionMailer::MailDeliveryJob) do
+        exchange = described_class.exchange!(order, target: friday, chosen_tiers: { splatter.id => general.id }, by: manager)
+      end
+
+      moved = exchange.to_order
+      expect(moved.attributes.slice("ticket_listing_id", "channel", "money_path", "status", "exchanged_from_id"))
+        .to eq("ticket_listing_id" => friday.id, "channel" => "comp", "money_path" => "none", "status" => "paid", "exchanged_from_id" => order.id)
+      expect(moved.tickets.pluck(:ticket_tier_id, :price_cents, :discount_cents, :status)).to eq([ [ general.id, 2_000, 2_000, "valid" ] ])
+      expect(moved.slice(:subtotal_cents, :discount_cents, :total_cents)).to eq("subtotal_cents" => 2_000, "discount_cents" => 2_000, "total_cents" => 0)
+      expect([ order.reload.status, order.tickets.pluck(:status) ]).to eq([ "exchanged", [ "exchanged" ] ])
+      expect(exchange.difference_cents).to eq(0)
+      expect(Stripe::Refund).not_to have_received(:create)
+      expect(OrgCashEntry.where(organization: org)).to be_empty
+      expect(LedgerPosting.trial_balance(org).values.sum).to eq(0)
+      expect([ friday.inventory.sold(tier: splatter), friday.inventory.sold(tier: general) ]).to eq([ 0, 1 ])
+
+      mail = ActionMailer::Base.deliveries.last
+      expect([ mail.to, mail.subject ]).to eq([ [ "dana@example.com" ], "Your new tickets for #{friday.display_title}" ])
+      expect(mail.html_part.body.decoded).to include("from Splatter Zone to General", "Same show, same time", "The old ones no longer work")
+
+      # The pricier way round is free for a comp too.
+      back = described_class.exchange!(moved, target: friday, chosen_tiers: { general.id => splatter.id }, email_them: false)
+      expect(back.to_order.tickets.pluck(:ticket_tier_id, :price_cents, :discount_cents)).to eq([ [ splatter.id, 4_000, 4_000 ] ])
+    end
+
+    it "offers only types with seats for them, counting back the seats they give up" do
+      order = comped(general, 2)
+      comped(splatter, 1)
+      expect(described_class.seats_left(friday, order.tickets.to_a)).to include(splatter.id => 1, general.id => nil)
+      expect { described_class.plan(order, target: friday, chosen_tiers: { general.id => splatter.id }) }
+        .to raise_error(described_class::Error, /Splatter Zone has only 1 seat left/)
+
+      comped(splatter, 1)
+      expect { described_class.plan(order, target: friday, chosen_tiers: { general.id => splatter.id }, ticket_ids: [ order.tickets.first.id ]) }
+        .to raise_error(described_class::Error, /Splatter Zone has no seats left/)
+
+      # A ticket in checkout holds its seat too.
+      splatter.update!(quantity: 3)
+      TicketCheckout.start!(listing: friday, quantities: { splatter.id.to_s => "1" })
+      expect { described_class.plan(order, target: friday, chosen_tiers: { general.id => splatter.id }, ticket_ids: [ order.tickets.first.id ]) }
+        .to raise_error(described_class::Error, /Splatter Zone has no seats left/)
+    end
+
+    it "swaps two full types on a full show, since each ticket frees the seat the other takes" do
+      general.update!(quantity: 1)
+      splatter.update!(quantity: 1)
+      student.update!(archived_at: Time.current)
+      guests = [ general, splatter ].map { |tier| TicketComps::Guest.new(name: "Dana Scully", email: nil, tier: tier, quantity: 1) }
+      orders = TicketComps.give!(friday, guests, by: manager, email_them: false)
+      order = orders.first
+      orders.last.tickets.update_all(ticket_order_id: order.id)
+      expect(friday.inventory.remaining).to eq(0)
+
+      exchange = described_class.exchange!(order.reload, target: friday, chosen_tiers: { general.id => splatter.id, splatter.id => general.id }, email_them: false)
+      expect(exchange.to_order.tickets.order(:id).pluck(:ticket_tier_id)).to eq([ splatter.id, general.id ])
+      expect(friday.inventory.remaining).to eq(0)
+    end
+
+    it "refunds the difference on a cheaper paid type and refuses a pricier one, as a new date would" do
+      order = sold(1)
+      expect { described_class.plan(order, target: friday, chosen_tiers: { general.id => splatter.id }) }
+        .to raise_error(described_class::Error, /Splatter Zone costs \$40\.00 .*more than their \$20\.00 ticket/)
+
+      exchange = described_class.exchange!(order, target: friday, chosen_tiers: { general.id => student.id }, by: manager, email_them: false)
+      expect(exchange.difference_cents).to eq(500)
+      expect(Stripe::Refund).to have_received(:create).with(hash_including(amount: 500), anything)
+      expect(exchange.to_order.tickets.pluck(:ticket_tier_id, :price_cents)).to eq([ [ student.id, 1_500 ] ])
+      expect(LedgerPosting.trial_balance(org).values.sum).to eq(0)
+      expect(advance_for(friday)).to eq(1_500)
+    end
+
+    it "won't change a ticket to the type it already is" do
+      order = comped(general)
+      expect { described_class.plan(order, target: friday, chosen_tiers: { general.id => general.id }) }
+        .to raise_error(described_class::Error, /General tickets are already General/)
+    end
+  end
+
   # Kelly's 4-pack (2026-10-10): each ticket is $17.50, its share of $70, so
   # comparing it to one $20 ticket, or to the whole $70 pack, refused the move.
   describe "tickets bought in a bundle" do

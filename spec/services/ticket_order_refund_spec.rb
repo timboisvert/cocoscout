@@ -144,4 +144,34 @@ RSpec.describe TicketOrderRefund do
     expect(balance(:door_cash)).to eq(0)
     expect(LedgerPosting.trial_balance(org).values.sum).to eq(0)
   end
+
+  # Tim, 2026-10-29: he canceled a comp and the guest heard nothing. No money
+  # moves, so it's the ticket_order_canceled email, not the refund one.
+  describe "a canceled comp" do
+    let(:comp) do
+      guest = TicketComps::Guest.new(name: "Dana Scully", email: "dana@example.com", tier: general, quantity: 2)
+      TicketComps.give!(listing, [ guest ], by: create(:user), email_them: false).first
+    end
+
+    it "tells the guest their tickets stopped working" do
+      refund = nil
+      perform_enqueued_jobs(only: TicketRefundEmailJob) { refund = described_class.issue!(comp, buyer_message: "The room shrank.") }
+
+      expect(refund.amount_cents).to eq(0)
+      mail = ActionMailer::Base.deliveries.last
+      expect([ mail.to, mail.subject ]).to eq([ [ "dana@example.com" ], "Your tickets for #{listing.display_title} were canceled" ])
+      body = mail.html_part.body.decoded
+      expect(body).to include("canceled your 2 tickets", "They no longer work at the door", "The room shrank.", comp.code)
+      expect(body).not_to include("refunded", "card you paid with")
+      expect(Stripe::Refund).not_to have_received(:create)
+    end
+
+    it "sends nothing when told not to, or when there's no email" do
+      expect { described_class.issue!(comp, notify: false) }.not_to have_enqueued_job(TicketRefundEmailJob)
+
+      guest = TicketComps::Guest.new(name: "Walk-in", email: nil, tier: general, quantity: 1)
+      no_email = TicketComps.give!(listing, [ guest ], by: create(:user)).first
+      expect { described_class.issue!(no_email) }.not_to have_enqueued_job(TicketRefundEmailJob)
+    end
+  end
 end

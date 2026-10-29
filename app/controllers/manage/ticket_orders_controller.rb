@@ -3,7 +3,7 @@
 module Manage
   # Every ticket order: find one by name, email or code, see what was paid
   # and where it went, resend the tickets, refund some or all of it, or move
-  # them to another date. A refund or a move is reviewed on its own page
+  # them to another date or ticket type. A refund or a move is reviewed on its own page
   # (what happens to the tickets and the money) before it happens.
   class TicketOrdersController < Manage::TicketingBaseController
     STATUS_FILTERS = %w[paid refunded].freeze
@@ -47,9 +47,10 @@ module Manage
       @refund_quote = TicketOrderRefund.quote(@order, keep_fees: !@policy_check.policy.fees) if @refundable_ids.any? || @refundable_item_ids.any?
     end
 
-    # Moving tickets to another date of the same production: the date, the
-    # tickets, and what each ticket type becomes, with what happens to the
-    # money, before anything moves.
+    # Moving tickets to another date of the same production, or to another
+    # ticket type on their own date: the date, the tickets, and what each
+    # ticket type becomes (types without room for them can't be picked), with
+    # what happens to the money, before anything moves.
     def exchange_review
       @movable = TicketOrderExchange.movable(@order).to_a
       if @movable.empty?
@@ -62,6 +63,9 @@ module Manage
       chosen = @movable.select { |ticket| @ticket_ids.include?(ticket.id) }
       @tier_map = @target ? TicketOrderExchange.tier_map(chosen, @target, tier_params) : {}
       return unless @target
+
+      @seats_left = TicketOrderExchange.seats_left(@target, chosen)
+      @moving = chosen.group_by(&:ticket_tier_id).transform_values(&:size)
 
       # A show that has happened can still move, with Move anyway.
       @after_show = @order.ticket_listing.show.date_and_time <= Time.current
@@ -83,7 +87,11 @@ module Manage
                                                        by: Current.user, email_them: params[:email_them] == "1",
                                                        outside_policy: params[:outside_policy] == "1")
       moved = helpers.pluralize(exchange.ticket_ids.size, "ticket")
-      notice = "Moved #{moved} to #{target.show.date_and_time.strftime('%A, %B %-d')}."
+      notice = if target.id == @order.ticket_listing_id
+        "Changed #{moved} to #{exchange.to_order.tickets.includes(:ticket_tier).map { |t| t.ticket_tier.name }.uniq.to_sentence}."
+      else
+        "Moved #{moved} to #{target.show.date_and_time.strftime('%A, %B %-d')}."
+      end
       notice += " Refunded the #{helpers.number_to_currency(exchange.difference_cents / 100.0)} difference." if exchange.ticket_refund
       alert = "The #{helpers.number_to_currency(exchange.difference_cents / 100.0)} refund didn't go through: #{exchange.refund_error}" if exchange.refund_error
       redirect_to manage_ticket_order_path(exchange.to_order_id), notice: notice, alert: alert
@@ -121,11 +129,13 @@ module Manage
 
     def refund
       outside_policy = exception_allowed!
+      # A canceled comp emails the guest unless the manager unticked it.
       refund = TicketOrderRefund.issue!(@order, ticket_ids: chosen_ticket_ids, item_ids: chosen_item_ids, keep_fees: params[:keep_fees] == "1",
                                                 by: Current.user, reason: params[:reason].presence, buyer_message: params[:buyer_message].presence, reprice: reprice?,
-                                                outside_policy: outside_policy)
+                                                outside_policy: outside_policy, notify: params[:email_them] != "0")
       notice = if @order.money_path == "none"
-        "Canceled #{helpers.pluralize(refund.ticket_ids.size, 'ticket')} for #{@order.buyer_name.presence || 'the guest'}. The seats are free again."
+        told = " and let #{@order.buyer_email} know" if params[:email_them] != "0" && @order.buyer_email.present?
+        "Canceled #{helpers.pluralize(refund.ticket_ids.size, 'ticket')} for #{@order.buyer_name.presence || 'the guest'}#{told}. The seats are free again."
       elsif @order.money_path == "cash"
         "Refunded #{helpers.number_to_currency(refund.amount_cents / 100.0)}: hand it back from the cash box."
       else

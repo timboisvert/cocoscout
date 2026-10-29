@@ -47,11 +47,22 @@ class TicketOrderMailer < ApplicationMailer
 
   # Tickets the theater moved to another date: the new tickets, the date they
   # were for, and the refunded difference when the new ones cost less (from
-  # the ticket_order_moved template).
+  # the ticket_order_moved template). Moved to another ticket type on the
+  # same date, it's the ticket_order_retyped template: what they were, what
+  # they are now.
   def moved(exchange)
     order = exchange.to_order
     refund = exchange.ticket_refund
     refunded = refund&.status == "succeeded" ? ActiveSupport::NumberHelper.number_to_currency(refund.amount_cents / 100.0) : ""
+    if order.ticket_listing_id == exchange.from_order.ticket_listing_id
+      type_names = ->(tickets) { tickets.map { |t| (t.bundle_tier || t.ticket_tier).name }.uniq.to_sentence }
+      return deliver_tickets(order, **render_words("ticket_order_retyped", self.class.ticket_variables(order).merge(
+        was_type: type_names.call(Ticket.where(id: exchange.ticket_ids).includes(:ticket_tier, :bundle_tier)),
+        new_type: type_names.call(order.tickets.includes(:ticket_tier, :bundle_tier)),
+        refund_amount: refunded
+      )))
+    end
+
     deliver_tickets(order, **render_words("ticket_order_moved", self.class.ticket_variables(order).merge(
       was: exchange.from_order.ticket_listing.show.date_and_time.strftime("%A, %B %-d at %-l:%M %p"),
       refund_amount: refunded
@@ -176,6 +187,16 @@ class TicketOrderMailer < ApplicationMailer
   def refunded(refund)
     @order = refund.ticket_order
     rendered = render_words("ticket_order_refunded", self.class.variables_for(@order, refund))
+    @body_html = rendered[:body_html]
+    deliver_from_theater(rendered[:subject])
+  end
+
+  # Tickets that cost nothing (a comp) canceled by the theater: no money to
+  # give back, but the guest hears they no longer work, from the
+  # ticket_order_canceled template.
+  def tickets_canceled(refund)
+    @order = refund.ticket_order
+    rendered = render_words("ticket_order_canceled", self.class.variables_for(@order, refund))
     @body_html = rendered[:body_html]
     deliver_from_theater(rendered[:subject])
   end

@@ -58,15 +58,24 @@
       </div>
       <% if @order.exchanged_from %>
         <p class="mt-3 text-sm text-gray-600">
-          Moved here from
-          <%= link_to "order #{@order.exchanged_from.code}", manage_ticket_order_path(@order.exchanged_from_id), class: "font-medium text-pink-600 hover:text-pink-700" %>
-          (<%= @order.exchanged_from.ticket_listing.show.date_and_time.strftime("%a %b %-d, %-l:%M %p") %>).
+          <% if @order.exchanged_from.ticket_listing_id == @order.ticket_listing_id %>
+            Changed from another ticket type on
+            <%= link_to "order #{@order.exchanged_from.code}", manage_ticket_order_path(@order.exchanged_from_id), class: "font-medium text-pink-600 hover:text-pink-700" %>.
+          <% else %>
+            Moved here from
+            <%= link_to "order #{@order.exchanged_from.code}", manage_ticket_order_path(@order.exchanged_from_id), class: "font-medium text-pink-600 hover:text-pink-700" %>
+            (<%= @order.exchanged_from.ticket_listing.show.date_and_time.strftime("%a %b %-d, %-l:%M %p") %>).
+          <% end %>
         </p>
       <% end %>
       <% @exchanges_out.each do |exchange| %>
         <p class="mt-3 text-sm text-gray-600">
-          <%= pluralize(exchange.ticket_ids.size, "ticket") %> moved to
-          <%= exchange.to_order.ticket_listing.show.date_and_time.strftime("%a %b %-d, %-l:%M %p") %>:
+          <% if exchange.to_order.ticket_listing_id == @order.ticket_listing_id %>
+            <%= pluralize(exchange.ticket_ids.size, "ticket") %> changed to another ticket type:
+          <% else %>
+            <%= pluralize(exchange.ticket_ids.size, "ticket") %> moved to
+            <%= exchange.to_order.ticket_listing.show.date_and_time.strftime("%a %b %-d, %-l:%M %p") %>:
+          <% end %>
           <%= link_to "order #{exchange.to_order.code}", manage_ticket_order_path(exchange.to_order_id), class: "font-medium text-pink-600 hover:text-pink-700" %>
         </p>
       <% end %>
@@ -157,7 +166,7 @@
                   <% when "refunded" %>
                     Refunded <%= ticket.refunded_at&.strftime("%b %-d") %>
                   <% when "exchanged" %>
-                    Moved to another date
+                    <%= @exchanges_out.find { |e| e.ticket_ids.map(&:to_i).include?(ticket.id) }&.to_order&.ticket_listing_id == @order.ticket_listing_id ? "Changed to another ticket type" : "Moved to another date" %>
                   <% when "void" %>
                     Canceled <%= ticket.refunded_at&.strftime("%b %-d") %>
                   <% else %>
@@ -234,8 +243,14 @@
     <% if @movable %>
       <div class="bg-white border border-gray-200 rounded-xl px-6 py-4 flex flex-wrap items-center justify-between gap-3">
         <div class="min-w-0">
-          <h2 class="text-sm font-semibold text-gray-900">Move to another date</h2>
-          <p class="text-xs text-gray-600 mt-0.5">Another date of <%= listing.production.name %>, at the same price or less. They keep their payment and get new tickets.</p>
+          <h2 class="text-sm font-semibold text-gray-900">Move to another date or ticket type</h2>
+          <p class="text-xs text-gray-600 mt-0.5">
+            <% if @order.money_path == "none" %>
+              Another date of <%= listing.production.name %>, or another ticket type on this one. They stay free and get new tickets.
+            <% else %>
+              Another date of <%= listing.production.name %>, or another ticket type on this one, at the same price or less. They keep their payment and get new tickets.
+            <% end %>
+          </p>
         </div>
         <%= render "shared/button", text: "Move tickets", variant: "secondary", size: "small", path: manage_ticket_order_exchange_path(@order.id) %>
       </div>

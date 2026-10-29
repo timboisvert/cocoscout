@@ -15,9 +15,13 @@ module Ticketing
   class Inventory
     class SoldOut < StandardError; end
 
-    def initialize(listing, at: Time.current)
+    # excluding: tickets that are giving up their seats in the same breath
+    # (a move to another ticket type on the same date), so they don't count
+    # against the seats they're moving into.
+    def initialize(listing, at: Time.current, excluding: nil)
       @listing = listing
       @at = at
+      @excluding = Array(excluding).map(&:to_i).presence
     end
 
     # The seats on sale: the ticket types' seats added up, when every type
@@ -124,10 +128,12 @@ module Ticketing
     # Lock the listing (and the tiers asked for), check they still fit, then
     # yield so the caller writes its reservation under the same lock. Two
     # buyers racing for the last seat serialize here; the loser gets SoldOut.
-    def self.reserve!(listing, requests)
+    # excluding: as for new, positional so a bare { tier => n } still reads
+    # as the requests.
+    def self.reserve!(listing, requests, excluding = nil)
       listing.with_lock do
         TicketTier.where(id: requests.keys.map(&:id)).order(:id).lock.load
-        raise SoldOut unless new(listing).fits?(requests)
+        raise SoldOut unless new(listing, excluding: excluding).fits?(requests)
 
         yield
       end
@@ -144,6 +150,7 @@ module Ticketing
     # A bundle's tickets are its type's, remembering the bundle.
     def scope(tier)
       tickets = Ticket.where(ticket_listing_id: @listing.id)
+      tickets = tickets.where.not(id: @excluding) if @excluding
       return tickets unless tier
 
       tier.bundle? ? tickets.where(bundle_tier_id: tier.id) : tickets.where(ticket_tier_id: tier.id)

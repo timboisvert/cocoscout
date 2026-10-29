@@ -174,7 +174,11 @@ class TicketOrderRefund
     end
 
     complete!(order, listing, refund)
-    TicketRefundEmailJob.perform_later(refund.id) if notify && order.buyer_email.present? && refund.amount_cents.positive?
+    # A comp canceled has no money in it, but the guest still hears their
+    # tickets stopped working.
+    if notify && order.buyer_email.present? && (refund.amount_cents.positive? || order.money_path == "none")
+      TicketRefundEmailJob.perform_later(refund.id)
+    end
     # The theater's team hears about refunds one by one; a canceled show's
     # refunds are summed up when the cancellation finishes.
     TicketingNotifier.notify(order.organization, :refund_issued, variables: TicketingNotificationContent.refund(refund)) if notify && order.money_path != "none"

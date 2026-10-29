@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
-# Moving a buyer's tickets to another date of the same production: the
-# manager's "Move to another date" on an order. (Buyers can't do it
-# themselves yet.)
+# Moving a buyer's tickets to another date of the same production, or to
+# another ticket type on the same date (a Splatter Zone comp that should
+# have been General Admission): the manager's "Move tickets" on an order.
+# (Buyers can't do it themselves yet.)
 #
 # The buyer keeps their payment. A new order on the new date holds new
 # tickets with new codes, linked back by exchanged_from_id (refunds go back
@@ -15,7 +16,8 @@
 #
 # Same price: nothing changes hands. A cheaper ticket type refunds the
 # difference to the card, through the normal refund path. A pricier one is
-# refused: refund them and let them buy again.
+# refused: refund them and let them buy again. A ticket that cost nothing (a
+# comp) stays free, whatever type it becomes.
 class TicketOrderExchange
   class Error < StandardError; end
 
@@ -35,15 +37,17 @@ class TicketOrderExchange
                      :old_amount_cents, :new_amount_cents, :fees_cents, :platform_fee_cents, :processing_cents, :moved_cents) do
     def difference_cents = old_amount_cents - new_amount_cents
     def tickets = rows.map(&:ticket)
+    def same_date? = target.id == order.ticket_listing_id
   end
 
-  # The other dates these tickets can move to: the same production, on sale,
-  # still to come.
+  # Where these tickets can move: the other dates of the same production, on
+  # sale and still to come, and their own date, for another ticket type.
   def self.targets(order)
     listing = order.ticket_listing
-    TicketListing.where(organization_id: order.organization_id, production_id: listing.production_id, status: "on_sale")
-                 .where.not(id: listing.id).joins(:show).where(shows: { canceled: false })
-                 .where("shows.date_and_time > ?", Time.current)
+    TicketListing.where(organization_id: order.organization_id, production_id: listing.production_id)
+                 .where.not(status: "canceled").joins(:show).where(shows: { canceled: false })
+                 .where("ticket_listings.id = :own OR (ticket_listings.status = 'on_sale' AND shows.date_and_time > :now)",
+                        own: listing.id, now: Time.current)
                  .includes(:ticket_tiers, show: %i[location location_space]).order("shows.date_and_time")
   end
 
@@ -53,14 +57,26 @@ class TicketOrderExchange
   end
 
   # What each ticket type becomes: the type with the same name, unless the
-  # manager chose another.
+  # manager chose another. On their own date there's no default: changing
+  # the type is the point.
   def self.tier_map(tickets, target, chosen = {})
     tiers = target.ticket_tiers.reject(&:archived_at)
     chosen = chosen.to_h.transform_keys(&:to_i)
+    same_date = tickets.first && tickets.first.ticket_listing_id == target.id
     tickets.map(&:ticket_tier).uniq.to_h do |tier|
       pick = chosen[tier.id].presence&.to_i
-      [ tier.id, pick || tiers.find { |t| t.name.casecmp?(tier.name) }&.id ]
+      [ tier.id, pick || (tiers.find { |t| t.name.casecmp?(tier.name) }&.id unless same_date) ]
     end
+  end
+
+  # Seats left for each ticket type on the target, counting back the seats
+  # these tickets give up when they're on the same date. nil = no limit.
+  def self.seats_left(target, tickets, inventory = inventory_for(target, tickets))
+    target.ticket_tiers.reject(&:archived_at).to_h { |tier| [ tier.id, inventory.remaining(tier: tier) ] }
+  end
+
+  def self.inventory_for(target, tickets)
+    Ticketing::Inventory.new(target, excluding: (tickets.map(&:id) if tickets.first&.ticket_listing_id == target.id))
   end
 
   # outside_policy: the manager's Move anyway, for a show that has happened.
@@ -80,6 +96,10 @@ class TicketOrderExchange
     map = tier_map(tickets, target, chosen_tiers)
     tiers = target.ticket_tiers.reject(&:archived_at).index_by(&:id)
     rows = tickets.map { |ticket| row_for(ticket, tiers[map[ticket.ticket_tier_id]], target) }
+    if target.id == order.ticket_listing_id && (same = rows.find { |row| (row.bundle_tier || row.tier) == (row.ticket.bundle_tier || row.ticket.ticket_tier) })
+      raise Error, "#{same.ticket.ticket_tier.name} tickets are already #{same.tier.name}. Choose another ticket type, or untick them."
+    end
+    check_seats!(target, rows)
     old_rows = tickets.map { |t| Row.new(ticket: t, tier: t.ticket_tier, price_cents: t.price_cents, discount_cents: t.discount_cents, tax_lines: original_tax(t)) }
 
     old_amount = old_rows.sum(&:amount_cents)
@@ -121,13 +141,13 @@ class TicketOrderExchange
     OrgCashEntry.with_org_lock(organization) do
       order.with_lock do
         plan = plan(order, target: target, ticket_ids: ticket_ids, chosen_tiers: chosen_tiers, outside_policy: outside_policy)
-        if listing.released_at.present? &&
+        if listing.released_at.present? && !plan.same_date? &&
            plan.moved_cents > CocoScoutBalance.available_cents(organization) + SalesTaxSetAside.relief_cents(organization, ticket_ids: plan.tickets.map(&:id))
           raise Error, "This show's money was already spent or withdrawn, so its tickets can't move to a show still to come."
         end
 
         requests = plan.rows.group_by(&:tier).transform_values(&:size)
-        Ticketing::Inventory.reserve!(target, requests) do
+        Ticketing::Inventory.reserve!(target, requests, (plan.tickets.map(&:id) if plan.same_date?)) do
           new_order = create_order!(order, plan)
           exchange = TicketExchange.create!(organization: organization, from_order: order, to_order: new_order, exchanged_by: by,
                                             ticket_ids: plan.tickets.map(&:id), moved_cents: plan.moved_cents,
@@ -152,9 +172,32 @@ class TicketOrderExchange
     raise Error, "#{target.display_title} on #{target.show.date_and_time.strftime('%a %b %-d')} doesn't have that many seats left."
   end
 
+  # Each new type has room for the tickets moving into it (its own seats
+  # and the show's, reservations in checkout counted), before the review
+  # offers the move. exchange! checks again under the lock.
+  def self.check_seats!(target, rows)
+    inventory = inventory_for(target, rows.map(&:ticket))
+    left = seats_left(target, rows.map(&:ticket), inventory)
+    rows.group_by(&:tier).each do |tier, moving|
+      seats = left[tier.id]
+      next if seats.nil? || moving.size <= seats
+
+      raise Error, seats.zero? ? "#{tier.name} has no seats left on #{target.show.date_and_time.strftime('%a %b %-d')}." :
+                                 "#{tier.name} has only #{seats} #{seats == 1 ? 'seat' : 'seats'} left on #{target.show.date_and_time.strftime('%a %b %-d')}."
+    end
+    overall = inventory.remaining
+    if overall && rows.size > overall
+      raise Error, "#{target.display_title} on #{target.show.date_and_time.strftime('%a %b %-d')} doesn't have that many seats left."
+    end
+  end
+
   # The buyer, their payment and their share of the money, on the new date.
   def self.create_order!(order, plan)
     tickets = plan.tickets
+    # Free tickets carry the new type's value (a comp of General reads as
+    # $20 given, not the Splatter Zone it was); paid ones keep what was paid,
+    # with any difference refunded on the new order.
+    tickets = plan.rows if plan.old_amount_cents.zero?
     new_order = TicketOrder.create!(
       organization: order.organization, ticket_listing: plan.target, status: "paid", paid_at: order.paid_at,
       channel: order.channel, money_path: order.money_path, fee_mode: order.fee_mode, exchanged_from: order,
@@ -224,15 +267,19 @@ class TicketOrderExchange
 
     from = { show: old_listing.show, production: old_listing.production }
     to = { show: plan.target.show, production: plan.target.production }
+    # On the same date (another ticket type), the sale stays where it was:
+    # earned already if the show has happened and its money was released.
+    to_account = plan.target.released_at ? :ticket_income : :advance_ticket_sales
+    to_product_account = plan.target.released_at ? :product_income : :advance_product_sales
     LedgerPosting.post!(organization: order.organization, source: exchange, kind: "exchange", entry_date: Date.current,
                         memo: "Tickets #{order.code} moved to #{plan.target.display_title}, #{plan.target.show.date_and_time.strftime('%b %-d')}",
                         lines: [
                           { account: old_listing.released_at ? :ticket_income : :advance_ticket_sales, amount_cents: plan.old_face_cents, **from },
                           { account: :tax_to_remit, amount_cents: plan.old_tax_cents, **from },
-                          { account: :advance_ticket_sales, amount_cents: -plan.old_face_cents, **to },
+                          { account: to_account, amount_cents: -plan.old_face_cents, **to },
                           { account: :tax_to_remit, amount_cents: -plan.old_tax_cents, **to },
                           { account: old_listing.released_at ? :product_income : :advance_product_sales, amount_cents: moved_products, **from },
-                          { account: :advance_product_sales, amount_cents: -moved_products, **to }
+                          { account: to_product_account, amount_cents: -moved_products, **to }
                         ])
   end
 
@@ -253,7 +300,11 @@ class TicketOrderExchange
   # discount and tax as they were bought. A cheaper type keeps the discount
   # (up to its price) and is taxed as the new date taxes it.
   def self.row_for(ticket, tier, target)
-    raise Error, "Choose what #{ticket.ticket_tier.name} tickets become on the new date." unless tier
+    unless tier
+      raise Error, ticket.ticket_listing_id == target.id ? "Choose the ticket type #{ticket.ticket_tier.name} tickets become." :
+                                                           "Choose what #{ticket.ticket_tier.name} tickets become on the new date."
+    end
+    return free_row(ticket, tier) if ticket.price_cents <= ticket.discount_cents
     bundle = bundle_for(ticket, tier)
     return bundle_row(ticket, bundle, target) if bundle
     if tier.bundle?
@@ -268,6 +319,17 @@ class TicketOrderExchange
     discount = [ ticket.discount_cents, tier.price_cents ].min
     tax = TaxCalculator.for_ticket(target, tier, tier.price_cents - discount)
     Row.new(ticket: ticket, tier: tier, price_cents: tier.price_cents, discount_cents: discount, tax_lines: tax.lines)
+  end
+
+  # A ticket that cost nothing (a comp, a free ticket) stays free: the new
+  # type at its price, all of it discounted, no tax. Nothing to refund or
+  # charge, so any type will do.
+  def self.free_row(ticket, tier)
+    bundle = bundle_for(ticket, tier)
+    raise Error, "#{tier.name} is a bundle. Choose a ticket type for #{ticket.ticket_tier.name} tickets." if tier.bundle? && !bundle
+
+    price = bundle ? TicketTier.split(bundle.price_cents, bundle.admits).max : tier.price_cents
+    Row.new(ticket: ticket, tier: tier.base_tier, price_cents: price, discount_cents: price, tax_lines: [], bundle_tier: bundle)
   end
 
   # A ticket bought in a bundle ("4 × General for $70", each ticket $17.50)
@@ -322,5 +384,5 @@ class TicketOrderExchange
   end
 
   private_class_method :moved_cents, :create_order!, :retire_old_tickets!, :move_products!, :post_money!, :refund_difference!,
-                       :row_for, :bundle_for, :bundle_row, :original_tax, :share, :money
+                       :row_for, :free_row, :bundle_for, :bundle_row, :original_tax, :share, :money, :check_seats!, :inventory_for
 end
