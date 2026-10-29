@@ -202,9 +202,12 @@ module NativeAppHelper
     { id: id, title: title, path: path, icon: icon, badge: item[:badge].to_i }
   end
 
-  # In production mode: a Manage page with its organization chosen.
+  # In production mode: a Manage page with its organization chosen, or one
+  # of the pages that belong to both modes (Messages, Notifications) opened
+  # from production mode, which draw its frame (@show_manage_sidebar).
+  # Opening the inbox is not leaving production mode (Tim, 2026-10-29).
   def native_production_mode?
-    controller_path.to_s.start_with?("manage") && Current.organization.present?
+    (controller_path.to_s.start_with?("manage") || @show_manage_sidebar) && Current.organization.present?
   end
 
   # A tile for the V1.1 menu: My's tiles keep their names and symbols

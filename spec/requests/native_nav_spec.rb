@@ -49,6 +49,27 @@ RSpec.describe "The app's V1.1 menu", type: :request do
     expect(nav.dig("modeSwitch", "label")).to eq("Exit production mode")
     expect(nav.dig("icons", "messages", "path")).to eq(messages_path)
   end
+
+  # Messages and Notifications belong to both modes: opening one from
+  # production mode keeps production mode's menu and strip (Tim, 2026-10-29).
+  [ :messages_path, :notifications_path ].each do |page|
+    it "keeps production mode's menu on #{page} opened from production mode" do
+      get manage_path, headers: { "User-Agent" => v1_1 }
+      get send(page), headers: { "User-Agent" => v1_1 }
+      nav = JSON.parse(bridge["data-bridge--menu-nav-value"])
+      expect(nav["mode"]).to eq("production")
+      expect(nav.dig("organization", "name")).to eq("Stars & Garters")
+      expect(nav.dig("modeSwitch", "label")).to eq("Exit production mode")
+      expect(response.body).to include("data-production-strip")
+    end
+
+    it "keeps My's menu on #{page} opened from My" do
+      get my_dashboard_path, headers: { "User-Agent" => v1_1 }
+      get send(page), headers: { "User-Agent" => v1_1 }
+      expect(JSON.parse(bridge["data-bridge--menu-nav-value"])["mode"]).to eq("my")
+      expect(response.body).not_to include("data-production-strip")
+    end
+  end
 end
 
 RSpec.describe "The app's production-mode strip", type: :request do
