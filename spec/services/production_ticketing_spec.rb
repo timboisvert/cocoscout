@@ -192,4 +192,17 @@ RSpec.describe ProductionTicketing do
     show.update!(date_and_time: show.date_and_time + 1.day)
     expect([ listing.reload.on_sale_at, listing.off_sale_at ]).to eq([ show.date_and_time - 30.days, show.date_and_time - 1.hour ])
   end
+
+  # Tim's deploy, 2026-10-29: a show moved onto the night the clocks go back
+  # opened its sales an hour late (a day's move was 25 hours).
+  it "keeps the sales window on the clock when the show moves across a clock change" do
+    travel_to Time.zone.local(2026, 10, 29, 12) do
+      show = show_on(2) # Sat Oct 31, before the clocks go back
+      listing = ProductionTicketingDates.sync!(setup).added.sole
+      show.update!(date_and_time: show.date_and_time + 1.day) # Sun Nov 1, after
+      expect(listing.reload.on_sale_at).to eq(show.date_and_time - 30.days)
+      expect(listing.on_sale_at.strftime("%-l:%M")).to eq(show.date_and_time.strftime("%-l:%M"))
+      expect(listing.off_sale_at).to eq(show.date_and_time - 1.hour)
+    end
+  end
 end

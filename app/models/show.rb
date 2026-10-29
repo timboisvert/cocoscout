@@ -771,9 +771,17 @@ class Show < ApplicationRecord
     return unless before && after && listing
 
     shift = after - before
+    # A date on its production's rule ("opens 30 days before") is worked out
+    # again from the rule, so the clock change can't push it an hour off; a
+    # time someone set by hand moves by the same amount as the show.
+    rule = production&.production_ticketing if listing.inherits_tiers
     changes = {}
-    changes[:off_sale_at] = listing.off_sale_at + shift if listing.off_sale_at
-    changes[:on_sale_at] = listing.on_sale_at + shift if listing.on_sale_at && listing.inherits_tiers
+    if listing.off_sale_at
+      changes[:off_sale_at] = rule && listing.off_sale_at == rule.off_sale_at_for(before) ? rule.off_sale_at_for(after) : listing.off_sale_at + shift
+    end
+    if listing.on_sale_at && listing.inherits_tiers
+      changes[:on_sale_at] = rule && listing.on_sale_at == rule.on_sale_at_for(before) ? rule.on_sale_at_for(after) : listing.on_sale_at + shift
+    end
     listing.update_columns(changes.merge(updated_at: Time.current)) if changes.any?
   end
 
