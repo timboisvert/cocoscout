@@ -60,6 +60,41 @@ RSpec.describe "Mailing lists", type: :request do
     expect(list.followers.reload.pluck(:email)).to eq([ "new@example.com" ])
   end
 
+  # Tim 2026-10-29: Paste many didn't submit; Check had become a hidden gate.
+  it "adds a paste without a Check first, and the Add people button isn't waiting on one" do
+    list = org.mailing_lists.create!(name: "Dan Feltey's shows")
+    get manage_mailing_list_path(list)
+    add = Nokogiri::HTML(response.body).at_css("[data-follower-paste-target='addPaste'] button")
+    expect(add["form"]).to eq("add-paste-form")
+    expect(add["class"]).to include("disabled:opacity-50", "disabled:cursor-not-allowed")
+
+    post manage_mailing_list_followers_path(list), params: { text: "Rosa Delgado, rosa@example.com\ntkwan@example.com", permission: "1" }
+    expect(response).to redirect_to(manage_mailing_list_path(list))
+    expect(flash[:notice]).to eq("Added 2 people to Dan Feltey's shows.")
+    expect(list.followers.reload.pluck(:email)).to contain_exactly("rosa@example.com", "tkwan@example.com")
+  end
+
+  it "says so when a paste has nobody new to add, at Check and on Add" do
+    list = org.mailing_lists.create!(name: "Dan Feltey's shows")
+    list.mailing_list_memberships.create!(follower: Follower.for!(org, "rosa@example.com", name: "Rosa Delgado"))
+    paste = "Rosa Delgado, rosa@example.com\nnot an email"
+
+    post manage_check_mailing_list_followers_path(list), params: { text: paste }
+    expect(response.body).to include('data-follower-paste-addable="0"', "Nobody new to add")
+
+    expect {
+      post manage_mailing_list_followers_path(list), params: { text: paste, permission: "1" }
+    }.not_to change { list.mailing_list_memberships.count }
+    expect(flash[:notice]).to eq("Nobody new to add (they were already on it, unsubscribed, bounced or not an email).")
+  end
+
+  it "says when a Check finds new people, without the nothing-to-add note" do
+    list = org.mailing_lists.create!(name: "Dan Feltey's shows")
+    post manage_check_mailing_list_followers_path(list), params: { text: "new@example.com" }
+    expect(response.body).to include('data-follower-paste-addable="1"')
+    expect(response.body).not_to include("Nobody new to add")
+  end
+
   it "shows a list with where it collects, who can see it, and the standard Actions box" do
     list = org.mailing_lists.create!(name: "Dan Feltey's shows")
     production = create(:production, organization: org, name: "Comedy Hour", production_type: "third_party")

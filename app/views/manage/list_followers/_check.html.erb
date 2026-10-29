@@ -2,6 +2,11 @@
 <% counts = entries.group_by(&:status).transform_values(&:size) %>
 <% addable = counts["new"].to_i %>
 <div class="rounded-lg border border-gray-200 overflow-hidden" data-follower-paste-addable="<%= addable %>">
+  <% if addable.zero? %>
+    <p class="border-b border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
+      <%= entries.empty? ? "There's nobody in that paste. Put one name and email per line." : "Nobody new to add: everyone here is already on the list, unsubscribed, bounced or not an email." %>
+    </p>
+  <% end %>
   <div class="grid grid-cols-2 sm:grid-cols-4 border-b border-gray-200">
     <div class="px-3 py-2.5 <%= addable.positive? ? 'bg-green-50' : '' %>"><b class="text-lg tabular-nums <%= addable.positive? ? 'text-green-700' : 'text-gray-900' %>"><%= addable %></b><div class="text-xs text-gray-500">New</div></div>
     <div class="px-3 py-2.5"><b class="text-lg tabular-nums text-gray-900"><%= counts["already"].to_i %></b><div class="text-xs text-gray-500">Already on it</div></div>

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Manage
-  # Adding people to a list (one, or many pasted, checked first) and taking
+  # Adding people to a list (one, or many pasted, optionally checked first) and taking
   # someone off it.
   class ListFollowersController < ManageController
     before_action :set_list
@@ -28,7 +28,7 @@ module Manage
       end
       added = intake.add!(entries, kind: kind, added_by_person: Current.user.person)
       left = entries.size - added
-      notice = if added.zero? then "Nobody new to add#{' (they were already on it, unsubscribed or bounced)' if left.positive?}."
+      notice = if added.zero? then "Nobody new to add#{' (they were already on it, unsubscribed, bounced or not an email)' if left.positive?}."
       else "Added #{ActionController::Base.helpers.pluralize(added, 'person')} to #{@list.name}."
       end
       redirect_to manage_mailing_list_path(@list), notice: notice

@@ -143,7 +143,7 @@
 
 <%# ---- Windows ---- %>
 
-<%# Add people: one person, or many pasted and checked first. %>
+<%# Add people: one person, or many pasted (Check previews a paste; it's optional). %>
 <div data-controller="follower-paste" data-follower-paste-check-url-value="<%= manage_check_mailing_list_followers_path(@list) %>">
   <%= render "manage/mailing_lists/modal", id: "add-people-modal", title: "Add people", wide: true, open: params[:add].present?,
         body: capture {
