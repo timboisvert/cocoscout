@@ -150,8 +150,9 @@ the next two (three and ten days out) on sale, each
 with two paid parties to check in, and box-office door access for the
 reviewer. Run it dry first; it prints what it would make and rolls back.
 
-```sh
-kamal app exec -i --reuse 'bin/rails runner -' <<'RUBY'
+Paste it into `kamal console` (Ruby only, no shell wrapper):
+
+```ruby
 DRY_RUN = true   # run once, read the output, then set false and run again
 
 REVIEW_DOMAIN = "demo.cocoscout.com"
@@ -251,11 +252,9 @@ ActiveRecord::Base.transaction do
   raise ActiveRecord::Rollback if DRY_RUN
 end
 puts(DRY_RUN ? "Rolled back." : "Done.")
-RUBY
 ```
 
-If `rails runner -` isn't accepted on the deployed Rails, run
-`kamal app exec -i --reuse 'bin/rails console'` and paste the block instead.
+
 
 After a real run: the reviewer's password is in the output; change the
 `REVIEW_PASSWORD` if you'd rather not keep the default. To undo, delete the
