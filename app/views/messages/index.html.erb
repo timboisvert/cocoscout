@@ -3,10 +3,14 @@
 <%#
   The one Messages page (MessagesController): the same list at one address
   in either mode's frame. Production mode adds Send a message (the compose
-  modal) and the intro guide; My adds the Contact-the-team card; a V1 app,
-  which has no bell, gets the Notifications row.
+  modal) and the intro guide; My adds Message a production: one production
+  opens the contact window, several open a sheet of them first, each saying
+  why they can write to it (Tim, 2026-10-29: the old box's Send Message did
+  nothing here, the window was never on the page). A V1 app, which has no
+  bell, gets the Notifications row.
 %>
-<div class="w-full pb-8" data-controller="message-density">
+<% contactable = @production_mode ? [] : @contactable_productions %>
+<div class="w-full pb-8" data-controller="message-density<%= ' contact-production' if contactable.any? %>">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
   <%
@@ -29,7 +33,15 @@
                      }.to_json : "{}"
                    } }
     end
-    actions << { icon: "check", text: "Mark all read", path: read_messages_path, method: :post, variant: (@production_mode ? "secondary" : "primary"),
+    if contactable.one?
+      only = contactable.first
+      actions << { icon: "mail", text: "Message a production", path: "#",
+                   data: { action: "click->contact-production#open", production_id: only.id, production_name: only.name } }
+    elsif contactable.any?
+      actions << { icon: "mail", text: "Message a production", path: "#",
+                   data: { controller: "modal", action: "click->modal#open", modal_id: "message-a-production" } }
+    end
+    actions << { icon: "check", text: "Mark all read", path: read_messages_path, method: :post, variant: (@production_mode || contactable.any? ? "secondary" : "primary"),
                  badge: (@unread_count if @unread_count.to_i.positive?), disabled: @unread_count.to_i.zero? }
   %>
   <%= render "shared/module_header", title: "Messages", actions: actions %>
@@ -67,19 +79,30 @@
       <% end %>
     <% end %>
 
-    <%# Contact Production Team Card %>
-    <% if @contactable_productions.any? %>
-      <div class="mt-4" data-controller="contact-production">
-        <% if @contactable_productions.size == 1 %>
-          <%= render "shared/contact_production_card", production: @contactable_productions.first %>
-        <% else %>
-          <%= render "shared/contact_production_card", productions: @contactable_productions %>
+  <% end %>
+
+  <%= render "shared/messages/inbox", base: (@production_mode ? :manage : :my), path: ->(**overrides) { messages_path(**overrides) } %>
+
+  <% if contactable.many? %>
+    <%= render layout: "shared/sheet", locals: { id: "message-a-production", title: "Message a production" } do %>
+      <p class="text-sm text-gray-600 -mt-1 mb-3">Your message goes to that production's team, and their reply lands back here.</p>
+      <div class="-mx-4 sm:-mx-6 divide-y divide-gray-100" data-message-a-production>
+        <% contactable.each do |production| %>
+          <button type="button" class="w-full flex items-center gap-3 px-4 sm:px-6 py-3 text-left hover:bg-gray-50 cursor-pointer"
+                  data-action="click->modal#close click->contact-production#open"
+                  data-production-id="<%= production.id %>" data-production-name="<%= production.name %>">
+            <span class="w-10 h-10 rounded-lg bg-pink-100 text-pink-700 text-sm font-bold flex items-center justify-center flex-shrink-0"><%= production.initials %></span>
+            <span class="min-w-0 flex-1">
+              <span class="block text-[15px] font-semibold text-gray-900 truncate"><%= production.name %></span>
+              <span class="block text-sm text-gray-600 truncate"><%= production.organization&.name %> · <%= @contact_reasons[production.id] %></span>
+            </span>
+            <svg class="w-4 h-4 text-gray-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+          </button>
         <% end %>
       </div>
     <% end %>
   <% end %>
-
-  <%= render "shared/messages/inbox", base: (@production_mode ? :manage : :my), path: ->(**overrides) { messages_path(**overrides) } %>
+  <%= render "shared/contact_production_modal" if contactable.any? %>
 </div>
 
 <% if @production_mode %>

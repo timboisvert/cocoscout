@@ -119,7 +119,8 @@ module Manage
 
       render json: {
         shows: shows_data,
-        talent_pool: talent_pool_data
+        talent_pool: talent_pool_data,
+        audience: production_audience(production, talent_pool)
       }
     end
     # One inbox, one count: everything unread is read now.
@@ -347,6 +348,9 @@ module Manage
         # Load people and groups from the IDs (scoped to current organization)
         people = Current.organization.people.where(id: person_ids)
         groups = Current.organization.groups.where(id: person_ids)
+        # A production's whole audience (Send a message → A production) is
+        # sent as that production, so its team shares the thread.
+        batch_production = Current.user.accessible_productions.where(organization: Current.organization).find_by(id: params[:production_id]) if params[:production_id].present?
 
         # Collect all people to message (direct people + group members with notifications enabled)
         people_to_message = people.to_a
@@ -369,6 +373,7 @@ module Manage
               body: body,
               message_type: :direct,
               organization: Current.organization,
+              production: batch_production,
               visibility: visibility
             )
             if message
@@ -386,6 +391,7 @@ module Manage
             body: body,
             message_type: :direct,
             organization: Current.organization,
+            production: batch_production,
             visibility: visibility
           )
           message&.images&.attach(images) if images.present?
@@ -593,6 +599,27 @@ module Manage
     # Loaded for the whole batch of shows at once — one query for the shifts and
     # one for their assignments — because the compose modal asks for a
     # production's worth of shows in a single request.
+    # Everyone on one production, for Send a message → A production (Tim,
+    # 2026-10-29): who's cast in its upcoming shows (groups by their
+    # members), its talent pool, and the crew on its upcoming shows, as id
+    # lists the window combines, plus a few faces for the preview.
+    def production_audience(production, talent_pool)
+      upcoming = production.shows.where(canceled: false).where(date_and_time: Time.current..).to_a
+      assignments = ShowPersonRoleAssignment.where(show_id: upcoming.map(&:id))
+      cast_ids = assignments.where(assignable_type: "Person").distinct.pluck(:assignable_id)
+      group_ids = assignments.where(assignable_type: "Group").distinct.pluck(:assignable_id)
+      cast_ids |= GroupMembership.where(group_id: group_ids).pluck(:person_id) if group_ids.any?
+      pool_ids = talent_pool ? talent_pool.people.distinct.pluck(:id) : []
+      crew_ids = crew_for_shows(upcoming).values.flatten.flat_map { |entry| entry[:people].map { |p| p[:id] } }.uniq
+
+      face_ids = (cast_ids.first(12) + pool_ids.first(12) + crew_ids.first(6)).uniq
+      faces = Person.where(id: face_ids).includes(profile_headshots: { image_attachment: :blob }).map do |person|
+        variant = person.safe_headshot_variant(:thumb)
+        { id: person.id, name: person.name, headshot: variant ? url_for(variant) : "", initials: person.initials }
+      end
+      { name: production.name, cast_ids: cast_ids, pool_ids: pool_ids, crew_ids: crew_ids, faces: faces }
+    end
+
     def crew_for_shows(shows)
       show_ids = shows.map(&:id)
       # Crew comes from Staffing (Pro); an org without it has none to message.

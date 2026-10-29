@@ -35,7 +35,11 @@ export default class extends Controller {
         "showCastPreview", "showCastCount", "showCastHeadshots",
         "audiencePanel", "crewPicker", "crewList",
         "talentPoolPanel", "talentPoolProductionPicker", "talentPoolProductionSelect",
-        "talentPoolPreviewBox", "talentPoolCount", "talentPoolHeadshots"
+        "talentPoolPreviewBox", "talentPoolCount", "talentPoolHeadshots",
+        // A production (Tim, 2026-10-29)
+        "productionPanel", "productionPickerWrap", "productionSelect", "productionAudienceBox",
+        "productionAudienceName", "audienceCastCount", "audiencePoolCount", "audienceBothCount",
+        "productionCrewRow", "productionCrew", "productionAudienceHeadshots", "productionAudienceTotal"
     ]
     static values = {
         recipientType: String,  // "person", "group", "production_team", "show_cast", "batch", "talent_pool"
@@ -238,6 +242,59 @@ export default class extends Controller {
         if (continueBtn) continueBtn.disabled = !!(!this.talentPoolIdValue)
     }
 
+    // A production: the chosen production's people, then who on it.
+    async selectProductionForAudience(event) {
+        const productionId = event.currentTarget.value
+        const modal = document.getElementById('compose-message-modal')
+        if (!modal) return
+        if (!productionId) {
+            modal.querySelector('[data-compose-message-target="productionAudienceBox"]')?.classList.add('hidden')
+            const continueBtn = modal.querySelector('[data-compose-message-target="continueButton"]')
+            if (continueBtn) continueBtn.disabled = true
+            return
+        }
+        this.productionIdValue = parseInt(productionId)
+        await this._fetchProductionData(productionId)
+        this._showCastProductionLoaded = true
+        this._talentPoolProductionLoaded = true
+        this.updateProductionAudience()
+    }
+
+    // Everyone cast in its upcoming shows, its talent pool, or both, plus its
+    // crew when ticked: one list, each person once.
+    _productionAudienceIds(modal) {
+        const audience = this._audience || { cast_ids: [], pool_ids: [], crew_ids: [] }
+        const choice = modal.querySelector('input[name="production_audience"]:checked')?.value || 'cast'
+        let ids = choice === 'pool' ? audience.pool_ids : choice === 'both' ? [...audience.cast_ids, ...audience.pool_ids] : audience.cast_ids
+        if (modal.querySelector('[data-compose-message-target="productionCrew"]')?.checked) ids = [...ids, ...audience.crew_ids]
+        return [...new Set(ids)]
+    }
+
+    updateProductionAudience() {
+        const modal = document.getElementById('compose-message-modal')
+        if (!modal || !this._audience) return
+        const audience = this._audience
+        const box = modal.querySelector('[data-compose-message-target="productionAudienceBox"]')
+        if (box) box.classList.remove('hidden')
+        const nameEl = modal.querySelector('[data-compose-message-target="productionAudienceName"]')
+        if (nameEl) nameEl.textContent = audience.name || 'this production'
+        const people = (n) => `${n} ${n === 1 ? 'person' : 'people'}`
+        const both = new Set([...audience.cast_ids, ...audience.pool_ids]).size
+        const set = (target, text) => { const el = modal.querySelector(`[data-compose-message-target="${target}"]`); if (el) el.textContent = text }
+        set('audienceCastCount', audience.cast_ids.length ? people(audience.cast_ids.length) : 'Nobody cast in an upcoming show yet')
+        set('audiencePoolCount', audience.pool_ids.length ? `${people(audience.pool_ids.length)}, cast or not` : 'No talent pool')
+        set('audienceBothCount', `${people(both)}, each one once`)
+        modal.querySelector('[data-compose-message-target="productionCrewRow"]')?.classList.toggle('hidden', audience.crew_ids.length === 0)
+
+        const ids = this._productionAudienceIds(modal)
+        const faces = (audience.faces || []).filter(f => ids.includes(f.id)).slice(0, 10)
+        const headshots = modal.querySelector('[data-compose-message-target="productionAudienceHeadshots"]')
+        if (headshots) headshots.innerHTML = this.renderStackedHeadshots(faces.map(f => ({ name: f.name, headshot: f.headshot })))
+        set('productionAudienceTotal', ids.length ? `${people(ids.length)} will get it` : 'Nobody to send to yet')
+        const continueBtn = modal.querySelector('[data-compose-message-target="continueButton"]')
+        if (continueBtn) continueBtn.disabled = ids.length === 0
+    }
+
     // Shared method to fetch production data from server
     async _fetchProductionData(productionId) {
         const url = this.productionDataUrlValue.replace(':production_id', productionId)
@@ -248,6 +305,7 @@ export default class extends Controller {
             const data = await response.json()
 
             this.showsValue = data.shows || []
+            this._audience = data.audience || null
 
             if (data.talent_pool) {
                 this.talentPoolIdValue = data.talent_pool.id
@@ -291,7 +349,7 @@ export default class extends Controller {
     }
 
     _hideAllSubPanels(modal) {
-        const panels = ['individualsPanel', 'showCastPanel', 'talentPoolPanel']
+        const panels = ['individualsPanel', 'showCastPanel', 'talentPoolPanel', 'productionPanel']
         panels.forEach(name => {
             const el = modal.querySelector(`[data-compose-message-target="${name}"]`)
             if (el) el.classList.add('hidden')
@@ -362,6 +420,28 @@ export default class extends Controller {
                 if (continueBtn) continueBtn.disabled = !showSelect?.value
             }
 
+        } else if (selected === 'production') {
+            const panel = modal.querySelector('[data-compose-message-target="productionPanel"]')
+            if (panel) panel.classList.remove('hidden')
+            const pickerWrap = modal.querySelector('[data-compose-message-target="productionPickerWrap"]')
+            const select = modal.querySelector('[data-compose-message-target="productionSelect"]')
+            const productions = this.productionsValue || []
+            if (productions.length > 1) {
+                if (pickerWrap) pickerWrap.classList.remove('hidden')
+                this._populateProductionSelect(select)
+            } else if (pickerWrap) {
+                pickerWrap.classList.add('hidden')
+            }
+            const onlyId = productions.length === 1 ? productions[0].id : null
+            if (this._audience && this.productionIdValue) {
+                this.updateProductionAudience()
+            } else if (onlyId) {
+                this.productionIdValue = onlyId
+                this._fetchProductionData(onlyId).then(() => this.updateProductionAudience())
+            } else {
+                modal.querySelector('[data-compose-message-target="productionAudienceBox"]')?.classList.add('hidden')
+                if (continueBtn) continueBtn.disabled = true
+            }
         } else if (selected === 'talent_pool') {
             const panel = modal.querySelector('[data-compose-message-target="talentPoolPanel"]')
             if (panel) panel.classList.remove('hidden')
@@ -602,6 +682,7 @@ export default class extends Controller {
 
         const selected = modal.querySelector('input[name="step1_recipient_type"]:checked')?.value
         if (!selected) return
+        this._audienceProductionId = null
 
         if (selected === 'individuals') {
             if (this.selectedPeople.length === 1) {
@@ -652,6 +733,15 @@ export default class extends Controller {
                 this.castMembersValue = castMembers
                 this.batchPersonIdsValue = []
             }
+        } else if (selected === 'production') {
+            const ids = this._productionAudienceIds(modal)
+            const faces = (this._audience?.faces || []).filter(f => ids.includes(f.id))
+            this.recipientTypeValue = 'batch'
+            this.recipientIdValue = null
+            this.recipientNameValue = this._audience?.name || ''
+            this.batchPersonIdsValue = ids
+            this.castMembersValue = faces.map(f => ({ name: f.name, headshot: f.headshot || '' }))
+            this._audienceProductionId = this.productionIdValue
         } else if (selected === 'talent_pool') {
             this.recipientTypeValue = 'talent_pool'
             this.recipientIdValue = this.talentPoolIdValue
@@ -857,6 +947,15 @@ export default class extends Controller {
                     input.value = id
                     form.appendChild(input)
                 })
+            }
+
+            // A production's batch is sent as that production
+            if (this.recipientTypeValue === 'batch' && this._audienceProductionId) {
+                const input = document.createElement('input')
+                input.type = 'hidden'
+                input.name = 'production_id'
+                input.value = this._audienceProductionId
+                form.appendChild(input)
             }
 
             // Add production_id for talent_pool messages
@@ -1190,6 +1289,8 @@ export default class extends Controller {
             this.castMembersValue = []
             this.batchPersonIdsValue = []
             this.productionIdValue = null
+            this._audienceProductionId = null
+            this._audience = null
 
             // Reset sender identity to production_team (but keep section visible)
             const senderIdentitySection = modal.querySelector('[data-compose-message-target="senderIdentitySection"]')

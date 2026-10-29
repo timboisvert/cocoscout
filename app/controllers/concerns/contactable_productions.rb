@@ -69,6 +69,31 @@ module ContactableProductions
       production_ids.merge(group_cast_production_ids)
     end
 
-    Production.where(id: production_ids).order(:name)
+    Production.where(id: production_ids).includes(:organization).order(:name)
+  end
+
+  # Why this person can write to each production's team, for the Message a
+  # production sheet: the next show they're cast in, else that they've been
+  # cast, else that they're in its talent pool. { production_id => words }
+  def contact_reasons(productions)
+    people_ids = Current.user.people.active.pluck(:id)
+    group_ids = GroupMembership.where(person_id: people_ids).pluck(:group_id)
+    assigned = ShowPersonRoleAssignment.joins(:show)
+      .where(shows: { production_id: productions.map(&:id), canceled: false })
+      .where("(assignable_type = 'Person' AND assignable_id IN (?)) OR (assignable_type = 'Group' AND assignable_id IN (?))",
+             people_ids.presence || [ 0 ], group_ids.presence || [ 0 ])
+    next_show = assigned.where("shows.date_and_time >= ?", Time.current).group("shows.production_id").minimum("shows.date_and_time")
+    cast_ever = assigned.distinct.pluck("shows.production_id").to_set
+
+    productions.to_h do |production|
+      words = if (at = next_show[production.id])
+        "You're cast #{at.in_time_zone.strftime('%a, %b %-d')}"
+      elsif cast_ever.include?(production.id)
+        "You've been cast in its shows"
+      else
+        "In its talent pool"
+      end
+      [ production.id, words ]
+    end
   end
 end

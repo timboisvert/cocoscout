@@ -4,8 +4,9 @@
 # that changes based on the context"): every thread the person is in, at
 # one address, drawn in the frame of the mode they're in (like
 # Notifications). The list and filters are MessagesInbox; production mode
-# adds Send a message (compose) and the intro guide; My adds the
-# Contact-the-team card, and the Notifications row for V1 apps with no bell.
+# adds Send a message (compose) and the intro guide; My adds Message a
+# production (a sheet of the productions they can write to, then the
+# contact window), and the Notifications row for V1 apps with no bell.
 class MessagesController < ApplicationController
   include MessagesInbox
   include OrganizationContext
@@ -23,7 +24,8 @@ class MessagesController < ApplicationController
         .includes(:talent_pools, talent_pool_shares: :talent_pool)
         .order(:name)
     else
-      @contactable_productions = productions_user_can_contact
+      @contactable_productions = productions_user_can_contact.to_a
+      @contact_reasons = contact_reasons(@contactable_productions)
     end
   end
 

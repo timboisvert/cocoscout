@@ -102,8 +102,8 @@
                 </svg>
               </div>
               <div>
-                <p class="font-medium text-gray-900 text-sm">Individuals</p>
-                <p class="text-xs text-gray-500 mt-0.5">Specific people</p>
+                <p class="font-medium text-gray-900 text-sm">People</p>
+                <p class="text-xs text-gray-500 mt-0.5">Anyone, picked by name</p>
               </div>
             </div>
           </div>
@@ -121,18 +121,18 @@
                 </svg>
               </div>
               <div>
-                <p class="font-medium text-gray-900 text-sm">Show Cast</p>
-                <p class="text-xs text-gray-500 mt-0.5">Entire show cast</p>
+                <p class="font-medium text-gray-900 text-sm">A show</p>
+                <p class="text-xs text-gray-500 mt-0.5">Everyone cast in one show, and its crew if you like</p>
               </div>
             </div>
           </div>
 
-          <%# Talent Pool Card %>
+          <%# A production: everyone on one production, its casts, its talent pool or both (Tim, 2026-10-29) %>
           <div class="block cursor-pointer p-4 rounded-lg border-2 transition-colors border-gray-200 bg-gray-50 hover:border-pink-300"
                data-option-select-target="option"
-               data-value="talent_pool"
+               data-value="production"
                data-action="click->option-select#select">
-            <input type="radio" name="step1_recipient_type" value="talent_pool" class="sr-only" data-option-select-target="input">
+            <input type="radio" name="step1_recipient_type" value="production" class="sr-only" data-option-select-target="input">
             <div class="flex max-sm:flex-row sm:flex-col items-center max-sm:text-left text-center gap-3 sm:gap-2">
               <div class="flex h-10 w-10 items-center justify-center rounded-full bg-pink-100 text-pink-600 flex-shrink-0">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -140,8 +140,8 @@
                 </svg>
               </div>
               <div>
-                <p class="font-medium text-gray-900 text-sm">Talent Pool</p>
-                <p class="text-xs text-gray-500 mt-0.5">Entire talent pool</p>
+                <p class="font-medium text-gray-900 text-sm">A production</p>
+                <p class="text-xs text-gray-500 mt-0.5">Everyone on one production: its casts, its talent pool, or both</p>
               </div>
             </div>
           </div>
@@ -238,6 +238,42 @@
             <div class="rounded-lg bg-pink-50 border border-pink-200 p-4">
               <p class="text-sm text-gray-700"><span data-compose-message-target="talentPoolCount" class="font-semibold"></span> people in the talent pool</p>
               <div data-compose-message-target="talentPoolHeadshots" class="flex flex-wrap -space-x-1.5 mt-2"></div>
+            </div>
+          </div>
+        </div>
+
+        <%# A production: which one, then who on it (casts of its upcoming shows, its talent pool, both; the crew if you like) %>
+        <div data-compose-message-target="productionPanel" class="hidden space-y-4">
+          <div data-compose-message-target="productionPickerWrap" class="hidden">
+            <label class="block text-sm font-medium text-gray-700 mb-1" for="compose-production-select">Which production?</label>
+            <select id="compose-production-select" data-compose-message-target="productionSelect"
+                    data-action="change->compose-message#selectProductionForAudience"
+                    class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 shadow-sm focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 focus:outline-none transition-colors">
+              <option value="">Select a production...</option>
+            </select>
+          </div>
+          <div data-compose-message-target="productionAudienceBox" class="hidden space-y-2">
+            <p class="text-sm font-medium text-gray-700">Who on <span data-compose-message-target="productionAudienceName"></span>?</p>
+            <% [ [ "cast", "Everyone cast in its upcoming shows", "audienceCastCount" ],
+                 [ "pool", "Its talent pool", "audiencePoolCount" ],
+                 [ "both", "Both", "audienceBothCount" ] ].each_with_index do |(value, label, count_target), index| %>
+              <label class="flex items-start gap-3 rounded-lg border border-gray-200 px-3 py-2.5 cursor-pointer hover:border-pink-300 has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+                <input type="radio" name="production_audience" value="<%= value %>" <%= "checked" if index.zero? %> class="mt-0.5 accent-pink-500"
+                       data-action="change->compose-message#updateProductionAudience">
+                <span class="text-sm">
+                  <span class="block font-medium text-gray-900"><%= label %></span>
+                  <span class="block text-gray-500" data-compose-message-target="<%= count_target %>"></span>
+                </span>
+              </label>
+            <% end %>
+            <label class="hidden flex items-center gap-2 px-1 pt-1 text-sm text-gray-700 cursor-pointer" data-compose-message-target="productionCrewRow">
+              <input type="checkbox" class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+                     data-compose-message-target="productionCrew" data-action="change->compose-message#updateProductionAudience">
+              Also the crew working its upcoming shows
+            </label>
+            <div class="flex items-center gap-3 pt-1">
+              <div data-compose-message-target="productionAudienceHeadshots" class="flex flex-wrap -space-x-1.5"></div>
+              <p class="text-sm text-gray-600" data-compose-message-target="productionAudienceTotal"></p>
             </div>
           </div>
         </div>
