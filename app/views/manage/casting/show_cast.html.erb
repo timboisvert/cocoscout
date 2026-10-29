@@ -388,7 +388,9 @@
     <%# Add Person Modal (for Manual Entry / Hybrid modes) %>
     <% if show_click_to_add %>
     <div id="add-person-modal" data-drop-role-target="addPersonModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-action="click->drop-role#closeAddPersonModal">
-      <div class="bg-white w-full max-w-md rounded-lg shadow-xl" data-action="click->drop-role#stopPropagation">
+      <%# Search People / Add Guest are the usual tabs (tabs_controller). %>
+      <div class="bg-white w-full max-w-md rounded-lg shadow-xl" data-action="click->drop-role#stopPropagation tabs:change->drop-role#addPersonTabChanged"
+           data-controller="tabs" data-tabs-plain-value="true" data-tabs-url-value="false" data-drop-role-target="addPersonTabs">
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <h2 class="text-lg font-semibold text-gray-900">Add Person to <span data-drop-role-target="addPersonRoleName" class="text-pink-600"></span></h2>
           <button type="button" data-action="click->drop-role#closeAddPersonModal" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
@@ -401,19 +403,19 @@
         <%# Tab navigation %>
         <div class="border-b border-gray-200">
           <nav class="flex -mb-px" aria-label="Tabs">
-            <button type="button" data-action="click->drop-role#switchAddPersonTab" data-tab="search"
-                    class="add-person-tab flex-1 py-3 px-4 text-center text-sm font-medium border-b-2 border-pink-500 text-pink-600 cursor-pointer">
+            <button type="button" data-tabs-target="tab" data-index="0" data-action="click->tabs#select"
+                    class="flex-1 py-3 px-4 text-center text-sm font-medium border-b-2 border-pink-500 text-pink-600 cursor-pointer">
               Search People
             </button>
-            <button type="button" data-action="click->drop-role#switchAddPersonTab" data-tab="guest"
-                    class="add-person-tab flex-1 py-3 px-4 text-center text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 cursor-pointer">
+            <button type="button" data-tabs-target="tab" data-index="1" data-action="click->tabs#select"
+                    class="flex-1 py-3 px-4 text-center text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 cursor-pointer">
               Add Guest
             </button>
           </nav>
         </div>
 
         <%# Search tab content %>
-        <div data-drop-role-target="addPersonSearchTab" class="p-6">
+        <div data-tabs-target="panel" class="p-6">
           <div class="relative">
             <input type="text"
                    data-drop-role-target="personSearchInput"
@@ -441,7 +443,7 @@
         </div>
 
         <%# Guest tab content (hidden by default) %>
-        <div data-drop-role-target="addPersonGuestTab" class="p-6 hidden">
+        <div data-tabs-target="panel" class="p-6 hidden">
           <p class="text-sm text-gray-500 mb-4">Add someone who isn't in your organization yet.</p>
 
           <div class="space-y-4">

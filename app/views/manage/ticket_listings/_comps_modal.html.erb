@@ -34,7 +34,7 @@
   most = [ 20, remaining, listing.comps_left, local_assigns[:max] ].compact.min.clamp(1, 20)
   one_form = "#{id}-one-form"
   paste_form = "#{id}-paste-form"
-  tab_class = "text-xs font-medium px-3 py-1.5 rounded cursor-pointer bg-gray-100 text-gray-700"
+  tab_class = "py-2 px-1 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap"
   tier_field = lambda do |field_id|
     if tiers.one?
       # One ticket type: nothing to choose.
@@ -62,18 +62,21 @@
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
-    <div data-controller="comps-paste" data-comps-paste-url-value="<%= preview_url %>">
+    <%# The two ways in are the usual tabs (tabs_controller); comps-paste
+        swaps the footer's buttons when they switch. %>
+    <div data-controller="comps-paste tabs" data-comps-paste-url-value="<%= preview_url %>"
+         data-tabs-plain-value="true" data-tabs-url-value="false" data-action="tabs:change->comps-paste#tabChanged">
       <div class="px-6 pt-6 space-y-4">
         <p class="text-sm text-gray-600">
           Free tickets for a guest, with no fees. They take seats<%= remaining ? " (#{remaining} left)" : "" %>.<%= " #{local_assigns[:allowance_note]}" if local_assigns[:allowance_note].present? %>
         </p>
-        <div class="flex gap-2">
-          <%= tag.button("One at a time", type: "button", class: tab_class, data: { comps_paste_target: "oneTab", action: "comps-paste#showOne" }) %>
-          <%= tag.button("Paste a list", type: "button", class: tab_class, data: { comps_paste_target: "pasteTab", action: "comps-paste#showPaste" }) %>
-        </div>
+        <nav class="flex gap-4 border-b border-gray-200" aria-label="Tabs">
+          <%= tag.button("One at a time", type: "button", class: "#{tab_class} border-pink-500 text-pink-600", data: { tabs_target: "tab", index: 0, action: "tabs#select" }) %>
+          <%= tag.button("Paste a list", type: "button", class: "#{tab_class} border-transparent text-gray-500 hover:text-gray-700", data: { tabs_target: "tab", index: 1, action: "tabs#select" }) %>
+        </nav>
       </div>
 
-      <%= form_with url: post_url, method: :post, id: one_form, data: { turbo: false, comps_paste_target: "onePane" } do %>
+      <%= form_with url: post_url, method: :post, id: one_form, data: { turbo: false, tabs_target: "panel" } do %>
         <div class="p-6 space-y-5">
           <div class="grid grid-cols-[5.5rem_minmax(0,1fr)] sm:grid-cols-[minmax(0,1fr)_7rem_minmax(0,1fr)] gap-4">
             <div class="col-span-2 sm:col-span-1">
@@ -112,9 +115,8 @@
         </div>
       <% end %>
 
-      <%# Hidden until its tab is picked (style, not a class: see comps_paste_controller). %>
-      <%= form_with url: post_url, method: :post, id: paste_form, style: "display: none",
-            data: { turbo: false, comps_paste_target: "pastePane", action: "submit->comps-paste#submit" } do %>
+      <%= form_with url: post_url, method: :post, id: paste_form, class: "hidden",
+            data: { turbo: false, comps_paste_target: "pastePane", tabs_target: "panel", action: "submit->comps-paste#submit" } do %>
         <%= hidden_field_tag :mode, "paste", id: nil %>
         <div class="p-6 space-y-5">
           <div>

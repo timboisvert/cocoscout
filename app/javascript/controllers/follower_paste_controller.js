@@ -2,39 +2,33 @@ import { Controller } from "@hotwired/stimulus"
 
 const CHECK_FAILED = "Couldn't check that paste just now. You can still add them: we'll skip anyone already on the list, unsubscribed or bounced."
 
-// The Add people window on a mailing list: one person, or many pasted.
+// The Add people window on a mailing list: one person, or many pasted, on
+// the usual tabs (tabs_controller); this swaps the footer's buttons to match
+// (tabs:change).
 // Add is ready once there's a paste and the permission box is ticked; the
 // server sorts out who's new when it's pressed. Check is an optional preview:
 // it asks the server what the paste would add (new, already on it,
 // unsubscribed, bounced) and shows it, or says why it couldn't.
 export default class extends Controller {
-    static targets = ["onePane", "pastePane", "oneTab", "pasteTab", "text", "result", "permission", "addPaste", "addOne"]
+    static targets = ["text", "result", "permission", "addPaste", "addOne"]
     static values = { checkUrl: String }
 
     connect() {
         this.addable = null
-        this.showOne()
+        this.showFooter(true)
         this.refresh()
     }
 
-    showOne() { this.toggle(true) }
-    showPaste() { this.toggle(false) }
-
-    toggle(one) {
-        // style, not a class: these are flex boxes, and Tailwind's hidden loses to flex
-        this.onePaneTarget.style.display = one ? "" : "none"
-        this.pastePaneTarget.style.display = one ? "none" : ""
-        if (this.hasAddOneTarget) this.addOneTarget.style.display = one ? "" : "none"
-        if (this.hasAddPasteTarget) this.addPasteTarget.style.display = one ? "none" : ""
-        this.setTab(this.oneTabTarget, one)
-        this.setTab(this.pasteTabTarget, !one)
+    tabChanged(event) {
+        const one = event.detail.index === 0
+        this.showFooter(one)
+        if (!one) this.textTarget.focus()
     }
 
-    setTab(tab, on) {
-        tab.classList.toggle("bg-pink-500", on)
-        tab.classList.toggle("text-white", on)
-        tab.classList.toggle("bg-gray-100", !on)
-        tab.classList.toggle("text-gray-700", !on)
+    // style, not a class: Tailwind's hidden loses to the buttons' inline-flex
+    showFooter(one) {
+        if (this.hasAddOneTarget) this.addOneTarget.style.display = one ? "" : "none"
+        if (this.hasAddPasteTarget) this.addPasteTarget.style.display = one ? "none" : ""
     }
 
     async check(event) {

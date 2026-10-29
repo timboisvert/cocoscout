@@ -2,7 +2,6 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
     static targets = [
-        "tab", "panel",
         "extendForm", "previewContainer", "previewList",
         "previewCount", "previewThrough", "previewError", "previewButton", "confirmForm",
         "rescheduleForm", "reschedulePreviewButton", "rescheduleError", "reschedulePreviewContainer",
@@ -16,24 +15,8 @@ export default class extends Controller {
         this.relabelPatterns()
     }
 
-    // ==========================================
-    // Tabs: Events / Extend / Change schedule
-    // ==========================================
-
-    showTab(event) {
-        const name = event.params.tab
-        const active = ["border-pink-500", "text-pink-600"]
-        const idle = ["border-transparent", "text-gray-500", "hover:text-gray-700", "hover:border-gray-300"]
-        this.tabTargets.forEach(tab => {
-            const on = tab.dataset.recurringSeriesModalTabParam === name
-            active.forEach(c => tab.classList.toggle(c, on))
-            idle.forEach(c => tab.classList.toggle(c, !on))
-            tab.setAttribute("aria-selected", on ? "true" : "false")
-        })
-        this.panelTargets.forEach(panel => {
-            panel.classList.toggle("hidden", panel.dataset.panel !== name)
-        })
-    }
+    // The Events / Extend / Change schedule tabs are the usual ones
+    // (tabs_controller, on the same element).
 
     close() {
         const frame = document.getElementById('recurring_series_modal')

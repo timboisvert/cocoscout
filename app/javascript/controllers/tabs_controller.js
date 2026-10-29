@@ -7,7 +7,11 @@ export default class extends Controller {
     // drill: on a phone the page opens on a list of sections (the list
     // target) and a tap drills into one; sections come back with showList.
     // Desktop never sees the list (it's sm:hidden) and always sees a panel.
-    static values = { initialTab: { type: Number, default: 0 }, selectKey: String, plain: Boolean, drill: Boolean }
+    // url: false keeps the address out of it (tabs in a modal, where ?tab=
+    // and #tab- belong to the page under it).
+    // Each switch dispatches tabs:change with { index }, for a controller
+    // that changes more than the panels (a modal's footer buttons).
+    static values = { initialTab: { type: Number, default: 0 }, selectKey: String, plain: Boolean, drill: Boolean, url: { type: Boolean, default: true } }
 
     connect() {
         let initialTab = this.initialTabValue;
@@ -27,7 +31,7 @@ export default class extends Controller {
             }
         }
         // Then check if there's a tab in the URL query params
-        else {
+        else if (this.urlValue) {
             const urlParams = new URLSearchParams(window.location.search);
             const tabParam = urlParams.get('tab');
 
@@ -68,7 +72,7 @@ export default class extends Controller {
         // fragment off a redirect's Location. Consume it here so the hash is the
         // only thing tracking the tab from now on, and a later reload doesn't
         // yank you back to the redirect's tab.
-        if (!selectKey) {
+        if (!selectKey && this.urlValue) {
             const url = new URL(window.location.href);
             url.searchParams.delete('tab');
             url.hash = `tab-${initialTab}`;
@@ -89,7 +93,7 @@ export default class extends Controller {
         const hasMessagesPage = urlParams.has('messages_page');
 
         // If we have pagination params and are switching tabs, reload without them
-        if (hasMessagesPage) {
+        if (hasMessagesPage && this.urlValue) {
             const url = new URL(window.location.href);
             url.search = '';
             url.hash = `tab-${idx}`;
@@ -106,7 +110,7 @@ export default class extends Controller {
         }
 
         // Update the URL hash
-        history.replaceState(null, '', `#tab-${idx}`);
+        if (this.urlValue) history.replaceState(null, '', `#tab-${idx}`);
     }
 
     // Mobile dropdown alternative to the tab strip (change event).
@@ -116,7 +120,7 @@ export default class extends Controller {
         this.show(idx);
         this.drillInto();
         if (this.hasHiddenFieldTarget) this.hiddenFieldTarget.value = idx;
-        history.replaceState(null, '', `#tab-${idx}`);
+        if (this.urlValue) history.replaceState(null, '', `#tab-${idx}`);
     }
 
     // Phone, drill mode: back from a section to the list.
@@ -160,6 +164,7 @@ export default class extends Controller {
         this.panelTargets.forEach((panel, i) => {
             panel.classList.toggle("hidden", i !== idx);
         });
+        this.dispatch("change", { detail: { index: idx } });
     }
 
     checkAllReviewed() {

@@ -2,42 +2,29 @@ import { Controller } from "@hotwired/stimulus"
 
 const PREVIEW_FAILED = "Couldn't preview that list just now. Press Preview to try again."
 
-// The Comps modal's two tabs: One at a time (the default), or a pasted list.
+// The Comps modal's two ways in, on the usual tabs (tabs_controller): One at
+// a time (the default), or a pasted list. This swaps the footer's buttons to
+// match (tabs:change).
 // The pasted list's footer button always does something: Preview asks the
 // server what the list would give (who, how many, against the comps, seats
 // and allowance left, and the lines to fix) and shows it, or says why it
 // couldn't; once that preview is ready the button is Give N comps. Any edit
 // to the list, the ticket type or the email switch goes back to Preview.
 export default class extends Controller {
-    static targets = ["onePane", "pastePane", "oneTab", "pasteTab", "text", "result", "giveOne", "preview", "give"]
+    static targets = ["pastePane", "text", "result", "giveOne", "preview", "give"]
     static values = { url: String }
 
     connect() {
         this.ready = 0
         this.checking = false
-        this.showOne()
-    }
-
-    showOne() { this.toggle(true) }
-    showPaste() { this.toggle(false) }
-
-    toggle(one) {
-        this.pasting = !one
-        // style, not a class: Tailwind's hidden loses to the button's inline-flex
-        this.onePaneTarget.style.display = one ? "" : "none"
-        this.pastePaneTarget.style.display = one ? "none" : ""
-        this.giveOneTarget.style.display = one ? "" : "none"
-        this.setTab(this.oneTabTarget, one)
-        this.setTab(this.pasteTabTarget, !one)
+        this.pasting = false
         this.refresh()
-        if (!one) this.textTarget.focus()
     }
 
-    setTab(tab, on) {
-        tab.classList.toggle("bg-pink-500", on)
-        tab.classList.toggle("text-white", on)
-        tab.classList.toggle("bg-gray-100", !on)
-        tab.classList.toggle("text-gray-700", !on)
+    tabChanged(event) {
+        this.pasting = event.detail.index === 1
+        this.refresh()
+        if (this.pasting) this.textTarget.focus()
     }
 
     // Enter in a field submits the form: preview first unless it's ready.
@@ -95,7 +82,9 @@ export default class extends Controller {
         this.refresh()
     }
 
+    // style, not a class: Tailwind's hidden loses to the buttons' inline-flex
     refresh() {
+        this.giveOneTarget.style.display = this.pasting ? "none" : ""
         const giving = this.pasting && this.ready > 0
         this.previewTarget.style.display = this.pasting && !giving ? "" : "none"
         this.giveTarget.style.display = giving ? "" : "none"

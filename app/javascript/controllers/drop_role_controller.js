@@ -5,7 +5,7 @@ export default class extends Controller {
         "role", "person", "show", "assignment", "assignModal", "rolesContainer", "phoneNotify", "moveName", "moveList",
         // Add Person modal targets
         "addPersonModal", "addPersonRoleName", "addPersonRoleId", "addPersonSlotPosition",
-        "addPersonSearchTab", "addPersonGuestTab",
+        "addPersonTabs",
         "personSearchInput", "personSearchSpinner", "personSearchResults",
         "addPersonGuestName", "addPersonGuestEmail",
         // Restricted role warning modal targets
@@ -503,59 +503,15 @@ export default class extends Controller {
             });
     }
 
-    // Switch between search and guest tabs
-    switchAddPersonTab(event) {
-        const tab = event.currentTarget.dataset.tab;
-        if (tab === 'search') {
-            this.switchToSearchTab();
-        } else if (tab === 'guest') {
-            this.switchToGuestTab();
-        }
-    }
-
+    // Back to Search People (tabs_controller on the modal's card).
     switchToSearchTab() {
-        if (!this.hasAddPersonSearchTabTarget || !this.hasAddPersonGuestTabTarget) return;
-
-        // Update tab styles
-        const tabs = this.element.querySelectorAll('.add-person-tab');
-        tabs.forEach(t => {
-            if (t.dataset.tab === 'search') {
-                t.classList.add('border-pink-500', 'text-pink-600');
-                t.classList.remove('border-transparent', 'text-gray-500');
-            } else {
-                t.classList.remove('border-pink-500', 'text-pink-600');
-                t.classList.add('border-transparent', 'text-gray-500');
-            }
-        });
-
-        // Show search tab, hide guest tab
-        this.addPersonSearchTabTarget.classList.remove('hidden');
-        this.addPersonGuestTabTarget.classList.add('hidden');
+        if (!this.hasAddPersonTabsTarget) return;
+        this.application.getControllerForElementAndIdentifier(this.addPersonTabsTarget, "tabs")?.show(0);
     }
 
-    switchToGuestTab() {
-        if (!this.hasAddPersonSearchTabTarget || !this.hasAddPersonGuestTabTarget) return;
-
-        // Update tab styles
-        const tabs = this.element.querySelectorAll('.add-person-tab');
-        tabs.forEach(t => {
-            if (t.dataset.tab === 'guest') {
-                t.classList.add('border-pink-500', 'text-pink-600');
-                t.classList.remove('border-transparent', 'text-gray-500');
-            } else {
-                t.classList.remove('border-pink-500', 'text-pink-600');
-                t.classList.add('border-transparent', 'text-gray-500');
-            }
-        });
-
-        // Show guest tab, hide search tab
-        this.addPersonGuestTabTarget.classList.remove('hidden');
-        this.addPersonSearchTabTarget.classList.add('hidden');
-
-        // Focus on name input
-        setTimeout(() => {
-            this.addPersonGuestNameTarget?.focus();
-        }, 100);
+    // Add Guest: straight to the name.
+    addPersonTabChanged(event) {
+        if (event.detail.index === 1) setTimeout(() => this.addPersonGuestNameTarget?.focus(), 100);
     }
 
     // Search for people in the organization

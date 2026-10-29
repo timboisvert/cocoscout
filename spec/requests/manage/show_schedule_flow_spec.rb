@@ -28,8 +28,10 @@ RSpec.describe "Show schedule flow", type: :request do
     get recurring_series_manage_production_shows_path(production, recurrence_group_id: group_id)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include('data-recurring-series-modal-tab-param="extend"')
-    expect(response.body).to include('data-recurring-series-modal-tab-param="reschedule"')
+    # The usual tabs (tabs_controller): Events, Extend, Change schedule.
+    tabs = Nokogiri::HTML(response.body).css('[data-tabs-target="tab"]').map { |t| t.text.strip }
+    expect(tabs).to eq([ "Events", "Extend", "Change schedule" ])
+    expect(Nokogiri::HTML(response.body).css('[data-tabs-target="panel"]').size).to eq(3)
     expect(response.body).to include("Every #{first_show.date_and_time.strftime('%A')} at")
     expect(response.body).to include('name="extend_until"')
     expect(response.body).to include('name="reschedule_from"')
