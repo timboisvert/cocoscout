@@ -12,6 +12,10 @@
                 white card in the strip); default: show_dates
     months      the Dates (one per month) the sheet can page through
     id          the sheet's DOM id (default "day-jump")
+
+  A tap on a day swaps only what's under the strip (the layout's page frame,
+  page_frame_controller): the strip stays put and its pink day moves to the
+  tapped one (Tim, 2026-10-29).
 %>
 <%
   strip = ((day - 3)..(day + 3)).to_a
@@ -22,25 +26,40 @@
     render "shared/button", text: "Today", variant: "secondary", size: "medium", type: :link, path: day_path.call(Date.current)
   end
 %>
-<button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= id %>"
-        class="w-full flex items-center justify-center gap-1.5 text-[17px] font-semibold text-gray-900 py-1 cursor-pointer bg-transparent border-0"
-        aria-label="<%= day.strftime("%A, %B %-d") %>: pick another day" data-phone-day-title>
-  <%= day.strftime("%A, %b %-d") %>
-  <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
-</button>
+<div id="<%= id %>-strip" data-day-strip-keep>
+  <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= id %>"
+          class="w-full flex items-center justify-center gap-1.5 text-[17px] font-semibold text-gray-900 py-1 cursor-pointer bg-transparent border-0"
+          aria-label="<%= day.strftime("%A, %B %-d") %>: pick another day" data-phone-day-title>
+    <span data-day-title><%= day.strftime("%A, %b %-d") %></span>
+    <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
+  </button>
 
-<nav class="grid grid-cols-7 gap-1" aria-label="Days" data-day-strip>
-  <% strip.each do |d| %>
-    <% on = d == day %>
-    <%= link_to day_path.call(d),
-          class: "flex flex-col items-center gap-0.5 rounded-lg py-1.5 min-h-[56px] #{on ? 'bg-pink-500 text-white' : (busy.call(d) ? 'bg-white border border-gray-200 text-gray-900' : 'text-gray-400')}",
-          aria: { label: d.strftime("%A, %b %-d"), current: (on ? "date" : nil) }, data: { strip_day: d.iso8601 } do %>
-      <span class="text-[10px] font-semibold uppercase"><%= d.strftime("%a") %></span>
-      <span class="text-base font-bold leading-none <%= 'underline decoration-2 underline-offset-2' if d == Date.current && !on %>"><%= d.day %></span>
-      <span class="w-1.5 h-1.5 rounded-full <%= show_dates.include?(d) ? (on ? 'bg-white' : 'bg-pink-500') : 'bg-transparent' %>"></span>
+  <nav class="grid grid-cols-7 gap-1" aria-label="Days" data-day-strip>
+    <% strip.each do |d| %>
+      <%
+        on = d == day
+        # Each piece's look on and off the chosen day, so a tap can move the
+        # pink day without a trip to the server (page_frame#pick).
+        looks = {
+          link: [ "bg-pink-500 text-white", busy.call(d) ? "bg-white border border-gray-200 text-gray-900" : "text-gray-400" ],
+          number: [ "", d == Date.current ? "underline decoration-2 underline-offset-2" : "" ],
+          dot: show_dates.include?(d) ? [ "bg-white", "bg-pink-500" ] : [ "bg-transparent", "bg-transparent" ]
+        }
+        look = ->(part) { looks[part][on ? 0 : 1] }
+        label = d.strftime("%A, %b %-d")
+        link_data = { strip_day: d.iso8601, label: label, title_label: d.strftime("%A, %B %-d"),
+                      day_on: looks[:link][0], day_off: looks[:link][1], action: "page-frame#pick" }
+      %>
+      <%= link_to day_path.call(d),
+            class: "flex flex-col items-center gap-0.5 rounded-lg py-1.5 min-h-[56px] #{look.call(:link)}",
+            aria: { label: label, current: (on ? "date" : nil) }, data: link_data do %>
+        <span class="text-[10px] font-semibold uppercase"><%= d.strftime("%a") %></span>
+        <span class="text-base font-bold leading-none <%= look.call(:number) %>" data-day-on="<%= looks[:number][0] %>" data-day-off="<%= looks[:number][1] %>"><%= d.day %></span>
+        <span class="w-1.5 h-1.5 rounded-full <%= look.call(:dot) %>" data-day-on="<%= looks[:dot][0] %>" data-day-off="<%= looks[:dot][1] %>"></span>
+      <% end %>
     <% end %>
-  <% end %>
-</nav>
+  </nav>
+</div>
 
 <%# Tap the day's name: any date, a month at a time. %>
 <div class="sm:hidden">

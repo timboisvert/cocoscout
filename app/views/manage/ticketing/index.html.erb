@@ -41,7 +41,7 @@
       <div class="flex items-center gap-2">
         <label for="ticketing-period" class="text-xs font-medium text-gray-500 uppercase tracking-wide">Period</label>
         <%= select_tag :period, options_for_select(FinancialSummaryService::PERIOD_LABELS.map { |key, label| [ label, key ] }, d.period),
-              id: "ticketing-period", onchange: "window.location.href = '#{manage_ticketing_path}?period=' + this.value",
+              id: "ticketing-period", data: { action: "change->page-frame#choose", page_frame_param: "period" },
               class: "appearance-none pl-3 pr-8 py-1.5 rounded text-xs font-medium cursor-pointer bg-pink-500 text-white border-0 hover:bg-pink-600" %>
       </div>
     </div>

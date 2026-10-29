@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { visitPage } from "controllers/lib/page_frame"
 
 export default class extends Controller {
     toggle(event) {
@@ -10,6 +11,6 @@ export default class extends Controller {
         const url = new URL(window.location.href)
         url.searchParams.set("hide_canceled", newState.toString())
 
-        Turbo.visit(url.toString())
+        visitPage(url)
     }
 }

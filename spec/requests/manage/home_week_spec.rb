@@ -138,6 +138,11 @@ RSpec.describe "Production Home, show by show", type: :request do
     expect(day.at_css("[data-strip-day='#{saturday.iso8601}']")["aria-current"]).to eq("date")
     expect(day["data-day-swipe-next-url-value"]).to eq(manage_path(day: (saturday + 1).iso8601))
     expect(doc.at_css("#home-jump")).to be_present
+    # A tap loads the day into the layout's page frame: the strip stays put.
+    expect(doc.at_css("turbo-frame#page[target='_top'] [data-home-day]")).to be_present
+    expect(doc.at_css("turbo-frame#page #show-modal-#{sat_show.id}")).to be_present
+    link = doc.at_css("#home-jump-strip a[data-strip-day='#{(saturday + 1).iso8601}']")
+    expect(link["data-action"]).to eq("page-frame#pick")
 
     doc = page(days: 3, day: thursday.iso8601)
     headers = doc.css("[data-home-week] [data-day-header]").map { |h| h["data-day-header"] }

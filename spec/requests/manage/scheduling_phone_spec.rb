@@ -77,6 +77,25 @@ RSpec.describe "Scheduling on a phone", type: :request do
     expect(jump.at_css("a[data-jump-day='#{tuesday.iso8601}'] .bg-pink-500")).to be_present
   end
 
+  it "loads a tapped day into the layout's page frame, so the strip stays put and the page doesn't reload" do
+    doc = day_page(friday)
+    frame = doc.at_css("turbo-frame#page")
+    expect(frame["target"]).to eq("_top")
+    expect(frame["data-controller"]).to eq("page-frame")
+    expect(frame.at_css("[data-phone-day]")).to be_present
+    expect(frame.at_css("[data-controller~='shift-assign']")).to be_present # the week's payloads swap too
+    link = frame.at_css("#scheduling-jump-strip a[data-strip-day='#{tuesday.iso8601}']")
+    expect(link["data-action"]).to eq("page-frame#pick")
+    expect(link["data-day-on"]).to eq("bg-pink-500 text-white")
+    expect(link["data-label"]).to eq(tuesday.strftime("%A, %b %-d"))
+
+    get manage_staffing_scheduling_path(day: tuesday.iso8601), headers: { "Turbo-Frame" => "page" }
+    expect(response).to have_http_status(:ok)
+    frame = Nokogiri::HTML(response.body).at_css("turbo-frame#page")
+    expect(frame.at_css("[data-phone-day]")["data-phone-day"]).to eq(tuesday.iso8601)
+    expect(frame.at_css("#scheduling-jump-strip [aria-current='date']")["data-strip-day"]).to eq(tuesday.iso8601)
+  end
+
   it "keeps the by-role and by-person timelines on desktop, a day at a time" do
     doc = page
     timeline = doc.at_css("#day-timeline-#{friday.iso8601}")

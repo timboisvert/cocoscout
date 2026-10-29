@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { visitPage } from "controllers/lib/page_frame"
 
 // Controls hiding/showing non-revenue events in the money page list
 // Uses server-side filtering with cookie persistence
@@ -9,12 +10,12 @@ export default class extends Controller {
         const currentState = button.getAttribute("aria-checked") === "true"
         const newState = !currentState
 
-        // Update URL with toggle parameter and reload via Turbo
+        // Update URL with toggle parameter and load it into the page
         const url = new URL(window.location.href)
         url.searchParams.set("hide_non_revenue", newState.toString())
 
-        // Navigate with Turbo
-        Turbo.visit(url.toString())
+        // Only the page's content changes (page_frame)
+        visitPage(url)
     }
 
     toggleFutureEvents(event) {
@@ -23,11 +24,11 @@ export default class extends Controller {
         const currentState = button.getAttribute("aria-checked") === "true"
         const newState = !currentState
 
-        // Update URL with toggle parameter and reload via Turbo
+        // Update URL with toggle parameter and load it into the page
         const url = new URL(window.location.href)
         url.searchParams.set("hide_future_events", newState.toString())
 
-        // Navigate with Turbo
-        Turbo.visit(url.toString())
+        // Only the page's content changes (page_frame)
+        visitPage(url)
     }
 }

@@ -100,7 +100,9 @@
 
         <div id="flash-messages"></div>
         <%= render "shared/navigation/mode_switch_notice" %>
-        <%= yield %>
+        <%= page_frame_tag do %>
+          <%= yield %>
+        <% end %>
       </main>
     </div>
 

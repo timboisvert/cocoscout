@@ -49,7 +49,7 @@
       <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Period</span>
       <div class="relative">
         <select
-          onchange="window.location.href = '<%= period_path %><%= period_path.include?('?') ? '&' : '?' %>period=' + this.value"
+          data-action="change->page-frame#choose" data-page-frame-param="period" data-page-frame-url="<%= period_path %>"
           class="appearance-none pl-3 pr-8 py-1.5 rounded text-xs font-medium transition cursor-pointer bg-pink-500 text-white border-0 hover:bg-pink-600">
           <% FinancialSummaryService::PERIOD_LABELS.each do |key, label| %>
             <option value="<%= key %>" <%= 'selected' if selected_period.to_s == key.to_s %>><%= label %></option>

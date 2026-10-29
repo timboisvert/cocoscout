@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { visitPage } from "controllers/lib/page_frame"
 
 // Phone scheduling: swipe the day left for the next day, right for the one
 // before. The day strip's links do the same with a tap.
@@ -22,6 +23,11 @@ export default class extends Controller {
         const url = dx < 0 ? this.nextUrlValue : this.prevUrlValue
         if (!url) return
         navigator.vibrate?.(10)
-        window.Turbo ? window.Turbo.visit(url) : (window.location.href = url)
+        // The next day in the strip: just as if it were tapped.
+        const link = [...this.element.querySelectorAll("a[data-strip-day]")].find((a) => a.getAttribute("href") === url)
+        if (link) return link.click()
+        // Past the strip's ends: the day with a fresh strip around it, still
+        // without loading the whole page (page_frame).
+        visitPage(url)
     }
 }

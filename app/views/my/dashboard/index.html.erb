@@ -138,12 +138,12 @@
   <% end %>
 
   <!-- Unified Calendar -->
-  <%# Wrap the calendar in a Turbo Frame so month/filter/scope nav updates
-      the calendar in-place instead of triggering a full-page navigation
-      (which slides on iOS and full-reloads on desktop).
-      Day-event links inside the calendar opt out with data-turbo-frame="_top"
-      so they navigate the whole page (their targets don't have a matching frame). %>
-  <%= turbo_frame_tag "dashboard_calendar" do %>
+  <%# Month, filter and scope links stay on this page, so they load into the
+      layout's page frame (page_frame) instead of loading the whole page: no
+      slide in the app, no full reload on desktop, and the address follows.
+      It replaces this calendar's own frame, whose replace-action chips made
+      the app reload the screen. %>
+  <div data-dashboard-calendar>
   <%
     desktop_month = @current_month
     month_start_date = desktop_month.to_date.beginning_of_month
@@ -220,7 +220,7 @@
 
   <%# Calendar — the shared month component; per-event rendering lives in
       my/dashboard/_calendar_event_tile (desktop) / _calendar_event_row (mobile).
-      Nav links inside the turbo frame update the frame automatically. %>
+      Its month links load into the page frame (page_frame). %>
   <%
     sorted_events_by_date = @events_by_date.transform_values { |events| events.sort_by { |e| e[:time] } }
     dashboard_month_link = ->(m) {
@@ -250,6 +250,6 @@
       dim_past: true,
       max_desktop_items: 4,
       empty_text: calendar_empty_text %>
-  <% end %>
+  </div>
 
 </div>

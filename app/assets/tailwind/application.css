@@ -155,3 +155,10 @@ body.impersonating .app-top-chrome {
 body.impersonating .app-top-chrome.h-screen {
     height: calc(100vh - var(--impersonation-bar-h));
 }
+
+/* The page frame (page_frame_controller) while another view of the page
+   loads: it fades a little, but only if the wait is long enough to notice. */
+turbo-frame#page[busy] > * {
+  opacity: 0.6;
+  transition: opacity 150ms ease 250ms;
+}

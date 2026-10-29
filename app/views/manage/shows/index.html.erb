@@ -103,7 +103,7 @@
   <% end %>
 
   <% if @filter == "upcoming" && @view_mode == "by_month" %>
-    <div class="flex items-center justify-between mt-6">
+    <div class="flex items-center justify-between mt-6" data-page-frame-scroll="top">
       <div>
         <% if @can_go_prev %>
           <%= render "shared/button",
