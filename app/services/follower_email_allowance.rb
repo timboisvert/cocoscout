@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 # How many emails to followers a Pro organization has sent this month, against
-# what Pro includes: 500 a month for now (Tim, 2026-10-23: "much lower for
-# now"). It's a hard stop: a send that would go past it waits for next month.
-# More (and paying for more) comes later.
+# what Pro includes: 1,000 a month (Tim, 2026-10-28; $2 per 1,000 above it is
+# the plan, docs/follower_email_pricing.md). Until that overage is billed it's
+# a hard stop: a send that would go past it waits for next month.
 class FollowerEmailAllowance
-  INCLUDED_PER_MONTH = 500
+  INCLUDED_PER_MONTH = 1_000
 
   def initialize(organization, month: Date.current)
     @organization = organization
@@ -31,8 +31,9 @@ class FollowerEmailAllowance
   # queued ones too. While follower email shares cocoscout.com's sending
   # domain and Mailgun plan with sign-in and ticket mail (FOLLOWERS_SENDING=on,
   # no FOLLOWERS_MAIL_DOMAIN; Tim, 2026-10-28), this cap keeps it from
-  # crowding them out. FOLLOWERS_MONTHLY_CAP sets it; 2,000 unless set.
-  PLATFORM_CAP_DEFAULT = 2_000
+  # crowding them out. FOLLOWERS_MONTHLY_CAP sets it; 7,000 unless set
+  # (Mailgun Basic's 10,000 less sign-in and ticket mail).
+  PLATFORM_CAP_DEFAULT = 7_000
 
   def self.platform_cap
     ENV["FOLLOWERS_MONTHLY_CAP"].presence&.to_i || PLATFORM_CAP_DEFAULT
