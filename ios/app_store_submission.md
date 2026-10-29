@@ -197,8 +197,13 @@ ActiveRecord::Base.transaction do
 
   tonight = tz.now.change(hour: 19, min: 30)
   shows = [ tonight - 4.days, tonight, tonight + 3.days, tonight + 10.days ].map do |at|
+    # The sample organization is on the free plan, whose 6-events-a-month cap
+    # stops a re-run late in the month; it's a demo, so skip just that check.
     show = production.shows.find_by(date_and_time: at) ||
-           Show.create!(production: production, date_and_time: at, event_type: "show", location: location, casting_enabled: true)
+           Show.new(production: production, date_and_time: at, event_type: "show", location: location, casting_enabled: true).tap do |s|
+             s.define_singleton_method(:within_free_event_limit) { nil }
+             s.save!
+           end
     ShowPersonRoleAssignment.find_or_create_by!(show: show, role: ensemble, assignable: reviewer) { |a| a.position = 0 }
     show
   end
