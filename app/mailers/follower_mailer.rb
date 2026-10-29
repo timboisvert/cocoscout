@@ -3,9 +3,10 @@
 # Email to followers (Mailing lists, V1.1), in the organization's own look:
 # its logo and color at the top, the manager's words, shows as blocks with a
 # Buy tickets button, and a footer with why they got it, the postal address
-# and an unsubscribe link. Sent on its own Mailgun domain
+# and an unsubscribe link. Sent on its own Mailgun domain when there is one
 # (FOLLOWERS_MAIL_DOMAIN, e.g. news.cocoscout.com) so a bad list can never
-# hurt sign-in or payment mail on cocoscout.com. CocoScout's own notes
+# hurt sign-in or payment mail on cocoscout.com; until then, while we try it
+# out, from info@cocoscout.com under a monthly cap (FollowerEmailAllowance). CocoScout's own notes
 # about lists (a share, an export) are FollowerNoticeMailer.
 class FollowerMailer < ApplicationMailer
   include TicketingHelper

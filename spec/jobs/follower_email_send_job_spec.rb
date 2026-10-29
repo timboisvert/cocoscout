@@ -74,4 +74,42 @@ RSpec.describe FollowerEmailSendJob do
     expect { FollowerEmailSender.send!(email, owner) }.to raise_error(FollowerEmailSender::Error, /This would send 3 emails, and 2 are left this month/)
     expect(email.reload).to be_draft
   end
+
+  # While follower email shares cocoscout.com's domain and Mailgun plan with
+  # sign-in and ticket mail (Tim, 2026-10-28), every organization's sends
+  # together stop at a monthly cap.
+  it "stops a send that would take CocoScout past its monthly cap for every organization together" do
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with("FOLLOWERS_MONTHLY_CAP").and_return("4")
+    other = create(:organization, :pro)
+    other_main = MailingList.main_for!(other)
+    Follower.for!(other, "x@example.com").tap { |f| other_main.mailing_list_memberships.create!(follower: f) }
+    Follower.for!(other, "y@example.com").tap { |f| other_main.mailing_list_memberships.create!(follower: f) }
+    FollowerEmailSender.send!(other.follower_emails.create!(subject: "Hi", body: "<p>Hi</p>", targets: { "list_ids" => [ other_main.id ] }), owner)
+
+    %w[a b c].each { |name| on_list("#{name}@example.com") }
+    email = org.follower_emails.create!(subject: "Hi", body: "<p>Hi</p>", targets: { "list_ids" => [ main.id ] })
+    expect { FollowerEmailSender.send!(email, owner) }.to raise_error(FollowerEmailSender::Error, /CocoScout has sent all the emails to followers it can this month/)
+    expect(email.reload).to be_draft
+  end
+
+  describe "switching it on in production" do
+    before do
+      allow(Rails.env).to receive(:production?).and_return(true)
+      allow(ENV).to receive(:[]).and_call_original
+    end
+
+    it "stays off until it has its own domain or is switched on to share cocoscout.com's" do
+      allow(ENV).to receive(:[]).with("FOLLOWERS_MAIL_DOMAIN").and_return(nil)
+      allow(ENV).to receive(:[]).with("FOLLOWERS_SENDING").and_return(nil)
+      expect(FollowerEmailSender.switched_on?).to be(false)
+
+      allow(ENV).to receive(:[]).with("FOLLOWERS_SENDING").and_return("on")
+      expect(FollowerEmailSender.switched_on?).to be(true)
+
+      allow(ENV).to receive(:[]).with("FOLLOWERS_SENDING").and_return(nil)
+      allow(ENV).to receive(:[]).with("FOLLOWERS_MAIL_DOMAIN").and_return("news.cocoscout.com")
+      expect(FollowerEmailSender.switched_on?).to be(true)
+    end
+  end
 end

@@ -78,7 +78,7 @@ RSpec.describe "Automated notices become Notifications" do
       # The test seed's digest template is a stub; the real one carries the list.
       ContentTemplate.find_by(key: "unread_digest").update!(body: "<p>Hi</p>{{thread_list}}")
       notification = send_automated("vacancy_created")
-      notification.update_column(:created_at, 2.hours.ago)
+      notification.update_column(:created_at, 5.hours.ago)
       ActionMailer::Base.deliveries.clear
 
       perform_enqueued_jobs { UnreadDigestJob.perform_now }

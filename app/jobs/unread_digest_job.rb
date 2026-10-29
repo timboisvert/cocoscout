@@ -4,9 +4,10 @@
 # checked their inbox recently.
 #
 # Adaptive throttle strategy:
-# - Wait 1 hour after messages arrive before sending first digest; a day for
+# - Wait 4 hours after messages arrive before sending first digest; 2 days for
 #   someone with push notifications on (User#push_enabled?), who heard about
-#   it at once, so the email only catches what's still unread (Tim, 2026-10-12)
+#   it at once, so the email only catches what's still unread (Tim,
+#   2026-10-12; lengthened 2026-10-28 now that the apps are out: fewer emails)
 # - Start with 1 day throttle (baseline frequency)
 # - If user checks inbox after digest: reset to 1 day (they're engaged)
 # - If user ignores digest: double the throttle (1 → 2 → 4 → 8 → 14 days max)
@@ -17,8 +18,8 @@ class UnreadDigestJob < ApplicationJob
   queue_as :default
 
   # How long to wait before sending first digest after new message
-  INITIAL_DELAY = 1.hour
-  INITIAL_DELAY_WITH_PUSH = 1.day
+  INITIAL_DELAY = 4.hours
+  INITIAL_DELAY_WITH_PUSH = 2.days
 
   # Maximum throttle period for unresponsive users
   MAX_THROTTLE_DAYS = 14

@@ -52,6 +52,16 @@ side can go out before the V1.1 apps and V1 phones won't notice.
 Sending to followers stays off in production until these are done: the send
 button says "Sending to followers isn't switched on yet."
 
+**Trying it out first (Tim, 2026-10-28):** follower email can share
+cocoscout.com's sending domain under a CocoScout-wide cap of 2,000 a month
+(`FOLLOWERS_MONTHLY_CAP` changes it), switched on with `FOLLOWERS_SENDING: on`
+under `env.clear` in `config/deploy.yml`. **Not on Mailgun's free plan:** it
+is a hard 100 emails a day for everything, so one email to 150 followers
+would stop sign-in and ticket mail until midnight. Move to Basic ($15 a
+month, 10,000, no daily cap) first, then switch it on. The steps below are
+for the separate `news.cocoscout.com` domain, which needs Foundation 50k
+(docs/follower_email_pricing.md).
+
 - [ ] Mailgun: move off the free tier (3,000 a month for all of CocoScout).
       Pro includes 500 follower emails a month per organization for now, a
       hard stop (Tim, 2026-10-23).
