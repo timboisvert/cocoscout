@@ -69,15 +69,21 @@
       <% end %>
     </div>
 
-    <% @ticketing_plans.each do |organization, recipient| %>
+    <%# One section, however many organizations: push is the person's own,
+        so its switches show once (repeated, the last copy's value won). %>
+    <% if @ticketing_plans.any? %>
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-        <%= render "shared/section_heading", padding: "px-4 py-3 sm:px-6 sm:py-4", title: "Ticketing at #{organization.name}" %>
-        <p class="px-4 sm:px-6 pt-3 text-sm text-gray-600">
-          Your organization picks your Ticketing emails. Your plan is <strong class="text-gray-900"><%= TicketingNotifications::PLANS.find { |plan| plan.key == recipient.plan }&.label || "Your own pick" %></strong>, <%= pluralize(recipient.kinds.size, "email") %>.
-          <% if organization.manageable_by?(Current.user) %>
-            <%= link_to "Change it on Ticketing settings", manage_ticketing_settings_section_path(section: "notifications"), class: "text-pink-600 hover:text-pink-700 font-medium" %>.
-          <% end %>
-        </p>
+        <%= render "shared/section_heading", padding: "px-4 py-3 sm:px-6 sm:py-4",
+              title: @ticketing_plans.one? ? "Ticketing at #{@ticketing_plans.first.first.name}" : "Ticketing" %>
+        <p class="px-4 sm:px-6 pt-3 text-sm text-gray-600">Push is yours to choose here. Ticketing emails come by the plan your organization gives you on Ticketing settings.</p>
+        <% @ticketing_plans.each do |organization, recipient| %>
+          <p class="px-4 sm:px-6 pt-2 text-sm text-gray-600">
+            <% unless @ticketing_plans.one? %><%= organization.name %>: <% end %>your plan is <strong class="text-gray-900"><%= TicketingNotifications::PLANS.find { |plan| plan.key == recipient.plan }&.label || "Your own pick" %></strong>, <%= pluralize(recipient.kinds.size, "email") %>.
+            <% if organization.manageable_by?(Current.user) %>
+              <%= link_to "Change it", manage_ticketing_settings_section_path(section: "notifications"), class: "text-pink-600 hover:text-pink-700 font-medium" %>
+            <% end %>
+          </p>
+        <% end %>
         <%= render "account/notification_switch_header" %>
         <% NotificationGroups::ALL.select(&:ticketing?).each do |group| %>
           <%= render "account/notification_switch_row", label: group.label, description: group.description,

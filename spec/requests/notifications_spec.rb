@@ -66,6 +66,14 @@ RSpec.describe "Notifications", type: :request do
       get account_notifications_path
       expect(response.body).to include("Ticketing at #{org.name}", "The usual", "By plan")
     end
+
+    it "shows the ticketing push switches once for a manager at two organizations, each with its plan" do
+      other = create(:organization, owner: user).tap { |o| create(:organization_role, :manager, user: user, organization: o) }
+      [ org, other ].each { |o| TicketingProfile.for(o).update!(enabled: true, slug: "org-#{o.id}") }
+      get account_notifications_path
+      expect(response.body.scan('Push for Sales as they happen').size).to eq(1)
+      expect(response.body).to include("#{org.name}: your plan", "#{other.name}: your plan")
+    end
   end
 end
 
