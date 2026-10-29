@@ -36,20 +36,23 @@ the repo). The Play service account's key, the upload keystore,
    asks in review stay his.
 
 A second iPhone build of the same version is a new tag (`ios-v1.2-2`); the
-build number goes up by itself. A failed Xcode Cloud run is re-run from App
-Store Connect → Xcode Cloud, or with a new tag.
+build number goes up by itself. A failed Xcode Cloud run is re-run from
+Xcode (⌘9 → Cloud → the build → Rebuild), or with a new tag.
 
 ## iPhone: Xcode Cloud
 
 What's in the repo:
 
-- `ios/ci_scripts/ci_pre_xcodebuild.sh` sets the build number to the
-  project's `CURRENT_PROJECT_VERSION` (6, V1.1's hand upload) plus Xcode
-  Cloud's `CI_BUILD_NUMBER`, so the first cloud build is 7 and every one
-  after is higher than the last. It edits only Xcode Cloud's throwaway clone.
-  Raising the committed number later is fine; never lower it. The project has
-  no `VERSIONING_SYSTEM` and a generated Info.plist, so the script rewrites
-  the build setting instead of using agvtool as Morning Line does.
+- `ios/ci_scripts/ci_pre_xcodebuild.sh` stamps the build number with Xcode
+  Cloud's `CI_BUILD_NUMBER`, its own run counter. Xcode Cloud uploads under
+  that number whatever the project says (the first upload was 1.1 (3), below
+  the hand-uploaded 6), so the script makes the archive and the app's user
+  agent agree with it. Build numbers only need to be unique within a
+  version, and the counter only rises. The server never reads the build
+  number, only the nav generation. The script edits only Xcode Cloud's
+  throwaway clone; the project has no `VERSIONING_SYSTEM` and a generated
+  Info.plist, so it rewrites the build setting instead of using agvtool as
+  Morning Line does.
 - `ios/CocoScout.xcodeproj/xcshareddata/xcschemes/CocoScout.xcscheme`: the
   CocoScout scheme, shared. Xcode Cloud only sees shared schemes in git;
   before this the scheme existed only on Tim's Mac. Archive uses Release,

@@ -1,18 +1,18 @@
 #!/bin/sh
-# Xcode Cloud: stamp the build number before xcodebuild runs, so every upload
-# to App Store Connect has a higher CFBundleVersion than the last one.
+# Xcode Cloud: stamp the build number with $CI_BUILD_NUMBER before xcodebuild
+# runs, so the archive carries the number Xcode Cloud uploads it under.
 #
-# The build number is the project's CURRENT_PROJECT_VERSION plus Xcode Cloud's
-# $CI_BUILD_NUMBER. Xcode Cloud counts from 1 while the hand-uploaded builds
-# already reached 6 (V1.1), so the committed number is a floor: a cloud build
-# is always above it, and always above the cloud build before it. Raising the
-# committed number later is fine; lowering it is not.
+# Xcode Cloud sets CFBundleVersion to its own build counter when it uploads to
+# App Store Connect, whatever the project says (its first upload was 1.1 (3),
+# though hand uploads had reached 6). Build numbers only need to be unique per
+# version, and the counter only rises. Stamping the same number here keeps
+# the app's user agent ("CocoScout/1.2 (7; nav 2)") in step with App Store
+# Connect. The server reads only the nav generation, never the build.
 #
-# The marketing version (MARKETING_VERSION, "1.1") stays hand-edited in the
-# project. Only this throwaway clone is changed; nothing is committed back.
-#
-# The project has no VERSIONING_SYSTEM and a generated Info.plist, so agvtool
-# has nothing to edit; the build setting is rewritten directly.
+# The marketing version (MARKETING_VERSION) stays hand-edited in the project.
+# Only this throwaway clone is changed; nothing is committed back. The project
+# has no VERSIONING_SYSTEM and a generated Info.plist, so agvtool has nothing
+# to edit; the build setting is rewritten directly.
 
 set -eu
 
@@ -20,11 +20,6 @@ set -eu
 
 PBXPROJ="$CI_PRIMARY_REPOSITORY_PATH/ios/CocoScout.xcodeproj/project.pbxproj"
 
-FLOOR=$(sed -n 's/.*CURRENT_PROJECT_VERSION = \([0-9][0-9]*\);.*/\1/p' "$PBXPROJ" | sort -n | tail -1)
-[ -n "$FLOOR" ] || { echo "ci_pre_xcodebuild: no CURRENT_PROJECT_VERSION in $PBXPROJ"; exit 1; }
-
-BUILD=$((FLOOR + CI_BUILD_NUMBER))
-
-echo "ci_pre_xcodebuild: build number $BUILD (project $FLOOR + Xcode Cloud build $CI_BUILD_NUMBER)"
-sed -i '' "s/CURRENT_PROJECT_VERSION = [0-9][0-9]*;/CURRENT_PROJECT_VERSION = $BUILD;/g" "$PBXPROJ"
+echo "ci_pre_xcodebuild: build number $CI_BUILD_NUMBER"
+sed -i '' "s/CURRENT_PROJECT_VERSION = [0-9][0-9]*;/CURRENT_PROJECT_VERSION = $CI_BUILD_NUMBER;/g" "$PBXPROJ"
 grep -n "CURRENT_PROJECT_VERSION" "$PBXPROJ"
