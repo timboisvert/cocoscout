@@ -1003,7 +1003,7 @@ export default class extends Controller {
             const button = senderIdentitySection.querySelector('[data-compose-message-target="senderIdentityButton"]')
             const iconContainer = button?.querySelector('div:first-child > div:first-child')
             if (label) label.textContent = 'Production Team'
-            if (hint) hint.textContent = '(visible to all team members)'
+            if (hint) hint.textContent = 'Visible to all team members'
             if (iconContainer) {
                 iconContainer.classList.remove('bg-gray-400')
                 iconContainer.classList.add('bg-pink-500')
@@ -1300,7 +1300,7 @@ export default class extends Controller {
                 const label = senderIdentitySection.querySelector('[data-compose-message-target="senderIdentityLabel"]')
                 const hint = senderIdentitySection.querySelector('[data-compose-message-target="senderIdentityHint"]')
                 if (label) label.textContent = 'Production Team'
-                if (hint) hint.textContent = '(visible to all team members)'
+                if (hint) hint.textContent = 'Visible to all team members'
             }
         }
     }
@@ -1347,7 +1347,7 @@ export default class extends Controller {
 
         if (value === 'production_team') {
             if (label) label.textContent = 'Production Team'
-            if (hint) hint.textContent = '(visible to all team members)'
+            if (hint) hint.textContent = 'Visible to all team members'
             if (iconContainer) {
                 iconContainer.classList.remove('bg-gray-400')
                 iconContainer.classList.add('bg-pink-500')
@@ -1357,7 +1357,7 @@ export default class extends Controller {
             }
         } else {
             if (label) label.textContent = 'Just Me'
-            if (hint) hint.textContent = '(private conversation)'
+            if (hint) hint.textContent = 'Private conversation'
             if (iconContainer) {
                 iconContainer.classList.remove('bg-pink-500')
                 iconContainer.classList.add('bg-gray-400')

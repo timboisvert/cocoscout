@@ -40,7 +40,7 @@
 <div data-controller="notification-open"
      data-notification-open-ask-value="<%= @ask_before_switching %>"
      data-notification-open-remember-url-value="<%= notifications_switch_without_asking_path %>">
-  <%= form_with url: own.call, method: :get, data: { turbo_action: "advance" }, class: "mt-4" do |f| %>
+  <%= form_with url: own.call, method: :get, data: { turbo_action: "advance" }, class: "mt-4 mb-3" do |f| %>
     <%= render "shared/filters/search_input", placeholder: "Search messages...", value: @search, name: "q", full_width: true %>
     <%= f.hidden_field :filter, value: @filter %>
     <%= f.hidden_field :production_id, value: @production_filter %>

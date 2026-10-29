@@ -39,8 +39,14 @@
         <ul class="divide-y divide-gray-100">
           <% rows.each do |n| %>
             <li class="relative flex items-start gap-3 sm:gap-4 px-4 sm:px-5 py-3 hover:bg-gray-50 transition-colors">
-              <span class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 <%= n.read? ? 'bg-gray-100 text-gray-500' : 'bg-pink-50 text-pink-600' %>">
-                <%= render "notifications/icon", category: n.category %>
+              <%# On a phone the time sits under the icon (and unread is a dot on it),
+                  so the words get the row's width (Tim, 2026-10-29). %>
+              <span class="flex flex-col items-center gap-1 flex-shrink-0 w-12 -mx-1.5 sm:w-auto sm:mx-0">
+                <span class="relative w-9 h-9 rounded-lg flex items-center justify-center <%= n.read? ? 'bg-gray-100 text-gray-500' : 'bg-pink-50 text-pink-600' %>">
+                  <%= render "notifications/icon", category: n.category %>
+                  <% unless n.read? %><span class="sm:hidden absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-pink-500 ring-2 ring-white" aria-label="Unread"></span><% end %>
+                </span>
+                <span class="sm:hidden text-[10px] leading-none text-gray-500 whitespace-nowrap"><%= label == "Earlier" ? n.created_at.in_time_zone.strftime("%b %-d") : n.created_at.in_time_zone.strftime("%-l:%M %p") %></span>
               </span>
               <span class="min-w-0 flex-1">
                 <%# The title's link covers the whole row (after:inset-0); Reply sits above it. %>
@@ -62,12 +68,15 @@
                    <% if switch_words %>data-switch-title="<%= switch_words[0] %>" data-switch-body="<%= switch_words[1] %>"<% end %>
                    data-organization-name="<%= n.organization&.name %>"
                    data-action="click->notification-open#open"><%= n.title %></a>
-                <span class="block text-xs text-gray-500 mt-0.5"><%= [ n.organization&.name, n.group.label ].compact.join(" · ") %></span>
+                <%# The organization's name gives way first, so the group always shows. %>
+                <span class="flex min-w-0 text-xs text-gray-500 mt-0.5 sm:block">
+                  <% if n.organization %><span class="truncate sm:whitespace-normal"><%= n.organization.name %></span><span class="flex-shrink-0 whitespace-pre"> · </span><% end %><span class="flex-shrink-0"><%= n.group.label %></span>
+                </span>
                 <% if n.reply_path.present? %>
                   <span class="relative z-10 inline-flex mt-1.5"><%= render "shared/button", text: "Reply", variant: "secondary", size: "small", path: n.reply_path %></span>
                 <% end %>
               </span>
-              <span class="flex items-center gap-2 flex-shrink-0 pt-0.5 text-xs text-gray-500 whitespace-nowrap">
+              <span class="hidden sm:flex items-center gap-2 flex-shrink-0 pt-0.5 text-xs text-gray-500 whitespace-nowrap">
                 <%= label == "Today" ? "#{time_ago_in_words(n.created_at)} ago" : (label == "Yesterday" ? n.created_at.in_time_zone.strftime("%-l:%M %p") : n.created_at.in_time_zone.strftime("%b %-d")) %>
                 <% unless n.read? %><span class="w-2 h-2 rounded-full bg-pink-500" aria-label="Unread"></span><% end %>
               </span>

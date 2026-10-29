@@ -336,14 +336,17 @@
                       data-action="click->dropdown#toggle"
                       data-compose-message-target="senderIdentityButton"
                       class="flex items-center justify-between gap-2 w-full text-left px-3 py-2 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer">
-                <div class="flex items-center gap-2">
-                  <div class="w-6 h-6 rounded-lg bg-pink-500 flex items-center justify-center">
+                <%# Name over hint, each on its own line, so neither breaks on a phone (Tim, 2026-10-29). %>
+                <div class="flex items-center gap-2 min-w-0">
+                  <div class="w-6 h-6 rounded-lg bg-pink-500 flex items-center justify-center flex-shrink-0">
                     <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                   </div>
-                  <span data-compose-message-target="senderIdentityLabel" class="text-sm font-medium text-gray-900">Production Team</span>
-                  <span data-compose-message-target="senderIdentityHint" class="text-xs text-gray-500">(visible to all team members)</span>
+                  <span class="min-w-0">
+                    <span data-compose-message-target="senderIdentityLabel" class="block text-sm font-medium text-gray-900 truncate">Production Team</span>
+                    <span data-compose-message-target="senderIdentityHint" class="block text-xs text-gray-500 truncate">Visible to all team members</span>
+                  </span>
                 </div>
                 <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
