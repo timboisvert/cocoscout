@@ -36,6 +36,16 @@ There are TWO levels of management pages:
 
 Partner pages for 1.3 to 1.6 (landscape letter, one per release): https://claude.ai/artifact/CmapxyHabkThsMyQUjoLUh
 
+Ideas for 1.5 and 1.6, recorded to flesh out later: `~/.claude/plans/cocoscout-v1-5-integrations.md` and `~/.claude/plans/cocoscout-v1-6-audience-retention.md`.
+
+### Branches (Tim, 2026-10-29)
+- **`main` stays free for bug fixes.** Fixes are committed to main and deployed from it, as today. No release work lands on main.
+- **Each release has its own branch:** `v1.3`, `v1.4` (later `v1.5`, `v1.6`), cut from main. Two can be worked at once, depending on the cycles available.
+- **Each release branch lives in its own worktree:** `.claude/worktrees/v1.3`, `.claude/worktrees/v1.4`. The shared checkout at `/Users/tim/Code/CocoScout` always stays on `main`, so Tim's localhost keeps serving main. To see a release, run its dev server from its worktree.
+- **Merge `main` into each release branch often**, so fixes reach it and the final merge is small.
+- **A release merges into `main`** when it's done and Tim says ship it, the way V1.1 did on 2026-10-28.
+- **1.4 builds on 1.3** (group invoices use 1.3's invoices). Merge `v1.3` into `v1.4` whenever 1.4 needs something from it.
+
 ---
 
 ## UI Components
