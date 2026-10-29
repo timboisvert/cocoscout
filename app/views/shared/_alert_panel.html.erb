@@ -13,6 +13,9 @@
                             The first is pink, the rest outline. Usually one.
       tone     (optional) — :pink (default) for things waiting on you;
                             :amber for money you owe. Same shape, warmer frame.
+      details  (optional) — an html_safe fragment (capture { render ... }) shown
+                            under the line, full width, when the nudge needs its
+                            list spelled out (a contract's removed dates).
 
     Stack them: each carries its own mb-6, so several in a row read as a list
     of things to deal with. %>
@@ -22,6 +25,7 @@
   body     = local_assigns[:body]
   actions  = local_assigns.fetch(:actions, [])
   tone     = local_assigns.fetch(:tone, :pink)
+  details  = local_assigns[:details]
   frame, eyebrow_color = tone == :amber ?
     [ "border-amber-200 bg-gradient-to-r from-amber-50 to-white", "text-amber-600" ] :
     [ "border-pink-200 bg-gradient-to-r from-pink-50 to-white", "text-pink-600" ]
@@ -43,4 +47,7 @@
       </div>
     <% end %>
   </div>
+  <% if details.present? %>
+    <div class="mt-4"><%= details %></div>
+  <% end %>
 </div>

@@ -1067,7 +1067,7 @@ class Contract < ApplicationRecord
 
   def version_deal_snapshot
     {
-      "draft_data" => draft_data.except("amend", "services_change"),
+      "draft_data" => draft_data.except("amend", "services_change", ContractDateRemovalImpact::FOLLOW_UP_KEY),
       "appendixes" => contract_appendixes.ordered.map { |a| { "title" => a.title, "position" => a.position, "body_html" => a.body_html } }
     }
   end

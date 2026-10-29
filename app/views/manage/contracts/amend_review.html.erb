@@ -280,7 +280,14 @@
         </div>
       <% end %>
 
-      <%= form_with url: apply_amendments_manage_contract_path(@contract), method: :post, local: true do %>
+      <%# Tickets and staff on the dates coming off: said, never acted on. When
+          there's anything, Apply waits for "I'll take care of these". %>
+      <% gate = @removal_impact&.any? %>
+      <%= render "date_removal_impact", impact: @removal_impact, wizard: true if @removal_impact %>
+
+      <%= form_with url: apply_amendments_manage_contract_path(@contract), method: :post, local: true,
+            data: (gate ? { controller: "acknowledge-gate" } : {}) do %>
+        <%= render "date_removal_acknowledge", impact: @removal_impact if gate %>
         <%# Does the counterparty need to sign this? Only meaningful for e-sign
             contracts that have been signed once already — an offline one has no
             signature to re-engage. %>
@@ -310,7 +317,9 @@
           <%= render "shared/button", text: "Back: Ticketing & Services", variant: "secondary", size: "medium", icon: "arrow-left", path: amend_ticketing_tech_manage_contract_path(@contract) %>
           <input type="hidden" name="force_overlap" value="" data-contract-conflict-target="flag">
           <div data-contract-conflict-target="submit">
-            <%= render "shared/button", text: "Apply Amendments", variant: "primary", size: "medium", icon: "check", type: :submit %>
+            <%= render "shared/button", text: "Apply Amendments", variant: "primary", size: "medium", icon: "check", type: :submit,
+                  disabled: gate, classes: "disabled:opacity-50 disabled:cursor-not-allowed",
+                  data: (gate ? { acknowledge_gate_target: "submit" } : {}) %>
           </div>
         </div>
       <% end %>

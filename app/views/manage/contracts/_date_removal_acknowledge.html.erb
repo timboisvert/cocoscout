@@ -1,0 +1,20 @@
+<%# Inside the confirm form of a step that removes dates, when they leave
+    something to do: the manager says they'll handle it, which unlocks the
+    confirm button (acknowledge-gate on a wrapper around both).
+
+    Locals:
+      impact — ContractDateRemovalImpact for the dates coming off %>
+<%
+  todo = []
+  todo << "refund or move the tickets" if impact.affected.any?(&:tickets_to_handle?)
+  todo << "unschedule the staff" if impact.affected.any?(&:staff_to_handle?)
+%>
+<label class="flex items-start gap-2 p-3 mb-4 border border-pink-200 bg-pink-50 rounded-lg cursor-pointer">
+  <input type="checkbox" name="acknowledged" value="1"
+         class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+         data-acknowledge-gate-target="box" data-action="change->acknowledge-gate#update">
+  <span class="text-sm text-gray-900">
+    <span class="font-medium">I'll take care of these.</span>
+    <span class="text-gray-600"><%= todo.join(" and ").upcase_first %> listed above. The list stays on the contract page until it's done.</span>
+  </span>
+</label>

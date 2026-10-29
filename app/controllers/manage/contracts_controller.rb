@@ -264,6 +264,8 @@ module Manage
       @documents = @contract.contract_documents.recent
       @rentals = @contract.space_rentals.includes(:location, :location_space).order(:starts_at)
       @productions = [ @contract.production ].compact
+      # What removed dates left to do (tickets, staff), until it's done.
+      @date_removal_follow_up = ContractDateRemovalImpact.follow_up(@contract)
     end
 
     def new
@@ -506,6 +508,10 @@ module Manage
       redirect_to amend_dates_manage_contract_path(@contract), notice: "No date changes to make." and return if @planned.empty?
 
       @unchanged_count = @contract.space_rentals.count - @planned.size
+      # Tickets people hold and staff scheduled on the dates coming off — only
+      # said, never acted on (ContractDateRemovalImpact).
+      removing = @planned.reject { |p| p[:action] == :move }.map { |p| p[:rental] }
+      @removal_impact = ContractDateRemovalImpact.for_rentals(@contract, removing) if removing.any?
     end
 
     # Apply date changes: params[:dates] is { rental_id => { action:, starts_at:, ends_at: } }
@@ -515,6 +521,10 @@ module Manage
       removed = []
       moved = []
       kept_paid = []
+      # Read before anything goes: once a date is removed its tickets and
+      # shifts can't be found from it any more.
+      removing = @contract.space_rentals.where(id: changes.select { |_, c| c.is_a?(Hash) && c["action"] == "remove" }.keys).to_a
+      impact = ContractDateRemovalImpact.for_rentals(@contract, removing) if removing.any?
 
       @contract.transaction do
         @contract.space_rentals.where(id: changes.keys).find_each do |rental|
@@ -532,6 +542,7 @@ module Manage
         end
 
         @contract.refresh_dates_from_rentals!
+        remember_date_removal_follow_up!(impact) if impact
       end
 
       redirect_to manage_contract_path(@contract), notice: date_change_notice(removed, moved, kept_paid)
@@ -540,6 +551,13 @@ module Manage
                   alert: "Couldn't remove that date, so nothing changed: #{e.record.try(:destroy_refusal_message).presence || e.message}"
     rescue ActiveRecord::RecordInvalid => e
       redirect_to amend_dates_manage_contract_path(@contract), alert: "Couldn't change those dates: #{e.message}"
+    end
+
+    # "Done with this list": the manager has dealt with it some other way.
+    def dismiss_date_removal_follow_up
+      key = ContractDateRemovalImpact::FOLLOW_UP_KEY
+      @contract.update!(draft_data: @contract.draft_data.except(key)) if @contract.draft_data.key?(key)
+      redirect_to manage_contract_path(@contract)
     end
 
     # Room only: the same nights, the same deal, a different space at the same
@@ -664,6 +682,19 @@ module Manage
       parts.any? ? "Amended #{parts.to_sentence}" : "Amended"
     end
 
+    # What the dates just removed left to do, kept on the contract so its page
+    # can list it (read live, so each line goes once it's fixed). Replaces any
+    # earlier list's dates that are already done; adds to the rest.
+    def remember_date_removal_follow_up!(impact)
+      key = ContractDateRemovalImpact::FOLLOW_UP_KEY
+      still_open = ContractDateRemovalImpact.follow_up(@contract).affected.map(&:label)
+      earlier = Array(@contract.draft_data[key]).select { |s| still_open.include?(s["label"]) }
+      list = earlier + impact.to_follow_up
+      return if list.empty? && !@contract.draft_data.key?(key)
+
+      @contract.update!(draft_data: list.empty? ? @contract.draft_data.except(key) : @contract.draft_data.merge(key => list))
+    end
+
     # Plain English for what just happened to the dates.
     def date_change_notice(removed, moved, kept_paid)
       parts = []
@@ -736,6 +767,9 @@ module Manage
 
       # Separate existing rentals into kept and removed
       @rentals_to_remove = @existing_rentals.select { |r| @removed_rental_ids.include?(r.id) }
+      # Tickets people hold and staff scheduled on those dates: said, never
+      # acted on (ContractDateRemovalImpact).
+      @removal_impact = ContractDateRemovalImpact.for_rentals(@contract, @rentals_to_remove) if @rentals_to_remove.any?
       @remaining_rentals = @existing_rentals.reject { |r| @removed_rental_ids.include?(r.id) }
       @moves = staged_moves(@amend_data, @existing_rentals)
 
@@ -888,6 +922,9 @@ module Manage
 
       # Calculate summary
       @rentals_to_remove = @existing_rentals.select { |r| @removed_rental_ids.include?(r.id) }
+      # Tickets people hold and staff scheduled on those dates: said, never
+      # acted on (ContractDateRemovalImpact).
+      @removal_impact = ContractDateRemovalImpact.for_rentals(@contract, @rentals_to_remove) if @rentals_to_remove.any?
       @moves = staged_moves(@amend_data, @existing_rentals)
 
       # Financials: the deal config and/or payment list changed. Staged only if
@@ -1120,8 +1157,11 @@ module Manage
       # What changed, read before applying: afterwards the staged changes are
       # what the contract already has.
       summary = amendment_change_summary
+      removing = @contract.space_rentals.where(id: Array(@amend_data["removed_rental_ids"])).to_a
+      impact = ContractDateRemovalImpact.for_rentals(@contract, removing) if removing.any?
       @contract.transaction { @contract.apply_amendment!(@amend_data, force_overlap: force_overlap) }
       @contract.clear_amend_data
+      remember_date_removal_follow_up!(impact) if impact
 
       version = @contract.cut_version!(requires_signature: false, created_by: Current.user, change_summary: summary)
       GenerateContractPdfJob.perform_later(@contract.id, version.id)

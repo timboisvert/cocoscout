@@ -111,7 +111,14 @@
       </p>
     <% end %>
 
-    <%= form_with url: apply_amend_dates_manage_contract_path(@contract), method: :post, local: true do %>
+    <%# Tickets and staff on the dates coming off: said, never acted on. When
+        there's anything, Apply waits for "I'll take care of these". %>
+    <% gate = @removal_impact&.any? %>
+    <%= render "date_removal_impact", impact: @removal_impact if @removal_impact %>
+
+    <%= form_with url: apply_amend_dates_manage_contract_path(@contract), method: :post, local: true,
+          data: (gate ? { controller: "acknowledge-gate" } : {}) do %>
+      <%= render "date_removal_acknowledge", impact: @removal_impact if gate %>
       <% @planned.each do |plan| %>
         <% rental_id = plan[:rental].id %>
         <% if plan[:action] == :move %>
@@ -132,7 +139,9 @@
       <div class="flex items-center justify-between pt-4 border-t border-gray-200">
         <%= render "shared/button", text: "Back: Change dates", variant: "secondary", size: "medium", icon: "arrow-left",
               path: amend_dates_manage_contract_path(@contract) %>
-        <%= render "shared/button", text: "Apply date changes", variant: "primary", size: "medium", icon: "check", type: :submit %>
+        <%= render "shared/button", text: "Apply date changes", variant: "primary", size: "medium", icon: "check", type: :submit,
+              disabled: gate, classes: "disabled:opacity-50 disabled:cursor-not-allowed",
+              data: (gate ? { acknowledge_gate_target: "submit" } : {}) %>
       </div>
     <% end %>
 <% end %>

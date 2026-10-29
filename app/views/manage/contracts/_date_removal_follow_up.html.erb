@@ -1,0 +1,26 @@
+<%# Contract page: what dates removed from this contract still leave to do —
+    tickets people hold, staff scheduled — each with a link to fix it. Read
+    live, so a line goes once it's done, and the panel with the last one.
+
+    Locals:
+      impact — ContractDateRemovalImpact.follow_up(contract) %>
+<% open = impact.affected %>
+<% if open.any? %>
+  <%
+    tickets = open.sum { |e| e.tickets_to_handle? ? e.tickets[:live] : 0 }
+    staff = open.sum { |e| e.staff.size }
+    body = [ ("#{pluralize(tickets, "ticket")} to refund or move" if tickets.positive?),
+             ("#{pluralize(staff, "person")} to unschedule" if staff.positive?) ].compact.to_sentence.upcase_first + "."
+  %>
+  <div data-date-removal-follow-up>
+    <%= render "shared/alert_panel",
+          eyebrow: "Still to do from removed dates",
+          headline: open.map(&:label).to_sentence,
+          body: body,
+          actions: [ { text: "Done with this list", variant: "outline", size: "small", type: :button,
+                       path: dismiss_date_removal_follow_up_manage_contract_path(@contract), method: :delete } ],
+          details: capture {
+            tag.div(safe_join(open.map { |entry| render("manage/contracts/date_removal_entry", entry: entry) }), class: "space-y-2")
+          } %>
+  </div>
+<% end %>

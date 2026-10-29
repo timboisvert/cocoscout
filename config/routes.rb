@@ -1806,6 +1806,9 @@ Rails.application.routes.draw do
         get "amend/dates", action: :amend_dates, as: :amend_dates
         get "amend/dates/review", action: :review_amend_dates, as: :review_amend_dates
         post "amend/dates", action: :apply_amend_dates, as: :apply_amend_dates
+        # What removed dates left to do (tickets, staff) sits on the contract
+        # page until it's done or dismissed.
+        delete "amend/dates/follow_up", action: :dismiss_date_removal_follow_up, as: :dismiss_date_removal_follow_up
         # Changing the room is smaller still — same nights, same deal, just a
         # different space at the same venue. No repapering.
         get "amend/space", action: :amend_space, as: :amend_space

@@ -1,0 +1,42 @@
+<%# On a review step that removes dates: what each one leaves to deal with
+    (tickets people hold, staff scheduled), or a plain line saying there's
+    nothing. Nothing is refunded or unscheduled; the confirm form carries the
+    "I'll take care of these" box (date_removal_acknowledge).
+
+    Locals:
+      impact — ContractDateRemovalImpact for the dates coming off
+      wizard — the full amendment's review (see date_removal_entry) %>
+<% wizard = local_assigns.fetch(:wizard, false) %>
+<% dates_word = impact.entries.size == 1 ? "this date" : "these dates" %>
+<% if impact.any? %>
+  <div class="mb-6" data-removal-impact="affected">
+    <h4 class="text-sm font-semibold text-gray-900 mb-1">What's left for you to do</h4>
+    <p class="text-sm text-gray-600 mb-3">
+      Removing <%= dates_word %> doesn't refund anyone or take anyone off the schedule. Here's what to take care of yourself.
+    </p>
+    <div class="space-y-2">
+      <% impact.affected.each do |entry| %>
+        <%= render "manage/contracts/date_removal_entry", entry: entry, wizard: wizard %>
+      <% end %>
+    </div>
+    <% clear = impact.entries.size - impact.affected.size %>
+    <% if clear.positive? %>
+      <p class="text-sm text-gray-500 mt-2">
+        Nothing to do for the other <%= clear == 1 ? "date" : "#{clear} dates" %>.
+      </p>
+    <% end %>
+  </div>
+<% elsif impact.ticketing_on? || impact.staffing_on? %>
+  <div class="mb-6 flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700" data-removal-impact="clear">
+    <%= icon("check-circle", class: "w-4 h-4 text-green-600 flex-shrink-0") %>
+    <span>
+      <%= if impact.ticketing_on? && impact.staffing_on?
+            "No tickets sold and nobody scheduled for #{dates_word}."
+          elsif impact.ticketing_on?
+            "No tickets sold for #{dates_word}."
+          else
+            "Nobody is scheduled to work #{dates_word}."
+          end %>
+    </span>
+  </div>
+<% end %>

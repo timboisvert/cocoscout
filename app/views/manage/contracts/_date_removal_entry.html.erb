@@ -1,0 +1,62 @@
+<%# One removed date and what it leaves for the manager to do: the tickets
+    people hold and who's scheduled to work it, each with a link to where it's
+    fixed. Nothing here acts on them.
+
+    Locals:
+      entry  — ContractDateRemovalImpact::Entry
+      wizard — true on the full amendment's review, which won't take a date
+               people hold tickets for, so they have to go first %>
+<% wizard = local_assigns.fetch(:wizard, false) %>
+<div class="p-4 bg-white border border-gray-200 rounded-lg" data-removal-impact-date="<%= entry.date&.iso8601 %>">
+  <div class="font-medium text-gray-900 mb-2"><%= entry.label %></div>
+  <div class="space-y-3">
+    <% if entry.tickets_to_handle? %>
+      <% t = entry.tickets %>
+      <div class="flex items-start gap-2">
+        <%= icon("ticket", class: "w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5") %>
+        <div class="text-sm text-gray-700 min-w-0">
+          <p>
+            <% parts = [] %>
+            <% parts << "#{pluralize(t[:paid], "ticket")} sold (#{number_to_currency(t[:money_cents] / 100.0)})" if t[:paid].positive? %>
+            <% parts << pluralize(t[:comps], "comp") if t[:comps].positive? %>
+            <span class="font-medium text-gray-900"><%= parts.to_sentence %>.</span>
+            <% fix = t[:paid].positive? ? "Refund or move them" : "Take them back or move them" %>
+            <% if wizard %>
+              <%= fix %> before removing this date: this amendment won't take a date people hold tickets for.
+            <% else %>
+              <%= fix %> to another date.
+            <% end %>
+          </p>
+          <% if entry.listing %>
+            <%= link_to "Ticket sales for #{entry.label}", manage_ticket_listing_path(entry.listing),
+                  class: "inline-flex items-center gap-1 text-pink-600 hover:text-pink-700 font-medium mt-1" %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <% if entry.staff_to_handle? %>
+      <div class="flex items-start gap-2">
+        <%= icon("users", class: "w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5") %>
+        <div class="text-sm text-gray-700 min-w-0">
+          <p>
+            <span class="font-medium text-gray-900"><%= pluralize(entry.staff.size, "person") %> scheduled to work.</span>
+            Unschedule them.
+          </p>
+          <ul class="mt-1 space-y-0.5">
+            <% entry.staff.each do |s| %>
+              <li>
+                <span class="text-gray-900"><%= s[:name] %></span>
+                <span class="text-gray-500">· <%= s[:role] %>, <%= s[:starts_at].strftime("%-l:%M %p") %>–<%= s[:ends_at].strftime("%-l:%M %p") %></span>
+              </li>
+            <% end %>
+          </ul>
+          <% if entry.date %>
+            <%= link_to "Scheduling, #{entry.date.strftime("%A, %b %-d")}", manage_staffing_scheduling_path(day: entry.date.iso8601),
+                  class: "inline-flex items-center gap-1 text-pink-600 hover:text-pink-700 font-medium mt-1" %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
