@@ -41,7 +41,24 @@ class ContractDateRemovalImpact
         label: rental.starts_at.strftime("%a, %b %-d"),
         date: rental.starts_at.to_date,
         listings: TicketListing.where(show_id: shows.map(&:id)).to_a,
-        shifts: shifts_for(shows: shows, rental: rental)
+        shifts: shifts_for(shows: shows, rental_id: rental.id)
+      }
+    end)
+  end
+
+  # Cancelling the whole contract: one entry per show it takes away (a
+  # production's shows needn't each sit in a booking), read before anything
+  # goes.
+  def self.for_shows(contract, shows)
+    shows = Array(shows).sort_by(&:date_and_time)
+    listings = TicketListing.where(show_id: shows.map(&:id)).group_by(&:show_id)
+
+    new(contract, shows.map do |show|
+      {
+        label: show.date_and_time.strftime("%a, %b %-d"),
+        date: show.date_and_time.to_date,
+        listings: listings[show.id] || [],
+        shifts: shifts_for(shows: [ show ], rental_id: show.space_rental_id)
       }
     end)
   end
@@ -67,9 +84,9 @@ class ContractDateRemovalImpact
 
   # A date's shifts: those generated for its show (or merged to cover it), and
   # those made for the booking itself.
-  def self.shifts_for(shows:, rental:)
+  def self.shifts_for(shows:, rental_id:)
     show_ids = shows.map(&:id)
-    scope = Shift.where(source_type: "SpaceRental", source_id: rental.id)
+    scope = Shift.where(source_type: "SpaceRental", source_id: rental_id)
     if show_ids.any?
       scope = scope.or(Shift.where(source_type: "Show", source_id: show_ids))
                    .or(Shift.where(id: ShiftShow.where(show_id: show_ids).select(:shift_id)))

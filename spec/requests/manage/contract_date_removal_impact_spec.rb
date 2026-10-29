@@ -172,4 +172,57 @@ RSpec.describe "Contracts — what removing dates leaves to do", type: :request 
       expect(response.body).not_to include("I'll take care of these")
     end
   end
+
+  describe "Cancel contract" do
+    it "says plainly when nothing is affected, and lands on the contracts list as before" do
+      ticketing_on!
+
+      get cancel_manage_contract_path(contract)
+      expect(response.body).to include("No tickets sold and nobody scheduled for this date.")
+      expect(response.body).not_to include("I'll take care of these")
+
+      post process_cancel_manage_contract_path(contract), params: { settlement_type: "cancel_all" }
+
+      expect(response).to redirect_to(manage_contracts_path)
+      expect(contract.reload.status).to eq("cancelled")
+      expect(contract.draft_data).not_to have_key(ContractDateRemovalImpact::FOLLOW_UP_KEY)
+    end
+
+    it "lists the tickets and staff behind an acknowledgement, touches neither, and shows what's left on the contract page" do
+      listing = ticketing_on!
+      order = paid_order!(listing)
+      assignment = bartender_scheduled!
+
+      get cancel_manage_contract_path(contract)
+      body = response.body
+      expect(body).to include("2 tickets sold (#{number_to_currency(order.total_cents / 100.0)})")
+      expect(body).to include("Ana Ruiz", "Bartender", manage_ticket_listing_path(listing))
+      expect(body).to include("I'll take care of these")
+      expect(body).to include("contract-cancel acknowledge-gate")
+      expect(body).to match(/data-acknowledge-gate-target="submit"[^>]*disabled/)
+
+      post process_cancel_manage_contract_path(contract), params: { settlement_type: "cancel_all", acknowledged: "1" }
+
+      expect(response).to redirect_to(manage_contract_path(contract))
+      expect(contract.reload.status).to eq("cancelled")
+      expect(order.reload.status).to eq("paid")
+      expect(order.tickets.map(&:status).uniq).to eq([ "valid" ])
+      expect(ShiftAssignment.exists?(assignment.id)).to be(true)
+
+      get manage_contract_path(contract)
+      expect(response.body).to include("Still to do from removed dates")
+      expect(response.body).to include("2 tickets to refund or move and 1 person to unschedule.")
+    end
+
+    it "leaves out dates that have already happened" do
+      rental.update!(starts_at: 2.weeks.ago.change(hour: 20), ends_at: 2.weeks.ago.change(hour: 23))
+      show.update!(date_and_time: 2.weeks.ago.change(hour: 21))
+      bartender_scheduled!
+
+      get cancel_manage_contract_path(contract)
+
+      expect(response.body).not_to include("Ana Ruiz")
+      expect(response.body).not_to include("I'll take care of these")
+    end
+  end
 end

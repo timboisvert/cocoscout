@@ -6,7 +6,12 @@
       impact — ContractDateRemovalImpact for the dates coming off %>
 <%
   todo = []
-  todo << "refund or move the tickets" if impact.affected.any?(&:tickets_to_handle?)
+  ticketed = impact.affected.select(&:tickets_to_handle?)
+  if ticketed.any? { |e| e.tickets[:paid].positive? }
+    todo << "refund or move the tickets"
+  elsif ticketed.any?
+    todo << "take back or move the comps"
+  end
   todo << "unschedule the staff" if impact.affected.any?(&:staff_to_handle?)
 %>
 <label class="flex items-start gap-2 p-3 mb-4 border border-pink-200 bg-pink-50 rounded-lg cursor-pointer">

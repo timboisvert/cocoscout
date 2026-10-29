@@ -329,12 +329,17 @@ module Manage
       @shows = @contract.contract_shows.order(:date_and_time).to_a
       @pending_payments = @contract.contract_payments.where(status: "pending")
       @pending_total = @pending_payments.sum(:amount)
+      # Tickets people hold and staff scheduled on the dates still to come:
+      # said, never acted on (ContractDateRemovalImpact).
+      @removal_impact = cancel_removal_impact
     end
 
     def process_cancel
       # POST action - actually cancel the contract
       settlement_type = params[:settlement_type] || "cancel_all"
       cancellation_fee = params[:cancellation_fee].to_f
+      # Read before the shows go, or their tickets and shifts can't be found.
+      impact = cancel_removal_impact
 
       transaction_success = @contract.transaction do
         # Handle settlement
@@ -367,8 +372,13 @@ module Manage
           cancelled_at: Time.current
         )
       end
+      remember_date_removal_follow_up!(impact) if transaction_success && impact
 
-      if transaction_success
+      if transaction_success && impact&.any?
+        # What's left to do is listed on the contract's own page.
+        redirect_to manage_contract_path(@contract),
+                    notice: "Contract cancelled and events deleted. Below is what's left for you to do."
+      elsif transaction_success
         redirect_to manage_contracts_path, notice: "Contract cancelled and events deleted."
       else
         redirect_to manage_contract_path(@contract), alert: "Could not cancel contract."
@@ -682,19 +692,6 @@ module Manage
       parts.any? ? "Amended #{parts.to_sentence}" : "Amended"
     end
 
-    # What the dates just removed left to do, kept on the contract so its page
-    # can list it (read live, so each line goes once it's fixed). Replaces any
-    # earlier list's dates that are already done; adds to the rest.
-    def remember_date_removal_follow_up!(impact)
-      key = ContractDateRemovalImpact::FOLLOW_UP_KEY
-      still_open = ContractDateRemovalImpact.follow_up(@contract).affected.map(&:label)
-      earlier = Array(@contract.draft_data[key]).select { |s| still_open.include?(s["label"]) }
-      list = earlier + impact.to_follow_up
-      return if list.empty? && !@contract.draft_data.key?(key)
-
-      @contract.update!(draft_data: list.empty? ? @contract.draft_data.except(key) : @contract.draft_data.merge(key => list))
-    end
-
     # Plain English for what just happened to the dates.
     def date_change_notice(removed, moved, kept_paid)
       parts = []
@@ -991,6 +988,26 @@ module Manage
     end
 
     private
+
+    # Cancelling takes every date away; the ones still to come are those
+    # anyone could hold a ticket for or be scheduled to work.
+    def cancel_removal_impact
+      upcoming = @contract.contract_shows.where(date_and_time: Time.current..).to_a
+      ContractDateRemovalImpact.for_shows(@contract, upcoming) if upcoming.any?
+    end
+
+    # What the dates just removed left to do, kept on the contract so its page
+    # can list it (read live, so each line goes once it's fixed). Replaces any
+    # earlier list's dates that are already done; adds to the rest.
+    def remember_date_removal_follow_up!(impact)
+      key = ContractDateRemovalImpact::FOLLOW_UP_KEY
+      still_open = ContractDateRemovalImpact.follow_up(@contract).affected.map(&:label)
+      earlier = Array(@contract.draft_data[key]).select { |s| still_open.include?(s["label"]) }
+      list = earlier + impact.to_follow_up
+      return if list.empty? && !@contract.draft_data.key?(key)
+
+      @contract.update!(draft_data: list.empty? ? @contract.draft_data.except(key) : @contract.draft_data.merge(key => list))
+    end
 
     # The hub's "in motion" list, in the order they want attention: a payment
     # overdue (whatever month it fell in), then waiting on a signature (out for

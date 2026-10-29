@@ -5,14 +5,17 @@
 
     Locals:
       impact — ContractDateRemovalImpact for the dates coming off
-      wizard — the full amendment's review (see date_removal_entry) %>
+      wizard — the full amendment's review (see date_removal_entry)
+      action — what's happening, as the lead-in says it (cancelling a whole
+               contract says so; otherwise "Removing this date") %>
 <% wizard = local_assigns.fetch(:wizard, false) %>
 <% dates_word = impact.entries.size == 1 ? "this date" : "these dates" %>
+<% action = local_assigns[:action].presence || "Removing #{dates_word}" %>
 <% if impact.any? %>
   <div class="mb-6" data-removal-impact="affected">
     <h4 class="text-sm font-semibold text-gray-900 mb-1">What's left for you to do</h4>
     <p class="text-sm text-gray-600 mb-3">
-      Removing <%= dates_word %> doesn't refund anyone or take anyone off the schedule. Here's what to take care of yourself.
+      <%= action %> doesn't refund anyone or take anyone off the schedule. Here's what to take care of yourself.
     </p>
     <div class="space-y-2">
       <% impact.affected.each do |entry| %>

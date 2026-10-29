@@ -48,8 +48,14 @@
       </div>
     <% end %>
 
+    <%# Tickets and staff on the dates still to come: said, never acted on.
+        When there's anything, Cancel Contract waits for "I'll take care of these". %>
+    <% gate = @removal_impact&.any? %>
+    <%= render "date_removal_impact", impact: @removal_impact, action: "Cancelling this contract" if @removal_impact %>
+
     <%# Settlement options %>
-    <%= form_with url: process_cancel_manage_contract_path(@contract), method: :post, local: true, data: { controller: "contract-cancel" } do |f| %>
+    <%= form_with url: process_cancel_manage_contract_path(@contract), method: :post, local: true,
+          data: { controller: gate ? "contract-cancel acknowledge-gate" : "contract-cancel" } do |f| %>
       <div class="border border-gray-200 rounded-lg overflow-hidden mb-6 bg-white">
         <%= render "shared/section_heading", padding: "px-4 py-3", title: "Payment Settlement" %>
         <div class="p-4">
@@ -110,11 +116,15 @@
         </div>
       </div>
 
+      <%= render "date_removal_acknowledge", impact: @removal_impact if gate %>
+
       <%# Actions %>
       <div class="flex justify-between">
         <%= render "shared/button", text: "Keep Contract", variant: "secondary", size: "medium", path: manage_contract_path(@contract) %>
         <%= render "shared/button", text: "Cancel Contract", variant: "primary", size: "medium", icon: "x-circle", type: :button,
-              data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-cancel-contract-#{@contract.id}" } %>
+              disabled: gate, classes: "disabled:opacity-50 disabled:cursor-not-allowed",
+              data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-cancel-contract-#{@contract.id}" }
+                      .merge(gate ? { acknowledge_gate_target: "submit" } : {}) %>
       </div>
 
       <%# In-page confirm modal — rendered INSIDE this form so the confirm button
@@ -138,6 +148,9 @@
           </div>
           <div class="px-6 py-5 text-sm text-gray-600">
             Are you sure you want to cancel this contract? This will delete all associated events.
+            <% if gate %>
+              <p class="mt-2">It won't refund anyone or take anyone off the schedule: that's the list you said you'd take care of.</p>
+            <% end %>
           </div>
           <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
             <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
