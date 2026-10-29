@@ -25,9 +25,9 @@ side can go out before the V1.1 apps and V1 phones won't notice.
       two links in every email's footer. The screenshots are the V1 store
       ones ("My Calendar"); recapture from the simulator once V1.1 is the
       app, so they say "Home".
-- [ ] Decide the app versions. Today: iOS `MARKETING_VERSION = 1.0`,
-      `CURRENT_PROJECT_VERSION = 5` (bump to 1.1 / 6 for the V1.1 build);
-      Android `versionName = "1.2"`, `versionCode = 3` (bump both). The
+- [x] App versions (2026-10-28): iOS 1.1 (build 6); Android 1.1 (build 4,
+      after the internal-testing Tap to Pay build 3, which never reached
+      Production; this one carries Tap to Pay on Android too). The
       user-agent marker reads the version, nothing else depends on it.
 
 ## 2. Merge and deploy the server (yours; Claude can merge on your word)

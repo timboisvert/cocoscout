@@ -158,25 +158,25 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = CocoScout.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = 3Y9EQJP24Y;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CocoScout/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = CocoScout;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSCameraUsageDescription = "CocoScout uses the camera to scan tickets at the door and to take headshots.";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "CocoScout uses Bluetooth to connect to a card reader when you take payments at the door.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "CocoScout uses the camera to scan tickets at the door and to take headshots.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "CocoScout checks your location when you take card payments at the door, as card networks require.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.cocoscout.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -196,25 +196,25 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "CocoScout-Release.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = 3Y9EQJP24Y;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CocoScout/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = CocoScout;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSCameraUsageDescription = "CocoScout uses the camera to scan tickets at the door and to take headshots.";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "CocoScout uses Bluetooth to connect to a card reader when you take payments at the door.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "CocoScout uses the camera to scan tickets at the door and to take headshots.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "CocoScout checks your location when you take card payments at the door, as card networks require.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.cocoscout.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
