@@ -17,6 +17,8 @@ googleServices = "4.5.0"
 stripeTerminal = "6.0.0"
 # Hotwire Native's OkHttp, which Stripe Terminal's okhttp-tls has to match.
 okhttp = "5.3.2"
+# Gradle Play Publisher: uploads the bundle to Google Play (docs/app_release_automation.md).
+playPublisher = "4.1.1"
 
 [libraries]
 hotwire-core = { group = "dev.hotwire", name = "core", version.ref = "hotwire" }
@@ -48,3 +50,4 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+play-publisher = { id = "com.github.triplet.play", version.ref = "playPublisher" }

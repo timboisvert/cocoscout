@@ -7,6 +7,8 @@ plugins {
     // Reads app/google-services.json (Firebase, for notifications). It's kept
     // out of git; the copy is in 1Password with the upload key.
     alias(libs.plugins.google.services)
+    // Uploads the release bundle to Google Play (docs/app_release_automation.md).
+    alias(libs.plugins.play.publisher)
 }
 
 // Google Play's upload key: keystores/ and keystore.properties are kept out
@@ -70,6 +72,20 @@ android {
     // The app's page rules ship inside it too (the server's copy is fetched on
     // launch), from the one file the iOS app and the website share.
     sourceSets["main"].assets.srcDir("../../public/hotwire-native")
+}
+
+// Google Play uploads: the service account's key lives outside the repo, at
+// ~/.config/cocoscout/play-service-account.json (its copy is in 1Password), or
+// comes in through ANDROID_PUBLISHER_CREDENTIALS. Without either, everything
+// builds as before and only the publish tasks fail. A bare publish goes to
+// internal testing as a draft; a store release names its track
+// (docs/app_release_automation.md).
+play {
+    val key = File(System.getProperty("user.home"), ".config/cocoscout/play-service-account.json")
+    if (key.exists()) serviceAccountCredentials.set(key)
+    defaultToAppBundles.set(true)
+    track.set("internal")
+    releaseStatus.set(com.github.triplet.gradle.androidpublisher.ReleaseStatus.DRAFT)
 }
 
 dependencies {

@@ -14,3 +14,5 @@ captures/
 keystore.properties
 # Firebase config (its API key): kept out of git, saved in 1Password with the upload key
 app/google-services.json
+# Google Play service account key: lives at ~/.config/cocoscout/, never here
+*service-account*.json

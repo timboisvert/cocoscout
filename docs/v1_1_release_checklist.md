@@ -78,6 +78,17 @@ for the separate `news.cocoscout.com` domain, which needs Foundation 50k
 
 ## 3. The apps (yours: Apple and Google only take builds from you)
 
+V1.1 went up by hand. From the next release, Claude uploads both builds
+(Xcode Cloud on an `ios-v*` tag; Gradle Play Publisher for Android) once
+Tim's one-time steps are done: `docs/app_release_automation.md`.
+
+- [ ] Xcode Cloud: create the Release workflow in Xcode
+      (`docs/app_release_automation.md`, "Tim's one-time steps (Xcode)").
+- [ ] Google Play: the `play-publisher` service account, its key in
+      1Password and at `~/.config/cocoscout/play-service-account.json`, and
+      its invite in Play Console (same doc, "Tim's one-time steps (Google
+      Cloud and Play Console)").
+
 - [x] iOS: archive and upload the V1.1 build from `ios/` (uploaded and submitted for review 2026-10-29; screenshots went in the 6.1"/6.3" box as the 1206×2622 set in `ios/app_store_screenshots/v1.1/6.3-inch/`) (the project at
       `ios/CocoScout.xcodeproj`, scheme CocoScout). What's new: production
       mode, the organization band, Messages and Notifications in the nav bar,
