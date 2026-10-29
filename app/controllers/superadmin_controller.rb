@@ -1541,6 +1541,11 @@ class SuperadminController < ApplicationController
   # Key Monitor (Short URL keys)
   # =========================================================================
 
+  # How the iPhone and Android apps are used (AppUsageReport).
+  def app_usage
+    @report = AppUsageReport.new
+  end
+
   def keys
     @statistics = ShortKeyService.statistics
     @health = ShortKeyService.health_check

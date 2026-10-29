@@ -1,0 +1,114 @@
+<% content_for :title, "App usage - Superadmin" %>
+<%
+  day = @report.active(1)
+  week = @report.active(7)
+  month = @report.active(30)
+  daily = @report.daily(30)
+  peak = [ daily.map { |_, counts| counts.values.sum }.max.to_i, 1 ].max
+  share = @report.app_share
+  platform_name = { "ios" => "iPhone", "android" => "Android" }
+%>
+
+<div class="w-full mb-10" data-app-usage>
+  <%= render "shared/top_menu", breadcrumbs: [ [ "Superadmin", superadmin_path ] ], text: "App usage", links: [] %>
+
+  <p class="text-sm text-gray-500 mt-2 max-w-3xl">
+    People using the iPhone and Android apps, counted on our own server: a day for each person who opens an app page, and a count
+    of the pages they load. Installs, deletions and crashes are in App Store Connect and the Play Console. The App Review accounts are left out.
+  </p>
+
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5">
+    <% [ [ "Today", day ], [ "Last 7 days", week ], [ "Last 30 days", month ] ].each do |label, counts| %>
+      <div class="bg-white border border-gray-200 rounded-lg p-4" data-active-tile>
+        <div class="text-sm text-gray-500"><%= label %></div>
+        <div class="text-3xl font-semibold text-gray-900 tabular-nums mt-1"><%= number_with_delimiter(counts[:total]) %></div>
+        <div class="text-xs text-gray-500 mt-1"><%= number_with_delimiter(counts[:ios].to_i) %> iPhone · <%= number_with_delimiter(counts[:android].to_i) %> Android</div>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-lg p-5 mt-4">
+    <div class="flex items-baseline justify-between gap-3 mb-4">
+      <h2 class="font-semibold text-gray-900">People in the app each day</h2>
+      <span class="text-xs text-gray-500"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-pink-500 align-middle"></span> iPhone · <span class="inline-block w-2.5 h-2.5 rounded-sm bg-gray-400 align-middle"></span> Android</span>
+    </div>
+    <div class="flex items-end gap-1 h-36" data-daily>
+      <% daily.each do |date, counts| %>
+        <% total = counts.values.sum %>
+        <div class="flex-1 flex flex-col justify-end h-full" title="<%= date.strftime('%a %b %-d') %>: <%= counts['ios'] %> iPhone, <%= counts['android'] %> Android">
+          <div class="bg-gray-400 rounded-t-sm" style="height: <%= (counts['android'] * 100.0 / peak).round(1) %>%"></div>
+          <div class="bg-pink-500 <%= counts['android'].zero? ? 'rounded-t-sm' : '' %>" style="height: <%= (counts['ios'] * 100.0 / peak).round(1) %>%"></div>
+          <% if total.zero? %><div class="bg-gray-100 h-px"></div><% end %>
+        </div>
+      <% end %>
+    </div>
+    <div class="flex justify-between text-[11px] text-gray-400 mt-1">
+      <span><%= daily.first.first.strftime("%b %-d") %></span><span>Today</span>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+    <div class="bg-white border border-gray-200 rounded-lg p-5" data-versions>
+      <h2 class="font-semibold text-gray-900 mb-1">Builds in use, last 30 days</h2>
+      <p class="text-xs text-gray-500 mb-3">V1 builds send no version. When V1 is gone from both, V1.1 can be the minimum (release checklist §4).</p>
+      <% versions = @report.versions %>
+      <% if versions.any? %>
+        <table class="w-full text-sm">
+          <thead><tr class="text-left text-xs text-gray-500"><th class="py-1.5 font-medium">App</th><th class="py-1.5 font-medium">Build</th><th class="py-1.5 font-medium text-right">People</th></tr></thead>
+          <tbody class="divide-y divide-gray-100">
+            <% versions.each do |row| %>
+              <tr><td class="py-1.5"><%= platform_name[row[:platform]] %></td><td class="py-1.5"><%= row[:version] %></td><td class="py-1.5 text-right tabular-nums"><%= row[:people] %></td></tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% else %>
+        <p class="text-sm text-gray-500">Nobody in the app in the last 30 days.</p>
+      <% end %>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-lg p-5" data-share>
+      <h2 class="font-semibold text-gray-900 mb-1">App and website</h2>
+      <p class="text-xs text-gray-500 mb-3">Everyone active in the last 30 days, and how many of them used an app.</p>
+      <div class="text-3xl font-semibold text-gray-900 tabular-nums"><%= share[:active].zero? ? "0%" : number_to_percentage(share[:in_app] * 100.0 / share[:active], precision: 0) %></div>
+      <div class="text-sm text-gray-600 mt-1"><%= number_with_delimiter(share[:in_app]) %> of <%= number_with_delimiter(share[:active]) %> active people used an app</div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+    <div class="bg-white border border-gray-200 rounded-lg p-5" data-top-pages>
+      <h2 class="font-semibold text-gray-900 mb-3">Most-used app pages, last 30 days</h2>
+      <% pages = @report.top_pages %>
+      <% if pages.any? %>
+        <table class="w-full text-sm">
+          <tbody class="divide-y divide-gray-100">
+            <% pages.each do |page, views| %>
+              <tr><td class="py-1.5 font-mono text-xs text-gray-700 truncate max-w-0 w-full"><%= page %></td><td class="py-1.5 pl-3 text-right tabular-nums"><%= number_with_delimiter(views) %></td></tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% else %>
+        <p class="text-sm text-gray-500">No app pages loaded yet.</p>
+      <% end %>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-lg p-5 overflow-x-auto" data-retention>
+      <h2 class="font-semibold text-gray-900 mb-1">Coming back</h2>
+      <p class="text-xs text-gray-500 mb-3">People by the week of their first app day, and how many used the app again each week after.</p>
+      <% retention = @report.retention %>
+      <table class="text-sm">
+        <thead><tr class="text-left text-xs text-gray-500"><th class="py-1.5 pr-3 font-medium">First week</th><th class="py-1.5 pr-3 font-medium text-right">People</th><% (1...retention.size).each do |n| %><th class="py-1.5 px-1.5 font-medium text-right">+<%= n %></th><% end %></tr></thead>
+        <tbody class="divide-y divide-gray-100">
+          <% retention.each do |row| %>
+            <tr>
+              <td class="py-1.5 pr-3 whitespace-nowrap"><%= row[:week].strftime("%b %-d") %></td>
+              <td class="py-1.5 pr-3 text-right tabular-nums"><%= row[:people] %></td>
+              <% row[:returning].each do |n| %>
+                <td class="py-1.5 px-1.5 text-right tabular-nums <%= n.positive? ? 'text-gray-900' : 'text-gray-300' %>"><%= row[:people].zero? ? "–" : number_to_percentage(n * 100.0 / row[:people], precision: 0) %></td>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

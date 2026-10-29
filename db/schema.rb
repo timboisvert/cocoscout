@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_29_100100) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_29_100200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -128,6 +128,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_100100) do
     t.index ["question_id"], name: "index_answers_on_question_id"
     t.index ["sign_up_registration_id"], name: "index_answers_on_sign_up_registration_id"
     t.check_constraint "num_nonnulls(audition_request_id, sign_up_registration_id) = 1", name: "answers_one_owner"
+  end
+
+  create_table "app_activity_days", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.date "day", null: false
+    t.string "platform", null: false
+    t.string "app_version"
+    t.integer "nav"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["day"], name: "index_app_activity_days_on_day"
+    t.index ["user_id", "day"], name: "index_app_activity_days_on_user_id_and_day", unique: true
+  end
+
+  create_table "app_page_days", force: :cascade do |t|
+    t.date "day", null: false
+    t.string "platform", null: false
+    t.string "page", null: false
+    t.integer "views", default: 0, null: false
+    t.index ["day", "platform", "page"], name: "index_app_page_days_on_day_and_platform_and_page", unique: true
   end
 
   create_table "app_sessions", force: :cascade do |t|
@@ -4286,6 +4306,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_100100) do
   add_foreign_key "answers", "audition_requests"
   add_foreign_key "answers", "questions"
   add_foreign_key "answers", "sign_up_registrations"
+  add_foreign_key "app_activity_days", "users", on_delete: :cascade
   add_foreign_key "app_sessions", "users"
   add_foreign_key "audition_cycles", "productions"
   add_foreign_key "audition_email_assignments", "audition_cycles"

@@ -4,6 +4,7 @@ class ApplicationController < ActionController::Base
   include Authentication
   include Pagy::Method
   include ActivityTracking
+  include AppUsageTracking
   include SentryContext
   include Impersonation
 

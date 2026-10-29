@@ -118,6 +118,7 @@ Matches `ios/CocoScout/PrivacyInfo.xcprivacy` exactly.
 | User Content → Other User Content (messages, profile text) | Yes | Yes | No | App Functionality |
 | Identifiers → User ID (the account) | Yes | Yes | No | App Functionality |
 | Identifiers → Device ID (the push token) | Yes | Yes | No | App Functionality |
+| Usage Data → Product Interaction (which pages people use, on our own server; from 2026-10-28) | Yes | Yes | No | Analytics |
 
 Everything else: not collected. In particular —
 
@@ -126,8 +127,11 @@ Everything else: not collected. In particular —
   phone in Safari, not in the app. CocoScout never sees a card number.
 - Location: no. The door scanner uses the camera, not location.
 - Purchases: no — nothing is sold in the app.
-- Usage Data, Diagnostics, Crash data: no — there is no analytics or crash
-  SDK in the app (Sentry runs on the server only).
+- Diagnostics, Crash data: no. There is no analytics or crash SDK in the
+  app (Sentry runs on the server only). Usage Data → Product Interaction is
+  yes since 2026-10-28: our server notes which of its pages people open in
+  the app (AppUsageTracking), for our own analytics, and nothing goes to
+  anyone else.
 - Contacts, Health, Browsing/Search history, Sensitive Info: no.
 - Tracking: no. `NSPrivacyTracking` is false and there are no tracking
   domains.

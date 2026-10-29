@@ -101,6 +101,7 @@ doesn't count as sharing.
 | Files and docs | Optional | App functionality |
 | App activity → Other user-generated content | Optional | App functionality |
 | Device or other IDs | Optional | App functionality |
+| App activity → App interactions | Required | Analytics |
 
 What each one is, if Google asks:
 - Address and Other info: the mailing address and taxpayer ID number on a
@@ -110,11 +111,13 @@ What each one is, if Google asks:
 - Photos: headshots and photos sent in messages. Files and docs: résumés.
   Other user-generated content: profile bio and credits.
 - Device or other IDs: the notification token.
+- App interactions (from 2026-10-28): which of our pages people open in the
+  app, kept on our own server for our own analytics (AppUsageTracking).
 
 Not collected: location, financial payment info (cards and bank details are
 entered on the payment provider's own page), health, contacts, calendar,
-audio, web browsing, app interactions, crash logs and diagnostics (no
-analytics or crash SDK in the app), advertising ID.
+audio, web browsing, crash logs and diagnostics (no analytics or crash SDK
+in the app), advertising ID.
 
 ### Government apps
 

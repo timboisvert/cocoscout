@@ -241,6 +241,7 @@ module NavigationHelper
         { label: "Overview", path: superadmin_path, icon: "overview", active: controller_name == "superadmin" && action_name == "index" },
         { label: "People", path: people_list_path, icon: "people", active: %w[people_list person_detail].include?(action_name) },
         { label: "Organizations", path: organizations_list_path, icon: "organizations", active: %w[organizations_list organization_detail organization_consolidation production_transfer].include?(action_name) },
+        { label: "App usage", path: app_usage_path, icon: "overview", active: action_name == "app_usage" },
         { label: "Open Mics", path: mics_index_path, icon: "mics", active: controller_name == "mics" }
       ] },
       { label: "Business", items: [

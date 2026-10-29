@@ -21,6 +21,9 @@ RSpec.describe "The Work the door bar", type: :request do
   end
 
   it "draws the bar under the menu while a show is on, and never a Door menu item" do
+    # Noon, so the door has opened for tonight's show (it opens that morning)
+    # whatever hour the suite runs.
+    travel_to Time.current.change(hour: 12)
     tonight = create(:ticket_listing, organization: org, status: "on_sale",
                      show: create(:show, production: production, date_and_time: Time.current.end_of_day - 1.hour))
     get my_shows_path

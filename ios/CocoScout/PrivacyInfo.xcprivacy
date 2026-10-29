@@ -3,7 +3,9 @@
 <!--
   Apple's privacy manifest for CocoScout: no tracking, and what the app
   collects only to run the account (the account itself, name, email, phone,
-  headshots, the messages people send, and the phone's push token). Payment cards go to
+  headshots, the messages people send, and the phone's push token), plus
+  which of our pages people use in the app, kept on our own server for our
+  own analytics (AppUsageTracking, 2026-10-28). Payment cards go to
   Stripe, never through CocoScout. UserDefaults keeps the app's own
   settings (the cached menu, the push token).
 -->
@@ -97,6 +99,18 @@
 			<key>NSPrivacyCollectedDataTypePurposes</key>
 			<array>
 				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeProductInteraction</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
 			</array>
 		</dict>
 	</array>

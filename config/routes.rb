@@ -303,6 +303,7 @@ Rails.application.routes.draw do
     delete "/content_templates/:id", to: "superadmin#content_template_destroy", as: "content_template_destroy"
     get  "/content_templates/:id/preview", to: "superadmin#content_template_preview", as: "content_template_preview"
     get  "/keys",               to: "superadmin#keys",                as: "keys_monitor"
+    get  "/app_usage",          to: "superadmin#app_usage",           as: "app_usage"
 
     # Messages Monitor
     get    "/messages",         to: "superadmin#messages_list",       as: "messages_list"

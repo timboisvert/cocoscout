@@ -1,8 +1,15 @@
 # Tracking usage of the mobile apps
 
 Researched 2026-10-28, for Tim's question: "how can we track usage of this
-app? Are there any free options these days?" Nothing here is built yet; this
-is the recommendation to pick from.
+app? Are there any free options these days?"
+
+**Built 2026-10-28 (Tim: "just do it here"):** the first-party option.
+`app_activity_days` and `app_page_days` (migration CreateAppUsageTables,
+which also backfills each person's app sign-in days from `sessions`), the
+`AppUsageTracking` concern on ApplicationController, `AppUsageReport`, and
+superadmin → App usage (`/superadmin/app_usage`). `PrivacyInfo.xcprivacy`
+and both submission docs now declare it. Left for Tim: the two store
+dashboards, and the two stores' privacy answers (steps below).
 
 ## Where we are today
 
