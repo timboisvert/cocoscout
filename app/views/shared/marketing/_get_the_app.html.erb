@@ -2,25 +2,45 @@
     right above the pink sign-up band, after everything about ticketing and
     the tiers (Tim, 2026-10-28: never the second position on the home page).
     The phone is a real screenshot of the app, never a drawing.
-    Locals: eyebrow (who the app is for, on this page). %>
-<% eyebrow = local_assigns.fetch(:eyebrow, "For performers and staff") %>
+    Locals: audience (:performers, the default, or :producers: For
+    Producers shows production mode and speaks to whoever runs the show). %>
+<%
+  producers = local_assigns.fetch(:audience, :performers) == :producers
+  eyebrow = producers ? "For you and your team" : "For performers and staff"
+  image, alt = if producers
+    [ "app/production-casting.png", "The CocoScout app in production mode: the casting board, show by show" ]
+  else
+    [ "app/home.png", "The CocoScout app: Home, with the shows you're cast in" ]
+  end
+  intro = if producers
+    "Run the production from your phone. Production mode puts your week, your casting and your messages in the app, " \
+      "and your door staff check people in with the camera."
+  else
+    "Everything you get on the web, with your phone's own notifications and camera: the shows you're " \
+      "cast in, your availability, your messages, your pay, and the door."
+  end
+  lines = if producers
+    [ "Production mode: tonight's show, your week and your casting board",
+      "Scan tickets at the door with the camera",
+      "Free for your performers and staff, with a buzz when you cast them" ]
+  else
+    [ "A buzz when you're cast, a show changes, or someone writes",
+      "Scan tickets at the door with the camera",
+      "Free, like the rest of CocoScout for performers and staff" ]
+  end
+%>
 <section id="app" class="w-full px-6 py-16 sm:py-20 border-t border-slate-100 bg-slate-50" data-get-the-app>
   <div class="max-w-5xl mx-auto flex flex-col md:flex-row items-center gap-10 md:gap-16">
     <div class="w-[240px] sm:w-[264px] flex-shrink-0 rounded-[44px] bg-slate-900 p-2.5 shadow-2xl">
-      <%= image_tag "app/home.png", alt: "The CocoScout app: Home, with the shows you're cast in",
+      <%= image_tag image, alt: alt,
             class: "block w-full h-auto rounded-[34px]", loading: "lazy" %>
     </div>
     <div class="flex-1 min-w-0">
       <p class="text-pink-500 font-bold text-sm uppercase tracking-wide mb-3"><%= eyebrow %></p>
       <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 coustard-regular leading-tight mb-4">CocoScout in your pocket.</h2>
-      <p class="text-lg text-slate-600 leading-relaxed mb-6">
-        Everything you get on the web, with your phone's own notifications and camera: the shows you're
-        cast in, your availability, your messages, your pay, and the door.
-      </p>
+      <p class="text-lg text-slate-600 leading-relaxed mb-6"><%= intro %></p>
       <ul class="space-y-2.5 mb-8">
-        <% ["A buzz when you're cast, a show changes, or someone writes",
-            "Scan tickets at the door with the camera",
-            "Free, like the rest of CocoScout for performers and staff"].each do |line| %>
+        <% lines.each do |line| %>
           <li class="flex items-start gap-3">
             <span class="mt-0.5 w-6 h-6 rounded-full bg-pink-100 text-pink-500 flex items-center justify-center flex-shrink-0">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>

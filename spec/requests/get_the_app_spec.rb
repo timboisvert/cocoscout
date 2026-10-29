@@ -35,7 +35,8 @@ RSpec.describe "Get the app", type: :request do
 
       get producers_path
       expect(response.body.index('id="app"')).to be < response.body.index("Run your whole production in one place.")
-      expect(response.body).to include("For your performers, staff and door")
+      expect(response.body).to include("For you and your team", "Production mode")
+      expect(response.body).to include("app/production-casting") # production mode, as a real screenshot
     end
 
     it "carries the badges in every marketing footer" do
