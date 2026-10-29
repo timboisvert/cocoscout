@@ -171,8 +171,7 @@ ActiveRecord::Base.transaction do
   say.call "users: #{manager_user.email_address}, #{reviewer_user.email_address}"
 
   org = Organization.find_by(name: ORG_NAME) ||
-        Organization.create!(name: ORG_NAME, owner: manager_user, is_demo: true,
-                             talent_pool_mode: "per_production")
+        Organization.create!(name: ORG_NAME, owner: manager_user, talent_pool_mode: "per_production")
   OrganizationRole.find_or_create_by!(organization: org, user: manager_user) { |r| r.company_role = "manager" }
   say.call "organization: #{org.name} (#{org.id})"
 

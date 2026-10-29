@@ -14,8 +14,7 @@ module Manage
 
     def organization
       # Organization selection screen
-      @organizations = Current.user.accessible_organizations.non_demo.includes(:owner, :productions, :users).order(:name)
-      @demo_organizations = Current.user.accessible_organizations.demo.includes(:owner, :productions, :users).order(:name)
+      @organizations = Current.user.accessible_organizations.includes(:owner, :productions, :users).order(:name)
       @onboarding_intent = session[:manage_onboarding_intent]
 
       # Clear stale intents that are just the generic /manage path
@@ -25,17 +24,10 @@ module Manage
       end
 
       all_orgs = Current.user.accessible_organizations
-      non_demo = all_orgs.non_demo
 
-      # Auto-select: if 1 non-demo org, pick it. If only demo org, pick it.
-      # Skip auto-select when user explicitly clicked "Switch Organization"
-      auto_select_org = if params[:switch].present?
-                          nil
-      elsif non_demo.count == 1
-                          non_demo.first
-      elsif non_demo.count == 0 && all_orgs.count == 1
-                          all_orgs.first
-      end
+      # Auto-select the one organization someone has, unless they clicked
+      # "Switch Organization".
+      auto_select_org = all_orgs.first if params[:switch].blank? && all_orgs.one?
 
       if auto_select_org
         user_id = Current.user&.id
@@ -56,7 +48,7 @@ module Manage
 
       # Add role information for each organization
       @organization_roles = {}
-      (@organizations + @demo_organizations).each do |org|
+      @organizations.each do |org|
         @organization_roles[org.id] = org.role_for(Current.user)
       end
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_27_100100) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_29_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -867,16 +867,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_100100) do
     t.index ["stripe_checkout_session_id"], name: "index_course_registrations_on_stripe_checkout_session_id", unique: true
     t.index ["token"], name: "index_course_registrations_on_token", unique: true
     t.index ["user_id"], name: "index_course_registrations_on_user_id"
-  end
-
-  create_table "demo_users", force: :cascade do |t|
-    t.string "email", null: false
-    t.string "name"
-    t.text "notes"
-    t.bigint "created_by_id"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["email"], name: "index_demo_users_on_email", unique: true
   end
 
   create_table "departments", force: :cascade do |t|
@@ -1819,7 +1809,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_100100) do
     t.string "invite_token"
     t.string "talent_pool_mode", default: "per_production", null: false
     t.bigint "organization_talent_pool_id"
-    t.boolean "is_demo", default: false, null: false
     t.string "subscription_tier", default: "free", null: false
     t.string "stripe_customer_id"
     t.string "stripe_subscription_id"
@@ -4388,7 +4377,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_100100) do
   add_foreign_key "course_registrations", "people"
   add_foreign_key "course_registrations", "users"
   add_foreign_key "course_registrations", "users", column: "added_by_id"
-  add_foreign_key "demo_users", "users", column: "created_by_id", on_delete: :nullify
   add_foreign_key "departments", "organizations"
   add_foreign_key "device_tokens", "app_sessions", on_delete: :cascade
   add_foreign_key "device_tokens", "sessions", on_delete: :cascade

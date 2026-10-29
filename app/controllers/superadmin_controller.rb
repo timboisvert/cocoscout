@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 class SuperadminController < ApplicationController
-  # Demo users are excluded from counts/lists to avoid skewing real metrics
+  # Accounts on this domain (the App Review accounts in
+  # ios/app_store_submission.md) are left out of counts and lists, so they
+  # never skew the real numbers.
   DEMO_EMAIL_DOMAIN = "demo.cocoscout.com"
 
   # Unconditional: every action here is superadmin-only. The one exception is
@@ -1566,43 +1568,6 @@ class SuperadminController < ApplicationController
   end
 
   # =========================================================================
-  # Demo Users
-  # =========================================================================
-
-  def demo_users
-    @demo_users = DemoUser.ordered.includes(:created_by)
-    @demo_org = find_demo_organization
-  end
-
-  def demo_user_create
-    @demo_user = DemoUser.new(demo_user_params)
-    @demo_user.created_by = Current.user
-
-    if @demo_user.save
-      # If the user already has an account, add them to the demo org as a manager
-      added_to_org = add_user_to_demo_org(@demo_user.email)
-      notice = "Demo user added: #{@demo_user.email}"
-      notice += " (added to demo organization as manager)" if added_to_org
-      redirect_to demo_users_path, notice: notice
-    else
-      redirect_to demo_users_path, alert: "Failed to add demo user: #{@demo_user.errors.full_messages.join(', ')}"
-    end
-  end
-
-  def demo_user_destroy
-    @demo_user = DemoUser.find(params[:id])
-    email = @demo_user.email
-
-    # Remove user from demo organization if they have an account
-    removed_from_org = remove_user_from_demo_org(email)
-
-    @demo_user.destroy!
-    notice = "Demo user removed: #{email}"
-    notice += " (removed from demo organization)" if removed_from_org
-    redirect_to demo_users_path, notice: notice
-  end
-
-  # =========================================================================
   # Rake Tasks
   # =========================================================================
 
@@ -1619,51 +1584,6 @@ class SuperadminController < ApplicationController
   # Default agreement template content used as the starting point
   def default_agreement_content
     AgreementTemplateDefaults::DEFAULT_CONTENT
-  end
-
-  # Find the demo organization (handles name changes)
-  def find_demo_organization
-    # Prefer the is_demo flag
-    org = Organization.find_by(is_demo: true)
-    # Fallback: try to find by the expected name pattern
-    org ||= Organization.where("name LIKE ?", "Starlight Community Theater%").first
-    org ||= Organization.where("name LIKE ?", "%Demo%").first
-    org
-  end
-
-  # Remove a user from the demo organization (if they have an account)
-  def remove_user_from_demo_org(email)
-    user = User.find_by(email_address: email)
-    return false unless user
-
-    demo_org = find_demo_organization
-    return false unless demo_org
-
-    role = OrganizationRole.find_by(organization: demo_org, user: user)
-    return false unless role
-
-    role.destroy
-    true
-  end
-
-  # Add a user to the demo organization as a manager (if they have an account)
-  def add_user_to_demo_org(email)
-    user = User.find_by(email_address: email)
-    return false unless user
-
-    demo_org = find_demo_organization
-    return false unless demo_org
-
-    OrganizationRole.find_or_create_by!(
-      organization: demo_org,
-      user: user
-    ) do |role|
-      role.company_role = "manager"
-    end
-
-    true
-  rescue ActiveRecord::RecordInvalid
-    false
   end
 
   def generate_email_preview_html(body_content)
@@ -1780,10 +1700,6 @@ class SuperadminController < ApplicationController
     params.require(:content_template).permit(:key, :name, :subject, :body, :message_body, :description, :category, :active,
                                              :template_type, :mailer_class, :mailer_action, :notes, :channel, :push, :push_body,
                                              available_variables: [ :name, :description ])
-  end
-
-  def demo_user_params
-    params.require(:demo_user).permit(:email, :name, :notes)
   end
 
   def require_superadmin

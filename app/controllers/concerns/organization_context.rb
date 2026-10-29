@@ -50,16 +50,9 @@ module OrganizationContext
         Current.organization = nil
       end
     elsif Current.user
+      # The one organization someone has is picked for them.
       orgs = Current.user.accessible_organizations
-      non_demo_orgs = orgs.non_demo
-
-      # Auto-select if user has exactly one non-demo org (ignore demo org)
-      # Or if demo org is their only org, auto-select it
-      auto_select_org = if non_demo_orgs.count == 1
-                          non_demo_orgs.first
-      elsif non_demo_orgs.count == 0 && orgs.count == 1
-                          orgs.first
-      end
+      auto_select_org = orgs.first if orgs.one?
 
       if auto_select_org
         session[:current_organization_id] ||= {}

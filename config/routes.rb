@@ -304,11 +304,6 @@ Rails.application.routes.draw do
     get  "/content_templates/:id/preview", to: "superadmin#content_template_preview", as: "content_template_preview"
     get  "/keys",               to: "superadmin#keys",                as: "keys_monitor"
 
-    # Demo Users
-    get    "/demo_users",       to: "superadmin#demo_users",          as: "demo_users"
-    post   "/demo_users",       to: "superadmin#demo_user_create",    as: "demo_user_create"
-    delete "/demo_users/:id",   to: "superadmin#demo_user_destroy",   as: "demo_user_destroy"
-
     # Messages Monitor
     get    "/messages",         to: "superadmin#messages_list",       as: "messages_list"
     get    "/messages/:id",     to: "superadmin#message_detail",      as: "message_detail"

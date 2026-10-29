@@ -99,8 +99,6 @@ class Organization < ApplicationRecord
     single: "single"
   }, default: :per_production, prefix: :talent_pool
 
-  scope :demo, -> { where(is_demo: true) }
-  scope :non_demo, -> { where(is_demo: false) }
 
   # Subscription tiers. "free" is the Producer plan (default, for solo producers
   # and small teams); "paid" is the Pro plan. See #on_paid_plan?

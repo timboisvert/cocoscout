@@ -123,9 +123,9 @@ module Manage
     end
 
     # This flow is exclusively for first-run producers. Anyone who already has
-    # a real (non-demo) organization uses the org picker and production wizard.
+    # an organization uses the org picker and production wizard.
     def ensure_first_run
-      return if Current.user.accessible_organizations.non_demo.none?
+      return if Current.user.accessible_organizations.none?
 
       redirect_to manage_path
     end

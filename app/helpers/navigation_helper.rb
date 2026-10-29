@@ -250,8 +250,7 @@ module NavigationHelper
       ] },
       { label: "Business", items: [
         { label: "Finances", path: finances_path, icon: "money", active: action_name.to_s.start_with?("finances") },
-        { label: "Promo Codes", path: promo_codes_path, icon: "promo", active: action_name.to_s.start_with?("promo_code") },
-        { label: "Demo Users", path: demo_users_path, icon: "people", active: action_name == "demo_users" }
+        { label: "Promo Codes", path: promo_codes_path, icon: "promo", active: action_name.to_s.start_with?("promo_code") }
       ] },
       { label: "Content", items: [
         { label: "Profiles", path: profiles_monitor_path, icon: "profiles", active: action_name == "profiles" },
