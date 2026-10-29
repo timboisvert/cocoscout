@@ -78,7 +78,7 @@ for the separate `news.cocoscout.com` domain, which needs Foundation 50k
 
 ## 3. The apps (yours: Apple and Google only take builds from you)
 
-- [ ] iOS: archive and upload the V1.1 build from `ios/` (the project at
+- [x] iOS: archive and upload the V1.1 build from `ios/` (uploaded and submitted for review 2026-10-29; screenshots went in the 6.1"/6.3" box as the 1206×2622 set in `ios/app_store_screenshots/v1.1/6.3-inch/`) (the project at
       `ios/CocoScout.xcodeproj`, scheme CocoScout). What's new: production
       mode, the organization band, Messages and Notifications in the nav bar,
       the new menu. **New screenshots:** `ios/app_store_screenshots/v1.1/`
@@ -86,13 +86,13 @@ for the separate `news.cocoscout.com` domain, which needs Foundation 50k
       admitting someone, the production-mode menu, production Home, the show
       sheet, the casting board). Claude can't reach App Store Connect, so
       you upload them. Android's listing can use the same seven.
-- [ ] Both stores' privacy answers, now that the server counts app usage
+- [x] Both stores' privacy answers (done 2026-10-29), now that the server counts app usage
       (`docs/mobile_app_analytics.md`, "What only Tim can do" step 3): App
       Store Connect → App Privacy → Usage Data → Product Interaction
       (linked, not tracking, Analytics); Play Console → Data safety → App
       activity → App interactions (collected, not shared, Analytics). The
       V1.1 build's `PrivacyInfo.xcprivacy` already says so.
-- [ ] Android: `./gradlew bundleRelease` from `android/` (Android Studio's
+- [x] Android: `./gradlew bundleRelease` from `android/` (1.1 build 4 sent to Production review 2026-10-29, with Tap to Pay on Android after a real-card test, the 1080×2160 screenshots in `android/play_store/v1.1/`, and Data safety's Tap to Pay and app-usage changes) (Android Studio's
       JDK), upload to the Play Console. The release build's `BASE_URL` is
       production; debug is localhost.
 - [ ] Both: the apps bundle `public/hotwire-native/nav-2/path-configuration.json`
