@@ -25,7 +25,7 @@ RSpec.describe "Get the app", type: :request do
       expect(body).to include("CocoScout in your pocket.")
       expect(body).to include(%(href="#{get_the_app_path}"))
       expect(body).to include("now on iPhone and Android") # the hero line links down to it
-      expect(body).to include("app/my-calendar") # a real screenshot, not a drawing
+      expect(body).to include("app/home") # a real screenshot, not a drawing
     end
 
     it "has the same section on For Performers and For Producers, above their bands" do
