@@ -65,23 +65,27 @@ class HomeWeek
 
   def shows_on(day) = rows_by_day.fetch(day, []).map(&:show)
 
-  # { Date => Staffing } for the days with shifts and no show (a private
-  # party that isn't a show in CocoScout, a work day): the day still gets
-  # its own row, so the work someone's paid for shows on Home (Tim,
-  # 2026-10-29). Pro managers only, like the staffing chips.
+  # { Date => Staffing } for the shifts no show row counts: every shift on a
+  # day with no show (a private party that isn't a show in CocoScout, a work
+  # day), and on a show day the ones tied to none of its shows and
+  # overlapping none (a 2 PM party before an 8 PM show). They get their own
+  # row, so the work someone's paid for shows on Home, and nothing shows
+  # twice (Tim, 2026-10-29). Pro managers only, like the staffing chips.
   def staffing_days
     @staffing_days ||= days.each_with_object({}) do |day, out|
-      next if rows_by_day[day].any?
-
       day_shifts = @shifts_by_day[day] || []
       next if day_shifts.empty?
 
-      stats = slot_stats(day_shifts)
-      out[day] = Staffing.new(shifts: day_shifts, staffed: stats[:staffed], total: stats[:total], declined: stats[:declined], day_has_shifts: true)
+      claimed = rows_by_day[day].flat_map { |r| r.staffing&.shifts || [] }.map(&:id).to_set
+      left = day_shifts.reject { |s| claimed.include?(s.id) }
+      next if left.empty?
+
+      stats = slot_stats(left)
+      out[day] = Staffing.new(shifts: left, staffed: stats[:staffed], total: stats[:total], declined: stats[:declined], day_has_shifts: true)
     end
   end
 
-  # A day with a show, or with staffing and no show.
+  # A day with a show, or with staffing.
   def busy?(day) = rows_by_day[day].any? || staffing_days.key?(day)
 
   # The range's slots: staffed of needed, and how many can't make it.

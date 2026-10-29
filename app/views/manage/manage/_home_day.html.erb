@@ -28,6 +28,9 @@
     <% rows.each do |row| %>
       <%= render "manage/manage/show_row", row: row, size: :phone %>
     <% end %>
+    <% if staffing %>
+      <%= render "manage/manage/staffing_row", day: day, staffing: staffing, size: :phone %>
+    <% end %>
   <% elsif staffing %>
     <div class="flex items-center justify-between text-xs text-gray-500 px-0.5">
       <span>Staffing only</span>
