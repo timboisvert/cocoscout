@@ -15,7 +15,7 @@ module Manage
     before_action :set_production
     before_action :check_production_access
     before_action :require_sales_level!
-    before_action :set_listing, only: %i[show create_comp]
+    before_action :set_listing, only: %i[show create_comp preview_comps]
 
     def index
       @filter = params[:dates] == "past" ? "past" : "upcoming"
@@ -43,6 +43,11 @@ module Manage
     # same form as the manager's (GivesComps).
     def create_comp
       give_comp_within_allowance(@listing, TicketSalesAccess.comp_allowance(Current.user, @listing), back: sale_path)
+    end
+
+    # A pasted list's preview, within the same allowance.
+    def preview_comps
+      preview_comps_within_allowance(@listing, TicketSalesAccess.comp_allowance(Current.user, @listing))
     end
 
     private

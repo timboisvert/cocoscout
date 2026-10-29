@@ -11,6 +11,7 @@
 <%
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   post_url = local_assigns[:url] || manage_ticket_listing_comps_path(listing)
+  preview_url = local_assigns[:preview_url] || manage_ticket_listing_comps_preview_path(listing)
   note_label = local_assigns[:note_label] || "Note for your records"
   label_class = "block text-sm font-medium text-gray-700 mb-1.5"
   tiers = listing.ticket_tiers.active.reject(&:bundle?)
@@ -31,6 +32,25 @@
   end
   # No more than the seats left, the date's comps left (CompRules), or the giver's allowance.
   most = [ 20, remaining, listing.comps_left, local_assigns[:max] ].compact.min.clamp(1, 20)
+  one_form = "#{id}-one-form"
+  paste_form = "#{id}-paste-form"
+  tab_class = "text-xs font-medium px-3 py-1.5 rounded cursor-pointer bg-gray-100 text-gray-700"
+  tier_field = lambda do |field_id|
+    if tiers.one?
+      # One ticket type: nothing to choose.
+      capture do
+        concat tag.p("Ticket", class: label_class)
+        concat hidden_field_tag(:tier_id, tiers.first.id, id: field_id)
+        concat tag.p(tier_label.call(tiers.first), class: "py-2.5 text-sm text-gray-900")
+      end
+    else
+      capture do
+        concat label_tag(field_id, "Ticket", class: label_class)
+        concat select_tag(:tier_id, options_for_select(tiers.map { |t| [ tier_label.call(t), t.id ] }, selected: default_tier, disabled: full_ids),
+                          id: field_id, class: input_class, data: (field_id == "comp_paste_tier_id" ? { action: "change->comps-paste#edited" } : {}))
+      end
+    end
+  end
 %>
 <%# A bottom sheet on a phone, the centered card from sm up (V1.1 plan). %>
 <div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
@@ -42,59 +62,99 @@
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
-    <%= form_with url: post_url, method: :post, data: { turbo: false } do %>
-      <div class="p-6 space-y-5">
+    <div data-controller="comps-paste" data-comps-paste-url-value="<%= preview_url %>">
+      <div class="px-6 pt-6 space-y-4">
         <p class="text-sm text-gray-600">
           Free tickets for a guest, with no fees. They take seats<%= remaining ? " (#{remaining} left)" : "" %>.<%= " #{local_assigns[:allowance_note]}" if local_assigns[:allowance_note].present? %>
         </p>
+        <div class="flex gap-2">
+          <%= tag.button("One person", type: "button", class: tab_class, data: { comps_paste_target: "oneTab", action: "comps-paste#showOne" }) %>
+          <%= tag.button("Paste a list", type: "button", class: tab_class, data: { comps_paste_target: "pasteTab", action: "comps-paste#showPaste" }) %>
+        </div>
+      </div>
 
-        <div class="grid grid-cols-[5.5rem_minmax(0,1fr)] sm:grid-cols-[minmax(0,1fr)_7rem_minmax(0,1fr)] gap-4">
-          <div class="col-span-2 sm:col-span-1">
-            <label for="comp_name" class="<%= label_class %>">Name</label>
-            <%= text_field_tag :name, nil, id: "comp_name", placeholder: "Their name", required: true, autocomplete: "off", class: input_class %>
+      <%= form_with url: post_url, method: :post, id: one_form, data: { turbo: false, comps_paste_target: "onePane" } do %>
+        <div class="p-6 space-y-5">
+          <div class="grid grid-cols-[5.5rem_minmax(0,1fr)] sm:grid-cols-[minmax(0,1fr)_7rem_minmax(0,1fr)] gap-4">
+            <div class="col-span-2 sm:col-span-1">
+              <label for="comp_name" class="<%= label_class %>">Name</label>
+              <%= text_field_tag :name, nil, id: "comp_name", placeholder: "Their name", required: true, autocomplete: "off", class: input_class %>
+            </div>
+            <div>
+              <label for="comp_quantity" class="<%= label_class %>">How many</label>
+              <%= select_tag :quantity, options_for_select((1..most).to_a, 1), id: "comp_quantity", class: input_class %>
+            </div>
+            <div>
+              <%= tier_field.call("comp_tier_id") %>
+            </div>
           </div>
+
           <div>
-            <label for="comp_quantity" class="<%= label_class %>">How many</label>
-            <%= select_tag :quantity, options_for_select((1..most).to_a, 1), id: "comp_quantity", class: input_class %>
+            <label for="comp_note" class="<%= label_class %>"><%= note_label %> <span class="font-normal text-gray-500">(optional)</span></label>
+            <%= text_field_tag :note, nil, id: "comp_note", placeholder: "Guest of the cast", class: input_class %>
           </div>
-          <div>
-            <% if tiers.one? %>
-              <%# One ticket type: nothing to choose. %>
-              <p class="<%= label_class %>">Ticket</p>
-              <%= hidden_field_tag :tier_id, tiers.first.id, id: "comp_tier_id" %>
-              <p class="py-2.5 text-sm text-gray-900"><%= tier_label.call(tiers.first) %></p>
-            <% else %>
-              <label for="comp_tier_id" class="<%= label_class %>">Ticket</label>
-              <%= select_tag :tier_id, options_for_select(tiers.map { |t| [ tier_label.call(t), t.id ] }, selected: default_tier, disabled: full_ids), id: "comp_tier_id", class: input_class %>
-            <% end %>
+
+          <%# Emailing their tickets needs their email: off (the default), there's nothing to fill in. %>
+          <div class="pt-5 border-t border-gray-200 space-y-4" data-controller="toggle-section fieldset-toggle">
+            <div class="flex items-center justify-between gap-4">
+              <div>
+                <div class="text-sm font-medium text-gray-900">Email them their tickets</div>
+                <div class="text-xs text-gray-600 mt-0.5">The usual email with their QR codes. Off, you hand them over yourself.</div>
+              </div>
+              <%= render "shared/toggle_switch", name: "email_them", checked: false, hidden_false: true, id: "comp_email_them", aria_label: "Email them their tickets",
+                    data: { toggle_section_target: "toggle", fieldset_toggle_target: "switch", action: "change->toggle-section#toggle change->fieldset-toggle#toggle" } %>
+            </div>
+            <fieldset data-toggle-section-target="content" data-fieldset-toggle-target="fields" class="min-w-0 hidden">
+              <label for="comp_email" class="<%= label_class %>">Their email</label>
+              <%= email_field_tag :email, nil, id: "comp_email", placeholder: "their@email.com", required: true, autocomplete: "off", class: input_class %>
+            </fieldset>
           </div>
         </div>
+      <% end %>
 
-        <div>
-          <label for="comp_note" class="<%= label_class %>"><%= note_label %> <span class="font-normal text-gray-500">(optional)</span></label>
-          <%= text_field_tag :note, nil, id: "comp_note", placeholder: "Guest of the cast", class: input_class %>
-        </div>
+      <%# Hidden until its tab is picked (style, not a class: see comps_paste_controller). %>
+      <%= form_with url: post_url, method: :post, id: paste_form, style: "display: none",
+            data: { turbo: false, comps_paste_target: "pastePane", action: "submit->comps-paste#submit" } do %>
+        <%= hidden_field_tag :mode, "paste", id: nil %>
+        <div class="p-6 space-y-5">
+          <div>
+            <label for="comp_paste_text" class="<%= label_class %>">Names and emails, one per line</label>
+            <%= text_area_tag :text, nil, id: "comp_paste_text", rows: 6, class: "#{input_class} font-mono text-[13px]", autocomplete: "off",
+                  placeholder: "Rosa Delgado, rosa@example.com\nTom Kwan <tkwan@example.com>, 2\nsam@example.com",
+                  data: { comps_paste_target: "text", action: "input->comps-paste#edited" } %>
+            <p class="text-xs text-gray-500 mt-1.5">Copy the columns from a spreadsheet, or paste a CSV. Add a number for more than one ticket.</p>
+          </div>
 
-        <%# Emailing their tickets needs their email: off (the default), there's nothing to fill in. %>
-        <div class="pt-5 border-t border-gray-200 space-y-4" data-controller="toggle-section fieldset-toggle">
-          <div class="flex items-center justify-between gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div><%= tier_field.call("comp_paste_tier_id") %></div>
+            <div>
+              <label for="comp_paste_note" class="<%= label_class %>"><%= note_label %> <span class="font-normal text-gray-500">(optional)</span></label>
+              <%= text_field_tag :note, nil, id: "comp_paste_note", placeholder: "Opening night guests", class: input_class %>
+            </div>
+          </div>
+
+          <div class="pt-5 border-t border-gray-200 flex items-center justify-between gap-4">
             <div>
               <div class="text-sm font-medium text-gray-900">Email them their tickets</div>
-              <div class="text-xs text-gray-600 mt-0.5">The usual email with their QR codes. Off, you hand them over yourself.</div>
+              <div class="text-xs text-gray-600 mt-0.5">Everyone on the list, so every line needs an email. Off, you hand them over yourself.</div>
             </div>
-            <%= render "shared/toggle_switch", name: "email_them", checked: false, hidden_false: true, id: "comp_email_them", aria_label: "Email them their tickets",
-                  data: { toggle_section_target: "toggle", fieldset_toggle_target: "switch", action: "change->toggle-section#toggle change->fieldset-toggle#toggle" } %>
+            <%= render "shared/toggle_switch", name: "email_them", checked: false, hidden_false: true, id: "comp_paste_email_them", aria_label: "Email them all their tickets",
+                  data: { action: "change->comps-paste#edited" } %>
           </div>
-          <fieldset data-toggle-section-target="content" data-fieldset-toggle-target="fields" class="min-w-0 hidden">
-            <label for="comp_email" class="<%= label_class %>">Their email</label>
-            <%= email_field_tag :email, nil, id: "comp_email", placeholder: "their@email.com", required: true, autocomplete: "off", class: input_class %>
-          </fieldset>
+
+          <div data-comps-paste-target="result" aria-live="polite"></div>
         </div>
-      </div>
+      <% end %>
+
       <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
         <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
-        <%= render "shared/button", text: "Give tickets", variant: "primary", size: "medium", type: :submit %>
+        <%= render "shared/button", text: "Give tickets", variant: "primary", size: "medium", type: :submit, form_id: one_form,
+              data: { comps_paste_target: "giveOne" } %>
+        <%= render "shared/button", text: "Preview", variant: "primary", size: "medium", type: :button, style: "display: none",
+              data: { comps_paste_target: "preview", action: "comps-paste#preview" } %>
+        <%= render "shared/button", text: "Give comps", variant: "primary", size: "medium", type: :submit, form_id: paste_form, style: "display: none",
+              data: { comps_paste_target: "give" } %>
       </div>
-    <% end %>
+    </div>
   </div>
 </div>

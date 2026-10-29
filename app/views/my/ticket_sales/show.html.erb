@@ -52,7 +52,7 @@
 
     <% if can_comp %>
       <%= render "manage/ticket_listings/comps_modal", id: "comps-modal", listing: @listing,
-            url: my_ticket_sale_comps_path(@listing), max: @allowance[:left],
+            url: my_ticket_sale_comps_path(@listing), preview_url: my_ticket_sale_comps_preview_path(@listing), max: @allowance[:left],
             allowance_note: (@allowance[:left] ? "You can give #{@allowance[:left]} more for this date." : nil),
             note_label: "Note for the box office" %>
     <% end %>

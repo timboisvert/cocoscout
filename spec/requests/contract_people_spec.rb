@@ -118,6 +118,26 @@ RSpec.describe "Contract people", type: :request do
     expect(html.index(my_show_path(old_show))).to be < html.index(my_show_path(older_show))
   end
 
+  it "gives comps from a pasted list on My Ticket Sales, the whole list or none" do
+    listing = open_box_office
+    general = listing.ticket_tiers.first
+    sign_in(priya)
+    get my_ticket_sale_path(listing)
+    expect(response.body).to include("Paste a list", my_ticket_sale_comps_preview_path(listing))
+
+    post my_ticket_sale_comps_preview_path(listing), params: { tier_id: general.id, text: "Abe Comp, abe@example.com, 2\nBea Comp" }
+    expect(response.body).to include('data-comps-paste-ready="3"', "Abe Comp", "Bea Comp")
+
+    expect { post my_ticket_sale_comps_path(listing), params: { mode: "paste", tier_id: general.id, text: "Abe Comp, 2\nBea Comp, bea@example" } }
+      .not_to change { Ticket.where(ticket_listing_id: listing.id).count }
+    expect(flash[:alert]).to eq("Line 2: bea@example isn't an email address.")
+
+    expect { post my_ticket_sale_comps_path(listing), params: { mode: "paste", tier_id: general.id, text: "Abe Comp, abe@example.com, 2\nBea Comp" } }
+      .to change { Ticket.where(ticket_listing_id: listing.id).count }.by(3)
+    expect(response).to redirect_to(my_ticket_sale_path(listing, anchor: "guests"))
+    expect(flash[:notice]).to eq("Gave 3 tickets to 2 people. They're on the guest list.")
+  end
+
   it "sees the date's sales on My Ticket Sales and gives comps for it, up to what the date can give" do
     listing = open_box_office
     sign_in(priya)

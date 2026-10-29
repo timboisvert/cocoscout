@@ -4,8 +4,11 @@ module Manage
   # Giving tickets away from a show's page (TicketComps): one person at a
   # time — name, how many, which ticket type, and their email when they're
   # to get their tickets by email. The form is the Comps modal on the show's page (Tim,
-  # 2026-10-06). (A pasted list can come back if a theater asks for it.)
+  # 2026-10-06). Or a pasted guest list, previewed first, then all given or
+  # none (GivesComps; back on 2026-10-29, Tim).
   class TicketCompsController < Manage::TicketingBaseController
+    include GivesComps
+
     before_action :set_listing
 
     # The old Give tickets page: the form is a modal on the show's page now.
@@ -13,7 +16,14 @@ module Manage
       redirect_to manage_ticket_listing_path(@listing, anchor: "guests")
     end
 
+    # What a pasted list would give, into the open modal.
+    def preview
+      render_comps_preview(@listing)
+    end
+
     def create
+      return give_pasted_comps(@listing, back: manage_ticket_listing_path(@listing, anchor: "guests")) if pasting_comps?
+
       tier = @tiers.find { |t| t.id == params[:tier_id].to_i }
       email = params[:email].to_s.strip.downcase.presence
       email_them = params[:email_them] == "1"

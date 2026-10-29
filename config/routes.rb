@@ -464,6 +464,7 @@ Rails.application.routes.draw do
     patch "/ticket-sales/daily-email",      to: "ticket_sales#daily_email", as: "ticket_sales_daily_email"
     get   "/ticket-sales/:id",              to: "ticket_sales#show",        as: "ticket_sale"
     post  "/ticket-sales/:id/comps",        to: "ticket_sales#create_comp", as: "ticket_sale_comps"
+    post  "/ticket-sales/:id/comps/preview", to: "ticket_sales#preview_comps", as: "ticket_sale_comps_preview"
 
     # Slim account screen for the mobile app. Routes /my/account → AccountsController#show.
     get   "/account",                       to: "accounts#show",            as: "account"
@@ -656,6 +657,7 @@ Rails.application.routes.draw do
     get    "/productions/:production_id/sales",           to: "production_sales#index",       as: "production_sales"
     get    "/productions/:production_id/sales/:id",       to: "production_sales#show",        as: "production_sale"
     post   "/productions/:production_id/sales/:id/comps", to: "production_sales#create_comp", as: "production_sale_comps"
+    post   "/productions/:production_id/sales/:id/comps/preview", to: "production_sales#preview_comps", as: "production_sale_comps_preview"
     get "/",                              to: "manage#index"
 
     # Messages
@@ -1423,6 +1425,7 @@ Rails.application.routes.draw do
     patch  "ticketing/productions/:production_id/visibility/contracts/:contract_id", to: "ticket_sales_viewers#update_contract", as: "production_ticketing_visibility_contract"
     delete "ticketing/productions/:production_id/visibility/:viewer_id", to: "ticket_sales_viewers#destroy", as: "production_ticketing_visibility_viewer"
     post   "ticketing/shows/:id/comps",           to: "ticket_comps#create",             as: "ticket_listing_comps"
+    post   "ticketing/shows/:id/comps/preview",   to: "ticket_comps#preview",            as: "ticket_listing_comps_preview"
     get    "ticketing/shows/:id/edit(/:section)", to: "ticket_listings#edit",            as: "edit_ticket_listing"
     patch  "ticketing/shows/:id",                 to: "ticket_listings#update",          as: "ticket_listing"
     delete "ticketing/shows/:id",                 to: "ticket_listings#destroy"

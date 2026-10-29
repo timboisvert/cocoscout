@@ -1,0 +1,71 @@
+<%# What a pasted guest list would give (TicketComps.preview), fetched into
+    the Comps modal's Paste a list tab: who gets how many of which ticket,
+    the total against the comps, seats and allowance left, and the lines to
+    fix. data-comps-paste-ready is how many comps Give would give (0: not
+    yet). Local: preview. %>
+<%
+  paste = preview.paste
+  ready = preview.ready?
+  fixes = preview.blockers.any? || paste.problems.any? || paste.guests.empty?
+%>
+<div data-comps-paste-ready="<%= ready ? preview.total : 0 %>" class="space-y-4">
+  <% if fixes %>
+    <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      <p class="font-medium">
+        <%= paste.guests.empty? && paste.problems.empty? && preview.blockers.empty? ? "Paste at least one person, one per line." : "Nothing's given yet. Fix these, then preview again:" %>
+      </p>
+      <% if preview.blockers.any? || paste.problems.any? %>
+        <ul class="mt-2 space-y-1.5">
+          <% preview.blockers.each do |words| %>
+            <li><%= words %></li>
+          <% end %>
+          <% paste.problems.each do |problem| %>
+            <li class="min-w-0">
+              <span class="font-medium">Line <%= problem.line %>:</span> <%= problem.reason %>
+              <span class="block truncate font-mono text-xs text-amber-800/80"><%= problem.text %></span>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if paste.guests.any? %>
+    <div class="rounded-lg border border-gray-200 overflow-hidden">
+      <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+        <p class="text-sm font-semibold text-gray-900">
+          <%= pluralize(preview.total, "comp") %> for <%= pluralize(paste.guests.size, "person", plural: "people") %>
+        </p>
+        <p class="text-xs text-gray-600 mt-0.5">
+          <%= [
+                (preview.comps_left ? "#{preview.comps_left} #{'comp'.pluralize(preview.comps_left)} left on this date" : nil),
+                *preview.seats.map { |s| s[:left] ? "#{s[:tier].name}: #{s[:left]} #{'seat'.pluralize(s[:left])} left" : nil },
+                (preview.allowance_left ? "#{preview.allowance_left} more for you to give" : nil),
+                (preview.email_them ? "each gets their tickets by email" : "you hand them over")
+              ].compact.join(" · ").upcase_first %>
+        </p>
+      </div>
+      <ul class="divide-y divide-gray-100 max-h-64 overflow-y-auto">
+        <% paste.guests.each do |guest| %>
+          <li class="flex items-center gap-3 px-4 py-2.5 text-sm">
+            <div class="min-w-0 flex-1">
+              <div class="truncate text-gray-900"><%= guest.name %></div>
+              <div class="truncate text-xs text-gray-500"><%= guest.email == guest.name ? "No name: on the list by email" : (guest.email || "No email") %></div>
+            </div>
+            <div class="shrink-0 text-right text-gray-700 tabular-nums">
+              <%= guest.quantity %> &times; <%= guest.tier&.name || "No ticket type" %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <% if paste.repeats.any? %>
+    <ul class="space-y-1 text-xs text-gray-500">
+      <% paste.repeats.each do |repeat| %>
+        <li>Line <%= repeat.line %>: <%= repeat.reason %></li>
+      <% end %>
+    </ul>
+  <% end %>
+</div>

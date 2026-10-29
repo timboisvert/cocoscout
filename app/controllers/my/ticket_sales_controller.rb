@@ -11,7 +11,7 @@ module My
     include GivesComps
 
     before_action :require_authentication
-    before_action :set_listing, only: %i[show create_comp]
+    before_action :set_listing, only: %i[show create_comp preview_comps]
 
     UPCOMING_BATCH = 30
     PAST_PER_PAGE = 30
@@ -47,6 +47,11 @@ module My
     def create_comp
       give_comp_within_allowance(@listing, TicketSalesAccess.comp_allowance(Current.user, @listing),
                                  back: my_ticket_sale_path(@listing, anchor: "guests"))
+    end
+
+    # A pasted list's preview, within the same allowance.
+    def preview_comps
+      preview_comps_within_allowance(@listing, TicketSalesAccess.comp_allowance(Current.user, @listing))
     end
 
     # A morning email on how their shows are selling, on or off for every
