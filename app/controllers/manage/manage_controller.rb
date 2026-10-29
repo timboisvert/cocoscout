@@ -237,14 +237,22 @@ module Manage
     # production mode: the page says so, with Exit (V1.1 plan §0a; Tim kept
     # Exit, 2026-10-20). Only a full page load, never a frame or a fetch.
     def note_mode_switch
-      return unless Current.user && request.get? && request.format.html? && request.headers["Turbo-Frame"].blank?
+      return unless Current.user && real_page_load?
       return unless NativeAppVersion.production_mode?(request.user_agent)
 
       # Or an opener (a message, a notification) just switched the organization
       # or the mode for this page: say so, once (Tim, 2026-10-21: with Don't
       # ask again there'd be no other sign).
       @switched_to = flash[:switched_to].presence
-      @switched_into_production_mode = Current.organization.present? && (@switched_to.present? || last_mode == "my")
+      @switched_into_production_mode = Current.organization.present? && (@switched_to.present? || came_from_my?)
+    end
+
+    # Coming from My only when this browser AND the account both say so: a
+    # stale cookie alone (another web view, another tab, an old browser)
+    # showed the notice on every page in production mode (Tim, 2026-10-28).
+    # Every production-mode page load sets both back to "manage".
+    def came_from_my?
+      last_mode == "my" && Current.user.last_mode.to_s != "manage"
     end
 
     def track_last_dashboard
