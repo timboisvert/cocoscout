@@ -71,7 +71,17 @@ button says "Sending to followers isn't switched on yet."
 - [ ] iOS: archive and upload the V1.1 build from `ios/` (the project at
       `ios/CocoScout.xcodeproj`, scheme CocoScout). What's new: production
       mode, the organization band, Messages and Notifications in the nav bar,
-      the new menu. Screenshots can stay.
+      the new menu. **New screenshots:** `ios/app_store_screenshots/v1.1/`
+      (6.9" iPhone, taken 2026-10-28 on production: Home, the menu, the Door
+      admitting someone, the production-mode menu, production Home, the show
+      sheet, the casting board). Claude can't reach App Store Connect, so
+      you upload them. Android's listing can use the same seven.
+- [ ] Both stores' privacy answers, now that the server counts app usage
+      (`docs/mobile_app_analytics.md`, "What only Tim can do" step 3): App
+      Store Connect → App Privacy → Usage Data → Product Interaction
+      (linked, not tracking, Analytics); Play Console → Data safety → App
+      activity → App interactions (collected, not shared, Analytics). The
+      V1.1 build's `PrivacyInfo.xcprivacy` already says so.
 - [ ] Android: `./gradlew bundleRelease` from `android/` (Android Studio's
       JDK), upload to the Play Console. The release build's `BASE_URL` is
       production; debug is localhost.
