@@ -36,7 +36,7 @@ RSpec.describe "Giving comps from a pasted list", type: :request do
 
     it "offers the paste tab beside the one-person form" do
       get manage_ticket_listing_path(listing)
-      expect(response.body).to include("One person", "Paste a list", manage_ticket_listing_comps_preview_path(listing),
+      expect(response.body).to include("One at a time", "Paste a list", manage_ticket_listing_comps_preview_path(listing),
                                        'id="comps-modal-paste-form"', 'name="mode"', 'id="comp_paste_text"', 'id="comp_paste_tier_id"')
       # The paste tab's Give is never a disabled button: it's Preview until the preview is ready.
       expect(response.body).not_to match(/data-comps-paste-target="give"[^>]*disabled/)

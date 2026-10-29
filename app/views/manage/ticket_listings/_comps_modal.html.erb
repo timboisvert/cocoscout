@@ -1,4 +1,4 @@
-<%# Give tickets (comps): one person at a time, from the Comps tile on the
+<%# Give tickets (comps): one at a time, from the Comps tile on the
     show's page. Free, no fees; they take seats. Name, how many and which
     ticket on one line (no choosing when there's one type), a note, then
     "Email them their tickets", off by default (Tim, 2026-10-17: most comps
@@ -68,7 +68,7 @@
           Free tickets for a guest, with no fees. They take seats<%= remaining ? " (#{remaining} left)" : "" %>.<%= " #{local_assigns[:allowance_note]}" if local_assigns[:allowance_note].present? %>
         </p>
         <div class="flex gap-2">
-          <%= tag.button("One person", type: "button", class: tab_class, data: { comps_paste_target: "oneTab", action: "comps-paste#showOne" }) %>
+          <%= tag.button("One at a time", type: "button", class: tab_class, data: { comps_paste_target: "oneTab", action: "comps-paste#showOne" }) %>
           <%= tag.button("Paste a list", type: "button", class: tab_class, data: { comps_paste_target: "pasteTab", action: "comps-paste#showPaste" }) %>
         </div>
       </div>

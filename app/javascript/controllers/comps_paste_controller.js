@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 const PREVIEW_FAILED = "Couldn't preview that list just now. Press Preview to try again."
 
-// The Comps modal's two tabs: one person (the default), or a pasted list.
+// The Comps modal's two tabs: One at a time (the default), or a pasted list.
 // The pasted list's footer button always does something: Preview asks the
 // server what the list would give (who, how many, against the comps, seats
 // and allowance left, and the lines to fix) and shows it, or says why it

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Manage
-  # Giving tickets away from a show's page (TicketComps): one person at a
+  # Giving tickets away from a show's page (TicketComps): one at a
   # time — name, how many, which ticket type, and their email when they're
   # to get their tickets by email. The form is the Comps modal on the show's page (Tim,
   # 2026-10-06). Or a pasted guest list, previewed first, then all given or
