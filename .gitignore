@@ -59,3 +59,4 @@ android/play_store/*.jpg
 # Apple's Tap to Pay review files: Apple's, not ours to publish (the repo is public).
 ios/apple_ttp/*
 !ios/apple_ttp/.keep
+android/play_store/
