@@ -20,7 +20,7 @@
     <% end %>
   <% else %>
     <h1 class="text-3xl coustard-regular text-gray-900"><%= words[:subject] %></h1>
-    <div class="text-gray-600 text-[15px]"><%= raw words[:body] %></div>
+    <div class="text-gray-600 text-[15px]"><%= sanitize words[:body] %></div>
     <% if !back && other_lists.any? %>
       <div class="w-full rounded-2xl border border-gray-200 bg-white p-4 text-left text-sm text-gray-600">
         That covers every <%= @organization.name %> list you were on, including <strong class="text-gray-900"><%= other_lists.map(&:name).to_sentence %></strong>.
