@@ -32,17 +32,17 @@ side can go out before the V1.1 apps and V1 phones won't notice.
 
 ## 2. Merge and deploy the server (yours; Claude can merge on your word)
 
-- [ ] Merge `refs/heads/v1.1` into `main` (no conflicts expected; `main`
+- [x] Merge `refs/heads/v1.1` into `main` (2026-10-28) (no conflicts expected; `main`
       hasn't moved on the same files, but check).
-- [ ] Deploy. The deploy runs the three Notifications migrations,
+- [x] Deploy (2026-10-28). The deploy runs the three Notifications migrations,
       `AddLastModeToUsers`, the mailing-list migrations, and the two payout
       notice migrations (`AddNoticeStampsToPayoutBatches`: `funded_at` and
       `completion_notified_at`; `AddPayoutRunLifecycleTemplates`: the
       submitted, funded, completed and partly-paid templates, so no rake
       seed to run). All additive, nullable, no backfill.
-- [ ] After the deploy, nothing to run in `kamal console`: no backfills.
-      (The payee-details console block from `docs/after_v1.md` is separate
-      and still waiting.)
+- [x] After the deploy, nothing to run in `kamal console`: no backfills.
+      (The payee-details console block from `docs/after_v1.md` ran
+      separately: 104 payees synced.)
 - [ ] Watch the first hour: the mail icon's count is now one number in both
       modes, and every automated notice is a Notification (vacancy and
       questionnaire invitations, the Tap to Pay launch moved last).
