@@ -57,6 +57,9 @@ namespace :routes do
           # real tickets_event_* helpers); ShortLink#short_path is a model
           # method ("/t/CODE"); code_url is a partial's local.
           next if %w[ticket_production_path ticket_production_url short_path code_url].include?(helper_name)
+          # Home (V1.1): HomeHelper#home_day_path / #home_week_path build
+          # manage_path with the day or week (and the 3/7-day choice) set.
+          next if %w[home_day_path home_week_path].include?(helper_name)
 
           unless valid_helpers.include?(helper_name)
             relative_path = Pathname.new(file).relative_path_from(Rails.root)
