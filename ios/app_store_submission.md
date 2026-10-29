@@ -143,17 +143,21 @@ the cached menu and the push token). Already in the manifest.
 
 ## The reviewer account
 
-One block, run on production. It creates a sample organization on the demo
-email domain (so the superadmin metrics ignore it), a manager, the reviewer
-as a performer cast in four shows, a message thread, tonight's show and
-the next two (three and ten days out) on sale, each
-with two paid parties to check in, and box-office door access for the
-reviewer. Run it dry first; it prints what it would make and rolls back.
+One block, run on production **once, the day you submit**: it covers two
+weeks of review (Tim, 2026-10-29). It creates a sample organization on the
+demo email domain (so the superadmin metrics ignore it), a manager, the
+reviewer as a performer cast in a show every night for 14 nights, a message
+thread, every night on sale with two parties waiting at its door, and
+box-office door access for the reviewer. Each night's parties are sold as if
+on that night's own day (the console's clock moves there for the sale and
+back), so they're door sales and nobody is emailed. Run it dry first; it
+prints what it would make and rolls back.
 
 Paste it into `kamal console` (Ruby only, no shell wrapper):
 
 ```ruby
 DRY_RUN = true   # run once, read the output, then set false and run again
+DAYS = 14        # a show every night, starting tonight, with two parties at each door
 
 REVIEW_DOMAIN = "demo.cocoscout.com"
 REVIEWER_EMAIL = "app.review@#{REVIEW_DOMAIN}"
@@ -161,9 +165,11 @@ MANAGER_EMAIL  = "stage.manager@#{REVIEW_DOMAIN}"
 PASSWORD = ENV.fetch("REVIEW_PASSWORD") { "Lantern-Street-2026!" }
 ORG_NAME = "Lantern Street Players (App Review)"
 tz = ActiveSupport::TimeZone["America/New_York"]
+require "active_support/testing/time_helpers"
+extend ActiveSupport::Testing::TimeHelpers # to sell each night's parties on its own day
 
 say = ->(line) { puts "  #{line}" }
-puts DRY_RUN ? "DRY RUN — nothing will be kept" : "Creating the App Review account"
+puts DRY_RUN ? "DRY RUN — nothing will be kept" : "Setting up the App Review account for #{DAYS} nights"
 
 ActiveRecord::Base.transaction do
   user_for = lambda do |email|
@@ -199,10 +205,12 @@ ActiveRecord::Base.transaction do
   ensemble = production.roles.find_by(name: "Ensemble") ||
              Role.create!(production: production, name: "Ensemble", quantity: 6, category: "performing")
 
+  # One past show (for the calendar), then a show every night for DAYS nights.
   tonight = tz.now.change(hour: 19, min: 30)
-  shows = [ tonight - 4.days, tonight, tonight + 3.days, tonight + 10.days ].map do |at|
+  nights = (0...DAYS).map { |i| tonight + i.days }
+  shows = [ tonight - 4.days, *nights ].map do |at|
     # The sample organization is on the free plan, whose 6-events-a-month cap
-    # stops a re-run late in the month; it's a demo, so skip just that check.
+    # would stop this; it's a demo, so skip just that check.
     show = production.shows.find_by(date_and_time: at) ||
            Show.new(production: production, date_and_time: at, event_type: "show", location: location, casting_enabled: true).tap do |s|
              s.define_singleton_method(:within_free_event_limit) { nil }
@@ -211,7 +219,8 @@ ActiveRecord::Base.transaction do
     ShowPersonRoleAssignment.find_or_create_by!(show: show, role: ensemble, assignable: reviewer) { |a| a.position = 0 }
     show
   end
-  say.call "shows: #{shows.map { |s| s.date_and_time.in_time_zone(tz).strftime('%a %b %-d %-l:%M %p') }.join(', ')} — reviewer cast as Ensemble"
+  say.call "shows: #{shows.first.date_and_time.in_time_zone(tz).strftime('%a %b %-d')} (past), then every night " \
+           "#{nights.first.strftime('%a %b %-d')} to #{nights.last.strftime('%a %b %-d')}, 7:30 PM — reviewer cast as Ensemble"
 
   unless Message.exists?(organization: org, subject: "Welcome to the run!")
     root = MessageService.send_direct(sender: manager_user, recipient_person: reviewer, subject: "Welcome to the run!",
@@ -223,32 +232,33 @@ ActiveRecord::Base.transaction do
 
   profile = TicketingProfile.for(org)
   profile.update!(enabled: true, door_in_app: "always") # the reviewer finds the Door whatever day they look
-  # Tonight's show and the next two (three and ten days out) are on sale;
-  # tonight's has two parties sold at the door (tickets still to scan).
-  listings = [ shows[1], shows[2], shows[3] ].map do |show|
+
+  # Every night on sale, with two parties at its door. Each night's parties
+  # are sold on that night's own day (the console's clock moves there for the
+  # sale and back), so they're door sales: nobody is emailed, and the
+  # tickets wait to be checked in.
+  partied = 0
+  shows.drop(1).each do |show|
     listing = TicketListing.find_by(show: show) || TicketListing.create!(show: show, status: "on_sale")
     general = listing.ticket_tiers.find_by(name: "General") || listing.ticket_tiers.create!(name: "General", price_cents: 1_500, quantity: 60)
     listing.update!(status: "on_sale")
-    # Only once the door is open: ahead of it a door sale is a presale that
-    # emails the buyer. Re-run on a later day and that day's parties are added.
-    if listing.ticket_orders.none? && !listing.door_ahead?
+    next if listing.ticket_orders.exists?
+
+    travel_to(show.date_and_time - 6.hours) do
       door = TicketDoor.new(listing, manager_user)
       { "Avery Patel" => 2, "Sam Okafor" => 3 }.each do |name, count|
         order = door.sell({ general.id.to_s => count.to_s }, kind: "cash", buyer_name: name)
         order.tickets.update_all(status: "valid", checked_in_at: nil, checked_in_by_id: nil)
       end
     end
-    say.call "on sale: #{listing.display_title} #{show.date_and_time.in_time_zone(tz).strftime('%a %b %-d')} (listing #{listing.id}), General $15 × 60, parties Avery Patel (2) and Sam Okafor (3)"
-    listing
+    partied += 1
   end
+  say.call "on sale: #{DAYS} nights, General $15 × 60; Avery Patel (2) and Sam Okafor (3) at #{partied} more doors"
 
   grant = org.ticketing_access_grants.where(revoked_at: nil).find_or_initialize_by(user: reviewer_user)
   grant.update!(access_level: "box_office", granted_by: manager_user)
   say.call "door access: #{reviewer_user.email_address} box office at #{org.name}"
 
-  puts
-  puts "App Review sign-in: #{REVIEWER_EMAIL} / #{PASSWORD}"
-  puts "Door URLs: " + listings.map { |listing| "https://cocoscout.com/door/#{listing.id}" }.join(", ")
   raise ActiveRecord::Rollback if DRY_RUN
 end
 puts(DRY_RUN ? "Rolled back." : "Done.")
@@ -261,10 +271,9 @@ After a real run: the reviewer's password is in the output; change the
 organization from Superadmin → Organizations (the two users are on the demo
 domain and can stay).
 
-The shows on sale are "tonight", three days later and ten days later,
-relative to the day the block runs, so run it the day you submit. If review
-drags past the last one, re-run it (it's idempotent: it only adds what's missing and
-re-dates nothing) the day before, and it adds the next dates.
+The 14 nights start the day the block runs. If review drags past the last
+one, run it again (it's idempotent: it only adds what's missing and re-dates
+nothing) and it adds the next 14.
 
 ## Still needs a Mac
 
