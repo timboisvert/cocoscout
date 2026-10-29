@@ -43,20 +43,7 @@
       </div>
     <% end %>
 
-    <%# V1.1, generation-2 builds in production mode: a soft pink strip under
-        the native nav bar naming the organization. Sticky, so it never
-        scrolls away; tapping it changes organization. %>
-    <% if native_nav_generation.to_i >= 2 && native_production_mode? %>
-      <%= link_to select_organization_path, class: "sticky top-0 z-20 flex items-center justify-between gap-2.5 min-h-[44px] px-4 bg-pink-50 border-b border-pink-200 text-gray-900",
-            aria: { label: "Production mode, #{Current.organization.name}. Change organization" }, data: { production_strip: true } do %>
-        <span class="flex items-center gap-2 min-w-0 text-sm font-semibold">
-          <%= render "shared/navigation/organization_monogram", organization: Current.organization, size: 24 %>
-          <span class="truncate"><%= Current.organization.name %></span>
-          <svg class="w-3.5 h-3.5 text-pink-700 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-        </span>
-        <span class="text-[10px] font-bold uppercase tracking-[0.08em] text-pink-700 flex-shrink-0">Production mode</span>
-      <% end %>
-    <% end %>
+    <%= render "shared/native/production_strip" %>
     <main class="px-4 pt-3 pb-8 overflow-x-hidden" data-controller="bridge--form">
       <div id="flash-messages"></div>
       <%= render "shared/navigation/mode_switch_notice" %>

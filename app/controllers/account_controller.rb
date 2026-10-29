@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class AccountController < ApplicationController
+  include ModeNeutralPage
   skip_before_action :show_my_sidebar
   before_action :set_account_sidebar
   before_action :set_profile, only: [ :set_default_profile, :archive_profile ]

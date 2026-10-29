@@ -52,7 +52,9 @@ RSpec.describe "The app's V1.1 menu", type: :request do
 
   # Messages and Notifications belong to both modes: opening one from
   # production mode keeps production mode's menu and strip (Tim, 2026-10-29).
-  [ :messages_path, :notifications_path ].each do |page|
+  # Account settings, Profile and Groups belong to neither mode: they keep
+  # whichever one it was opened from too.
+  [ :messages_path, :notifications_path, :account_path, :profile_path, :groups_path ].each do |page|
     it "keeps production mode's menu on #{page} opened from production mode" do
       get manage_path, headers: { "User-Agent" => v1_1 }
       get send(page), headers: { "User-Agent" => v1_1 }

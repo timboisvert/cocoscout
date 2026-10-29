@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
 class GroupsController < ApplicationController
-  layout "profile", except: %i[new index]
+  include ModeNeutralPage
+  # The list and New take the usual layout (the app's own in the app, so its
+  # menu comes along); a group's pages take the profile one.
+  layout -> { %w[new index].include?(action_name) ? resolve_layout : "profile" }
 
   before_action :set_group,
                 only: %i[edit settings update archive unarchive set_primary_headshot check_url_availability update_url

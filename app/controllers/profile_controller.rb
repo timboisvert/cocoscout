@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class ProfileController < ApplicationController
+  include ModeNeutralPage
   before_action :set_person
   layout "profile", except: %i[preview]
 
