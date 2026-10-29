@@ -86,7 +86,7 @@ RSpec.describe "Ticketing notifications" do
     expect(mail.subject).to eq("2 tickets sold: #{listing.display_title}, #{listing.show.date_and_time.strftime('%A, %B %-d')}")
     expect(html(mail)).to include("Dana Scully</strong> bought 2 General", "2 of 10 sold", "Change what you get")
 
-    perform_enqueued_jobs { TicketComps.give!(listing, TicketComps.parse("Guest", listing: listing, default_tier: general), by: owner) }
+    perform_enqueued_jobs { TicketComps.give!(listing, TicketComps.parse("Guest", listing: listing, default_tier: general).guests, by: owner) }
     expect(mails_to("box@sg.example").size).to eq(1)
   end
 
