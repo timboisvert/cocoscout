@@ -39,9 +39,8 @@ theater,theatre,producer,performer,production,casting,audition,rehearsal,signup,
 
 ### Promotional text (170, can change without a new build)
 
-Everything about the shows you're in, in your pocket: your calendar, your
-cast messages, call times, sign-ups, contracts and pay. Working the door?
-Scan tickets right from the app.
+Produce and perform from your phone: casting, calendar, messages, sign-ups,
+contracts and pay. Working the door? Scan tickets right from the app.
 
 ### Description
 
