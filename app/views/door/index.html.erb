@@ -41,17 +41,9 @@
     <% end %>
   </div>
 <% else %>
-  <div class="rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-8 text-center">
-    <div class="text-lg font-semibold text-gray-900">Nothing on right now</div>
-    <p class="mt-2 text-sm text-gray-600">Check-in starts when a show's door opens. Before then, box office can open a show and sell ahead.</p>
-    <% if @next_listing %>
-      <%= link_to door_path(@next_listing), class: "mt-4 inline-block rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-left hover:border-pink-400 transition-colors" do %>
-        <div class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Next for you</div>
-        <div class="mt-0.5 text-sm font-semibold text-gray-900"><%= @next_listing.show.date_and_time.strftime("%a, %b %-d · %-l:%M %p") %> · <%= @next_listing.display_title %></div>
-        <div class="text-xs text-gray-500">The door opens <%= door_opens_words(@next_listing) %></div>
-      <% end %>
-    <% end %>
-  </div>
+  <%# No door open: the standard empty box. Tonight's shows follow under Later tonight, the rest under Coming up. %>
+  <%= render "shared/empty_state", icon: "clock", title: "No doors open right now",
+        body: "Check-in starts when a show's door opens. Before then, box office can open a show and sell ahead." %>
 <% end %>
 
 <% if @later_tonight.any? %>

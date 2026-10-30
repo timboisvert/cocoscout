@@ -43,12 +43,12 @@ RSpec.describe "Door", type: :request do
       # doesn't depend on when the suite runs.
       day = 10.days.from_now.to_date
       at = ->(offset, hour, minute) { (day + offset).in_time_zone.change(hour: hour, min: minute) }
+      production = create(:production, organization: org)
+      tonight = create(:ticket_listing, organization: org, status: "on_sale",
+                       show: create(:show, production: production, date_and_time: at.call(0, 19, 30)))
+      later = create(:ticket_listing, organization: org, status: "on_sale",
+                     show: create(:show, production: production, date_and_time: at.call(3, 20, 0)))
       travel_to(at.call(0, 19, 15)) do
-        production = create(:production, organization: org)
-        tonight = create(:ticket_listing, organization: org, status: "on_sale",
-                         show: create(:show, production: production, date_and_time: at.call(0, 19, 30)))
-        later = create(:ticket_listing, organization: org, status: "on_sale",
-                       show: create(:show, production: production, date_and_time: at.call(3, 20, 0)))
         grant(door_person, "box_office")
         sign_in(door_person)
 
@@ -62,12 +62,12 @@ RSpec.describe "Door", type: :request do
         expect(body).to include(">Coming up<", door_path(later), "The door opens the morning of")
       end
 
-      # Nothing on: the next show leads, and opens too.
+      # Nothing on: the standard empty box, and the next show under Coming up (no "Next for you" box; Tim, 2026-10-30).
       travel_to(at.call(1, 12, 0)) do
         sign_in(door_person)
         get door_index_path
-        expect(response.body).to include("Nothing on right now", "Next for you")
-        expect(response.body).not_to include(">Coming up<")
+        expect(response.body).to include("No doors open right now", 'data-empty-state="clock"', ">Coming up<", door_path(later))
+        expect(response.body).not_to include("Next for you")
       end
     end
 
@@ -134,7 +134,7 @@ RSpec.describe "Door", type: :request do
       expect(response.body).not_to include("Lantern Street Players")
 
       get door_index_path(organization: other_org.id)
-      expect(response.body).to include("Nothing on right now", "Lantern Street Players")
+      expect(response.body).to include("No doors open right now", "Lantern Street Players")
       expect(response.body).not_to include(door_path(tonight))
     end
 
@@ -165,7 +165,7 @@ RSpec.describe "Door", type: :request do
       travel_to(listing.show.date_and_time + 1.day) do
         sign_in(door_person)
         get door_index_path
-        expect(response.body).to include("Nothing on right now", "Next for you", next_week.display_title, door_path(next_week))
+        expect(response.body).to include("No doors open right now", ">Coming up<", next_week.display_title, door_path(next_week))
       end
 
       get door_path(listing)

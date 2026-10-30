@@ -41,10 +41,7 @@ class DoorController < ApplicationController
     today = DoorTonight.listings([ @organization.id ]).includes(:organization, :production, show: %i[location space_rental])
                        .where(shows: { date_and_time: now..DoorTonight.night_ends(now) }).to_a
     @later_tonight = (today - @on_now).select { |listing| DoorTonight.phase(listing, at: now) == :before }
-    upcoming = DoorTonight.listings([ @organization.id ]).includes(:organization).where("shows.date_and_time > ?", DoorTonight.night_ends(now)).limit(13).to_a
-    # With nothing on, the next show leads in its own box; the rest follow.
-    @next_listing = upcoming.first if @on_now.empty?
-    @coming_up = upcoming.drop(@next_listing ? 1 : 0).first(12)
+    @coming_up = DoorTonight.listings([ @organization.id ]).includes(:organization).where("shows.date_and_time > ?", DoorTonight.night_ends(now)).limit(12).to_a
     # The same numbers the door shows (TicketDoor#counts), so the two pages agree.
     @counts = @on_now.to_h { |listing| [ listing.id, TicketDoor.new(listing, Current.user).counts ] }
   end
