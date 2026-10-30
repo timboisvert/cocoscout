@@ -1,25 +1,27 @@
 <%#
-  One send on Tell people: who's ticked (untick to leave someone out), what
-  happens to their shifts (staff only), and the words, edited before they go.
-  Locals: section (ShowChangeNotices::Section), notices, batch
+  One notification on Notify cast and staff: who's ticked (untick to leave
+  someone out), what happens to their shifts (staff only), and the message,
+  edited before it goes, with what each person's own lines will say.
+  Locals: section (ShowChangeNotices::Section), notices, batch, audience
 %>
 <%
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   draft = notices.draft(section)
   dom = "tell-#{section.key}"
-  title = case section.key
-          when "cast_off" then "Tell the cast it's off"
-          when "cast_moved" then "Tell the cast the new time"
-          when "staff_off" then "Tell the staff their shifts are off"
-          else "Tell the staff the new time"
-          end
+  title, intro = case section.key
+                 when "cast_off" then [ "Notify the cast", "It's off." ]
+                 when "cast_moved" then [ "Notify the cast", "It has a new time." ]
+                 when "staff_off" then [ "Notify the staff", "Their shifts are off." ]
+                 else [ "Notify the staff", "Their shifts have a new time." ]
+                 end
   reachable = section.reachable
   unreachable = section.unreachable
 %>
 <div class="bg-white border border-gray-200 rounded-xl" id="<%= dom %>" data-tell-section="<%= section.key %>">
-  <%= render "shared/section_heading", title: title %>
+  <%= render "shared/section_heading", title: title, intro: "#{intro} Each person gets a CocoScout notification, and this message in their inbox and by email. Nothing is sent until you press Send." %>
   <%= form_with url: manage_tell_show_changes_path(batch), method: :post, class: "px-6 py-5 space-y-5" do %>
     <%= hidden_field_tag :section, section.key %>
+    <%= hidden_field_tag :audience, audience if audience %>
 
     <% if section.audience == "staff" %>
       <label class="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 cursor-pointer">
@@ -75,7 +77,7 @@
       <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
         <p class="text-sm text-amber-900">
           <%= unreachable.map { |r| r.person.name }.to_sentence %> <%= unreachable.one? ? "has" : "have" %> no CocoScout login or
-          email, so this can't reach them. Tell them another way.
+          email, so this can't reach them. Let them know another way.
         </p>
       </div>
     <% end %>
@@ -92,6 +94,19 @@
         <trix-editor input="<%= dom %>-body"
                      class="trix-content block w-full bg-white border border-gray-300 rounded-lg shadow-sm min-h-[180px] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"></trix-editor>
         <p class="mt-1 text-xs text-gray-500"><%= notices.hint(section) %></p>
+      </div>
+
+      <%# What each person's own lines will say, so the whole message is seen. %>
+      <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5" data-filled-in>
+        <p class="text-xs font-medium text-gray-700 mb-1.5"><%= notices.filled_in_label(section) %></p>
+        <ul class="space-y-1.5">
+          <% reachable.each do |recipient| %>
+            <li class="text-xs text-gray-700">
+              <span class="font-medium text-gray-900"><%= recipient.person.name %>:</span>
+              <%= safe_join(notices.filled_in(section, recipient), tag.br) %>
+            </li>
+          <% end %>
+        </ul>
       </div>
 
       <div class="flex justify-end">

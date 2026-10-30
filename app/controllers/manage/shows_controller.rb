@@ -772,26 +772,14 @@ module Manage
     def cancel
       # Shows the cancel/delete options page
 
-      # Build cast member list for notification option
-      # Always show cast for this single show (default scope)
-      cast_assignments = @show.show_person_role_assignments.includes(:role)
-      person_ids = cast_assignments.select { |a| a.assignable_type == "Person" }.map(&:assignable_id).uniq
-      group_ids = cast_assignments.select { |a| a.assignable_type == "Group" }.map(&:assignable_id).uniq
-
-      @cast_people = Person.where(id: person_ids).includes(profile_headshots: { image_attachment: :blob }).to_a
-      @cast_groups = Group.where(id: group_ids).includes(:members, profile_headshots: { image_attachment: :blob }).to_a
-
-      # Get unique role categories from assignments
-      @role_categories = cast_assignments.map { |a| a.role&.category }.compact.uniq.sort
-
-      # Get all unique people (including group members) with emails
-      all_person_ids = Set.new(person_ids)
-      @cast_groups.each do |group|
-        group.group_memberships.each { |gm| all_person_ids << gm.person_id }
+      # Who'll be notified next, for each way of canceling: the cast and staff
+      # of exactly the occurrences it takes, dates still to come.
+      scopes = { "this" => [ @show ] }
+      if @show.recurring?
+        scopes["this_and_future"] = @show.recurrence_group.where("date_and_time >= ?", @show.date_and_time).order(:date_and_time).to_a
+        scopes["all"] = @show.recurrence_group.order(:date_and_time).to_a
       end
-      @people_with_email = Person.where(id: all_person_ids.to_a).includes(:user).select { |p| p.user.present? }
-      # Who's on its shifts, for the line saying they're told next.
-      @staff_count = ShowChanges.staff_entries(ShowChanges.shifts_for(@show, "canceled")).map { |e| e["person_id"] }.uniq.size
+      @notify_people = scopes.transform_values { |shows| ShowChanges.people_for(shows) }
 
       # Count of this show + future shows in the series (for "this and future" option)
       if @show.recurring?

@@ -65,15 +65,23 @@ RSpec.describe "Telling people a show changed", type: :request do
     expect(change.staff_person_ids).to eq([ tess.id ])
     expect(response).to redirect_to(manage_show_changes_path(change.batch))
 
-    expect(home_chip(seven, "cast").text).to include("1 not told")
-    expect(home_chip(seven, "staffing").text).to include("1 not told")
+    expect(home_chip(seven, "cast").text).to include("Cast not notified")
+    expect(home_chip(seven, "staffing").text).to include("Staff not notified")
 
     get manage_show_changes_path(change.batch)
     page = Nokogiri::HTML(response.body)
     expect(page.css("[data-tell-section]").map { |s| s["data-tell-section"] }).to eq(%w[cast_off staff_off])
     expect(page.at_css("[data-tell-section='cast_off']").text).to include("Ana Ruiz")
     expect(page.at_css("[data-tell-section='staff_off']").text).to include("Tess Ng", "Take these shifts off")
+    # What each person's own lines will say, before anything is sent.
+    expect(page.at_css("[data-tell-section='staff_off'] [data-filled-in]").text).to include("Tess Ng:", "Booth Tech, #{saturday.strftime('%a, %b %-d')}, 6:30–8:00 PM")
+    expect(page.at_css("[data-tell-section='cast_off'] [data-filled-in]").text).to include("Ana Ruiz:", "#{saturday.strftime('%a, %b %-d')}, 7:00 PM")
     expect(page.text).not_to include("Miles Rowe")
+
+    # Notify staff opens just the staff.
+    get manage_show_changes_path(change.batch, audience: "staff")
+    expect(Nokogiri::HTML(response.body).css("[data-tell-section]").map { |s| s["data-tell-section"] }).to eq(%w[staff_off])
+    get manage_show_changes_path(change.batch)
 
     expect { tell(change.batch, "cast_off", [ ana ]) }.to change { ana.user.notifications.count }.by(1)
     expect(ShowChangeNotice.where(show_change: change, audience: "cast").pluck(:person_id)).to eq([ ana.id ])
@@ -82,10 +90,28 @@ RSpec.describe "Telling people a show changed", type: :request do
     tell(change.batch, "staff_off", [ tess ], shift_action: "1")
     expect(booth_shift.reload).to be_not_needed
     expect(booth_shift.shift_assignments).to be_empty
-    expect(response.body).to include("Everyone has been told.")
+    expect(response.body).to include("Everyone has been notified.")
 
-    expect(home_chip(seven, "cast").text).to include("Cast told")
-    expect(home_chip(seven, "staffing").text).to include("Staff told")
+    expect(home_chip(seven, "cast").text).to include("Cast notified")
+    expect(home_chip(seven, "staffing").text).to include("Staff notified")
+  end
+
+  it "shows on the cancel screen exactly who each way of canceling would notify" do
+    series = SecureRandom.uuid
+    seven.update!(recurrence_group_id: series)
+    later = create(:show, production: production, date_and_time: seven.date_and_time + 1.week, duration_minutes: 60, recurrence_group_id: series)
+    create(:show_person_role_assignment, show: later, assignable: miles)
+
+    get manage_cancel_show_form_path(production, seven)
+    page = Nokogiri::HTML(response.body)
+    this = page.at_css("[data-cancel-notify-people] [data-scope='this']")
+    expect(this.at_css("[data-notify-box='cast']").text).to include("Ana Ruiz")
+    expect(this.at_css("[data-notify-box='cast']").text).not_to include("Miles Rowe")
+    expect(this.at_css("[data-notify-box='staff']").text).to include("Tess Ng", "Booth Tech")
+    future = page.at_css("[data-cancel-notify-people] [data-scope='this_and_future']")
+    expect(future["class"]).to include("hidden")
+    expect(future.at_css("[data-notify-box='cast']").text).to include("Ana Ruiz", "Miles Rowe")
+    expect(future.text).to include("Across the 2 dates still to come")
   end
 
   it "counts the night's crew in when the last show of the night goes" do
@@ -99,16 +125,18 @@ RSpec.describe "Telling people a show changed", type: :request do
     change = ShowChange.last
     expect(change).to have_attributes(kind: "moved", was_starts_at: saturday.in_time_zone.change(hour: 19),
                                       now_starts_at: saturday.in_time_zone.change(hour: 20))
-    expect(home_chip(seven, "cast").text).to include("1 not told")
+    expect(home_chip(seven, "cast").text).to include("Cast not notified")
 
     get manage_show_changes_path(change.batch)
     expect(Nokogiri::HTML(response.body).css("[data-tell-section]").map { |s| s["data-tell-section"] }).to eq(%w[cast_moved staff_moved])
+    # The preview shows the shift at its new time, as it will be once moved.
+    expect(Nokogiri::HTML(response.body).at_css("[data-tell-section='staff_moved'] [data-filled-in]").text).to include("6:30–8:00 PM → 7:30–9:00 PM")
     tell(change.batch, "staff_moved", [ tess ], shift_action: "1")
     expect(booth_shift.reload.starts_at).to eq(saturday.in_time_zone.change(hour: 19, min: 30))
     tell(change.batch, "cast_moved", [ ana ])
 
-    # Everyone told: the move no longer shows on Home.
-    expect(home_chip(seven, "cast").text).not_to include("told")
+    # Everyone notified: the move no longer shows on Home.
+    expect(home_chip(seven, "cast").text).not_to include("notified")
   end
 
   it "keeps who a deleted show had, and offers Tell people on the next page" do
@@ -119,7 +147,7 @@ RSpec.describe "Telling people a show changed", type: :request do
 
     follow_redirect!
     notice = Nokogiri::HTML(response.body).at_css("[data-show-changes-notice]")
-    expect(notice.text).to include("took 1 date off")
+    expect(notice.text).to include("took 1 date off", "haven't been notified", "Notify them")
     expect(notice.at_css("a")["href"]).to eq(manage_show_changes_path(change.batch))
 
     get manage_show_changes_path(change.batch)
@@ -144,7 +172,7 @@ RSpec.describe "Telling people a show changed", type: :request do
 
   it "lets a show canceled before this be told from Home" do
     seven.update_column(:canceled, true)
-    expect(home_chip(seven, "cast").text).to include("1 not told")
+    expect(home_chip(seven, "cast").text).to include("Cast not notified")
     expect(ShowChange.count).to eq(0)
 
     post manage_tell_canceled_show_path(seven)

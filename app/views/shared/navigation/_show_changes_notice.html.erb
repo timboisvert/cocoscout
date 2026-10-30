@@ -1,6 +1,6 @@
 <%#
   Dates just canceled, taken away or moved, with cast or staff who haven't
-  been told: the page after the change offers Tell people
+  been notified: the page after the change offers to notify them
   (ManageController#offer_tell_people; docs/show_change_notices_plan.md).
 %>
 <% batch = flash[:show_changes_batch] %>
@@ -14,10 +14,10 @@
   %>
   <div class="mb-3 rounded-xl border border-pink-200 bg-pink-50 px-4 py-3 flex flex-wrap items-center gap-3" data-show-changes-notice>
     <p class="min-w-0 flex-1 text-sm text-gray-800">
-      You <%= said %>. <strong class="text-gray-900">The cast and staff haven't been told.</strong>
+      You <%= said %>. <strong class="text-gray-900">The cast and staff haven't been notified.</strong>
     </p>
     <%= link_to manage_show_changes_path(batch), data: { turbo_frame: "_top" } do %>
-      <%= render "shared/button", text: "Tell people", variant: "primary", size: "small" %>
+      <%= render "shared/button", text: "Notify them", variant: "primary", size: "small" %>
     <% end %>
   </div>
 <% end %>

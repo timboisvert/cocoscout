@@ -25,38 +25,39 @@
       <% if show.canceled %><span class="ml-2 font-semibold text-red-700">Canceled</span><% end %>
     </div>
 
-    <%# Canceled, or moved with people still to hear: who's been told
-        (docs/show_change_notices_plan.md). %>
+    <%# Canceled, or moved with people still to hear: who's been notified,
+        cast and staff each in a box with its own Notify button (each opens
+        the notification and its message first; nothing sends from here).
+        docs/show_change_notices_plan.md %>
     <% if (t = row.told) %>
       <div class="<%= section %>" data-modal-told>
         <div class="<%= heading %>">
-          <span class="text-sm font-semibold text-gray-900"><%= t.kind == "moved" ? "Telling people it moved" : "Telling people it's off" %></span>
+          <span class="text-sm font-semibold text-gray-900">Notify cast and staff</span>
+          <span class="text-xs text-gray-500"><%= t.kind == "moved" ? "It moved" : "It's off" %></span>
         </div>
-        <ul class="text-sm space-y-0.5">
-          <% [ [ "Cast", t.cast_ids, t.cast_untold ], ([ "Staff", t.staff_ids, t.staff_untold ] if @home.staffing_on?) ].compact.each do |word, ids, untold| %>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <% [ [ "cast", "Cast", t.cast_ids, t.cast_untold ], ([ "staff", "Staff", t.staff_ids, t.staff_untold ] if @home.staffing_on?) ].compact.each do |audience, word, ids, untold| %>
             <% next if ids.empty? %>
-            <li class="<%= untold.any? ? 'text-amber-800' : 'text-gray-700' %>">
-              <span class="font-medium"><%= word %>:</span>
+            <div class="rounded-lg border <%= untold.any? ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50' %> p-2.5 flex flex-col gap-1.5" data-notify-box="<%= audience %>">
+              <span class="text-sm font-semibold text-gray-900"><%= word %></span>
               <% if untold.empty? %>
-                told
+                <span class="text-xs text-green-800">Notified (<%= pluralize(ids.size, "person") %>)</span>
               <% else %>
-                <%= ids.size - untold.size %> of <%= ids.size %> told · not yet <%= untold.to_sentence %>
+                <span class="text-xs text-amber-900"><%= ids.size - untold.size %> of <%= ids.size %> notified · not yet <%= untold.to_sentence %></span>
+                <div>
+                  <% if t.change %>
+                    <%= link_to manage_show_changes_path(t.change.batch, audience: audience), data: { turbo_frame: "_top" } do %>
+                      <%= render "shared/button", text: "Notify #{audience}", variant: "primary", size: "small" %>
+                    <% end %>
+                  <% else %>
+                    <%= render "shared/button", text: "Notify #{audience}", variant: "primary", size: "small",
+                          path: manage_tell_canceled_show_path(show, audience: audience), method: :post, form: { data: { turbo_frame: "_top" } } %>
+                  <% end %>
+                </div>
               <% end %>
-            </li>
+            </div>
           <% end %>
-        </ul>
-        <% if t.anyone_untold? %>
-          <div class="mt-2">
-            <% if t.change %>
-              <%= link_to manage_show_changes_path(t.change.batch), data: { turbo_frame: "_top" } do %>
-                <%= render "shared/button", text: "Tell them now", variant: "primary", size: "small" %>
-              <% end %>
-            <% else %>
-              <%= render "shared/button", text: "Tell them now", variant: "primary", size: "small",
-                    path: manage_tell_canceled_show_path(show), method: :post, form: { data: { turbo_frame: "_top" } } %>
-            <% end %>
-          </div>
-        <% end %>
+        </div>
       </div>
     <% end %>
 

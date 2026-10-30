@@ -1,0 +1,67 @@
+<%#
+  The cancel screen: exactly who's cast and staffed on the occurrences being
+  canceled, for each choice (only this one, this and future, all), switched
+  with the choice (cancel-show#toggleScope). Nobody is notified here: after
+  canceling, the notify page shows each notification and its message first
+  (docs/show_change_notices_plan.md).
+
+  Locals: people_by_scope — { scope => ShowChanges::People }
+%>
+<div class="py-3 border-b border-gray-100" data-cancel-notify-people>
+  <p class="text-sm font-medium text-gray-700">Who'll be notified</p>
+  <% people_by_scope.each do |scope, people| %>
+    <div class="<%= 'hidden' unless scope == 'this' %> mt-2" data-cancel-show-target="peopleScope" data-scope="<%= scope %>">
+      <% dates = people.shows.size %>
+      <% if people.none? %>
+        <p class="text-xs text-gray-500">
+          Nobody is cast or scheduled for <%= dates == 1 ? "this date" : (dates.zero? ? "these dates" : "the #{dates} dates still to come") %>, so there's nobody to notify.
+        </p>
+      <% else %>
+        <% multi = dates > 1 %>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <% [ [ "Cast", people.cast ], [ "Staff", people.staff ] ].each do |word, list| %>
+            <div class="rounded-lg border border-gray-200 bg-white" data-notify-box="<%= word.downcase %>">
+              <div class="px-3 py-2 border-b border-gray-100 flex items-baseline justify-between gap-2">
+                <span class="text-sm font-semibold text-gray-900"><%= word %></span>
+                <span class="text-xs text-gray-500"><%= list.any? ? pluralize(list.size, "person") : "nobody" %></span>
+              </div>
+              <% if list.empty? %>
+                <p class="px-3 py-2 text-xs text-gray-500"><%= word == "Cast" ? "Nobody is cast" : "Nobody is scheduled" %> for <%= multi ? "these dates" : "it" %>.</p>
+              <% else %>
+                <ul class="max-h-56 overflow-y-auto divide-y divide-gray-50">
+                  <% list.each do |entry| %>
+                    <% person = entry[:person] %>
+                    <li class="px-3 py-2 flex items-start gap-2.5">
+                      <% headshot = person.safe_headshot_variant(:thumb) %>
+                      <% if headshot %>
+                        <%= image_tag headshot, alt: person.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
+                      <% else %>
+                        <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs flex-shrink-0"><%= person.initials %></div>
+                      <% end %>
+                      <span class="min-w-0">
+                        <span class="block text-sm font-medium text-gray-900 truncate"><%= person.name %></span>
+                        <% if word == "Cast" %>
+                          <span class="block text-xs text-gray-500 truncate">
+                            <%= entry[:roles].join(", ").presence || "Cast" %><%= " · #{pluralize(entry[:dates].size, 'date')}" if multi %>
+                          </span>
+                        <% else %>
+                          <% entry[:lines].first(3).each do |line| %>
+                            <span class="block text-xs text-gray-500 truncate"><%= line %></span>
+                          <% end %>
+                          <% if entry[:lines].size > 3 %><span class="block text-xs text-gray-400">and <%= entry[:lines].size - 3 %> more</span><% end %>
+                        <% end %>
+                      </span>
+                    </li>
+                  <% end %>
+                </ul>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+        <p class="mt-2 text-xs text-gray-500">
+          <%= multi ? "Across the #{dates} dates still to come. " : "" %>After you cancel, you'll see each notification and its message before anything is sent.
+        </p>
+      <% end %>
+    </div>
+  <% end %>
+</div>

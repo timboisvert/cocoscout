@@ -85,6 +85,36 @@ module ShowChanges
     "#{show.production.name} · #{(at || show.date_and_time).strftime('%a, %b %-d, %-l:%M %p')}"
   end
 
+  # Who canceling these shows would notify (the cancel screen): the cast and
+  # the staff of the ones still to come, each person once, with their roles,
+  # dates and shifts.
+  People = Data.define(:shows, :cast, :staff) do
+    def none? = cast.empty? && staff.empty?
+  end
+
+  def people_for(shows)
+    upcoming = shows.reject { |s| s.canceled? || s.ends_at < Time.current }
+    cast = Hash.new { |h, k| h[k] = { roles: [], dates: [] } }
+    staff = Hash.new { |h, k| h[k] = [] }
+    upcoming.each do |show|
+      cast_entries(show).each do |entry|
+        cast[entry["person_id"]][:roles] |= entry["roles"]
+        cast[entry["person_id"]][:dates] |= [ show.date_and_time ]
+      end
+      staff_entries(shifts_for(show, "canceled")).each do |entry|
+        from = Time.zone.parse(entry["starts_at"])
+        to = Time.zone.parse(entry["ends_at"])
+        staff[entry["person_id"]] |= [ "#{entry['role']}, #{from.strftime('%a, %b %-d')}, #{from.strftime('%-l:%M')}–#{to.strftime('%-l:%M %p')}" ]
+      end
+    end
+    people = Person.where(id: cast.keys + staff.keys).includes(profile_headshots: { image_attachment: :blob }).index_by(&:id)
+    People.new(
+      shows: upcoming,
+      cast: cast.filter_map { |id, v| people[id] && { person: people[id], roles: v[:roles], dates: v[:dates].sort } }.sort_by { |c| c[:person].name.to_s.downcase },
+      staff: staff.filter_map { |id, lines| people[id] && { person: people[id], lines: lines } }.sort_by { |c| c[:person].name.to_s.downcase }
+    )
+  end
+
   # Everyone cast on the show: people, and the members of cast groups.
   def cast_entries(show)
     roles = Hash.new { |h, k| h[k] = [] }

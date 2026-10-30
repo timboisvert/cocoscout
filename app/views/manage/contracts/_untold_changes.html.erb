@@ -1,22 +1,34 @@
 <%# Contract page: dates on this contract canceled, taken off or moved whose
-    cast or staff haven't been told yet, each batch with its Tell them
-    (docs/show_change_notices_plan.md). Gone once everyone's told or the
-    manager says nobody needs telling.
+    cast or staff haven't been notified yet, each batch with its Notify them
+    (docs/show_change_notices_plan.md). Gone once everyone's notified or the
+    manager says nobody needs to be.
 
     Locals:
       changes — open ShowChanges for this contract still waiting %>
 <% if changes.present? %>
   <%
     batches = changes.group_by(&:batch)
-    people = changes.sum { |c| c.untold_cast_ids.size + c.untold_staff_ids.size }
+    cast = changes.flat_map(&:untold_cast_ids).uniq.size
+    staff = changes.flat_map(&:untold_staff_ids).uniq.size
+    what = changes.all?(&:moved?) ? "it's moved" : (changes.all?(&:off?) ? "it's off" : "it changed")
+    dates = changes.map do |c|
+      was = c.was_starts_at
+      if c.moved? && c.now_starts_at
+        now = c.now_starts_at
+        "#{was.strftime('%a, %b %-d, %-l:%M')} → #{now.to_date == was.to_date ? now.strftime('%-l:%M %p') : now.strftime('%a, %b %-d, %-l:%M %p')}"
+      else
+        "#{was.strftime('%a, %b %-d, %-l:%M %p')} (#{c.kind == 'canceled' ? 'canceled' : 'taken off'})"
+      end
+    end
+    who = [ (pluralize(cast, "cast member") if cast.positive?), (pluralize(staff, "staff member") if staff.positive?) ].compact.to_sentence
   %>
   <div data-untold-changes>
     <%= render "shared/alert_panel",
-          eyebrow: "Not told yet",
-          headline: changes.map { |c| c.show_label.split(" · ").last }.uniq.to_sentence,
-          body: "#{pluralize(people, 'person')} on #{changes.one? ? 'this date' : 'these dates'} #{people == 1 ? "hasn't" : "haven't"} heard it's #{changes.all?(&:moved?) ? 'moved' : (changes.all?(&:off?) ? 'off' : 'changed')}.",
+          eyebrow: "Not notified yet",
+          headline: dates.uniq.to_sentence,
+          body: "#{who} #{cast + staff == 1 ? "hasn't" : "haven't"} been notified #{what}.",
           actions: batches.keys.map.with_index { |batch, i|
-            { text: batches.size > 1 ? "Tell them (#{i + 1})" : "Tell them", variant: "primary", size: "small", type: :link,
+            { text: batches.size > 1 ? "Notify them (#{i + 1})" : "Notify them", variant: "primary", size: "small", type: :link,
               path: manage_show_changes_path(batch) }
           } %>
   </div>

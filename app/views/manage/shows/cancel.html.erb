@@ -142,18 +142,7 @@
               </div>
             <% end %>
 
-            <%# Telling the cast and staff comes next, on its own page, both
-                seen before anything goes (docs/show_change_notices_plan.md). %>
-            <div class="py-3 border-b border-gray-100" data-cancel-tell-next>
-              <p class="text-sm font-medium text-gray-700">Cast and staff</p>
-              <p class="text-xs text-gray-500 mt-1">
-                <% if @people_with_email.any? || @staff_count.to_i.positive? %>
-                  Next you'll tell <%= [ (pluralize(@people_with_email.count, "cast member") if @people_with_email.any?), (pluralize(@staff_count, "person") + " on its shifts" if @staff_count.to_i.positive?) ].compact.to_sentence %>, and see the message first.
-                <% else %>
-                  Nobody is cast or scheduled for it.
-                <% end %>
-              </p>
-            </div>
+            <%= render "manage/shows/cancel_notify_people", people_by_scope: @notify_people %>
           </div>
 
           <% if @ticket_email_subject %>

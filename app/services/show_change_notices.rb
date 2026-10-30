@@ -83,6 +83,26 @@ class ShowChangeNotices
     end
   end
 
+  # What each person's own placeholder becomes, line by line, shown under
+  # the draft so the whole message is seen before it goes.
+  def filled_in(section, recipient)
+    _subject_vars, body_vars = person_variables(section, recipient, projected: true)
+    value = case section.key
+    when "cast_off" then body_vars["event_date"]
+    when "cast_moved" then body_vars["changes"]
+    else body_vars["shifts"]
+    end
+    value.to_s.split("<br>")
+  end
+
+  def filled_in_label(section)
+    case section.key
+    when "cast_off" then "{{event_date}} for each person:"
+    when "cast_moved" then "{{changes}} for each person:"
+    else "{{shifts}} for each person:"
+    end
+  end
+
   # Sends the edited copy to the ticked people of one section. Returns how
   # many were told.
   def send!(key, person_ids:, subject:, body:, sender:, shift_action: false)
@@ -170,7 +190,9 @@ class ShowChangeNotices
 
   # [subject variables, body variables]: the same names, short in the
   # subject, a line each in the body.
-  def person_variables(section, recipient)
+  # projected: a moved shift not moved yet reads as if it were (the preview,
+  # with Move these shifts ticked).
+  def person_variables(section, recipient, projected: false)
     shared = shared_variables(section).merge("recipient_name" => recipient.first_name)
     changes = recipient.changes
     dates = changes.map { |c| short_date(c.moved? ? c.now_starts_at : c.was_starts_at) }.uniq.to_sentence
@@ -181,7 +203,7 @@ class ShowChangeNotices
     when "cast_moved"
       { "dates" => dates, "changes" => [ dates, changes.map { |c| "#{long_time(c.was_starts_at)} → #{long_time(c.now_starts_at)}" }.join("<br>") ] }
     else
-      { "dates" => dates, "what" => what(section, changes), "shifts" => [ dates, shift_lines(section, recipient).join("<br>") ] }
+      { "dates" => dates, "what" => what(section, changes), "shifts" => [ dates, shift_lines(section, recipient, projected: projected).join("<br>") ] }
     end
 
     subject_vars = shared.merge(vars.transform_values { |v| v.is_a?(Array) ? v.first : v })
@@ -203,7 +225,7 @@ class ShowChangeNotices
   end
 
   # This person's shifts in the change: was and now when it moved.
-  def shift_lines(section, recipient)
+  def shift_lines(section, recipient, projected: false)
     shifts = organization.shifts.where(id: recipient.changes.flat_map(&:shift_ids)).index_by(&:id)
     recipient.changes.flat_map do |change|
       change.staff.select { |s| s["person_id"] == recipient.person.id }.map do |entry|
@@ -211,8 +233,13 @@ class ShowChangeNotices
         was_to = Time.zone.parse(entry["ends_at"])
         line = "#{entry['role']}, #{short_date(was_from)}, #{hours(was_from, was_to)}"
         shift = shifts[entry["shift_id"]]
-        if !section.off? && shift && shift.starts_at.to_i != was_from.to_i
-          line += " → #{short_date(shift.starts_at) unless shift.starts_at.to_date == was_from.to_date}#{' ' unless shift.starts_at.to_date == was_from.to_date}#{hours(shift.starts_at, shift.ends_at)}"
+        now_from, now_to = shift && [ shift.starts_at, shift.ends_at ]
+        if projected && !section.off? && change.was_starts_at && change.now_starts_at && (shift.nil? || now_from.to_i == was_from.to_i)
+          offset = change.now_starts_at - change.was_starts_at
+          now_from, now_to = was_from + offset, was_to + offset
+        end
+        if !section.off? && now_from && now_from.to_i != was_from.to_i
+          line += " → #{"#{short_date(now_from)}, " unless now_from.to_date == was_from.to_date}#{hours(now_from, now_to)}"
         end
         line
       end

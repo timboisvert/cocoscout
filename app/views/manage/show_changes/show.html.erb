@@ -1,17 +1,18 @@
-<% content_for :title, "Tell people" %>
+<% content_for :title, "Notify cast and staff" %>
 
 <%#
-  Tell people (docs/show_change_notices_plan.md): what changed, then a send
-  for each group touched (the cast and the staff of dates that are off, and
-  of dates that moved), each seen and edited before it goes. Not now leaves
-  them waiting (Home says so); Nobody needs telling closes it.
+  Notify cast and staff (docs/show_change_notices_plan.md): what changed,
+  then a notification for each group touched (the cast and the staff of
+  dates that are off, and of dates that moved), each message seen and edited
+  before it goes. ?audience= shows just the cast or the staff. Not now leaves
+  them waiting (Home says so); Nobody needs to be notified closes it.
 %>
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [ [ "Home", manage_path ] ],
-    text: "Tell people",
+    text: @audience ? "Notify the #{@audience}" : "Notify cast and staff",
     links: []
   } %>
 
@@ -37,20 +38,24 @@
     </div>
 
     <% if @sections.empty? %>
-      <%= render "shared/alert_panel", eyebrow: "All told", headline: "Everyone has been told.",
-            body: "Nobody on #{@changes.one? ? 'this date' : 'these dates'} is waiting to hear." %>
+      <% others = @notices.sections.map(&:audience).uniq %>
+      <%= render "shared/alert_panel", eyebrow: "All notified",
+            headline: @audience ? "The whole #{@audience} has been notified." : "Everyone has been notified.",
+            body: "Nobody on #{@changes.one? ? 'this date' : 'these dates'} is waiting to hear#{' from this list' if others.any?}.",
+            actions: others.map { |audience| { text: "Notify the #{audience}", variant: "primary", size: "small", type: :link,
+                                               path: manage_show_changes_path(params[:batch], audience: audience) } } %>
     <% else %>
       <% @sections.each do |section| %>
-        <%= render "manage/show_changes/section", section: section, notices: @notices, batch: params[:batch] %>
+        <%= render "manage/show_changes/section", section: section, notices: @notices, batch: params[:batch], audience: @audience %>
       <% end %>
 
       <div class="flex flex-wrap items-center gap-3 pt-1">
         <%= link_to manage_path do %>
           <%= render "shared/button", text: "Not now", variant: "secondary", size: "medium" %>
         <% end %>
-        <%= render "shared/button", text: "Nobody needs telling", variant: "secondary", size: "medium",
+        <%= render "shared/button", text: "Nobody needs to be notified", variant: "secondary", size: "medium",
               path: manage_close_show_changes_path(params[:batch]), method: :post %>
-        <p class="text-xs text-gray-500 w-full sm:w-auto">Not now keeps them on Home as not told. Nobody needs telling closes it.</p>
+        <p class="text-xs text-gray-500 w-full sm:w-auto">Not now keeps them on Home as not notified. Nobody needs to be notified closes it.</p>
       </div>
     <% end %>
   </div>

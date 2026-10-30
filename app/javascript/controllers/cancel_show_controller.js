@@ -1,17 +1,17 @@
 import { Controller } from "@hotwired/stimulus"
 
+// The cancel screen: which occurrences to cancel (only this one, this and
+// future, or the whole series). Everything that depends on it follows the
+// choice: the ticket buyers to refund (refundScope), the cast and staff who'll
+// be notified next (peopleScope), and the confirm modal's words.
 export default class extends Controller {
   static targets = [
     "scopeRadio",
     "scopeField",
-    "notifyCheckbox",
-    "notifySection",
-    "notifyField",
     "cancelForm",
     "confirmMessage",
-    "categoryCheckbox",
-    "categoryField",
-    "refundScope"
+    "refundScope",
+    "peopleScope"
   ]
 
   static values = {
@@ -21,18 +21,22 @@ export default class extends Controller {
     futureCount: Number
   }
 
+  connect() {
+    this.toggleScope()
+  }
+
   toggleScope() {
-    // Find the selected radio button
     const selectedRadio = this.scopeRadioTargets.find(r => r.checked)
     const scope = selectedRadio ? selectedRadio.value : "this"
 
-    // Update hidden scope field
     if (this.hasScopeFieldTarget) {
       this.scopeFieldTarget.value = scope
     }
 
-    // The ticket buyers box shows the count and refund total for this scope only.
-    this.refundScopeTargets.forEach((line) => line.classList.toggle("hidden", line.dataset.scope !== scope))
+    // Each of these shows its count and its people for this scope only.
+    ;[ ...this.refundScopeTargets, ...this.peopleScopeTargets ].forEach((block) => {
+      block.classList.toggle("hidden", block.dataset.scope !== scope)
+    })
 
     // Keep the in-page confirm modal's message in sync with the selected scope.
     if (this.hasConfirmMessageTarget) {
@@ -46,58 +50,5 @@ export default class extends Controller {
       }
       this.confirmMessageTarget.textContent = message
     }
-  }
-
-  toggleNotifySection() {
-    const isChecked = this.hasNotifyCheckboxTarget && this.notifyCheckboxTarget.checked
-
-    if (this.hasNotifySectionTarget) {
-      if (isChecked) {
-        this.notifySectionTarget.classList.remove("hidden")
-      } else {
-        this.notifySectionTarget.classList.add("hidden")
-      }
-    }
-
-    this.updateFormFields()
-  }
-
-  updateFormFields() {
-    const isNotifyChecked = this.hasNotifyCheckboxTarget && this.notifyCheckboxTarget.checked
-    const notifyValue = isNotifyChecked ? "1" : "0"
-
-    // Update hidden fields
-    if (this.hasNotifyFieldTarget) {
-      this.notifyFieldTarget.value = notifyValue
-    }
-  }
-
-  // Toggle category hidden fields based on checkbox state
-  toggleCategory(event) {
-    const checkbox = event.target
-    const category = checkbox.dataset.category
-
-    // Find the corresponding hidden field
-    const hiddenField = this.categoryFieldTargets.find(field => field.dataset.category === category)
-
-    if (hiddenField) {
-      if (checkbox.checked) {
-        // Re-enable the hidden field by setting its value
-        hiddenField.disabled = false
-        hiddenField.value = category
-      } else {
-        // Disable the hidden field so it's not submitted
-        hiddenField.disabled = true
-      }
-    }
-  }
-
-  // Hook into form submission to ensure fields are updated
-  connect() {
-    if (this.hasCancelFormTarget) {
-      this.cancelFormTarget.addEventListener("submit", () => this.updateFormFields())
-    }
-    // Initialize the confirm modal message for the default scope.
-    this.toggleScope()
   }
 }

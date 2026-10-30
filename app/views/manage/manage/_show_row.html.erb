@@ -14,7 +14,7 @@
   show = row.show
   phone = local_assigns[:size] == :phone
   # A canceled show, or a moved one with people still to hear, says whether
-  # its staff and cast were told, never "Needs Booth Tech" or "All cast".
+  # its staff and cast were notified, never "Needs Booth Tech" or "All cast".
   told = row.told
   staffing_chip = told ? (@home.staffing_on? ? home_told_chip(told, :staff) : nil) : home_staffing_chip(row.staffing)
   cast_chip = told ? home_told_chip(told, :cast) : home_cast_chip(row.cast)
