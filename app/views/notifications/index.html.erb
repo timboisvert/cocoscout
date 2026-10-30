@@ -7,7 +7,7 @@
      data-notification-open-ask-value="<%= @ask_before_switching %>"
      data-notification-open-remember-url-value="<%= notifications_switch_without_asking_path %>">
   <%= render "shared/module_header", title: "Notifications", actions: [
-        { icon: "check", text: "Mark all read", path: read_notifications_path(filter: @filter, area: @area), method: :post,
+        { icon: "check", text: "Mark all read", path: read_notifications_path(filter: (@filter == "all" ? nil : @filter), area: @area), method: :post,
           form: { data: { turbo_frame: "page" } },
           badge: (Current.user.unread_notification_count if Current.user.unread_notification_count.positive?), disabled: Current.user.unread_notification_count.zero? },
         { icon: "cog", text: "Settings", path: account_notifications_path, variant: "secondary" }
