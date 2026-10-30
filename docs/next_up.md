@@ -16,7 +16,7 @@ things off here; the app roadmap itself stays in CLAUDE.md.
 - [ ] Impersonate Dan Feltey and Andy Nash and look at what they see (My → Payments, My Contracts, Ticket Sales), after today's email from our payment provider.
 - [ ] Tap to Pay on Android: get ready (see "Tap to Pay on Android" below).
 - [x] App bar counts (Tim, 2026-10-30): the bell and envelope counts didn't show on iPhone (iOS 26 glass bar); now Apple's own badge, with room between the two (Android too). Needs an iPhone build (1.1.1) to reach phones.
-- [x] Home, the night's staff (Tim, 2026-10-30): bartender and house staff no longer land on the first show; roles that aren't per show get their own row named after them, by start time, and a show counts only its per-show roles ("Needs Booth Tech" with Role Call on). 020b2ebe, not deployed.
+- [x] Home, the night's staff (Tim, 2026-10-30): bartender and house staff no longer land on the first show; roles that aren't per show get their own row named after them, by start time, and a show counts only its per-show roles ("Needs Booth Tech" with Role Call on). 020b2ebe, deployed 2026-10-30.
 - [x] Mark all read (Tim, 2026-10-30): Messages and Notifications update in place, counts too, instead of reloading the screen. Server only.
 - [x] **Tap to Pay on iPhone (V1.2): sent to Apple 2026-10-19.** The reply to the Oct 12 email (Case-ID 22828656) went with the checklist; the four videos and a follow-up after. Apple's review takes a week or two.
 
