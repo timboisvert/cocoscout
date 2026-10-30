@@ -38,6 +38,8 @@ final class WebViewController: HotwireWebViewController {
     }
 
     /// The two universal icons, with their counts, opening their pages on top.
+    /// A gap between them gives each room to tap (and on iOS 26, its own
+    /// glass button).
     private func showIcons(_ nav: NavData?) {
         guard let nav else {
             navigationItem.rightBarButtonItems = nil
@@ -45,34 +47,63 @@ final class WebViewController: HotwireWebViewController {
         }
         navigationItem.rightBarButtonItems = [
             iconItem(systemName: "bell", label: "Notifications", icon: nav.icons.notifications),
+            .fixedSpace(10),
             iconItem(systemName: "envelope", label: "Messages", icon: nav.icons.messages)
         ]
     }
 
+    private static let badgePink = UIColor(red: 0xE6 / 255, green: 0, blue: 0x76 / 255, alpha: 1)
+
     private func iconItem(systemName: String, label: String, icon: NavData.Icon) -> UIBarButtonItem {
-        let button = UIButton(type: .system)
-        button.setImage(UIImage(systemName: systemName, withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .medium)), for: .normal)
-        button.tintColor = AppConfig.pink
-        button.frame = CGRect(x: 0, y: 0, width: 40, height: 40)
-        button.accessibilityLabel = icon.count > 0 ? "\(label), \(icon.count) unread" : label
+        let image = UIImage(systemName: systemName, withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .medium))
+        let accessibilityLabel = icon.count > 0 ? "\(label), \(icon.count) unread" : label
         let path = icon.path
-        button.addAction(UIAction { _ in AppShell.shared.open(path: path) }, for: .touchUpInside)
+        let action = UIAction { _ in AppShell.shared.open(path: path) }
+
+        // iOS 26's glass bar doesn't draw a label added to a custom view, so
+        // use a plain image item and Apple's own badge. The items are rebuilt
+        // on every nav change, so the badge is set as each one is made.
+        if #available(iOS 26.0, *) {
+            let item = UIBarButtonItem(image: image, primaryAction: action)
+            item.tintColor = AppConfig.pink
+            item.accessibilityLabel = accessibilityLabel
+            if let text = AppShell.badgeText(icon.count) {
+                var badge = UIBarButtonItem.Badge.string(text)
+                badge.backgroundColor = Self.badgePink
+                badge.foregroundColor = .white
+                item.badge = badge
+            }
+            return item
+        }
+
+        // iOS 17 and 18: the bar sizes a custom view by its constraints, not
+        // its frame, so pin it to 40×40 and keep the count inside it.
+        let button = UIButton(type: .system, primaryAction: action)
+        button.setImage(image, for: .normal)
+        button.tintColor = AppConfig.pink
+        button.accessibilityLabel = accessibilityLabel
+        button.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            button.widthAnchor.constraint(equalToConstant: 40),
+            button.heightAnchor.constraint(equalToConstant: 40)
+        ])
         if let text = AppShell.badgeText(icon.count) {
             let badge = UILabel()
             badge.text = " \(text) "
             badge.font = .systemFont(ofSize: 10, weight: .bold)
             badge.textColor = .white
-            badge.backgroundColor = UIColor(red: 0xE6 / 255, green: 0, blue: 0x76 / 255, alpha: 1)
+            badge.backgroundColor = Self.badgePink
             badge.textAlignment = .center
             badge.layer.cornerRadius = 8
             badge.layer.masksToBounds = true
             badge.layer.borderColor = UIColor.white.cgColor
             badge.layer.borderWidth = 1.5
+            badge.isUserInteractionEnabled = false
             badge.translatesAutoresizingMaskIntoConstraints = false
             button.addSubview(badge)
             NSLayoutConstraint.activate([
                 badge.topAnchor.constraint(equalTo: button.topAnchor, constant: 2),
-                badge.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: 2),
+                badge.trailingAnchor.constraint(equalTo: button.trailingAnchor),
                 badge.heightAnchor.constraint(equalToConstant: 16),
                 badge.widthAnchor.constraint(greaterThanOrEqualToConstant: 16)
             ])

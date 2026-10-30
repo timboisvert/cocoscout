@@ -3,6 +3,7 @@ package com.cocoscout.app.menu
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -38,7 +39,12 @@ import com.cocoscout.app.bridge.NavIcon
 fun ToolbarIcons() {
     val nav by AppShell.nav.collectAsState()
     val icons = nav?.icons ?: return
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = 4.dp)) {
+    // A gap between the two and off the edge, so neither is cramped.
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.padding(end = 8.dp)
+    ) {
         ToolbarIcon(Icons.Outlined.Email, "Messages", icons.messages)
         ToolbarIcon(Icons.Outlined.Notifications, "Notifications", icons.notifications)
     }
