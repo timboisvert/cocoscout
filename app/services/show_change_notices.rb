@@ -1,0 +1,226 @@
+# frozen_string_literal: true
+
+# Telling people about a batch of ShowChanges (docs/show_change_notices_plan.md).
+# Up to four sends, each its own draft and list: the cast of dates that are off
+# (show_canceled), the cast of dates that moved (show_moved), and the staff of
+# each (shift_canceled, shift_moved). One message per person per send, listing
+# their own dates and shifts. Only people not told yet are listed; each one
+# sent is recorded against every change of theirs (ShowChangeNotice).
+#
+# The shift actions run before the staff are told: shifts of dates that are
+# off lose their people and read Not needed; shifts of dates that moved move by
+# the same amount. Nothing is done to a shift until the manager sends.
+class ShowChangeNotices
+  Section = Data.define(:key, :audience, :template, :title, :recipients, :changes) do
+    def off? = key.end_with?("_off")
+    def reachable = recipients.select(&:reachable?)
+    def unreachable = recipients.reject(&:reachable?)
+  end
+
+  Recipient = Data.define(:person, :changes) do
+    # A login gets the message and Notification (and the email); without one,
+    # the email alone.
+    def reachable? = person.user.present? || person.email.present?
+    def email = person.user&.email_address.presence || person.email
+    def first_name = person.name.to_s.split(/\s+/).first.presence || person.name.to_s
+  end
+
+  TEMPLATES = {
+    "cast_off" => "show_canceled", "cast_moved" => "show_moved",
+    "staff_off" => "shift_canceled", "staff_moved" => "shift_moved"
+  }.freeze
+
+  TITLES = {
+    "cast_off" => "Cast", "cast_moved" => "Cast",
+    "staff_off" => "Staff", "staff_moved" => "Staff"
+  }.freeze
+
+  attr_reader :organization, :changes
+
+  def initialize(organization, changes)
+    @organization = organization
+    @changes = changes.to_a
+    @people = Person.where(id: @changes.flat_map { |c| c.cast_person_ids + c.staff_person_ids }.uniq)
+                    .includes(:user).index_by(&:id)
+  end
+
+  def self.for_batch(organization, batch)
+    new(organization, organization.show_changes.where(batch: batch).includes(:notices, show: [ :production, :location ]).order(:was_starts_at))
+  end
+
+  def sections
+    @sections ||= TEMPLATES.keys.filter_map do |key|
+      audience = key.start_with?("cast") ? "cast" : "staff"
+      mine = changes.select { |c| key.end_with?("_off") ? c.off? : c.moved? }
+      untold = Hash.new { |h, k| h[k] = [] }
+      mine.each do |change|
+        ids = audience == "cast" ? change.untold_cast_ids : change.untold_staff_ids
+        ids.each { |id| untold[id] << change }
+      end
+      recipients = untold.filter_map { |id, list| @people[id] && Recipient.new(person: @people[id], changes: list) }
+                         .sort_by { |r| r.person.name.to_s.downcase }
+      next if recipients.empty?
+
+      Section.new(key: key, audience: audience, template: TEMPLATES[key], title: TITLES[key], recipients: recipients, changes: mine)
+    end
+  end
+
+  def section(key) = sections.find { |s| s.key == key }
+
+  # The words to start from: the template with what's the same for everyone
+  # filled in, and each person's own dates and shifts left as placeholders.
+  def draft(section)
+    template = ContentTemplateService.find_template(section.template)
+    vars = shared_variables(section)
+    { subject: ContentTemplate.interpolate(template.subject, vars), body: ContentTemplate.interpolate(template.body, vars) }
+  end
+
+  def hint(section)
+    case section.key
+    when "cast_off" then "{{recipient_name}} becomes each person's first name and {{event_date}} their dates."
+    when "cast_moved" then "{{recipient_name}} becomes each person's first name, {{dates}} their new dates and {{changes}} each date, was and now."
+    else "{{recipient_name}} becomes each person's first name, {{what}} what happened, {{dates}} the dates and {{shifts}} their own shifts."
+    end
+  end
+
+  # Sends the edited copy to the ticked people of one section. Returns how
+  # many were told.
+  def send!(key, person_ids:, subject:, body:, sender:, shift_action: false)
+    section = section(key)
+    return 0 unless section
+
+    if section.audience == "staff" && shift_action
+      section.off? ? take_shifts_off!(section) : move_shifts!(section)
+    end
+
+    default = draft(section)
+    custom = ManagerWords.changed?([ subject, default[:subject] ], [ body, default[:body] ])
+    ids = person_ids.map(&:to_i).to_set
+    told = section.reachable.select { |r| ids.include?(r.person.id) }
+    told.each do |recipient|
+      subject_vars, body_vars = person_variables(section, recipient)
+      shows = recipient.changes.filter_map(&:show)
+      ContentTemplateService.deliver(
+        template_key: section.template, variables: body_vars, sender: (sender if custom), recipients: [ recipient.person ],
+        organization: organization, production: (shows.first.production if shows.map(&:production_id).uniq.one?),
+        show: (shows.first if shows.one?), message_type: :system, visibility: :personal, custom_words: custom,
+        mailer_class: ShowChangeMailer.with(organization_id: organization.id), mailer_method: :notice,
+        subject_override: ContentTemplate.interpolate(subject, subject_vars).squish,
+        body_override: ContentTemplate.interpolate(body, body_vars)
+      )
+      recipient.changes.each do |change|
+        ShowChangeNotice.find_or_create_by!(show_change: change, person: recipient.person, audience: section.audience) do |notice|
+          notice.sent_by_user = sender
+        end
+      end
+    end
+    told.size
+  end
+
+  # "Nobody needs telling": the batch is done.
+  def close!
+    ShowChange.where(id: changes.map(&:id)).update_all(closed_at: Time.current)
+  end
+
+  # Dates that are off: their shifts lose the people on them (anyone who
+  # already logged hours stays) and read Not needed.
+  def take_shifts_off!(section)
+    shifts_for(section).each do |shift|
+      shift.shift_assignments.includes(:staff_time_entry).each do |assignment|
+        assignment.destroy! unless assignment.staff_time_entry
+      end
+      shift.update!(coverage_mode: :not_needed)
+    end
+  end
+
+  # Dates that moved: each shift moves by as much as its date did, once (a
+  # shift no longer where it was has been moved already).
+  def move_shifts!(section)
+    section.changes.each do |change|
+      next unless change.was_starts_at && change.now_starts_at
+
+      offset = change.now_starts_at - change.was_starts_at
+      next if offset.zero?
+
+      change.staff.uniq { |s| s["shift_id"] }.each do |entry|
+        shift = organization.shifts.find_by(id: entry["shift_id"])
+        next unless shift && shift.starts_at.to_i == Time.zone.parse(entry["starts_at"]).to_i
+
+        shift.update!(starts_at: shift.starts_at + offset, ends_at: shift.ends_at + offset)
+      end
+    end
+  end
+
+  def shifts_for(section)
+    organization.shifts.where(id: section.changes.flat_map(&:shift_ids).uniq).to_a
+  end
+
+  private
+
+  def shared_variables(section)
+    shows = section.changes.filter_map(&:show)
+    productions = section.changes.map(&:production).compact.uniq
+    {
+      "organization_name" => organization.name,
+      "production_name" => productions.one? ? productions.first.name : organization.name,
+      "event_type" => shows.first&.event_type&.titleize.presence || "Show",
+      "location" => shows.first&.location&.name.to_s
+    }
+  end
+
+  # [subject variables, body variables]: the same names, short in the
+  # subject, a line each in the body.
+  def person_variables(section, recipient)
+    shared = shared_variables(section).merge("recipient_name" => recipient.first_name)
+    changes = recipient.changes
+    dates = changes.map { |c| short_date(c.moved? ? c.now_starts_at : c.was_starts_at) }.uniq.to_sentence
+
+    vars = case section.key
+    when "cast_off"
+      { "event_date" => [ dates, changes.map { |c| long_time(c.was_starts_at) }.join("<br>") ] }
+    when "cast_moved"
+      { "dates" => dates, "changes" => [ dates, changes.map { |c| "#{long_time(c.was_starts_at)} → #{long_time(c.now_starts_at)}" }.join("<br>") ] }
+    else
+      { "dates" => dates, "what" => what(section, changes), "shifts" => [ dates, shift_lines(section, recipient).join("<br>") ] }
+    end
+
+    subject_vars = shared.merge(vars.transform_values { |v| v.is_a?(Array) ? v.first : v })
+    body_vars = shared.merge(vars.transform_values { |v| v.is_a?(Array) ? v.last : v })
+    [ subject_vars, body_vars ]
+  end
+
+  def what(section, changes)
+    changes.map do |change|
+      name = change.production&.name || change.show_label.split(" · ").first
+      if section.off?
+        "#{name} on #{short_date(change.was_starts_at)} #{change.kind == 'canceled' ? 'was canceled' : 'is off'}"
+      elsif change.booking_only?
+        "The booking for #{name} on #{short_date(change.was_starts_at)} moved to #{short_time(change.now_starts_at)}"
+      else
+        "#{name} moved from #{long_time(change.was_starts_at)} to #{long_time(change.now_starts_at)}"
+      end
+    end.to_sentence
+  end
+
+  # This person's shifts in the change: was and now when it moved.
+  def shift_lines(section, recipient)
+    shifts = organization.shifts.where(id: recipient.changes.flat_map(&:shift_ids)).index_by(&:id)
+    recipient.changes.flat_map do |change|
+      change.staff.select { |s| s["person_id"] == recipient.person.id }.map do |entry|
+        was_from = Time.zone.parse(entry["starts_at"])
+        was_to = Time.zone.parse(entry["ends_at"])
+        line = "#{entry['role']}, #{short_date(was_from)}, #{hours(was_from, was_to)}"
+        shift = shifts[entry["shift_id"]]
+        if !section.off? && shift && shift.starts_at.to_i != was_from.to_i
+          line += " → #{short_date(shift.starts_at) unless shift.starts_at.to_date == was_from.to_date}#{' ' unless shift.starts_at.to_date == was_from.to_date}#{hours(shift.starts_at, shift.ends_at)}"
+        end
+        line
+      end
+    end.uniq
+  end
+
+  def short_date(time) = time&.strftime("%a, %b %-d")
+  def short_time(time) = time&.strftime("%-l:%M %p")
+  def long_time(time) = time&.strftime("%a, %b %-d, %-l:%M %p")
+  def hours(from, to) = "#{from.strftime('%-l:%M')}–#{to.strftime('%-l:%M %p')}"
+end

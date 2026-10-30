@@ -101,10 +101,6 @@
 
         <%= form_with url: manage_cancel_show_path(@production, @show), method: :patch, id: "cancel-show-form", data: { "cancel-show-target": "cancelForm" } do |f| %>
           <input type="hidden" name="scope" value="this" data-cancel-show-target="scopeField">
-          <input type="hidden" name="notify_cast" value="0" data-cancel-show-target="notifyField">
-          <% @role_categories.each do |category| %>
-            <input type="hidden" name="role_categories[]" value="<%= category %>" data-cancel-show-target="categoryField" data-category="<%= category %>">
-          <% end %>
 
           <div class="space-y-4">
             <% if @show.recurring? %>
@@ -146,92 +142,18 @@
               </div>
             <% end %>
 
-            <!-- Notify Cast Toggle -->
-            <div class="flex items-center justify-between py-3 border-b border-gray-100">
-              <div>
-                <p class="text-sm font-medium text-gray-700 <%= 'text-gray-400' unless @people_with_email.any? %>">Notify cast members</p>
-                <p class="text-xs text-gray-500 mt-1">
-                  <% if @people_with_email.any? %>
-                    <%= @people_with_email.count %> <%= 'person'.pluralize(@people_with_email.count) %> will receive an email notification
-                  <% else %>
-                    No cast members to notify
-                  <% end %>
-                </p>
-              </div>
-              <label class="relative inline-flex items-center <%= @people_with_email.any? ? 'cursor-pointer' : 'cursor-not-allowed opacity-50' %>">
-                <input type="checkbox"
-                       data-cancel-show-target="notifyCheckbox"
-                       data-action="change->cancel-show#toggleNotifySection"
-                       <%= 'disabled' unless @people_with_email.any? %>
-                       class="sr-only peer">
-                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-              </label>
-            </div>
-
-            <% if @people_with_email.any? %>
-              <!-- Notify Cast Section (Hidden by default) -->
-              <div data-cancel-show-target="notifySection" class="hidden pt-4">
-                <% if @role_categories.size > 1 %>
-                  <!-- Category Filter -->
-                  <div class="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                    <div class="text-sm font-medium text-gray-700 mb-2">Notify roles in these categories:</div>
-                    <div class="flex flex-wrap gap-3">
-                      <% @role_categories.each do |category| %>
-                        <label class="flex items-center gap-2 cursor-pointer">
-                          <input type="checkbox"
-                                 checked
-                                 data-cancel-show-target="categoryCheckbox"
-                                 data-category="<%= category %>"
-                                 data-action="change->cancel-show#toggleCategory"
-                                 class="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500">
-                          <span class="text-sm text-gray-700 capitalize"><%= category %></span>
-                        </label>
-                      <% end %>
-                    </div>
-                  </div>
+            <%# Telling the cast and staff comes next, on its own page, both
+                seen before anything goes (docs/show_change_notices_plan.md). %>
+            <div class="py-3 border-b border-gray-100" data-cancel-tell-next>
+              <p class="text-sm font-medium text-gray-700">Cast and staff</p>
+              <p class="text-xs text-gray-500 mt-1">
+                <% if @people_with_email.any? || @staff_count.to_i.positive? %>
+                  Next you'll tell <%= [ (pluralize(@people_with_email.count, "cast member") if @people_with_email.any?), (pluralize(@staff_count, "person") + " on its shifts" if @staff_count.to_i.positive?) ].compact.to_sentence %>, and see the message first.
+                <% else %>
+                  Nobody is cast or scheduled for it.
                 <% end %>
-
-                <!-- Cast Members List (styled like contact_cast) -->
-                <div class="mb-4">
-                  <div class="flex items-center gap-2 mb-3">
-                    <span class="text-sm font-medium text-gray-700">Sending to</span>
-                    <span class="inline-flex items-center rounded-full bg-pink-100 px-2.5 py-0.5 text-xs font-medium text-pink-800">
-                      <%= @cast_people.count + @cast_groups.count %> cast <%= 'member'.pluralize(@cast_people.count + @cast_groups.count) %>
-                    </span>
-                  </div>
-
-                  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                    <% @cast_people.sort_by(&:name).each do |person| %>
-                      <div class="flex items-center gap-2 p-2 bg-gray-50 border border-gray-200 rounded-lg">
-                        <% headshot_variant = person.safe_headshot_variant(:thumb) %>
-                        <% if headshot_variant %>
-                          <%= image_tag headshot_variant, alt: person.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
-                        <% else %>
-                          <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs flex-shrink-0">
-                            <%= person.initials %>
-                          </div>
-                        <% end %>
-                        <span class="text-xs font-medium text-gray-700 truncate"><%= person.name %></span>
-                      </div>
-                    <% end %>
-
-                    <% @cast_groups.sort_by(&:name).each do |group| %>
-                      <div class="flex items-center gap-2 p-2 bg-gray-50 border border-gray-200 rounded-lg">
-                        <% headshot_variant = group.safe_headshot_variant(:thumb) %>
-                        <% if headshot_variant %>
-                          <%= image_tag headshot_variant, alt: group.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
-                        <% else %>
-                          <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs flex-shrink-0">
-                            <%= group.initials %>
-                          </div>
-                        <% end %>
-                        <span class="text-xs font-medium text-gray-700 truncate"><%= group.name %></span>
-                      </div>
-                    <% end %>
-                  </div>
-                </div>
-              </div>
-            <% end %>
+              </p>
+            </div>
           </div>
 
           <% if @ticket_email_subject %>

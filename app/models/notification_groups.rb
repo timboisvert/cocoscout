@@ -40,7 +40,7 @@ module NotificationGroups
   # ContentTemplateService.deliver(notification:) themselves aren't listed.
   TEMPLATES = {
     # Casting and vacancies
-    "casting_table_notification" => "casting", "show_canceled" => "casting",
+    "casting_table_notification" => "casting", "show_canceled" => "casting", "show_moved" => "casting",
     "vacancy_created" => "casting", "vacancy_filled" => "casting", "vacancy_reclaimed" => "casting",
     "vacancy_invitation" => "casting", "request_agreement_signature" => "casting",
     "talent_left_production" => "casting",
@@ -53,6 +53,7 @@ module NotificationGroups
     "course_cancelled_registrant" => "courses",
     # Shifts and hours
     "shift_declined_manager" => "shifts",
+    "shift_canceled" => "shifts", "shift_moved" => "shifts",
     # Pay and Contracts, from senders that still go through messages
     "staff_1099_ready" => "pay", "contract_person_added" => "contracts",
     # Ticketing: the Tap to Pay launch (TapToPayLaunch), to everyone who can sell at a door that has it

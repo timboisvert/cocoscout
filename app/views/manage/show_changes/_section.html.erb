@@ -1,0 +1,102 @@
+<%#
+  One send on Tell people: who's ticked (untick to leave someone out), what
+  happens to their shifts (staff only), and the words, edited before they go.
+  Locals: section (ShowChangeNotices::Section), notices, batch
+%>
+<%
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  draft = notices.draft(section)
+  dom = "tell-#{section.key}"
+  title = case section.key
+          when "cast_off" then "Tell the cast it's off"
+          when "cast_moved" then "Tell the cast the new time"
+          when "staff_off" then "Tell the staff their shifts are off"
+          else "Tell the staff the new time"
+          end
+  reachable = section.reachable
+  unreachable = section.unreachable
+%>
+<div class="bg-white border border-gray-200 rounded-xl" id="<%= dom %>" data-tell-section="<%= section.key %>">
+  <%= render "shared/section_heading", title: title %>
+  <%= form_with url: manage_tell_show_changes_path(batch), method: :post, class: "px-6 py-5 space-y-5" do %>
+    <%= hidden_field_tag :section, section.key %>
+
+    <% if section.audience == "staff" %>
+      <label class="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 cursor-pointer">
+        <%= check_box_tag :shift_action, "1", true, id: "#{dom}-shift-action",
+              class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+        <span class="text-sm text-gray-800">
+          <% if section.off? %>
+            <span class="font-medium">Take these shifts off the schedule.</span>
+            The people come off them and each shift reads Not needed.
+          <% else %>
+            <span class="font-medium">Move these shifts with the show,</span>
+            by as much as the show moved.
+          <% end %>
+          Nothing changes until you send.
+        </span>
+      </label>
+    <% end %>
+
+    <% if reachable.any? %>
+      <div>
+        <p class="text-sm font-medium text-gray-900 mb-2">
+          Sending to <%= pluralize(reachable.size, "person") %>
+          <span class="font-normal text-gray-500">— untick anyone to leave them out</span>
+        </p>
+        <ul class="max-h-64 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+          <% reachable.each do |recipient| %>
+            <%
+              detail = if section.audience == "cast"
+                recipient.changes.flat_map { |c| c.cast.select { |e| e["person_id"] == recipient.person.id }.flat_map { |e| e["roles"] } }.uniq.join(", ")
+              else
+                recipient.changes.flat_map { |c| c.staff.select { |e| e["person_id"] == recipient.person.id }.map { |e| "#{e['role']}, #{Time.zone.parse(e['starts_at']).strftime('%a %-l:%M %p')}" } }.uniq.join(" · ")
+              end
+            %>
+            <li>
+              <label class="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50">
+                <%= check_box_tag "person_ids[]", recipient.person.id, true, id: "#{dom}-person-#{recipient.person.id}",
+                      class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+                <span class="flex-1 min-w-0">
+                  <span class="block text-sm font-medium text-gray-900 truncate"><%= recipient.person.name %></span>
+                  <span class="block text-xs text-gray-500 truncate"><%= recipient.email %></span>
+                </span>
+                <% if detail.present? %>
+                  <span class="flex-shrink-0 max-w-[45%] truncate text-xs text-gray-600"><%= detail %></span>
+                <% end %>
+              </label>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <% if unreachable.any? %>
+      <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+        <p class="text-sm text-amber-900">
+          <%= unreachable.map { |r| r.person.name }.to_sentence %> <%= unreachable.one? ? "has" : "have" %> no CocoScout login or
+          email, so this can't reach them. Tell them another way.
+        </p>
+      </div>
+    <% end %>
+
+    <% if reachable.any? %>
+      <div>
+        <label for="<%= dom %>-subject" class="block text-sm font-medium text-gray-900 mb-1">Subject</label>
+        <%= text_field_tag :subject, draft[:subject], id: "#{dom}-subject", class: input_class %>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-900 mb-1">Message</label>
+        <input type="hidden" name="body" id="<%= dom %>-body" value="<%= draft[:body] %>">
+        <trix-editor input="<%= dom %>-body"
+                     class="trix-content block w-full bg-white border border-gray-300 rounded-lg shadow-sm min-h-[180px] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"></trix-editor>
+        <p class="mt-1 text-xs text-gray-500"><%= notices.hint(section) %></p>
+      </div>
+
+      <div class="flex justify-end">
+        <%= render "shared/button", text: "Send to #{pluralize(reachable.size, 'person')}", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  <% end %>
+</div>

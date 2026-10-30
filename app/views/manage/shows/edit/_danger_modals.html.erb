@@ -40,16 +40,13 @@
               <%= scope_options.call("Cancel") %>
             </div>
           <% end %>
-          <label class="flex items-center justify-between gap-3 pt-1">
-            <span class="text-sm text-gray-700">
-              Notify cast by email
-              <% if @cancel_notifiable_count.to_i.zero? %><span class="block text-xs text-gray-400">No cast members with email to notify</span><% end %>
-            </span>
-            <span class="relative inline-flex items-center <%= @cancel_notifiable_count.to_i.positive? ? 'cursor-pointer' : 'opacity-50' %>">
-              <input type="checkbox" name="notify_cast" value="1" <%= 'disabled' if @cancel_notifiable_count.to_i.zero? %> class="sr-only peer">
-              <div class="w-11 h-6 bg-gray-200 peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-            </span>
-          </label>
+          <p class="text-sm text-gray-600" data-cancel-tell-next>
+            <% if @cancel_notifiable_count.to_i.positive? %>
+              Next you'll tell its cast and staff, and see the message first.
+            <% else %>
+              If anyone is scheduled to work it, you'll tell them next, and see the message first.
+            <% end %>
+          </p>
         </div>
         <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
           <%= render "shared/button", text: "Keep it", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>

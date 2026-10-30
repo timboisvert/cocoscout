@@ -1,0 +1,57 @@
+<% content_for :title, "Tell people" %>
+
+<%#
+  Tell people (docs/show_change_notices_plan.md): what changed, then a send
+  for each group touched (the cast and the staff of dates that are off, and
+  of dates that moved), each seen and edited before it goes. Not now leaves
+  them waiting (Home says so); Nobody needs telling closes it.
+%>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Home", manage_path ] ],
+    text: "Tell people",
+    links: []
+  } %>
+
+  <div class="max-w-3xl space-y-5">
+    <div class="bg-white border border-gray-200 rounded-xl" data-show-changes>
+      <%= render "shared/section_heading", title: @changes.one? ? "What changed" : "What changed (#{@changes.size} dates)" %>
+      <ul class="divide-y divide-gray-100">
+        <% @changes.each do |change| %>
+          <li class="px-6 py-3 flex flex-wrap items-baseline gap-x-3 gap-y-1" data-show-change="<%= change.id %>">
+            <% tone, word = case change.kind
+                            when "canceled" then [ "bg-red-50 text-red-700 border-red-200", "Canceled" ]
+                            when "removed" then [ "bg-gray-100 text-gray-700 border-gray-200", "Taken off" ]
+                            else [ "bg-amber-50 text-amber-800 border-amber-200", change.booking_only? ? "Booking moved" : "Moved" ]
+                            end %>
+            <span class="text-[11px] font-semibold rounded-full border px-2 py-0.5 <%= tone %>"><%= word %></span>
+            <span class="text-sm font-medium text-gray-900"><%= change.show_label %></span>
+            <% if change.moved? && change.now_starts_at %>
+              <span class="text-sm text-gray-600">→ <%= change.now_starts_at.strftime("%a, %b %-d, %-l:%M %p") %></span>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+
+    <% if @sections.empty? %>
+      <%= render "shared/alert_panel", eyebrow: "All told", headline: "Everyone has been told.",
+            body: "Nobody on #{@changes.one? ? 'this date' : 'these dates'} is waiting to hear." %>
+    <% else %>
+      <% @sections.each do |section| %>
+        <%= render "manage/show_changes/section", section: section, notices: @notices, batch: params[:batch] %>
+      <% end %>
+
+      <div class="flex flex-wrap items-center gap-3 pt-1">
+        <%= link_to manage_path do %>
+          <%= render "shared/button", text: "Not now", variant: "secondary", size: "medium" %>
+        <% end %>
+        <%= render "shared/button", text: "Nobody needs telling", variant: "secondary", size: "medium",
+              path: manage_close_show_changes_path(params[:batch]), method: :post %>
+        <p class="text-xs text-gray-500 w-full sm:w-auto">Not now keeps them on Home as not told. Nobody needs telling closes it.</p>
+      </div>
+    <% end %>
+  </div>
+</div>

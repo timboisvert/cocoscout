@@ -1,0 +1,23 @@
+<%# Contract page: dates on this contract canceled, taken off or moved whose
+    cast or staff haven't been told yet, each batch with its Tell them
+    (docs/show_change_notices_plan.md). Gone once everyone's told or the
+    manager says nobody needs telling.
+
+    Locals:
+      changes — open ShowChanges for this contract still waiting %>
+<% if changes.present? %>
+  <%
+    batches = changes.group_by(&:batch)
+    people = changes.sum { |c| c.untold_cast_ids.size + c.untold_staff_ids.size }
+  %>
+  <div data-untold-changes>
+    <%= render "shared/alert_panel",
+          eyebrow: "Not told yet",
+          headline: changes.map { |c| c.show_label.split(" · ").last }.uniq.to_sentence,
+          body: "#{pluralize(people, 'person')} on #{changes.one? ? 'this date' : 'these dates'} #{people == 1 ? "hasn't" : "haven't"} heard it's #{changes.all?(&:moved?) ? 'moved' : (changes.all?(&:off?) ? 'off' : 'changed')}.",
+          actions: batches.keys.map.with_index { |batch, i|
+            { text: batches.size > 1 ? "Tell them (#{i + 1})" : "Tell them", variant: "primary", size: "small", type: :link,
+              path: manage_show_changes_path(batch) }
+          } %>
+  </div>
+<% end %>

@@ -10,7 +10,7 @@
   staffing = @home.staffing_days[day] || []
   busy_day = ->(d) { @range.cover?(d) ? @home.busy?(d) : @show_dates.include?(d) }
   sold = rows.sum { |r| r.tickets&.stats&.sold.to_i }
-  needing = rows.count { |r| [ home_ticket_chip(r.tickets), home_staffing_chip(r.staffing), home_cast_chip(r.cast) ].compact.any? { |t, _s, _l| t.in?(%i[warn bad]) } }
+  needing = rows.count { |r| [ home_ticket_chip(r.tickets), home_staffing_chip(r.staffing), home_cast_chip(r.cast), (r.told&.anyone_untold? ? [ :warn ] : nil) ].compact.any? { |t, _s, _l| t.in?(%i[warn bad]) } }
 %>
 <div class="sm:hidden space-y-3" data-home-day="<%= day.iso8601 %>"
      data-controller="day-swipe"

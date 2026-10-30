@@ -211,6 +211,12 @@ class Show < ApplicationRecord
   # Nullify primary_show_id references before destruction to avoid FK constraint errors
   before_destroy :nullify_primary_show_references
 
+  # Canceled, taken away or moved: who it touches is recorded, so they can be
+  # told (ShowChanges; docs/show_change_notices_plan.md). Removal is read
+  # first, before the cast assignments go with the show.
+  before_destroy :record_show_removal, prepend: true
+  after_update :record_show_change, if: -> { saved_change_to_canceled? || saved_change_to_date_and_time? }
+
   # Clear assignments when toggling custom roles (unless migration is handling it)
   attr_accessor :skip_assignment_clear_on_role_toggle
   before_save :clear_assignments_on_custom_roles_toggle, if: :should_clear_assignments_on_toggle?
@@ -1201,5 +1207,18 @@ class Show < ApplicationRecord
   # Determine if we should clear assignments when toggling custom roles
   def should_clear_assignments_on_toggle?
     use_custom_roles_changed? && !skip_assignment_clear_on_role_toggle
+  end
+
+  def record_show_removal
+    ShowChanges.record_removal(self)
+  end
+
+  def record_show_change
+    if saved_change_to_canceled?
+      canceled? ? ShowChanges.record_cancel(self) : ShowChanges.close_cancel(self)
+    elsif saved_change_to_date_and_time?
+      was = date_and_time_before_last_save
+      ShowChanges.record_move(self, was_starts_at: was, was_ends_at: was + (ends_at - date_and_time))
+    end
   end
 end

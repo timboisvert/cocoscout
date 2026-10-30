@@ -267,17 +267,10 @@ namespace :communications do
     # ============================================
     # SHOWS (cancellations, vacancies)
     # ============================================
-    show_canceled: {
-      name: "Show Canceled",
-      category: :shows,
-      channel: :both,
-      mailer: "Manage::ShowMailer#canceled_notification",
-      service: "ShowNotificationService",
-      template_key: "show_canceled",
-      description: "Notify cast of show cancellation",
-      callers: [ "ShowNotificationService.send_cancellation_notification" ],
-      variables: %w[recipient_name production_name event_type event_date show_name location]
-    },
+    # A show canceled, taken away or moved (show_canceled, show_moved,
+    # shift_canceled, shift_moved) is told through ShowChangeNotices with
+    # ContentTemplateService.deliver and ShowChangeMailer#notice, like the
+    # payout-run notices, so it isn't wired through this registry.
     vacancy_invitation: {
       name: "Vacancy Invitation",
       category: :shows,

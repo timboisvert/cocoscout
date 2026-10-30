@@ -21,11 +21,12 @@ RSpec.describe "Show Danger Zone", type: :request do
 
     expect(response.body).to include('id="danger-cancel-modal"')
     expect(response.body).to include('id="danger-delete-modal"')
-    expect(response.body).to include("Notify cast by email")
+    # Telling the cast and staff comes next, on Tell people (no switch here).
+    expect(Nokogiri::HTML(response.body).at_css("#danger-cancel-modal [data-cancel-tell-next]")).to be_present
   end
 
   it "cancels the show from the cancel modal form" do
-    patch manage_cancel_show_path(production, show), params: { scope: "this", notify_cast: "0" }
+    patch manage_cancel_show_path(production, show), params: { scope: "this" }
 
     expect(response).to have_http_status(:see_other)
     expect(show.reload.canceled).to be(true)

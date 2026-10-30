@@ -17,6 +17,10 @@ class SpaceRental < ApplicationRecord
   validate :event_times_within_rental
   validate :location_in_contract_organization, if: :will_save_change_to_location_id?
 
+  # The room's time moved: the staff on shifts made for the booking are told
+  # (ShowChanges). A show moving inside it records its own change.
+  after_update :record_booking_move, if: -> { saved_change_to_starts_at? || saved_change_to_ends_at? }
+
   scope :upcoming, -> { where("starts_at >= ?", Time.current).order(:starts_at) }
   scope :past, -> { where("ends_at < ?", Time.current).order(starts_at: :desc) }
   scope :confirmed, -> { where(confirmed: true) }
@@ -168,5 +172,9 @@ class SpaceRental < ApplicationRecord
     return relation if location_space_id.blank?
 
     relation.where(location_space_id: [ location_space_id, nil ])
+  end
+
+  def record_booking_move
+    ShowChanges.record_booking_move(self, was_starts_at: starts_at_before_last_save, was_ends_at: ends_at_before_last_save)
   end
 end

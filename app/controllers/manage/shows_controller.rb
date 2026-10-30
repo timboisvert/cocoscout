@@ -790,6 +790,8 @@ module Manage
         group.group_memberships.each { |gm| all_person_ids << gm.person_id }
       end
       @people_with_email = Person.where(id: all_person_ids.to_a).includes(:user).select { |p| p.user.present? }
+      # Who's on its shifts, for the line saying they're told next.
+      @staff_count = ShowChanges.staff_entries(ShowChanges.shifts_for(@show, "canceled")).map { |e| e["person_id"] }.uniq.size
 
       # Count of this show + future shows in the series (for "this and future" option)
       if @show.recurring?
@@ -816,23 +818,18 @@ module Manage
     def cancel_show
       scope = params[:scope] || "this"
       event_label = @show.event_type.titleize
-      notify_cast = params[:notify_cast] == "1"
-      role_categories = params[:role_categories]&.reject(&:blank?)
 
       if scope == "all" && @show.recurring?
         # Cancel all occurrences in the recurrence group
         shows_to_cancel = @show.recurrence_group.where(canceled: false).to_a
         count = @show.recurrence_group.update_all(canceled: true)
+        # update_all skips the show's own callbacks: record what was canceled here.
+        shows_to_cancel.each { |show| ShowChanges.record_cancel(show) }
         dropped = drop_contract_payments_for(shows_to_cancel)
         refunding = cancel_ticket_sales_for(shows_to_cancel)
         students = tell_course_students_for(shows_to_cancel)
 
-        # Send notifications if requested (uses template automatically)
-        if notify_cast
-          send_cancellation_notifications(shows_to_cancel, nil, nil, role_categories)
-        end
-
-        redirect_to manage_production_shows_path(@production),
+        redirect_to after_cancel_path,
                     notice: "Successfully canceled #{count} #{event_label.pluralize.downcase}#{cancellation_money_note(dropped)}#{ticket_refund_note(refunding)}#{students_note(students)}",
                     status: :see_other
       elsif scope == "this_and_future" && @show.recurring?
@@ -843,15 +840,12 @@ module Manage
         count = @show.recurrence_group
                      .where("date_and_time >= ?", @show.date_and_time)
                      .update_all(canceled: true)
+        shows_to_cancel.each { |show| ShowChanges.record_cancel(show) }
         dropped = drop_contract_payments_for(shows_to_cancel)
         refunding = cancel_ticket_sales_for(shows_to_cancel)
         students = tell_course_students_for(shows_to_cancel)
 
-        if notify_cast
-          send_cancellation_notifications(shows_to_cancel, nil, nil, role_categories)
-        end
-
-        redirect_to manage_production_shows_path(@production),
+        redirect_to after_cancel_path,
                     notice: "Successfully canceled #{count} #{event_label.pluralize.downcase}#{cancellation_money_note(dropped)}#{ticket_refund_note(refunding)}#{students_note(students)}",
                     status: :see_other
       else
@@ -861,15 +855,17 @@ module Manage
         refunding = cancel_ticket_sales_for([ @show ])
         students = tell_course_students_for([ @show ])
 
-        # Send notifications if requested (uses template automatically)
-        if notify_cast
-          send_cancellation_notifications([ @show ], nil, nil, role_categories)
-        end
-
-        redirect_to manage_production_shows_path(@production),
+        redirect_to after_cancel_path,
                     notice: "#{event_label} was successfully canceled#{cancellation_money_note(dropped)}#{ticket_refund_note(refunding)}#{students_note(students)}",
                     status: :see_other
       end
+    end
+
+    # Where a cancel lands: telling its cast and staff when it touched anyone
+    # (ShowChanges recorded them), else the production's shows.
+    def after_cancel_path
+      batch = Current.show_change_batch
+      batch && ShowChange.exists?(batch: batch) ? manage_show_changes_path(batch) : manage_production_shows_path(@production)
     end
 
     # Its ticket sales stop too, and, when the manager chose to, every buyer is
@@ -1794,74 +1790,6 @@ module Manage
 
     # Send cancellation notification emails to cast members
     # role_categories: optional array of category strings to filter by (e.g., ["performing", "technical"])
-    def send_cancellation_notifications(shows, email_subject, email_body, role_categories = nil)
-      # Filter out past shows - no need to notify about cancellation of past events
-      shows = shows.select { |show| show.date_and_time >= Time.current }
-      return if shows.empty?
-
-      # Collect all unique people from all shows
-      all_person_ids = Set.new
-
-      shows.each do |show|
-        # Build base query for assignments
-        assignments = show.show_person_role_assignments
-
-        # Filter by role categories if specified
-        if role_categories.present?
-          assignments = assignments.joins(:role).where(roles: { category: role_categories })
-        end
-
-        # People directly assigned
-        assignments.where(assignable_type: "Person").pluck(:assignable_id).each do |id|
-          all_person_ids << id
-        end
-
-        # People in groups assigned
-        group_ids = assignments.where(assignable_type: "Group").pluck(:assignable_id)
-        GroupMembership.where(group_id: group_ids).pluck(:person_id).each do |id|
-          all_person_ids << id
-        end
-      end
-
-      return if all_person_ids.empty?
-
-      # Get people with user accounts (they can receive emails)
-      people = Person.where(id: all_person_ids.to_a).includes(:user).select { |p| p.user.present? }
-
-      # Create batch if sending to multiple people
-      email_batch = nil
-      if people.size > 1
-        email_batch = EmailBatch.create!(
-          user: Current.user,
-          subject: email_subject || ContentTemplateService.render_subject("show_canceled", { production_name: @production.name }),
-          recipient_count: people.size,
-          sent_at: Time.current
-        )
-      end
-
-      messages_sent = 0
-      emails_sent = 0
-
-      people.each do |person|
-        # If email_body is provided, personalize it; otherwise let the service use the template
-        personalized_body = email_body&.gsub("[Recipient Name]", person.name)
-
-        result = ShowNotificationService.send_cancellation_notification(
-          person: person,
-          show: shows.first, # Use first show for subject line context
-          production: @production,
-          sender: Current.user,
-          body: personalized_body,
-          subject: email_subject,
-          email_batch_id: email_batch&.id
-        )
-        messages_sent += result[:messages_sent]
-        emails_sent += result[:emails_sent]
-      end
-
-      Rails.logger.info "[Shows] Sent cancellation: #{messages_sent} messages, #{emails_sent} emails"
-    end
-
     # Everything the reschedule preview and commit share: which events go,
     # which stay, and the dates that replace them. Returns { error: } when the
     # inputs don't make a plan.

@@ -1568,6 +1568,12 @@ Rails.application.routes.draw do
     post   "staffing/shifts/:id/split",           to: "staffing/shifts#split",           as: "split_staffing_shift"
     post   "staffing/shifts/:id/merge_with_next", to: "staffing/shifts#merge_with_next", as: "merge_with_next_staffing_shift"
     post   "staffing/shifts/:id/merge",           to: "staffing/shifts#merge",           as: "merge_staffing_shift"
+    # A show canceled, taken away or moved: tell its cast and staff
+    # (docs/show_change_notices_plan.md).
+    post "show-changes/canceled/:show_id", to: "show_changes#for_canceled_show", as: "tell_canceled_show"
+    get  "show-changes/:batch",            to: "show_changes#show",              as: "show_changes"
+    post "show-changes/:batch/tell",       to: "show_changes#tell",              as: "tell_show_changes"
+    post "show-changes/:batch/close",      to: "show_changes#close",             as: "close_show_changes"
     # Legacy /staffing/schedule URLs redirect to the scheduling sub-section.
     get    "staffing/schedule", to: redirect("/manage/staffing/scheduling")
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_29_170000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_30_140100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2826,6 +2826,47 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_170000) do
     t.index ["show_id"], name: "index_show_cast_notifications_on_show_id"
   end
 
+  create_table "show_change_notices", force: :cascade do |t|
+    t.bigint "show_change_id", null: false
+    t.bigint "person_id", null: false
+    t.string "audience", null: false
+    t.bigint "sent_by_user_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["person_id"], name: "index_show_change_notices_on_person_id"
+    t.index ["sent_by_user_id"], name: "index_show_change_notices_on_sent_by_user_id"
+    t.index ["show_change_id", "person_id", "audience"], name: "idx_show_change_notices_unique", unique: true
+    t.index ["show_change_id"], name: "index_show_change_notices_on_show_change_id"
+  end
+
+  create_table "show_changes", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "production_id"
+    t.bigint "show_id"
+    t.bigint "contract_id"
+    t.bigint "changed_by_user_id"
+    t.string "batch", null: false
+    t.string "kind", null: false
+    t.boolean "booking_only", default: false, null: false
+    t.string "show_label", null: false
+    t.datetime "was_starts_at"
+    t.datetime "was_ends_at"
+    t.datetime "now_starts_at"
+    t.datetime "now_ends_at"
+    t.jsonb "cast", default: [], null: false
+    t.jsonb "staff", default: [], null: false
+    t.datetime "closed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["batch"], name: "index_show_changes_on_batch"
+    t.index ["changed_by_user_id"], name: "index_show_changes_on_changed_by_user_id"
+    t.index ["contract_id"], name: "index_show_changes_on_contract_id"
+    t.index ["organization_id", "closed_at"], name: "index_show_changes_on_organization_id_and_closed_at"
+    t.index ["organization_id"], name: "index_show_changes_on_organization_id"
+    t.index ["production_id"], name: "index_show_changes_on_production_id"
+    t.index ["show_id"], name: "index_show_changes_on_show_id"
+  end
+
   create_table "show_financials", force: :cascade do |t|
     t.bigint "show_id", null: false
     t.integer "ticket_count", default: 0
@@ -4569,6 +4610,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_29_170000) do
   add_foreign_key "show_availabilities", "shows"
   add_foreign_key "show_cast_notifications", "roles"
   add_foreign_key "show_cast_notifications", "shows"
+  add_foreign_key "show_change_notices", "people", on_delete: :cascade
+  add_foreign_key "show_change_notices", "show_changes", on_delete: :cascade
+  add_foreign_key "show_change_notices", "users", column: "sent_by_user_id", on_delete: :nullify
+  add_foreign_key "show_changes", "contracts", on_delete: :nullify
+  add_foreign_key "show_changes", "organizations", on_delete: :cascade
+  add_foreign_key "show_changes", "productions", on_delete: :nullify
+  add_foreign_key "show_changes", "shows", on_delete: :nullify
+  add_foreign_key "show_changes", "users", column: "changed_by_user_id", on_delete: :nullify
   add_foreign_key "show_financials", "shows"
   add_foreign_key "show_payout_line_items", "show_payouts"
   add_foreign_key "show_payout_line_items", "users", column: "manually_paid_by_id"

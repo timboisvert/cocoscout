@@ -266,6 +266,10 @@ module Manage
       @productions = [ @contract.production ].compact
       # What removed dates left to do (tickets, staff), until it's done.
       @date_removal_follow_up = ContractDateRemovalImpact.follow_up(@contract)
+      # Dates changed on this contract whose cast or staff haven't been told.
+      scope = ShowChange.open.where(contract_id: @contract.id)
+      scope = scope.or(ShowChange.open.where(production_id: @contract.production_id)) if @contract.production_id
+      @untold_changes = scope.includes(:notices).order(:was_starts_at).select(&:waiting?)
     end
 
     def new

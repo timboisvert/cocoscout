@@ -12,7 +12,15 @@
 # Each row's :tickets, :staffing and :cast is nil when that part doesn't
 # apply to the organization, so the page draws nothing for it.
 class HomeWeek
-  Row = Data.define(:show, :signups, :tickets, :staffing, :cast)
+  Row = Data.define(:show, :signups, :tickets, :staffing, :cast, :told)
+  # A canceled show, or one moved with people not told yet: who's been told
+  # (ShowChanges; docs/show_change_notices_plan.md). change is nil for a show
+  # canceled before changes were recorded (Tell them now makes one).
+  Told = Data.define(:show, :kind, :change, :cast_ids, :cast_untold, :staff_ids, :staff_untold) do
+    def cast_untold_count = cast_untold.size
+    def staff_untold_count = staff_untold.size
+    def anyone_untold? = cast_untold.any? || staff_untold.any?
+  end
   # A show taking sign-ups (an open mic): who's registered, of how many spots.
   Signups = Data.define(:instance, :count, :capacity, :queued) do
     def form = instance.sign_up_form
@@ -51,6 +59,7 @@ class HomeWeek
     load_listings
     load_signups
     load_cast
+    load_told
   end
 
   def tickets_on? = @pro_manager && @listings.any?
@@ -125,7 +134,8 @@ class HomeWeek
   private
 
   def row_for(show)
-    Row.new(show: show, signups: signups_for(show), tickets: tickets_for(show), staffing: staffing_for(show), cast: cast_for(show))
+    Row.new(show: show, signups: signups_for(show), tickets: tickets_for(show), staffing: staffing_for(show), cast: cast_for(show),
+            told: told_for(show))
   end
 
   # --- Sign-ups -----------------------------------------------------------
@@ -201,6 +211,7 @@ class HomeWeek
   # when the organization has no per-show roles.
   def staffing_for(show)
     return nil unless staffing_on? && @per_show_roles.any?
+    return nil if show.canceled # its row says whether the staff were told (told_for)
 
     day_shifts = (@shifts_by_day[show.date_and_time.to_date] || []).select { |s| s.house_role&.show_specific? }
     mine = day_shifts.select do |shift|
@@ -245,6 +256,50 @@ class HomeWeek
     }
   end
 
+  # --- Telling people --------------------------------------------------------
+
+  def load_told
+    ids = @shows.map(&:id)
+    @changes_by_show = ShowChange.where(show_id: ids).includes(:notices).order(:created_at).group_by(&:show_id)
+    names = @changes_by_show.values.flatten.flat_map { |c| c.cast_person_ids + c.staff_person_ids }
+    @people_by_id = Person.where(id: names.uniq).index_by(&:id)
+  end
+
+  # A canceled show still to come: who was told it's off (or, canceled before
+  # changes were recorded, everyone on it, untold). A moved show: who's still
+  # to hear, while anyone is. Staff only where Staffing is on (Pro).
+  def told_for(show)
+    changes = @changes_by_show[show.id] || []
+    if show.canceled
+      return nil if show.ends_at < Time.current
+
+      change = changes.reverse.find { |c| c.kind == "canceled" }
+      return told_from(show, change) if change
+
+      cast = ShowChanges.cast_entries(show).map { |e| e["person_id"] }
+      staff = staffing_on? ? ShowChanges.staff_entries(ShowChanges.shifts_for(show, "canceled")).map { |e| e["person_id"] }.uniq : []
+      return nil if cast.empty? && staff.empty?
+
+      Told.new(show: show, kind: "canceled", change: nil, cast_ids: cast, cast_untold: names_for(cast, preload: true),
+               staff_ids: staff, staff_untold: names_for(staff, preload: true))
+    else
+      change = changes.reverse.find { |c| c.moved? && c.waiting? }
+      change && told_from(show, change)
+    end
+  end
+
+  def told_from(show, change)
+    closed = change.closed_at.present?
+    Told.new(show: show, kind: change.kind, change: change,
+             cast_ids: change.cast_person_ids, cast_untold: closed ? [] : names_for(change.untold_cast_ids),
+             staff_ids: change.staff_person_ids, staff_untold: closed ? [] : names_for(change.untold_staff_ids))
+  end
+
+  def names_for(ids, preload: false)
+    people = preload ? Person.where(id: ids).index_by(&:id) : @people_by_id
+    ids.filter_map { |id| people[id]&.name }
+  end
+
   # --- Cast ---------------------------------------------------------------
 
   def load_cast
@@ -268,6 +323,8 @@ class HomeWeek
   end
 
   def cast_for(show)
+    return nil if show.canceled # its row says whether the cast were told (told_for)
+
     roles = @roles_by_show.fetch(show.id, [])
     assignments = @assignments_by_show.fetch(show.id, [])
     return nil if roles.empty? && assignments.empty? && @vacancies_by_show[show.id].empty?

@@ -47,6 +47,7 @@
     <main class="px-4 pt-3 pb-8 overflow-x-hidden" data-controller="bridge--form">
       <div id="flash-messages"></div>
       <%= render "shared/navigation/mode_switch_notice" %>
+      <%= render "shared/navigation/show_changes_notice" %>
       <%= page_frame_tag do %>
         <%= yield %>
       <% end %>

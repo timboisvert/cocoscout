@@ -34,6 +34,9 @@ module Manage
     before_action :require_paid_feature!, if: -> { Current.user.present? }
 
     before_action :note_mode_switch
+    # A show canceled, taken away or moved by this request: the next page
+    # offers Tell people (ShowChanges; docs/show_change_notices_plan.md).
+    after_action :offer_tell_people
     before_action :track_last_dashboard
     before_action :show_manage_sidebar
 
@@ -298,6 +301,15 @@ module Manage
     end
 
     private
+
+    def offer_tell_people
+      batch = Current.show_change_batch
+      return unless batch && response.redirect?
+      return if response.location.to_s.include?("/manage/show-changes/")
+      return unless ShowChange.exists?(batch: batch)
+
+      flash[:show_changes_batch] = batch
+    end
 
     def show_manage_sidebar
       @show_manage_sidebar = true

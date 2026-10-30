@@ -1,0 +1,23 @@
+<%#
+  Dates just canceled, taken away or moved, with cast or staff who haven't
+  been told: the page after the change offers Tell people
+  (ManageController#offer_tell_people; docs/show_change_notices_plan.md).
+%>
+<% batch = flash[:show_changes_batch] %>
+<% changes = batch && Current.user ? ShowChange.where(batch: batch).to_a : [] %>
+<% if changes.any? %>
+  <%
+    counts = changes.group_by(&:kind).transform_values(&:size)
+    said = [ ("canceled #{pluralize(counts['canceled'], 'date')}" if counts['canceled']),
+             ("took #{pluralize(counts['removed'], 'date')} off" if counts['removed']),
+             ("moved #{pluralize(counts['moved'], 'date')}" if counts['moved']) ].compact.to_sentence
+  %>
+  <div class="mb-3 rounded-xl border border-pink-200 bg-pink-50 px-4 py-3 flex flex-wrap items-center gap-3" data-show-changes-notice>
+    <p class="min-w-0 flex-1 text-sm text-gray-800">
+      You <%= said %>. <strong class="text-gray-900">The cast and staff haven't been told.</strong>
+    </p>
+    <%= link_to manage_show_changes_path(batch), data: { turbo_frame: "_top" } do %>
+      <%= render "shared/button", text: "Tell people", variant: "primary", size: "small" %>
+    <% end %>
+  </div>
+<% end %>

@@ -73,6 +73,16 @@ module HomeHelper
     end
   end
 
+  # A canceled or moved show: were its cast (or staff) told? nil when it had
+  # none (docs/show_change_notices_plan.md).
+  def home_told_chip(told, audience)
+    total, untold = audience == :cast ? [ told.cast_ids.size, told.cast_untold_count ] : [ told.staff_ids.size, told.staff_untold_count ]
+    return nil if total.zero?
+
+    word = audience == :cast ? "Cast" : "Staff"
+    untold.zero? ? [ :ok, "#{word} told", "#{word} told" ] : [ :warn, "#{untold} not told", "#{word} not told · #{untold}" ]
+  end
+
   def home_cast_chip(cast)
     return nil unless cast
 

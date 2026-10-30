@@ -25,6 +25,41 @@
       <% if show.canceled %><span class="ml-2 font-semibold text-red-700">Canceled</span><% end %>
     </div>
 
+    <%# Canceled, or moved with people still to hear: who's been told
+        (docs/show_change_notices_plan.md). %>
+    <% if (t = row.told) %>
+      <div class="<%= section %>" data-modal-told>
+        <div class="<%= heading %>">
+          <span class="text-sm font-semibold text-gray-900"><%= t.kind == "moved" ? "Telling people it moved" : "Telling people it's off" %></span>
+        </div>
+        <ul class="text-sm space-y-0.5">
+          <% [ [ "Cast", t.cast_ids, t.cast_untold ], ([ "Staff", t.staff_ids, t.staff_untold ] if @home.staffing_on?) ].compact.each do |word, ids, untold| %>
+            <% next if ids.empty? %>
+            <li class="<%= untold.any? ? 'text-amber-800' : 'text-gray-700' %>">
+              <span class="font-medium"><%= word %>:</span>
+              <% if untold.empty? %>
+                told
+              <% else %>
+                <%= ids.size - untold.size %> of <%= ids.size %> told · not yet <%= untold.to_sentence %>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+        <% if t.anyone_untold? %>
+          <div class="mt-2">
+            <% if t.change %>
+              <%= link_to manage_show_changes_path(t.change.batch), data: { turbo_frame: "_top" } do %>
+                <%= render "shared/button", text: "Tell them now", variant: "primary", size: "small" %>
+              <% end %>
+            <% else %>
+              <%= render "shared/button", text: "Tell them now", variant: "primary", size: "small",
+                    path: manage_tell_canceled_show_path(show), method: :post, form: { data: { turbo_frame: "_top" } } %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
     <% if (su = row.signups) %>
       <div class="<%= section %>">
         <div class="<%= heading %>">
