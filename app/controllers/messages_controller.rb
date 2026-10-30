@@ -29,10 +29,12 @@ class MessagesController < ApplicationController
     end
   end
 
-  # One inbox, one count: everything unread is read now.
+  # One inbox, one count: everything unread is read now. The page reloads
+  # in its frame (no notice: the list itself shows it, and a notice would
+  # wait for the next whole page).
   def mark_all_read
     Current.user.message_subscriptions.active.each(&:mark_read!)
-    redirect_to messages_path, notice: "All messages marked as read"
+    redirect_to messages_path
   end
 
   private

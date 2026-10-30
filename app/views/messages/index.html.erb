@@ -41,7 +41,8 @@
       actions << { icon: "mail", text: "Message a production", path: "#",
                    data: { controller: "modal", action: "click->modal#open", modal_id: "message-a-production" } }
     end
-    actions << { icon: "check", text: "Mark all read", path: read_messages_path, method: :post, variant: (@production_mode || contactable.any? ? "secondary" : "primary"),
+    actions << { icon: "check", text: "Mark all read", path: read_messages_path, method: :post,
+                 form: { data: { turbo_frame: "page" } }, variant: (@production_mode || contactable.any? ? "secondary" : "primary"),
                  badge: (@unread_count if @unread_count.to_i.positive?), disabled: @unread_count.to_i.zero? }
   %>
   <%= render "shared/module_header", title: "Messages", actions: actions %>

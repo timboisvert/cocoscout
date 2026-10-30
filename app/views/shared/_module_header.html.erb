@@ -27,7 +27,8 @@
       buttons: true   # optional: force the title-row buttons even with 3+ actions
 
   Action keys: icon, text, description (cards only), path, data, badge,
-  locked, feature, variant, method (:post, for a button).
+  locked, feature, variant, method (:post, for a button), form (attributes
+  for that button's form).
   Icons: shared/_module_header_icon.
 %>
 <% actions ||= [] %>
@@ -49,7 +50,7 @@
           <% end %>
           <%= render "shared/button", text: action[:text], badge: action[:badge].to_i.positive? ? action[:badge] : nil,
                 variant: action[:variant] || (i.zero? ? "primary" : "secondary"), size: "small", method: action[:method],
-                path: action[:path], data: action_data, disabled: action[:disabled] %>
+                path: action[:path], data: action_data, disabled: action[:disabled], form: action[:form] %>
         <% end %>
       </div>
     <% end %>

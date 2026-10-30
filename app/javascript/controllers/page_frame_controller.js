@@ -10,6 +10,13 @@ import { visitPage } from "controllers/lib/page_frame"
 // the address follows along. Anything that goes somewhere else loads the page
 // as usual, and so does a link or form marked data-page-frame="false".
 //
+// A form that changes something here and comes back to this page (Mark all
+// read) can load into the frame too: data-turbo-frame="page" on the form.
+//
+// Counts outside the frame (the Messages and Notifications icons, the app's
+// own bar through the menu bridge) are marked data-page-frame-refresh and are
+// swapped from each response, so they never go stale beside a fresh page.
+//
 // Scroll: a new page of results (a "page" param) or a control marked
 // data-page-frame-scroll="top" goes back to the top, like a page load would.
 //
@@ -137,8 +144,10 @@ export default class extends Controller {
 
     // turbo:before-fetch-response. Somewhere else after all (a redirect, a
     // signed-out session)? Then that page loads, whole.
+    // A form sent into the frame (data-turbo-frame="page") hears it on the form.
     fetched(event) {
-        if (event.target !== this.element) return
+        const form = event.target instanceof HTMLFormElement && event.target.getAttribute("data-turbo-frame") === this.element.id
+        if (event.target !== this.element && !form) return
         const response = event.detail.fetchResponse
         const url = new URL(response.location)
         if (url.pathname !== window.location.pathname) {
@@ -147,6 +156,22 @@ export default class extends Controller {
             return
         }
         this.nav.url = url
+        response.responseHTML?.then((html) => html && this.refreshOutside(html))
+    }
+
+    // The marked pieces outside the frame, from the page that came back.
+    refreshOutside(html) {
+        const incoming = new DOMParser().parseFromString(html, "text/html")
+        const outside = (doc) => [ ...doc.querySelectorAll("[data-page-frame-refresh]") ].filter((el) => !el.closest("turbo-frame#page"))
+        const fresh = outside(incoming)
+        const byKey = (key) => fresh.filter((el) => el.dataset.pageFrameRefresh === key)
+        const seen = {}
+        for (const current of outside(document)) {
+            const key = current.dataset.pageFrameRefresh
+            const index = seen[key] = (seen[key] ?? -1) + 1
+            const replacement = byKey(key)[index]
+            if (replacement && replacement.outerHTML !== current.outerHTML) current.replaceWith(document.importNode(replacement, true))
+        }
     }
 
     // turbo:before-frame-render

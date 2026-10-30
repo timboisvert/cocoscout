@@ -4,7 +4,8 @@
     (bridge/push_controller.js). Rendered by every layout the app can land on. %>
 <% if turbo_native_app? %>
   <% person = native_person %>
-  <%= tag.div hidden: true, data: { controller: "bridge--menu", "bridge--menu-menu-value": native_menu.to_json,
+  <%# Swapped after each page-frame load too, so the app's counts keep up. %>
+  <%= tag.div hidden: true, data: { controller: "bridge--menu", page_frame_refresh: "native-menu", "bridge--menu-menu-value": native_menu.to_json,
                                     "bridge--menu-person-value": (person.to_json if person),
                                     "bridge--menu-tap-to-pay-value": (native_tap_to_pay.to_json if native_tap_to_pay),
                                     "bridge--menu-nav-value": (native_nav&.to_json) } %>

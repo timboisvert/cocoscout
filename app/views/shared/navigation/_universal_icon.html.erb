@@ -4,7 +4,7 @@
 <% bar = local_assigns[:size] == :bar %>
 <% label = kind == :messages ? "Messages" : "Notifications" %>
 <%= link_to path, class: "relative flex items-center justify-center flex-shrink-0 transition-colors #{bar ? 'w-11 h-11 text-gray-700' : "w-[34px] h-[34px] rounded-[10px] border #{active ? 'border-pink-300 bg-pink-50 text-pink-600' : 'border-gray-200 bg-white text-gray-700 hover:border-pink-300 hover:text-pink-600'}"}",
-      aria: { label: count.to_i.positive? ? "#{label}, #{count} unread" : label, current: (active ? "page" : nil) }, data: { universal_icon: kind } do %>
+      aria: { label: count.to_i.positive? ? "#{label}, #{count} unread" : label, current: (active ? "page" : nil) }, data: { universal_icon: kind, page_frame_refresh: "icon-#{kind}" } do %>
   <% if kind == :messages %>
     <svg class="<%= bar ? 'w-[22px] h-[22px]' : 'w-[18px] h-[18px]' %>" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
   <% else %>
