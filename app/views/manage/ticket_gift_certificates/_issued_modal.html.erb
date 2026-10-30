@@ -23,6 +23,7 @@
         The code is the only thing a buyer needs: they type it on the checkout page, under the total.
       </p>
       <div class="flex items-center justify-end gap-2">
+        <%= render "shared/button", text: "Print it", variant: "secondary", size: "medium", path: manage_print_ticket_gift_certificate_path(certificate) %>
         <%= render "shared/button", text: "Copy code", variant: "secondary", size: "medium", type: :button, data: { action: "click->clipboard#copy", clipboard_target: "button" } %>
         <%= render "shared/button", text: "Done", variant: "primary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
       </div>

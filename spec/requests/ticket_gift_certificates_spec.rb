@@ -90,6 +90,67 @@ RSpec.describe "Gift certificates", type: :request do
     end
   end
 
+  # One certificate's page: print it, or send it to someone after it was
+  # issued, the email seen first (Tim, 2026-10-30).
+  describe "one certificate" do
+    before { sign_in_manager }
+
+    let!(:certificate) { org.ticket_gift_certificates.create!(amount_cents: 4_000, issued_by: manager, scope: "any", note: "Raffle prize") }
+
+    it "opens from the list and says what it is, with nobody on it yet" do
+      get manage_ticket_gift_certificates_path
+      link = Nokogiri::HTML(response.body).at_css("[data-gift-certificate-link='#{certificate.id}']")
+      expect(link["href"]).to eq(manage_ticket_gift_certificate_path(certificate))
+
+      get manage_ticket_gift_certificate_path(certificate)
+      page = Nokogiri::HTML(response.body)
+      expect(page.at_css("[data-gift-certificate]").text).to include("$40.00 gift certificate", certificate.code, "Any show", "Nobody yet", "Raffle prize")
+      expect(page.at_css("[data-gift-send]").text).to include("Send it to someone")
+    end
+
+    it "shows the email before it goes, then makes them who it's for and sends it" do
+      get manage_send_ticket_gift_certificate_path(certificate), params: { recipient_name: "Jo March", recipient_email: "JO@example.com" }
+      preview = Nokogiri::HTML(response.body).at_css("[data-gift-email-preview]")
+      expect(preview.text).to include("Jo March <jo@example.com>", "A gift certificate from Stars & Garters", "Hi Jo", certificate.code, "$40.00")
+      expect(certificate.reload.recipient_email).to be_nil # nothing changes on a preview
+
+      expect {
+        post manage_send_ticket_gift_certificate_path(certificate), params: { recipient_name: "Jo March", recipient_email: "jo@example.com" }
+      }.to have_enqueued_job(TicketGiftCertificateEmailJob)
+      expect(certificate.reload).to have_attributes(recipient_name: "Jo March", recipient_email: "jo@example.com")
+      perform_enqueued_jobs
+      expect(ActionMailer::Base.deliveries.last.to).to eq([ "jo@example.com" ])
+      expect(certificate.reload.emailed_at).to be_present
+
+      get manage_ticket_gift_certificate_path(certificate)
+      expect(Nokogiri::HTML(response.body).at_css("[data-gift-send]").text).to include("Send it again, or to someone else", "It went to jo@example.com")
+    end
+
+    it "says plainly when the name or email is missing, or the certificate can't be sent" do
+      get manage_send_ticket_gift_certificate_path(certificate), params: { recipient_name: "Jo March", recipient_email: "not an email" }
+      expect(response).to redirect_to(manage_ticket_gift_certificate_path(certificate))
+      expect(flash[:alert]).to include("doesn't look like an email address")
+
+      certificate.update!(voided_at: Time.current)
+      post manage_send_ticket_gift_certificate_path(certificate), params: { recipient_name: "Jo March", recipient_email: "jo@example.com" }
+      expect(flash[:alert]).to include("is voided")
+      expect(certificate.reload.recipient_email).to be_nil
+    end
+
+    it "prints with the value, who it's for, the code and where to spend it" do
+      certificate.update!(recipient_name: "Jo March")
+      get manage_print_ticket_gift_certificate_path(certificate)
+      page = Nokogiri::HTML(response.body).at_css("[data-gift-certificate-print]")
+      expect(page.text).to include("Stars & Garters", "Gift certificate", "$40.00", "For Jo March", certificate.code, "Good for any show", "enter the code at checkout")
+    end
+
+    it "keeps another organization's certificate out of reach" do
+      other = create(:organization, :pro, name: "Elsewhere").ticket_gift_certificates.create!(amount_cents: 1_000, scope: "any")
+      get manage_ticket_gift_certificate_path(other)
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
   describe "the checkout page" do
     let!(:certificate) { org.ticket_gift_certificates.create!(amount_cents: 5_000, recipient_name: "Dana Whitfield") }
     let!(:order) { start_checkout }

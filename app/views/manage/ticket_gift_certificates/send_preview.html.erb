@@ -1,0 +1,54 @@
+<% content_for :title, "Send #{@certificate.code}" %>
+<%#
+  The gift certificate email as it will arrive, to the name and address
+  typed on the certificate's page. Send makes them who it's for and sends it;
+  Change goes back. Nothing is sent from the page before this.
+%>
+<div class="w-full mb-10">
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Gift certificates", manage_ticket_gift_certificates_path ],
+                   [ @certificate.code, manage_ticket_gift_certificate_path(@certificate) ] ],
+    text: "Send it to #{@recipient_name}",
+    links: []
+  } %>
+
+  <div class="max-w-3xl space-y-5">
+    <div class="bg-white border border-gray-200 rounded-xl" data-gift-email-preview>
+      <%= render "shared/section_heading", title: "The email", intro: "This is what #{@recipient_name.split.first} will get. Nothing is sent until you press Send." %>
+      <dl class="divide-y divide-gray-100 text-sm border-b border-gray-200">
+        <div class="px-6 py-2.5 flex gap-4">
+          <dt class="w-20 flex-shrink-0 text-gray-500">To</dt>
+          <dd class="min-w-0 text-gray-900"><%= @recipient_name %> &lt;<%= @recipient_email %>&gt;</dd>
+        </div>
+        <div class="px-6 py-2.5 flex gap-4">
+          <dt class="w-20 flex-shrink-0 text-gray-500">From</dt>
+          <dd class="min-w-0 text-gray-900"><%= Current.organization.name %> via CocoScout<%= " (replies go to #{@email[:reply_to]})" if @email[:reply_to] %></dd>
+        </div>
+        <div class="px-6 py-2.5 flex gap-4">
+          <dt class="w-20 flex-shrink-0 text-gray-500">Subject</dt>
+          <dd class="min-w-0 font-medium text-gray-900"><%= @email[:subject] %></dd>
+        </div>
+      </dl>
+      <div class="px-6 py-5 prose prose-sm max-w-none text-gray-800" data-gift-email-body>
+        <%= @email[:body].html_safe %>
+      </div>
+    </div>
+
+    <% if @certificate.recipient_email.present? && @certificate.recipient_email != @recipient_email %>
+      <%= render "shared/alert_panel", tone: :amber, eyebrow: "It changes hands",
+            headline: "Now for #{@recipient_name}",
+            body: "It was for #{@certificate.recipient_email}. The code stays the same, so anyone who already has it can still use it. Void it and issue a new one if that's a problem." %>
+    <% end %>
+
+    <div class="flex flex-wrap items-center justify-end gap-3">
+      <%= link_to manage_ticket_gift_certificate_path(@certificate) do %>
+        <%= render "shared/button", text: "Change", variant: "secondary", size: "medium" %>
+      <% end %>
+      <%= form_with url: manage_send_ticket_gift_certificate_path(@certificate), method: :post do %>
+        <%= hidden_field_tag :recipient_name, @recipient_name %>
+        <%= hidden_field_tag :recipient_email, @recipient_email %>
+        <%= render "shared/button", text: "Send", variant: "primary", size: "medium", type: :submit %>
+      <% end %>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,98 @@
+<% content_for :title, "Gift certificate #{@certificate.code}" %>
+<%#
+  One gift certificate (Tim, 2026-10-30): what it's worth and what's left,
+  what it's good for, who it's for, and what it's paid for. Print it, send it
+  to someone (now, again, or to someone else: their name and email, the
+  email seen before it goes), or void it.
+%>
+<%
+  certificate = @certificate
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  tone = certificate.voided? ? "bg-gray-100 text-gray-500 line-through" : (certificate.spent? ? "bg-gray-100 text-gray-600" : "bg-pink-100 text-pink-700")
+  sendable = !certificate.voided? && !certificate.spent?
+%>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Gift certificates", manage_ticket_gift_certificates_path ] ],
+    text: certificate.code,
+    links: []
+  } %>
+
+  <div class="max-w-3xl space-y-5">
+    <div class="bg-white border border-gray-200 rounded-xl" data-gift-certificate="<%= certificate.id %>">
+      <%= render "shared/section_heading", title: "#{money.call(certificate.amount_cents)} gift certificate" do %>
+        <span class="inline-flex rounded-md px-1.5 py-0.5 text-xs font-medium <%= tone %>"><%= certificate.status_words %></span>
+      <% end %>
+      <dl class="divide-y divide-gray-100 text-sm">
+        <% [
+             [ "Code", tag.span(certificate.code, class: "font-mono font-semibold text-gray-900") ],
+             [ "Left to spend", money.call(certificate.voided? ? 0 : certificate.remaining_cents) ],
+             [ "Good for", certificate.scope == "any" ? "Any show" : certificate.good_for_words ],
+             [ "For", certificate.recipient_name.presence || tag.span("Nobody yet", class: "text-gray-500") ],
+             [ "Email", certificate.recipient_email.presence || tag.span("None yet", class: "text-gray-500") ],
+             ([ "Emailed", certificate.emailed_at.strftime("%b %-d, %Y at %-l:%M %p") ] if certificate.emailed_at),
+             ([ "Note", certificate.note ] if certificate.note.present?),
+             [ "Issued", "#{certificate.created_at.strftime('%b %-d, %Y')}#{" by #{certificate.issued_by.person&.name || certificate.issued_by.email_address}" if certificate.issued_by}" ],
+             ([ "Voided", "#{certificate.voided_at.strftime('%b %-d, %Y')}#{" by #{certificate.voided_by.person&.name || certificate.voided_by.email_address}" if certificate.voided_by}" ] if certificate.voided?)
+           ].compact.each do |label, value| %>
+          <div class="px-6 py-2.5 flex gap-4">
+            <dt class="w-32 flex-shrink-0 text-gray-500"><%= label %></dt>
+            <dd class="min-w-0 text-gray-900"><%= value %></dd>
+          </div>
+        <% end %>
+        <% if @orders.any? %>
+          <div class="px-6 py-2.5 flex gap-4">
+            <dt class="w-32 flex-shrink-0 text-gray-500">Spent on</dt>
+            <dd class="min-w-0 text-gray-900">
+              <%= safe_join(@orders.map { |order| link_to("Order #{order.code}", manage_ticket_order_path(order.id), class: "text-pink-700 hover:text-pink-800") }, ", ") %>
+            </dd>
+          </div>
+        <% end %>
+      </dl>
+    </div>
+
+    <% if sendable %>
+      <div class="bg-white border border-gray-200 rounded-xl" data-gift-send>
+        <%= render "shared/section_heading", title: certificate.emailed_at ? "Send it again, or to someone else" : "Send it to someone",
+              intro: certificate.emailed_at ? "It went to #{certificate.recipient_email} on #{certificate.emailed_at.strftime('%b %-d')}. The person below becomes who it's for." : "Who it's for: we email them the code and how to spend it. You'll see the email before it's sent." %>
+        <%= form_with url: manage_send_ticket_gift_certificate_path(certificate), method: :get, class: "px-6 py-5 space-y-4" do %>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="recipient_name" class="block text-sm font-medium text-gray-900 mb-1">Their name</label>
+              <%= text_field_tag :recipient_name, certificate.recipient_name, class: input_class, required: true, autocomplete: "off" %>
+            </div>
+            <div>
+              <label for="recipient_email" class="block text-sm font-medium text-gray-900 mb-1">Their email</label>
+              <%= email_field_tag :recipient_email, certificate.recipient_email, class: input_class, required: true, autocomplete: "off" %>
+            </div>
+          </div>
+          <div class="flex justify-end">
+            <%= render "shared/button", text: "See the email", variant: "primary", size: "medium", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <div class="bg-white border border-gray-200 rounded-xl" data-gift-print>
+      <%= render "shared/section_heading", title: "Print it", intro: "A page with the value, who it's for, the code and where to spend it, to hand over or put in a card." do %>
+        <%= render "shared/button", text: "Print view", variant: "secondary", size: "small", path: manage_print_ticket_gift_certificate_path(certificate) %>
+      <% end %>
+    </div>
+
+    <% if certificate.usable? %>
+      <div class="flex justify-end">
+        <%= render "shared/button", text: "Void this certificate", variant: "secondary", size: "small", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: "void-gift-certificate-#{certificate.id}" } %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<% if certificate.usable? %>
+  <%= render "shared/confirm_modal", id: "void-gift-certificate-#{certificate.id}", title: "Void #{certificate.code}?",
+        message: "It stops working at checkout, and its #{money.call(certificate.remaining_cents)} is gone. Orders it already paid for keep their tickets.",
+        confirm_text: "Void certificate", url: manage_ticket_gift_certificate_void_path(certificate), method: :patch %>
+<% end %>

@@ -3,10 +3,12 @@
 module Manage
   # Gift certificates (TicketGiftCertificate): the organization's list, and
   # issuing one — a value, who it's for, what it's good for — whose code the
-  # manager hands over or we email. Void stops a code that got out. Buyers
-  # spend them on the checkout page (TicketGiftCertificates).
+  # manager hands over or we email. Each has its own page: print it, or send
+  # it to someone later (their name and email, the email seen before it
+  # goes; Tim, 2026-10-30). Void stops a code that got out. Buyers spend them
+  # on the checkout page (TicketGiftCertificates).
   class TicketGiftCertificatesController < Manage::TicketingBaseController
-    before_action :set_certificate, only: :void
+    before_action :set_certificate, only: %i[show print send_preview send_to void]
 
     def index
       @certificates = Current.organization.ticket_gift_certificates.includes(:issued_by, :voided_by, scopes: :production)
@@ -37,6 +39,45 @@ module Manage
       redirect_to manage_ticket_gift_certificates_path, alert: e.record.errors.full_messages.to_sentence
     end
 
+    def show
+      @orders = TicketGiftCertificateRedemption.where(ticket_gift_certificate: @certificate, status: "redeemed")
+                                               .includes(:ticket_order).filter_map(&:ticket_order).uniq
+    end
+
+    # The certificate on paper, to hand over or mail.
+    def print
+      @profile = TicketingProfile.for(Current.organization)
+      render layout: "print"
+    end
+
+    # Send it to someone: the email as it will arrive, to that name and
+    # address, before anything is sent. A GET, so the preview renders
+    # (Turbo drops a 200 answer to a POST).
+    def send_preview
+      @recipient_name = params[:recipient_name].to_s.strip
+      @recipient_email = params[:recipient_email].to_s.strip.downcase
+      error = send_error(@recipient_name, @recipient_email)
+      return redirect_to(manage_ticket_gift_certificate_path(@certificate), alert: error) if error
+
+      # Who it's for, in memory only, so the greeting reads right; nothing
+      # changes until Send.
+      @certificate.recipient_name = @recipient_name
+      @email = TicketGiftCertificateMailer.rendered(@certificate)
+    end
+
+    # The certificate is now this person's: their name and email on it, and
+    # the email on its way.
+    def send_to
+      name = params[:recipient_name].to_s.strip
+      email = params[:recipient_email].to_s.strip.downcase
+      error = send_error(name, email)
+      return redirect_to(manage_ticket_gift_certificate_path(@certificate), alert: error) if error
+
+      @certificate.update!(recipient_name: name, recipient_email: email)
+      TicketGiftCertificateEmailJob.perform_later(@certificate.id)
+      redirect_to manage_ticket_gift_certificate_path(@certificate), notice: "Sending #{@certificate.code} to #{name} at #{email}."
+    end
+
     # A voided code stops working at checkout. Money already held by a
     # checkout in progress still settles; what's left is gone.
     def void
@@ -45,6 +86,16 @@ module Manage
     end
 
     private
+
+    def send_error(name, email)
+      return "#{@certificate.code} is voided, so there's nothing to send." if @certificate.voided?
+      return "#{@certificate.code} is used up, so there's nothing left to send." if @certificate.spent?
+      return "Add the name of the person it's for." if name.blank?
+      return "Add an email address to send it to." if email.blank?
+      return "#{email} doesn't look like an email address." unless email.match?(URI::MailTo::EMAIL_REGEXP)
+
+      nil
+    end
 
     def set_certificate
       @certificate = Current.organization.ticket_gift_certificates.find(params[:id])

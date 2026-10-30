@@ -1,0 +1,50 @@
+<% content_for :title, "Gift certificate #{@certificate.code}" %>
+<%#
+  A gift certificate on paper (Tim, 2026-10-30): the organization, the value,
+  who it's for, the code, what it's good for and where to spend it. The bar
+  above it doesn't print.
+%>
+<%
+  certificate = @certificate
+  organization = Current.organization
+  box_office = tickets_box_office_url(org: @profile.slug)
+%>
+<div class="print-container">
+  <div class="no-print mb-6 flex flex-wrap items-center justify-between gap-3">
+    <%= render "shared/button", text: "Back", variant: "secondary", size: "small", path: manage_ticket_gift_certificate_path(certificate) %>
+    <% if certificate.usable? %>
+      <%= render "shared/button", text: "Print", variant: "primary", size: "small", type: :button, onclick: "window.print()" %>
+    <% else %>
+      <span class="text-sm font-medium text-red-700"><%= certificate.voided? ? "This certificate is voided and won't work at checkout." : "This certificate is used up." %></span>
+    <% end %>
+  </div>
+
+  <div class="print-page">
+    <div class="rounded-2xl border-2 border-pink-300 px-10 py-12 text-center" data-gift-certificate-print>
+      <% if organization.logo.attached? && organization.logo.variable? %>
+        <%= image_tag organization.logo.variant(resize_to_limit: [ 240, 120 ]), alt: organization.name, class: "mx-auto mb-4 max-h-20 w-auto" %>
+      <% end %>
+      <div class="text-2xl coustard-regular text-gray-900"><%= organization.name %></div>
+      <div class="mt-6 text-xs font-semibold uppercase tracking-[0.25em] text-pink-600">Gift certificate</div>
+      <div class="mt-2 text-6xl font-bold tabular-nums text-gray-900"><%= number_to_currency(certificate.amount_cents / 100.0) %></div>
+      <% if certificate.recipient_name.present? %>
+        <div class="mt-4 text-lg text-gray-800">For <span class="font-semibold"><%= certificate.recipient_name %></span></div>
+      <% end %>
+      <% if certificate.note.present? %>
+        <div class="mt-2 text-base italic text-gray-600">“<%= certificate.note %>”</div>
+      <% end %>
+
+      <div class="mt-8 text-xs font-medium uppercase tracking-wider text-gray-500">Your code</div>
+      <div class="mt-1 inline-block rounded-lg border-2 border-dashed border-gray-300 px-6 py-3 font-mono text-2xl font-bold tracking-[0.15em] text-gray-900"><%= certificate.code %></div>
+
+      <p class="mt-8 text-sm text-gray-700">
+        Good for <%= certificate.scope == "any" ? "any show #{organization.name} sells tickets to" : certificate.good_for_words %>.
+      </p>
+      <p class="mt-2 text-sm text-gray-700">
+        Pick your tickets at <span class="font-medium text-gray-900"><%= box_office.sub(%r{\Ahttps?://}, "") %></span> and enter the code at checkout.
+        It pays as much of an order as it has; anything left stays on the code for next time.
+      </p>
+      <p class="mt-6 text-xs text-gray-400">Issued <%= certificate.created_at.strftime("%B %-d, %Y") %></p>
+    </div>
+  </div>
+</div>
