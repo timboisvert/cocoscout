@@ -43,7 +43,7 @@
               <% if untold.empty? %>
                 <span class="text-xs text-green-800">Notified (<%= pluralize(ids.size, "person") %>)</span>
               <% else %>
-                <span class="text-xs text-amber-900"><%= ids.size - untold.size %> of <%= ids.size %> notified · not yet <%= untold.to_sentence %></span>
+                <span class="text-xs text-amber-900"><%= ids.size - untold.size %> of <%= ids.size %> notified</span>
                 <div>
                   <% if t.change %>
                     <%= link_to manage_show_changes_path(t.change.batch, audience: audience), data: { turbo_frame: "_top" } do %>

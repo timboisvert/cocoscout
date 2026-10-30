@@ -6,7 +6,8 @@
 <div class="border-t border-gray-100" data-checkout-target="gift">
   <div class="<%= 'hidden' if applied %>" data-checkout-target="giftClosed">
     <div class="px-5 py-3 text-sm">
-      <button type="button" class="font-medium text-pink-700 hover:text-pink-800 cursor-pointer" data-action="checkout#openGift">Have a gift certificate?</button>
+      <%= render "shared/button", text: "Have a gift certificate?", variant: "outline-pink", size: "small", type: :button,
+            data: { action: "checkout#openGift" } %>
     </div>
   </div>
   <div class="hidden" data-checkout-target="giftOpen">

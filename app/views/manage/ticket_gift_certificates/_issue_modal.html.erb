@@ -71,8 +71,8 @@
                                   data: { gift_scope_target: "all", action: "change->gift-scope#toggleProduction" } %>
                             <span class="truncate"><span class="font-medium"><%= production.name %></span> <span class="text-xs text-gray-500">· <%= pluralize(listings.size, "date") %> on sale</span></span>
                           </label>
-                          <button type="button" class="text-xs font-medium text-pink-700 hover:text-pink-800 whitespace-nowrap cursor-pointer"
-                                  data-gift-scope-target="pick" data-action="click->gift-scope#toggleDates" data-total="<%= listings.size %>">All dates ▸</button>
+                          <%= render "shared/button", text: "All dates ▸", variant: "outline-pink", size: "xs", type: :button, classes: "flex-shrink-0",
+                                data: { gift_scope_target: "pick", action: "click->gift-scope#toggleDates", total: listings.size } %>
                         </div>
                         <div class="hidden mt-2 ml-7 space-y-1.5" data-gift-scope-target="dates">
                           <% listings.each do |listing| %>
