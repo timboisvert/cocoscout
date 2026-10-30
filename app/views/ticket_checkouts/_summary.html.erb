@@ -1,3 +1,23 @@
-<%# What the buyer is paying for, line by line. Rendered again (over JSON)
-    whenever they add or take off a product. Locals: order. %>
-<%= render "shared/checkout/summary", lines: checkout_summary_lines(order), total_cents: (order.ticket_purchase || order).total_cents %>
+<%# What the buyer is paying for, line by line, and, under the total, how
+    it's paid when a gift certificate covers some or all of it. Rendered
+    again (over JSON) whenever they add or take off a product, or apply or
+    remove a certificate. Locals: order. %>
+<%
+  paying = order.ticket_purchase || order
+  certificate = paying.ticket_gift_certificate
+  gift_cents = paying.gift_certificate_cents.to_i
+  tenders = nil
+  if certificate && gift_cents.positive?
+    label = safe_join([
+      "Gift certificate ",
+      content_tag(:span, certificate.code, class: "font-mono text-xs text-gray-600"),
+      " · ",
+      content_tag(:button, "Remove", type: "button", class: "font-medium text-pink-700 hover:text-pink-800 cursor-pointer",
+                           data: { action: "checkout#removeGift" })
+    ])
+    left_on_code = certificate.remaining_cents
+    tenders = { lines: [ [ label, -gift_cents ] ], due_cents: paying.card_cents,
+                note: (left_on_code.positive? ? "#{number_to_currency(left_on_code / 100.0)} stays on the certificate for next time." : nil) }
+  end
+%>
+<%= render "shared/checkout/summary", lines: checkout_summary_lines(order), total_cents: paying.total_cents, tenders: tenders %>

@@ -18,6 +18,9 @@ class ChartOfAccounts
     advance_ticket_sales: { code: "2200", name: "Tickets sold for upcoming shows", type: "liability" },
     advance_product_sales: { code: "2210", name: "Products sold for upcoming shows", type: "liability" },
     pass_credits_unused: { code: "2220", name: "Pass credits not yet used", type: "liability" },
+    # What gift certificates paid for tickets; their sale isn't recorded here
+    # yet (issued by hand, V1.3's Books will), so this runs negative until then.
+    gift_certificates_outstanding: { code: "2230", name: "Gift certificates outstanding", type: "liability" },
     tax_to_remit: { code: "2300", name: "Tax to pay the government", type: "liability" },
     owner_equity: { code: "3000", name: "Owner's equity", type: "equity" },
     retained_earnings: { code: "3100", name: "Retained earnings", type: "equity" },

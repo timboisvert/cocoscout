@@ -20,10 +20,17 @@ class TicketOrderRefund
   # face value, kept apart from the tickets' for the books.
   # repriced: the kept pass tickets that go back to their regular price
   # (TicketPassRepricing), and repriced_cents what that takes off the refund.
+  # gift_cents: the part that goes back on the gift certificate that paid it
+  # (TicketGiftCertificates); the card gets the rest, and the theater's
+  # balance only ever gave up the card's part.
   Quote = Data.define(:tickets, :items, :face_cents, :product_cents, :tax_cents, :fees_cents, :platform_fee_waived_cents, :amount_cents,
-                      :repriced, :repriced_cents) do
+                      :repriced, :repriced_cents, :gift_cents) do
     def org_debit_cents
-      amount_cents - platform_fee_waived_cents
+      amount_cents - gift_cents - platform_fee_waived_cents
+    end
+
+    def card_cents
+      amount_cents - gift_cents
     end
 
     def empty?
@@ -95,7 +102,8 @@ class TicketOrderRefund
     amount = paid_for + product_paid + added_tax + fees - repriced.sum(&:cents)
     waived = order.platform_fee_cents.positive? ? [ TicketPricing::PLATFORM_FEE_CENTS * paid_tickets, amount ].min : 0
     Quote.new(tickets: tickets, items: items, face_cents: face, product_cents: product_face, tax_cents: tax, fees_cents: fees,
-              platform_fee_waived_cents: waived, amount_cents: amount, repriced: repriced, repriced_cents: repriced.sum(&:cents))
+              platform_fee_waived_cents: waived, amount_cents: amount, repriced: repriced, repriced_cents: repriced.sum(&:cents),
+              gift_cents: TicketGiftCertificates.refund_share_cents(order, amount))
   end
 
   # The buyer-paid fees that go with these tickets: their share of what's
@@ -141,7 +149,8 @@ class TicketOrderRefund
     raise Error, "Only a paid order can be refunded." unless order.paid?
 
     quote = Quote.new(tickets: [], items: [], face_cents: face_cents, product_cents: 0, tax_cents: tax_cents, fees_cents: 0,
-                      platform_fee_waived_cents: 0, amount_cents: amount_cents, repriced: [], repriced_cents: 0)
+                      platform_fee_waived_cents: 0, amount_cents: amount_cents, repriced: [], repriced_cents: 0,
+                      gift_cents: TicketGiftCertificates.refund_share_cents(order, amount_cents))
     process!(order, quote, keep_fees: true, by: by, reason: reason, notify: false)
   end
 
@@ -155,7 +164,7 @@ class TicketOrderRefund
         ticket_ids: quote.tickets.map(&:id), item_ids: quote.items.map(&:id), amount_cents: quote.amount_cents,
         face_cents: quote.face_cents, product_cents: quote.product_cents, tax_cents: quote.tax_cents, fees_cents: quote.fees_cents,
         platform_fee_waived_cents: quote.platform_fee_waived_cents, org_debit_cents: quote.org_debit_cents,
-        repriced_cents: quote.repriced_cents,
+        gift_certificate_cents: quote.gift_cents, repriced_cents: quote.repriced_cents,
         repriced: quote.repriced.map { |r|
           { "ticket_id" => r.ticket.id, "ticket_listing_id" => r.ticket.ticket_listing_id, "saving_cents" => r.saving_cents,
             "included_tax_cents" => r.tax.lines.select(&:included).sum(&:tax_cents), "added_tax_cents" => r.tax.added_cents }
@@ -164,9 +173,10 @@ class TicketOrderRefund
       reserve!(order, listing, refund) if order.money_path == "cocoscout"
     end
 
-    if order.money_path == "cocoscout" && refund.amount_cents.positive?
+    # The card gets back what the card paid; the certificate's part goes back on it (complete!).
+    if order.money_path == "cocoscout" && (refund.amount_cents - refund.gift_certificate_cents).positive?
       stripe_refund = Stripe::Refund.create(
-        { payment_intent: order.payment_intent_id, amount: refund.amount_cents,
+        { payment_intent: order.payment_intent_id, amount: refund.amount_cents - refund.gift_certificate_cents,
           metadata: { ticket_order_id: order.id, ticket_refund_id: refund.id } },
         { idempotency_key: "ticket-refund-#{refund.id}" }
       )
@@ -215,6 +225,7 @@ class TicketOrderRefund
   def self.complete!(order, listing, refund)
     ActiveRecord::Base.transaction do
       refund.update!(status: "succeeded")
+      TicketGiftCertificates.refund!(order, refund, refund.gift_certificate_cents)
       now = Time.current
       tickets = Ticket.where(id: refund.ticket_ids)
       tickets.update_all(status: order.money_path == "none" ? "void" : "refunded", refunded_at: now, updated_at: now)
@@ -267,6 +278,7 @@ class TicketOrderRefund
                           { account: :tax_to_remit, amount_cents: refund.tax_cents, **dims },
                           { account: :fees_paid_by_buyers, amount_cents: refund.fees_cents },
                           { account: :ticketing_fees, amount_cents: -refund.platform_fee_waived_cents },
+                          { account: :gift_certificates_outstanding, amount_cents: -refund.gift_certificate_cents },
                           *TicketPassRepricing.book_lines(refund)
                         ])
   end

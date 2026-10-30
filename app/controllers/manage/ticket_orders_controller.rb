@@ -42,7 +42,7 @@ module Manage
       @refunds_allowed = true
       @disputed = TicketDispute.open?(@order)
       @exchanges_out = @order.exchanges_out.includes(to_order: { ticket_listing: :show }).order(:id).to_a
-      @movable = @order.paid? && @order.money_path.in?(%w[cocoscout none]) && TicketOrderExchange.movable(@order).exists?
+      @movable = @order.paid? && @order.money_path.in?(%w[cocoscout none]) && @order.gift_certificate_cents.zero? && TicketOrderExchange.movable(@order).exists?
       # Everything ticked, fees as the policy has them: how the refund choices start.
       @refund_quote = TicketOrderRefund.quote(@order, keep_fees: !@policy_check.policy.fees) if @refundable_ids.any? || @refundable_item_ids.any?
     end

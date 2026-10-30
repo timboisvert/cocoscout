@@ -9,6 +9,8 @@ class ExpireTicketHoldsJob < ApplicationJob
   queue_as :default
 
   def perform
+    # Money a lapsed hold drew from a gift certificate goes back on it first.
+    TicketGiftCertificates.release_stale!
     TicketOrder.stale.update_all(status: "expired", updated_at: Time.current)
     TicketPurchase.stale.update_all(status: "expired", updated_at: Time.current)
     CourseRegistration.stale.update_all(status: "expired", updated_at: Time.current)

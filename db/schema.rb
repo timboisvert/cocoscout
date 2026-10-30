@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_30_140100) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_30_160100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3691,6 +3691,53 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_140100) do
     t.index ["to_order_id"], name: "index_ticket_exchanges_on_to_order_id", unique: true
   end
 
+  create_table "ticket_gift_certificate_redemptions", force: :cascade do |t|
+    t.bigint "ticket_gift_certificate_id", null: false
+    t.bigint "ticket_purchase_id"
+    t.bigint "ticket_order_id"
+    t.bigint "ticket_refund_id"
+    t.integer "amount_cents", null: false
+    t.string "status", default: "held", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ticket_gift_certificate_id"], name: "idx_on_ticket_gift_certificate_id_76e6329b38"
+    t.index ["ticket_order_id"], name: "index_ticket_gift_certificate_redemptions_on_ticket_order_id"
+    t.index ["ticket_purchase_id"], name: "idx_on_ticket_purchase_id_4bbc861a65"
+    t.index ["ticket_refund_id"], name: "index_ticket_gift_certificate_redemptions_on_ticket_refund_id"
+  end
+
+  create_table "ticket_gift_certificate_scopes", force: :cascade do |t|
+    t.bigint "ticket_gift_certificate_id", null: false
+    t.bigint "production_id", null: false
+    t.bigint "ticket_listing_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["production_id"], name: "index_ticket_gift_certificate_scopes_on_production_id"
+    t.index ["ticket_gift_certificate_id"], name: "idx_on_ticket_gift_certificate_id_bde6f0c8b6"
+    t.index ["ticket_listing_id"], name: "index_ticket_gift_certificate_scopes_on_ticket_listing_id"
+  end
+
+  create_table "ticket_gift_certificates", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.string "code", null: false
+    t.integer "amount_cents", null: false
+    t.integer "remaining_cents", null: false
+    t.string "recipient_name"
+    t.string "recipient_email"
+    t.string "note"
+    t.string "scope", default: "any", null: false
+    t.bigint "issued_by_id"
+    t.datetime "voided_at"
+    t.bigint "voided_by_id"
+    t.datetime "emailed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_ticket_gift_certificates_on_code", unique: true
+    t.index ["issued_by_id"], name: "index_ticket_gift_certificates_on_issued_by_id"
+    t.index ["organization_id"], name: "index_ticket_gift_certificates_on_organization_id"
+    t.index ["voided_by_id"], name: "index_ticket_gift_certificates_on_voided_by_id"
+  end
+
   create_table "ticket_listings", force: :cascade do |t|
     t.bigint "organization_id", null: false
     t.bigint "show_id", null: false
@@ -3837,6 +3884,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_140100) do
     t.bigint "ticket_purchase_id"
     t.jsonb "refund_policy"
     t.jsonb "follow_list_ids", default: [], null: false
+    t.bigint "ticket_gift_certificate_id"
+    t.integer "gift_certificate_cents", default: 0, null: false
     t.index ["buyer_email"], name: "index_ticket_orders_on_buyer_email"
     t.index ["code"], name: "index_ticket_orders_on_code", unique: true
     t.index ["exchanged_from_id"], name: "index_ticket_orders_on_exchanged_from_id"
@@ -3847,6 +3896,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_140100) do
     t.index ["short_link_id"], name: "index_ticket_orders_on_short_link_id"
     t.index ["stripe_payment_intent_id"], name: "index_ticket_orders_on_stripe_payment_intent_id", unique: true, where: "(stripe_payment_intent_id IS NOT NULL)"
     t.index ["ticket_discount_code_id"], name: "index_ticket_orders_on_ticket_discount_code_id"
+    t.index ["ticket_gift_certificate_id"], name: "index_ticket_orders_on_ticket_gift_certificate_id"
     t.index ["ticket_listing_id", "status"], name: "index_ticket_orders_on_ticket_listing_id_and_status"
     t.index ["ticket_listing_id"], name: "index_ticket_orders_on_ticket_listing_id"
     t.index ["ticket_purchase_id"], name: "index_ticket_orders_on_ticket_purchase_id"
@@ -3986,10 +4036,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_140100) do
     t.datetime "updated_at", null: false
     t.bigint "earned_by_purchase_id"
     t.jsonb "follow_list_ids", default: [], null: false
+    t.bigint "ticket_gift_certificate_id"
+    t.integer "gift_certificate_cents", default: 0, null: false
     t.index ["earned_by_purchase_id"], name: "index_ticket_purchases_on_earned_by_purchase_id"
     t.index ["expires_at"], name: "index_ticket_purchases_on_expires_at", where: "((status)::text = 'pending'::text)"
     t.index ["organization_id"], name: "index_ticket_purchases_on_organization_id"
     t.index ["stripe_payment_intent_id"], name: "index_ticket_purchases_on_stripe_payment_intent_id", unique: true, where: "(stripe_payment_intent_id IS NOT NULL)"
+    t.index ["ticket_gift_certificate_id"], name: "index_ticket_purchases_on_ticket_gift_certificate_id"
     t.index ["token"], name: "index_ticket_purchases_on_token", unique: true
   end
 
@@ -4018,6 +4071,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_140100) do
     t.boolean "outside_policy", default: false, null: false
     t.string "policy_words"
     t.text "buyer_message"
+    t.integer "gift_certificate_cents", default: 0, null: false
     t.index ["organization_id"], name: "index_ticket_refunds_on_organization_id"
     t.index ["refunded_by_id"], name: "index_ticket_refunds_on_refunded_by_id"
     t.index ["ticket_order_id"], name: "index_ticket_refunds_on_ticket_order_id"
@@ -4705,6 +4759,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_140100) do
   add_foreign_key "ticket_exchanges", "ticket_orders", column: "to_order_id"
   add_foreign_key "ticket_exchanges", "ticket_refunds"
   add_foreign_key "ticket_exchanges", "users", column: "exchanged_by_id"
+  add_foreign_key "ticket_gift_certificate_redemptions", "ticket_gift_certificates"
+  add_foreign_key "ticket_gift_certificate_redemptions", "ticket_orders"
+  add_foreign_key "ticket_gift_certificate_redemptions", "ticket_purchases"
+  add_foreign_key "ticket_gift_certificate_redemptions", "ticket_refunds"
+  add_foreign_key "ticket_gift_certificate_scopes", "productions"
+  add_foreign_key "ticket_gift_certificate_scopes", "ticket_gift_certificates"
+  add_foreign_key "ticket_gift_certificate_scopes", "ticket_listings"
+  add_foreign_key "ticket_gift_certificates", "organizations"
+  add_foreign_key "ticket_gift_certificates", "users", column: "issued_by_id"
+  add_foreign_key "ticket_gift_certificates", "users", column: "voided_by_id"
   add_foreign_key "ticket_listings", "contracts", on_delete: :nullify
   add_foreign_key "ticket_listings", "organizations"
   add_foreign_key "ticket_listings", "productions"
@@ -4722,6 +4786,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_140100) do
   add_foreign_key "ticket_orders", "organizations"
   add_foreign_key "ticket_orders", "short_links"
   add_foreign_key "ticket_orders", "ticket_discount_codes", on_delete: :nullify
+  add_foreign_key "ticket_orders", "ticket_gift_certificates"
   add_foreign_key "ticket_orders", "ticket_listings"
   add_foreign_key "ticket_orders", "ticket_orders", column: "exchanged_from_id"
   add_foreign_key "ticket_orders", "ticket_purchases"
@@ -4742,6 +4807,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_140100) do
   add_foreign_key "ticket_passes", "organizations"
   add_foreign_key "ticket_products", "organizations"
   add_foreign_key "ticket_purchases", "organizations"
+  add_foreign_key "ticket_purchases", "ticket_gift_certificates"
   add_foreign_key "ticket_purchases", "ticket_purchases", column: "earned_by_purchase_id"
   add_foreign_key "ticket_refunds", "organizations"
   add_foreign_key "ticket_refunds", "ticket_orders"

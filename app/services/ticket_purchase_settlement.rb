@@ -16,8 +16,8 @@ class TicketPurchaseSettlement
     purchase.with_lock do
       next if purchase.paid? || purchase.status == "canceled"
 
-      if amount_cents && amount_cents != purchase.total_cents
-        Rails.logger.error("[TicketPurchaseSettlement] purchase #{purchase.id} paid #{amount_cents}c but costs #{purchase.total_cents}c")
+      if amount_cents && amount_cents != purchase.card_cents
+        Rails.logger.error("[TicketPurchaseSettlement] purchase #{purchase.id} paid #{amount_cents}c but its card owes #{purchase.card_cents}c")
         refund_late_payment!(purchase, payment_intent_id)
         next
       end
@@ -25,6 +25,15 @@ class TicketPurchaseSettlement
       orders = purchase.ticket_orders.to_a
       late = purchase.hold_expired? || purchase.status == "expired"
       if late && orders.any? { |order| order.status.in?(%w[pending expired]) && !TicketOrderSettlement.seats_still_free?(order) }
+        refund_late_payment!(purchase, payment_intent_id)
+        next
+      end
+
+      # A gift certificate's held money is spent for good; gone (a late
+      # payment, the certificate spent elsewhere meanwhile), the payment goes back.
+      begin
+        TicketGiftCertificates.redeem!(purchase)
+      rescue TicketGiftCertificates::Gone
         refund_late_payment!(purchase, payment_intent_id)
         next
       end
@@ -75,6 +84,7 @@ class TicketPurchaseSettlement
     Stripe::Refund.create({ payment_intent: intent_id }, { idempotency_key: "ticket-purchase-late-refund-#{purchase.id}" }) if intent_id
     now = Time.current
     purchase.update!(status: "canceled", stripe_payment_intent_id: intent_id)
+    TicketGiftCertificates.release!(purchase)
     purchase.ticket_orders.each do |order|
       order.update!(status: "canceled", canceled_at: now)
       order.tickets.update_all(status: "void", updated_at: now)

@@ -1,0 +1,19 @@
+<%# Under a receipt's total: how it was paid, when a gift certificate paid
+    some or all of it. Locals: paying (the order or the whole purchase). %>
+<% if paying.gift_certificate_cents.to_i.positive? %>
+  <tr>
+    <td style="padding: 6px 0 0; color: #6b7280;">Paid with gift certificate<% if paying.ticket_gift_certificate %> <span style="font-family: monospace; font-size: 12px;"><%= paying.ticket_gift_certificate.code %></span><% end %></td>
+    <td style="padding: 6px 0 0; text-align: right; white-space: nowrap; color: #374151;"><%= number_to_currency(paying.gift_certificate_cents / 100.0) %></td>
+  </tr>
+  <% if paying.card_cents.positive? %>
+    <tr>
+      <td style="padding: 2px 0 0; color: #6b7280;">Paid by card</td>
+      <td style="padding: 2px 0 0; text-align: right; white-space: nowrap; color: #374151;"><%= number_to_currency(paying.card_cents / 100.0) %></td>
+    </tr>
+  <% end %>
+  <% if paying.ticket_gift_certificate&.remaining_cents.to_i.positive? %>
+    <tr>
+      <td colspan="2" style="padding: 4px 0 0; color: #9ca3af; font-size: 12px;"><%= number_to_currency(paying.ticket_gift_certificate.remaining_cents / 100.0) %> is still on your gift certificate for next time.</td>
+    </tr>
+  <% end %>
+<% end %>

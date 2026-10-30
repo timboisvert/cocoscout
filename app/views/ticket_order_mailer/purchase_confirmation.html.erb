@@ -28,6 +28,7 @@
         <td style="padding: 6px 0 0; border-top: 1px solid #e5e7eb; font-weight: 600; color: #111827;">Total</td>
         <td style="padding: 6px 0 0; border-top: 1px solid #e5e7eb; text-align: right; font-weight: 600; color: #111827; white-space: nowrap;"><%= number_to_currency(@purchase.total_cents / 100.0) %></td>
       </tr>
+      <%= render "ticket_order_mailer/paid_with", paying: @purchase %>
     </table>
     <div style="font-size: 12px; color: #9ca3af; margin-top: 8px;">Paid <%= @purchase.paid_at&.strftime("%B %-d, %Y") %> · sold by <%= @order.organization.name %>, payment processed by CocoScout</div>
   </td></tr>

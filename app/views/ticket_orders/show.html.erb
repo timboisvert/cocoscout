@@ -127,6 +127,21 @@
       </div>
     <% end %>
 
+    <% paying = @order.ticket_purchase || @order %>
+    <% if paying.gift_certificate_cents.to_i.positive? %>
+      <%# How it was paid: the certificate's part, and the card's. %>
+      <div class="mt-6 rounded-xl border border-gray-200 bg-white p-5 text-sm text-gray-700 space-y-1.5">
+        <div class="font-semibold text-gray-900">How you paid</div>
+        <div class="flex justify-between gap-3"><span>Gift certificate <span class="font-mono text-xs text-gray-500"><%= paying.ticket_gift_certificate&.code %></span></span><span class="tabular-nums"><%= number_to_currency(paying.gift_certificate_cents / 100.0) %></span></div>
+        <% if paying.card_cents.positive? %>
+          <div class="flex justify-between gap-3"><span>Card</span><span class="tabular-nums"><%= number_to_currency(paying.card_cents / 100.0) %></span></div>
+        <% end %>
+        <% if paying.ticket_gift_certificate&.remaining_cents.to_i.positive? %>
+          <p class="text-xs text-gray-500 pt-1"><%= number_to_currency(paying.ticket_gift_certificate.remaining_cents / 100.0) %> is still on your gift certificate for next time.</p>
+        <% end %>
+      </div>
+    <% end %>
+
     <div class="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-600">
       <span>Order <%= @order.code %> · <%= number_to_currency(@order.total_cents / 100.0) %></span>
       <%= render "shared/button", text: "Email my tickets again", variant: "secondary", size: "small",

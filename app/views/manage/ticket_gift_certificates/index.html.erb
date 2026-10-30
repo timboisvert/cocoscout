@@ -1,0 +1,89 @@
+<% content_for :title, "Gift certificates" %>
+<%
+  live = @certificates.reject(&:voided?)
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  issued_cents = live.sum(&:amount_cents)
+  outstanding_cents = live.sum(&:remaining_cents)
+%>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Ticketing", manage_ticketing_path ] ],
+    text: "Gift certificates",
+    links: [ { text: "Issue a gift certificate", path: "#", data: { controller: "modal", action: "click->modal#open", modal_id: "issue-gift-certificate" } } ]
+  } %>
+
+  <div class="max-w-3xl space-y-6">
+    <p class="text-sm text-gray-600">
+      A gift certificate is worth a dollar amount and pays for tickets at checkout on your box office page, instead of a card.
+      Hand the code to the person it's for, or let us email it. Each one can be spent until it's used up; what's left stays on
+      the code for next time. What a certificate pays never lands in your CocoScout balance: you took that money when you sold it.
+    </p>
+
+    <% if @certificates.empty? %>
+      <div class="bg-white border border-gray-200 rounded-lg px-6 py-10 text-center">
+        <p class="text-gray-900 font-medium">No gift certificates yet.</p>
+        <p class="mt-1 text-sm text-gray-600">Issue one and hand over its code.</p>
+        <div class="mt-4 flex justify-center">
+          <%= render "shared/button", text: "Issue a gift certificate", variant: "primary", size: "medium", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: "issue-gift-certificate" } %>
+        </div>
+      </div>
+    <% else %>
+      <div class="grid grid-cols-3 gap-3">
+        <% [ [ "Issued", money.call(issued_cents) ], [ "Still to be spent", money.call(outstanding_cents) ], [ "Spent on tickets", money.call(issued_cents - outstanding_cents) ] ].each do |label, value| %>
+          <div class="rounded-lg bg-gray-50 px-4 py-3">
+            <div class="text-xs text-gray-500"><%= label %></div>
+            <div class="text-xl font-bold tabular-nums text-gray-900 mt-0.5"><%= value %></div>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <ul class="divide-y divide-gray-100">
+          <% @certificates.each do |certificate| %>
+            <% orders = @spent_orders.fetch(certificate.id, []) %>
+            <li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3">
+              <div class="min-w-[14rem] flex-1">
+                <div class="font-mono text-sm font-semibold text-gray-900"><%= certificate.code %></div>
+                <div class="text-xs text-gray-500">
+                  <%= [
+                    (certificate.recipient_name.present? ? "For #{certificate.recipient_name}" : nil),
+                    certificate.recipient_email,
+                    (certificate.note.present? ? "“#{certificate.note}”" : nil),
+                    (certificate.scope == "any" ? "any show" : certificate.good_for_words),
+                    "issued #{certificate.created_at.strftime('%b %-d')}#{" by #{certificate.issued_by.person&.first_name || certificate.issued_by.email}" if certificate.issued_by}",
+                    (certificate.voided? ? "voided #{certificate.voided_at.strftime('%b %-d')}" : nil)
+                  ].compact.join(" · ") %>
+                  <% orders.each do |order| %>
+                    · spent on <%= link_to "order #{order.code}", manage_ticket_order_path(order.id), class: "text-pink-700 hover:text-pink-800" %>
+                  <% end %>
+                </div>
+              </div>
+              <% tone = certificate.voided? ? "bg-gray-100 text-gray-500 line-through" : (certificate.spent? ? "bg-gray-100 text-gray-600" : "bg-pink-100 text-pink-700") %>
+              <span class="inline-flex rounded-md px-1.5 py-0.5 text-xs font-medium <%= tone %>"><%= certificate.status_words %></span>
+              <div class="text-sm font-semibold tabular-nums text-gray-900 w-20 text-right"><%= money.call(certificate.amount_cents) %></div>
+              <div class="w-16 flex justify-end">
+                <% if certificate.usable? %>
+                  <%= render "shared/button", text: "Void", variant: "ghost", size: "small", type: :button,
+                        data: { controller: "modal", action: "click->modal#open", modal_id: "void-gift-certificate-#{certificate.id}" } %>
+                <% end %>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<%= render "manage/ticket_gift_certificates/issue_modal", productions: @scope_productions %>
+<% if @issued %>
+  <%= render "manage/ticket_gift_certificates/issued_modal", certificate: @issued, emailed: params[:emailed] == "1" %>
+<% end %>
+<% @certificates.select(&:usable?).each do |certificate| %>
+  <%= render "shared/confirm_modal", id: "void-gift-certificate-#{certificate.id}", title: "Void #{certificate.code}?",
+        message: "It stops working at checkout, and its #{money.call(certificate.remaining_cents)} is gone. Orders it already paid for keep their tickets.",
+        confirm_text: "Void certificate", url: manage_ticket_gift_certificate_void_path(certificate), method: :patch %>
+<% end %>

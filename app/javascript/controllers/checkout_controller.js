@@ -10,8 +10,9 @@ import { Controller } from "@hotwired/stimulus"
 // so going back to the show's page puts the tickets back
 // (ticket_picker_controller).
 export default class extends Controller {
-    static targets = ["form", "payment", "error", "submit", "countdown", "summary",
-                      "products", "productRow", "productCount", "productMinus", "productPlus"]
+    static targets = ["form", "payment", "paymentTitle", "error", "submit", "countdown", "summary",
+                      "products", "productRow", "productCount", "productMinus", "productPlus",
+                      "gift", "giftClosed", "giftOpen", "giftCode", "giftApply", "giftError"]
     static values = {
         publishableKey: String,
         amount: Number,
@@ -20,7 +21,8 @@ export default class extends Controller {
         expiresAt: String,
         holdKey: String,
         token: String,
-        itemsUrl: String
+        itemsUrl: String,
+        giftUrl: String
     }
 
     connect() {
@@ -143,16 +145,95 @@ export default class extends Controller {
             })
             const data = await response.json()
             if (data.error) return this.fail(data.error)
-            if (this.hasSummaryTarget) this.summaryTarget.innerHTML = data.summary_html
-            const wasFree = this.amountValue === 0
-            this.amountValue = data.total_cents
-            if (wasFree !== (data.total_cents === 0)) return window.location.reload()
-            if (this.elements) this.elements.update({ amount: data.total_cents })
-            this.relabelSubmit(data.total_cents)
-            this.busy(false)
+            this.applyState(data)
         } catch (_e) {
             this.fail("Couldn't save that. Please try again.")
         }
+    }
+
+    // The order changed on the server (products, a gift certificate): the
+    // summary, the amount the card pays (card_cents: the total less what a
+    // certificate covers), Stripe's amount and the button follow. Going from
+    // nothing-to-pay to paying (or back) needs the payment box, so the page
+    // reloads for that. A certificate coming on or off also renames the
+    // Payment heading.
+    applyState(data) {
+        const cents = data.card_cents ?? data.total_cents
+        if (this.hasSummaryTarget) this.summaryTarget.innerHTML = data.summary_html
+        const wasFree = this.amountValue === 0
+        this.amountValue = cents
+        if (wasFree !== (cents === 0)) return window.location.reload()
+        if (this.elements) this.elements.update({ amount: cents })
+        if (this.hasPaymentTitleTarget && data.card_cents !== undefined && data.card_cents !== data.total_cents) {
+            this.paymentTitleTarget.textContent = `Pay the rest · $${(cents / 100).toFixed(2)}`
+        } else if (this.hasPaymentTitleTarget) {
+            this.paymentTitleTarget.textContent = "Payment"
+        }
+        this.relabelSubmit(cents)
+        this.busy(false)
+    }
+
+    // A gift certificate (TicketCheckoutsController#apply_gift_certificate):
+    // "Have a gift certificate?" opens the code field; Apply sends the code;
+    // Remove (in the summary) takes it off again.
+    openGift(event) {
+        event?.preventDefault()
+        this.giftClosedTarget.classList.add("hidden")
+        this.giftOpenTarget.classList.remove("hidden")
+        this.giftCodeTarget.focus()
+    }
+
+    async applyGift(event) {
+        event?.preventDefault()
+        const code = this.giftCodeTarget.value.trim()
+        if (!code) return this.giftFail("Type the code from the certificate.")
+        await this.sendGift("POST", { code })
+    }
+
+    async removeGift(event) {
+        event?.preventDefault()
+        await this.sendGift("DELETE")
+    }
+
+    async sendGift(method, body) {
+        if (!this.giftUrlValue) return
+        this.hideError()
+        this.giftError(null)
+        this.busy(true)
+        if (this.hasGiftApplyTarget) this.giftApplyTarget.disabled = true
+        try {
+            const response = await fetch(this.giftUrlValue, {
+                method,
+                headers: { "Content-Type": "application/json", "Accept": "application/json", "X-CSRF-Token": this.csrfToken() },
+                body: body ? JSON.stringify(body) : undefined
+            })
+            const data = await response.json()
+            if (data.error) return this.giftFail(data.error)
+            if (method === "POST") {
+                // Applied: the summary shows it; the field goes away.
+                this.giftOpenTarget.classList.add("hidden")
+                this.giftClosedTarget.classList.add("hidden")
+            } else {
+                this.giftCodeTarget.value = ""
+                this.giftClosedTarget.classList.remove("hidden")
+            }
+            this.applyState(data)
+        } catch (_e) {
+            this.giftFail("Couldn't check that code. Please try again.")
+        } finally {
+            if (this.hasGiftApplyTarget) this.giftApplyTarget.disabled = false
+        }
+    }
+
+    giftFail(message) {
+        this.giftError(message)
+        this.busy(false)
+    }
+
+    giftError(message) {
+        if (!this.hasGiftErrorTarget) return
+        this.giftErrorTarget.textContent = message || ""
+        this.giftErrorTarget.classList.toggle("hidden", !message)
     }
 
     relabelSubmit(cents) {

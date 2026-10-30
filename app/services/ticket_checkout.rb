@@ -333,6 +333,7 @@ class TicketCheckout
                   tax_cents: tickets.sum(&:tax_cents) + products.sum(&:tax_cents), platform_fee_cents: quote.platform_fee_cents,
                   processing_cents: quote.processing_cents, buyer_fee_cents: quote.buyer_fee_cents,
                   total_cents: quote.total_cents, org_net_cents: quote.org_net_cents)
+    TicketGiftCertificates.refresh!(order) if order.ticket_gift_certificate_id
     order
   end
 

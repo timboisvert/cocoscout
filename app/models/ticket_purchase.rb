@@ -19,6 +19,9 @@ class TicketPurchase < ApplicationRecord
   has_many :ticket_orders, -> { order(:id) }, inverse_of: :ticket_purchase, dependent: :nullify
   # Credit passes bought in it (no show yet: credits used later).
   has_many :ticket_pass_holdings, -> { order(:id) }, dependent: :nullify
+  # A gift certificate paying for (some of) this checkout; the card pays the rest.
+  belongs_to :ticket_gift_certificate, optional: true
+  has_many :ticket_gift_certificate_redemptions, dependent: :nullify
 
   validates :status, inclusion: { in: STATUSES }
 
@@ -42,6 +45,11 @@ class TicketPurchase < ApplicationRecord
 
   def hold_expired?(at = Time.current)
     pending? && expires_at.present? && expires_at <= at
+  end
+
+  # What the card pays: the total less what a gift certificate covers.
+  def card_cents
+    total_cents - gift_certificate_cents
   end
 
   # The purchase's numbers, from every order's tickets and products: one
@@ -89,6 +97,8 @@ class TicketPurchase < ApplicationRecord
               processing_cents: lines.sum(&:processing_cents), buyer_fee_cents: lines.sum(&:buyer_fee_cents),
               total_cents: lines.sum(&:total_cents), org_net_cents: lines.sum(&:org_net_cents))
     end
+    # A gift certificate on the checkout follows the new total, and the card's processing with it.
+    TicketGiftCertificates.refresh!(self) if ticket_gift_certificate_id
     self
   end
 
@@ -106,6 +116,7 @@ class TicketPurchase < ApplicationRecord
     transaction do
       update!(status: "expired", expires_at: at)
       ticket_orders.where(status: "pending").update_all(status: "expired", expires_at: at, updated_at: at)
+      TicketGiftCertificates.release!(self)
     end
   end
 end

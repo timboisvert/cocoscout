@@ -28,12 +28,15 @@ class TicketOrderSettlement
     order.with_lock do
       next if order.paid? || %w[refunded canceled exchanged].include?(order.status)
 
-      if amount_cents && amount_cents != order.total_cents
+      if amount_cents && amount_cents != order.card_cents
         wrong_amount = true
         next
       end
 
       ensure_seats_still_free!(order) if !seats_checked && (order.hold_expired? || order.status == "expired")
+      # A gift certificate's held money is spent for good (its checkout does
+      # this for every order in it; an order on its own does it here).
+      redeem_gift!(order) unless order.ticket_purchase
       order.told_current_show!
       order.update!(status: "paid", paid_at: Time.current, expires_at: nil,
                     stripe_payment_intent_id: payment_intent_id || order.stripe_payment_intent_id,
@@ -78,7 +81,9 @@ class TicketOrderSettlement
     face = order.subtotal_cents - order.discount_cents - included_tax - product_face_with_included_tax(order)
     dims = { show: listing.show, production: listing.production }
     [
-      { account: :cocoscout_balance, amount_cents: order.org_net_cents },
+      # What a gift certificate paid never reaches the balance (TicketGiftCertificates).
+      { account: :cocoscout_balance, amount_cents: order.org_net_cents - order.gift_certificate_cents },
+      { account: :gift_certificates_outstanding, amount_cents: order.gift_certificate_cents },
       { account: :ticketing_fees, amount_cents: order.platform_fee_cents + order.processing_cents },
       { account: :fees_paid_by_buyers, amount_cents: -order.buyer_fee_cents },
       { account: :advance_ticket_sales, amount_cents: -face, **dims },
@@ -100,7 +105,7 @@ class TicketOrderSettlement
   def self.post_money!(order)
     return unless order.money_path == "cocoscout" && order.total_cents.positive?
 
-    OrgCashEntry.post!(organization: order.organization, entry_type: "ticket_sale", amount_cents: order.org_net_cents,
+    OrgCashEntry.post!(organization: order.organization, entry_type: "ticket_sale", amount_cents: order.org_net_cents - order.gift_certificate_cents,
                        source: order, description: "Tickets #{order.code}", occurred_at: order.paid_at)
     LedgerPosting.post!(organization: order.organization, source: order, kind: "sale",
                         entry_date: order.paid_at.to_date, cash_date: order.paid_at.to_date,
@@ -118,11 +123,19 @@ class TicketOrderSettlement
     raise SeatsGone unless seats_still_free?(order)
   end
 
+  # The certificate's money is as much a part of the hold as the seats.
+  def self.redeem_gift!(order)
+    TicketGiftCertificates.redeem!(order)
+  rescue TicketGiftCertificates::Gone
+    raise SeatsGone
+  end
+
   def self.refund_late_payment!(order, payment_intent_id)
     intent_id = payment_intent_id || order.stripe_payment_intent_id
     Stripe::Refund.create({ payment_intent: intent_id }, { idempotency_key: "ticket-late-refund-#{order.id}" }) if intent_id
     order.update!(status: "canceled", canceled_at: Time.current, stripe_payment_intent_id: intent_id)
     order.tickets.update_all(status: "void", updated_at: Time.current)
+    TicketGiftCertificates.release!(order.ticket_purchase || order)
     Rails.logger.warn("[TicketOrderSettlement] order #{order.id} paid after its seats were gone; refunded")
   end
 
@@ -132,9 +145,10 @@ class TicketOrderSettlement
     order.update!(status: "canceled", canceled_at: Time.current, stripe_payment_intent_id: intent_id)
     order.tickets.update_all(status: "void", updated_at: Time.current)
     order.ticket_order_items.update_all(status: "void", updated_at: Time.current)
-    Rails.logger.error("[TicketOrderSettlement] order #{order.id} paid #{amount_cents}c on #{intent_id} but costs #{order.total_cents}c; refunded and canceled")
+    TicketGiftCertificates.release!(order.ticket_purchase || order)
+    Rails.logger.error("[TicketOrderSettlement] order #{order.id} paid #{amount_cents}c on #{intent_id} but its card owes #{order.card_cents}c; refunded and canceled")
     order
   end
 
-  private_class_method :post_money!, :ensure_seats_still_free!, :refund_late_payment!, :refund_wrong_amount!
+  private_class_method :post_money!, :ensure_seats_still_free!, :redeem_gift!, :refund_late_payment!, :refund_wrong_amount!
 end

@@ -23,6 +23,12 @@
         <div class="flex justify-between py-2 text-sm"><span class="text-gray-700"><%= item.label %></span><span class="tabular-nums text-gray-900"><%= money.call(item.unit_price_cents * item.quantity) %></span></div>
       <% end %>
       <div class="flex justify-between py-2 text-base font-semibold"><span>Total</span><span class="tabular-nums"><%= money.call(@order.total_cents) %></span></div>
+      <% if @order.gift_certificate_cents.positive? %>
+        <div class="flex justify-between py-2 text-sm"><span class="text-gray-700">Paid with gift certificate</span><span class="tabular-nums text-gray-900"><%= money.call(@order.gift_certificate_cents) %></span></div>
+        <% if @order.card_cents.positive? %>
+          <div class="flex justify-between py-2 text-sm"><span class="text-gray-700">Paid by card</span><span class="tabular-nums text-gray-900"><%= money.call(@order.card_cents) %></span></div>
+        <% end %>
+      <% end %>
     </div>
 
     <% if paid %>

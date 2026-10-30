@@ -398,6 +398,8 @@ Rails.application.routes.draw do
     get  "checkout/:token/done",       to: "ticket_checkouts#done",   as: "checkout_done"
     get  "checkout/:token/hold",       to: "ticket_checkouts#hold",   as: "checkout_hold", defaults: { format: :json }
     patch "checkout/:token/items",     to: "ticket_checkouts#items",  as: "checkout_items", defaults: { format: :json }
+    post   "checkout/:token/gift-certificate", to: "ticket_checkouts#apply_gift_certificate",  as: "checkout_gift_certificate", defaults: { format: :json }
+    delete "checkout/:token/gift-certificate", to: "ticket_checkouts#remove_gift_certificate", defaults: { format: :json }
     get  "v/:code",                    to: "tickets#ticket",          as: "ticket"
     # Credit passes: paying for them (no seats, so no show to key it by), and
     # each holder's page where credits become tickets.
@@ -1386,6 +1388,10 @@ Rails.application.routes.draw do
       post "save", action: :save, as: "save"
       delete "cancel", action: :cancel, as: "cancel"
     end
+    # Gift certificates (TicketGiftCertificate): issued here, spent at checkout.
+    get    "ticketing/gift-certificates",         to: "ticket_gift_certificates#index",  as: "ticket_gift_certificates"
+    post   "ticketing/gift-certificates",         to: "ticket_gift_certificates#create"
+    patch  "ticketing/gift-certificates/:id/void", to: "ticket_gift_certificates#void", as: "ticket_gift_certificate_void"
     get    "ticketing/products",                  to: "ticket_products#index",           as: "ticket_products"
     get    "ticketing/products/new",              to: "ticket_products#new",             as: "new_ticket_product"
     post   "ticketing/products",                  to: "ticket_products#create"
@@ -1575,7 +1581,7 @@ Rails.application.routes.draw do
     post "show-changes/:batch/tell",       to: "show_changes#tell",              as: "tell_show_changes"
     post "show-changes/:batch/close",      to: "show_changes#close",             as: "close_show_changes"
     # Legacy /staffing/schedule URLs redirect to the scheduling sub-section.
-    get    "staffing/schedule", to: redirect("/manage/staffing/scheduling")
+    get "staffing/schedule", to: redirect("/manage/staffing/scheduling")
 
     # Org-level Documents hub — every document the manager can edit, across all
     # of their productions. Create-new here picks a production first; show/edit

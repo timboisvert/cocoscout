@@ -35,6 +35,9 @@ class TicketOrder < ApplicationRecord
   # The checkout this order was paid in, with any other shows bought with it.
   belongs_to :ticket_purchase, optional: true, inverse_of: :ticket_orders
   belongs_to :ticket_discount_code, optional: true
+  # A gift certificate that paid gift_certificate_cents of this order (its
+  # checkout's, shared onto each show's order); the card paid the rest.
+  belongs_to :ticket_gift_certificate, optional: true
   # The short link (cocoscout.com/t/CODE) that brought the buyer, if one did.
   belongs_to :short_link, optional: true
   belongs_to :user, optional: true
@@ -96,6 +99,11 @@ class TicketOrder < ApplicationRecord
 
   def hold_expired?(at = Time.current)
     pending? && expires_at.present? && expires_at <= at
+  end
+
+  # What the card paid (or will): the total less what a gift certificate covers.
+  def card_cents
+    total_cents - gift_certificate_cents
   end
 
   # Nothing a date has to be kept for: a comp whose tickets were all given

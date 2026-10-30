@@ -16,11 +16,15 @@ class TicketCheckoutsController < ApplicationController
   # Buying never rides on a signed-in session: the order's secret token is the
   # key. And inside a theater's own website (the embed) browsers don't send
   # our session cookie, so a forgery token could never verify there.
-  skip_forgery_protection only: %i[create pay items]
+  skip_forgery_protection only: %i[create pay items apply_gift_certificate remove_gift_certificate]
 
   # Nobody loads checkout, types their details and pays this fast; a script
   # posting straight through does.
   MIN_SECONDS_TO_PAY = 3
+  # Gift certificate codes that didn't work, counted per address and per
+  # checkout for an hour: past this many, the answer is "wait", whatever the
+  # code. A buyer mistypes once or twice; a guesser doesn't stop.
+  GIFT_MISSES_PER_HOUR = 5
 
   before_action :set_order, except: :create
 
@@ -73,12 +77,32 @@ class TicketCheckoutsController < ApplicationController
     TicketCheckout.set_items!(@order, requested_products)
     TicketCheckout.set_deals!(@order, requested_deals) if params.key?(:deals)
     @order.reload
-    render json: {
-      total_cents: payable.reload.total_cents,
-      summary_html: render_to_string(partial: "ticket_checkouts/summary", formats: [ :html ], locals: { order: @order }),
-      items: @order.ticket_order_items.to_h { |item| [ item.ticket_product_id.to_s, item.quantity ] }
-    }
+    render json: checkout_state.merge(items: @order.ticket_order_items.to_h { |item| [ item.ticket_product_id.to_s, item.quantity ] })
   rescue TicketCheckout::Error => e
+    render json: { error: e.message }, status: :unprocessable_content
+  end
+
+  # A gift certificate's code, typed on the checkout page: it pays as much
+  # of the total as it has, and the card pays the rest (TicketGiftCertificates).
+  def apply_gift_certificate
+    if gift_misses >= GIFT_MISSES_PER_HOUR
+      Rails.logger.warn("[TicketCheckouts] gift certificate tries capped order=#{@order.id} ip=#{request.remote_ip}")
+      return render(json: { error: "Too many codes tried. Please wait an hour and try again." }, status: :too_many_requests)
+    end
+
+    TicketGiftCertificates.apply!(payable, params[:code])
+    @order.reload
+    render json: checkout_state
+  rescue TicketGiftCertificates::Error => e
+    count_gift_miss
+    render json: { error: e.message }, status: :unprocessable_content
+  end
+
+  def remove_gift_certificate
+    TicketGiftCertificates.remove!(payable)
+    @order.reload
+    render json: checkout_state
+  rescue TicketGiftCertificates::Error => e
     render json: { error: e.message }, status: :unprocessable_content
   end
 
@@ -114,7 +138,8 @@ class TicketCheckoutsController < ApplicationController
                                                                   marketing_opt_in: @order.marketing_opt_in, updated_at: Time.current)
     end
 
-    if payable.total_cents.zero?
+    # Nothing for a card to pay (free, or a gift certificate covers it all).
+    if payable.card_cents.zero?
       settle!
       return render(json: { redirect: tickets_order_path(token: @order.token, **embed_params) })
     end
@@ -172,6 +197,34 @@ class TicketCheckoutsController < ApplicationController
     raw.each_pair.to_h { |id, count| [ id.to_s, count.to_s ] }
   end
 
+  # Codes that didn't work this hour, from this address or on this checkout
+  # (whichever is worse: a guesser rotating addresses still hits the
+  # checkout's own count).
+  def gift_misses
+    gift_miss_keys.map { |key| Rails.cache.read(key).to_i }.max
+  end
+
+  def count_gift_miss
+    gift_miss_keys.each do |key|
+      Rails.cache.write(key, Rails.cache.read(key).to_i + 1, expires_in: 1.hour)
+    end
+  end
+
+  def gift_miss_keys
+    [ "gift-misses:ip:#{request.remote_ip}", "gift-misses:order:#{@order.token}" ]
+  end
+
+  # What the page needs after any change to the order: the summary, the
+  # total, and what the card pays (TicketPurchase#card_cents).
+  def checkout_state
+    paying = payable.reload
+    {
+      total_cents: paying.total_cents,
+      card_cents: paying.card_cents,
+      summary_html: render_to_string(partial: "ticket_checkouts/summary", formats: [ :html ], locals: { order: @order })
+    }
+  end
+
   def set_order
     @order = TicketOrder.includes(ticket_listing: [ :organization, { show: %i[location location_space] } ], tickets: :ticket_tier)
                         .find_by!(token: params[:token])
@@ -216,7 +269,7 @@ class TicketCheckoutsController < ApplicationController
   def payment_intent
     if intent_id.present?
       intent = Stripe::PaymentIntent.retrieve(intent_id)
-      return intent if intent.amount == payable.total_cents && intent.status != "canceled"
+      return intent if intent.amount == payable.card_cents && intent.status != "canceled"
     end
 
     metadata = { type: "ticket_order", ticket_order_id: @order.id, ticket_order_code: @order.code,
@@ -224,7 +277,8 @@ class TicketCheckoutsController < ApplicationController
     metadata = metadata.merge(type: "ticket_purchase", ticket_purchase_id: @purchase.id) if @purchase
     intent = Stripe::PaymentIntent.create(
       {
-        amount: payable.total_cents,
+        # The card pays what a gift certificate didn't.
+        amount: payable.card_cents,
         currency: "usd",
         automatic_payment_methods: { enabled: true },
         description: "#{@listing.display_title} · #{@listing.organization.name}".first(250),
@@ -232,7 +286,7 @@ class TicketCheckoutsController < ApplicationController
         # Segregates each org's money flows Stripe-side, like the cash ledger.
         transfer_group: "org_#{@order.organization_id}"
       },
-      { idempotency_key: @purchase ? "ticket-purchase-#{@purchase.id}-#{@purchase.total_cents}" : "ticket-order-#{@order.id}-#{@order.total_cents}" }
+      { idempotency_key: @purchase ? "ticket-purchase-#{@purchase.id}-#{@purchase.card_cents}" : "ticket-order-#{@order.id}-#{@order.card_cents}" }
     )
     # The first order carries the payment's id too, so everything that finds
     # an order by its payment still does.

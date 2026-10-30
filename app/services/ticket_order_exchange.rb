@@ -84,6 +84,7 @@ class TicketOrderExchange
   # allowance a theater makes.
   def self.plan(order, target:, ticket_ids: nil, chosen_tiers: {}, outside_policy: false)
     raise Error, "Only a paid order's tickets can move." unless order.paid? && order.money_path.in?(%w[cocoscout none])
+    raise Error, "Tickets paid with a gift certificate can't be moved yet. Refund them instead and let them buy again." if order.gift_certificate_cents.positive?
     if order.ticket_listing.show.date_and_time <= Time.current && !outside_policy
       raise Error, "The show has happened, so moving its tickets is outside the refund policy. Turn on Move anyway to move them."
     end

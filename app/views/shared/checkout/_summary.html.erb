@@ -1,6 +1,10 @@
 <%# What a buyer is paying for, line by line, adding up to the total. Tickets
     and courses both render it. Locals: lines ([[label, cents, muted]], a
-    muted line is a discount, fee or tax), total_cents. %>
+    muted line is a discount, fee or tax), total_cents, and tenders (optional:
+    { lines: [[label, cents]], due_cents:, note: } — how the total is paid
+    when something other than the card covers some of it, such as a gift
+    certificate; the total itself doesn't move). %>
+<% tenders = local_assigns[:tenders] %>
 <div class="border-t border-gray-100 px-5 py-4 space-y-2 text-sm">
   <% lines.each do |label, cents, muted| %>
     <div class="flex items-baseline justify-between gap-3">
@@ -12,4 +16,19 @@
     <span class="font-semibold text-gray-900">Total</span>
     <span class="text-lg font-bold tabular-nums text-gray-900"><%= number_to_currency(total_cents / 100.0) %></span>
   </div>
+  <% if tenders %>
+    <div class="pt-2 mt-1 border-t border-dashed border-gray-200 space-y-2">
+      <% tenders[:lines].each do |label, cents| %>
+        <div class="flex items-baseline justify-between gap-3">
+          <span class="text-gray-600"><%= label %></span>
+          <span class="tabular-nums text-gray-900"><%= cents.negative? ? "−#{number_to_currency(-cents / 100.0)}" : number_to_currency(cents / 100.0) %></span>
+        </div>
+      <% end %>
+      <div class="flex items-baseline justify-between gap-3">
+        <span class="font-semibold text-gray-900">Left to pay</span>
+        <span class="text-lg font-bold tabular-nums text-gray-900"><%= number_to_currency(tenders[:due_cents] / 100.0) %></span>
+      </div>
+      <% if tenders[:note] %><p class="text-xs text-gray-500"><%= tenders[:note] %></p><% end %>
+    </div>
+  <% end %>
 </div>

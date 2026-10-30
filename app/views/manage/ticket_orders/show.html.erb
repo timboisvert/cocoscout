@@ -9,7 +9,10 @@
     ([ "Discount#{" (#{@order.ticket_discount_code&.code})" if @order.ticket_discount_code}", -@order.discount_cents ] if @order.discount_cents.positive?),
     ([ "Tax", @order.tax_cents ] if @order.tax_cents.positive?),
     ([ "Fees the buyer paid", @order.buyer_fee_cents ] if @order.buyer_fee_cents.positive?),
-    [ "Buyer paid", @order.total_cents ]
+    [ "Buyer paid", @order.total_cents ],
+    # A gift certificate paid part or all of it; the card paid the rest.
+    ([ "Paid with gift certificate#{" (#{@order.ticket_gift_certificate.code})" if @order.ticket_gift_certificate}", @order.gift_certificate_cents ] if @order.gift_certificate_cents.positive?),
+    ([ "Paid by card", @order.card_cents ] if @order.gift_certificate_cents.positive?)
   ].compact
   cost_rows = [
     ([ "CocoScout fee", @order.platform_fee_cents ] if @order.platform_fee_cents.positive?),
@@ -275,6 +278,14 @@
           <div class="flex justify-between gap-4 font-semibold text-gray-900 pt-1.5 border-t border-gray-100">
             <dt>You keep</dt><dd class="tabular-nums"><%= number_to_currency(@order.org_net_cents / 100.0) %></dd>
           </div>
+          <% if @order.gift_certificate_cents.positive? %>
+            <div class="flex justify-between gap-4 text-gray-600">
+              <dt>Paid by the gift certificate, not into your balance</dt><dd class="tabular-nums">−<%= number_to_currency(@order.gift_certificate_cents / 100.0) %></dd>
+            </div>
+            <div class="flex justify-between gap-4 font-semibold text-gray-900">
+              <dt>Into your CocoScout balance</dt><dd class="tabular-nums"><%= number_to_currency((@order.org_net_cents - @order.gift_certificate_cents) / 100.0) %></dd>
+            </div>
+          <% end %>
           <% moved_cents = @exchanges_out.sum(&:moved_cents) %>
           <% if moved_cents.positive? %>
             <div class="flex justify-between gap-4 text-gray-600">

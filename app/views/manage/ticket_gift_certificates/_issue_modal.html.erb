@@ -1,0 +1,106 @@
+<%# Issue a gift certificate: its value, who it's for, what it's good for.
+    "Good for" is any show, or a checklist of the productions with
+    ticketing, each narrowable to some of its dates (gift_scope_controller).
+    Locals: productions ([[production, listings]] with dates still to come). %>
+<%
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  check_class = "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+%>
+<div id="issue-gift-certificate" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden max-h-[92vh] flex flex-col" data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4 flex-shrink-0">
+      <h3 class="text-lg font-semibold text-white">Issue a gift certificate</h3>
+      <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" aria-label="Close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <%= form_with scope: :ticket_gift_certificate, url: manage_ticket_gift_certificates_path, method: :post, data: { turbo: false, controller: "gift-scope" }, class: "flex flex-col min-h-0" do |f| %>
+      <div class="p-6 space-y-5 overflow-y-auto">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <%= f.label :amount, "Value", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+            <div class="relative">
+              <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-gray-500">$</span>
+              <%= f.text_field :amount, inputmode: "decimal", placeholder: "50.00", required: true, class: "#{input_class} pl-7" %>
+            </div>
+          </div>
+          <div>
+            <%= f.label :recipient_name, class: "block text-sm font-medium text-gray-700 mb-1.5" do %>For <span class="font-normal text-gray-500">(optional)</span><% end %>
+            <%= f.text_field :recipient_name, autocomplete: "off", class: input_class %>
+          </div>
+        </div>
+        <div>
+          <%= f.label :recipient_email, class: "block text-sm font-medium text-gray-700 mb-1.5" do %>Their email <span class="font-normal text-gray-500">(optional)</span><% end %>
+          <%= f.email_field :recipient_email, autocomplete: "off", class: input_class, data: { gift_scope_target: "email", action: "input->gift-scope#emailChanged" } %>
+        </div>
+        <div>
+          <%= f.label :note, class: "block text-sm font-medium text-gray-700 mb-1.5" do %>Note to yourselves <span class="font-normal text-gray-500">(optional)</span><% end %>
+          <%= f.text_field :note, placeholder: "Raffle prize, Fall Gala", autocomplete: "off", class: input_class %>
+        </div>
+
+        <fieldset>
+          <legend class="block text-sm font-medium text-gray-700 mb-2">Good for</legend>
+          <div class="space-y-2.5">
+            <label class="flex items-center gap-3 text-sm text-gray-800 cursor-pointer">
+              <%= radio_button_tag :good_for, "any", true, class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500", data: { action: "change->gift-scope#choose" } %>
+              <span>Any show you sell tickets to</span>
+            </label>
+            <label class="flex items-center gap-3 text-sm text-gray-800 cursor-pointer">
+              <%= radio_button_tag :good_for, "some", false, class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500", data: { action: "change->gift-scope#choose" } %>
+              <span>Only these</span>
+            </label>
+            <div class="hidden ml-7" data-gift-scope-target="list">
+              <% if productions.empty? %>
+                <p class="text-sm text-gray-500">No productions have dates on sale yet.</p>
+              <% else %>
+                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                  <% if productions.size > 5 %>
+                    <div class="border-b border-gray-200 bg-gray-50 px-3 py-2">
+                      <input type="text" placeholder="Search productions…" autocomplete="off" aria-label="Search productions"
+                             data-gift-scope-target="search" data-action="input->gift-scope#filter"
+                             class="block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                    </div>
+                  <% end %>
+                  <ul class="divide-y divide-gray-100 max-h-72 overflow-y-auto">
+                    <% productions.each do |production, listings| %>
+                      <li class="px-3 py-2.5" data-gift-scope-target="production" data-name="<%= production.name.downcase %>">
+                        <div class="flex items-center justify-between gap-3">
+                          <label class="flex items-center gap-3 text-sm text-gray-900 cursor-pointer min-w-0">
+                            <%= check_box_tag "productions[#{production.id}][all]", "1", false, id: "gift_production_#{production.id}", class: check_class,
+                                  data: { gift_scope_target: "all", action: "change->gift-scope#toggleProduction" } %>
+                            <span class="truncate"><span class="font-medium"><%= production.name %></span> <span class="text-xs text-gray-500">· <%= pluralize(listings.size, "date") %> on sale</span></span>
+                          </label>
+                          <button type="button" class="text-xs font-medium text-pink-700 hover:text-pink-800 whitespace-nowrap cursor-pointer"
+                                  data-gift-scope-target="pick" data-action="click->gift-scope#toggleDates" data-total="<%= listings.size %>">All dates ▸</button>
+                        </div>
+                        <div class="hidden mt-2 ml-7 space-y-1.5" data-gift-scope-target="dates">
+                          <% listings.each do |listing| %>
+                            <label class="flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
+                              <%= check_box_tag "productions[#{production.id}][listing_ids][]", listing.id, false, id: "gift_listing_#{listing.id}", class: check_class,
+                                    data: { gift_scope_target: "date", action: "change->gift-scope#toggleDate" } %>
+                              <span><%= listing.show.date_and_time.strftime("%a, %b %-d · %-l:%M %p") %><% if listing.own_title.present? %> <span class="text-gray-500">· <%= listing.own_title %></span><% end %></span>
+                            </label>
+                          <% end %>
+                        </div>
+                      </li>
+                    <% end %>
+                  </ul>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </fieldset>
+
+        <label class="flex items-start gap-3 text-sm text-gray-800 cursor-pointer">
+          <%= check_box_tag :email_it, "1", true, id: "gift_email_it", class: "mt-0.5 #{check_class}", data: { gift_scope_target: "emailIt" } %>
+          <span>Email the certificate to <span data-gift-scope-target="emailWho">them</span>, with the code and how to use it.</span>
+        </label>
+      </div>
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2 flex-shrink-0">
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+        <%= render "shared/button", text: "Issue", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,25 @@
+<%# Under the order's lines: one line, "Have a gift certificate?", that
+    becomes a code field (Mockup A, Tim 2026-10-30). Once a certificate is
+    applied the summary above shows it, with Remove, and this stays hidden.
+    Locals: paying (the checkout or order). %>
+<% applied = paying.gift_certificate_cents.to_i.positive? %>
+<div class="border-t border-gray-100" data-checkout-target="gift">
+  <div class="<%= 'hidden' if applied %>" data-checkout-target="giftClosed">
+    <div class="px-5 py-3 text-sm">
+      <button type="button" class="font-medium text-pink-700 hover:text-pink-800 cursor-pointer" data-action="checkout#openGift">Have a gift certificate?</button>
+    </div>
+  </div>
+  <div class="hidden" data-checkout-target="giftOpen">
+    <div class="px-5 py-4">
+      <label for="gift_certificate_code" class="block text-sm font-medium text-gray-700 mb-1.5">Gift certificate code</label>
+      <div class="flex gap-2">
+        <input type="text" id="gift_certificate_code" name="gift_certificate_code" autocomplete="off" autocapitalize="characters" spellcheck="false"
+               placeholder="<%= TicketGiftCertificate::CODE_EXAMPLE %>" data-checkout-target="giftCode" data-action="keydown.enter->checkout#applyGift:prevent"
+               class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-mono uppercase tracking-wide text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+        <%= render "shared/button", text: "Apply", variant: "primary", size: "medium", type: :button, data: { action: "checkout#applyGift", checkout_target: "giftApply" } %>
+      </div>
+      <p class="text-xs text-gray-500 mt-1.5">It's on the certificate, in the form <%= TicketGiftCertificate::CODE_EXAMPLE %>.</p>
+      <p class="hidden text-sm text-red-600 mt-1.5" role="alert" data-checkout-target="giftError"></p>
+    </div>
+  </div>
+</div>

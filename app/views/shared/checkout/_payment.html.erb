@@ -1,7 +1,9 @@
 <%# Where Stripe's Payment Element mounts (checkout_controller.js), and, for
-    whoever can fix it, why it can't when the publishable key is missing. %>
+    whoever can fix it, why it can't when the publishable key is missing.
+    Locals: title (optional; "Pay the rest · $29.09" when a gift certificate
+    paid some of it). %>
 <div class="rounded-2xl border border-gray-200 bg-white px-5 py-5">
-  <h2 class="font-semibold text-gray-900 mb-4">Payment</h2>
+  <h2 class="font-semibold text-gray-900 mb-4" data-checkout-target="paymentTitle"><%= local_assigns[:title].presence || "Payment" %></h2>
   <%# Only pages that define superadmin_viewer? can single out a superadmin; a page without it keeps the buyer-facing line. %>
   <% if stripe_publishable_key.blank? && (Rails.env.development? || (respond_to?(:superadmin_viewer?) && superadmin_viewer?)) %>
     <div class="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">

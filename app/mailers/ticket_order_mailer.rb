@@ -226,8 +226,24 @@ class TicketOrderMailer < ApplicationMailer
       ticket_count: ActionController::Base.helpers.pluralize(count, "ticket"),
       order_code: order.code,
       order_url: routes.tickets_order_url(token: order.token, **url_options),
-      refund_message: refund&.buyer_message.to_s.strip
+      refund_message: refund&.buyer_message.to_s.strip,
+      refund_where: refund_where_words(refund)
     }
+  end
+
+  # Where a refund goes back to: the card, the gift certificate that paid,
+  # or both. A preview (no refund yet) says the card.
+  def self.refund_where_words(refund)
+    gift = refund&.gift_certificate_cents.to_i
+    card = refund ? refund.amount_cents - gift : 1
+    money = ->(cents) { ActiveSupport::NumberHelper.number_to_currency(cents / 100.0) }
+    if gift.positive? && card.positive?
+      "#{money.call(gift)} goes back onto your gift certificate, ready for your next order, and #{money.call(card)} to the card you paid with, which usually shows up within 5 to 10 business days."
+    elsif gift.positive?
+      "It goes back onto your gift certificate, ready for your next order."
+    else
+      "It goes back to the card you paid with and usually shows up within 5 to 10 business days."
+    end
   end
 
   def self.routes

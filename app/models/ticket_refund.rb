@@ -13,6 +13,8 @@ class TicketRefund < ApplicationRecord
   after_commit -> { CocoScoutLedgerPoster.post_for!(self) }, if: -> { saved_change_to_amount_cents? }
   belongs_to :ticket_order
   belongs_to :refunded_by, class_name: "User", optional: true
+  # The part of this refund that went back onto a gift certificate.
+  has_one :ticket_gift_certificate_redemption, dependent: :nullify
 
   validates :status, inclusion: { in: STATUSES }
 

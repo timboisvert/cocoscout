@@ -80,6 +80,16 @@ class Rack::Attack
     req.ip if req.post? && req.path.start_with?("/tickets/checkout/") && req.path.end_with?("/pay")
   end
 
+  # Gift certificate codes: a few tries is a typo, more is a guesser (Tim,
+  # 2026-10-30). These cap every try per address; the controller also counts
+  # the misses themselves and makes a guesser wait an hour after a handful.
+  throttle("tickets/gift/ip", limit: 6, period: 1.minute) do |req|
+    req.ip if req.post? && req.path.start_with?("/tickets/checkout/") && req.path.end_with?("/gift-certificate")
+  end
+  throttle("tickets/gift/ip/hour", limit: 20, period: 1.hour) do |req|
+    req.ip if req.post? && req.path.start_with?("/tickets/checkout/") && req.path.end_with?("/gift-certificate")
+  end
+
   # Active Storage variants are expensive (image processing / S3 fetch) — the
   # exact resource the crawler used to tie up every worker thread. The ceiling
   # must clear a real page load on a cold cache: headshot-heavy manage pages

@@ -76,6 +76,7 @@ class Organization < ApplicationRecord
   has_many :balance_withdrawals, dependent: :delete_all
   has_many :balance_top_ups, dependent: :delete_all
   has_many :ticket_discount_codes, dependent: :destroy
+  has_many :ticket_gift_certificates, dependent: :destroy
   has_many :ticket_products, dependent: :destroy
   has_many :ticketing_access_grants, dependent: :delete_all
   has_many :ticket_sales_viewers, dependent: :delete_all

@@ -93,6 +93,22 @@
         <% when "none" %>
           <p>These were comps, so no money moves. The tickets stop working and their seats come free<%= "; the guest gets an email saying so, unless you untick it below" if @order.buyer_email.present? %>.</p>
         <% else %>
+          <% if q.gift_cents.positive? %>
+          <p>
+            <% if q.card_cents.positive? %>
+              <%= number_to_currency(q.gift_cents / 100.0) %> goes back onto their gift certificate and <%= number_to_currency(q.card_cents / 100.0) %> to the card they paid with.
+            <% else %>
+              It goes back onto their gift certificate, not to a card.
+            <% end %>
+            <% if q.org_debit_cents.positive? %>
+              Your balance gives up <%= number_to_currency(q.org_debit_cents / 100.0) %>.
+            <% elsif q.org_debit_cents.negative? %>
+              CocoScout's <%= number_to_currency(q.platform_fee_waived_cents / 100.0) %> fee on these tickets comes back to your balance.
+            <% else %>
+              Your balance isn't touched.
+            <% end %>
+          </p>
+          <% else %>
           <p>It goes back to the card they paid with.
             <% if q.platform_fee_waived_cents.positive? %>
               CocoScout's <%= number_to_currency(q.platform_fee_waived_cents / 100.0) %> fee on these tickets comes back too, so your balance gives up <%= number_to_currency(q.org_debit_cents / 100.0) %>.
@@ -101,6 +117,7 @@
             <% end %>
             The card company keeps its processing fee.</p>
           <p><%= listing.released_at ? "This show has happened, so the refund comes from your available balance." : "The show hasn't happened yet, so the refund comes from what it sold." %></p>
+          <% end %>
         <% end %>
       </div>
     </div>

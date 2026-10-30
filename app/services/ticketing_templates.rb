@@ -35,6 +35,9 @@ class TicketingTemplates
   # blank otherwise, so the line about the PDF only shows when it's there.
   PDF_VAR = { "name" => "pdf_attached", "description" => "Set when the tickets are attached as a PDF (blank otherwise)" }.freeze
 
+  # Where a refund went: back to the card, back onto a gift certificate, or both.
+  REFUND_WHERE_VAR = { "name" => "refund_where", "description" => "Where the money goes back to: the card, a gift certificate, or both, with how long it takes" }.freeze
+
   def self.v(*names)
     names.map { |n| n.is_a?(Hash) ? n : { "name" => n.to_s, "description" => n.to_s.humanize } }
   end
@@ -90,8 +93,8 @@ class TicketingTemplates
       variables: BUYER_VARS + v({ "name" => "was", "description" => "The date and time the old tickets were for" }, { "name" => "refund_amount", "description" => "The difference refunded, if any" }) },
     { key: "ticket_order_refunded", name: "Ticket Order Refunded", channel: "email",
       subject: "Your refund from {{organization_name}}",
-      body: %(<p>Hi {{first_name}},</p><p>{{organization_name}} refunded <strong>{{refund_amount}}</strong> for {{ticket_count}} to <strong>{{show_title}}</strong> on {{show_date}}. It goes back to the card you paid with and usually shows up within 5 to 10 business days.</p>{{#refund_message}}<p>{{refund_message}}</p>{{/refund_message}}<p style="color:#6b7280;font-size:12px">Order {{order_code}} · <a href="{{order_url}}">View your order</a></p>),
-      variables: BUYER_VARS + v({ "name" => "refund_amount", "description" => "What was refunded" }, { "name" => "refund_message", "description" => "The manager's message to the buyer, if any" }) },
+      body: %(<p>Hi {{first_name}},</p><p>{{organization_name}} refunded <strong>{{refund_amount}}</strong> for {{ticket_count}} to <strong>{{show_title}}</strong> on {{show_date}}. {{refund_where}}</p>{{#refund_message}}<p>{{refund_message}}</p>{{/refund_message}}<p style="color:#6b7280;font-size:12px">Order {{order_code}} · <a href="{{order_url}}">View your order</a></p>),
+      variables: BUYER_VARS + v({ "name" => "refund_amount", "description" => "What was refunded" }, REFUND_WHERE_VAR, { "name" => "refund_message", "description" => "The manager's message to the buyer, if any" }) },
     { key: "ticket_order_retyped", name: "Ticket Order Changed to Another Ticket Type", channel: "email",
       subject: "Your new tickets for {{show_title}}",
       body: %(<p>Hi {{first_name}},</p><p>{{organization_name}} changed your {{ticket_count}} for <strong>{{show_title}}</strong> on {{show_date}} from {{was_type}} to {{new_type}}. Same show, same time.</p>{{#refund_amount}}<p>The new tickets cost less, so we refunded the {{refund_amount}} difference to the card you paid with. It usually shows up within 5 to 10 business days.</p>{{/refund_amount}}<p>Your new tickets are below. The old ones no longer work.</p>),
@@ -103,8 +106,17 @@ class TicketingTemplates
       variables: BUYER_VARS + v({ "name" => "refund_message", "description" => "The manager's message to them, if any" }) },
     { key: "ticket_event_canceled", name: "Ticketed Show Canceled", channel: "email",
       subject: "{{show_title}} on {{show_date}} is canceled",
-      body: %(<p>Hi {{first_name}},</p><p>We're sorry: <strong>{{show_title}}</strong> on {{show_date}} at {{show_time}} is canceled.</p><p>We've refunded {{refund_amount}} for your {{ticket_count}} to the card you paid with. It usually shows up within 5 to 10 business days.</p><p>We hope to see you at another show soon.</p><p>{{organization_name}}</p>),
-      variables: BUYER_VARS + v({ "name" => "refund_amount", "description" => "What was refunded" }) },
+      body: %(<p>Hi {{first_name}},</p><p>We're sorry: <strong>{{show_title}}</strong> on {{show_date}} at {{show_time}} is canceled.</p><p>We've refunded {{refund_amount}} for your {{ticket_count}}. {{refund_where}}</p><p>We hope to see you at another show soon.</p><p>{{organization_name}}</p>),
+      variables: BUYER_VARS + v({ "name" => "refund_amount", "description" => "What was refunded" }, REFUND_WHERE_VAR) },
+    { key: "ticket_gift_certificate_issued", name: "Gift certificate issued", channel: "email",
+      subject: "A gift certificate from {{organization_name}}",
+      body: %(<p>Hi {{first_name}},</p><p>You have a <strong>{{amount}}</strong> gift certificate from {{organization_name}}. Its code is <strong style="font-family:monospace;letter-spacing:.05em">{{code}}</strong>.</p><p>It's good for {{good_for}}. To use it, pick your tickets at <a href="{{box_office_url}}">{{organization_name}}'s box office</a> and type the code on the checkout page, under the total. It pays as much of the order as it has, and anything left stays on the code for next time.</p>),
+      variables: v({ "name" => "first_name", "description" => "Recipient's first name" },
+                   { "name" => "organization_name", "description" => "The theater that issued it" },
+                   { "name" => "amount", "description" => "What it's worth, e.g. $50.00" },
+                   { "name" => "code", "description" => "The code, e.g. GIFT-7K3M-Q9XD-N4PW" },
+                   { "name" => "good_for", "description" => "The shows it's good for, in words" },
+                   { "name" => "box_office_url", "description" => "The theater's box office page" }) },
 
     # --- The theater (TicketingNotifier). Tables arrive ready-made.
     { key: "ticketing_sale", name: "Ticketing: each online sale", channel: "email",

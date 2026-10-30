@@ -1,11 +1,15 @@
 <%
   show = @listing.show
   # Several shows in one checkout (a pass) pay one total.
-  total_cents = (@purchase || @order).total_cents
+  paying = @purchase || @order
+  total_cents = paying.total_cents
+  # What the card pays: the total less what a gift certificate covers.
+  card_cents = paying.card_cents
   orders = @purchase ? @purchase.ticket_orders.includes(ticket_listing: { show: %i[location location_space] }).to_a : [ @order ]
   pass = @order.tickets.first&.ticket_pass
-  free = total_cents.zero?
-  pay_text = free ? "Get my tickets" : "Pay #{number_to_currency(total_cents / 100.0)}"
+  free = card_cents.zero?
+  pay_text = free ? "Get my tickets" : "Pay #{number_to_currency(card_cents / 100.0)}"
+  gift_applied = paying.gift_certificate_cents.to_i.positive?
   image, page_image = ticket_page_image(@listing)
   place = [ show.location&.name, show.location_space&.name ].compact.uniq.join(" · ")
   back_path = pass ? tickets_pass_path(org: @ticketing_profile.slug, pass: pass.slug, **embed_params) : tickets_event_path(org: @ticketing_profile.slug, event: @listing.slug, **embed_params)
@@ -36,13 +40,14 @@
             action: "submit->checkout#submit",
             checkout_target: "form",
             checkout_publishable_key_value: stripe_publishable_key.to_s,
-            checkout_amount_value: total_cents,
+            checkout_amount_value: card_cents,
             checkout_free_value: free,
             checkout_return_url_value: tickets_checkout_done_url(token: @order.token, **embed_params),
             checkout_expires_at_value: @order.expires_at&.iso8601,
             checkout_hold_key_value: ("cocoscout:ticket-hold:#{@listing.id}" unless door_sale || pass),
             checkout_token_value: @order.token,
-            checkout_items_url_value: tickets_checkout_items_path(token: @order.token)
+            checkout_items_url_value: tickets_checkout_items_path(token: @order.token),
+            checkout_gift_url_value: tickets_checkout_gift_certificate_path(token: @order.token)
           } do %>
       <%= render "tickets/bot_trap", id: "checkout_website" %>
 
@@ -66,6 +71,10 @@
           </div>
         </div>
         <div data-checkout-target="summary"><%= render "ticket_checkouts/summary", order: @order %></div>
+        <%# A gift certificate pays instead of the card. Not at the door (the door takes cash, card and comps), not for a pass yet. %>
+        <% unless door_sale || pass || total_cents.zero? %>
+          <%= render "ticket_checkouts/gift_certificate", paying: paying %>
+        <% end %>
         <%= render "shared/checkout/countdown", back_path: back_path, back_text: (door_sale ? nil : (pass ? "Change passes" : "Change tickets")) %>
       </div>
 
@@ -83,14 +92,14 @@
             follow_ticked: FollowCheckout.ticked_by_default?(@order.organization),
             follow_chosen: (@order.buyer_email.present? ? @order.follow_list_ids.map(&:to_i) : nil) %>
 
-      <%= render "shared/checkout/payment" unless free %>
+      <%= render "shared/checkout/payment", title: (gift_applied ? "Pay the rest · #{number_to_currency(card_cents / 100.0)}" : nil) unless free %>
 
       <%# What they're agreeing to, before they pay (not at the door: the show's on). %>
       <% unless at_door %>
         <% policy_orders = @order.ticket_purchase ? @order.ticket_purchase.ticket_orders.includes(:ticket_listing).to_a : [ @order ] %>
         <%= render "shared/checkout/age_limit", limits: policy_orders.map { |o| [ o.ticket_listing.display_title, o.ticket_listing.age_words ] } %>
       <% end %>
-      <% unless free || at_door %>
+      <% unless total_cents.zero? || at_door %>
         <%= render "shared/checkout/refund_policy",
               policies: policy_orders.map { |o| [ o.ticket_listing.display_title, RefundPolicy.from_snapshot(o.refund_policy) || RefundPolicy.for(o.ticket_listing) ] } %>
       <% end %>
