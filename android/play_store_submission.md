@@ -150,8 +150,8 @@ on the payment provider's page, not in the app.
 
 | Field | Value |
 |---|---|
-| App name (30) | CocoScout |
-| Short description (80) | Your shows, your messages, your ticketing. All in one place. |
+| App name (30) | CocoScout: Produce & Perform (changed 2026-10-30, was "CocoScout") |
+| Short description (80) | Produce and perform: cast, crew, tickets and payouts, all in one app. (changed 2026-10-30) |
 | App icon | `play_store/icon-512.png` |
 | Feature graphic | `play_store/feature-graphic.png` |
 | Phone screenshots | `play_store/1-welcome.png` through `5-door.png`, in order |
@@ -178,7 +178,7 @@ Sign agreements, pick up scripts and schedules, finish your tax forms, and see w
 THE DOOR
 Working the box office tonight? The app scans tickets with the camera, checks in whole parties, and sells at the door.
 
-CocoScout is free for performers. Organizations manage casting, ticketing and payouts from the web at cocoscout.com; sign in there with the same account.
+CocoScout is free for performers. Producers run casting, ticketing and payouts from the same account: on the web at cocoscout.com, and from the app in production mode.
 ```
 
 ## The first release

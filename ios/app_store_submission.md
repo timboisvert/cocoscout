@@ -11,8 +11,8 @@ ship as 1.1 without a listing change.
 
 | Field | Value |
 |---|---|
-| Name | CocoScout |
-| Subtitle (30) | Your shows, cast and door |
+| Name | CocoScout: Produce & Perform (changed 2026-10-30, was "CocoScout"; takes effect with the next version) |
+| Subtitle (30) | Cast, crew, tickets & payouts (changed 2026-10-30, was "Your shows, cast and door") |
 | Bundle ID | com.cocoscout.app |
 | Version | 1.0 (build 4 — bump `CURRENT_PROJECT_VERSION` before the upload) |
 | Primary category | Business |
@@ -28,8 +28,13 @@ The support page is /support (support@cocoscout.com, the common questions, links
 
 ### Keywords (100 characters, comma-separated, no spaces)
 
+Apple indexes each word once across name, subtitle and keywords, so words
+that are already in the name or subtitle (cast, crew, tickets, payouts) are
+left out here. Apple matches plurals but not stems: "perform" in the name
+does not cover "performer", so that word stays in the list.
+
 ```
-theater,theatre,casting,audition,signup,cast,crew,show,tickets,box office,door,check-in,comedy,improv
+theater,theatre,producer,performer,production,casting,audition,rehearsal,signup,comedy,improv,stage
 ```
 
 ### Promotional text (170, can change without a new build)
@@ -64,9 +69,9 @@ THE DOOR
 Working the box office tonight? The app scans tickets with the camera,
 checks in whole parties, and sells at the door.
 
-CocoScout is free for performers. Organizations manage casting, ticketing
-and payouts from the web at cocoscout.com; sign in there with the same
-account.
+CocoScout is free for performers. Producers run casting, ticketing and
+payouts from the same account: on the web at cocoscout.com, and from the
+app in production mode.
 
 ### What's new (1.0)
 
