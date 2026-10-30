@@ -20,7 +20,7 @@
     if (a = local_assigns[:attention])
       rows << { key: "financials", tone: :gray, text: "#{a[:financials]} #{'show'.pluralize(a[:financials])} that need financials", action: { path: manage_money_financials_path } } if a[:financials].to_i.positive?
       rows << { key: "pay", tone: :pink, text: "#{number_to_currency(a[:payouts_amount])} to pay", action: { path: manage_money_payouts_path } } if a[:payouts].to_i.positive?
-      rows << { key: "hours", tone: :gray, text: "#{a[:hours]} #{'hour'.pluralize(a[:hours])} to approve", action: { path: manage_staffing_timesheets_path } } if a[:hours].to_i.positive?
+      rows << { key: "hours", tone: :gray, text: hours_to_approve_words(a[:hours]), action: { path: manage_staffing_timesheets_path } } if a[:hours].to_i.positive?
     end
     rows
   end

@@ -66,4 +66,19 @@ RSpec.describe "Manage home actions: auditions and sign-ups", type: :request do
       expect(bar).to be_nil
     end
   end
+
+  context "with hours waiting on approval" do
+    let!(:org) { create(:organization, :pro, owner: owner) }
+    let(:person) { create(:person) }
+
+    it "counts the people whose hours wait, not their entries" do
+      3.times { |n| create(:staff_time_entry, organization: org, person: person, started_at: n.days.ago.change(hour: 18), ended_at: n.days.ago.change(hour: 23)) }
+      pill = bar.at_css("[data-status='hours']")
+      expect(pill.text).to include("1 person's hours to approve")
+      expect(pill["href"]).to eq(manage_staffing_timesheets_path)
+
+      create(:staff_time_entry, organization: org, person: create(:person))
+      expect(bar.at_css("[data-status='hours']").text).to include("2 people's hours to approve")
+    end
+  end
 end

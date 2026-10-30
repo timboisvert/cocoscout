@@ -6,6 +6,7 @@ module Manage
   # that production mode opens inside the app for generation-2 builds.
   class ManageController < ApplicationController
     include Manage::PaidFeatureGate
+    include HomeHelper
     include Manage::WeekLoaders
     include OrganizationContext
 
@@ -35,7 +36,7 @@ module Manage
 
     before_action :note_mode_switch
     # A show canceled, taken away or moved by this request: the next page
-    # offers Tell people (ShowChanges; docs/show_change_notices_plan.md).
+    # offers to notify the cast and staff (ShowChanges; docs/show_change_notices_plan.md).
     after_action :offer_tell_people
     before_action :track_last_dashboard
     before_action :show_manage_sidebar
@@ -106,7 +107,7 @@ module Manage
       if pro_manager
         todo = MoneyTodoService.new(user: Current.user, organization: Current.organization, row_limit: 0)
         @home_attention = { financials: todo.financials.count.to_i, payouts: todo.payouts.count.to_i, payouts_amount: todo.payouts.amount,
-                            hours: Current.organization.staff_time_entries.pending.count }
+                            hours: Current.organization.staff_time_entries.pending.distinct.count(:person_id) }
       end
       @home_status = home_status_items(pro_manager)
 
@@ -152,7 +153,7 @@ module Manage
         end
       end
       if @home_attention && @home_attention[:hours].positive?
-        items << { key: "hours", topic: "Staffing", tone: :gray, text: "#{@home_attention[:hours]} #{'hour'.pluralize(@home_attention[:hours])} to approve",
+        items << { key: "hours", topic: "Staffing", tone: :gray, text: hours_to_approve_words(@home_attention[:hours]),
                    action: { path: manage_staffing_timesheets_path } }
       end
       if @home.tickets_on?
@@ -186,7 +187,7 @@ module Manage
         { key: "signups", topic: "Sign-ups", tone: :pink, text: "12 audition sign-ups to review", action: { path: manage_signups_path } },
         { key: "staffing", topic: "Staffing", tone: :red, text: "Staffing is a draft · 1 can't make it", action: { path: manage_staffing_scheduling_path } },
         { key: "staffing-open", topic: "Staffing", tone: :amber, text: "3 open slots", action: { path: manage_staffing_scheduling_path } },
-        { key: "hours", topic: "Staffing", tone: :gray, text: "4 hours to approve", action: { path: manage_staffing_timesheets_path } },
+        { key: "hours", topic: "Staffing", tone: :gray, text: "4 people's hours to approve", action: { path: manage_staffing_timesheets_path } },
         { key: "ticketing-canceled", topic: "Ticketing", tone: :amber, text: "Halloween o' Weens is canceled but people hold tickets", action: { path: manage_ticketing_path } },
         { key: "ticketing-moved", topic: "Ticketing", tone: :amber, text: "Laugh-Along, Live! moved after people bought tickets", action: { path: manage_ticketing_path } },
         { key: "ticketing-refund", topic: "Ticketing", tone: :amber, text: "1 refund didn't go through", action: { path: manage_ticketing_path } },

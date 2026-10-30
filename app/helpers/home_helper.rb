@@ -73,14 +73,14 @@ module HomeHelper
     end
   end
 
-  # A canceled or moved show: were its cast (or staff) told? nil when it had
-  # none (docs/show_change_notices_plan.md).
+  # A canceled or moved show: were its cast (or staff) notified? nil when it
+  # had none (docs/show_change_notices_plan.md).
   def home_told_chip(told, audience)
     total, untold = audience == :cast ? [ told.cast_ids.size, told.cast_untold_count ] : [ told.staff_ids.size, told.staff_untold_count ]
     return nil if total.zero?
 
     word = audience == :cast ? "Cast" : "Staff"
-    untold.zero? ? [ :ok, "#{word} told", "#{word} told" ] : [ :warn, "#{untold} not told", "#{word} not told · #{untold}" ]
+    untold.zero? ? [ :ok, "#{word} notified", "#{word} notified" ] : [ :warn, "#{word} not notified", "#{word} not notified · #{untold}" ]
   end
 
   def home_cast_chip(cast)
@@ -99,6 +99,13 @@ module HomeHelper
   end
 
   # The Home path for a day or a week, keeping the 7-day / 3-day choice.
+  # The Needs attention row for hours waiting on approval counts the people
+  # whose hours are waiting, not their entries: "1 person's hours to approve".
+  def hours_to_approve_words(people)
+    people = people.to_i
+    "#{people} #{people == 1 ? 'person\'s' : 'people\'s'} hours to approve"
+  end
+
   def home_day_path(day, days: @home_days)
     days == 3 ? manage_path(day: day.iso8601, days: 3) : manage_path(day: day.iso8601)
   end
