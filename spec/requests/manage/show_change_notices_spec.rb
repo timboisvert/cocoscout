@@ -57,6 +57,8 @@ RSpec.describe "Telling people a show changed", type: :request do
   end
 
   it "takes a cancel to Tell people, tells the cast and the show's own staff, and takes the shift off" do
+    # Stored as plain text with line breaks, as the real one is.
+    ContentTemplate.find_by!(key: "show_canceled").update!(body: "Hello, {{recipient_name}}\n\nCanceled:\n\n{{production_name}}\n{{event_date}}")
     patch manage_cancel_show_path(production, seven), params: { scope: "this" }
     change = ShowChange.last
     expect(change).to have_attributes(kind: "canceled", show_id: seven.id)
@@ -73,9 +75,14 @@ RSpec.describe "Telling people a show changed", type: :request do
     expect(page.css("[data-tell-section]").map { |s| s["data-tell-section"] }).to eq(%w[cast_off staff_off])
     expect(page.at_css("[data-tell-section='cast_off']").text).to include("Ana Ruiz")
     expect(page.at_css("[data-tell-section='staff_off']").text).to include("Tess Ng", "Take these shifts off")
-    # What each person's own lines will say, before anything is sent.
-    expect(page.at_css("[data-tell-section='staff_off'] [data-filled-in]").text).to include("Tess Ng:", "Booth Tech, #{saturday.strftime('%a, %b %-d')}, 6:30–8:00 PM")
-    expect(page.at_css("[data-tell-section='cast_off'] [data-filled-in]").text).to include("Ana Ruiz:", "#{saturday.strftime('%a, %b %-d')}, 7:00 PM")
+    # One person each: their lines are in the draft itself, as paragraphs, not
+    # left as placeholders.
+    staff_draft = page.at_css("[data-tell-section='staff_off'] input[name='body']")["value"]
+    expect(staff_draft).to include("<p>", "Booth Tech, #{saturday.strftime('%a, %b %-d')}, 6:30–8:00 PM")
+    expect(staff_draft).not_to include("{{shifts}}")
+    expect(page.at_css("[data-tell-section='cast_off'] input[name='body']")["value"])
+      .to include("<p>Hello, {{recipient_name}}</p>", "<p>Mr. Mystery Machine<br>", "#{saturday.strftime('%a, %b %-d')}, 7:00 PM")
+    expect(page.at_css("[data-filled-in]")).to be_nil
     expect(page.text).not_to include("Miles Rowe")
 
     # Notify staff opens just the staff.
@@ -117,7 +124,15 @@ RSpec.describe "Telling people a show changed", type: :request do
   it "counts the night's crew in when the last show of the night goes" do
     nine.update!(canceled: true)
     patch manage_cancel_show_path(production, seven), params: { scope: "this" }
-    expect(ShowChange.where(show: seven).last.staff_person_ids).to contain_exactly(tess.id, miles.id)
+    change = ShowChange.where(show: seven).last
+    expect(change.staff_person_ids).to contain_exactly(tess.id, miles.id)
+
+    # Their shifts differ, so {{shifts}} stays in the draft and each person's
+    # version is listed under it.
+    get manage_show_changes_path(change.batch, audience: "staff")
+    section = Nokogiri::HTML(response.body).at_css("[data-tell-section='staff_off']")
+    expect(section.at_css("input[name='body']")["value"]).to include("{{shifts}}")
+    expect(section.at_css("[data-filled-in]").text).to include("Tess Ng:", "Booth Tech", "Miles Rowe:", "Bartender")
   end
 
   it "records a move, and moves the shifts with the show when the manager says so" do
@@ -129,8 +144,8 @@ RSpec.describe "Telling people a show changed", type: :request do
 
     get manage_show_changes_path(change.batch)
     expect(Nokogiri::HTML(response.body).css("[data-tell-section]").map { |s| s["data-tell-section"] }).to eq(%w[cast_moved staff_moved])
-    # The preview shows the shift at its new time, as it will be once moved.
-    expect(Nokogiri::HTML(response.body).at_css("[data-tell-section='staff_moved'] [data-filled-in]").text).to include("6:30–8:00 PM → 7:30–9:00 PM")
+    # The draft shows the shift at its new time, as it will be once moved.
+    expect(Nokogiri::HTML(response.body).at_css("[data-tell-section='staff_moved'] input[name='body']")["value"]).to include("6:30–8:00 PM → 7:30–9:00 PM")
     tell(change.batch, "staff_moved", [ tess ], shift_action: "1")
     expect(booth_shift.reload.starts_at).to eq(saturday.in_time_zone.change(hour: 19, min: 30))
     tell(change.batch, "cast_moved", [ ana ])

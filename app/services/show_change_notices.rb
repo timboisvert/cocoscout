@@ -30,6 +30,14 @@ class ShowChangeNotices
     "staff_off" => "shift_canceled", "staff_moved" => "shift_moved"
   }.freeze
 
+  # The placeholders that can differ per person, by send, and the one whose
+  # per-person version is listed under the draft.
+  PER_PERSON = {
+    "cast_off" => %w[event_date], "cast_moved" => %w[dates changes],
+    "staff_off" => %w[dates what shifts], "staff_moved" => %w[dates what shifts]
+  }.freeze
+  MAIN_KEY = { "cast_off" => "event_date", "cast_moved" => "changes", "staff_off" => "shifts", "staff_moved" => "shifts" }.freeze
+
   TITLES = {
     "cast_off" => "Cast", "cast_moved" => "Cast",
     "staff_off" => "Staff", "staff_moved" => "Staff"
@@ -69,18 +77,31 @@ class ShowChangeNotices
 
   # The words to start from: the template with what's the same for everyone
   # filled in, and each person's own dates and shifts left as placeholders.
+  # The words to start from, formatted the way every send formats a
+  # template (line breaks become paragraphs). What's the same for everyone on
+  # the list is filled in (a single canceled date); only what differs per
+  # person stays a placeholder, with each person's version shown under it.
   def draft(section)
     template = ContentTemplateService.find_template(section.template)
-    vars = shared_variables(section)
-    { subject: ContentTemplate.interpolate(template.subject, vars), body: ContentTemplate.interpolate(template.body, vars) }
+    subject_vars, body_vars = common_variables(section)
+    { subject: ContentTemplate.interpolate(template.subject, subject_vars),
+      body: template.render_body(body_vars) }
   end
 
+  # The placeholders left in the draft besides the first name: those whose
+  # words differ from person to person.
+  def per_person_keys(section)
+    _subject_vars, body_vars = common_variables(section)
+    PER_PERSON[section.key].reject { |key| body_vars.key?(key) }
+  end
+
+  def per_person?(section) = per_person_keys(section).include?(MAIN_KEY[section.key])
+
   def hint(section)
-    case section.key
-    when "cast_off" then "{{recipient_name}} becomes each person's first name and {{event_date}} their dates."
-    when "cast_moved" then "{{recipient_name}} becomes each person's first name, {{dates}} their new dates and {{changes}} each date, was and now."
-    else "{{recipient_name}} becomes each person's first name, {{what}} what happened, {{dates}} the dates and {{shifts}} their own shifts."
-    end
+    words = { "event_date" => "their dates", "dates" => "their dates", "changes" => "each of their dates, was and now",
+              "what" => "what happened", "shifts" => "their own shifts" }
+    rest = per_person_keys(section).map { |key| "{{#{key}}} #{words[key]}" }
+    "{{recipient_name}} becomes each person's first name#{rest.any? ? ", #{rest.to_sentence}" : ''}."
   end
 
   # What each person's own placeholder becomes, line by line, shown under
@@ -176,6 +197,26 @@ class ShowChangeNotices
   end
 
   private
+
+  # [subject variables, body variables] for the draft: the shared ones, plus
+  # each per-person one whose words are the same for everyone on the list.
+  def common_variables(section)
+    @common_variables ||= {}
+    @common_variables[section.key] ||= begin
+      shared = shared_variables(section)
+      per = section.recipients.map { |r| person_variables(section, r, projected: true) }
+      subject_vars = shared.dup
+      body_vars = shared.dup
+      PER_PERSON[section.key].each do |key|
+        bodies = per.map { |_s, b| b[key] }.uniq
+        next unless bodies.one?
+
+        body_vars[key] = bodies.first
+        subject_vars[key] = per.first.first[key]
+      end
+      [ subject_vars, body_vars ]
+    end
+  end
 
   def shared_variables(section)
     shows = section.changes.filter_map(&:show)

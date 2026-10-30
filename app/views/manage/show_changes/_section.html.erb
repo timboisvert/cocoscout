@@ -96,7 +96,9 @@
         <p class="mt-1 text-xs text-gray-500"><%= notices.hint(section) %></p>
       </div>
 
-      <%# What each person's own lines will say, so the whole message is seen. %>
+      <%# What each person's own lines will say, when they differ, so the
+          whole message is seen. %>
+      <% if notices.per_person?(section) %>
       <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5" data-filled-in>
         <p class="text-xs font-medium text-gray-700 mb-1.5"><%= notices.filled_in_label(section) %></p>
         <ul class="space-y-1.5">
@@ -108,6 +110,7 @@
           <% end %>
         </ul>
       </div>
+      <% end %>
 
       <div class="flex justify-end">
         <%= render "shared/button", text: "Send to #{pluralize(reachable.size, 'person')}", variant: "primary", size: "medium", type: :submit %>
