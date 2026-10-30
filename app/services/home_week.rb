@@ -23,8 +23,13 @@ class HomeWeek
     def live? = phase.in?(%i[presale door])
     def sold_out? = stats.remaining == 0
   end
-  Staffing = Data.define(:shifts, :staffed, :total, :declined, :day_has_shifts) do
+  # missing: the per-show roles Role Call expects on this show that no shift
+  # covers (a show's own; always empty on a day's row).
+  Staffing = Data.define(:shifts, :staffed, :total, :declined, :day_has_shifts, :missing) do
     def none? = shifts.empty?
+    def starts_at = shifts.map(&:starts_at).min
+    def ends_at = shifts.map(&:ends_at).max
+    def role_names = shifts.map { |s| s.house_role&.name }.compact.uniq
     def open = [ total - staffed, 0 ].max
     def full? = total.positive? && staffed >= total && declined.zero?
   end
@@ -65,12 +70,14 @@ class HomeWeek
 
   def shows_on(day) = rows_by_day.fetch(day, []).map(&:show)
 
-  # { Date => Staffing } for the shifts no show row counts: every shift on a
-  # day with no show (a private party that isn't a show in CocoScout, a work
-  # day), and on a show day the ones tied to none of its shows and
-  # overlapping none (a 2 PM party before an 8 PM show). They get their own
-  # row, so the work someone's paid for shows on Home, and nothing shows
-  # twice (Tim, 2026-10-29). Pro managers only, like the staffing chips.
+  # { Date => [Staffing] } for the shifts no show row counts: the roles that
+  # aren't per show (bartender, house staff, security work the whole night,
+  # not one show), and every shift on a day with no show (a private party
+  # that isn't a show in CocoScout, a work day). Shifts whose times overlap
+  # make one row, named after their roles and placed by its start among the
+  # day's shows; a 2 PM party and the evening's crew are two rows. Nothing
+  # shows twice (Tim, 2026-10-29 and 10-30). Pro managers only, like the
+  # staffing chips.
   def staffing_days
     @staffing_days ||= days.each_with_object({}) do |day, out|
       day_shifts = @shifts_by_day[day] || []
@@ -80,9 +87,18 @@ class HomeWeek
       left = day_shifts.reject { |s| claimed.include?(s.id) }
       next if left.empty?
 
-      stats = slot_stats(left)
-      out[day] = Staffing.new(shifts: left, staffed: stats[:staffed], total: stats[:total], declined: stats[:declined], day_has_shifts: true)
+      out[day] = overlapping_groups(left).map do |group|
+        stats = slot_stats(group)
+        Staffing.new(shifts: group, staffed: stats[:staffed], total: stats[:total], declined: stats[:declined], day_has_shifts: true, missing: [])
+      end
     end
+  end
+
+  # The day's show rows and staffing rows, in order of start time.
+  def day_entries(day)
+    shows = rows_by_day.fetch(day, []).map { |row| [ row.show.date_and_time, 0, row ] }
+    staffing = staffing_days.fetch(day, []).map { |s| [ s.starts_at, 1, s ] }
+    (staffing + shows).sort_by { |at, kind, _| [ at, -kind ] }.map(&:last)
   end
 
   # A day with a show, or with staffing.
@@ -158,10 +174,11 @@ class HomeWeek
 
   def load_shifts
     @house_role_count = @pro_manager ? @organization.house_roles.active.count : 0
+    @per_show_roles = @pro_manager ? @organization.house_roles.active.show_specific.ordered.to_a : []
     @shifts = if staffing_on?
       @organization.shifts
                    .where(starts_at: days.first.beginning_of_day..days.last.end_of_day)
-                   .includes(:house_role, :source, { shows: :production }, shift_assignments: { person: Manage::WeekLoaders::HEADSHOT_PRELOAD })
+                   .includes(:house_role, :source, :shift_additional_roles, { shows: :production }, shift_assignments: { person: Manage::WeekLoaders::HEADSHOT_PRELOAD })
                    .ordered.to_a
     else
       []
@@ -177,18 +194,46 @@ class HomeWeek
     end
   end
 
-  # A shift counts for a show when it's tied to that show, or (an evening
-  # shift tied to none) when it overlaps the show.
+  # A show counts only its per-show roles (a booth tech): a shift of one
+  # tied to that show, or tied to none and overlapping it. Roles for the
+  # whole night go on the day's own row (staffing_days), never on whichever
+  # show their shift happens to be tied to (Tim, 2026-10-30). No chip at all
+  # when the organization has no per-show roles.
   def staffing_for(show)
-    return nil unless staffing_on?
+    return nil unless staffing_on? && @per_show_roles.any?
 
-    day_shifts = @shifts_by_day[show.date_and_time.to_date] || []
+    day_shifts = (@shifts_by_day[show.date_and_time.to_date] || []).select { |s| s.house_role&.show_specific? }
     mine = day_shifts.select do |shift|
       covered = shift.covered_shows
       covered.any? ? covered.any? { |c| c.id == show.id } : (shift.starts_at < show.ends_at && shift.ends_at > show.date_and_time)
     end
     stats = slot_stats(mine)
-    Staffing.new(shifts: mine, staffed: stats[:staffed], total: stats[:total], declined: stats[:declined], day_has_shifts: day_shifts.any?)
+    Staffing.new(shifts: mine, staffed: stats[:staffed], total: stats[:total], declined: stats[:declined],
+                 day_has_shifts: day_shifts.any?, missing: missing_roles(show, mine))
+  end
+
+  # Role Call's roles for this show (when the organization has Role Call on)
+  # that no shift of the show covers, by name. Like Staffing's Role Call: a
+  # role scoped to another venue, or excused for this show, isn't missing.
+  def missing_roles(show, mine)
+    return [] unless @organization.alert_uncovered_show_roles?
+
+    covered = mine.flat_map { |s| [ s.house_role_id ] + s.shift_additional_roles.select { |r| r.show_id.nil? || r.show_id == show.id }.map(&:house_role_id) }.to_set
+    exempt = show.staffing_coverage_exempt_role_ids
+    @per_show_roles.select { |r| r.include_in_role_call && (r.location_id.nil? || r.location_id == show.location_id) }
+                   .reject { |r| covered.include?(r.id) || exempt.include?(r.id) }
+                   .map(&:name)
+  end
+
+  # Shifts in runs whose times overlap, each run in start order.
+  def overlapping_groups(shifts)
+    shifts.sort_by(&:starts_at).each_with_object([]) do |shift, groups|
+      if groups.any? && shift.starts_at < groups.last.map(&:ends_at).max
+        groups.last << shift
+      else
+        groups << [ shift ]
+      end
+    end
   end
 
   def slot_stats(list)

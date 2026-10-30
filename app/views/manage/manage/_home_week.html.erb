@@ -1,8 +1,9 @@
 <%#
   Home on desktop (Design B, Tim 2026-10-27): the days across the top, a
   slim row per show stacked by time under its day, three state chips on
-  each; shifts no show counts (a day with staffing and no show, a party
-  before the show) get a staffing row under the day's shows. Seven
+  each; shifts no show counts (the night's bartender and house staff, a day
+  with staffing and no show) get rows named after their roles, among the
+  day's shows by start time. Seven
   days, or three (the toggle). A day with nothing on it narrows to a sliver.
 %>
 <%
@@ -71,11 +72,12 @@
     <% days.each do |day| %>
       <% if busy[day] %>
         <div class="bg-white p-1.5 flex flex-col gap-1.5 min-h-[120px]" data-day-column="<%= day.iso8601 %>">
-          <% rows_by_day[day].each do |row| %>
-            <%= render "manage/manage/show_row", row: row, size: :grid %>
-          <% end %>
-          <% if staffing_days[day] %>
-            <%= render "manage/manage/staffing_row", day: day, staffing: staffing_days[day], size: :grid %>
+          <% @home.day_entries(day).each do |entry| %>
+            <% if entry.is_a?(HomeWeek::Row) %>
+              <%= render "manage/manage/show_row", row: entry, size: :grid %>
+            <% else %>
+              <%= render "manage/manage/staffing_row", day: day, staffing: entry, size: :grid %>
+            <% end %>
           <% end %>
         </div>
       <% else %>

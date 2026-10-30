@@ -1,9 +1,9 @@
 <%#
-  A day's shifts on Home that no show row counts (a private party that
-  isn't a show in CocoScout, a work day, a party before the show; Tim,
-  2026-10-29): one row like a show's, under the day's shows, its hours and
-  roles, then its staffing chip. The whole row goes to that day on
-  Staffing's Scheduling.
+  Shifts on Home that no show row counts (Tim, 2026-10-29 and 10-30): the
+  roles for the whole night (bartender, house staff), a private party that
+  isn't a show in CocoScout, a work day. One row like a show's, among the
+  day's shows by its start, named after its roles, then its staffing chip.
+  The whole row goes to that day on Staffing's Scheduling.
 
   Locals:
     day       the Date
@@ -13,9 +13,10 @@
 <%
   phone = local_assigns[:size] == :phone
   shifts = staffing.shifts
-  from = shifts.map(&:starts_at).min
-  to = shifts.map(&:ends_at).max
-  roles = shifts.map { |s| s.house_role&.name }.compact.uniq
+  from = staffing.starts_at
+  to = staffing.ends_at
+  roles = staffing.role_names
+  name = roles.join(", ").presence || "Staffing"
   people = shifts.flat_map { |s| s.shift_assignments.reject(&:declined?).map(&:person) }.uniq
   tone, short, long = home_staffing_chip(staffing)
   hours = "#{from.strftime('%-l:%M %p')}–#{to.strftime('%-l:%M %p')}"
@@ -23,11 +24,11 @@
 <%= link_to manage_staffing_scheduling_path(day: day.iso8601),
       class: "w-full text-left rounded-lg border border-gray-200 bg-white hover:border-pink-200 #{phone ? 'px-3 py-2.5' : 'px-1.5 py-1'} flex flex-col gap-1",
       data: { home_staffing_day: day.iso8601 },
-      aria: { label: "Staffing, #{day.strftime('%A, %b %-d')}, #{hours}: open Scheduling" },
-      title: ([ hours, roles.join(", ") ] + [ people.map(&:name).join(", ").presence ]).compact.join(" · ") do %>
+      aria: { label: "#{name}, #{day.strftime('%A, %b %-d')}, #{hours}: open Scheduling" },
+      title: [ hours, name, people.map(&:name).join(", ").presence ].compact.join(" · ") do %>
   <span class="flex items-baseline gap-1.5 min-w-0 w-full <%= phone ? 'text-sm' : 'text-[11.5px]' %>">
     <span class="font-bold tabular-nums flex-shrink-0 text-gray-900"><%= from.strftime("%-l:%M") %></span>
-    <span class="font-semibold truncate min-w-0 text-gray-900">Staffing<%= " · #{roles.join(', ')}" if phone && roles.any? %></span>
+    <span class="font-semibold truncate min-w-0 text-gray-900"><%= name %></span>
     <% if phone %>
       <span class="flex-shrink-0 ml-auto text-[11px] text-gray-500 tabular-nums">until <%= to.strftime("%-l:%M %p") %></span>
     <% end %>

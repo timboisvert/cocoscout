@@ -67,9 +67,9 @@ RSpec.describe "Production Home, show by show", type: :request do
       expect(doc.at_css("[data-home-actions] [data-status='vacancies']").text).to include("1 open vacancy")
     end
 
-    it "say where staffing stands once the organization has roles, and nothing on the Producer plan" do
-      bartender = create(:house_role, organization: org, name: "Bartender", role_type: :house)
-      shift = create(:shift, organization: org, house_role: bartender, source: thu_show, required_count: 2,
+    it "say where staffing stands once the organization has per-show roles, and nothing on the Producer plan" do
+      booth = create(:house_role, organization: org, name: "Booth Tech", role_type: :show_specific)
+      shift = create(:shift, organization: org, house_role: booth, source: thu_show, required_count: 2,
                              starts_at: thu_show.date_and_time - 1.hour, ends_at: thu_show.ends_at)
       org.people << gus
       shift.shift_assignments.create!(person: gus)
@@ -82,7 +82,7 @@ RSpec.describe "Production Home, show by show", type: :request do
       expect(sat_chip.text).to include("No shifts")
       expect(doc.at_css("[data-home-actions] [data-status='staffing']").text).to include("Staffing is a draft")
       modal = doc.at_css("#show-modal-#{thu_show.id}")
-      expect(modal.text).to include("Bartender", "Gus Lee", "+ Staff")
+      expect(modal.text).to include("Booth Tech", "Gus Lee", "+ Staff")
 
       shift.shift_assignments.first.decline!(reason: "Family thing")
       doc = page(week_start: week_start.to_s)

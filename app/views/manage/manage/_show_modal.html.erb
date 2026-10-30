@@ -65,8 +65,13 @@
           <span class="text-sm font-semibold text-gray-900 inline-flex items-center gap-1.5"><svg class="<%= icon %>" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z"/></svg>Staffing<% if @home.staffing_draft? %><span class="text-[10px] font-semibold uppercase tracking-wide text-amber-700 bg-amber-50 border border-amber-200 rounded px-1 ml-1">Draft</span><% end %></span>
           <%= link_to "Scheduling, #{show.date_and_time.strftime('%A')}", manage_staffing_scheduling_path(day: show.date_and_time.to_date.iso8601), class: "text-xs text-pink-600 hover:text-pink-700" %>
         </div>
+        <% if s.missing.any? %>
+          <p class="text-sm text-amber-700 font-medium <%= 'mb-1.5' unless s.none? %>" data-modal-missing>Needs <%= s.missing.to_sentence %>. <%= link_to "Add #{s.missing.one? ? 'it' : 'them'} on Scheduling", manage_staffing_scheduling_path(day: show.date_and_time.to_date.iso8601), class: "underline" %>.</p>
+        <% end %>
         <% if s.none? %>
-          <p class="text-sm text-amber-700 font-medium">No shifts yet. <%= link_to "Add them on Scheduling", manage_staffing_scheduling_path(day: show.date_and_time.to_date.iso8601), class: "underline" %>.</p>
+          <% if s.missing.empty? %>
+            <p class="text-sm text-amber-700 font-medium">No shifts yet. <%= link_to "Add them on Scheduling", manage_staffing_scheduling_path(day: show.date_and_time.to_date.iso8601), class: "underline" %>.</p>
+          <% end %>
         <% else %>
           <div class="space-y-1 text-sm">
             <% s.shifts.each do |shift| %>

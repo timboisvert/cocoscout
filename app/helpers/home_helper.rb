@@ -56,10 +56,14 @@ module HomeHelper
   def home_staffing_chip(staffing)
     return nil unless staffing
 
-    if staffing.none?
-      [ :warn, "No shifts", "No shifts yet" ]
-    elsif staffing.declined.positive?
+    missing = staffing.missing.to_a
+    if staffing.declined.positive?
       [ :bad, "#{staffing.staffed}/#{staffing.total} · #{staffing.declined} can't", "#{staffing.staffed} of #{staffing.total} · #{staffing.declined} can't make it" ]
+    elsif missing.any?
+      # Role Call: a per-show role this show has no shift for (Tim, 2026-10-30).
+      [ :warn, "Needs #{missing.first}#{" +#{missing.size - 1}" if missing.size > 1}", "Needs #{missing.to_sentence}" ]
+    elsif staffing.none?
+      [ :warn, "No shifts", "No shifts yet" ]
     elsif staffing.total.zero?
       [ :ok, "Covered", "Covered" ]
     elsif staffing.open.positive?
