@@ -1,0 +1,61 @@
+<% content_for :title, "Settle up" %>
+<%
+  month_label = @month.strftime("%B %Y")
+  settled_this_month = @month_days.select(&:settled?)
+  listed = case @filter
+  when "settled" then @month_days.select(&:settled?)
+  when "all" then @month_days
+  else @to_settle
+  end
+  oldest = @to_settle.first
+%>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Money", manage_money_index_path ] ],
+    text: "Settle up",
+    links: [ { text: "Financials by production", path: manage_money_financials_path } ]
+  } %>
+
+  <p class="max-w-3xl text-sm text-gray-600 mb-4">One worksheet per day that had money in it: the shows, door cash, and what each took in and cost. Check each piece, mark the day settled, and the books, the payout run and every production's settlement follow. A day with one show is just that show's worksheet.</p>
+
+  <div class="mb-4">
+    <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+      { label: "Show", filters: [
+        { text: "To settle", path: manage_money_settle_up_path(filter: "to_settle"), active: @filter == "to_settle" },
+        { text: "Settled", path: manage_money_settle_up_path(filter: "settled", month: @month.strftime("%Y-%m")), active: @filter == "settled" },
+        { text: "All days", path: manage_money_settle_up_path(filter: "all", month: @month.strftime("%Y-%m")), active: @filter == "all" }
+      ] },
+      ({ separator: true } unless @filter == "to_settle"),
+      ({ label: "Month", filters: [
+        { text: "‹ #{(@month - 1.month).strftime('%b')}", path: manage_money_settle_up_path(filter: @filter, month: (@month - 1.month).strftime("%Y-%m")), active: false },
+        { text: month_label, path: manage_money_settle_up_path(filter: @filter, month: @month.strftime("%Y-%m")), active: true },
+        { text: "#{(@month + 1.month).strftime('%b')} ›", path: manage_money_settle_up_path(filter: @filter, month: (@month + 1.month).strftime("%Y-%m")), active: false }
+      ] } unless @filter == "to_settle")
+    ].compact %>
+  </div>
+
+  <% if listed.empty? %>
+    <% if @filter == "to_settle" %>
+      <%= render "shared/empty_state", icon: "check", title: "Every day is settled", body: "The next show that happens will put its day here." %>
+    <% else %>
+      <%= render "shared/empty_state", icon: "calendar", title: "No #{@filter == 'settled' ? 'settled ' : ''}days in #{month_label}", body: "Days with nothing in them never appear." %>
+    <% end %>
+  <% else %>
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <%= render "shared/section_heading", padding: "px-5 py-3", title: (@filter == "to_settle" ? "To settle" : (@filter == "settled" ? "Settled in #{month_label}" : month_label)) do %>
+        <span class="text-xs text-gray-500">
+          <% if @filter == "to_settle" %>
+            <%= pluralize(@to_settle.size, "day") %><% if oldest %>, oldest <%= time_ago_in_words(oldest.date.in_time_zone) %> ago<% end %>
+          <% else %>
+            <%= pluralize(listed.size, "day") %>
+          <% end %>
+        </span>
+      <% end %>
+      <% listed.each do |day| %>
+        <%= render "manage/settlement_days/day_row", day: day %>
+      <% end %>
+    </div>
+  <% end %>
+  <p class="mt-3 text-xs text-gray-500">A piece shows green when someone checked it, amber when its numbers came in but nobody looked, red when something's missing. Days with nothing in them never appear.</p>
+</div>

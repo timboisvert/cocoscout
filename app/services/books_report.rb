@@ -25,7 +25,8 @@ class BooksReport
     "expenses" => "Show expenses",
     "production_expense" => "Production expense",
     "contract_payment" => "Contract payment",
-    "cocoscout_bill" => "CocoScout bill"
+    "cocoscout_bill" => "CocoScout bill",
+    "settlement" => "Day settled"
   }.freeze
 
   Row = Data.define(:account, :cents)

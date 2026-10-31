@@ -6,8 +6,9 @@ module Manage
   # people outside CocoScout's Stripe rail, who hears about payout runs, and
   # where the org sells tickets.
   class MoneySettingsController < Manage::ManageController
-    SECTIONS = %w[offline_methods notifications ticket_sources books].freeze
+    SECTIONS = %w[settle_up offline_methods notifications ticket_sources books].freeze
     SECTION_LABELS = {
+      "settle_up" => "Settle up",
       "offline_methods" => "Offline Methods",
       "notifications" => "Notifications",
       "ticket_sources" => "Ticket Sources",
@@ -112,6 +113,15 @@ module Manage
 
     # The "other ways" this org sometimes pays people (cash/check/Zelle/Venmo/other).
     # Stripe is always the default rail, so only these opt-in methods are stored.
+    # When a day ends (plan §9.6): smart days or calendar days, and the hour
+    # mornings start.
+    def update_settle_up
+      mode = params[:settlement_day_mode].presence_in(SettlementDay::MODES) || "smart"
+      hour = params[:settlement_day_starts_at].to_i.clamp(3, 9)
+      Current.organization.update!(settlement_day_mode: mode, settlement_day_starts_at: hour)
+      redirect_to section_path("settle_up"), notice: "Settle up settings saved."
+    end
+
     def update_offline_methods
       methods = Array(params[:offline_payout_methods]) & ShowPayoutLineItem::MANUAL_PAYMENT_METHODS
       Current.organization.update!(enabled_offline_payout_methods: methods)

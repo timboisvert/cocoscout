@@ -11,7 +11,7 @@
   # Financials, Payouts and Incoming are things to do; Books is what happened,
   # in dollars. Each card shows only to someone whose access opens it.
   money_actions = [
-    (module_access?(:settle_up) ? { icon: "chart-bar", text: "Financials", description: "Track revenue and costs", path: manage_money_financials_path } : nil),
+    (module_access?(:settle_up) ? { icon: "chart-bar", text: "Settle up", description: "Each day, checked off: shows, door cash, expenses", path: manage_money_settle_up_path } : nil),
     (module_access?(:payouts) ? { icon: "dollar-sign", text: "Payouts", description: "Calculate and distribute payments", path: manage_money_payouts_path } : nil),
     (module_access?(:bills_invoices) ? { icon: "banknotes", text: "Incoming Payments", description: "Track and collect money owed to you", path: manage_money_incoming_path } : nil),
     (module_access?(:books) ? { icon: "book", text: "Books", description: "All your money, and every dollar in and out", path: manage_money_books_path } : nil),
@@ -49,15 +49,61 @@
       refresh_url: manage_refresh_money_path(period: @selected_period) %>
   </div>
 
+  <%# The to-do strip (plan §9.2): the same list as the Money line on Home.
+      Days to settle first, then money going out, then money coming in. %>
+  <% if @todo.settle_days.any? %>
+    <% oldest = @todo.settle_days.items.first %>
+    <%= render "shared/alert_panel",
+          eyebrow: "Settle up",
+          headline: "#{pluralize(@todo.settle_days.count, 'day')} to settle up",
+          body: "Oldest is #{oldest.date.strftime('%A, %b %-d')}: #{oldest.pieces.map(&:first).to_sentence}.",
+          actions: [ { text: "Settle up", path: manage_money_settle_up_day_path(oldest.param) } ] %>
+  <% end %>
+  <% if @todo.payouts.any? && @todo.payouts.due_soon_amount.to_f > 0.004 %>
+    <%= render "shared/alert_panel", tone: :amber,
+          eyebrow: "To pay",
+          headline: "#{number_to_currency(@todo.payouts.due_soon_amount)} due now",
+          body: "#{number_to_currency(@todo.payouts.amount)} unpaid in all, across #{pluralize(@todo.payouts.count, 'production, course or contract')}.",
+          actions: [ { text: "Payouts", path: manage_money_payouts_path } ] %>
+  <% end %>
+  <% if @todo.incoming.overdue_count.to_i.positive? %>
+    <%= render "shared/alert_panel",
+          eyebrow: "Overdue to you",
+          headline: "#{number_to_currency(@todo.incoming.overdue_amount)} overdue",
+          body: "#{pluralize(@todo.incoming.overdue_count, 'payment')} past due. A reminder from the Incoming Payments page usually does it.",
+          actions: [ { text: "Incoming Payments", path: manage_money_incoming_path(window: "1m") } ] %>
+  <% end %>
+
   <%# What needs doing, in the order it costs you: numbers you owe yourself,
       money you owe other people, money other people owe you. Each section is a
       window onto its own page and links there for the rest. %>
 
   <%= render layout: "manage/money/todo_section",
-        locals: { title: "Needs financials", section: @todo.financials, label: "Show",
-                  path: manage_money_financials_path, link_text: "Financials",
-                  empty: "You're all caught up on financials." } do %>
-    <%= render "manage/money_financials/financials_show_rows", rows: @todo.financials.items %>
+        locals: { title: "Days to settle", section: @todo.settle_days, label: "Day",
+                  columns: [ "Pieces", "So far" ], min_width: "min-w-[420px]",
+                  path: manage_money_settle_up_path, link_text: "Settle up",
+                  empty: "Every day is settled." } do %>
+    <% @todo.settle_days.items.each do |day| %>
+      <%= link_to manage_money_settle_up_day_path(day.param), class: "grid grid-cols-[1fr_auto_auto] gap-3 items-center px-4 py-2.5 text-sm hover:bg-gray-50" do %>
+        <span class="min-w-0"><span class="block font-medium text-gray-900"><%= day.date.strftime("%a, %b %-d") %></span><span class="block text-xs text-gray-500 truncate"><%= day.shows.map { |s| s.show.display_name }.to_sentence %></span></span>
+        <span class="flex flex-wrap gap-1 justify-end">
+          <% day.pieces.each do |label, state| %>
+            <% dot = { ok: "bg-green-500", wait: "bg-amber-500", miss: "bg-red-500" }.fetch(state) %>
+            <span class="inline-block w-2 h-2 rounded-full <%= dot %>" title="<%= label %>"></span>
+          <% end %>
+        </span>
+        <span class="tabular-nums text-gray-900"><%= number_to_currency(day.in_cents / 100.0) %></span>
+      <% end %>
+    <% end %>
+  <% end %>
+
+  <% if @todo.courses.any? %>
+    <%= render layout: "manage/money/todo_section",
+          locals: { title: "Courses to settle", section: @todo.courses, label: "Course",
+                    path: manage_money_all_financials_path(type: "courses"), link_text: "All courses",
+                    empty: "" } do %>
+      <%= render "manage/money_financials/financials_show_rows", rows: @todo.courses.items %>
+    <% end %>
   <% end %>
 
   <%= render layout: "manage/money/todo_section",

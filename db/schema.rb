@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_31_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_31_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1866,6 +1866,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_120000) do
     t.string "email_instagram"
     t.string "email_mailing_address"
     t.datetime "balance_pooled_at"
+    t.string "settlement_day_mode", default: "smart", null: false
+    t.integer "settlement_day_starts_at", default: 6, null: false
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
     t.index ["organization_talent_pool_id"], name: "index_organizations_on_organization_talent_pool_id"
     t.index ["owner_id"], name: "index_organizations_on_owner_id"
@@ -2685,6 +2687,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_120000) do
     t.bigint "impersonator_user_id"
     t.index ["impersonator_user_id"], name: "index_sessions_on_impersonator_user_id"
     t.index ["user_id"], name: "index_sessions_on_user_id"
+  end
+
+  create_table "settlement_days", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.date "date", null: false
+    t.string "status", default: "open", null: false
+    t.datetime "settled_at"
+    t.bigint "settled_by_id"
+    t.datetime "reopened_at"
+    t.bigint "reopened_by_id"
+    t.text "reopen_reason"
+    t.jsonb "door_cash", default: {}, null: false
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "date"], name: "index_settlement_days_on_organization_id_and_date", unique: true
+    t.index ["organization_id"], name: "index_settlement_days_on_organization_id"
+    t.index ["reopened_by_id"], name: "index_settlement_days_on_reopened_by_id"
+    t.index ["settled_by_id"], name: "index_settlement_days_on_settled_by_id"
   end
 
   create_table "shift_additional_roles", force: :cascade do |t|
@@ -4645,6 +4666,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_120000) do
   add_foreign_key "scheduling_rules", "productions"
   add_foreign_key "segments", "organizations"
   add_foreign_key "sessions", "users"
+  add_foreign_key "settlement_days", "organizations"
+  add_foreign_key "settlement_days", "users", column: "reopened_by_id"
+  add_foreign_key "settlement_days", "users", column: "settled_by_id"
   add_foreign_key "shift_additional_roles", "house_roles"
   add_foreign_key "shift_additional_roles", "shifts"
   add_foreign_key "shift_additional_roles", "shows", on_delete: :cascade

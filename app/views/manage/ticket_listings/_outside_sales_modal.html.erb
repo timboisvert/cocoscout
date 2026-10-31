@@ -58,6 +58,7 @@
     </div>
     <%= form_with url: manage_ticket_listing_outside_sales_path(listing), method: :patch, class: "flex flex-col min-h-0 flex-1", data: { turbo: false, controller: "outside-sales",
           outside_sales_tiers_value: tiers.map { |t| { id: t.id, name: t.name } }.to_json } do %>
+      <%= hidden_field_tag :return_to, local_assigns[:return_to], id: nil if local_assigns[:return_to].present? %>
       <template data-outside-sales-target="rowTemplate">
         <%= render "manage/ticket_listings/outside_sales_row", source_key: "__SOURCE__", tier_id: "__TIER__", tier_name: "__TIER_NAME__", tickets: nil, amount: nil, input_class: input_class %>
       </template>

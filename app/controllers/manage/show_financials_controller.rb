@@ -35,7 +35,11 @@ module Manage
         ContractPaymentSyncService.new(@show).call
 
         # The worksheet opened on the payout page returns there.
-        back = params[:return_to] == manage_money_show_payout_path(@show) ? params[:return_to] : manage_money_show_financials_path(@show)
+        back = if params[:return_to] == manage_money_show_payout_path(@show) || params[:return_to].to_s.start_with?("/manage/money/settle-up/")
+          params[:return_to]
+        else
+          manage_money_show_financials_path(@show)
+        end
         respond_to do |format|
           format.html { redirect_to back, notice: "Financial data saved successfully." }
           format.turbo_stream { redirect_to back, notice: "Financial data saved successfully." }

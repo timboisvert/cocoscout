@@ -107,7 +107,7 @@ module Manage
       # The money and hours waiting, for the managers who handle them on Pro.
       if pro_manager
         todo = MoneyTodoService.new(user: Current.user, organization: Current.organization, row_limit: 0)
-        @home_attention = { financials: todo.financials.count.to_i, payouts: todo.payouts.count.to_i, payouts_amount: todo.payouts.amount,
+        @home_attention = { days: todo.settle_days.count.to_i, oldest_day: todo.settle_days.items.first&.param, payouts: todo.payouts.count.to_i, payouts_amount: todo.payouts.amount,
                             hours: Current.organization.staff_time_entries.pending.distinct.count(:person_id) }
       end
       @home_status = home_status_items(pro_manager)
@@ -169,7 +169,7 @@ module Manage
       end
       if @home_attention
         a = @home_attention
-        items << { key: "financials", topic: "Money", tone: :gray, text: "#{a[:financials]} #{'show'.pluralize(a[:financials])} that need financials", action: { path: manage_money_financials_path } } if a[:financials].positive?
+        items << { key: "settle", topic: "Money", tone: :gray, text: "#{a[:days]} #{'day'.pluralize(a[:days])} to settle up", action: { path: (a[:oldest_day] ? manage_money_settle_up_day_path(a[:oldest_day]) : manage_money_settle_up_path) } } if a[:days].positive?
         items << { key: "pay", topic: "Money", tone: :pink, text: "#{helpers.number_to_currency(a[:payouts_amount])} to pay", action: { path: manage_money_payouts_path } } if a[:payouts].positive?
       end
       if pro_manager && Current.organization.feature_available?(:contracts)

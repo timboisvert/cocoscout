@@ -33,33 +33,34 @@ RSpec.describe "Manage::Money (hub)", type: :request do
   it "says you're caught up rather than hiding a finished section" do
     get manage_money_index_path
 
-    expect(response.body).to include("You&#39;re all caught up on financials.")
+    expect(response.body).to include("Every day is settled.")
     expect(response.body).to include("Nothing waiting to be paid.")
     expect(response.body).to include("Nothing owed to you in the next 30 days.")
     # Even caught up, each section still offers its page.
-    expect(response.body).to include(manage_money_financials_path)
+    expect(response.body).to include(manage_money_settle_up_path)
     expect(response.body).to include(manage_money_payouts_path)
   end
 
-  it "lists shows that still need financials, and links through to Financials" do
+  it "lists the days still to settle, and links through to each day" do
     show = create(:show, production: production, event_type: :show, date_and_time: 2.days.ago)
 
     get manage_money_index_path
-    expect(response.body).to include("Needs financials")
-    expect(response.body).to include(manage_money_show_financials_path(show))
-    expect(response.body).not_to include("You&#39;re all caught up on financials.")
+    expect(response.body).to include("1 day to settle up", "Days to settle")
+    expect(response.body).to include(manage_money_settle_up_day_path(SettlementDay.day_for(org, show.date_and_time).iso8601))
+    expect(response.body).not_to include("Every day is settled.")
   end
 
-  # A future show hasn't happened, a canceled one never will, and a confirmed
-  # one is done — none of them are work.
-  it "counts only shows that are actually outstanding" do
+  # A future show hasn't happened, a canceled one never will, and a settled
+  # day is done — none of them are work.
+  it "counts only days that are actually outstanding" do
     create(:show, production: production, event_type: :show, date_and_time: 2.days.from_now)
     create(:show, production: production, event_type: :show, date_and_time: 2.days.ago, canceled: true)
-    create(:show, production: production, event_type: :show, date_and_time: 2.days.ago).tap do |s|
+    done = create(:show, production: production, event_type: :show, date_and_time: 2.days.ago).tap do |s|
       create(:show_financials, :complete, show: s, ticket_revenue: 100.0)
     end
+    SettlementDay.create!(organization: org, date: SettlementDay.day_for(org, done.date_and_time)).settle!(by: owner)
 
     get manage_money_index_path
-    expect(response.body).to include("You&#39;re all caught up on financials.")
+    expect(response.body).to include("Every day is settled.")
   end
 end

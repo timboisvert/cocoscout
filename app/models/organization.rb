@@ -124,6 +124,8 @@ class Organization < ApplicationRecord
   FREE_PRODUCTION_LIMIT = 1
 
   validates :name, presence: true
+  validates :settlement_day_mode, inclusion: { in: %w[smart calendar] }
+  validates :settlement_day_starts_at, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than: 24 }
 
   # Whether staff must sign an agreement before working here. A required pointer to
   # an inactive/deleted template counts as "not required" (defensive).

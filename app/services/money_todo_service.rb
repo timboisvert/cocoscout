@@ -173,6 +173,25 @@ class MoneyTodoService
     @financials ||= self.class.financials_section(productions, limit: row_limit)
   end
 
+  # Days to settle (Books V1.3, plan §9.2): the days that are over, had money
+  # in them, and nobody has settled. Oldest first; count covers them all.
+  def settle_days
+    @settle_days ||= begin
+      days = SettleUp.to_settle(organization)
+      Section.new(count: days.size, amount: days.sum(&:in_cents) / 100.0, items: row_limit ? days.first(row_limit) : days)
+    end
+  end
+
+  # Course runs still to settle, apart from the days: a course's money is its
+  # registrations, settled on the course's own page.
+  def courses
+    @courses ||= begin
+      section = self.class.financials_section(productions, limit: nil)
+      rows = section.items.select { |row| row[:badge][:text] == "Course" }
+      Section.new(count: rows.size, items: row_limit ? rows.first(row_limit) : rows)
+    end
+  end
+
   # Productions, courses and contracts with money still to move, oldest debt
   # first. Each row carries a per-status breakdown (to pay / in a draft run /
   # in flight / paid) so it answers "what have I done about this?"

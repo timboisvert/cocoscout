@@ -1598,11 +1598,19 @@ Rails.application.routes.draw do
     # Money / Payouts section - org-level
     get "money", to: "money#index", as: "money_index"
     get "money/books", to: "books#show", as: "money_books"
+    # Settle up: one worksheet per day that had money in it (Books V1.3).
+    get   "money/settle-up", to: "settlement_days#index", as: "money_settle_up"
+    get   "money/settle-up/:date", to: "settlement_days#show", as: "money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    post  "money/settle-up/:date/settle", to: "settlement_days#settle", as: "settle_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    post  "money/settle-up/:date/reopen", to: "settlement_days#reopen", as: "reopen_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    patch "money/settle-up/:date/door-cash", to: "settlement_days#door_cash", as: "door_cash_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    patch "money/settle-up/:date/shows/:show_id/check", to: "settlement_days#check_show", as: "check_show_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     post "money/refresh", to: "money#refresh", as: "refresh_money"
     # Money settings — org-level config. Fixed sub-paths before the :section catch-all.
     get    "money/settings", to: "money_settings#show", as: "money_settings"
     patch  "money/settings/offline-methods", to: "money_settings#update_offline_methods", as: "money_settings_offline_methods"
     patch  "money/settings/notifications", to: "money_settings#update_notifications", as: "money_settings_notifications"
+    patch  "money/settings/settle-up", to: "money_settings#update_settle_up", as: "money_settings_settle_up"
     post   "money/settings/ticket-sources", to: "money_settings#create_ticket_source", as: "money_settings_ticket_sources"
     patch  "money/settings/ticket-sources/:id", to: "money_settings#update_ticket_source", as: "money_settings_ticket_source"
     delete "money/settings/ticket-sources/:id", to: "money_settings#archive_ticket_source"

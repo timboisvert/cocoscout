@@ -1,0 +1,199 @@
+<% content_for :title, "Settle up · #{@date.strftime('%a, %b %-d')}" %>
+<%
+  money = ->(cents) { cents.negative? ? "−#{number_to_currency(-cents / 100.0)}" : number_to_currency(cents / 100.0) }
+  can_change = module_change?(:settle_up)
+  day = @day
+  record = day.record
+  tiles = [
+    [ "Tickets", money.call(day.shows.sum(&:tickets_cents)), "text-gray-900" ],
+    [ "Products and other", money.call(day.shows.sum { |s| s.products_cents + s.other_revenue_cents + s.flat_fee_cents }), "text-gray-900" ],
+    [ "Expenses", money.call(day.out_cents), "text-gray-900" ],
+    [ "Door cash", (day.door_cash.counted? ? (day.door_cash.over_short_cents.zero? ? "Counted, exact" : (day.door_cash.over_short_cents.negative? ? "#{money.call(day.door_cash.over_short_cents)} short" : "#{money.call(day.door_cash.over_short_cents)} over")) : (day.door_cash.any? ? "Not counted" : "None")),
+      (day.door_cash.counted? && !day.door_cash.over_short_cents.zero? ? "text-red-700" : "text-gray-900") ]
+  ]
+  what = [ (day.shows.size == 1 ? "one show" : "#{day.shows.size} shows"), (day.door_cash.any? ? "door cash" : nil) ].compact
+  settle_cid = "confirm-settle-day"
+%>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Money", manage_money_index_path ], [ "Settle up", manage_money_settle_up_path ] ],
+    text: @date.strftime("%A, %b %-d"),
+    links: []
+  } %>
+
+  <%# Previous day, the calendar in the middle, next day (plan §9.9). %>
+  <div class="flex flex-wrap items-center justify-center gap-2 mb-4">
+    <% if @prev_day %>
+      <%= render "shared/button", text: "← #{@prev_day.date.strftime('%a, %b %-d')}", variant: "secondary", size: "small", path: manage_money_settle_up_day_path(@prev_day.param) %>
+    <% else %>
+      <span class="text-xs text-gray-400 px-2">No earlier day</span>
+    <% end %>
+    <details class="relative">
+      <summary class="list-none cursor-pointer">
+        <%= render "shared/button", text: @date.strftime("%a, %b %-d, %Y ▾"), variant: "primary", size: "small", type: :button %>
+      </summary>
+      <div class="absolute left-1/2 -translate-x-1/2 z-30 mt-2 w-[22rem] max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-xl border border-gray-200 p-3">
+        <%= render "shared/month_calendar",
+              current_month: @month.in_time_zone,
+              month_link: ->(t) { manage_money_settle_up_day_path(@date.iso8601, month: t.strftime("%Y-%m")) },
+              items_by_date: @month_days.transform_values { |d| [ d ] },
+              item_partial: "manage/settlement_days/calendar_item",
+              min_cell: "min-h-[44px]",
+              mobile_grid: true,
+              empty_text: "No days with money this month.",
+              anchor: "day-calendar" %>
+        <div class="flex flex-wrap gap-3 text-[11px] text-gray-500 -mt-6 px-1">
+          <span class="inline-flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full bg-green-500"></span>settled</span>
+          <span class="inline-flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-500"></span>to settle</span>
+          <span>blank: nothing that day</span>
+        </div>
+      </div>
+    </details>
+    <% if @next_day %>
+      <%= render "shared/button", text: "#{@next_day.date.strftime('%a, %b %-d')} →", variant: "secondary", size: "small", path: manage_money_settle_up_day_path(@next_day.param) %>
+    <% else %>
+      <span class="text-xs text-gray-400 px-2">No later day</span>
+    <% end %>
+  </div>
+
+  <% if day.settled? %>
+    <%= render "shared/alert_panel",
+          eyebrow: "Settled",
+          headline: "#{@date.strftime('%A, %B %-d')} is settled",
+          body: "Settled #{record.settled_at.strftime('%b %-d at %-l:%M %p').downcase}#{record.settled_by ? " by #{record.settled_by.default_person&.name || record.settled_by.email_address}" : ''}.#{record.reopen_reason.present? ? " Reopened once: #{record.reopen_reason}" : ''} To change anything, reopen it; the books keep both versions.",
+          actions: (can_change ? [ { text: "Reopen this day", variant: "secondary", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "reopen-day" } } ] : []) %>
+  <% elsif record&.reopened_at %>
+    <%= render "shared/alert_panel", tone: :amber,
+          eyebrow: "Reopened",
+          headline: "Reopened #{record.reopened_at.strftime('%b %-d')}#{record.reopened_by ? " by #{record.reopened_by.default_person&.name || record.reopened_by.email_address}" : ''}",
+          body: record.reopen_reason.presence || "Settle it again when it's right." %>
+  <% end %>
+
+  <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900 coustard-regular"><%= @date.strftime("%A, %B %-d") %></h1>
+      <p class="text-sm text-gray-600 mt-1">
+        <% if day.any? %>
+          <%= what.join(", ").capitalize %>. Check each piece; the day is settled when they all are.
+        <% else %>
+          Nothing with money in it happened this day.
+        <% end %>
+      </p>
+    </div>
+    <% if day.any? && !day.settled? %>
+      <div class="flex items-center gap-3">
+        <span class="text-sm text-gray-600"><%= day.checked_count %> of <%= day.pieces.size %> checked</span>
+        <% if can_change %>
+          <% if day.all_checked? && day.ended? %>
+            <%= render "shared/button", text: "Mark the day settled", variant: "primary", size: "medium", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: settle_cid } %>
+          <% else %>
+            <span class="inline-flex items-center justify-center px-4 py-2 rounded text-sm font-medium bg-gray-200 text-gray-500 cursor-not-allowed" aria-disabled="true" title="<%= day.ended? ? 'Check every piece first' : 'The day is still going' %>">Mark the day settled</span>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if day.any? %>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <% tiles.each do |label, value, color| %>
+        <div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
+          <div class="text-[11px] font-medium uppercase tracking-wide text-gray-500"><%= label %></div>
+          <div class="mt-0.5 text-lg font-bold tabular-nums <%= color %>"><%= value %></div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="space-y-4">
+      <% day.shows.each do |piece| %>
+        <%= render "manage/settlement_days/show_piece", piece: piece, day: day, can_change: can_change %>
+      <% end %>
+
+      <% if day.door_cash.any? %>
+        <% dc = day.door_cash %>
+        <section class="bg-white border border-gray-200 rounded-xl overflow-hidden" id="door-cash">
+          <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-gray-200">
+            <h2 class="text-base font-semibold text-gray-900">Door cash
+              <span class="ml-2 text-xs font-medium <%= dc.counted? ? (dc.over_short_cents.zero? ? 'text-green-700' : 'text-amber-700') : 'text-red-700' %>">
+                <%= dc.counted? ? (dc.over_short_cents.zero? ? "Counted" : (dc.over_short_cents.negative? ? "Counted, short #{money.call(-dc.over_short_cents)}" : "Counted, over #{money.call(dc.over_short_cents)}")) : "Not counted" %>
+              </span>
+            </h2>
+          </div>
+          <%= form_with url: manage_door_cash_money_settle_up_day_path(day.param), method: :patch, class: "px-5 py-3 grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-2" do %>
+            <div>
+              <div class="flex items-baseline justify-between gap-3 py-1.5 text-sm"><span class="text-gray-700">Cash taken at the door <span class="text-xs text-gray-500"><%= pluralize(dc.cash_orders_count, "sale") %>, tickets and products</span></span><span class="tabular-nums text-gray-900"><%= money.call(dc.expected_cents) %></span></div>
+              <div class="flex items-baseline justify-between gap-3 py-1.5 text-sm font-medium"><span class="text-gray-900">Should be in the box</span><span class="tabular-nums text-gray-900"><%= money.call(dc.expected_cents) %></span></div>
+              <p class="text-xs text-gray-500 mt-1">Plus whatever float the box started with, which you keep for next time below.</p>
+            </div>
+            <div class="space-y-2">
+              <label class="flex items-center justify-between gap-3 text-sm"><span class="text-gray-700">Counted at close</span>
+                <span class="relative w-36"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                <input type="text" name="counted" inputmode="decimal" value="<%= dc.counted? ? format('%.2f', dc.counted_cents / 100.0) : '' %>" <%= 'disabled' unless can_change && !day.settled? %>
+                       class="block w-full pl-7 pr-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 disabled:bg-gray-50"></span></label>
+              <label class="flex items-center justify-between gap-3 text-sm"><span class="text-gray-700">Kept as float for next time</span>
+                <span class="relative w-36"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                <input type="text" name="float_kept" inputmode="decimal" value="<%= format('%.2f', (record&.float_kept_cents || 0) / 100.0) %>" <%= 'disabled' unless can_change && !day.settled? %>
+                       class="block w-full pl-7 pr-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 disabled:bg-gray-50"></span></label>
+              <% if dc.counted? %>
+                <div class="flex items-baseline justify-between gap-3 py-1 text-sm"><span class="text-gray-700">Over or short</span><span class="tabular-nums <%= dc.over_short_cents.zero? ? 'text-green-700' : 'text-red-700' %>"><%= dc.over_short_cents.zero? ? "Exact" : (dc.over_short_cents.negative? ? "#{money.call(dc.over_short_cents)} short" : "+#{money.call(dc.over_short_cents)} over") %></span></div>
+                <div class="flex items-baseline justify-between gap-3 py-1 text-sm"><span class="text-gray-700">To deposit <span class="text-xs text-gray-500">then record it on the Bank page</span></span><span class="tabular-nums text-gray-900"><%= money.call(dc.to_deposit_cents) %></span></div>
+              <% end %>
+              <label class="block text-sm"><span class="text-gray-700">Why over or short <span class="text-xs text-gray-500">(if it is)</span></span>
+                <input type="text" name="note" value="<%= record&.door_cash_note %>" <%= 'disabled' unless can_change && !day.settled? %>
+                       class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 disabled:bg-gray-50"></label>
+              <% if can_change && !day.settled? %>
+                <div class="pt-1 text-right"><%= render "shared/button", text: (dc.counted? ? "Save the count" : "Counted"), variant: "primary", size: "small", type: :submit %></div>
+              <% end %>
+            </div>
+          <% end %>
+        </section>
+      <% end %>
+
+      <% if !day.settled? %>
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-5 py-4">
+          <span class="text-sm text-gray-600 max-w-2xl">When you mark the day settled, door cash over or short goes on the books dated <%= @date.strftime("%b %-d") %>, and every show's settlement is final. You can reopen the day later; the books keep both versions.</span>
+          <% if can_change && day.all_checked? && day.ended? %>
+            <%= render "shared/button", text: "Mark the day settled", variant: "primary", size: "medium", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: settle_cid } %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <%= render "shared/empty_state", icon: "calendar", title: "Nothing to settle on #{@date.strftime('%b %-d')}", body: "Days with no shows and no door money never need settling." %>
+  <% end %>
+</div>
+
+<% if can_change && !day.settled? %>
+  <%= render "shared/confirm_modal", id: settle_cid,
+        title: "Settle #{@date.strftime('%A, %b %-d')}?",
+        message: "Every piece is checked. This closes the day: its numbers are final for the books, the payout run and each production's settlement. You can reopen it later with a reason.",
+        confirm_text: "Mark the day settled",
+        url: manage_settle_money_settle_up_day_path(day.param), method: :post %>
+<% end %>
+
+<% if can_change && day.settled? %>
+  <div id="reopen-day" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+    <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-md sm:mx-4 overflow-hidden" data-action="click->modal#stopPropagation">
+      <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+        <h3 class="text-lg font-semibold text-white">Reopen <%= @date.strftime("%A, %b %-d") %>?</h3>
+        <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10" aria-label="Close">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <%= form_with url: manage_reopen_money_settle_up_day_path(day.param), method: :post do %>
+        <div class="px-6 py-5 space-y-3 text-sm text-gray-600">
+          <p>Nothing changes until you edit something and settle the day again. Then the books restate, dated <%= @date.strftime("%b %-d") %>; a payout already sent out of this day is adjusted on the next run.</p>
+          <label class="block"><span class="font-medium text-gray-700">Why?</span>
+            <input type="text" name="reason" required placeholder="e.g. A count was fixed later" class="mt-1 block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"></label>
+        </div>
+        <div class="px-6 py-4 bg-gray-50 flex justify-end gap-2">
+          <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+          <%= render "shared/button", text: "Reopen the day", variant: "primary", size: "medium", type: :submit %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>

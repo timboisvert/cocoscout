@@ -1,0 +1,56 @@
+<% org = Current.organization %>
+<div class="bg-white border border-gray-200 rounded-xl p-6">
+  <h2 class="text-lg font-semibold text-gray-900 mb-1">Settle up</h2>
+  <p class="text-sm text-gray-600">
+    One worksheet per day that had money in it. These settings decide which day a sale, a cash count and a shift belong to.
+  </p>
+</div>
+
+<%= form_with url: manage_money_settings_settle_up_path, method: :patch do %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-900">When a day ends</h3>
+    </div>
+    <div class="px-6 py-5 space-y-4">
+      <p class="text-sm text-gray-600">A theater's day doesn't end at midnight. This decides which day a bar order, a door sale, a cash count and a staff shift belong to, so a day's worksheet has the whole night in it. Online ticket sales aren't affected; they count on show night either way.</p>
+      <label class="flex items-start gap-3 cursor-pointer">
+        <input type="radio" name="settlement_day_mode" value="smart" <%= "checked" if org.settlement_day_mode == "smart" %> class="mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+        <span class="text-sm">
+          <span class="font-semibold text-gray-900">When things stop</span> <span class="text-gray-500">· on for everyone unless you switch</span>
+          <span class="block text-gray-600 mt-0.5">A day starts in the morning and runs until the next morning, so a 12:15 am bar round and a 2 am clock-out are still the night before's. Nothing before morning is ever tomorrow.</span>
+          <span class="block text-gray-500 mt-0.5">Friday's shows end at 11:30, the bar rings its last round at 12:15, the staff clock out at 2. That's all Friday's money, and Friday's worksheet shows it.</span>
+        </span>
+      </label>
+      <label class="flex items-start gap-3 cursor-pointer">
+        <input type="radio" name="settlement_day_mode" value="calendar" <%= "checked" if org.settlement_day_mode == "calendar" %> class="mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+        <span class="text-sm">
+          <span class="font-semibold text-gray-900">At midnight</span>
+          <span class="block text-gray-600 mt-0.5">Strictly by the calendar date, in your time zone. A 12:15 am round is Saturday's. Some accountants want it this way.</span>
+        </span>
+      </label>
+      <label class="flex flex-wrap items-center gap-3 text-sm pt-2">
+        <span class="font-medium text-gray-700">Mornings start at</span>
+        <select name="settlement_day_starts_at" class="px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          <% (3..9).each do |h| %>
+            <option value="<%= h %>" <%= "selected" if org.settlement_day_starts_at == h %>><%= h %> am</option>
+          <% end %>
+        </select>
+        <span class="text-gray-500">Anything earlier belongs to the night before.</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-900">Ticket sources</h3>
+    </div>
+    <div class="px-6 py-4 text-sm text-gray-600">
+      Where tickets get sold besides CocoScout: Eventbrite, HotTix. Each gets its rows on the outside-tickets worksheet.
+      <%= link_to "Edit the list", manage_money_settings_section_path(section: "ticket_sources"), class: "text-pink-600 hover:text-pink-700" %>.
+    </div>
+  </div>
+
+  <div class="flex justify-end">
+    <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+  </div>
+<% end %>
