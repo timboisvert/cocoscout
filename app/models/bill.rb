@@ -13,6 +13,9 @@ class Bill < ApplicationRecord
   STATUSES = %w[open paid void].freeze
   VIA = { "bank" => [ "Bank", :bank ], "card" => [ "Credit card", :credit_card ], "door_cash" => [ "Door cash", :door_cash ], "check" => [ "Check", :bank ] }.freeze
 
+  include BooksLock::Validation
+  refuses_locked_books_on :issued_on
+
   belongs_to :organization
   belongs_to :production, optional: true
   belongs_to :show, optional: true
@@ -20,6 +23,7 @@ class Bill < ApplicationRecord
   belongs_to :repeated_from, class_name: "Bill", optional: true
   has_many :bill_payments, dependent: :destroy
   has_one_attached :document
+  include HierarchicalStorageKey # after the attachment, so the key moves once the file is up
 
   validates :vendor_name, presence: true
   validates :amount_cents, numericality: { only_integer: true, greater_than: 0 }

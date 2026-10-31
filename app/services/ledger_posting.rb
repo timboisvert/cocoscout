@@ -27,6 +27,14 @@ class LedgerPosting
     total = normalized.sum { |line| line[:amount_cents] }
     raise Unbalanced, "#{kind} lines sum to #{total}¢, not zero" unless total.zero?
 
+    # A closed month never shifts (BooksLock): an entry that would land in
+    # it goes on the first open day instead, and says so.
+    if BooksLock.locked?(organization, entry_date) || BooksLock.locked?(organization, cash_date)
+      memo = [ memo, "(books closed through #{BooksLock.label(organization)}; posted on the first open day)" ].compact.join(" ")
+      entry_date = BooksLock.posting_date(organization, entry_date)
+      cash_date = BooksLock.posting_date(organization, cash_date)
+    end
+
     JournalEntry.transaction do
       existing = live_entry(source, kind)
 

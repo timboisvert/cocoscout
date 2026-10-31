@@ -10,6 +10,7 @@ class Organization < ApplicationRecord
   include Monogram
 
   belongs_to :owner, class_name: "User"
+  belongs_to :books_locked_by, class_name: "User", optional: true
   # CocoScout's bills to it, and its monthly statements. CocoScout's own
   # records of money it earned keep their amounts if the org is ever deleted.
   has_many :billing_invoices, dependent: :destroy

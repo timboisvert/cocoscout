@@ -13,6 +13,9 @@ class Invoice < ApplicationRecord
   REMINDERS = { "before_and_overdue" => "3 days before, and when overdue", "overdue" => "Only when overdue", "none" => "None" }.freeze
   BANK_TRANSFER_MINIMUM_CENTS = 50_000
 
+  include BooksLock::Validation
+  refuses_locked_books_on :issued_on
+
   belongs_to :organization
   belongs_to :production, optional: true
   belongs_to :show, optional: true

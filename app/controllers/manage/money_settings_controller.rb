@@ -122,6 +122,11 @@ module Manage
       redirect_to section_path("settle_up"), notice: "Settle up settings saved."
     end
 
+    def update_books
+      Current.organization.update!(books_nonprofit: params[:books_nonprofit] == "1")
+      redirect_to section_path("books"), notice: "Saved."
+    end
+
     def update_offline_methods
       methods = Array(params[:offline_payout_methods]) & ShowPayoutLineItem::MANUAL_PAYMENT_METHODS
       Current.organization.update!(enabled_offline_payout_methods: methods)

@@ -4,6 +4,9 @@
 # paid from the account it came from, counted when it moved.
 class BillPayment < ApplicationRecord
   belongs_to :bill
+  include BooksLock::Validation
+  refuses_locked_books_on :on
+
   belongs_to :organization
   belongs_to :recorded_by, class_name: "User", optional: true
 

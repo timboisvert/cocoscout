@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_31_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_31_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2063,6 +2063,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_180000) do
     t.datetime "balance_pooled_at"
     t.string "settlement_day_mode", default: "smart", null: false
     t.integer "settlement_day_starts_at", default: 6, null: false
+    t.date "books_locked_through"
+    t.datetime "books_locked_at"
+    t.bigint "books_locked_by_id"
+    t.boolean "books_nonprofit", default: false, null: false
+    t.index ["books_locked_by_id"], name: "index_organizations_on_books_locked_by_id"
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
     t.index ["organization_talent_pool_id"], name: "index_organizations_on_organization_talent_pool_id"
     t.index ["owner_id"], name: "index_organizations_on_owner_id"
@@ -4877,6 +4882,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_180000) do
   add_foreign_key "organization_staff_members", "staff_agreement_templates"
   add_foreign_key "organization_tax_settings", "organizations"
   add_foreign_key "organizations", "talent_pools", column: "organization_talent_pool_id"
+  add_foreign_key "organizations", "users", column: "books_locked_by_id"
   add_foreign_key "organizations", "users", column: "owner_id"
   add_foreign_key "payout_batch_items", "payout_batches"
   add_foreign_key "payout_batches", "organizations"

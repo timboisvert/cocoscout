@@ -11,6 +11,21 @@
   </p>
 </div>
 
+<%= form_with url: manage_money_settings_books_path, method: :patch do %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-900">Statements</h3>
+    </div>
+    <div class="px-6 py-5 flex flex-col sm:flex-row sm:items-center gap-4">
+      <label class="flex items-start gap-3 cursor-pointer flex-1">
+        <input type="checkbox" name="books_nonprofit" value="1" <%= "checked" if Current.organization.books_nonprofit %> class="mt-1 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+        <span class="text-sm"><span class="font-semibold text-gray-900">We are a nonprofit</span><span class="block text-gray-600 mt-0.5">Statements use nonprofit words: statement of activities, net assets, support and revenue; the Taxes page groups income the way a 990-EZ asks.</span></span>
+      </label>
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
+  </div>
+<% end %>
+
 <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
   <div class="px-6 py-4 border-b border-gray-200">
     <h3 class="text-sm font-semibold text-gray-900">Categories</h3>

@@ -8,6 +8,9 @@ class InvoicePayment < ApplicationRecord
   VIA = { "online" => "Online", "check" => "Check", "cash" => "Cash", "bank_transfer" => "Bank transfer", "zelle" => "Zelle", "venmo" => "Venmo" }.freeze
 
   belongs_to :invoice
+  include BooksLock::Validation
+  refuses_locked_books_on :on
+
   belongs_to :organization
   belongs_to :recorded_by, class_name: "User", optional: true
 

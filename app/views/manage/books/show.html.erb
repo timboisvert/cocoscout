@@ -43,6 +43,12 @@
         { text: "By show", path: tab_path.call("shows"), active: @tab == "shows" },
         { text: "Checks", path: tab_path.call("checks"), active: @tab == "checks" }
       ] },
+      { separator: true },
+      { label: "Also", filters: [
+        { text: "Statements", path: manage_money_statements_path, active: false },
+        { text: "Taxes", path: manage_money_taxes_path, active: false },
+        { text: "Bank", path: manage_money_bank_path, active: false }
+      ] },
       ({ separator: true } if %w[accounts overview checks].include?(@tab)),
       ({ partial: "shared/filters/dropdown_filter", locals: {
         label: "Period", name: "period", selected: @period,

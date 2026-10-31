@@ -52,11 +52,11 @@
         <div class="px-5 py-4">
           <% if @bill.document.attached? %>
             <% if @bill.document.image? %>
-              <%= link_to url_for(@bill.document), target: "_blank", rel: "noopener" do %><%= image_tag @bill.document.variant(resize_to_limit: [ 800, 800 ]), alt: @bill.document.filename.to_s, class: "max-h-80 rounded-lg border border-gray-200 object-contain" %><% end %>
+              <%= link_to manage_money_file_path(@bill.document.attachment), target: "_blank", rel: "noopener" do %><%= image_tag manage_money_file_path(@bill.document.attachment, variant: 1), alt: @bill.document.filename.to_s, class: "max-h-80 rounded-lg border border-gray-200 object-contain" %><% end %>
             <% else %>
               <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-600"><%= @bill.document.filename %></div>
             <% end %>
-            <div class="mt-3 flex items-center justify-between text-xs text-gray-500"><span><%= @bill.document.filename %> · <%= number_to_human_size(@bill.document.byte_size) %></span><%= link_to "Open", url_for(@bill.document), target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700" %></div>
+            <div class="mt-3 flex items-center justify-between text-xs text-gray-500"><span><%= @bill.document.filename %> · <%= number_to_human_size(@bill.document.byte_size) %></span><%= link_to "Open", manage_money_file_path(@bill.document.attachment), target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700" %></div>
           <% else %>
             <p class="text-sm text-gray-500">None attached.<% if can_change && @bill.open? %> <%= link_to "Add it", manage_edit_money_bill_path(@bill), class: "text-pink-600 hover:text-pink-700" %>.<% end %></p>
           <% end %>

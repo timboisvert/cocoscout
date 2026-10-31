@@ -170,6 +170,7 @@ class OrganizationAccess
     "manage/payout_batches" => "payouts", "manage/advances" => "payouts",
     "manage/money_incoming" => "bills_invoices", "manage/bills" => "bills_invoices", "manage/invoices" => "bills_invoices",
     "manage/books" => "books", "manage/ticket_balance" => "books", "manage/money_records" => "books", "manage/bank_statements" => "books",
+    "manage/books_statements" => "books", "manage/books_taxes" => "books", "manage/money_files" => "books",
     "manage/money_settings" => "money_settings"
   }.freeze
 

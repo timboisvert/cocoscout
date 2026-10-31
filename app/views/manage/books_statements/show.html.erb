@@ -1,0 +1,111 @@
+<% content_for :title, "#{@statement.title} · Statements" %>
+<%
+  money = ->(cents) { cents.negative? ? "−#{number_to_currency(-cents / 100.0)}" : number_to_currency(cents / 100.0) }
+  org = Current.organization
+  base = { kind: @kind, period: (@period unless @period == "this_month"), basis: (@statements.basis == :cash ? "cash" : nil), as_of: (@as_of.iso8601 if @kind == "balance" && @as_of != Date.current), by_production: ("1" if @by_production) }.compact
+  path = ->(extra = {}) { manage_money_statements_path(base.merge(extra).compact) }
+  can_lock = module_change?(:books)
+  input = "mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+%>
+<% if params[:print] == "1" %>
+  <div class="max-w-3xl mx-auto py-6">
+    <div class="mb-4 text-sm text-gray-600"><%= org.name %></div>
+    <%= render "manage/books_statements/statement", statement: @statement, money: money %>
+    <p class="mt-4 text-xs text-gray-400">From CocoScout Books, <%= Time.current.strftime("%B %-d, %Y") %>.</p>
+  </div>
+<% else %>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Money", manage_money_index_path ], [ "Books", manage_money_books_path ] ], text: "Statements", links: [
+    { text: "Print", path: path.call(print: "1"), data: { turbo: false } },
+    { text: "PDF", path: path.call(format: :pdf), data: { turbo: false } },
+    { text: "CSV", path: path.call(format: :csv), data: { turbo: false } }
+  ] } %>
+
+  <div class="mb-4">
+    <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+      { label: "Statement", filters: [
+        { text: @words[:pnl], path: path.call(kind: "pnl"), active: @kind == "pnl" },
+        { text: (@statements.nonprofit? ? "Financial position" : "Balance sheet"), path: path.call(kind: "balance"), active: @kind == "balance" },
+        { text: "Cash flow", path: path.call(kind: "cash"), active: @kind == "cash" }
+      ] },
+      ({ partial: "shared/filters/dropdown_filter", locals: {
+        label: "Period", name: "period", selected: @period,
+        options: (BooksReport::PERIOD_LABELS.except("all_time")).map { |k, v| { value: k, text: v } },
+        extra_url_params: base.except(:period) } } if @kind != "balance"),
+      ({ label: "Count money", filters: [
+        { text: "When earned", path: path.call(basis: nil), active: @statements.basis == :accrual },
+        { text: "When it moved", path: path.call(basis: "cash"), active: @statements.basis == :cash }
+      ] } if @kind != "cash"),
+      ({ label: "Columns", filters: [
+        { text: "One", path: path.call(by_production: nil), active: !@by_production },
+        { text: "By production", path: path.call(by_production: "1"), active: @by_production }
+      ] } if @kind == "pnl")
+    ].compact %>
+  </div>
+  <% if @kind == "balance" %>
+    <%= form_with url: manage_money_statements_path, method: :get, class: "mb-4 flex items-end gap-2", data: { turbo: false } do %>
+      <% base.except(:as_of).each { |k, v| %><%= hidden_field_tag k, v %><% } %>
+      <label class="block text-sm font-medium text-gray-700"><span>As of</span><%= date_field_tag :as_of, @as_of, class: input %></label>
+      <%= render "shared/button", text: "Show", variant: "secondary", size: "medium", type: :submit %>
+    <% end %>
+  <% end %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-6 items-start">
+    <div class="min-w-0">
+      <%= render "manage/books_statements/statement", statement: @statement, money: money %>
+      <p class="mt-3 text-xs text-gray-500"><% if @kind == "balance" %>The two sides agree by construction: every dollar earned less spent to that day sits under <%= @words[:equity].downcase %>.<% elsif @kind == "cash" %>Cash is the bank, door cash and the CocoScout balance together, by when money moved.<% else %>The same lines as the Overview, laid out the way an accountant reads them.<% end %></p>
+    </div>
+    <div class="space-y-4">
+      <section class="rounded-xl border border-gray-200 bg-white px-5 py-4">
+        <h3 class="text-sm font-semibold text-gray-900">Closed months</h3>
+        <% if org.books_locked_through %>
+          <p class="mt-1 text-sm text-gray-700">The books are locked through <b><%= BooksLock.label(org) %></b><% if org.books_locked_by %> by <%= org.books_locked_by.default_person&.name || org.books_locked_by.email_address %><% end %>. Nothing can be dated inside that; a change the engine has to make lands on <%= BooksLock.first_open_day(org).strftime("%b %-d") %> instead.</p>
+          <% if can_lock %>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <%= render "shared/button", text: "Lock further", variant: "primary", size: "small", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "lock-books" } %>
+              <% if org.owned_by?(Current.user) || Current.user.superadmin? %>
+                <%= render "shared/button", text: "Unlock", variant: "secondary", size: "small", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "unlock-books" } %>
+              <% end %>
+            </div>
+          <% end %>
+        <% else %>
+          <p class="mt-1 text-sm text-gray-700">Nothing is locked. Once a month is done and handed to your accountant, lock the books through it so nothing in it changes.</p>
+          <% if can_lock %><div class="mt-3"><%= render "shared/button", text: "Lock the books", variant: "primary", size: "small", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "lock-books" } %></div><% end %>
+        <% end %>
+      </section>
+      <section class="rounded-xl border border-gray-200 bg-white px-5 py-4">
+        <h3 class="text-sm font-semibold text-gray-900">For your accountant</h3>
+        <p class="mt-1 text-sm text-gray-700">Every line ever posted, as a spreadsheet: date earned and moved, account, debit, credit, production, show, payee and source.</p>
+        <div class="mt-3"><%= render "shared/button", text: "The whole ledger (CSV)", variant: "secondary", size: "small", path: manage_money_statements_ledger_path, data: { turbo: false } %></div>
+        <p class="mt-3 text-xs text-gray-500">An accountant can also be given Books, view only, on the organization team.</p>
+      </section>
+    </div>
+  </div>
+
+  <% if can_lock %>
+    <div id="lock-books" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+      <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-md overflow-hidden" data-action="click->modal#stopPropagation">
+        <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+          <h3 class="text-lg font-semibold text-white">Lock the books</h3>
+          <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 cursor-pointer" aria-label="Close"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+        </div>
+        <%= form_with url: manage_money_statements_lock_path, method: :post, data: { turbo: false } do %>
+          <div class="px-6 py-5 space-y-3">
+            <label class="block text-sm font-medium text-gray-700"><span>Through the end of</span>
+              <select name="through" class="<%= input %>">
+                <% 12.times do |i| %><% m = (Date.current.prev_month(i + 1)).beginning_of_month %><option value="<%= m.iso8601 %>" <%= "selected" if i.zero? %>><%= m.strftime("%B %Y") %></option><% end %>
+              </select></label>
+            <p class="text-xs text-gray-600">Nothing can be dated inside a locked month. A refund or a reopened day that has to change something inside it posts the correction on the first open day, so the month you handed over stays as it was.</p>
+          </div>
+          <div class="flex items-center justify-end gap-2 border-t border-gray-200 bg-gray-50 px-6 py-4">
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+            <%= render "shared/button", text: "Lock", variant: "primary", size: "medium", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+    <%= render "shared/confirm_modal", id: "unlock-books", title: "Unlock the books?", message: "Anyone with Books access can date entries inside the closed months again until you lock them back.", confirm_text: "Unlock", url: manage_money_statements_unlock_path, method: :post %>
+  <% end %>
+</div>
+<% end %>

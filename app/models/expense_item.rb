@@ -2,6 +2,7 @@ class ExpenseItem < ApplicationRecord
   belongs_to :show_financials
 
   has_one_attached :receipt
+  include HierarchicalStorageKey # after the attachment, so the key moves once the file is up
 
   validates :category, presence: true
   validates :amount, presence: true, numericality: { greater_than: 0 }

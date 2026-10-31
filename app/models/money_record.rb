@@ -21,12 +21,16 @@ class MoneyRecord < ApplicationRecord
   }.freeze
   MOVE_ACCOUNTS = { "bank" => [ "Bank", :bank ], "door_cash" => [ "Door cash", :door_cash ], "credit_card" => [ "Credit card", :credit_card ] }.freeze
 
+  include BooksLock::Validation
+  refuses_locked_books_on :on
+
   belongs_to :organization
   belongs_to :production, optional: true
   belongs_to :show, optional: true
   belongs_to :recorded_by, class_name: "User", optional: true
 
   has_one_attached :receipt
+  include HierarchicalStorageKey # after the attachment, so the key moves once the file is up
 
   validates :kind, inclusion: { in: KINDS }
   validates :on, presence: true

@@ -1,0 +1,68 @@
+<% content_for :title, "Taxes #{@year}" %>
+<%
+  money = ->(cents) { cents.negative? ? "−#{number_to_currency(-cents / 100.0)}" : number_to_currency(cents / 100.0) }
+  s = @summary
+  base = { year: @year, basis: (s.basis == :accrual ? "accrual" : nil) }.compact
+  tax = s.sales_tax
+  forms = s.forms_1099
+%>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Money", manage_money_index_path ], [ "Books", manage_money_books_path ] ], text: "Taxes", links: [ { text: "CSV", path: manage_money_taxes_path(base.merge(format: :csv)), data: { turbo: false } } ] } %>
+  <p class="max-w-3xl text-sm text-gray-600 mb-4">One year, summarized the way the forms ask. Nothing is filed from here; this is what you or your accountant copy from.</p>
+
+  <div class="mb-5">
+    <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+      { partial: "shared/filters/dropdown_filter", locals: { label: "Year", name: "year", selected: @year.to_s, options: @years.map { |y| { value: y, text: y.to_s } }, extra_url_params: base.except(:year) } },
+      { label: "Count money", filters: [
+        { text: "When it moved", path: manage_money_taxes_path(year: @year), active: s.basis == :cash },
+        { text: "When earned", path: manage_money_taxes_path(year: @year, basis: "accrual"), active: s.basis == :accrual }
+      ] }
+    ] %>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+    <section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <%= render "shared/section_heading", padding: "px-5 py-3", title: (s.nonprofit? ? "Support and revenue (990-EZ, Part I)" : "Gross receipts (Schedule C, Part I)") do %>
+        <span class="text-sm font-semibold tabular-nums text-gray-900"><%= money.call(s.income_total_cents) %></span>
+      <% end %>
+      <ul class="divide-y divide-gray-100">
+        <% (s.nonprofit? ? s.nonprofit_income_groups : s.income_lines).each do |l| %>
+          <li class="flex items-center justify-between gap-4 px-5 py-2 text-sm"><span class="text-gray-900"><%= l.label %></span><span class="tabular-nums text-gray-900"><%= money.call(l.cents) %></span></li>
+        <% end %>
+        <% if s.income_lines.empty? %><li class="px-5 py-3 text-sm text-gray-500">Nothing in <%= @year %>.</li><% end %>
+      </ul>
+    </section>
+    <section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <%= render "shared/section_heading", padding: "px-5 py-3", title: (s.nonprofit? ? "Expenses (990-EZ, Part I)" : "Expenses (Schedule C, Part II)") do %>
+        <span class="text-sm font-semibold tabular-nums text-gray-900"><%= money.call(s.spending_total_cents) %></span>
+      <% end %>
+      <ul class="divide-y divide-gray-100">
+        <% s.spending_lines.each do |l| %>
+          <li class="flex items-center justify-between gap-4 px-5 py-2 text-sm"><span class="min-w-0"><span class="text-gray-900"><%= l.label %></span><% if l.label == "Contract labor" && forms[:count].positive? %><span class="block text-xs text-gray-500"><%= pluralize(forms[:count], "1099") %> issued for <%= money.call(forms[:total_cents]) %></span><% elsif l.note %><span class="block text-xs text-gray-500"><%= l.note %></span><% end %></span><span class="tabular-nums <%= l.cents.zero? ? 'text-gray-400' : 'text-gray-900' %>"><%= money.call(l.cents) %></span></li>
+        <% end %>
+      </ul>
+      <div class="px-5 py-2.5 bg-gray-50 border-t border-gray-200 flex items-center justify-between text-sm font-semibold"><span><%= s.nonprofit? ? "Change in net assets" : "Net profit" %></span><span class="tabular-nums"><%= money.call(s.net_cents) %></span></div>
+    </section>
+    <section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <%= render "shared/section_heading", padding: "px-5 py-3", title: "Sales tax" do %>
+        <%= link_to "Sales tax page", manage_ticket_taxes_path, class: "text-xs text-pink-600 hover:text-pink-700" %>
+      <% end %>
+      <ul class="divide-y divide-gray-100 text-sm">
+        <li class="flex items-center justify-between px-5 py-2"><span class="text-gray-900">Collected on tickets, products and classes</span><span class="tabular-nums"><%= money.call(tax[:collected_cents]) %></span></li>
+        <li class="flex items-center justify-between px-5 py-2"><span class="text-gray-900">Given back on refunds</span><span class="tabular-nums"><%= money.call(tax[:refunded_cents]) %></span></li>
+        <li class="flex items-center justify-between px-5 py-2"><span class="text-gray-900">Paid to the government in <%= @year %></span><span class="tabular-nums"><%= money.call(tax[:paid_cents]) %></span></li>
+        <li class="flex items-center justify-between px-5 py-2"><span class="text-gray-900">Still set aside today</span><span class="tabular-nums"><%= money.call(tax[:set_aside_cents]) %></span></li>
+      </ul>
+    </section>
+    <section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <%= render "shared/section_heading", padding: "px-5 py-3", title: "Forms and fees" do %>
+        <%= link_to "Staffing → Taxes", manage_staffing_taxes_path(tax_year: @year), class: "text-xs text-pink-600 hover:text-pink-700" %>
+      <% end %>
+      <ul class="divide-y divide-gray-100 text-sm">
+        <li class="flex items-center justify-between px-5 py-2"><span class="min-w-0"><span class="text-gray-900">1099-NECs for <%= @year %></span><span class="block text-xs text-gray-500"><%= forms[:count].zero? ? "None yet; the threshold is #{money.call(forms[:threshold_cents])}" : "#{forms[:delivered]} sent, #{forms[:filed]} filed" %></span></span><span class="tabular-nums"><%= money.call(forms[:total_cents]) %></span></li>
+        <li class="flex items-center justify-between px-5 py-2"><span class="min-w-0"><span class="text-gray-900">Paid to CocoScout</span><span class="block text-xs text-gray-500">Subscription and bills, from your monthly statements</span></span><span class="tabular-nums"><%= money.call(s.cocoscout_paid_cents) %></span></li>
+      </ul>
+    </section>
+  </div>
+</div>

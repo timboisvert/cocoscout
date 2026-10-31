@@ -1,0 +1,26 @@
+<%# One statement as a table. Locals: statement, money %>
+<% s = statement %>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <div class="px-5 py-4 border-b border-gray-200">
+    <div class="text-lg font-semibold text-gray-900"><%= s.title %></div>
+    <div class="text-sm text-gray-600"><%= s.subtitle %> · <%= s.basis_note %></div>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm <%= s.columns.any? ? 'min-w-[640px]' : '' %>">
+      <% if s.columns.any? %>
+        <thead><tr class="bg-gray-50 text-[11px] font-medium uppercase tracking-wide text-gray-500"><th class="px-5 py-2 text-left"></th><th class="px-3 py-2 text-right">Total</th><% s.columns.each do |_, name| %><th class="px-3 py-2 text-right whitespace-nowrap"><%= name %></th><% end %></tr></thead>
+      <% end %>
+      <tbody>
+        <% s.sections.each do |section| %>
+          <tr><td colspan="<%= 2 + s.columns.size %>" class="px-5 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500"><%= section.title %></td></tr>
+          <% if section.lines.empty? %><tr><td colspan="<%= 2 + s.columns.size %>" class="px-5 py-1.5 text-gray-400">Nothing</td></tr><% end %>
+          <% section.lines.each do |line| %>
+            <tr class="border-b border-gray-50"><td class="px-5 py-1.5 text-gray-900"><%= line.label %></td><td class="px-3 py-1.5 text-right tabular-nums text-gray-900"><%= money.call(line.cents) %></td><% s.columns.each do |pid, _| %><td class="px-3 py-1.5 text-right tabular-nums text-gray-700"><%= money.call(line.by_production[pid].to_i) %></td><% end %></tr>
+          <% end %>
+          <tr class="border-t border-gray-200 font-semibold"><td class="px-5 py-1.5 text-gray-900"><%= section.total_label %></td><td class="px-3 py-1.5 text-right tabular-nums text-gray-900"><%= money.call(section.total_cents) %></td><% s.columns.each do |pid, _| %><td class="px-3 py-1.5 text-right tabular-nums text-gray-900"><%= money.call(section.by_production[pid].to_i) %></td><% end %></tr>
+        <% end %>
+        <tr class="bg-gray-50 border-t-2 border-gray-300 font-bold"><td class="px-5 py-2.5 text-gray-900"><%= s.bottom.label %></td><td class="px-3 py-2.5 text-right tabular-nums text-gray-900"><%= money.call(s.bottom.cents) %></td><% s.columns.each do |pid, _| %><td class="px-3 py-2.5 text-right tabular-nums text-gray-900"><%= money.call(s.bottom.by_production[pid].to_i) %></td><% end %></tr>
+      </tbody>
+    </table>
+  </div>
+</div>

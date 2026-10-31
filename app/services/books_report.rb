@@ -251,4 +251,6 @@ class BooksReport
     lines = lines.where.not(journal_entries: { cash_date: nil }) if @basis == :cash
     lines.group(:ledger_account_id).sum(:amount_cents)
   end
+
+  public :dated_lines
 end
