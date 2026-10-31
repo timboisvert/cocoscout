@@ -16,50 +16,56 @@ RSpec.describe "Money hub parity", type: :request do
 
   def links_to(path) = response.body.include?(%(href="#{path}"))
 
-  describe "shows needing financials" do
+  # Books V1.3: the hub's first section is the days to settle (SettleUp), not
+  # a list of shows needing financials. A day appears once it has ended with
+  # money in it and nobody has settled it; the Settle up page lists the same.
+  describe "days to settle" do
     let!(:overdue_a) { create(:show, production: production, event_type: :show, date_and_time: 2.days.ago) }
     let!(:overdue_b) { create(:show, production: production, event_type: :show, date_and_time: 4.days.ago) }
     # Neither of these is work: one hasn't happened, one never will.
     let!(:starts_soon) { create(:show, production: production, event_type: :show, date_and_time: 6.hours.from_now) }
     let!(:canceled) { create(:show, production: production, event_type: :show, date_and_time: 3.days.ago, canceled: true) }
 
-    it "offers the same shows on the hub as on the Financials page" do
+    def day_path(show) = manage_money_settle_up_day_path(SettlementDay.day_for(org, show.date_and_time).iso8601)
+
+    def settle!(show)
+      create(:show_financials, :complete, show: show, ticket_revenue: 100.0)
+      SettlementDay.create!(organization: org, date: SettlementDay.day_for(org, show.date_and_time)).settle!(by: owner)
+    end
+
+    it "offers the same days on the hub as on the Settle up page" do
       get manage_money_index_path
-      hub = [ overdue_a, overdue_b, starts_soon, canceled ]
-             .select { |s| links_to(manage_money_show_financials_path(s)) }
-
-      get manage_money_financials_path
-      page = [ overdue_a, overdue_b, starts_soon, canceled ]
-              .select { |s| links_to(manage_money_show_financials_path(s)) }
-
+      hub = [ overdue_a, overdue_b, starts_soon, canceled ].select { |s| links_to(day_path(s)) }
       expect(hub).to contain_exactly(overdue_a, overdue_b)
-      expect(page).to eq(hub)
+      expect(response.body).to include("2 days to settle up")
+
+      get manage_money_settle_up_path
+      expect([ overdue_a, overdue_b ].select { |s| links_to(day_path(s)) }).to eq(hub)
+      expect(links_to(day_path(canceled))).to be(false)
     end
 
-    # The per-production counts on /all used a later cutoff than the index, so a
-    # show starting in six hours was pending on one page and not the other.
-    it "agrees with the pending filter on All Financials" do
-      get manage_money_all_financials_path(filter: "pending")
-      expect(response.body).to include("Parity Revue")
-
-      [ overdue_a, overdue_b ].each { |s| create(:show_financials, :complete, show: s, ticket_revenue: 10.0) }
-
-      get manage_money_all_financials_path(filter: "pending")
-      # The list itself: the organization menu names the one production on every page.
-      expect(Nokogiri::HTML(response.body).at_css("main").to_html).not_to include("Parity Revue")
+    it "says every day is settled once they are, on the hub and on Settle up" do
+      settle!(overdue_a)
+      settle!(overdue_b)
 
       get manage_money_index_path
-      expect(response.body).to include("You&#39;re all caught up on financials.")
+      expect(response.body).to include("Every day is settled.")
+      expect(links_to(day_path(overdue_a))).to be(false)
+
+      get manage_money_settle_up_path
+      expect(response.body).to include("Every day is settled", "The next show that happens will put its day here.")
+      expect(links_to(day_path(overdue_a))).to be(false)
     end
 
-    it "drops a show from the hub as soon as its financials are confirmed" do
+    it "drops a day from the hub as soon as it is settled" do
       get manage_money_index_path
-      expect(links_to(manage_money_show_financials_path(overdue_a))).to be(true)
+      expect(links_to(day_path(overdue_a))).to be(true)
 
-      create(:show_financials, :complete, show: overdue_a, ticket_revenue: 200.0)
+      settle!(overdue_a)
 
       get manage_money_index_path
-      expect(links_to(manage_money_show_financials_path(overdue_a))).to be(false)
+      expect(links_to(day_path(overdue_a))).to be(false)
+      expect(links_to(day_path(overdue_b))).to be(true)
     end
   end
 
@@ -126,16 +132,17 @@ RSpec.describe "Money hub parity", type: :request do
       7.times.map { |i| create(:show, production: production, event_type: :show, date_and_time: (i + 1).days.ago) }
     end
 
-    it "renders five rows but counts and offers all seven" do
+    def day_path(show) = manage_money_settle_up_day_path(SettlementDay.day_for(org, show.date_and_time).iso8601)
+
+    it "renders five days but counts and offers all seven" do
       get manage_money_index_path
 
-      shown = shows.count { |s| links_to(manage_money_show_financials_path(s)) }
-      expect(shown).to eq(5)
-      expect(response.body).to include("See all 7 in Financials")
+      expect(shows.count { |s| links_to(day_path(s)) }).to eq(5)
+      expect(response.body).to include("7 days to settle up", "See all 7 in Settle up")
 
       # The page it points at holds the rest.
-      get manage_money_financials_path
-      expect(shows.count { |s| links_to(manage_money_show_financials_path(s)) }).to eq(7)
+      get manage_money_settle_up_path
+      expect(shows.count { |s| links_to(day_path(s)) }).to eq(7)
     end
   end
 end
