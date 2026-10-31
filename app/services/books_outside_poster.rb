@@ -33,9 +33,13 @@ class BooksOutsidePoster
     dims = { show: show, production: show.production }
 
     tickets = outside_ticket_cents(financials, show)
+    # Where the organization owes the tax on a site's sales, the tax part
+    # of what arrived is owed to the government, not income.
+    tax = tickets.zero? ? 0 : OutsideTicketTax.for_financials(organization, financials)
     LedgerPosting.post!(organization: organization, source: financials, kind: "outside_tickets", entry_date: date, cash_date: date,
                         memo: "Ticket sales elsewhere · #{show.display_name}",
-                        lines: tickets.zero? ? [] : [ { account: :bank, amount_cents: tickets, **dims }, { account: :ticket_income, amount_cents: -tickets, **dims } ])
+                        lines: tickets.zero? ? [] : [ { account: :bank, amount_cents: tickets, **dims }, { account: :ticket_income, amount_cents: -(tickets - tax), **dims },
+                                                      ({ account: :tax_to_remit, amount_cents: -tax, memo: "Tax on tickets sold elsewhere", **dims } if tax.positive?) ].compact)
 
     other = other_revenue_cents(financials)
     LedgerPosting.post!(organization: organization, source: financials, kind: "other_revenue", entry_date: date, cash_date: date,
@@ -193,5 +197,7 @@ class BooksOutsidePoster
     end
   end
 
-  private_class_method :on_the_rail?, :outside_ticket_cents, :contract_for, :org_sells?, :flat_fee_cents, :other_revenue_cents, :expense_cents
+  # outside_ticket_cents stays public: OutsideTicketTax asks it which
+  # financials carry outside ticket money the books count.
+  private_class_method :on_the_rail?, :contract_for, :org_sells?, :flat_fee_cents, :other_revenue_cents, :expense_cents
 end

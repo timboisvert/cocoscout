@@ -51,6 +51,7 @@
       <ul class="divide-y divide-gray-100 text-sm">
         <li class="flex items-center justify-between px-5 py-2"><span class="text-gray-900">Collected on tickets, products and classes</span><span class="tabular-nums"><%= money.call(tax[:collected_cents]) %></span></li>
         <li class="flex items-center justify-between px-5 py-2"><span class="text-gray-900">Given back on refunds</span><span class="tabular-nums"><%= money.call(tax[:refunded_cents]) %></span></li>
+        <li class="flex items-center justify-between px-5 py-2"><span class="min-w-0"><span class="text-gray-900">Owed on tickets other sites sold</span><span class="block text-xs text-gray-500">Sources marked "we owe the tax"; the money is in your bank</span></span><span class="tabular-nums"><%= money.call(tax[:outside_cents]) %></span></li>
         <li class="flex items-center justify-between px-5 py-2"><span class="text-gray-900">Paid to the government in <%= @year %></span><span class="tabular-nums"><%= money.call(tax[:paid_cents]) %></span></li>
         <li class="flex items-center justify-between px-5 py-2"><span class="text-gray-900">Still set aside today</span><span class="tabular-nums"><%= money.call(tax[:set_aside_cents]) %></span></li>
       </ul>

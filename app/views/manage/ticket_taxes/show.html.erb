@@ -157,6 +157,25 @@
       <% end %>
     </div>
 
+    <%# Tax on tickets other sites sold, where the organization owes it. %>
+    <% if @outside_rows.any? || @outside_sources_unset %>
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-lg font-semibold text-gray-900"><%= period_label %>: <%= money.call(@outside_rows.sum(&:tax_cents)) %> owed on tickets other sites sold</h2>
+          <p class="text-sm text-gray-600 mt-1">Sites that pay you the tax with the ticket money (Ticket Tailor, say). It is in your bank, not set aside here, and it is carved out of each sale at your ticket tax rate, by show date. A site that pays the tax itself (Eventbrite in Chicago) is left out. <%= link_to "Which is which: Money settings", manage_money_settings_section_path(section: "ticket_sources"), class: "text-pink-600 hover:text-pink-700 underline" %>.</p>
+        </div>
+        <% if @outside_rows.any? %>
+          <ul class="divide-y divide-gray-100">
+            <% @outside_rows.each do |row| %>
+              <li class="flex flex-wrap items-center gap-x-4 gap-y-1 px-6 py-3 text-sm"><span class="flex-1 min-w-[10rem] text-gray-900"><%= row.source.name %> <span class="text-gray-500">· <%= pluralize(row.shows, "show") %></span></span><span class="text-gray-600">Arrived <span class="tabular-nums"><%= money.call(row.sales_cents) %></span></span><span class="font-semibold tabular-nums text-gray-900">Tax <%= money.call(row.tax_cents) %></span></li>
+            <% end %>
+          </ul>
+        <% else %>
+          <p class="px-6 py-4 text-sm text-gray-500">Nothing owed this period. <% if @outside_sources_unset %>Some of your ticket sources have not said who pays their tax yet.<% end %></p>
+        <% end %>
+      </div>
+    <% end %>
+
     <%# How filing works: CocoScout collects, the organization files and pays. %>
     <div class="bg-white border border-gray-200 rounded-xl px-6 py-5">
       <h2 class="text-lg font-semibold text-gray-900">How to file and pay</h2>

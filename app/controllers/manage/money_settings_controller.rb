@@ -166,7 +166,7 @@ module Manage
     end
 
     def ticket_source_params
-      params.require(:ticket_source).permit(:name, :position)
+      params.require(:ticket_source).permit(:name, :position, :tax_handling)
     end
   end
 end

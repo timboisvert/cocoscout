@@ -91,9 +91,11 @@ class BooksReconciliation
                     .joins("JOIN ticket_pass_holdings ON ticket_pass_holdings.id = tax_lines.taxable_id")
                     .where(ticket_pass_holdings: { status: %w[active ended] })
                     .sum(:tax_cents)
-    # Less what the organization has marked paid to the government.
+    # Plus the tax owed on tickets other sites sold (OutsideTicketTax), less
+    # what the organization has marked paid to the government.
+    outside = OutsideTicketTax.owed_total_cents(organization)
     paid = SalesTaxRemittance.where(organization_id: organization.id).sum(:amount_cents)
-    expected = tickets + products + courses + passes - paid
+    expected = tickets + products + courses + passes + outside - paid
     Mismatch.new(account: "tax_to_remit", books_cents: books, expected_cents: expected) unless books == expected
   end
 

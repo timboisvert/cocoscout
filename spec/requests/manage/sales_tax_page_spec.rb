@@ -56,6 +56,24 @@ RSpec.describe "Sales tax page", type: :request do
     expect(SalesTaxSetAside.cents(org)).to eq(410)
   end
 
+  it "shows the tax owed on tickets other sites sold, by source, in its own section" do
+    tailor = org.ticket_sources.create!(name: "Ticket Tailor", tax_handling: "we_owe")
+    financials = ShowFinancials.find_or_create_by!(show: listing.show) { |f| f.revenue_type = "ticket_sales" }
+    financials.update!(revenue_type: "ticket_sales")
+    financials.ticket_sales_lines.create!(ticket_source: tailor, tickets_sold: 10, amount: 220.50)
+
+    get manage_ticket_taxes_path(period: "2026-10")
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("$20.50 owed on tickets other sites sold", "Ticket Tailor", "1 show", "Arrived", "$220.50", "Tax $20.50", "not set aside here")
+    expect(response.body).to include(manage_money_settings_section_path(section: "ticket_sources"))
+
+    # A source that pays its own tax has nothing here, and with no "we owe"
+    # source at all the section only appears while a source is still unset.
+    tailor.update!(tax_handling: "they_pay")
+    get manage_ticket_taxes_path(period: "2026-10")
+    expect(response.body).not_to include("owed on tickets other sites sold")
+  end
+
   it "says what Chicago's taxes are, and flags a 10.25% ticket rate" do
     create(:location, organization: org, city: "Chicago", state: "IL")
 

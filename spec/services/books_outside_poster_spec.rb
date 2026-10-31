@@ -44,6 +44,37 @@ RSpec.describe BooksOutsidePoster do
     expect(balance(:bank)).to eq(0)
   end
 
+  # Who pays the tax on tickets another site sold (Tim, 10/31): a source the
+  # organization owes the tax for carves it out of what arrived, at the
+  # ticket tax rate, into Tax to pay the government; a source that pays its
+  # own tax (Eventbrite in Chicago) posts the whole amount as income.
+  it "sets the tax part of a 'we owe the tax' source's sales aside as owed to the government" do
+    TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")
+    tailor.update!(tax_handling: "we_owe")
+    eventbrite = org.ticket_sources.create!(name: "Eventbrite", tax_handling: "they_pay")
+    financials = ShowFinancials.create!(show: show, revenue_type: "ticket_sales")
+    financials.ticket_sales_lines.create!(ticket_source: tailor, tickets_sold: 10, amount: 220.50)
+    financials.ticket_sales_lines.create!(ticket_source: eventbrite, tickets_sold: 5, amount: 110.25)
+    financials.reload
+
+    # 22050 × 1025 / 11025 = 2050 cents of tax inside Ticket Tailor's money.
+    expect(OutsideTicketTax.tax_cents(org, 22_050)).to eq(2_050)
+    expect(balance(:bank)).to eq(33_075)
+    expect(balance(:tax_to_remit)).to eq(2_050)
+    expect(balance(:ticket_income)).to eq(33_075 - 2_050)
+    expect(LedgerPosting.trial_balance(org).values.sum).to eq(0)
+
+    rows = OutsideTicketTax.rows(org, from: Date.new(2026, 10, 1), to: Date.new(2026, 10, 31))
+    expect(rows.map { |r| [ r.source.name, r.sales_cents, r.tax_cents, r.shows ] }).to eq([ [ "Ticket Tailor", 22_050, 2_050, 1 ] ])
+    expect(BooksReconciliation.check(org)).to eq([])
+
+    # Switching the source to "they pay" restates: no tax owed any more.
+    tailor.update!(tax_handling: "they_pay")
+    financials.reload.post_to_books
+    expect(balance(:tax_to_remit)).to eq(0)
+    expect(balance(:ticket_income)).to eq(33_075)
+  end
+
   it "leaves another seller's ticket money out, and the CocoScout row too" do
     contract = create(:contract, organization: org, production: production)
     allow_any_instance_of(Contract).to receive(:org_sells_tickets?).and_return(false)

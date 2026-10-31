@@ -21,7 +21,7 @@ RSpec.describe "Manage::BooksTaxes", type: :request do
     get manage_money_taxes_path(year: year)
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Gross receipts (Schedule C, Part I)", "Sponsorship", "$5,000.00", "Rent", "$1,200.00", "Advertising", "$300.00", "Net profit", "$3,500.00",
-                                     "Sales tax", "1099-NECs for #{year}", "Paid to CocoScout")
+                                     "Sales tax", "Owed on tickets other sites sold", "1099-NECs for #{year}", "Paid to CocoScout")
 
     get manage_money_taxes_path(year: year, format: :csv)
     expect(response.body).to include("Gross receipts", "Sponsorship,5000.00", "Rent,1200.00", "Net profit,3500.00", "1099s issued,0,0.00")

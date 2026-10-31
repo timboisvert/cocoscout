@@ -28,6 +28,25 @@ RSpec.describe "Ticket sources and per-source sales", type: :request do
       }.to change { org.ticket_sources.count }.by(1)
 
       expect(org.ticket_sources.last.name).to eq("Eventbrite")
+      expect(org.ticket_sources.last.tax_handling).to eq("none")
+    end
+
+    # Who pays the tax on what a site sells (Books V1.3): chosen per source.
+    it "takes who pays the tax, per source, and offers the choice on the page" do
+      get manage_money_settings_section_path(section: "ticket_sources")
+      expect(response.body).to include("Tax on what they sell", "They collect the tax and pay it for us", "We owe the tax on these sales")
+
+      post manage_money_settings_ticket_sources_path, params: { ticket_source: { name: "Ticket Tailor", tax_handling: "we_owe" } }
+      source = org.ticket_sources.last
+      expect(source.tax_handling).to eq("we_owe")
+      expect(source).to be_we_owe_tax
+
+      patch manage_money_settings_ticket_source_path(source), params: { ticket_source: { name: "Ticket Tailor", tax_handling: "they_pay" } }
+      expect(source.reload.tax_handling).to eq("they_pay")
+      expect(source.tax_handling_label).to eq("They collect the tax and pay it for us")
+
+      patch manage_money_settings_ticket_source_path(source), params: { ticket_source: { name: "Ticket Tailor", tax_handling: "bogus" } }
+      expect(source.reload.tax_handling).to eq("they_pay")
     end
 
     it "refuses a second source with the same name" do
