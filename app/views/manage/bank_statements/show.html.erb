@@ -1,0 +1,5 @@
+<% content_for :title, "Bank" %>
+<div class="w-full mb-10">
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Money", manage_money_index_path ], [ "Books", manage_money_books_path ] ], text: "Bank", links: [] } %>
+  <%= render "shared/empty_state", icon: "money", title: "Bank statements are on their way", body: "Bring the month in as a file and match every line to the books." %>
+</div>

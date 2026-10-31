@@ -63,6 +63,8 @@ class Organization < ApplicationRecord
   has_many :journal_lines, dependent: :delete_all
   has_many :journal_entries, dependent: :delete_all
   has_many :money_records, dependent: :destroy
+  has_many :integrations, dependent: :destroy
+  has_many :register_days, dependent: :destroy
   has_many :ledger_accounts, dependent: :delete_all
   # Ticketing. Orders go before listings (a listing with orders refuses to be
   # destroyed on its own), and tax lines before the rates they name.

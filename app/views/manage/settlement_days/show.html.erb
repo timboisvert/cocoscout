@@ -8,10 +8,12 @@
     [ "Tickets", money.call(day.shows.sum(&:tickets_cents)), "text-gray-900" ],
     [ "Products and other", money.call(day.shows.sum { |s| s.products_cents + s.other_revenue_cents + s.flat_fee_cents }), "text-gray-900" ],
     [ "Expenses", money.call(day.out_cents), "text-gray-900" ],
+    (day.registers.any? ? [ "Bar and register", money.call(day.register_sales_cents), "text-gray-900" ] : nil),
     [ "Door cash", (day.door_cash.counted? ? (day.door_cash.over_short_cents.zero? ? "Counted, exact" : (day.door_cash.over_short_cents.negative? ? "#{money.call(day.door_cash.over_short_cents)} short" : "#{money.call(day.door_cash.over_short_cents)} over")) : (day.door_cash.any? ? "Not counted" : "None")),
       (day.door_cash.counted? && !day.door_cash.over_short_cents.zero? ? "text-red-700" : "text-gray-900") ]
-  ]
-  what = [ (day.shows.size == 1 ? "one show" : "#{day.shows.size} shows"), (day.door_cash.any? ? "door cash" : nil) ].compact
+  ].compact
+  what = [ (day.shows.empty? ? nil : (day.shows.size == 1 ? "one show" : "#{day.shows.size} shows")), (day.door_cash.any? ? "door cash" : nil),
+           (day.registers.any? ? "the register" : nil), (day.tips.any? ? "tips" : nil) ].compact
   settle_cid = "confirm-settle-day"
 %>
 <div class="w-full mb-10">
@@ -97,7 +99,7 @@
   </div>
 
   <% if day.any? %>
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+    <div class="grid grid-cols-2 <%= tiles.size >= 5 ? "lg:grid-cols-5" : "lg:grid-cols-4" %> gap-3 mb-6">
       <% tiles.each do |label, value, color| %>
         <div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
           <div class="text-[11px] font-medium uppercase tracking-wide text-gray-500"><%= label %></div>
@@ -151,9 +153,16 @@
         </section>
       <% end %>
 
+      <% if day.registers.any? %>
+        <%= render "manage/settlement_days/register", day: day, registers: day.registers, can_change: can_change %>
+      <% end %>
+      <% if day.tips.any? %>
+        <%= render "manage/settlement_days/tips", day: day, tips: day.tips, can_change: can_change %>
+      <% end %>
+
       <% if !day.settled? %>
         <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-5 py-4">
-          <span class="text-sm text-gray-600 max-w-2xl">When you mark the day settled, door cash over or short goes on the books dated <%= @date.strftime("%b %-d") %>, and every show's settlement is final. You can reopen the day later; the books keep both versions.</span>
+          <span class="text-sm text-gray-600 max-w-2xl">When you mark the day settled, door cash over or short<%= day.registers.any? ? ", the register's sales, tax, tips and fees," : "" %> go on the books dated <%= @date.strftime("%b %-d") %>, <%= day.tips.any? ? "each tip share goes to its payout run, " : "" %>and every show's settlement is final. You can reopen the day later; the books keep both versions.</span>
           <% if can_change && day.all_checked? && day.ended? %>
             <%= render "shared/button", text: "Mark the day settled", variant: "primary", size: "medium", type: :button,
                   data: { controller: "modal", action: "click->modal#open", modal_id: settle_cid } %>
@@ -162,7 +171,7 @@
       <% end %>
     </div>
   <% else %>
-    <%= render "shared/empty_state", icon: "calendar", title: "Nothing to settle on #{@date.strftime('%b %-d')}", body: "Days with no shows and no door money never need settling." %>
+    <%= render "shared/empty_state", icon: "calendar", title: "Nothing to settle on #{@date.strftime('%b %-d')}", body: "Days with no shows, no register sales and no door money never need settling." %>
   <% end %>
 </div>
 

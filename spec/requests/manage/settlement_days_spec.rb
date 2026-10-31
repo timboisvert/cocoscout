@@ -86,3 +86,59 @@ RSpec.describe "Settle up", type: :request do
     expect(response.body).to include("When a day ends", "At midnight")
   end
 end
+
+# A register's day (Square, plan §9.3) on the worksheet: checked like any
+# piece, posted to the books on settle, tips split to the payout run.
+RSpec.describe "Manage::SettlementDays with a register", type: :request do
+  let(:password) { "Password123!" }
+  let(:owner) { create(:user, password: password) }
+  let!(:org) { create(:organization, :pro, owner: owner, settlement_day_mode: "calendar") }
+  let!(:owner_role) { create(:organization_role, :manager, user: owner, organization: org) }
+  let!(:lodge) { create(:location, organization: org, name: "Lincoln Lodge") }
+  let(:date) { Date.current - 2 }
+  let!(:integration) { org.integrations.create!(provider: "square", tokens: { "access_token" => "tok" }, settings: { "locations" => [ { "id" => "L1", "name" => "The bar" } ], "location_map" => { "L1" => lodge.id.to_s } }) }
+  let!(:register) do
+    integration.register_days.create!(organization: org, location: lodge, external_location_id: "L1", business_date: date,
+                                      sales_by_category: { "bar" => 10_000, "merchandise" => 2_000 }, gross_cents: 12_000, tips_cents: 1_500, tax_cents: 1_000,
+                                      refunds_cents: 600, fees_cents: 330, net_cents: 12_000 + 1_000 + 1_500 - 600 - 330, orders_count: 40, pulled_at: Time.current)
+  end
+  let(:bartender) { create(:person, name: "Pat Bartender") }
+  let!(:member) { org.organization_staff_members.create!(person: bartender) }
+  let(:role) { org.house_roles.create!(name: "Bar") }
+
+  before do
+    org.shifts.create!(house_role: role, starts_at: date.in_time_zone.change(hour: 19), ends_at: date.in_time_zone.change(hour: 23)).shift_assignments.create!(person: bartender)
+    post handle_signin_path, params: { email_address: owner.email_address, password: password }
+  end
+
+  it "lists a day with only register money, shows it on the worksheet, and settles it onto the books with the tips on the run" do
+    get manage_money_settle_up_path
+    expect(response.body).to include(manage_money_settle_up_day_path(date.iso8601), "Bar, Lincoln Lodge", "Tips")
+
+    get manage_money_settle_up_day_path(date.iso8601)
+    expect(response.body).to include("Bar, Lincoln Lodge", "$100.00", "$20.00", "Sales tax collected", "Tips, $15.00", "Pat Bartender", "On its way to your bank")
+
+    patch manage_check_register_money_settle_up_day_path(date.iso8601), params: { checked: "1" }
+    patch manage_tips_money_settle_up_day_path(date.iso8601), params: { split: "even", checked: "1", shares: { bartender.id => { amount: "15.00", method: "payout" } } }
+    record = SettlementDay.find_by!(organization: org, date: date)
+    expect(record.tip_shares.sum(:amount_cents)).to eq(1_500)
+
+    post manage_settle_money_settle_up_day_path(date.iso8601)
+    expect(record.reload).to be_settled
+    expect(ChartOfAccounts.account(org, :bar_income).natural_balance_cents).to eq(10_000 - 500)
+    expect(ChartOfAccounts.account(org, :merchandise_income).natural_balance_cents).to eq(2_000 - 100)
+    expect(ChartOfAccounts.account(org, :tax_to_remit).natural_balance_cents).to eq(1_000)
+    expect(ChartOfAccounts.account(org, :tips_owed).natural_balance_cents).to eq(1_500)
+    expect(ChartOfAccounts.account(org, :ticketing_fees).natural_balance_cents).to eq(330)
+    expect(ChartOfAccounts.account(org, :bank).natural_balance_cents).to eq(12_000 + 1_000 + 1_500 - 600 - 330)
+    share = record.tip_shares.first
+    expect(share.payout_contribution).to be_present
+    expect(share.payout_contribution.payout_batch).to be_open
+    expect(share.payout_contribution.amount_cents).to eq(1_500)
+
+    post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "Wrong split" }
+    expect(ChartOfAccounts.account(org, :bank).natural_balance_cents).to eq(0)
+    expect(share.reload.payout_contribution).to be_nil
+    expect(PayoutContribution.where(payee: bartender).count).to eq(0)
+  end
+end

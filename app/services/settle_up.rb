@@ -26,16 +26,40 @@ class SettleUp
     def any? = cash_orders_count.positive? || counted?
   end
 
-  Day = Data.define(:organization, :date, :record, :shows, :door_cash) do
+  # Someone who worked the day, for splitting tips: from Staffing's shifts
+  # and hours. hours is what they logged, else what they were scheduled.
+  Worker = Data.define(:person, :hours, :staff_member)
+
+  # The day's tips (plan §9.3): the register's total, how it's split, each
+  # share, and who was there. Nothing is split until someone checks it.
+  Tips = Data.define(:cents, :record, :shares, :workers) do
+    def any? = cents.positive?
+    def checked? = record&.tips_checked? == true
+    def state = checked? ? :ok : :wait
+    def split = record&.tips_split.presence || "even"
+    def assigned_cents = shares.sum(&:amount_cents)
+    def unassigned_cents = cents - assigned_cents
+    def share_for(person) = shares.find { |sh| sh.person_id == person.id }
+  end
+
+  Day = Data.define(:organization, :date, :record, :shows, :door_cash, :registers, :tips) do
     def settled? = record&.settled? == true
     def status = settled? ? "settled" : "open"
     def ended? = SettlementDay.ended?(organization, date)
-    def pieces = shows.map { |s| [ s.show.display_name, s.state ] } + (door_cash.any? ? [ [ "Door cash", door_cash.state ] ] : [])
+    def registers_state = record&.register_checked? ? :ok : :wait
+    def register_label = registers.size == 1 ? "Bar, #{registers.first.location_name}" : "Registers"
+    def pieces
+      shows.map { |s| [ s.show.display_name, s.state ] } +
+        (door_cash.any? ? [ [ "Door cash", door_cash.state ] ] : []) +
+        (registers.any? ? [ [ register_label, registers_state ] ] : []) +
+        (tips.any? ? [ [ "Tips", tips.state ] ] : [])
+    end
     def checked_count = pieces.count { |_, state| state == :ok }
     def all_checked? = pieces.any? && pieces.all? { |_, state| state == :ok }
-    def in_cents = shows.sum(&:in_cents)
-    def out_cents = shows.sum(&:expenses_cents)
-    def any? = shows.any? || door_cash.any?
+    def register_sales_cents = registers.sum { |r| r.gross_cents - r.refunds_cents }
+    def in_cents = shows.sum(&:in_cents) + register_sales_cents
+    def out_cents = shows.sum(&:expenses_cents) + registers.sum(&:fees_cents)
+    def any? = shows.any? || door_cash.any? || registers.any?
     def to_settle? = any? && !settled? && ended?
     def param = date.iso8601
   end
@@ -44,12 +68,13 @@ class SettleUp
     build(organization, date, shows_on(organization, date), SettlementDay.find_by(organization: organization, date: date))
   end
 
-  # Every day in the span that had a show, newest first.
+  # Every day in the span that had a show or a register day, newest first.
   def self.days(organization, range)
     shows = revenue_shows(organization).where(date_and_time: range.begin.in_time_zone.beginning_of_day..(range.end.in_time_zone.end_of_day + 1.day)).to_a
     records = SettlementDay.where(organization: organization, date: range).index_by(&:date)
     by_date = shows.group_by { |s| SettlementDay.day_for(organization, s.date_and_time) }.select { |d, _| range.cover?(d) }
-    dates = (by_date.keys + records.keys).uniq.sort.reverse
+    register_dates = register_days(organization).where(business_date: range).distinct.pluck(:business_date)
+    dates = (by_date.keys + records.keys + register_dates).uniq.sort.reverse
     dates.map { |date| build(organization, date, by_date.fetch(date, []), records[date]) }
   end
 
@@ -57,10 +82,16 @@ class SettleUp
   def self.to_settle(organization, as_of: Time.current)
     shows = revenue_shows(organization).where("date_and_time <= ?", as_of).to_a
     settled = SettlementDay.where(organization: organization).settled.pluck(:date).to_set
-    shows.group_by { |s| SettlementDay.day_for(organization, s.date_and_time) }
-         .reject { |date, _| settled.include?(date) || !SettlementDay.ended?(organization, date, now: as_of) }
-         .sort_by { |date, _| date }
-         .map { |date, day_shows| build(organization, date, day_shows, nil) }
+    by_date = shows.group_by { |s| SettlementDay.day_for(organization, s.date_and_time) }
+    register_days(organization).where("business_date <= ?", as_of.to_date).distinct.pluck(:business_date).each { |d| by_date[d] ||= [] }
+    by_date.reject { |date, _| settled.include?(date) || !SettlementDay.ended?(organization, date, now: as_of) }
+           .sort_by { |date, _| date }
+           .map { |date, day_shows| build(organization, date, day_shows, nil) }
+  end
+
+  # Register days from connected integrations, with something in them.
+  def self.register_days(organization)
+    RegisterDay.counted.where(organization_id: organization.id).where("orders_count > 0 OR gross_cents > 0 OR refunds_cents > 0")
   end
 
   def self.shows_on(organization, date)
@@ -80,7 +111,36 @@ class SettleUp
 
   def self.build(organization, date, shows, record)
     pieces = shows.sort_by(&:date_and_time).map { |show| show_piece(organization, show) }
-    Day.new(organization: organization, date: date, record: record, shows: pieces, door_cash: door_cash(organization, date, shows, record))
+    registers = register_days(organization).on(date).includes(:integration, :location).order(:external_location_id).to_a
+    Day.new(organization: organization, date: date, record: record, shows: pieces, door_cash: door_cash(organization, date, shows, record),
+            registers: registers, tips: tips(organization, date, registers, record))
+  end
+
+  def self.tips(organization, date, registers, record)
+    cents = registers.select { |r| r.integration.brings?("tips") }.sum(&:tips_cents)
+    shares = record ? record.tip_shares.includes(:person).to_a : []
+    Tips.new(cents: cents, record: record, shares: shares, workers: (cents.positive? ? workers(organization, date, shares) : []))
+  end
+
+  # Who worked the day: Staffing's shift assignments and logged hours in the
+  # day's window, plus anyone already given a share.
+  def self.workers(organization, date, shares)
+    window = SettlementDay.window(organization, date)
+    hours = Hash.new(0.0)
+    people = {}
+    organization.staff_time_entries.where(started_at: window).includes(:person).each do |entry|
+      people[entry.person_id] = entry.person
+      hours[entry.person_id] += entry.hours.to_f
+    end
+    organization.shifts.where(starts_at: window).includes(shift_assignments: :person).each do |shift|
+      shift.shift_assignments.select(&:active?).each do |assignment|
+        people[assignment.person_id] ||= assignment.person
+        hours[assignment.person_id] += shift.scheduled_hours unless hours.key?(assignment.person_id)
+      end
+    end
+    shares.each { |sh| people[sh.person_id] ||= sh.person }
+    members = organization.organization_staff_members.where(person_id: people.keys).index_by(&:person_id)
+    people.values.sort_by(&:name).map { |person| Worker.new(person: person, hours: hours[person.id].round(2), staff_member: members[person.id]) }
   end
 
   def self.show_piece(organization, show)

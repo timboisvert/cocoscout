@@ -1,0 +1,25 @@
+<%# What happens to a bank file (plan §9.13): the promises in words, one
+    check mark per line, beside every statement upload and on Integrations →
+    Your bank. The code keeps them: the file is read once in the request and
+    never attached to anything. compact: true for the short version. %>
+<% compact = local_assigns[:compact] == true %>
+<%
+  promises = [
+    "Your file travels over an encrypted connection, like everything on CocoScout.",
+    "We read the transactions out of it once, while you wait, and delete the file the moment they are in. It is never stored.",
+    "What we keep is the date, the amount and the bank's description of each line. Never an account number, a balance you did not ask about, or a login.",
+    "We never ask for your bank password. A file you download yourself is the only way in."
+  ]
+  promises = promises.first(2) if compact
+%>
+<div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+  <div class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1.5">What happens to your file</div>
+  <ul class="space-y-1.5">
+    <% promises.each do |line| %>
+      <li class="flex items-start gap-2 text-sm text-gray-700">
+        <svg class="mt-0.5 h-4 w-4 flex-none text-green-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 6L9 17l-5-5"/></svg>
+        <span><%= line %></span>
+      </li>
+    <% end %>
+  </ul>
+</div>

@@ -1,0 +1,79 @@
+<%# The day's tips (plan §9.3): the register's total, who worked, and each
+    person's share, paid on their next payout run or handed over in cash at
+    close. Nothing is split until someone checks the section.
+    Locals: day, tips, can_change %>
+<%
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  editable = can_change && !day.settled?
+  split = tips.split
+  total_hours = tips.workers.sum(&:hours)
+  suggested = lambda do |worker|
+    case split
+    when "hours" then total_hours.positive? ? (tips.cents * worker.hours / total_hours).round : 0
+    when "typed" then 0
+    else tips.workers.any? ? (tips.cents / tips.workers.size.to_f).round : 0
+    end
+  end
+  state_words = { ok: "Checked", wait: "Not split yet" }.fetch(tips.state)
+  tone = { ok: "text-green-700", wait: "text-amber-700" }.fetch(tips.state)
+  input = "block w-full pl-7 pr-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 disabled:bg-gray-50"
+%>
+<section class="bg-white border border-gray-200 rounded-xl overflow-hidden" id="tips">
+  <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-gray-200">
+    <h2 class="text-base font-semibold text-gray-900">Tips, <%= money.call(tips.cents) %>
+      <span class="ml-2 text-xs font-medium <%= tone %>"><%= state_words %></span>
+    </h2>
+  </div>
+  <%= form_with url: manage_tips_money_settle_up_day_path(day.param), method: :patch, class: "px-5 py-3 space-y-3", data: { turbo: false } do %>
+    <% if tips.workers.empty? %>
+      <p class="text-sm text-gray-600">Nobody is on Staffing's schedule or hours for this day, so there is no one to split <%= money.call(tips.cents) %> between. Add their shift or hours in Staffing and come back; until then the tips wait as owed to staff.</p>
+    <% else %>
+      <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+        <span class="text-gray-700">Split</span>
+        <% { "even" => "Evenly", "hours" => "By hours worked", "typed" => "As typed" }.each do |key, label| %>
+          <label class="inline-flex items-center gap-2 text-gray-700">
+            <input type="radio" name="split" value="<%= key %>" <%= "checked" if split == key %> <%= "disabled" unless editable %> onchange="this.form.requestSubmit()" class="h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+            <%= label %>
+          </label>
+        <% end %>
+      </div>
+      <div class="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
+        <div class="hidden sm:grid grid-cols-[1fr_6rem_9rem_12rem] gap-3 px-4 py-1.5 bg-gray-50 text-[11px] font-medium uppercase tracking-wide text-gray-500"><span>Who</span><span class="text-right">Hours</span><span class="text-right">Share</span><span>Paid</span></div>
+        <% tips.workers.each do |worker| %>
+          <% share = tips.share_for(worker.person) %>
+          <% cents = share ? share.amount_cents : suggested.call(worker) %>
+          <% locked = share&.payout_contribution_id.present? %>
+          <div class="grid grid-cols-2 sm:grid-cols-[1fr_6rem_9rem_12rem] gap-3 items-center px-4 py-2 text-sm">
+            <span class="text-gray-900 col-span-2 sm:col-span-1"><%= worker.person.name %><% unless worker.staff_member %> <span class="text-xs text-amber-700">not on Staffing, cash only</span><% end %></span>
+            <span class="text-right tabular-nums text-gray-600"><span class="sm:hidden text-xs text-gray-500">Hours </span><%= worker.hours.zero? ? "—" : worker.hours %></span>
+            <span class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+              <input type="text" name="shares[<%= worker.person.id %>][amount]" inputmode="decimal" value="<%= format('%.2f', cents / 100.0) %>" <%= "disabled" if !editable || locked %> class="<%= input %>"></span>
+            <select name="shares[<%= worker.person.id %>][method]" <%= "disabled" if !editable || locked %> class="col-span-2 sm:col-span-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 disabled:bg-gray-50">
+              <option value="payout" <%= "selected" if (share&.method || "payout") == "payout" %> <%= "disabled" unless worker.staff_member %>>Next payout run</option>
+              <option value="cash" <%= "selected" if share&.method == "cash" %>>In cash at close</option>
+            </select>
+          </div>
+        <% end %>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <p class="text-xs text-gray-500">
+          <% if tips.shares.any? && tips.unassigned_cents != 0 %>
+            <%= tips.unassigned_cents.positive? ? "#{money.call(tips.unassigned_cents)} not yet given to anyone." : "#{money.call(-tips.unassigned_cents)} more than the register took in tips." %>
+          <% else %>
+            Shares on the payout run go out with everyone else's pay; cash shares come out of the door cash.
+          <% end %>
+        </p>
+        <% if editable %>
+          <span class="flex items-center gap-3">
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <input type="hidden" name="checked" value="0">
+              <input type="checkbox" name="checked" value="1" <%= "checked" if tips.checked? %> class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+              Looks right
+            </label>
+            <%= render "shared/button", text: "Save the split", variant: "primary", size: "small", type: :submit %>
+          </span>
+        <% end %>
+      </div>
+    <% end %>
+  <% end %>
+</section>

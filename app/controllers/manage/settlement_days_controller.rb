@@ -7,7 +7,7 @@ module Manage
   # every piece is checked, and can be reopened with a reason (§9.7).
   class SettlementDaysController < Manage::ManageController
     before_action :set_date, except: :index
-    before_action :require_change!, only: %i[settle reopen door_cash check_show]
+    before_action :require_change!, only: %i[settle reopen door_cash check_show check_register tips]
 
     def index
       @filter = params[:filter].presence_in(%w[to_settle settled all]) || "to_settle"
@@ -45,6 +45,38 @@ module Manage
       }.compact
       record.save!
       redirect_to manage_money_settle_up_day_path(@date), notice: "Door cash saved."
+    end
+
+    def check_register
+      record = SettlementDay.find_or_initialize_by(organization: Current.organization, date: @date)
+      record.register_checked_at = params[:checked] == "1" ? Time.current : nil
+      record.save!
+      redirect_to manage_money_settle_up_day_path(@date), notice: (params[:checked] == "1" ? "Register checked." : "Register unchecked.")
+    end
+
+    # The day's tips: how they're split, each person's share and how it's
+    # paid, and whether someone has checked the section.
+    def tips
+      record = SettlementDay.find_or_initialize_by(organization: Current.organization, date: @date)
+      record.tips_split = params[:split].presence_in(%w[even hours typed]) || "even"
+      record.tips_checked_at = params[:checked] == "1" ? Time.current : nil
+      record.save!
+      people = Person.where(id: params.fetch(:shares, {}).keys.map(&:to_i)).index_by(&:id)
+      params.fetch(:shares, {}).each do |person_id, attrs|
+        person = people[person_id.to_i]
+        next unless person
+
+        cents = (attrs[:amount].to_s.delete("$,").to_f * 100).round
+        share = record.tip_shares.find_or_initialize_by(person: person)
+        next if share.payout_contribution_id.present?
+
+        if cents.positive?
+          share.update!(amount_cents: cents, method: attrs[:method].presence_in(TipShare::METHODS) || "payout")
+        elsif share.persisted?
+          share.destroy!
+        end
+      end
+      redirect_to manage_money_settle_up_day_path(@date), notice: "Tips saved."
     end
 
     def settle

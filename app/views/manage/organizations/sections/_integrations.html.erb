@@ -1,0 +1,92 @@
+<%# Organization settings → Integrations (Books V1.3, plan §9.3, §9.10):
+    other systems the organization uses, each optional and turned on here.
+    Registers and bars (Square live; Clover and Toast on the roadmap),
+    tickets sold elsewhere (1.5), and your bank. %>
+<%
+  square = @square
+  square_state = if square.nil? || !square.connected? then [ "Not connected", "bg-gray-100 text-gray-700" ]
+                 elsif square.status == "error" then [ "Needs a look", "bg-amber-50 text-amber-800" ]
+                 else [ "Connected", "bg-green-50 text-green-700" ]
+                 end
+  mapped = square ? square.location_map.values.count { |v| v.present? && v != Integration::SKIP } : 0
+  card = "rounded-xl border bg-white p-5 flex flex-col gap-3"
+  mark = ->(letters, dark) { "<span class='inline-flex h-8 w-8 flex-none items-center justify-center rounded-lg text-xs font-bold #{dark ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}'>#{letters}</span>".html_safe }
+  roadmap = [
+    [ "Cl", "Clover", "The other register common behind bars. Same pull, same worksheet, once it is built." ],
+    [ "To", "Toast", "For organizations with a kitchen. Toast opens its API through a partner program; we are applying." ]
+  ]
+%>
+<div class="space-y-6">
+  <p class="max-w-3xl text-sm text-gray-600">Other systems your organization already uses, connected to CocoScout. Each one is optional, turned on here, and pulls on its own once it is connected. What comes in never goes on the books by itself; it lands on the day's worksheet in Settle up for someone to check.</p>
+
+  <section>
+    <h2 class="text-sm font-semibold text-gray-900 mb-2">Registers and bars</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div class="<%= card %> <%= square&.connected? ? 'border-green-200' : 'border-gray-200' %>">
+        <div class="flex items-center justify-between gap-2">
+          <span class="flex items-center gap-2"><%= mark.call("Sq", true) %><span class="font-semibold text-gray-900">Square</span></span>
+          <span class="inline-flex rounded-md px-2 py-0.5 text-xs font-medium <%= square_state[1] %>"><%= square_state[0] %></span>
+        </div>
+        <p class="text-sm text-gray-600 flex-1">
+          <% if square&.connected? %>
+            Bar, food and merch sales, tips, sales tax and fees, pulled every morning for the night before and during the night as orders close. <%= pluralize(mapped, "location") %> mapped.
+          <% else %>
+            Bar, food and merch sales, tips, sales tax and fees, pulled every morning for the night before and during the night as orders close, onto the day's worksheet.
+          <% end %>
+        </p>
+        <div class="flex items-center justify-between gap-2">
+          <% if square&.connected? %>
+            <%= render "shared/button", text: "Settings", variant: "secondary", size: "small", path: manage_organization_square_path(@organization) %>
+            <span class="text-xs text-gray-500"><% if @last_pull %>Last pull <%= @last_pull.started_at.strftime("%-l:%M %P, %b %-d") %><% else %>No pull yet<% end %></span>
+          <% else %>
+            <%= render "shared/button", text: "Connect with Square", variant: "primary", size: "small", path: manage_organization_square_path(@organization) %>
+            <span class="text-xs text-gray-500">Square's own sign-in; we never see your password.</span>
+          <% end %>
+        </div>
+      </div>
+      <% roadmap.each do |letters, name, blurb| %>
+        <div class="<%= card %> border-gray-200">
+          <div class="flex items-center justify-between gap-2">
+            <span class="flex items-center gap-2"><%= mark.call(letters, false) %><span class="font-semibold text-gray-900"><%= name %></span></span>
+            <span class="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">On the roadmap</span>
+          </div>
+          <p class="text-sm text-gray-600 flex-1"><%= blurb %></p>
+          <div><%= render "shared/button", text: "Tell us you use it", variant: "secondary", size: "small", path: "mailto:hello@cocoscout.com?subject=#{ERB::Util.url_encode("We use #{name}")}" %></div>
+        </div>
+      <% end %>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="text-sm font-semibold text-gray-900 mb-2">Tickets sold elsewhere <span class="font-normal text-gray-500">· coming in 1.5</span></h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div class="<%= card %> border-gray-200 border-dashed">
+        <span class="flex items-center gap-2"><%= mark.call("Eb", false) %><span class="font-semibold text-gray-900">Eventbrite</span></span>
+        <p class="text-sm text-gray-600">Keep selling there from one shared pool of seats, and bring past events, orders and buyers in.</p>
+      </div>
+      <div class="<%= card %> border-gray-200 border-dashed">
+        <span class="flex items-center gap-2"><%= mark.call("TT", false) %><span class="font-semibold text-gray-900">Ticket Tailor</span></span>
+        <p class="text-sm text-gray-600">A one-time move: events, orders, buyers, and upcoming tickets that still scan at our door.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="text-sm font-semibold text-gray-900 mb-2">Your bank</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div class="<%= card %> border-gray-200">
+        <div class="flex items-center justify-between gap-2">
+          <span class="flex items-center gap-2"><%= mark.call("Bk", false) %><span class="font-semibold text-gray-900">Statements by file</span></span>
+          <span class="inline-flex rounded-md bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">Ready</span>
+        </div>
+        <p class="text-sm text-gray-600 flex-1">Download the month from your bank as CSV or OFX and bring it in on Books → Bank. Every line is matched to the books or recorded in a click. It is optional: the books stand on their own without it.</p>
+        <%= render "shared/file_promises", compact: true %>
+        <div><%= render "shared/button", text: "Books → Bank", variant: "secondary", size: "small", path: manage_money_bank_path %></div>
+      </div>
+      <div class="<%= card %> border-gray-200 border-dashed">
+        <span class="flex items-center gap-2"><%= mark.call("Bk", false) %><span class="font-semibold text-gray-900">A live connection <span class="font-normal text-gray-500">· coming in 1.5</span></span></span>
+        <p class="text-sm text-gray-600">Statement lines arriving on their own every morning instead of a file, through the same matching page.</p>
+      </div>
+    </div>
+  </section>
+</div>

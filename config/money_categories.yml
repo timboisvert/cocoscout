@@ -33,6 +33,10 @@ income:
   bar:
     label: "Bar and concessions"
     account: bar_income
+  food:
+    label: "Food"
+    description: "Snacks and food sold at the bar or a register"
+    account: bar_income
   merchandise:
     label: "Merchandise"
     account: merchandise_income

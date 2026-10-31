@@ -15,6 +15,7 @@ class SettlementDay < ApplicationRecord
   MODES = %w[smart calendar].freeze
 
   belongs_to :organization
+  has_many :tip_shares, dependent: :destroy
   belongs_to :settled_by, class_name: "User", optional: true
   belongs_to :reopened_by, class_name: "User", optional: true
 
@@ -62,4 +63,10 @@ class SettlementDay < ApplicationRecord
   def float_kept_cents = door_cash["float_kept_cents"].to_i
   def door_cash_note = door_cash["note"].to_s
   def door_cash_counted? = !counted_cents.nil?
+  def register_checked? = register_checked_at.present?
+  def tips_checked? = tips_checked_at.present?
+
+  # Tips handed over in cash at close come out of the door cash.
+  def cash_tips_cents = tip_shares.select(&:cash?).sum(&:amount_cents)
+  def payout_tips_cents = tip_shares.select(&:payout?).sum(&:amount_cents)
 end

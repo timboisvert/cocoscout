@@ -15,6 +15,7 @@ Rails.application.routes.draw do
   post "/webhooks/stripe", to: "stripe_webhooks#create", as: "stripe_webhook"
   # Emails to followers: what Mailgun saw happen to them (Mailing lists, V1.1).
   post "/webhooks/mailgun", to: "mailgun_webhooks#create", as: "mailgun_webhook"
+  post "/webhooks/square", to: "square_webhooks#create", as: "square_webhook"
 
   # The unsubscribe link on every email to followers.
   get  "/followers/unsubscribe/:token",             to: "follower_unsubscribes#show",        as: "follower_unsubscribe"
@@ -1133,6 +1134,14 @@ Rails.application.routes.draw do
       end
     end
 
+    # Organization settings → Integrations → Square (Books V1.3, plan §9.3).
+    get    "organizations/:id/integrations/square",         to: "integrations#square",     as: "organization_square"
+    post   "organizations/:id/integrations/square/connect", to: "integrations#connect",    as: "connect_organization_square"
+    patch  "organizations/:id/integrations/square",         to: "integrations#update"
+    post   "organizations/:id/integrations/square/pull",    to: "integrations#pull",       as: "pull_organization_square"
+    delete "organizations/:id/integrations/square",         to: "integrations#disconnect"
+    get    "integrations/square/callback",                  to: "integrations#callback",   as: "square_callback"
+
     # The organization's services (Organization settings → Services; Pro).
     post   "services",     to: "house_services#create",  as: "house_services"
     patch  "services/:id", to: "house_services#update",  as: "house_service"
@@ -1599,6 +1608,7 @@ Rails.application.routes.draw do
     get "money", to: "money#index", as: "money_index"
     get "money/books", to: "books#show", as: "money_books"
     get "money/books/download", to: "books#download", as: "money_books_download"
+    get "money/books/bank", to: "bank_statements#show", as: "money_bank"
     # Money recorded by hand: the sheet, a recorded entry's page, change, remove.
     get    "money/books/record",            to: "money_records#new",     as: "new_money_record"
     post   "money/books/record",            to: "money_records#create",  as: "money_records"
@@ -1613,6 +1623,8 @@ Rails.application.routes.draw do
     post  "money/settle-up/:date/reopen", to: "settlement_days#reopen", as: "reopen_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     patch "money/settle-up/:date/door-cash", to: "settlement_days#door_cash", as: "door_cash_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     patch "money/settle-up/:date/shows/:show_id/check", to: "settlement_days#check_show", as: "check_show_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    patch "money/settle-up/:date/register/check", to: "settlement_days#check_register", as: "check_register_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    patch "money/settle-up/:date/tips", to: "settlement_days#tips", as: "tips_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     post "money/refresh", to: "money#refresh", as: "refresh_money"
     # Money settings — org-level config. Fixed sub-paths before the :section catch-all.
     get    "money/settings", to: "money_settings#show", as: "money_settings"

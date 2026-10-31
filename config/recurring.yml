@@ -36,6 +36,10 @@ development:
     schedule: every hour
 
   # CocoScout's money: Stripe's balance lines, every bill, the morning check.
+  # Square: yesterday's business day for every connected account.
+  square_morning_pull:
+    class: SquareMorningPullJob
+    schedule: every day at 5am
   stripe_balance_import:
     class: StripeBalanceImportJob
     schedule: every hour at minute 20
@@ -131,6 +135,10 @@ production:
     schedule: every hour
 
   # CocoScout's money: Stripe's balance lines, every bill, the morning check.
+  # Square: yesterday's business day for every connected account.
+  square_morning_pull:
+    class: SquareMorningPullJob
+    schedule: every day at 5am
   stripe_balance_import:
     class: StripeBalanceImportJob
     schedule: every hour at minute 20

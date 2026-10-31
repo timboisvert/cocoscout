@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_31_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_31_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1240,6 +1240,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_150000) do
     t.datetime "updated_at", null: false
     t.index "organization_id, lower((name)::text)", name: "index_house_services_on_org_and_name", unique: true
     t.index ["organization_id"], name: "index_house_services_on_organization_id"
+  end
+
+  create_table "integrations", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.string "provider", null: false
+    t.string "status", default: "connected", null: false
+    t.text "credentials"
+    t.jsonb "settings", default: {}, null: false
+    t.bigint "connected_by_id"
+    t.datetime "connected_at"
+    t.datetime "last_synced_at"
+    t.text "last_error"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["connected_by_id"], name: "index_integrations_on_connected_by_id"
+    t.index ["organization_id", "provider"], name: "index_integrations_on_organization_id_and_provider", unique: true
+    t.index ["organization_id"], name: "index_integrations_on_organization_id"
   end
 
   create_table "journal_entries", force: :cascade do |t|
@@ -2509,6 +2526,45 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_150000) do
     t.index ["questionable_type", "questionable_id"], name: "index_questions_on_questionable"
   end
 
+  create_table "register_days", force: :cascade do |t|
+    t.bigint "integration_id", null: false
+    t.bigint "organization_id", null: false
+    t.bigint "location_id"
+    t.string "external_location_id", null: false
+    t.date "business_date", null: false
+    t.jsonb "sales_by_category", default: {}, null: false
+    t.integer "gross_cents", default: 0, null: false
+    t.integer "tips_cents", default: 0, null: false
+    t.integer "tax_cents", default: 0, null: false
+    t.integer "refunds_cents", default: 0, null: false
+    t.integer "fees_cents", default: 0, null: false
+    t.integer "net_cents", default: 0, null: false
+    t.integer "orders_count", default: 0, null: false
+    t.datetime "pulled_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["integration_id", "external_location_id", "business_date"], name: "index_register_days_on_location_and_date", unique: true
+    t.index ["integration_id"], name: "index_register_days_on_integration_id"
+    t.index ["location_id"], name: "index_register_days_on_location_id"
+    t.index ["organization_id", "business_date"], name: "index_register_days_on_organization_id_and_business_date"
+    t.index ["organization_id"], name: "index_register_days_on_organization_id"
+  end
+
+  create_table "register_pulls", force: :cascade do |t|
+    t.bigint "integration_id", null: false
+    t.string "trigger", default: "manual", null: false
+    t.string "status", default: "running", null: false
+    t.date "from_date", null: false
+    t.date "to_date", null: false
+    t.integer "orders_count", default: 0, null: false
+    t.text "error"
+    t.datetime "started_at", null: false
+    t.datetime "finished_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["integration_id"], name: "index_register_pulls_on_integration_id"
+  end
+
   create_table "role_eligibilities", force: :cascade do |t|
     t.bigint "role_id", null: false
     t.bigint "member_id", null: false
@@ -2725,6 +2781,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_150000) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "register_checked_at"
+    t.string "tips_split"
+    t.datetime "tips_checked_at"
     t.index ["organization_id", "date"], name: "index_settlement_days_on_organization_id_and_date", unique: true
     t.index ["organization_id"], name: "index_settlement_days_on_organization_id"
     t.index ["reopened_by_id"], name: "index_settlement_days_on_reopened_by_id"
@@ -4312,6 +4371,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_150000) do
     t.index ["ticket_tier_id"], name: "index_tickets_on_ticket_tier_id"
   end
 
+  create_table "tip_shares", force: :cascade do |t|
+    t.bigint "settlement_day_id", null: false
+    t.bigint "person_id", null: false
+    t.integer "amount_cents", default: 0, null: false
+    t.string "method", default: "payout", null: false
+    t.bigint "payout_contribution_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["payout_contribution_id"], name: "index_tip_shares_on_payout_contribution_id"
+    t.index ["person_id"], name: "index_tip_shares_on_person_id"
+    t.index ["settlement_day_id", "person_id"], name: "index_tip_shares_on_settlement_day_id_and_person_id", unique: true
+    t.index ["settlement_day_id"], name: "index_tip_shares_on_settlement_day_id"
+  end
+
   create_table "training_credits", force: :cascade do |t|
     t.bigint "person_id", null: false
     t.string "institution", limit: 200, null: false
@@ -4566,6 +4639,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_150000) do
   add_foreign_key "house_service_roles", "house_roles"
   add_foreign_key "house_service_roles", "house_services"
   add_foreign_key "house_services", "organizations"
+  add_foreign_key "integrations", "organizations"
+  add_foreign_key "integrations", "users", column: "connected_by_id"
   add_foreign_key "journal_entries", "journal_entries", column: "reversal_of_id"
   add_foreign_key "journal_entries", "organizations"
   add_foreign_key "journal_lines", "journal_entries"
@@ -4676,6 +4751,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_150000) do
   add_foreign_key "questionnaire_responses", "questionnaires"
   add_foreign_key "questionnaires", "organizations"
   add_foreign_key "questionnaires", "productions"
+  add_foreign_key "register_days", "integrations"
+  add_foreign_key "register_days", "locations"
+  add_foreign_key "register_days", "organizations"
+  add_foreign_key "register_pulls", "integrations"
   add_foreign_key "role_eligibilities", "roles"
   add_foreign_key "role_vacancies", "roles"
   add_foreign_key "role_vacancies", "shows"
@@ -4890,6 +4969,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_150000) do
   add_foreign_key "tickets", "ticket_tiers"
   add_foreign_key "tickets", "ticket_tiers", column: "bundle_tier_id"
   add_foreign_key "tickets", "users", column: "checked_in_by_id", on_delete: :nullify
+  add_foreign_key "tip_shares", "payout_contributions"
+  add_foreign_key "tip_shares", "people"
+  add_foreign_key "tip_shares", "settlement_days"
   add_foreign_key "training_credits", "people"
   add_foreign_key "users", "people"
   add_foreign_key "users", "people", column: "default_person_id"

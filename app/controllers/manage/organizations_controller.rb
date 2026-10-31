@@ -20,12 +20,13 @@ module Manage
 
     # The organization page is a settings page: each topic is a routed section,
     # so only that section's data loads and links name the section they want.
-    SECTIONS = %w[basic team locations services agreements billing danger].freeze
+    SECTIONS = %w[basic team locations services integrations agreements billing danger].freeze
     SECTION_LABELS = {
       "basic" => "Basic Information",
       "team" => "People",
       "locations" => "Locations",
       "services" => "Services",
+      "integrations" => "Integrations",
       "agreements" => "Agreements",
       "billing" => "Billing & Plan",
       "danger" => "Danger Zone"
@@ -186,6 +187,9 @@ module Manage
       when "services"
         @house_services = @organization.house_services.ordered.includes(:house_roles)
         @house_roles = @organization.house_roles.active.ordered
+      when "integrations"
+        @square = @organization.integrations.square.first
+        @last_pull = @square&.register_pulls&.recent&.first
       when "agreements"
         @agreement_templates = @organization.agreement_templates.order(:name)
       when "danger"
