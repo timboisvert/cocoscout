@@ -89,6 +89,7 @@ module Manage
     PRO_INCLUDES = [
       "Unlimited productions and shows/events",
       "Money: financials, payouts, contracts & advances",
+      "Books: all your money in one place, bills, invoices and statements for your accountant",
       "Ticketing: your own box office, 50¢ a paid ticket",
       "Staffing and Casting Tables",
       "Mailing lists: email your followers and see what each email sold",
@@ -130,7 +131,8 @@ module Manage
           { title: "Show & production financials", body: "Record ticket and other revenue per show and watch it roll up by production and time period." },
           { title: "Performer payouts", body: "Set up payout calculations once, work out each performer's split automatically, and pay them straight to their bank in one click." },
           { title: "Fair, per-active pricing", body: "Just $3/month per performer — and only in months you actually pay them. Unlimited payout runs included; a performer you don't pay that month costs nothing." },
-          { title: "Contracts & advances", body: "Track third-party contracts and revenue shares, and issue performer advances that recover automatically from future payouts." }
+          { title: "Contracts & advances", body: "Track third-party contracts and revenue shares, and issue performer advances that recover automatically from future payouts." },
+          { title: "Books", body: "Every ticket, class, contract, payout run, bill and receipt lands on real books by itself. Statements and a tax summary for your accountant, without QuickBooks." }
         ],
         outcome: "Close every show knowing exactly what came in, what went out, and who's been paid — for $3 a performer, only when you pay them."
       },

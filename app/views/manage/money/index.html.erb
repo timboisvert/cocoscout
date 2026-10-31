@@ -9,13 +9,13 @@
   HTML
 
   # Financials, Payouts and Incoming are things to do; Books is what happened,
-  # in dollars (superadmins only while it fills in).
+  # in dollars. Each card shows only to someone whose access opens it.
   money_actions = [
-    { icon: "chart-bar", text: "Financials", description: "Track revenue and costs", path: manage_money_financials_path },
-    { icon: "dollar-sign", text: "Payouts", description: "Calculate and distribute payments", path: manage_money_payouts_path },
-    { icon: "banknotes", text: "Incoming Payments", description: "Track and collect money owed to you", path: manage_money_incoming_path },
-    (Current.user&.superadmin? ? { icon: "book", text: "Books", description: "Your balance, and every dollar in and out", path: manage_money_books_path } : nil),
-    { icon: "cog", text: "Settings", description: "How you pay people", path: manage_money_settings_path }
+    (module_access?(:settle_up) ? { icon: "chart-bar", text: "Financials", description: "Track revenue and costs", path: manage_money_financials_path } : nil),
+    (module_access?(:payouts) ? { icon: "dollar-sign", text: "Payouts", description: "Calculate and distribute payments", path: manage_money_payouts_path } : nil),
+    (module_access?(:bills_invoices) ? { icon: "banknotes", text: "Incoming Payments", description: "Track and collect money owed to you", path: manage_money_incoming_path } : nil),
+    (module_access?(:books) ? { icon: "book", text: "Books", description: "All your money, and every dollar in and out", path: manage_money_books_path } : nil),
+    (module_access?(:money_settings) ? { icon: "cog", text: "Settings", description: "How you pay people", path: manage_money_settings_path } : nil)
   ].compact
 
   payout_columns = @todo.payouts.columns.map { |c| Manage::MoneyPayoutsHelper::AWAITING_PAYOUT_COLUMNS[c][:label] }

@@ -26,6 +26,9 @@ RSpec.describe "Access by module", type: :request do
       expect(response).to have_http_status(:ok)
       get manage_money_financials_path
       expect(response).to have_http_status(:ok)
+      get manage_money_books_path
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("All your money, wherever it sits")
     end
 
     it "is kept out of Ticketing" do
