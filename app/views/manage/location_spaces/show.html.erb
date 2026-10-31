@@ -1,0 +1,122 @@
+<% content_for :title, "#{@space.name} · #{@location.name}" %>
+<%
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  edit_id = "edit-room-#{@space.id}"
+  delete_id = "confirm-delete-room-#{@space.id}"
+  links = []
+  if @can_edit
+    links << { icon: "pencil", text: "Edit room", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: edit_id } }
+    links << { icon: "trash", text: "Delete room", type: :button, variant: "primary", data: { controller: "modal", action: "click->modal#open", modal_id: delete_id } } if @space.deletable?
+  end
+%>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      [ Current.organization.name, section_manage_organization_path(Current.organization, section: "locations") ],
+      [ @location.name, manage_location_path(@location) ]
+    ],
+    text: @space.name,
+    links: links
+  } %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+    <div class="lg:col-span-1 space-y-6">
+      <div class="bg-white border border-gray-200 rounded-lg">
+        <%= render "shared/section_heading", title: "Room details" %>
+        <dl class="px-6 py-4 space-y-3 text-sm">
+          <% if @space.description.present? %>
+            <div><dt class="font-medium text-gray-500">About</dt><dd class="mt-1 text-gray-900 whitespace-pre-line"><%= @space.description %></dd></div>
+          <% end %>
+          <div>
+            <dt class="font-medium text-gray-500">Most people allowed</dt>
+            <dd class="mt-1 text-gray-900"><%= @space.capacity.to_i.positive? ? number_with_delimiter(@space.capacity) : "Not set" %></dd>
+          </div>
+          <div>
+            <dt class="font-medium text-gray-500">Default room</dt>
+            <dd class="mt-1 text-gray-900"><%= @space.default? ? "Yes: shows here land in this room unless another is picked" : "No" %></dd>
+          </div>
+          <div>
+            <dt class="font-medium text-gray-500">Location</dt>
+            <dd class="mt-1 text-gray-900"><%= @location.name %><br><span class="text-gray-600"><%= @location.address1 %>, <%= @location.city %></span></dd>
+          </div>
+        </dl>
+      </div>
+
+      <%# A Pro module's own card about this room, only when the organization
+          has the module. The room page offers the slot; it never reads the
+          module's tables itself (advanced ticketing plan §0). %>
+      <% if @can_edit && Current.organization.feature_available?(:ticketing) %>
+        <%= render "manage/room_ticketing_settings/room_card", room: @space %>
+      <% end %>
+    </div>
+
+    <div class="lg:col-span-2">
+      <div class="bg-white border border-gray-200 rounded-lg">
+        <%= render "shared/section_heading", title: "Coming up in this room", intro: "Shows, rehearsals and classes on the calendar for this room." %>
+        <% if @coming_up.empty? %>
+          <div class="p-4">
+            <%= render "shared/empty_state", compact: true, icon: "calendar", title: "Nothing scheduled here yet",
+                  body: "Shows and events placed in this room appear here." %>
+          </div>
+        <% else %>
+          <ul class="divide-y divide-gray-100">
+            <% @coming_up.each do |show| %>
+              <li>
+                <%= link_to manage_show_path(show.production, show), class: "flex items-center gap-3 px-4 py-3 hover:bg-gray-50" do %>
+                  <span class="flex-shrink-0 w-10 text-center leading-none">
+                    <span class="block text-[10px] font-semibold uppercase text-pink-600"><%= show.date_and_time.strftime("%b") %></span>
+                    <span class="block text-xl font-bold text-gray-900"><%= show.date_and_time.day %></span>
+                  </span>
+                  <span class="min-w-0 flex-1">
+                    <span class="block text-sm font-semibold text-gray-900 truncate"><%= show.display_name %></span>
+                    <span class="block text-xs text-gray-500"><%= show.date_and_time.strftime("%a %-l:%M %p") %> · <%= show.event_type.to_s.humanize %><% if show.production %> · <%= show.production.name %><% end %></span>
+                  </span>
+                <% end %>
+              </li>
+            <% end %>
+          </ul>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <% if @can_edit %>
+    <div id="<%= edit_id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+      <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-white">Edit room</h3>
+          <button type="button" data-action="click->modal#close" class="text-white/80 hover:text-white" aria-label="Close"><%= icon("x-circle", class: "w-6 h-6") %></button>
+        </div>
+        <%= form_with model: @space, url: manage_location_space_path(@location, @space), method: :patch, data: { turbo: false }, class: "p-6 space-y-4" do |f| %>
+          <div>
+            <%= f.label :name, "Room name", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+            <%= f.text_field :name, class: input_class, placeholder: "Main stage, Studio A, The Lounge" %>
+          </div>
+          <div>
+            <%= f.label :description, "About the room", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+            <%= f.text_area :description, rows: 3, class: input_class, placeholder: "Cabaret tables up front, risers at the back." %>
+          </div>
+          <div>
+            <%= f.label :capacity, "Most people allowed", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+            <%= f.number_field :capacity, min: 0, class: input_class %>
+            <p class="text-xs text-gray-500 mt-1">The room's limit. Ticketing caps a general admission show here when the production sets no counts of its own.</p>
+          </div>
+          <label class="flex items-center gap-2 text-sm text-gray-700">
+            <%= f.check_box :default, class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+            Default room for <%= @location.name %>
+          </label>
+          <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+            <%= render "shared/button", text: "Save room", variant: "primary", size: "medium", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+    <% if @space.deletable? %>
+      <%= render "shared/confirm_modal", id: delete_id, title: "Delete this room?",
+            message: "#{@space.name} goes away. Nothing is scheduled in it.", confirm_text: "Delete room",
+            url: manage_location_space_path(@location, @space), method: :delete %>
+    <% end %>
+  <% end %>
+</div>

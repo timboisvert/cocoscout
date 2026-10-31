@@ -15,11 +15,11 @@
               <%= location.city %>, <%= location.state %> <%= location.postal_code %>
             </div>
 
-            <%# Show spaces if any %>
+            <%# Its rooms %>
             <% spaces = location.location_spaces.by_name %>
             <% if spaces.any? %>
               <div class="mt-3 pt-3 border-t border-gray-100">
-                <div class="text-xs font-medium text-gray-500 mb-1.5">Spaces:</div>
+                <div class="text-xs font-medium text-gray-500 mb-1.5">Rooms:</div>
                 <div class="flex flex-wrap gap-1.5">
                   <% spaces.each do |space| %>
                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs <%= space.default? ? 'bg-pink-50 text-pink-700 border border-pink-200' : 'bg-gray-100 text-gray-600' %>">

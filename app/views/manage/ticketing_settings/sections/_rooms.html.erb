@@ -1,0 +1,84 @@
+<%# Rooms and seating: Ticketing's side of every room the organization has
+    (RoomTicketingSetting). The rooms themselves are made on Organization
+    settings → Locations; here is how tickets in each one sell, the chart a
+    seated room opens with, and directions for buyers. %>
+<%
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  seating_built = RoomTicketingSetting.seating_built?
+%>
+<div class="space-y-6">
+  <p class="text-sm text-gray-600">Each room sells one way: by count (general admission), by seat (reserved), or both at once (a standing floor and seated sections). A production can pick differently for itself, and a single date for itself. Rooms are made on <%= link_to "Organization settings → Locations", section_manage_organization_path(Current.organization, section: "locations"), class: "text-pink-600 hover:text-pink-700" %>.</p>
+
+  <% if @locations.empty? %>
+    <%= render "shared/empty_state", icon: "calendar", title: "No locations yet", body: "Add a location and its rooms in Organization settings first.",
+          actions: [ { text: "Locations", path: section_manage_organization_path(Current.organization, section: "locations") } ] %>
+  <% end %>
+
+  <% @locations.each do |location| %>
+    <div class="bg-white border border-gray-200 rounded-xl">
+      <%= render "shared/section_heading", title: location.name, intro: [ location.address1, location.city ].compact_blank.join(", ") %>
+      <div class="divide-y divide-gray-100">
+        <% location.location_spaces.sort_by(&:name).each do |room| %>
+          <% setting = @room_settings[room.id] %>
+          <% charts = seating_built && setting.persisted? ? setting.charts.to_a : [] %>
+          <details class="group" <%= "open" if location.location_spaces.one? %>>
+            <summary class="flex items-center justify-between gap-3 px-6 py-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:bg-gray-50">
+              <span class="min-w-0">
+                <span class="block text-sm font-semibold text-gray-900"><%= room.name %><% if room.default? %> <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-pink-100 text-pink-700">Default</span><% end %></span>
+                <span class="block text-xs text-gray-500"><%= setting.seating_mode_label %><% if room.capacity.to_i.positive? %> · up to <%= number_with_delimiter(room.capacity) %> people<% end %><% if charts.any? %> · <%= pluralize(charts.size, "chart") %><% end %></span>
+              </span>
+              <span class="text-xs font-medium text-pink-600 group-open:hidden">Change</span>
+              <span class="text-xs font-medium text-gray-500 hidden group-open:inline">Close</span>
+            </summary>
+            <%= form_with model: setting, url: manage_ticketing_settings_room_path(room), method: :patch, class: "px-6 pb-5 pt-2 space-y-4 border-t border-gray-100" do |f| %>
+              <fieldset>
+                <legend class="block text-sm font-medium text-gray-700 mb-1.5">How tickets sell in <%= room.name %></legend>
+                <div class="space-y-2">
+                  <% RoomTicketingSetting::SEATING_MODE_LABELS.each do |value, label| %>
+                    <% explanation = { "general" => "Sold by count. #{room.capacity.to_i.positive? ? "Capped at #{room.capacity} people unless a production sets its own counts." : 'Set the room\'s limit on its page to cap it.'}",
+                                       "reserved" => "Every ticket is a seat on a chart. Buyers pick seats or take the best available.",
+                                       "mixed" => "A chart with standing areas sold by count and seated sections sold by seat." }[value] %>
+                    <label class="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+                      <%= f.radio_button :seating_mode, value, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
+                      <span>
+                        <span class="block text-sm font-medium text-gray-900"><%= label %></span>
+                        <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
+                      </span>
+                    </label>
+                  <% end %>
+                </div>
+              </fieldset>
+              <% if seating_built %>
+                <div>
+                  <%= f.label :default_seat_chart_id, "Chart a seated show opens with", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+                  <% if charts.any? %>
+                    <%= f.select :default_seat_chart_id, options_for_select(charts.map { |c| [ "#{c.name} (#{c.seat_count} seats#{", #{c.standing_capacity} standing" if c.standing_capacity.positive?})", c.id ] }, setting.default_seat_chart_id),
+                          { include_blank: "Pick when setting up a production" }, class: input_class %>
+                  <% else %>
+                    <p class="text-sm text-gray-600">No chart yet. <%= link_to "Draw one for this room", manage_new_seat_chart_path(room_id: room.id), class: "text-pink-600 hover:text-pink-700" %>.</p>
+                  <% end %>
+                  <% if charts.any? %>
+                    <ul class="mt-2 text-xs text-gray-600 space-y-1">
+                      <% charts.each do |chart| %>
+                        <li><%= link_to chart.name, manage_seat_chart_path(chart), class: "text-pink-600 hover:text-pink-700" %> · <%= chart.status %> · <%= pluralize(chart.seat_count, "seat") %></li>
+                      <% end %>
+                      <li><%= link_to "New chart", manage_new_seat_chart_path(room_id: room.id), class: "text-pink-600 hover:text-pink-700" %></li>
+                    </ul>
+                  <% end %>
+                </div>
+              <% end %>
+              <div>
+                <%= f.label :buyer_directions, "Directions for buyers", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+                <%= f.text_area :buyer_directions, rows: 2, maxlength: 500, class: input_class, placeholder: "Enter through the lobby on Clark Street; the Lounge is downstairs." %>
+                <p class="text-xs text-gray-500 mt-1">On the show page and the PDF ticket for shows in this room.</p>
+              </div>
+              <div class="flex justify-end">
+                <%= render "shared/button", text: "Save #{room.name}", variant: "primary", size: "medium", type: :submit %>
+              </div>
+            <% end %>
+          </details>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>

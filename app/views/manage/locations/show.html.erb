@@ -69,26 +69,17 @@
       </div>
     </div>
 
-    <%# Spaces %>
+    <%# Rooms: each a row that opens the room's own page. %>
     <div class="lg:col-span-2">
       <div class="bg-white border border-gray-200 rounded-lg">
-        <div class="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 class="text-lg font-semibold text-gray-900">Spaces</h2>
+        <%= render "shared/section_heading", title: "Rooms", intro: "Where shows and events in this location happen. Every location has at least one." do %>
           <% if @is_owner || @role == "manager" %>
-            <%= render "shared/button", text: "Add Space", variant: "tertiary", size: "small", icon: "plus", type: :button, data: { action: "click->location-spaces#openAddSpaceModal" } %>
+            <%= render "shared/button", text: "Add room", variant: "tertiary", size: "small", icon: "plus", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "add-room-modal" } %>
           <% end %>
-        </div>
-
+        <% end %>
         <div id="spaces-list" class="divide-y divide-gray-100">
-          <% if @spaces.empty? %>
-            <div class="p-6 text-center text-gray-500 text-sm">
-              <p>No spaces defined for this location.</p>
-              <p class="mt-1 text-gray-400">Add spaces to track specific rooms, stages, or areas.</p>
-            </div>
-          <% else %>
-            <% @spaces.each do |space| %>
-              <%= render "manage/location_spaces/space", space: space, location: @location, can_edit: @is_owner || @role == "manager" %>
-            <% end %>
+          <% @spaces.each do |space| %>
+            <%= render "manage/location_spaces/space", space: space, location: @location %>
           <% end %>
         </div>
       </div>
@@ -164,89 +155,31 @@
       </div>
     </div>
 
-    <%# Add Space Modal %>
-    <div data-location-spaces-target="addSpaceModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
-      <div class="flex items-center justify-center min-h-screen px-4">
-        <div class="fixed inset-0 bg-black/50" data-action="click->location-spaces#closeAddSpaceModal"></div>
-        <div class="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-gray-900">Add Space</h3>
-            <button type="button" data-action="click->location-spaces#closeAddSpaceModal" class="text-gray-400 hover:text-gray-600">
-              <%= icon("x-circle", class: "w-6 h-6") %>
-            </button>
-          </div>
-
-          <%= form_with url: manage_location_spaces_path(@location), method: :post, class: "space-y-4", data: { turbo: false } do |f| %>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Space Name</label>
-              <input type="text" name="location_space[name]" required placeholder="e.g., Main Stage, Green Room, Studio A" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">
-                Capacity
-                <span class="text-gray-400 font-normal">(optional)</span>
-              </label>
-              <input type="number" name="location_space[capacity]" min="0" placeholder="Maximum capacity" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-            </div>
-
-            <div class="flex items-center">
-              <input type="checkbox" name="location_space[default]" value="1" class="h-4 w-4 text-pink-500 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
-              <label class="ml-2 text-sm text-gray-700">Set as default space for this location</label>
-            </div>
-
-            <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
-              <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->location-spaces#closeAddSpaceModal" } %>
-              <%= render "shared/button", text: "Add Space", variant: "primary", size: "medium", type: :submit %>
-            </div>
-          <% end %>
+    <%# Add room %>
+    <div id="add-room-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+      <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-white">Add a room</h3>
+          <button type="button" data-action="click->modal#close" class="text-white/80 hover:text-white" aria-label="Close"><%= icon("x-circle", class: "w-6 h-6") %></button>
         </div>
-      </div>
-    </div>
-
-    <%# Edit Space Modal (populated by JS) %>
-    <div data-location-spaces-target="editSpaceModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
-      <div class="flex items-center justify-center min-h-screen px-4">
-        <div class="fixed inset-0 bg-black/50" data-action="click->location-spaces#closeEditSpaceModal"></div>
-        <div class="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-gray-900">Edit Space</h3>
-            <button type="button" data-action="click->location-spaces#closeEditSpaceModal" class="text-gray-400 hover:text-gray-600">
-              <%= icon("x-circle", class: "w-6 h-6") %>
-            </button>
+        <%= form_with url: manage_location_spaces_path(@location), method: :post, class: "p-6 space-y-4", data: { turbo: false } do |f| %>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Room name</label>
+            <input type="text" name="location_space[name]" required placeholder="Main stage, Studio A, The Lounge" class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
           </div>
-
-          <form data-location-spaces-target="editSpaceForm" method="post" class="space-y-4" data-turbo="false">
-            <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
-            <input type="hidden" name="_method" value="patch">
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Space Name</label>
-              <input type="text" name="location_space[name]" data-location-spaces-target="editSpaceName"
-                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">
-                Capacity
-                <span class="text-gray-400 font-normal">(optional)</span>
-              </label>
-              <input type="number" name="location_space[capacity]" data-location-spaces-target="editSpaceCapacity" min="0"
-                     class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
-            </div>
-
-            <div class="flex items-center">
-              <input type="checkbox" name="location_space[default]" data-location-spaces-target="editSpaceDefault"
-                     class="h-4 w-4 text-pink-500 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
-              <label class="ml-2 text-sm text-gray-700">Set as default space for this location</label>
-            </div>
-
-            <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
-              <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->location-spaces#closeEditSpaceModal" } %>
-              <%= render "shared/button", text: "Save Changes", variant: "primary", size: "medium", type: :submit %>
-            </div>
-          </form>
-        </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Most people allowed <span class="text-gray-400 font-normal">(optional)</span></label>
+            <input type="number" name="location_space[capacity]" min="0" class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+          </div>
+          <label class="flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox" name="location_space[default]" value="1" class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+            Default room for this location
+          </label>
+          <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+            <%= render "shared/button", text: "Add room", variant: "primary", size: "medium", type: :submit %>
+          </div>
+        <% end %>
       </div>
     </div>
   <% end %>

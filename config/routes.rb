@@ -1370,6 +1370,8 @@ Rails.application.routes.draw do
     patch "ticketing/settings/notifications",     to: "ticketing_settings#update_notifications", as: "ticketing_settings_notifications"
     patch "ticketing/settings/sharing",           to: "ticketing_settings#update_sharing", as: "ticketing_settings_sharing"
     patch "ticketing/settings/comps",             to: "ticketing_settings#update_comps",   as: "ticketing_settings_comps"
+    # Ticketing's side of each room (RoomTicketingSetting): how it sells, its charts, buyer directions.
+    patch "ticketing/settings/rooms/:id",         to: "ticketing_settings#update_room",  as: "ticketing_settings_room"
     get   "ticketing/settings/:section",          to: "ticketing_settings#show",         as: "ticketing_settings_section"
     post   "ticketing/settings/door",             to: "ticketing_settings#grant_door_access", as: "ticketing_door_access"
     post   "ticketing/settings/door/invite",      to: "ticketing_settings#invite_door_access", as: "ticketing_door_invite"
@@ -1986,7 +1988,7 @@ Rails.application.routes.draw do
 
     # Location spaces
     scope "locations/:location_id" do
-      resources :location_spaces, path: "spaces", only: %i[index create update destroy] do
+      resources :location_spaces, path: "spaces", only: %i[index show create update destroy] do
         member do
           post :set_default
         end

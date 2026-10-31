@@ -25,11 +25,16 @@ module Ticketing
     end
 
     # The seats on sale: the ticket types' seats added up, when every type
-    # has a count; otherwise there's no limit.
+    # has a count; else the room's "most people allowed" (advanced ticketing
+    # plan §0: the production's own counts win over the room's); else no
+    # limit.
     def capacity
       # A bundle has no seats of its own: it uses its type's.
       tiers = @listing.ticket_tiers.active.reject(&:bundle?)
-      tiers.sum(&:quantity) if tiers.any? && tiers.all?(&:quantity)
+      return tiers.sum(&:quantity) if tiers.any? && tiers.all?(&:quantity)
+
+      room = @listing.show.location_space
+      room.capacity if room&.capacity.to_i.positive?
     end
 
     def sold(tier: nil)

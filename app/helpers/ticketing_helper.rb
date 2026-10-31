@@ -217,6 +217,17 @@ module TicketingHelper
   end
 
   # How a show's sales read to a buyer: nil when it's simply on sale.
+  # Where a show is, for a public list: the location, with its room when the
+  # location has more than one (every show has a room now, and "Main room"
+  # alone says nothing).
+  def public_place_name(show)
+    location = show.location
+    return nil unless location
+
+    room = show.location_space
+    room && location.location_spaces.size > 1 ? "#{location.name} · #{room.name}" : location.name
+  end
+
   def public_listing_note(listing, inventory = listing.inventory, at: Time.current)
     return "Sold out" if inventory.sold_out?
     return "Not on sale right now" if listing.status == "paused"

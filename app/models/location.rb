@@ -4,13 +4,23 @@ class Location < ApplicationRecord
   belongs_to :organization
   has_many :shows, dependent: :restrict_with_error
   has_many :audition_sessions, dependent: :restrict_with_error
+  # Its rooms (LocationSpace; the interface says "rooms", advanced
+  # ticketing plan §0). Every location has at least one, from the day it's
+  # made; the first is the default.
   has_many :location_spaces, dependent: :destroy
+  alias_method :rooms, :location_spaces
 
   validates :name, :address1, :city, :state, :postal_code, presence: true
 
   # Ensure only one location is default per organization
   before_save :ensure_single_default
   after_create :set_as_default_if_only_location
+  after_create :ensure_a_room
+
+  # The room a show lands in when none is picked.
+  def default_room
+    location_spaces.find_by(default: true) || location_spaces.order(:id).first
+  end
 
   def upcoming_shows
     shows.where("date_and_time > ?", Time.current).order(:date_and_time)
@@ -33,6 +43,10 @@ class Location < ApplicationRecord
   end
 
   private
+
+  def ensure_a_room
+    location_spaces.create!(name: "Main room", default: true) if location_spaces.none?
+  end
 
   def ensure_single_default
     return unless default?

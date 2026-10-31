@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_31_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_01_000100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2802,6 +2802,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_200000) do
     t.index ["show_id"], name: "index_roles_on_show_id"
   end
 
+  create_table "room_ticketing_settings", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "location_space_id", null: false
+    t.string "seating_mode", default: "general", null: false
+    t.bigint "default_seat_chart_id"
+    t.text "buyer_directions"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["location_space_id"], name: "index_room_ticketing_settings_on_location_space_id", unique: true
+    t.index ["organization_id"], name: "index_room_ticketing_settings_on_organization_id"
+  end
+
   create_table "rpush_apps", force: :cascade do |t|
     t.string "name", null: false
     t.string "environment"
@@ -4948,6 +4960,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_200000) do
   add_foreign_key "role_vacancy_shows", "shows"
   add_foreign_key "roles", "productions"
   add_foreign_key "roles", "shows", on_delete: :cascade
+  add_foreign_key "room_ticketing_settings", "location_spaces"
+  add_foreign_key "room_ticketing_settings", "organizations"
   add_foreign_key "sales_tax_remittances", "organizations"
   add_foreign_key "sales_tax_remittances", "users", column: "recorded_by_id"
   add_foreign_key "scheduling_rules", "house_roles"

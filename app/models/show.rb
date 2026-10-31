@@ -236,6 +236,9 @@ class Show < ApplicationRecord
   # A room only makes sense within its own location — drop it if the location
   # changed (or was cleared, e.g. when the show went online)
   before_validation :clear_mismatched_location_space
+  # A new show with a location but no room lands in the location's default
+  # room (advanced ticketing plan §0). Entire-venue rentals keep nil.
+  before_validation :default_room, on: :create
 
   # Scope to find all shows in a recurrence group
   scope :in_recurrence_group, ->(group_id) { where(recurrence_group_id: group_id) }
@@ -799,6 +802,12 @@ class Show < ApplicationRecord
   def set_attendance_enabled_default
     return if attendance_enabled.present? # Don't override if explicitly set
     self.attendance_enabled = attendance_enabled_default?
+  end
+
+  def default_room
+    return if location.nil? || location_space_id.present? || is_online
+
+    self.location_space = location.default_room
   end
 
   def clear_mismatched_location_space

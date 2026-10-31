@@ -1,12 +1,19 @@
 # frozen_string_literal: true
 
+# A room in a location (the interface says "room"; the model keeps its
+# name). Rooms are on every plan: shows, rentals, classes and auditions use
+# them, and Ticketing (Pro) reads them without the room ever reading
+# Ticketing back (advanced ticketing plan §0). `capacity` is "most people
+# allowed", a fact about the room, which Ticketing uses as a general
+# admission cap when a production sets no counts.
 class LocationSpace < ApplicationRecord
   belongs_to :location
 
   has_many :space_rentals, dependent: :restrict_with_error
   has_many :shows, dependent: :nullify
 
-  validates :name, presence: true
+  validates :name, presence: true, length: { maximum: 80 }
+  validates :capacity, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
 
   # Ensure only one default space per location
   before_save :ensure_single_default
@@ -16,6 +23,21 @@ class LocationSpace < ApplicationRecord
 
   def display_name
     "#{location.name} - #{name}"
+  end
+
+  # What's coming up in this room: shows, rehearsals, classes, every kind of
+  # event on the calendar, soonest first.
+  def upcoming_shows(limit: 20)
+    shows.where(canceled: false).where("date_and_time >= ?", Time.current).includes(:production).order(:date_and_time).limit(limit)
+  end
+
+  def next_show
+    upcoming_shows(limit: 1).first
+  end
+
+  # The one room can't be deleted; neither can one with bookings or shows.
+  def deletable?
+    space_rentals.none? && shows.none? && location.location_spaces.where.not(id: id).exists?
   end
 
   private

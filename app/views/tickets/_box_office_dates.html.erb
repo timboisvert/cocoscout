@@ -24,7 +24,7 @@
           <div class="px-3.5 py-3">
             <div class="text-xs font-semibold text-pink-600"><%= show.date_and_time.strftime("%a · %-l:%M %p") %><% if note %> · <span class="<%= note == 'Sold out' ? 'text-gray-500' : 'text-amber-700' %>"><%= note %></span><% end %></div>
             <div class="text-[15px] font-semibold text-gray-900 leading-snug mt-0.5"><%= listing.display_title %></div>
-            <div class="text-sm text-gray-500 mt-1"><%= [ show.location_space&.name || show.location&.name, (from && note != "Sold out" ? (from.zero? ? "Free" : "from #{number_to_currency(from / 100.0)}") : nil) ].compact.join(" · ") %></div>
+            <div class="text-sm text-gray-500 mt-1"><%= [ public_place_name(show), (from && note != "Sold out" ? (from.zero? ? "Free" : "from #{number_to_currency(from / 100.0)}") : nil) ].compact.join(" · ") %></div>
           </div>
         <% end %>
       <% end %>
@@ -57,7 +57,7 @@
           <span class="w-16 sm:w-20 flex-shrink-0 text-sm font-semibold text-gray-900 tabular-nums"><%= show.date_and_time.strftime("%-l:%M %p") %></span>
           <span class="min-w-0 flex-1">
             <span class="block text-[15px] font-semibold text-gray-900 leading-snug sm:truncate"><%= listing.display_title %></span>
-            <span class="block text-xs text-gray-500"><%= [ (listing.display_title != listing.production.name ? listing.production.name : nil), show.location_space&.name || show.location&.name ].compact.join(" · ") %><% if note %> · <span class="<%= note == 'Sold out' ? 'text-gray-500' : 'text-amber-700' %> font-medium"><%= note %></span><% end %><% if price %><span class="sm:hidden"> · <%= price.downcase %></span><% end %></span>
+            <span class="block text-xs text-gray-500"><%= [ (listing.display_title != listing.production.name ? listing.production.name : nil), public_place_name(show) ].compact.join(" · ") %><% if note %> · <span class="<%= note == 'Sold out' ? 'text-gray-500' : 'text-amber-700' %> font-medium"><%= note %></span><% end %><% if price %><span class="sm:hidden"> · <%= price.downcase %></span><% end %></span>
           </span>
           <% if price %><span class="hidden sm:block flex-shrink-0 text-sm font-semibold text-gray-900"><%= price %></span><% end %>
         <% end %>

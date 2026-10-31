@@ -10,9 +10,9 @@ module Manage
   # organization's own site) is off the list until embeds are ready to offer
   # (Tim, 2026-10-19); the embed pages themselves still work.
   class TicketingSettingsController < Manage::TicketingBaseController
-    SECTIONS = %w[box_office page refunds tax notifications door sharing comps].freeze
-    SECTION_LABELS = { "box_office" => "Box office", "page" => "Box office page", "refunds" => "Refunds", "tax" => "Tax", "notifications" => "Notifications",
-                       "door" => "Door", "sharing" => "Who sees sales", "comps" => "Comps" }.freeze
+    SECTIONS = %w[box_office page rooms refunds tax notifications door sharing comps].freeze
+    SECTION_LABELS = { "box_office" => "Box office", "page" => "Box office page", "rooms" => "Rooms and seating", "refunds" => "Refunds", "tax" => "Tax",
+                       "notifications" => "Notifications", "door" => "Door", "sharing" => "Who sees sales", "comps" => "Comps" }.freeze
     DEFAULT_SECTION = "box_office"
 
     before_action :set_section, only: %i[show]
@@ -21,6 +21,23 @@ module Manage
       @tax = TicketTaxSetting.current(Current.organization) if @section == "tax"
       load_door_access if @section == "door"
       @notifications = TicketingNotifications.new(Current.organization) if @section == "notifications"
+      load_rooms if @section == "rooms"
+    end
+
+    # Ticketing's side of one room (RoomTicketingSetting): how tickets in it
+    # sell, the chart it opens with, directions for buyers. The room itself is
+    # the organization's, on Organization settings → Locations.
+    def update_room
+      room = LocationSpace.joins(:location).where(locations: { organization_id: Current.organization.id }).find(params[:id])
+      setting = RoomTicketingSetting.for(room)
+      attrs = params.require(:room_ticketing_setting).permit(:seating_mode, :default_seat_chart_id, :buyer_directions)
+      attrs[:buyer_directions] = attrs[:buyer_directions].to_s.strip.presence if attrs.key?(:buyer_directions)
+      attrs[:default_seat_chart_id] = attrs[:default_seat_chart_id].presence if attrs.key?(:default_seat_chart_id)
+      if setting.update(attrs)
+        redirect_to section_path("rooms"), notice: "Saved. #{room.name} sells #{setting.seating_mode_label.downcase_first}."
+      else
+        redirect_to section_path("rooms"), alert: setting.errors.full_messages.to_sentence
+      end
     end
 
     # One person's or address's Ticketing emails, from its modal on the
@@ -241,6 +258,14 @@ module Manage
     end
 
     private
+
+    # Every room, by location, with its ticketing settings (made as needed).
+    def load_rooms
+      @locations = Current.organization.locations.includes(:location_spaces).order(:name).to_a
+      rooms = @locations.flat_map(&:location_spaces)
+      settings = RoomTicketingSetting.where(location_space_id: rooms.map(&:id)).index_by(&:location_space_id)
+      @room_settings = rooms.to_h { |room| [ room.id, settings[room.id] || RoomTicketingSetting.new(organization: Current.organization, location_space: room) ] }
+    end
 
     # On: tax collected from today on is set aside (an organization already
     # on keeps its start date). Off: nothing is set aside.

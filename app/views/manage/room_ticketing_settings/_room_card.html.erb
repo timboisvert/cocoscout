@@ -1,0 +1,27 @@
+<%# Ticketing's card on a room's page (Pro): how tickets in this room sell,
+    from Ticketing's own table, with the link to change it. Rendered by the
+    room page only when the organization has Ticketing. Local: room. %>
+<% setting = RoomTicketingSetting.find_by(location_space_id: room.id) %>
+<% chart_count = setting ? setting.charts.size : 0 %>
+<div class="bg-white border border-gray-200 rounded-lg">
+  <%= render "shared/section_heading", title: "Tickets in this room" do %>
+    <%= render "shared/pro_marker" %>
+  <% end %>
+  <dl class="px-6 py-4 space-y-3 text-sm">
+    <div>
+      <dt class="font-medium text-gray-500">How tickets sell here</dt>
+      <dd class="mt-1 text-gray-900"><%= setting ? setting.seating_mode_label : RoomTicketingSetting::SEATING_MODE_LABELS["general"] %></dd>
+    </div>
+    <% if setting&.seated? %>
+      <div><dt class="font-medium text-gray-500">Seat charts</dt><dd class="mt-1 text-gray-900"><%= pluralize(chart_count, "chart") %></dd></div>
+    <% end %>
+    <% if setting&.buyer_directions.present? %>
+      <div><dt class="font-medium text-gray-500">Directions for buyers</dt><dd class="mt-1 text-gray-900"><%= setting.buyer_directions %></dd></div>
+    <% end %>
+  </dl>
+  <div class="px-6 pb-4">
+    <%= link_to manage_ticketing_settings_section_path(section: "rooms") do %>
+      <%= render "shared/button", text: "Rooms and seating settings", variant: "secondary", size: "small" %>
+    <% end %>
+  </div>
+</div>

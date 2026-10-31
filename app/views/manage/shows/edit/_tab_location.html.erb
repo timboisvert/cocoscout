@@ -21,7 +21,7 @@
 
     <% current_spaces = location_spaces_map[@show.location_id] || [] %>
     <div data-location-modal-target="spaceContainer" class="<%= 'hidden' if current_spaces.empty? %>">
-      <%= form.label :location_space_id, "Space", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+      <%= form.label :location_space_id, "Room", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
       <%= form.select :location_space_id,
             options_for_select(current_spaces.map { |s| [ s[:name], s[:id] ] }, @show.location_space_id),
             { include_blank: "Entire venue" },
