@@ -546,6 +546,6 @@ without handing them contracts, mailing lists, courses and the rest.
     the day's worksheet. [Yes]
 21. Access by module, with templates, replaces the accountant seat and absorbs
     Ticket Sales viewers and door grants; built first in 1.3. [Yes]
-22. The Overview's money strip keeps its five boxes (balance, waiting on upcoming
-    shows, set aside for sales tax, owed to payees, bank), smaller, on one row on
-    desktop; Tim's note on the board, 10/31, replacing his four-box ask. [Yes]
+22. The Overview's money strip is four boxes: the CocoScout balance with the sales
+    tax set-aside shown inside it ("$236.16 of that is set aside for sales tax you
+    owe"), waiting on upcoming shows, owed to payees, bank. [Yes]
