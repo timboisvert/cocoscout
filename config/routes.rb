@@ -1514,6 +1514,8 @@ Rails.application.routes.draw do
     get    "ticketing/shows/:id/seats",                    to: "ticket_seat_maps#show",         as: "ticket_listing_seats"
     post   "ticketing/shows/:id/seats/holds",              to: "ticket_seat_maps#create_hold",  as: "ticket_listing_seat_holds"
     delete "ticketing/shows/:id/seats/holds/:hold_id",     to: "ticket_seat_maps#release_hold", as: "ticket_listing_seat_hold"
+    post   "ticketing/shows/:id/seats/move",               to: "ticket_seat_maps#move",         as: "ticket_listing_seat_move"
+    post   "ticketing/shows/:id/seats/comps",              to: "ticket_seat_maps#comp",         as: "ticket_listing_seat_comps"
     # Group sales (advanced ticketing §3): a date's blocks of seats on invoices.
     get    "ticketing/shows/:id/groups",                   to: "ticket_group_bookings#index",   as: "ticket_listing_groups"
     get    "ticketing/shows/:id/groups/new",               to: "ticket_group_bookings#new",     as: "new_ticket_listing_group"

@@ -22,7 +22,12 @@ class TicketCheckout
   # on the order so the Links page can say what each link sold. Before the
   # door opens (TicketListing#door_ahead?) a door sale is presale and goes
   # exactly as an online one: what's on sale online, at its online price.
-  def self.start!(listing:, quantities:, code: nil, channel: "online", client_ip: nil, referrer: nil, replacing: nil, at_door: false, via: nil, campaign: nil)
+  # seats: the seat ids a buyer picked on the map (advanced ticketing §1),
+  # any type; each ticket takes one its type sells, the rest best available.
+  # accessible: the buyer said they need accessible seating, so wheelchair
+  # spaces and companion seats may be theirs while other seats are free.
+  def self.start!(listing:, quantities:, code: nil, channel: "online", client_ip: nil, referrer: nil, replacing: nil, at_door: false, via: nil, campaign: nil, seats: nil, accessible: false)
+    picked_seat_ids = Array(seats).map(&:to_i).reject(&:zero?)
     at_door = false if at_door && listing.door_ahead?
     if at_door
       raise Error, "This show was canceled." if listing.status == "canceled" || listing.show.canceled
@@ -40,7 +45,9 @@ class TicketCheckout
     raise Error, "That code doesn't work for this show." if code && discount.nil? && requests.keys.none?(&:hidden?)
 
     held = replacing.present? ? listing.ticket_orders.holding.find_by(token: replacing.to_s) : nil
-    return held if held && same_request?(held, requests, discount)
+    return held if held && same_request?(held, requests, discount) && picked_seat_ids.empty?
+
+    chosen = picked_seat_ids.any? && listing.seated? ? chosen_seats!(listing, requests, picked_seat_ids, accessible) : nil
 
     short_link = via.present? ? ShortLink.live.where(organization: listing.organization).find_by(code: via.to_s.strip.upcase) : nil
     order = nil
@@ -49,7 +56,8 @@ class TicketCheckout
       # lapsed hold), and anything else in its checkout goes with it; a
       # SoldOut below rolls this back too.
       held&.ticket_purchase ? held.ticket_purchase.expire! : held&.update!(status: "expired", expires_at: Time.current)
-      Ticketing::Inventory.reserve!(listing, seats) do
+      Ticketing::Inventory.reserve!(listing, seats, seats: chosen) do
+        Ticketing::SeatPlan.with(chosen&.values&.flatten, accessible: accessible) do
         expires_at = TicketOrder::HOLD.from_now
         purchase = TicketPurchase.create!(organization: listing.organization, channel: channel, expires_at: expires_at)
         # The refund policy the buyer sees is the one this order keeps.
@@ -63,11 +71,35 @@ class TicketCheckout
         # Products added on the old hold come along to the new one.
         set_items!(order, held_item_quantities(held), reprice: false) if held
         price!(order)
+        end
       end
     end
     order
   rescue Ticketing::Inventory::SoldOut
-    raise Error, "Sorry, there aren't enough seats left for that. Try fewer tickets."
+    raise Error, (chosen ? "Sorry, one of those seats was just taken. Pick again." : "Sorry, there aren't enough seats left for that. Try fewer tickets.")
+  end
+
+  # The picked seats, by the type that sells each (a seat nobody sells is
+  # refused), as many as asked for of each type; wheelchair spaces and
+  # companion seats only to someone who needs them, while other seats are
+  # free (28 CFR 36.302(f)).
+  def self.chosen_seats!(listing, requests, seat_ids, accessible)
+    seating = Ticketing::Seating.new(listing)
+    by_tier = Hash.new { |h, k| h[k] = [] }
+    seat_ids.uniq.each do |id|
+      seat = seating.seats[id]
+      raise Error, "One of those seats isn't on this date's chart." unless seat
+      tier = requests.keys.find { |t| t.base_tier.zone_section_ids.include?(seat.seat_section_id) }
+      raise Error, "#{seat.full_label} isn't for sale as any of those tickets." unless tier
+      if seat.accessible? && !accessible && seating.free_seats(tier.base_tier).any? { |s| !s.accessible? }
+        raise Error, "#{seat.full_label} is kept for people who need accessible seating. Tick the box if that's you, or pick another seat."
+      end
+      by_tier[tier] << id
+    end
+    requests.each do |tier, count|
+      raise Error, "Pick #{count} #{'seat'.pluralize(count)} for #{tier.name}, or fewer tickets." if by_tier[tier].size > count * tier.admits.to_i.clamp(1, 20)
+    end
+    by_tier
   end
 
   # A buyer starting on a pass: a seat at every show in it for each pass,

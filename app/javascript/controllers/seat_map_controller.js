@@ -11,7 +11,7 @@ import { Controller } from "@hotwired/stimulus"
 // killed), "buy" (free seats only, and only in sections with a tier).
 // data-seat-map-max-value: how many seats may be picked (buy mode).
 export default class extends Controller {
-  static targets = ["svg", "inputs", "summary", "count"]
+  static targets = ["svg", "inputs", "summary", "count", "total", "moveFrom", "moveTo", "moveWords"]
   static values = { payload: Object, mode: { type: String, default: "manage" }, max: { type: Number, default: 0 }, name: { type: String, default: "seat_ids[]" } }
 
   connect() {
@@ -121,6 +121,21 @@ export default class extends Controller {
       this.summaryTarget.textContent = list.length ? list.map(({ seat, section }) => `${section.name} ${seat.label}`).join(", ") : ""
     }
     if (this.hasCountTarget) this.countTarget.textContent = list.length
+    if (this.hasTotalTarget) {
+      const cents = list.reduce((sum, { section }) => sum + (section.price_cents || 0), 0)
+      this.totalTarget.textContent = list.length ? `$${(cents / 100).toFixed(2)}` : ""
+    }
+    // Moving a ticket: one sold seat and one free seat picked together.
+    if (this.hasMoveFromTarget) {
+      const sold = list.find(({ seat }) => seat.status === "sold")
+      const free = list.find(({ seat }) => seat.status === "free")
+      this.moveFromTarget.value = sold ? sold.seat.ticket_id : ""
+      this.moveToTarget.value = free ? free.seat.id : ""
+      if (this.hasMoveWordsTarget) {
+        this.moveWordsTarget.textContent = sold && free ? `${sold.section.name} ${sold.seat.label} → ${free.section.name} ${free.seat.label}`
+          : sold ? "Now tap the free seat to move them to." : "Tap a sold seat, then a free one."
+      }
+    }
     this.dispatch("change", { detail: { seats: list.map(({ seat, section }) => ({ id: seat.id, label: seat.label, section_id: section.id, tier_id: section.tier_id })) } })
   }
 

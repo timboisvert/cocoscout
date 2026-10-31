@@ -269,6 +269,17 @@ class TicketOrderMailer < ApplicationMailer
     })
   end
 
+  # Seats moved by the box office (advanced ticketing §1): the tickets and
+  # codes stay, the new seats are on them.
+  def seats_changed(order, changes, by: nil)
+    @order = order
+    @listing = order.ticket_listing
+    words = render_words("ticket_seats_changed", self.class.ticket_variables(order).merge(
+      changes: changes.map { |from, to| from.present? ? "#{from} is now #{to}" : "now #{to}" }.to_sentence
+    ))
+    deliver_tickets(order, **words)
+  end
+
   private
 
   # The tickets as one PDF (TicketPdf), when the organization attaches them

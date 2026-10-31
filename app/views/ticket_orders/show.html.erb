@@ -70,6 +70,7 @@
       <% tickets.each_with_index do |ticket, index| %>
         <div class="rounded-xl border border-gray-200 p-4 text-center">
           <div class="text-xs text-gray-500">Ticket <%= index + 1 %> of <%= tickets.size %> · <%= ticket.ticket_tier.name %></div>
+          <% if ticket.seat_label %><div class="mt-1 text-base font-semibold text-gray-900"><%= ticket.seat_label %></div><% end %>
           <div class="mx-auto mt-3 w-40"><%= ticket_qr_svg(ticket) %></div>
           <% if ticket.checked_in? %><div class="mt-2 text-xs font-medium text-gray-500">Checked in</div><% end %>
         </div>

@@ -12,7 +12,7 @@
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" data-controller="seat-map" data-seat-map-mode-value="manage" data-seat-map-payload-value="<%= @payload.to_json %>">
     <div class="lg:col-span-2 bg-white border border-gray-200 rounded-lg">
-      <%= render "shared/section_heading", title: @listing.effective_seat_chart.name, intro: "#{@listing.seating_mode_label}. White is free, grey sold, amber held, blue accessible. Tap seats to hold them." %>
+      <%= render "shared/section_heading", title: @listing.effective_seat_chart.name, intro: "#{@listing.seating_mode_label}. White is free, grey sold, amber held, blue accessible. Tap free seats to hold or comp them; a sold seat and a free one to move a ticket." %>
       <div class="p-4 overflow-x-auto"><svg data-seat-map-target="svg" class="w-full h-auto" style="min-height: 240px" role="img" aria-label="Seat map"></svg></div>
       <div class="border-t border-gray-100 px-5 py-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
         <% @tiers.each do |tier| %><span><span class="font-medium text-gray-900"><%= tier.name %></span> · <%= tier.zone_sections.map(&:name).presence&.to_sentence || "no sections" %> · <%= number_to_currency(TicketPricing.all_in_price_cents(@listing, tier) / 100.0) %></span><% end %>
@@ -32,6 +32,28 @@
             <%= render "shared/button", text: "Hold these seats", variant: "primary", size: "small", type: :submit %>
             <%= render "shared/button", text: "Clear", variant: "ghost", size: "small", type: :button, data: { action: "seat-map#clear" } %>
           </div>
+        <% end %>
+      </div>
+
+      <div class="bg-white border border-gray-200 rounded-lg">
+        <%= render "shared/section_heading", title: "Move a ticket" %>
+        <%= form_with url: manage_ticket_listing_seat_move_path(@listing), method: :post, data: { turbo: false }, class: "px-5 py-4 space-y-3" do %>
+          <%= hidden_field_tag :ticket_id, nil, id: nil, data: { seat_map_target: "moveFrom" } %>
+          <%= hidden_field_tag :seat_id, nil, id: nil, data: { seat_map_target: "moveTo" } %>
+          <p class="text-sm text-gray-700" data-seat-map-target="moveWords">Tap a sold seat, then a free one.</p>
+          <label class="flex items-center gap-2 text-sm text-gray-700"><%= check_box_tag :email, "1", true, class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %> Email the buyer their new seat</label>
+          <%= render "shared/button", text: "Move", variant: "primary", size: "small", type: :submit %>
+        <% end %>
+      </div>
+
+      <div class="bg-white border border-gray-200 rounded-lg">
+        <%= render "shared/section_heading", title: "Comp these seats" %>
+        <%= form_with url: manage_ticket_listing_seat_comps_path(@listing), method: :post, data: { turbo: false }, class: "px-5 py-4 space-y-3" do %>
+          <div data-seat-map-target="inputs"></div>
+          <label class="block text-xs font-medium text-gray-700">Name<%= text_field_tag :name, nil, id: "comp_name", class: input + " mt-1" %></label>
+          <label class="block text-xs font-medium text-gray-700">Email <span class="font-normal text-gray-500">(their tickets go here)</span><%= email_field_tag :email, nil, id: "comp_email", class: input + " mt-1" %></label>
+          <label class="block text-xs font-medium text-gray-700">Note <span class="font-normal text-gray-500">(optional)</span><%= text_field_tag :note, nil, id: "comp_note", class: input + " mt-1" %></label>
+          <%= render "shared/button", text: "Give the picked seats", variant: "primary", size: "small", type: :submit %>
         <% end %>
       </div>
 

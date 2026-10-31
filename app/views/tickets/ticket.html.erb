@@ -12,6 +12,7 @@
 
   <div class="mt-5 mx-auto w-48"><%= ticket_qr_svg(@ticket) %></div>
 
+  <% if @ticket.seat_label %><p class="mt-4 text-lg font-semibold text-gray-900"><%= @ticket.seat_label %></p><% end %>
   <p class="mt-4 text-sm text-gray-900"><%= @ticket.ticket_tier.name %><%= " · #{@ticket.holder_name.presence || order.buyer_name}" if (@ticket.holder_name.presence || order.buyer_name).present? %></p>
   <p class="text-xs text-gray-500">Order <%= order.code %></p>
   <% case @ticket.status %>

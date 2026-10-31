@@ -39,9 +39,12 @@ class TicketCheckoutsController < ApplicationController
     listing = profile && profile.organization.ticket_listings.find_by(slug: params[:event])
     raise ActiveRecord::RecordNotFound unless listing && (profile.enabled? || preview_viewer?(profile.organization))
 
-    order = TicketCheckout.start!(listing: listing, quantities: requested_quantities, code: params[:code],
+    seat_ids = Array(params[:seat_ids]).map(&:to_i).reject(&:zero?).uniq
+    quantities = seat_ids.any? ? quantities_for_seats(listing, seat_ids) : requested_quantities
+    order = TicketCheckout.start!(listing: listing, quantities: quantities, code: params[:code],
                                   client_ip: request.remote_ip, referrer: request.referer, replacing: params[:hold],
-                                  via: cookies[ShortLinksController::COOKIE], campaign: cookies[TicketsController::CAMPAIGN_COOKIE])
+                                  via: cookies[ShortLinksController::COOKIE], campaign: cookies[TicketsController::CAMPAIGN_COOKIE],
+                                  seats: seat_ids.presence, accessible: params[:accessible] == "1")
     redirect_to tickets_checkout_path(token: order.token, **embed_params)
   rescue TicketCheckout::Error => e
     redirect_to tickets_event_path(org: params[:org], event: params[:event], code: params[:code].presence, **embed_params), alert: e.message
@@ -174,6 +177,19 @@ class TicketCheckoutsController < ApplicationController
   private
 
   # { tier_id => count } from the ticket page's pickers — plain strings only.
+  # Seats picked on the map: one ticket of the type that sells each seat.
+  def quantities_for_seats(listing, seat_ids)
+    tiers = listing.ticket_tiers.active.reject(&:bundle?).select(&:selling?)
+    sections = Seat.where(id: seat_ids).pluck(:id, :seat_section_id).to_h
+    counts = Hash.new(0)
+    seat_ids.each do |id|
+      tier = tiers.find { |t| t.zone_section_ids.include?(sections[id]) }
+      raise TicketCheckout::Error, "One of those seats isn't for sale." unless tier
+      counts[tier.id.to_s] += 1
+    end
+    counts
+  end
+
   def requested_quantities
     raw = params[:quantities]
     return {} unless raw.respond_to?(:each_pair)

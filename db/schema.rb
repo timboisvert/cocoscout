@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_01_000400) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_01_000500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -962,7 +962,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000400) do
     t.bigint "added_by_id"
     t.jsonb "attended_show_ids", default: [], null: false
     t.index ["added_by_id"], name: "index_course_registrations_on_added_by_id"
-    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL ((ARRAY['cancelled'::character varying, 'refunded'::character varying, 'expired'::character varying])::text[]))"
+    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL (ARRAY[('cancelled'::character varying)::text, ('refunded'::character varying)::text, ('expired'::character varying)::text]))"
     t.index ["course_offering_id"], name: "index_course_registrations_on_course_offering_id"
     t.index ["expires_at"], name: "index_course_registrations_on_expires_at", where: "((status)::text = 'pending'::text)"
     t.index ["person_id"], name: "index_course_registrations_on_person_id"
@@ -4709,7 +4709,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000400) do
     t.index ["seat_id"], name: "index_tickets_on_seat_id"
     t.index ["seat_section_id"], name: "index_tickets_on_seat_section_id"
     t.index ["ticket_listing_id", "external_barcode"], name: "index_tickets_on_ticket_listing_id_and_external_barcode", unique: true, where: "(external_barcode IS NOT NULL)"
-    t.index ["ticket_listing_id", "seat_id"], name: "index_tickets_one_live_ticket_per_seat", unique: true, where: "((seat_id IS NOT NULL) AND ((status)::text = ANY ((ARRAY['reserved'::character varying, 'valid'::character varying, 'checked_in'::character varying])::text[])))"
+    t.index ["ticket_listing_id", "seat_id"], name: "index_tickets_one_live_ticket_per_seat", unique: true, where: "((seat_id IS NOT NULL) AND ((status)::text = ANY (ARRAY[('reserved'::character varying)::text, ('valid'::character varying)::text, ('checked_in'::character varying)::text])))"
     t.index ["ticket_listing_id", "status"], name: "index_tickets_on_ticket_listing_id_and_status"
     t.index ["ticket_offer_id"], name: "index_tickets_on_ticket_offer_id"
     t.index ["ticket_order_id"], name: "index_tickets_on_ticket_order_id"

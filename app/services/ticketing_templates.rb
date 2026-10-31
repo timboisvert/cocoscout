@@ -198,6 +198,11 @@ class TicketingTemplates
       body: %(<p>Hi {{first_name}},</p><p>You're on the waitlist for {{show_title}} on {{show_date}}. {{message}}</p>),
       variables: v(:first_name, :organization_name, :show_title, :show_date, :message) },
 
+    { key: "ticket_seats_changed", name: "Seats changed", channel: "email",
+      subject: "Your seats changed: {{show_title}}, {{show_date}}",
+      body: %(<p>Hi {{first_name}},</p><p>{{organization_name}} moved your seats for {{show_title}} on {{show_date}}: {{changes}}.</p><p>Your tickets and their codes are the same; the new seats are on them. <a href="{{order_url}}">Your tickets</a></p><p>Questions? Reply to this email.</p>),
+      variables: v(:first_name, :organization_name, :show_title, :show_date, :changes, :order_url) },
+
     # --- Group sales (advanced ticketing §3): the leader's emails.
     { key: "ticket_group_booked", name: "Group sales: seats held", channel: "email",
       subject: "{{seat_words}} held for {{group_name}}: {{show_title}}, {{show_date}}",

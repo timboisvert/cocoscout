@@ -110,8 +110,12 @@ class TicketPdf
   # A ticket's seat, as { section:, row:, seat: }. Reserved seating (the
   # advanced-ticketing plan's step 4) fills this in; until then no ticket has
   # a seat and seat_block draws nothing.
-  def seat_for(_ticket)
-    nil
+  def seat_for(ticket)
+    if ticket.seat
+      { section: ticket.seat.seat_section.name, row: ticket.seat.row_label, seat: ticket.seat.number.to_s }
+    elsif ticket.seat_section
+      { section: ticket.seat_section.name, row: nil, seat: nil }
+    end
   end
 
   # Section, row and seat, each in its own box, as the door reads them.

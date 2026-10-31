@@ -107,6 +107,7 @@ class TicketsController < ApplicationController
       @tiers = @listing.ticket_tiers.active.select(&:listed?).reject { |t| t.hidden? && t.unlock_code != @code }
       @inventory = @listing.inventory
       @tax = TaxCalculator.for_ticket(@listing, @tiers.first, 10_000) if @tiers.any?
+      @seat_payload = Ticketing::Seating.new(@listing).payload(tiers: @tiers.reject(&:bundle?).select(&:selling?)) if @listing.seated? && @tiers.any?
       @passes = selling_passes.select do |pass|
         pass.credit_kind? ? pass.coverages.any? { |coverage| coverage.production_id == @listing.production_id } : pass.rows.any? { |row| row.ticket_listing_id == @listing.id }
       end

@@ -151,7 +151,7 @@ module TicketingHelper
     end
     singles.group_by { |t| [ t.ticket_listing, t.bundle_tier || t.ticket_tier ] }.each do |(listing, tier), rows|
       count = rows.size / [ tier.admits.to_i, 1 ].max
-      lines << [ "#{count} × #{tier.name} · #{listing.display_title}", rows.sum(&:price_cents), false ]
+      lines << [ "#{count} × #{tier.name} · #{listing.display_title}#{seat_words(rows)}", rows.sum(&:price_cents), false ]
     end
     items.each { |item| lines << [ "#{item.quantity} × #{item.name}", item.price_cents, false ] }
     discount = singles.sum(&:discount_cents)
@@ -164,12 +164,18 @@ module TicketingHelper
     lines
   end
 
+  # " · Orchestra C 14, C 15" after a line of tickets with seats.
+  def seat_words(tickets)
+    labels = tickets.filter_map(&:seat_label)
+    labels.any? ? " · #{labels.join(', ')}" : ""
+  end
+
   def ticket_summary_lines(order)
     tickets = order.tickets.to_a
     items = order.ticket_order_items.to_a
     lines = tickets.group_by { |t| t.bundle_tier || t.ticket_tier }.map do |tier, rows|
       count = rows.size / [ tier.admits.to_i, 1 ].max
-      [ "#{count} × #{tier.name}", rows.sum(&:price_cents), false ]
+      [ "#{count} × #{tier.name}#{seat_words(rows)}", rows.sum(&:price_cents), false ]
     end
     items.each { |item| lines << [ "#{item.quantity} × #{item.name}", item.price_cents, false ] }
     if order.discount_cents.positive?

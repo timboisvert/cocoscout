@@ -33,6 +33,10 @@ class Ticket < ApplicationRecord
   validates :price_cents, :discount_cents, :tax_cents, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
 
   before_validation :assign_code, on: :create
+  # On a seated date every new ticket has a seat (or a standing place): the
+  # one chosen for it (Ticketing::SeatPlan), else the best available. Runs
+  # inside Ticketing::Inventory.reserve!'s lock, which checked it fits.
+  before_create :take_a_seat
 
   scope :sold, -> { where(status: SOLD_STATUSES) }
 
@@ -60,6 +64,31 @@ class Ticket < ApplicationRecord
   end
 
   private
+
+  def take_a_seat
+    return if seat_id || seat_section_id || !ticket_listing&.seated?
+
+    seating = Ticketing::Seating.new(ticket_listing)
+    chosen = Ticketing::SeatPlan.take!(ticket_tier, seating)
+    if chosen
+      raise Ticketing::Inventory::SoldOut if seating.taken?(chosen.id) || chosen.killed
+      self.seat = chosen
+      self.seat_section = chosen.seat_section
+      return
+    end
+    if ticket_tier.seated_zone?
+      pick = Ticketing::BestAvailable.pick(ticket_listing, ticket_tier, 1, seating: seating, accessible: Ticketing::SeatPlan.accessible?)
+      # Nothing but accessible seats left: they sell to anyone rather than stay empty.
+      pick ||= Ticketing::BestAvailable.pick(ticket_listing, ticket_tier, 1, seating: seating, accessible: true)
+      raise Ticketing::Inventory::SoldOut unless pick
+      self.seat = pick.seats.first
+      self.seat_section = seat.seat_section
+    else
+      area = ticket_tier.zone_sections.select(&:standing?).find { |a| a.standing_capacity - seating.standing_taken([ a.id ]) > 0 }
+      raise Ticketing::Inventory::SoldOut unless area
+      self.seat_section = area
+    end
+  end
 
   def assign_code
     self.code ||= SecureRandom.urlsafe_base64(16)
