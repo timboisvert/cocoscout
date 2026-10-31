@@ -579,4 +579,7 @@ Built in one pass on `v1.3`, in the plan's order; each phase is one commit.
 10. **Who pays the tax on tickets other sites sold** (46a1dfd0, Tim's question 10/31): a choice per ticket source on Money settings → Ticket sources (none / they pay it / we owe it). A "we owe" line carves the tax out of what arrived at the ticket tax rate into Tax to pay the government; the Sales tax page shows it by source for the period (in the bank, not set aside), the Taxes page and the reconciliation count it. 1.5's Ticket Tailor and Eventbrite imports will read the same switch and true up these lines with each order's own tax.
 11. **Phone-width pass**: every Books page rendered at 375px (static renders through the test stack, since the dev server is Tim's); one fix, the settle-up day calendar popover now spans the phone screen.
 
-Left for Tim: review on the v1.3 dev server; merge to main and deploy, running the migrations (`ticket_sources.tax_handling`, `bank_statement_imports`, `organizations.books_locked_*` and the earlier ones on the branch); confirm the S3 bucket's encryption at rest and access logging (Todo).
+**Release order (Tim, 2026-10-31): V1.3 stays on `v1.3` until Tap to Pay (V1.2) is
+approved by Apple and shipped. Tap to Pay goes next; Books must not get in its way.**
+
+Left for Tim, after that: review on the v1.3 dev server; merge to main and deploy, running the migrations (`ticket_sources.tax_handling`, `bank_statement_imports`, `organizations.books_locked_*` and the earlier ones on the branch); confirm the S3 bucket's encryption at rest and access logging (Todo).
