@@ -27,7 +27,7 @@ class TicketSubscription < ApplicationRecord
   def status_label = STATUS_LABELS.fetch(status)
   def first_name = buyer_name.to_s.split.first.presence || "there"
 
-  def seats = Seat.where(id: seat_ids).includes(seat_section: :seat_chart).sort_by(&:best_rank)
+  def seats = Seat.where(id: seat_ids).includes(seat_section: :seat_chart).sort_by { |s| [ s.seat_section_id, s.row_label, s.number ] }
   def seat_labels = seats.map(&:full_label)
 
   # The orders this subscription's purchase made, one per date.
