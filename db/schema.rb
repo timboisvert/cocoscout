@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_31_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_31_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1669,6 +1669,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_130000) do
     t.index ["slug"], name: "index_mics_on_slug", unique: true
     t.index ["status"], name: "index_mics_on_status"
     t.index ["venue_id"], name: "index_mics_on_venue_id"
+  end
+
+  create_table "money_records", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.string "kind", null: false
+    t.date "on", null: false
+    t.integer "amount_cents", null: false
+    t.string "category_key"
+    t.string "counterparty"
+    t.bigint "production_id"
+    t.bigint "show_id"
+    t.string "via"
+    t.string "from_account"
+    t.string "to_account"
+    t.text "memo"
+    t.bigint "recorded_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "on"], name: "index_money_records_on_organization_id_and_on"
+    t.index ["organization_id"], name: "index_money_records_on_organization_id"
+    t.index ["production_id"], name: "index_money_records_on_production_id"
+    t.index ["recorded_by_id"], name: "index_money_records_on_recorded_by_id"
+    t.index ["show_id"], name: "index_money_records_on_show_id"
   end
 
   create_table "notifications", force: :cascade do |t|
@@ -4582,6 +4605,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_130000) do
   add_foreign_key "mic_taggings", "mics"
   add_foreign_key "mics", "productions"
   add_foreign_key "mics", "venues"
+  add_foreign_key "money_records", "organizations"
+  add_foreign_key "money_records", "productions"
+  add_foreign_key "money_records", "shows"
+  add_foreign_key "money_records", "users", column: "recorded_by_id"
   add_foreign_key "notifications", "messages", on_delete: :nullify
   add_foreign_key "notifications", "organizations"
   add_foreign_key "notifications", "users"

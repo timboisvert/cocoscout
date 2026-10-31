@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "csv"
+
 # What the read-only Books page shows (Money → Books): every account's
 # balance, the entries behind them, and ticket money show by show. Plain
 # names throughout; the engine underneath is LedgerPosting.
@@ -26,6 +28,7 @@ class BooksReport
     "production_expense" => "Production expense",
     "contract_payment" => "Contract payment",
     "cocoscout_bill" => "CocoScout bill",
+    "recorded" => "Recorded by hand",
     "settlement" => "Day settled"
   }.freeze
 
@@ -92,6 +95,26 @@ class BooksReport
   # Every line ever posted sums to zero in healthy books.
   def trial_balance_cents
     JournalLine.where(organization_id: @organization.id).sum(:amount_cents)
+  end
+
+  # The Overview as a spreadsheet: every income and spending line in the
+  # period, with what it was for and when it was earned and moved.
+  def to_csv(range:, production_id: nil)
+    lines = dated_lines(range).includes(:ledger_account, :production, :show, journal_entry: [])
+                              .where(ledger_accounts: { account_type: %w[income expense] })
+                              .order("journal_entries.entry_date, journal_entries.id, journal_lines.id")
+    lines = lines.where(production_id: production_id) if production_id.present?
+    CSV.generate do |csv|
+      csv << [ "Earned on", "Moved on", "What", "Description", "Category", "Production", "Show", "In", "Out" ]
+      lines.each do |line|
+        entry = line.journal_entry
+        income = line.ledger_account.account_type == "income"
+        cents = income ? -line.amount_cents : line.amount_cents
+        csv << [ entry.entry_date, entry.cash_date, KIND_LABELS.fetch(entry.kind, entry.kind.humanize), entry.memo,
+                 line.ledger_account.name, line.production&.name, line.show && "#{line.show.date_and_time.strftime('%Y-%m-%d')} #{line.show.display_name}",
+                 (income ? format("%.2f", cents / 100.0) : nil), (income ? nil : format("%.2f", cents / 100.0)) ]
+      end
+    end
   end
 
   def entries(account_id: nil, show_id: nil, kind: nil)

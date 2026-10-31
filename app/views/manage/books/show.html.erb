@@ -10,8 +10,13 @@
     when "TicketRefund" then refund_orders[entry.source_id] && [ "Order", manage_ticket_order_path(refund_orders[entry.source_id]) ]
     when "TicketListing" then [ "Show", manage_edit_ticket_listing_path(entry.source_id) ]
     when "BalanceWithdrawal" then [ "Balance", manage_ticket_balance_path ]
+    when "MoneyRecord" then [ "Open", manage_money_record_path(entry.source_id) ]
     end
   end
+  overview_params = { period: @period, basis: (@report.basis == :cash ? "cash" : nil), production: @production_id }.compact
+  top_links = []
+  top_links << { text: "Record money", path: manage_new_money_record_path } if module_change?(:books)
+  top_links << { text: "Download this period", path: manage_money_books_download_path(overview_params) } if @tab == "overview" && @overview && !@overview.empty?
 %>
 
 <div class="w-full mb-10">
@@ -19,7 +24,7 @@
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [ [ "Money", manage_money_index_path ] ],
     text: "Books",
-    links: []
+    links: top_links
   } %>
 
   <% if @tab == "overview" %>
@@ -97,7 +102,8 @@
     </div>
 
     <% if @overview.empty? %>
-      <%= render "shared/empty_state", icon: "money", title: "Nothing on the books for #{period_label.downcase}", body: "Ticket sales, classes, contracts and payout runs land here by themselves. Try another period, or all time." %>
+      <%= render "shared/empty_state", icon: "money", title: "Nothing on the books for #{period_label.downcase}", body: "Ticket sales, classes, contracts and payout runs land here by themselves. Money that happened elsewhere, a sponsor's check or a receipt, you record by hand.",
+            actions: (module_change?(:books) ? [ { text: "Record money", path: manage_new_money_record_path } ] : []) %>
     <% else %>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         <%= tile.call("Money in", @overview.in_cents) %>
@@ -255,6 +261,7 @@
               <span class="min-w-[12rem] flex-1 text-sm text-gray-900">
                 <%= BooksReport::KIND_LABELS.fetch(entry.kind, entry.kind.humanize) %>
                 <% unless entry.kind == "withdrawal" %><span class="text-gray-500"><%= entry.memo %></span><% end %>
+                <% if entry.source_type == "MoneyRecord" && @records[entry.source_id]&.receipt&.attached? %><svg class="inline-block w-3.5 h-3.5 text-gray-400 ml-1 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-label="Has a receipt"><title>Has a receipt</title><path stroke-linecap="round" stroke-linejoin="round" d="M7 3h8l4 4v14H7zM15 3v4h4"/></svg><% end %>
                 <% if entry.reversal_of_id %><span class="ml-1 inline-flex rounded-md bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">Reverses an earlier entry</span><% end %>
                 <% if entry.reversed_at %><span class="ml-1 inline-flex rounded-md bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">Reversed</span><% end %>
               </span>

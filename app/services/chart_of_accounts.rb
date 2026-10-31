@@ -14,6 +14,7 @@ class ChartOfAccounts
     owed_to_you: { code: "1100", name: "Money owed to you", type: "asset" },
     advances: { code: "1200", name: "Advances to performers", type: "asset" },
     you_owe: { code: "2000", name: "Money you owe", type: "liability" },
+    credit_card: { code: "2010", name: "Credit card", type: "liability" },
     owed_to_payees: { code: "2100", name: "Owed to performers and staff", type: "liability" },
     advance_ticket_sales: { code: "2200", name: "Tickets sold for upcoming shows", type: "liability" },
     advance_product_sales: { code: "2210", name: "Products sold for upcoming shows", type: "liability" },

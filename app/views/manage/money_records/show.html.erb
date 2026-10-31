@@ -1,0 +1,115 @@
+<% content_for :title, @record.title %>
+<%
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  can_change = module_change?(:books)
+  amount = money.call(@record.amount_cents)
+  # The entry's lines in plain words.
+  sentence = case @record.kind
+  when "in"
+    owed = @record.via == "owed"
+    "#{amount} #{owed ? 'is owed to you' : "came into #{@record.via_label}"} on #{@record.on.strftime('%b %-d')} and counts as #{@record.category_label} income#{" for #{@record.production.name}" if @record.production}. It shows in #{@record.on.strftime('%B')} when you count money as earned#{owed ? ', and when it is paid if you count money when it moved' : ', or when it moved'}."
+  when "out"
+    owed = @record.via == "owed"
+    "#{amount} #{owed ? 'was covered by someone you now owe' : "left #{@record.via_label}"} on #{@record.on.strftime('%b %-d')} and counts as #{@record.category_label} spending#{" for #{@record.production.name}" if @record.production}. It shows in #{@record.on.strftime('%B')} when you count money as earned#{owed ? ', and when you pay it back if you count money when it moved' : ', or when it moved'}."
+  else
+    "#{amount} moved from #{@record.from_label} to #{@record.to_label} on #{@record.on.strftime('%b %-d')}. Nothing was earned or spent."
+  end
+%>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Money", manage_money_index_path ], [ "Books", manage_money_books_path ], [ "Entries", manage_money_books_path(tab: "entries") ] ],
+    text: "#{@record.title}, #{amount}",
+    links: (can_change ? [ { text: "Change", path: manage_edit_money_record_path(@record) } ] : [])
+  } %>
+
+  <div class="max-w-4xl space-y-4">
+    <section class="rounded-xl border border-gray-200 bg-white px-5 py-4">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2 text-xs">
+            <span class="inline-flex rounded-md px-1.5 py-0.5 font-medium <%= @record.in? ? 'bg-green-50 text-green-700' : (@record.out? ? 'bg-gray-100 text-gray-700' : 'bg-blue-50 text-blue-700') %>"><%= @record.kind_label %></span>
+            <span class="text-gray-500">Recorded by hand</span>
+          </div>
+          <h2 class="mt-1 text-2xl font-bold tabular-nums text-gray-900"><%= amount %></h2>
+          <div class="text-sm text-gray-600"><%= @record.on.strftime("%b %-d, %Y") %><% unless @record.move? %> · <%= @record.category_label %><% if @record.counterparty.present? %> · <%= @record.in? ? "from" : "paid to" %> <%= @record.counterparty %><% end %><% end %></div>
+        </div>
+        <div class="text-xs text-gray-500 sm:text-right">
+          <% if @record.recorded_by %>Recorded by <%= @record.recorded_by.default_person&.name || @record.recorded_by.email_address %><br><% end %><%= @record.created_at.strftime("%b %-d, %Y at %-l:%M %P") %>
+        </div>
+      </div>
+      <dl class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-3 text-sm">
+        <% if @record.move? %>
+          <div><dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">From</dt><dd class="text-gray-900"><%= @record.from_label %></dd></div>
+          <div><dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">To</dt><dd class="text-gray-900"><%= @record.to_label %></dd></div>
+        <% else %>
+          <div><dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">For</dt><dd class="text-gray-900"><%= @record.for_label || "Nothing in particular" %></dd></div>
+          <div><dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500"><%= @record.in? ? "Paid into" : "Paid from" %></dt><dd class="text-gray-900"><%= @record.via_label %></dd></div>
+        <% end %>
+        <% if @record.memo.present? %>
+          <div><dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Note</dt><dd class="text-gray-900"><%= @record.memo %></dd></div>
+        <% end %>
+      </dl>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <% unless @record.move? %>
+        <section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <%= render "shared/section_heading", padding: "px-5 py-3", title: (@record.in? ? "Document" : "Receipt") %>
+          <div class="px-5 py-4">
+            <% if @record.receipt.attached? %>
+              <% if @record.receipt.image? %>
+                <%= link_to url_for(@record.receipt), target: "_blank", rel: "noopener" do %>
+                  <%= image_tag @record.receipt.variant(resize_to_limit: [ 800, 800 ]), alt: @record.receipt.filename.to_s, class: "max-h-80 rounded-lg border border-gray-200 object-contain" %>
+                <% end %>
+              <% else %>
+                <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-600"><%= @record.receipt.filename %></div>
+              <% end %>
+              <div class="mt-3 flex items-center justify-between text-xs text-gray-500">
+                <span><%= @record.receipt.filename %> · <%= number_to_human_size(@record.receipt.byte_size) %></span>
+                <%= link_to "Open", url_for(@record.receipt), target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700" %>
+              </div>
+            <% else %>
+              <p class="text-sm text-gray-500">None attached.<% if can_change %> <%= link_to "Add one", manage_edit_money_record_path(@record), class: "text-pink-600 hover:text-pink-700" %>.<% end %></p>
+            <% end %>
+          </div>
+        </section>
+      <% end %>
+
+      <section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <%= render "shared/section_heading", padding: "px-5 py-3", title: "On the books" %>
+        <div class="px-5 py-4 space-y-4">
+          <p class="text-sm text-gray-700"><%= sentence %></p>
+          <% if @entry %>
+            <div class="rounded-lg border border-gray-200 overflow-hidden text-sm">
+              <div class="grid grid-cols-[1fr_6rem_6rem] gap-3 bg-gray-50 px-4 py-1.5 text-[11px] font-medium uppercase tracking-wide text-gray-500"><span>Account</span><span class="text-right">In</span><span class="text-right">Out</span></div>
+              <% @entry.journal_lines.sort_by { |l| -l.amount_cents }.each do |line| %>
+                <div class="grid grid-cols-[1fr_6rem_6rem] gap-3 px-4 py-1.5 border-t border-gray-100"><span class="text-gray-900"><%= line.ledger_account.name %></span><span class="text-right tabular-nums"><%= line.amount_cents.positive? ? money.call(line.amount_cents) : "" %></span><span class="text-right tabular-nums"><%= line.amount_cents.negative? ? money.call(-line.amount_cents) : "" %></span></div>
+              <% end %>
+            </div>
+          <% end %>
+          <div>
+            <div class="text-[11px] font-medium uppercase tracking-wide text-gray-500 mb-1">History</div>
+            <ul class="space-y-1 text-xs text-gray-600">
+              <% @entries.reverse_each do |e| %>
+                <li><%= e.posted_at.strftime("%b %-d, %Y") %> · <%= e.reversal_of_id ? "An earlier entry was reversed, not edited." : (e == @entries.first ? "Recorded." : "Restated.") %></li>
+              <% end %>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <% if can_change %>
+      <div class="flex justify-end">
+        <%= render "shared/button", text: "Remove", variant: "secondary", size: "small", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-remove-record" } %>
+      </div>
+      <%= render "shared/confirm_modal", id: "confirm-remove-record",
+            title: "Remove this entry?",
+            message: "#{amount} comes off the books: the entry is reversed, not erased, so the record stays whole.",
+            confirm_text: "Remove",
+            url: manage_money_record_path(@record), method: :delete %>
+    <% end %>
+  </div>
+</div>

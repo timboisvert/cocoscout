@@ -1598,6 +1598,14 @@ Rails.application.routes.draw do
     # Money / Payouts section - org-level
     get "money", to: "money#index", as: "money_index"
     get "money/books", to: "books#show", as: "money_books"
+    get "money/books/download", to: "books#download", as: "money_books_download"
+    # Money recorded by hand: the sheet, a recorded entry's page, change, remove.
+    get    "money/books/record",            to: "money_records#new",     as: "new_money_record"
+    post   "money/books/record",            to: "money_records#create",  as: "money_records"
+    get    "money/books/records/:id",       to: "money_records#show",    as: "money_record"
+    get    "money/books/records/:id/edit",  to: "money_records#edit",    as: "edit_money_record"
+    patch  "money/books/records/:id",       to: "money_records#update"
+    delete "money/books/records/:id",       to: "money_records#destroy"
     # Settle up: one worksheet per day that had money in it (Books V1.3).
     get   "money/settle-up", to: "settlement_days#index", as: "money_settle_up"
     get   "money/settle-up/:date", to: "settlement_days#show", as: "money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
