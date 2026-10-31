@@ -93,6 +93,7 @@ class Organization < ApplicationRecord
   has_many :seat_charts, dependent: :destroy
   has_many :ticket_membership_levels, dependent: :destroy
   has_many :ticket_memberships, dependent: :destroy
+  has_many :ticket_subscriptions, dependent: :destroy
   has_many :ticket_buyer_verifications, dependent: :destroy
   has_many :ticket_passes, dependent: :destroy
   has_many :ticket_offers, dependent: :destroy

@@ -5,7 +5,7 @@ module Manage
   # an editor (the shows, the ticket type at each, the price and how it splits
   # between them) and a page per pass with its sales.
   class TicketPassesController < Manage::TicketingBaseController
-    before_action :set_pass, only: %i[show edit update destroy refund_holding]
+    before_action :set_pass, only: %i[show edit update destroy refund_holding open_renewal]
 
     def index
       @passes = Current.organization.ticket_passes.order(created_at: :desc).to_a
@@ -40,6 +40,19 @@ module Manage
       @remaining = @pass.remaining(@rows)
       @money_by_listing = @pass.tickets.where(status: Ticket::SOLD_STATUSES).group(:ticket_listing_id)
                                .sum("tickets.price_cents - tickets.discount_cents")
+      if @pass.subscription?
+        @subscribers = @pass.subscriptions.where.not(status: "pending").order(:buyer_name).to_a
+        @invited = @pass.renews_from ? @pass.renews_from.subscriptions.where(status: %w[renewal_open renewed released]).includes(:seat_holds).order(:buyer_name).to_a : []
+      end
+    end
+
+    # Next season's subscription opens renewal for last season's subscribers.
+    def open_renewal
+      closes_at = Time.zone.parse(params[:closes_at].to_s) rescue nil
+      invited = Ticketing::Subscriptions.open_renewal!(@pass, closes_at: closes_at)
+      redirect_to manage_ticket_pass_path(@pass), notice: "Renewal open: #{helpers.pluralize(invited, 'subscriber')} invited, seats held until #{closes_at.strftime('%b %-d')}."
+    rescue Ticketing::Subscriptions::Error => e
+      redirect_to manage_ticket_pass_path(@pass), alert: e.message
     end
 
     def edit
@@ -88,11 +101,12 @@ module Manage
     # organization's own ticket types.
     def pass_params
       permitted = params.require(:ticket_pass).permit(:name, :slug, :description, :price, :split, :status, :max_sold, :max_per_order,
-                                                      :sales_end_at, :wide_image, :kind, :credits, :ends_on,
+                                                      :sales_end_at, :wide_image, :kind, :credits, :ends_on, :renews_from_id,
                                                       pass_shows_attributes: %i[id ticket_tier_id share _destroy],
                                                       coverages_attributes: %i[id production_id tier_name _destroy])
       permitted[:credits] = permitted[:credits].presence if permitted.key?(:credits)
       permitted[:ends_on] = permitted[:ends_on].presence if permitted.key?(:ends_on)
+      permitted[:renews_from_id] = Current.organization.ticket_passes.where(kind: "subscription").find_by(id: permitted[:renews_from_id])&.id if permitted.key?(:renews_from_id)
       own_productions = Current.organization.productions.select(:id)
       coverage_rows = permitted[:coverages_attributes]
       coverage_rows&.keys&.each do |key|

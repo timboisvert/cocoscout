@@ -7,5 +7,6 @@ class MembershipSweepJob < ApplicationJob
 
   def perform
     Ticketing::Memberships.sweep!
+    Ticketing::Subscriptions.sweep!
   end
 end

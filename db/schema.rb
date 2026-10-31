@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_01_000700) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_01_000800) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -962,7 +962,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000700) do
     t.bigint "added_by_id"
     t.jsonb "attended_show_ids", default: [], null: false
     t.index ["added_by_id"], name: "index_course_registrations_on_added_by_id"
-    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL (ARRAY[('cancelled'::character varying)::text, ('refunded'::character varying)::text, ('expired'::character varying)::text]))"
+    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL ((ARRAY['cancelled'::character varying, 'refunded'::character varying, 'expired'::character varying])::text[]))"
     t.index ["course_offering_id"], name: "index_course_registrations_on_course_offering_id"
     t.index ["expires_at"], name: "index_course_registrations_on_expires_at", where: "((status)::text = 'pending'::text)"
     t.index ["person_id"], name: "index_course_registrations_on_person_id"
@@ -4430,8 +4430,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000700) do
     t.datetime "updated_at", null: false
     t.integer "credits"
     t.date "ends_on"
+    t.bigint "renews_from_id"
+    t.datetime "renewal_closes_at"
     t.index ["organization_id", "slug"], name: "index_ticket_passes_on_organization_id_and_slug", unique: true
     t.index ["organization_id"], name: "index_ticket_passes_on_organization_id"
+    t.index ["renews_from_id"], name: "index_ticket_passes_on_renews_from_id"
   end
 
   create_table "ticket_price_changes", force: :cascade do |t|
@@ -4623,10 +4626,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000700) do
     t.bigint "created_by_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "ticket_subscription_id"
     t.index ["created_by_id"], name: "index_ticket_seat_holds_on_created_by_id"
     t.index ["organization_id"], name: "index_ticket_seat_holds_on_organization_id"
     t.index ["owner_type", "owner_id"], name: "index_ticket_seat_holds_on_owner_type_and_owner_id"
     t.index ["ticket_listing_id"], name: "index_ticket_seat_holds_on_ticket_listing_id"
+    t.index ["ticket_subscription_id"], name: "index_ticket_seat_holds_on_ticket_subscription_id"
   end
 
   create_table "ticket_sources", force: :cascade do |t|
@@ -4641,6 +4646,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000700) do
     t.index ["organization_id", "position"], name: "index_ticket_sources_on_organization_id_and_position"
     t.index ["organization_id", "system_key"], name: "index_ticket_sources_on_organization_id_and_system_key", unique: true, where: "(system_key IS NOT NULL)"
     t.index ["organization_id"], name: "index_ticket_sources_on_organization_id"
+  end
+
+  create_table "ticket_subscriptions", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "ticket_pass_id", null: false
+    t.bigint "ticket_purchase_id"
+    t.bigint "follower_id"
+    t.bigint "renewed_from_id"
+    t.bigint "renewal_pass_id"
+    t.string "token", null: false
+    t.string "status", default: "pending", null: false
+    t.string "buyer_name"
+    t.string "buyer_email"
+    t.jsonb "seat_ids", default: [], null: false
+    t.integer "quantity", default: 1, null: false
+    t.integer "renewal_reminders", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["follower_id"], name: "index_ticket_subscriptions_on_follower_id"
+    t.index ["organization_id"], name: "index_ticket_subscriptions_on_organization_id"
+    t.index ["renewal_pass_id"], name: "index_ticket_subscriptions_on_renewal_pass_id"
+    t.index ["renewed_from_id"], name: "index_ticket_subscriptions_on_renewed_from_id"
+    t.index ["ticket_pass_id"], name: "index_ticket_subscriptions_on_ticket_pass_id"
+    t.index ["ticket_purchase_id"], name: "index_ticket_subscriptions_on_ticket_purchase_id"
+    t.index ["token"], name: "index_ticket_subscriptions_on_token", unique: true
   end
 
   create_table "ticket_tier_zones", force: :cascade do |t|
@@ -5433,6 +5463,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000700) do
   add_foreign_key "ticket_pass_shows", "ticket_passes"
   add_foreign_key "ticket_pass_shows", "ticket_tiers"
   add_foreign_key "ticket_passes", "organizations"
+  add_foreign_key "ticket_passes", "ticket_passes", column: "renews_from_id"
   add_foreign_key "ticket_price_changes", "organizations"
   add_foreign_key "ticket_price_changes", "ticket_listings"
   add_foreign_key "ticket_price_changes", "ticket_price_rules"
@@ -5461,8 +5492,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000700) do
   add_foreign_key "ticket_seat_hold_seats", "ticket_seat_holds"
   add_foreign_key "ticket_seat_holds", "organizations"
   add_foreign_key "ticket_seat_holds", "ticket_listings"
+  add_foreign_key "ticket_seat_holds", "ticket_subscriptions"
   add_foreign_key "ticket_seat_holds", "users", column: "created_by_id"
   add_foreign_key "ticket_sources", "organizations"
+  add_foreign_key "ticket_subscriptions", "followers"
+  add_foreign_key "ticket_subscriptions", "organizations"
+  add_foreign_key "ticket_subscriptions", "ticket_passes"
+  add_foreign_key "ticket_subscriptions", "ticket_passes", column: "renewal_pass_id"
+  add_foreign_key "ticket_subscriptions", "ticket_purchases"
+  add_foreign_key "ticket_subscriptions", "ticket_subscriptions", column: "renewed_from_id"
   add_foreign_key "ticket_tier_zones", "seat_sections"
   add_foreign_key "ticket_tier_zones", "ticket_tiers"
   add_foreign_key "ticket_tiers", "production_ticketings"

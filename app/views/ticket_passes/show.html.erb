@@ -34,7 +34,7 @@
   <% end %>
 
   <div class="text-center space-y-1.5">
-    <p class="text-sm font-medium text-pink-700">A pass for <%= pluralize(rows.size, "show") %></p>
+    <p class="text-sm font-medium text-pink-700"><%= @pass.subscription? ? "A subscription: your seats at #{pluralize(rows.size, 'show')}" : "A pass for #{pluralize(rows.size, 'show')}" %></p>
     <h1 class="text-3xl sm:text-4xl coustard-regular text-gray-900"><%= @pass.name %></h1>
   </div>
 
@@ -63,7 +63,29 @@
     <% end %>
   </div>
 
-  <% if @selling %>
+  <% if @selling && @seat_payload %>
+    <%# A subscription (advanced ticketing §2a): pick the seats you'll keep at every date. %>
+    <%= form_with url: tickets_pass_checkout_path(org: @ticketing_profile.slug, pass: @pass.slug, **embed_params), method: :post,
+          data: { turbo: false, controller: "seat-map", seat_map_mode_value: "buy", seat_map_max_value: max.to_i, seat_map_payload_value: @seat_payload.to_json } do %>
+      <%= render "tickets/bot_trap", id: "pass_website" %>
+      <div class="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+        <div class="px-5 py-4">
+          <div class="font-semibold text-gray-900">Pick your seats</div>
+          <div class="text-sm text-gray-600">The same seats at every show above. <span class="font-semibold text-gray-900"><%= number_to_currency(all_in / 100.0) %></span> a seat for the season<% if separately > all_in %>, <%= number_to_currency(separately / 100.0) %> bought one show at a time<% end %>.</div>
+        </div>
+        <div class="px-4 overflow-x-auto"><svg data-seat-map-target="svg" class="w-full h-auto" style="min-height: 200px" role="img" aria-label="Seat map"></svg></div>
+        <div class="px-5 py-3 text-xs text-gray-600">White seats are free on every date. Grey ones are taken on at least one.</div>
+        <div class="px-5 py-4 border-t border-gray-100 space-y-3">
+          <div data-seat-map-target="inputs"></div>
+          <div class="flex items-baseline justify-between gap-3">
+            <span class="text-sm text-gray-700"><span class="font-semibold tabular-nums" data-seat-map-target="count">0</span> picked <span class="text-gray-500" data-seat-map-target="summary"></span></span>
+          </div>
+          <%= render "shared/button", text: "Continue to checkout", variant: "primary", size: "jumbo", type: :submit %>
+          <p class="text-xs text-center text-gray-500">Prefer us to choose? <button type="submit" name="quantity" value="1" class="text-pink-700 hover:text-pink-800 font-medium">Best available, one seat</button>.</p>
+        </div>
+      </div>
+    <% end %>
+  <% elsif @selling %>
     <%= form_with url: tickets_pass_checkout_path(org: @ticketing_profile.slug, pass: @pass.slug, **embed_params), method: :post,
           data: { turbo: false, controller: "pass-picker",
                   pass_picker_base_value: per_pass_base, pass_picker_paid_value: paid_per_pass,

@@ -198,6 +198,16 @@ class TicketingTemplates
       body: %(<p>Hi {{first_name}},</p><p>You're on the waitlist for {{show_title}} on {{show_date}}. {{message}}</p>),
       variables: v(:first_name, :organization_name, :show_title, :show_date, :message) },
 
+    # --- Subscriptions (advanced ticketing §2a).
+    { key: "ticket_subscription_welcome", name: "Subscription: welcome", channel: "email",
+      subject: "Your seats for {{pass_name}}",
+      body: %(<p>Hi {{first_name}},</p><p>You're subscribed to {{pass_name}} at {{organization_name}}: {{seats}}, yours at all {{show_count}} shows. Each show's tickets are on <a href="{{subscription_url}}">your subscription page</a>, and they're emailed to you too.</p><p>Next season, you'll hear from us first: your seats are held for you to renew.</p>),
+      variables: v(:first_name, :organization_name, :pass_name, :seats, :show_count, :subscription_url) },
+    { key: "ticket_subscription_renewal", name: "Subscription: renew your seats", channel: "email",
+      subject: "Your seats are waiting: {{new_pass_name}}",
+      body: %(<p>Hi {{first_name}},</p><p>{{new_pass_name}} is here, and {{seats}} are held for you until {{closes_on}}. <a href="{{subscription_url}}">Renew your seats</a> and they're yours again at every show. After {{closes_on}} they go on general sale.</p><p>Want different seats? Reply to this email and we'll sort it before then.</p>),
+      variables: v(:first_name, :organization_name, :pass_name, :seats, :show_count, :subscription_url, :new_pass_name, :closes_on) },
+
     # --- Memberships (advanced ticketing §2b).
     { key: "ticket_membership_welcome", name: "Membership: welcome", channel: "email",
       subject: "Welcome to {{level_name}} at {{organization_name}}",

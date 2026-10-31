@@ -20,6 +20,7 @@ class TicketPurchase < ApplicationRecord
   # Credit passes bought in it (no show yet: credits used later).
   has_many :ticket_pass_holdings, -> { order(:id) }, dependent: :nullify
   has_many :ticket_memberships, -> { order(:id) }, dependent: :nullify
+  has_many :ticket_subscriptions, -> { order(:id) }, dependent: :nullify
   # A gift certificate paying for (some of) this checkout; the card pays the rest.
   belongs_to :ticket_gift_certificate, optional: true
   has_many :ticket_gift_certificate_redemptions, dependent: :nullify
@@ -127,6 +128,7 @@ class TicketPurchase < ApplicationRecord
       update!(status: "expired", expires_at: at)
       ticket_orders.where(status: "pending").update_all(status: "expired", expires_at: at, updated_at: at)
       ticket_memberships.where(status: "pending").update_all(status: "canceled", updated_at: at)
+      ticket_subscriptions.where(status: "pending").update_all(status: "canceled", updated_at: at)
       TicketGiftCertificates.release!(self)
     end
   end

@@ -74,6 +74,39 @@
     </div>
 
     <div class="space-y-4">
+      <% if @pass.subscription? %>
+        <div class="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+          <h2 class="text-sm font-semibold text-gray-900">Subscribers</h2>
+          <% if @subscribers.empty? %>
+            <p class="text-xs text-gray-500">Nobody yet. Each buys the same seats at every date.</p>
+          <% else %>
+            <ul class="divide-y divide-gray-100 text-sm">
+              <% @subscribers.each do |sub| %>
+                <li class="py-2"><span class="font-medium text-gray-900"><%= sub.buyer_name.presence || sub.buyer_email %></span> <span class="text-gray-500">· <%= sub.seat_labels.to_sentence %> · <%= sub.status_label %></span></li>
+              <% end %>
+            </ul>
+          <% end %>
+        </div>
+        <% if @pass.renews_from %>
+          <div class="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+            <h2 class="text-sm font-semibold text-gray-900">Renewal from <%= @pass.renews_from.name %></h2>
+            <% if @pass.renewal_closes_at %>
+              <p class="text-xs text-gray-600">Open until <%= @pass.renewal_closes_at.strftime("%b %-d, %Y") %>. <%= pluralize(@invited.count { |s| s.status == "renewed" }, "renewal") %> in, <%= @invited.count { |s| s.status == "renewal_open" } %> waiting, <%= @invited.count { |s| s.status == "released" } %> let go.</p>
+              <ul class="divide-y divide-gray-100 text-sm">
+                <% @invited.each do |sub| %>
+                  <li class="py-2"><span class="font-medium text-gray-900"><%= sub.buyer_name.presence || sub.buyer_email %></span> <span class="text-gray-500">· <%= sub.seat_labels.to_sentence %> · <%= sub.status_label %></span></li>
+                <% end %>
+              </ul>
+            <% else %>
+              <p class="text-xs text-gray-600"><%= pluralize(@pass.renews_from.subscriptions.where(status: "active").count, "subscriber") %> to invite. Their seats are held on every date here until the close, and they get an email with a Renew link; reminders go 14 and 3 days before.</p>
+              <%= form_with url: manage_ticket_pass_renewal_path(@pass), method: :post, data: { turbo: false }, class: "space-y-2" do %>
+                <label class="block text-xs font-medium text-gray-700">Renewal closes<%= datetime_field_tag :closes_at, nil, required: true, class: "block w-full mt-1 px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" %></label>
+                <%= render "shared/button", text: "Open renewal", variant: "primary", size: "small", type: :submit %>
+              <% end %>
+            <% end %>
+          </div>
+        <% end %>
+      <% end %>
       <div class="bg-white border border-gray-200 rounded-lg p-4">
         <div class="flex items-center justify-between gap-2">
           <h2 class="text-sm font-semibold text-gray-900">Pass page</h2>

@@ -12,6 +12,7 @@ class TicketSeatHold < ApplicationRecord
                   "outside_sale" => "Sold on another site", "manual" => "Held" }.freeze
 
   belongs_to :organization
+  belongs_to :ticket_subscription, optional: true
   belongs_to :ticket_listing
   belongs_to :owner, polymorphic: true, optional: true
   belongs_to :created_by, class_name: "User", optional: true

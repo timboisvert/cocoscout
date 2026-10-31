@@ -44,7 +44,8 @@
     <h2 class="text-sm font-semibold text-gray-900">What kind of pass</h2>
     <% [ [ "dated", "Fixed shows", "A seat at each show you pick below, taken when they buy. Like both nights of a two-part show." ],
          [ "punch_card", "Punch card", "A number of admissions, used later on any show it covers: five friends one night, or one person five nights." ],
-         [ "season", "Season pass", "One seat a show, at up to a number of shows it covers, picked later." ] ].each do |value, label, hint| %>
+         [ "season", "Season pass", "One seat a show, at up to a number of shows it covers, picked later." ],
+         [ "subscription", "Subscription", "The same seats at every show you pick below, on one seat chart. Next season, subscribers get first call on their seats." ] ].each do |value, label, hint| %>
       <label class="flex items-start gap-3 p-3 border border-gray-300 rounded-lg cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 transition-colors">
         <%= f.radio_button :kind, value, class: "mt-0.5 accent-pink-500" %>
         <span>
@@ -54,6 +55,15 @@
       </label>
     <% end %>
   </div>
+
+  <% previous = pass.organization.ticket_passes.where(kind: "subscription").where.not(id: pass.id).order(created_at: :desc).to_a %>
+  <% if previous.any? %>
+    <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-2">
+      <h2 class="text-sm font-semibold text-gray-900">A subscription that renews last season's</h2>
+      <p class="text-xs text-gray-600">Pick last season's subscription and, once this one's dates are in, open renewal from its page: every subscriber's seats are held for them until the close.</p>
+      <%= f.select :renews_from_id, options_for_select([ [ "Doesn't renew another", "" ] ] + previous.map { |p| [ p.name, p.id ] }, pass.renews_from_id), {}, class: input_class %>
+    </div>
+  <% end %>
 
   <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4" data-controller="nested-form">
     <div>

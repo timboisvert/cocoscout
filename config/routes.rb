@@ -420,6 +420,8 @@ Rails.application.routes.draw do
     post "membership-checkout/:token/pay",  to: "ticket_membership_purchases#pay",  as: "membership_purchase_pay"
     get  "membership-checkout/:token/done", to: "ticket_membership_purchases#done", as: "membership_purchase_done"
     get  "my-membership/:token",            to: "ticket_memberships#show",          as: "membership"
+    get  "my-subscription/:token",          to: "ticket_subscriptions#show",        as: "subscription"
+    post "my-subscription/:token/renew",    to: "ticket_subscriptions#renew",       as: "subscription_renew"
     post "my-membership/:token/renew",      to: "ticket_memberships#renew",         as: "membership_renew"
     # The waitlist (advanced ticketing plan §7b): join from a sold-out date; a place on the list has its own page.
     get    "waitlist/:token",          to: "ticket_waitlists#show",   as: "waitlist"
@@ -1417,6 +1419,7 @@ Rails.application.routes.draw do
     post   "ticketing/passes",                    to: "ticket_passes#create"
     get    "ticketing/passes/:id",                to: "ticket_passes#show",              as: "ticket_pass"
     get    "ticketing/passes/:id/edit",           to: "ticket_passes#edit",              as: "edit_ticket_pass"
+    post   "ticketing/passes/:id/renewal",        to: "ticket_passes#open_renewal",      as: "ticket_pass_renewal"
     patch  "ticketing/passes/:id",                to: "ticket_passes#update"
     delete "ticketing/passes/:id",                to: "ticket_passes#destroy"
     post   "ticketing/passes/:id/holdings/:holding_id/refund", to: "ticket_passes#refund_holding", as: "ticket_pass_holding_refund"

@@ -16,6 +16,10 @@ class TicketPassesController < TicketsController
     @rows = @pass.rows
     @selling = @pass.selling?(Time.current, @rows)
     @remaining = @pass.remaining(@rows)
+    if @pass.subscription? && @selling
+      @seat_payload = Ticketing::Subscriptions.payload(@pass, @rows)
+      @remaining = [ @remaining, Ticketing::Subscriptions.free_seats(@pass, @rows).size ].compact.min
+    end
   end
 
   def checkout
@@ -30,9 +34,11 @@ class TicketPassesController < TicketsController
       return redirect_to(tickets_pass_purchase_path(token: purchase.token, **embed_params))
     end
 
-    order = TicketCheckout.start_pass!(pass: pass, quantity: params[:quantity], client_ip: request.remote_ip,
+    seat_ids = Array(params[:seat_ids]).map(&:to_i).reject(&:zero?).uniq
+    quantity = pass.subscription? && seat_ids.any? ? seat_ids.size : params[:quantity]
+    order = TicketCheckout.start_pass!(pass: pass, quantity: quantity, client_ip: request.remote_ip,
                                        referrer: request.referer, via: cookies[ShortLinksController::COOKIE],
-                                       campaign: cookies[TicketsController::CAMPAIGN_COOKIE])
+                                       campaign: cookies[TicketsController::CAMPAIGN_COOKIE], seats: seat_ids.presence)
     redirect_to tickets_checkout_path(token: order.token, **embed_params)
   rescue TicketCheckout::Error, TicketPassCredits::Error => e
     redirect_to tickets_pass_path(org: params[:org], pass: params[:pass], **embed_params), alert: e.message

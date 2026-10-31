@@ -128,7 +128,9 @@ class TicketCheckout
   # held together for ten minutes in one checkout (one order per show, one
   # payment), every ticket carrying its show's share of the pass price. A
   # show without the seats stops the whole pass; nothing is held.
-  def self.start_pass!(pass:, quantity:, client_ip: nil, referrer: nil, via: nil, campaign: nil)
+  # seats: a subscription's picked seat ids (the same seats on every date);
+  # renewing: the subscription whose held seats this checkout takes.
+  def self.start_pass!(pass:, quantity:, client_ip: nil, referrer: nil, via: nil, campaign: nil, seats: nil, renewing: nil)
     rows = pass.rows
     raise Error, "This pass isn't on sale right now." unless pass.selling?(Time.current, rows)
 
@@ -143,12 +145,17 @@ class TicketCheckout
     shares = pass.shares(rows)
     fee_mode = pass.fee_mode(rows)
     short_link = via.present? ? ShortLink.live.where(organization: pass.organization).find_by(code: via.to_s.strip.upcase) : nil
+    seat_ids = pass.subscription? ? Ticketing::Subscriptions.seats_for!(pass, quantity, rows, seat_ids: seats, renewing: renewing) : nil
     orders = []
     ActiveRecord::Base.transaction do
       # Shows locked in one order, so two buyers' passes can't deadlock.
       reserve_all!(rows.sort_by(&:ticket_listing_id), quantity) do
         expires_at = TicketOrder::HOLD.from_now
         purchase = TicketPurchase.create!(organization: pass.organization, channel: "online", expires_at: expires_at)
+        if seat_ids
+          purchase.ticket_subscriptions.create!(organization: pass.organization, ticket_pass: pass, seat_ids: seat_ids, quantity: quantity,
+                                                renewed_from: renewing, buyer_name: renewing&.buyer_name, buyer_email: renewing&.buyer_email)
+        end
         rows.each_with_index do |row, index|
           order = TicketOrder.create!(organization: pass.organization, ticket_listing: row.ticket_listing, ticket_purchase: purchase,
                                       refund_policy: RefundPolicy.for(row.ticket_listing).to_snapshot,
@@ -158,7 +165,9 @@ class TicketCheckout
           # The regular price, less the pass's saving; a share above the
           # regular price is simply the price.
           price = [ row.ticket_tier.price_cents, shares[index] ].max
-          quantity.times { add_ticket(order, row.ticket_tier, price, price - shares[index], pass: pass) }
+          Ticketing::SeatPlan.with(seat_ids) do
+            quantity.times { add_ticket(order, row.ticket_tier, price, price - shares[index], pass: pass) }
+          end
           orders << order
         end
         purchase.price!
@@ -166,7 +175,9 @@ class TicketCheckout
     end
     orders.first.reload
   rescue Ticketing::Inventory::SoldOut
-    raise Error, "Sorry, one of the shows in this pass doesn't have enough seats left. Try fewer passes."
+    raise Error, (pass.subscription? ? "Sorry, those seats aren't free on every date anymore. Pick again." : "Sorry, one of the shows in this pass doesn't have enough seats left. Try fewer passes.")
+  rescue Ticketing::Subscriptions::Error => e
+    raise Error, e.message
   end
 
   # Holds each show's seats under its own lock, one after another, and runs

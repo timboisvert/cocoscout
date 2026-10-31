@@ -15,7 +15,9 @@ class TicketPass < ApplicationRecord
 
   # dated: fixed shows, seats taken at purchase. punch_card: N admissions to
   # use on what it covers, any mix. season: one seat a show, up to N shows.
-  KINDS = %w[dated punch_card season].freeze
+  # subscription: a dated pass whose buyers keep the same seats at every
+  # show (advanced ticketing §2a), renewed by invitation next season.
+  KINDS = %w[dated punch_card season subscription].freeze
   CREDIT_KINDS = %w[punch_card season].freeze
   SPLITS = %w[regular_price even custom].freeze
   STATUSES = %w[draft on_sale closed].freeze
@@ -25,6 +27,8 @@ class TicketPass < ApplicationRecord
   has_many :tickets, dependent: :restrict_with_error
   has_many :coverages, class_name: "TicketPassCoverage", dependent: :destroy, inverse_of: :ticket_pass
   has_many :holdings, class_name: "TicketPassHolding", dependent: :restrict_with_error
+  has_many :subscriptions, class_name: "TicketSubscription", dependent: :restrict_with_error
+  belongs_to :renews_from, class_name: "TicketPass", optional: true
   accepts_nested_attributes_for :pass_shows, allow_destroy: true, reject_if: ->(attrs) { attrs[:ticket_tier_id].blank? }
   accepts_nested_attributes_for :coverages, allow_destroy: true, reject_if: ->(attrs) { attrs[:production_id].blank? }
 
@@ -42,6 +46,7 @@ class TicketPass < ApplicationRecord
   validates :credits, numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: 100 }, if: :credit_kind?
   validates :ends_on, presence: true, if: :credit_kind?
   validate :covers_something, if: -> { credit_kind? && status == "on_sale" }
+  validate :one_chart_for_subscription, if: -> { subscription? && status == "on_sale" }
 
   before_validation { self.slug = name if slug.blank? && name.present? }
 
@@ -50,6 +55,8 @@ class TicketPass < ApplicationRecord
   def credit_kind?
     kind.in?(CREDIT_KINDS)
   end
+
+  def subscription? = kind == "subscription"
 
   # What one credit counts at the show it's used on.
   def credit_value_cents
@@ -147,6 +154,13 @@ class TicketPass < ApplicationRecord
 
   def covers_something
     errors.add(:base, "A pass used later needs at least one production it covers") if coverages.reject(&:marked_for_destruction?).empty?
+  end
+
+  # Every date of a subscription sells by the seat on one chart, so the same
+  # seats exist on each.
+  def one_chart_for_subscription
+    charts = pass_shows.reject(&:marked_for_destruction?).map { |row| row.ticket_listing&.effective_seat_chart }
+    errors.add(:base, "Every date of a subscription must sell reserved seats on the same chart.") if charts.any?(&:nil?) || charts.uniq.size > 1
   end
 
   def at_least_two_shows

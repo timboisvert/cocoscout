@@ -54,6 +54,7 @@ class TicketPurchaseSettlement
     TicketPurchaseConfirmationJob.perform_later(purchase.id) if orders.size > 1
     settle_passes!(purchase, payment_intent_id)
     settle_memberships!(purchase, payment_intent_id)
+    purchase.ticket_subscriptions.each { |subscription| Ticketing::Subscriptions.settle!(subscription, paid_at: purchase.paid_at || Time.current) }
     purchase
   end
 
