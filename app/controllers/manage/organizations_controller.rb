@@ -23,7 +23,7 @@ module Manage
     SECTIONS = %w[basic team locations services agreements billing danger].freeze
     SECTION_LABELS = {
       "basic" => "Basic Information",
-      "team" => "Team Members",
+      "team" => "People",
       "locations" => "Locations",
       "services" => "Services",
       "agreements" => "Agreements",

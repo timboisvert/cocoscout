@@ -1,45 +1,81 @@
-<div data-controller="org-role-notifications">
-  <div class="mt-4">
-    <div class="p-4 border border-gray-200 rounded-lg mb-4">
-      <h3 class="text-lg font-semibold mb-2">Global Role</h3>
-      <p class="text-sm text-gray-600 mb-3">
-        This role applies to all productions managed by <%= Current.organization.name %>.
-      </p>
-      <div class="flex flex-col md:flex-row md:items-center gap-4">
-        <div class="w-full md:w-96">
-          <%= form_with url: update_global_role_manage_team_path(user), method: :patch, data: { turbo: false, controller: "auto-submit" } do |f| %>
-            <%= select_tag :global_role,
-                options_for_select(
-                  [
-                    ["Manager (full access to all productions)", "manager"],
-                    ["Viewer (read-only access to all productions)", "viewer"]
-                  ],
-                  organization_role&.company_role || "viewer"
-                ),
-                class: "block shadow-sm rounded-lg border px-3 py-2 w-full border-gray-400",
-                data: { action: "change->auto-submit#submit change->org-role-notifications#roleChanged", "org-role-notifications-target": "roleSelect" }
-            %>
+<%# Access by module (OrganizationAccess): a template fills a grid of
+    None / View / Manage, one line per module; any change makes it Custom.
+    Managers have everything, so their grid is shown but can't be edited. %>
+<% current_template = organization_role&.company_role == "manager" ? "manager" : (organization_role&.access_template.presence || (organization_role&.module_grants.present? ? OrganizationAccess.template_for(organization_role.module_grants) : "custom")) %>
+<% current_grants = organization_role&.company_role == "manager" ? OrganizationAccess::MODULE_KEYS.index_with { "manage" } : (organization_role&.module_grants.presence || OrganizationAccess.grants_for_template("custom")) %>
+<% templates_json = OrganizationAccess::TEMPLATES.keys.index_with { |t| t == "manager" ? OrganizationAccess::MODULE_KEYS.index_with { "manage" } : OrganizationAccess.grants_for_template(t) }.to_json %>
+<% blurbs_json = OrganizationAccess::TEMPLATES.transform_values { |t| t[:blurb] }.to_json %>
+<div data-controller="access-grid"
+     data-access-grid-templates-value="<%= templates_json %>"
+     data-access-grid-blurbs-value="<%= blurbs_json %>"
+     data-access-grid-url-value="<%= update_access_manage_team_path(id: user.id) %>"
+     data-access-grid-template-value="<%= current_template %>">
+  <div class="p-4 border border-gray-200 rounded-lg mb-4">
+    <h3 class="text-lg font-semibold mb-1">What they can get to</h3>
+    <p class="text-sm text-gray-600 mb-3">
+      Start from a template, then change any line. A manager has everything in <%= Current.organization.name %>.
+    </p>
+    <div class="flex flex-wrap gap-2 mb-3">
+      <% OrganizationAccess::TEMPLATES.each do |key, t| %>
+        <button type="button"
+                data-access-grid-target="template"
+                data-template="<%= key %>"
+                data-action="click->access-grid#pickTemplate"
+                aria-pressed="<%= key == current_template %>"
+                class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium border transition-colors <%= key == current_template ? 'bg-pink-50 border-pink-300 text-pink-700' : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400' %>">
+          <%= t[:label] %>
+        </button>
+      <% end %>
+    </div>
+    <p class="text-sm text-gray-600 mb-4" data-access-grid-target="blurb"><%= OrganizationAccess::TEMPLATES.dig(current_template, :blurb) %></p>
+
+    <div class="border border-gray-200 rounded-lg overflow-hidden" data-access-grid-target="grid">
+      <div class="grid grid-cols-[1fr_64px_64px_72px] gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200 text-[11px] font-medium uppercase tracking-wide text-gray-500">
+        <span>Module</span><span class="text-center">None</span><span class="text-center">View</span><span class="text-center">Manage</span>
+      </div>
+      <% OrganizationAccess::MODULES.each do |m| %>
+        <% level = current_grants[m[:key]] || "none" %>
+        <div class="grid grid-cols-[1fr_64px_64px_72px] gap-2 items-center px-3 py-2 border-t border-gray-100 <%= m[:money] ? 'bg-gray-50/60' : '' %>">
+          <span class="text-sm <%= m[:money] ? 'pl-4 text-gray-700' : 'text-gray-900' %>">
+            <%= m[:label] %>
+            <% if m[:note] %><span class="block text-xs text-gray-500"><%= m[:note] %></span><% end %>
+          </span>
+          <% OrganizationAccess::LEVELS.each do |l| %>
+            <% locked = m[:key] == "productions" && l == "none" %>
+            <span class="flex justify-center">
+              <input type="radio" name="grants[<%= m[:key] %>]" value="<%= l %>" <%= "checked" if level == l %> <%= "disabled" if locked %>
+                     aria-label="<%= m[:label] %>: <%= l %>"
+                     data-action="change->access-grid#pickLevel"
+                     data-access-grid-target="radio"
+                     class="h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500 disabled:opacity-40">
+            </span>
           <% end %>
         </div>
-      </div>
+      <% end %>
+    </div>
+    <div class="mt-4 flex items-center justify-between gap-3">
+      <span class="text-sm text-gray-500" data-access-grid-target="status"></span>
+      <%= render "shared/button", text: "Save access", variant: "primary", size: "medium", type: :button,
+            data: { action: "click->access-grid#save", access_grid_target: "save" } %>
     </div>
   </div>
 
-<div class="mt-4" data-controller="team-remove">
-  <div class="p-4 border border-gray-200 rounded-lg mb-4">
-    <h3 class="text-lg font-semibold mb-2">Remove from Organization Team</h3>
-    <p class="text-sm text-gray-600 mb-3">
-      Removing this person will revoke all their global access to <%= Current.organization.name %>'s productions.
-    </p>
-    <%= render "shared/button",
-        text: "Remove from Team",
-        variant: "danger",
-        size: "medium",
-        type: :button,
-        data: {
-            team_remove_target: "removeButton",
-            action: "team-remove#remove",
-            url: remove_member_manage_team_index_path(id: user.id, format: :json)
-        } %>
+  <div data-controller="team-remove">
+    <div class="p-4 border border-gray-200 rounded-lg">
+      <h3 class="text-lg font-semibold mb-2">Remove from <%= Current.organization.name %></h3>
+      <p class="text-sm text-gray-600 mb-3">
+        They lose their access to all of <%= Current.organization.name %>'s productions. Their profiles and history stay.
+      </p>
+      <%= render "shared/button",
+          text: "Remove from the team",
+          variant: "secondary",
+          size: "medium",
+          type: :button,
+          data: {
+              team_remove_target: "removeButton",
+              action: "team-remove#remove",
+              url: remove_member_manage_team_index_path(id: user.id, format: :json)
+          } %>
+    </div>
   </div>
 </div>

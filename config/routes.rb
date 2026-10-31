@@ -1184,6 +1184,7 @@ Rails.application.routes.draw do
         get :permissions
         patch :update_production_permission
         patch :update_global_role
+        patch :update_access
       end
     end
 

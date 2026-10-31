@@ -63,6 +63,13 @@ module Manage
       # Services a show needs (Organization settings → Services)
       "manage/house_services" => :services,
       "manage/books" => :money,
+      "manage/settlement_days" => :money,
+      "manage/ticket_outside_sales" => :money,
+      "manage/money_records" => :money,
+      "manage/bank_statements" => :money,
+      "manage/bills" => :money,
+      "manage/invoices" => :money,
+      "manage/ticket_gift_certificates" => :ticketing,
       # Mailing lists
       "manage/mailing_lists" => :mailing_lists,
       "manage/mailing_list_settings" => :mailing_lists,
@@ -236,6 +243,9 @@ module Manage
       if Current.organization.feature_available?(feature)
         return unless MANAGER_ONLY_FEATURES.include?(feature)
         return if Current.user&.superadmin? || Current.organization.manageable_by?(Current.user)
+        # Access by module (OrganizationAccess): a bookkeeper, accountant or
+        # box office gets the parts of Pro their grid gives them.
+        return if OrganizationAccess.governed?(Current.user, Current.organization)
 
         return redirect_to(manage_path, notice: "That part of CocoScout is for your organization's managers.")
       end
@@ -250,6 +260,36 @@ module Manage
           render template: "manage/billing/feature_paywall", status: :payment_required
         end
         format.any { redirect_to org_billing_tab_path }
+      end
+    end
+
+    # Access by module (plan §9.11). Someone whose access is a grid
+    # (OrganizationAccess.governed?) gets each module at none, view or
+    # manage; this runs after require_paid_feature! so the plan check has
+    # already happened. Everyone else keeps the rules above.
+    def require_module_access!
+      return if Current.organization.nil? || Current.user.nil?
+      return unless OrganizationAccess.governed?(Current.user, Current.organization)
+
+      mod = OrganizationAccess.module_for_controller(controller_path)
+      return if mod.nil?
+
+      level = if mod == "money"
+        OrganizationAccess.money_level(Current.user, Current.organization)
+      else
+        OrganizationAccess.level(Current.user, Current.organization, mod)
+      end
+      return if level == "manage"
+      return if level == "view" && (request.get? || request.head?)
+
+      notice = if level == "none"
+        "That part of CocoScout isn't open to you. Ask one of your organization's managers."
+      else
+        "You can look at that but not change it. Ask one of your organization's managers."
+      end
+      respond_to do |format|
+        format.json { render json: { error: "forbidden", module: mod, level: level }, status: :forbidden }
+        format.any { redirect_to(level == "none" ? manage_path : (request.referer.presence || manage_path), notice: notice) }
       end
     end
 

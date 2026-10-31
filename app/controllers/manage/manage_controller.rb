@@ -33,6 +33,7 @@ module Manage
                   except: %i[index]
     # Pro-tier gate — runs after the org is loaded and access is confirmed.
     before_action :require_paid_feature!, if: -> { Current.user.present? }
+    before_action :require_module_access!
 
     before_action :note_mode_switch
     # A show canceled, taken away or moved by this request: the next page

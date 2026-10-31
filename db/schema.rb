@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_30_160100) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_31_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1752,6 +1752,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_30_160100) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "person_id"
+    t.jsonb "module_grants", default: {}, null: false
+    t.string "access_template"
     t.index ["organization_id"], name: "index_organization_roles_on_organization_id"
     t.index ["user_id", "organization_id"], name: "index_organization_roles_on_user_id_and_organization_id", unique: true
     t.index ["user_id"], name: "index_organization_roles_on_user_id"
