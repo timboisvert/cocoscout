@@ -435,8 +435,117 @@ settle) → D1 → D2 → D3 (file import) → E1 → E2 → E3 → F.
 
 ### 9.5 Screens added or changed (canvas row 7)
 
+(See also 9.6 to 9.11, Tim's second round the same day, canvas row 8.)
+
 - Money hub: the to-do strip at the top; Settle up is the first card (changed).
 - Money → Settle up: the list of days, each with its pieces and state (new).
 - A day's worksheet: Friday Oct 24 with two shows, the bar, tips, door cash (new).
 - Organization settings → Integrations (new).
 - Square's page: locations, categories, schedule, pull log (new).
+
+### 9.6 When a day ends: smart days (Tim, 10/31, second round)
+
+A theater's day doesn't end at midnight. Shows end at 11:30, the bar rings until
+12:15, the staff clock out at 2; that's all Friday's money. So:
+
+- **Money → Settings → Settle up** gets "When a day ends", **on by default: when
+  things stop.** A day starts at 6 am and runs until two quiet hours after the last
+  thing that happened: a ticket scanned or sold at the door, a bar order, a staff
+  clock-out, a door session closed. Nothing before 6 am is ever tomorrow. The
+  page explains it in those words, with the Friday example.
+- **Off: at midnight.** Strict by calendar date in the organization's time zone, for
+  anyone whose accountant wants it that way.
+- The rule decides which day a Square order, a door sale, a cash count and a
+  staff shift belong to, so a Square pull reads until the day actually ended.
+  Square's own "night ends at" setting goes away; its page says "days follow your
+  Settle up setting". Online ticket sales are unaffected: they count on show
+  night either way.
+- Stored as `organizations.settlement_day_mode` (`smart` / `calendar`) and
+  `settlement_day_starts_at` (default 6:00). `SettlementDay.for(time)` is the one
+  place that answers "which day is this?", and everything that files money by day
+  calls it.
+
+### 9.7 Reopening a settled day
+
+A settled day can be reopened, changed and settled again: a share charged a
+little less because someone did a great job, a count fixed later. Reopen asks
+why (kept with the day). Nothing changes until something is edited and the day
+is settled again; then the books restate by reversal (old entries reversed, new
+ones dated the original day, both kept, as always). If a payout run already paid
+out of that day, the difference rides the next run as an adjustment, up or down;
+a contract share already paid becomes money owed one way or the other, on the
+Owed to you page or as a bill. A reopened day shows on the to-do strip again.
+
+### 9.8 Outside tickets are a worksheet, shared with Ticketing
+
+Not one box. The outside-tickets line on a show opens a pop-up: each outside
+source (Eventbrite, HotTix, named in Money settings) by each ticket type (14 VIP
+for $630.00, 26 GA for $650.00). These are `TicketOutsideSale` rows (listing ×
+tier × source), the same ones the show's ticketing page already shows and edits,
+so a number typed while settling up appears in Ticketing and the other way
+round. Each type's remaining seats shrink by its count, as today. The source's
+total feeds the show's ticket line.
+
+### 9.9 The day's page: pick any day
+
+The day worksheet's header has the previous and next day on either side and the
+shared month calendar (`shared/_month_calendar`) in the middle, opening on the
+date; days with money in them are marked, settled ones ticked.
+
+### 9.10 Integrations page sections
+
+Registers and bars; Tickets sold elsewhere; Your bank (its own section). No
+"already part of CocoScout" section.
+
+### 9.11 Access by module (an extension of the organization team)
+
+Today an organization's people are owners, managers, viewers or members, plus
+production team managers on productions, Ticket Sales viewers, door access
+grants, and (planned, E3) accountant seats. Tim wants to bring in a bookkeeper
+without handing them contracts, mailing lists, courses and the rest.
+
+- **One idea:** every grant is "this person, this module, this much": none, view,
+  or manage. Money splits a little finer, because that's where it's needed:
+  Settle up, Payouts, Bills and invoices, Books, Money settings. Productions keep
+  their production team managers as they are.
+- **Templates** fill the grid; the grants are what's stored, so a template is a
+  starting point, not a role to maintain: **Owner** (everything, the organization
+  itself), **Manager** (everything but the organization's own settings and billing,
+  today's manager), **Bookkeeper** (all of Money: settle up, record, bills,
+  invoices, Books; payouts to review but not send; view Staffing hours and
+  Contracts), **Accountant** (view and download all of Money, change nothing;
+  replaces E3's seat), **Box office** (Ticketing, the door, Products; view Shows),
+  **Show scheduler** (Shows and events, Contracts, Casting; view Money's Settle up
+  for their shows), **Education manager** (Courses and their contracts, Sign-ups;
+  view Money for courses), **Marketing** (Mailing lists, Documents, the public
+  pages). Custom is any grid.
+- **Where:** Organization settings → People, which is the organization team page
+  reimagined: a row per person with their template chip, and a sheet per person
+  with the template picker and the grid. Ticket Sales viewers and door access
+  grants become rows here with the Box office template; the accountant seat is
+  the Accountant template. Invitations work as today (search first, create only
+  when nobody is found).
+- **Underneath:** `OrganizationRole` keeps `company_role` for owner/manager; a
+  new `module_grants` (jsonb: module → none/view/manage) on the role, read by one
+  helper (`can?(:manage, :books)`) that every module's gate and nav item calls.
+  Pro modules stay owners-and-managers-only by default; a grant is how a
+  non-manager gets in, which keeps [[pro-modules-managers-only]] true in spirit:
+  the owner decides who sees what.
+- **Sizing:** it touches every module's gating, so it is its own piece of work,
+  best done first in 1.3 (before C0) because Books needs the bookkeeper and
+  accountant templates and E3 collapses into it. Two to three days of plumbing,
+  most of it replacing scattered `before_action`s with the one helper.
+
+### 9.12 Decisions added in the second round
+
+18. Smart days on by default: a day runs from 6 am until two quiet hours after
+    the last thing that happened; "at midnight" is the switch. [Yes]
+19. A settled day can be reopened with a reason; differences restate the books
+    and ride the next payout run. [Yes]
+20. Outside tickets are TicketOutsideSale rows, edited from either Ticketing or
+    the day's worksheet. [Yes]
+21. Access by module, with templates, replaces the accountant seat and absorbs
+    Ticket Sales viewers and door grants; built first in 1.3. [Yes]
+22. The Overview's money strip is four boxes: the CocoScout balance with the tax
+    set-aside shown inside it, waiting on upcoming shows, owed to payees, bank.
+    [Yes]
