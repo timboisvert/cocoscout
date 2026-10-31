@@ -26,6 +26,7 @@ module Ticketing
         ends_at: @listing.ends_at&.iso8601,
         selling: @listing.selling?,
         sold_out: inventory.sold_out?,
+        waitlist: @listing.waitlist_open?(inventory),
         online: @show.is_online,
         minimum_age: @listing.effective_minimum_age,
         venue: venue,

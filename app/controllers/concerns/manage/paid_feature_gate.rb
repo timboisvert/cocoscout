@@ -70,6 +70,7 @@ module Manage
       "manage/bills" => :money,
       "manage/invoices" => :money,
       "manage/ticket_gift_certificates" => :ticketing,
+      "manage/ticket_waitlists" => :ticketing,
       # Mailing lists
       "manage/mailing_lists" => :mailing_lists,
       "manage/mailing_list_settings" => :mailing_lists,

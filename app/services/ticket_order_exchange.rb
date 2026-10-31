@@ -166,6 +166,7 @@ class TicketOrderExchange
     end
     TicketSalesSync.sync!(listing.show)
     TicketSalesSync.sync!(target.show)
+    WaitlistOfferJob.perform_later(listing.id) if listing.waitlist_entries.live.exists?
     TicketingMilestones.check!(target)
     TicketOrderMailer.moved(exchange).deliver_later if email_them && order.buyer_email.present?
     exchange

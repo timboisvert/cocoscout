@@ -1,0 +1,79 @@
+<% content_for :title, "Waitlist · #{@listing.display_title}" %>
+<% live = @waiting + @offered %>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: ticket_listing_breadcrumbs(@listing),
+    text: "Waitlist",
+    links: live.any? ? [
+      { text: "Offer free seats now", path: manage_ticket_listing_waitlist_offer_path(@listing), method: :post, icon: "ticket" },
+      { text: "Email everyone waiting", type: :button, icon: "mail", data: { controller: "modal", action: "click->modal#open", modal_id: "waitlist-note" } }
+    ] : []
+  } %>
+
+  <% unless @listing.production_ticketing&.waitlist? %>
+    <%= render "shared/alert_panel", eyebrow: "Waitlist off", headline: "This production's waitlist is off",
+          body: "Sold-out dates don't take names until it's on, in the production's Sales settings.",
+          actions: [ { text: "Sales settings", path: manage_edit_production_ticketing_path(@listing.production, section: "sales") } ] %>
+  <% end %>
+
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+    <% [ [ "Waiting", @waiting.size, "#{pluralize(@waiting.sum(&:quantity), 'ticket')} wanted" ], [ "Offers out", @offered.size, "held 30 minutes each" ],
+         [ "Bought", @entries.count { |e| e.status == 'bought' }, "from the list" ], [ "Missed", @entries.count { |e| e.status == 'missed' }, "offer passed on" ] ].each do |label, n, note| %>
+      <div class="rounded-lg px-4 py-3 <%= n.positive? ? 'bg-pink-50 border border-pink-100' : 'bg-white border border-gray-200' %>">
+        <div class="text-xs text-gray-500"><%= label %></div>
+        <div class="text-xl font-bold tabular-nums text-gray-900 mt-0.5"><%= n %></div>
+        <div class="text-xs text-gray-500 mt-0.5"><%= note %></div>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-lg mb-6">
+    <%= render "shared/section_heading", title: "In line", intro: "First come, first offered. Seats go to the first party they fit." %>
+    <% if live.empty? %>
+      <div class="p-4"><%= render "shared/empty_state", compact: true, icon: "people", title: "Nobody's waiting", body: "When the date sells out, its page takes names here." %></div>
+    <% else %>
+      <ul class="divide-y divide-gray-100">
+        <% live.each_with_index do |entry, i| %>
+          <li class="flex flex-wrap items-center gap-3 px-5 py-3">
+            <span class="w-6 text-sm font-semibold text-gray-400 tabular-nums"><%= i + 1 %></span>
+            <span class="min-w-0 flex-1">
+              <span class="block text-sm font-semibold text-gray-900"><%= entry.name %> <span class="font-normal text-gray-500">· <%= pluralize(entry.quantity, "ticket") %><%= ", together" if entry.preference == "together" %></span></span>
+              <span class="block text-xs text-gray-500"><%= entry.email %><% if entry.phone.present? %> · <%= entry.phone %><% end %> · joined <%= entry.created_at.strftime("%b %-d, %-l:%M %p") %></span>
+            </span>
+            <span class="text-xs font-medium <%= entry.offered? ? 'text-amber-700' : 'text-gray-600' %>"><%= entry.status_label %></span>
+            <% if entry.offered? && entry.offer_order %>
+              <%= link_to "Order", manage_ticket_order_path(entry.offer_order), class: "text-xs font-medium text-pink-600 hover:text-pink-700" %>
+            <% end %>
+            <% cid = "remove-waitlist-#{entry.id}" %>
+            <%= render "shared/button", text: "Remove", variant: "ghost", size: "xs", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
+            <%= render "shared/confirm_modal", id: cid, title: "Take #{entry.name} off the list?", message: "They won't be offered seats#{' and the seats held for them go back' if entry.offered?}.",
+                  confirm_text: "Remove", url: manage_ticket_listing_waitlist_entry_path(@listing, entry), method: :delete %>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </div>
+
+  <% if @done.any? %>
+    <div class="bg-white border border-gray-200 rounded-lg">
+      <%= render "shared/section_heading", title: "Done" %>
+      <ul class="divide-y divide-gray-100">
+        <% @done.each do |entry| %>
+          <li class="flex items-center gap-3 px-5 py-2.5 text-sm">
+            <span class="min-w-0 flex-1 text-gray-900"><%= entry.name %> <span class="text-gray-500">· <%= pluralize(entry.quantity, "ticket") %></span></span>
+            <span class="text-xs text-gray-500"><%= entry.status_label %></span>
+            <% if entry.status == "bought" && entry.offer_order %><%= link_to "Order", manage_ticket_order_path(entry.offer_order), class: "text-xs font-medium text-pink-600 hover:text-pink-700" %><% end %>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <% if live.any? %>
+    <%= render "shared/send_draft_modal", id: "waitlist-note", title: "Email everyone waiting", url: manage_ticket_listing_waitlist_note_path(@listing), submit_text: "Send",
+          recipients: live.map { |e| { id: e.id, name: e.name, email: e.email, detail: pluralize(e.quantity, "ticket") } },
+          draft: { subject: @draft[:subject], body: @draft[:body] },
+          hint: "{{first_name}} becomes each person's first name. Say what's new: another date on sale, more seats, the show moved." %>
+  <% end %>
+</div>

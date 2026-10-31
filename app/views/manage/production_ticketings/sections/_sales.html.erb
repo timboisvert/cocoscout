@@ -24,6 +24,13 @@
       <%= f.select :low_stock_threshold, options_for_select(low_stock_choices(setup.low_stock_threshold), setup.low_stock_threshold || TicketListing::LOW_STOCK_DEFAULT), {}, class: input_class %>
       <p class="text-xs text-gray-500 mt-1">The note appears beside a ticket type on your ticket page once that few seats remain, for example "Only 3 left". You also get one email when a date gets that low.</p>
     </div>
+    <label class="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+      <%= f.check_box :waitlist, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+      <span>
+        <span class="block text-sm font-medium text-gray-900">Waitlist when a date sells out</span>
+        <span class="block text-xs text-gray-600 mt-0.5">A sold-out date's page takes names. When seats come back (a refund, a move, a lapsed checkout), the first party that fits gets them by email, held for 30 minutes; a missed offer passes to the next person.</span>
+      </span>
+    </label>
     <p class="text-sm text-gray-600">
       Tax: <%= tax.set? ? "#{tax.percent}% #{tax.name.downcase}, #{tax.mode == 'included' ? 'included in prices' : 'added at checkout'}" : "none" %>.
       <%= link_to "Change in Ticketing settings", manage_ticketing_settings_section_path(section: "tax"), class: "text-pink-600 hover:text-pink-700" %>

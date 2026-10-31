@@ -57,6 +57,7 @@ class TicketOrderSettlement
     end
 
     if settled
+      Ticketing::Waitlist.bought!(order)
       TicketSalesSync.sync!(order.ticket_listing.show)
       TicketOrderConfirmationJob.perform_later(order.id) if confirm && order.buyer_email.present?
       TicketingAfterSaleJob.perform_later(order.id)

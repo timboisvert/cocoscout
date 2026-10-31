@@ -415,6 +415,9 @@ Rails.application.routes.draw do
     get  "pass-checkout/:token/done",  to: "ticket_pass_purchases#done", as: "pass_purchase_done"
     get  "my-pass/:token",             to: "ticket_pass_holdings#show",  as: "pass_holding"
     post "my-pass/:token/use",         to: "ticket_pass_holdings#use",   as: "pass_holding_use"
+    # The waitlist (advanced ticketing plan §7b): join from a sold-out date; a place on the list has its own page.
+    get    "waitlist/:token",          to: "ticket_waitlists#show",   as: "waitlist"
+    delete "waitlist/:token",          to: "ticket_waitlists#destroy"
     get  ":org",                       to: "tickets#box_office",      as: "box_office"
     # A pass: several shows sold together (TicketPass).
     get  ":org/passes/:pass",          to: "ticket_passes#show",      as: "pass"
@@ -423,6 +426,7 @@ Rails.application.routes.draw do
     # (never an internal id).
     get  ":org/:event",                to: "tickets#event",           as: "event"
     post ":org/:event/checkout",       to: "ticket_checkouts#create", as: "start_checkout"
+    post ":org/:event/waitlist",       to: "ticket_waitlists#create", as: "join_waitlist"
   end
 
   # The door on show night: check-in and door sales, for managers and anyone a
@@ -1440,6 +1444,11 @@ Rails.application.routes.draw do
     get    "ticketing/shows/:id/guests",          to: "ticket_listings#guests",          as: "ticket_listing_guests"
     get    "ticketing/shows/:id/door-list",       to: "ticket_listings#door_list",       as: "ticket_listing_door_list"
     get    "ticketing/shows/:id/comps/new",       to: "ticket_comps#new",                as: "new_ticket_listing_comps"
+    # A date's waitlist: who's waiting, offers out, a note to everyone waiting.
+    get    "ticketing/shows/:id/waitlist",        to: "ticket_waitlists#show",           as: "ticket_listing_waitlist"
+    post   "ticketing/shows/:id/waitlist/note",   to: "ticket_waitlists#send_note",      as: "ticket_listing_waitlist_note"
+    post   "ticketing/shows/:id/waitlist/offer",  to: "ticket_waitlists#offer",          as: "ticket_listing_waitlist_offer"
+    delete "ticketing/shows/:id/waitlist/:entry_id", to: "ticket_waitlists#destroy",     as: "ticket_listing_waitlist_entry"
     # Visibility: who can see a show's (or a whole production's) sales —
     # producers, performers — share, invite, revoke.
     get    "ticketing/shows/:id/visibility",         to: "ticket_sales_viewers#index",   as: "ticket_listing_visibility"

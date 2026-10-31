@@ -139,6 +139,7 @@ module Manage
       raw = params.require(:production_ticketing)
       permitted = raw.permit(:max_per_order, :fee_mode, :low_stock_threshold, :title, :description,
                              :door_note, :age_note, :accessibility_note).to_h.transform_values(&:presence)
+      permitted[:waitlist] = raw[:waitlist] == "1" if raw.key?(:waitlist)
       if raw.key?(:age_choice)
         age = AgeLimit.value_for(raw[:age_choice], raw[:age_other])
         return redirect_to(section_path("sales"), alert: "Type an age from 1 to 99.") if age == :invalid

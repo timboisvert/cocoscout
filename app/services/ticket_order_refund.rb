@@ -184,6 +184,8 @@ class TicketOrderRefund
     end
 
     complete!(order, listing, refund)
+    # The seats that came back go to the waitlist.
+    WaitlistOfferJob.perform_later(listing.id) if listing.waitlist_entries.live.exists?
     # A comp canceled has no money in it, but the guest still hears their
     # tickets stopped working.
     if notify && order.buyer_email.present? && (refund.amount_cents.positive? || order.money_path == "none")

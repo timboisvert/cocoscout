@@ -29,6 +29,9 @@
     <p class="px-5 py-6 text-center text-gray-700">
       <%= note || (preview ? "This page is a preview. Buyers can't see it until the show is on sale." : "Tickets aren't on sale right now.") %>
     </p>
+    <% if !preview && listing.waitlist_open?(inventory) %>
+      <%= render "tickets/waitlist_form", listing: listing, profile: profile %>
+    <% end %>
   <% elsif tiers.empty? %>
     <p class="px-5 py-6 text-center text-gray-700">No tickets are on sale right now.</p>
   <% else %>

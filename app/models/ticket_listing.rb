@@ -29,6 +29,7 @@ class TicketListing < ApplicationRecord
   has_many :ticket_discount_codes, dependent: :destroy
   has_many :ticket_order_items
   has_many :ticket_outside_sales, dependent: :destroy
+  has_many :waitlist_entries, class_name: "TicketWaitlistEntry", dependent: :destroy
 
   # Prices are edited in place on the listing page; an empty new row is skipped.
   accepts_nested_attributes_for :ticket_tiers, allow_destroy: true,
@@ -250,6 +251,11 @@ class TicketListing < ApplicationRecord
 
   def inventory
     Ticketing::Inventory.new(self)
+  end
+
+  # People can join this date's waitlist right now (Ticketing::Waitlist).
+  def waitlist_open?(inventory = self.inventory)
+    Ticketing::Waitlist.open?(self, inventory)
   end
 
   private

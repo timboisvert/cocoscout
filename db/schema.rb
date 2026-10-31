@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_01_000100) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_01_000200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2515,6 +2515,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000100) do
     t.boolean "team_comps"
     t.string "team_comps_limit"
     t.integer "team_comps_per_show"
+    t.boolean "waitlist", default: false, null: false
     t.index ["organization_id"], name: "index_production_ticketings_on_organization_id"
     t.index ["production_id"], name: "index_production_ticketings_on_production_id", unique: true
   end
@@ -4163,6 +4164,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000100) do
     t.jsonb "follow_list_ids", default: [], null: false
     t.bigint "ticket_gift_certificate_id"
     t.integer "gift_certificate_cents", default: 0, null: false
+    t.boolean "waitlist_offer", default: false, null: false
     t.index ["buyer_email"], name: "index_ticket_orders_on_buyer_email"
     t.index ["code"], name: "index_ticket_orders_on_code", unique: true
     t.index ["exchanged_from_id"], name: "index_ticket_orders_on_exchanged_from_id"
@@ -4432,6 +4434,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000100) do
     t.index ["production_ticketing_id"], name: "index_ticket_tiers_on_production_ticketing_id"
     t.index ["source_tier_id"], name: "index_ticket_tiers_on_source_tier_id"
     t.index ["ticket_listing_id"], name: "index_ticket_tiers_on_ticket_listing_id"
+  end
+
+  create_table "ticket_waitlist_entries", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "ticket_listing_id", null: false
+    t.string "name", null: false
+    t.string "email", null: false
+    t.string "phone"
+    t.integer "quantity", default: 1, null: false
+    t.string "preference", default: "any", null: false
+    t.integer "position", default: 0, null: false
+    t.string "status", default: "waiting", null: false
+    t.datetime "offered_at"
+    t.datetime "offer_expires_at"
+    t.bigint "offer_order_id"
+    t.string "token", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["offer_order_id"], name: "index_ticket_waitlist_entries_on_offer_order_id"
+    t.index ["organization_id"], name: "index_ticket_waitlist_entries_on_organization_id"
+    t.index ["ticket_listing_id", "email"], name: "index_ticket_waitlist_entries_one_live_per_email", unique: true, where: "((status)::text = ANY ((ARRAY['waiting'::character varying, 'offered'::character varying])::text[]))"
+    t.index ["ticket_listing_id", "status", "position"], name: "idx_on_ticket_listing_id_status_position_868817f215"
+    t.index ["ticket_listing_id"], name: "index_ticket_waitlist_entries_on_ticket_listing_id"
+    t.index ["token"], name: "index_ticket_waitlist_entries_on_token", unique: true
   end
 
   create_table "ticketing_access_grants", force: :cascade do |t|
@@ -5153,6 +5179,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000100) do
   add_foreign_key "ticket_tiers", "ticket_listings"
   add_foreign_key "ticket_tiers", "ticket_tiers", column: "bundle_of_tier_id"
   add_foreign_key "ticket_tiers", "ticket_tiers", column: "source_tier_id"
+  add_foreign_key "ticket_waitlist_entries", "organizations"
+  add_foreign_key "ticket_waitlist_entries", "ticket_listings"
+  add_foreign_key "ticket_waitlist_entries", "ticket_orders", column: "offer_order_id"
   add_foreign_key "ticketing_access_grants", "organizations"
   add_foreign_key "ticketing_access_grants", "users", column: "granted_by_id", on_delete: :nullify
   add_foreign_key "ticketing_access_grants", "users", column: "revoked_by_id", on_delete: :nullify

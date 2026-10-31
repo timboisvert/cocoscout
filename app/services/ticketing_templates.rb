@@ -180,6 +180,24 @@ class TicketingTemplates
       body: %(<p>Canceling <strong>{{show_title}}</strong> on {{show_date}} is done: {{refunded_count}} refunded, {{refunded_amount}} in all.{{#failed_count}} {{failed_count}} couldn't be refunded; open each order to try again.{{/failed_count}}</p><p><a href="{{orders_url}}">Orders for this show</a></p>#{FOOTER}),
       variables: SHOW_VARS + v(:refunded_count, :refunded_amount, :failed_count, :orders_url) },
 
+    # --- The waitlist (advanced ticketing plan §7b), in the theater's frame.
+    { key: "ticket_waitlist_joined", name: "Waitlist: you're on the list", channel: "email",
+      subject: "You're on the list for {{show_title}}",
+      body: %(<p>Hi {{first_name}},</p><p>You're on the waitlist for <strong>{{show_title}}</strong> on {{show_date}} at {{show_time}}, for {{ticket_count}}. If seats come back, we'll email you an offer with a link to buy them; the offer holds the seats for half an hour.</p><p><a href="{{waitlist_url}}">Your place on the list</a> (leave it there any time).</p>),
+      variables: v(:first_name, :organization_name, :show_title, :show_date, :show_time, :ticket_count, :waitlist_url, :show_page_url) },
+    { key: "ticket_waitlist_offer", name: "Waitlist: seats are yours for a while", channel: "email",
+      subject: "Seats opened up: {{show_title}}, {{show_date}}",
+      body: %(<p>Hi {{first_name}},</p><p>Seats came back for <strong>{{show_title}}</strong> on {{show_date}} at {{show_time}}: {{ticket_count}} are held for you until {{offer_until}} ({{minutes}} minutes).</p><p><a href="{{checkout_url}}">Buy your tickets</a></p><p>If you don't, they go to the next person on the list.</p>),
+      variables: v(:first_name, :organization_name, :show_title, :show_date, :show_time, :ticket_count, :offer_until, :minutes, :checkout_url, :waitlist_url) },
+    { key: "ticket_waitlist_missed", name: "Waitlist: the offer passed", channel: "email",
+      subject: "Those seats went to the next person: {{show_title}}",
+      body: %(<p>Hi {{first_name}},</p><p>The seats we held for <strong>{{show_title}}</strong> on {{show_date}} weren't bought in time, so they went to the next person on the list. <a href="{{show_page_url}}">The show's page</a> has every date on sale.</p>),
+      variables: v(:first_name, :organization_name, :show_title, :show_date, :show_time, :show_page_url) },
+    { key: "ticket_waitlist_note", name: "Waitlist: a note from the box office", channel: "email",
+      subject: "About {{show_title}} on {{show_date}}",
+      body: %(<p>Hi {{first_name}},</p><p>You're on the waitlist for {{show_title}} on {{show_date}}. {{message}}</p>),
+      variables: v(:first_name, :organization_name, :show_title, :show_date, :message) },
+
     # --- Invitations and producers.
     { key: "ticketing_door_invitation", name: "Ticketing: door access invitation", channel: "email",
       subject: "{{organization_name}} invited you to work the door",

@@ -14,5 +14,7 @@ class ExpireTicketHoldsJob < ApplicationJob
     TicketOrder.stale.update_all(status: "expired", updated_at: Time.current)
     TicketPurchase.stale.update_all(status: "expired", updated_at: Time.current)
     CourseRegistration.stale.update_all(status: "expired", updated_at: Time.current)
+    # Seats a lapsed hold gave back go to the waitlist.
+    WaitlistOfferJob.perform_later if TicketWaitlistEntry.live.exists?
   end
 end

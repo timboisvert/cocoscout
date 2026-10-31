@@ -42,6 +42,7 @@ module Manage
       # The Sold elsewhere modal: the organization's other sites and what each sold here, by type.
       @outside_sources = Current.organization.ticket_sources.hand_made.active.ordered.to_a
       @outside_rows = @listing.ticket_outside_sales.index_by { |row| [ row.ticket_source_id, row.ticket_tier_id ] }
+      @waitlist_count = @listing.waitlist_entries.live.count
     end
 
     # Everyone holding tickets, as a spreadsheet.

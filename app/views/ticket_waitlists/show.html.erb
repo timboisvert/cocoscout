@@ -1,0 +1,38 @@
+<% content_for :title, "Waitlist · #{@listing.display_title}" %>
+<% show = @listing.show %>
+<div class="mx-auto max-w-xl space-y-5">
+  <div class="text-center space-y-1.5">
+    <h1 class="text-3xl coustard-regular text-gray-900"><%= @listing.display_title %></h1>
+    <p class="text-base text-gray-800"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %></p>
+    <% if show.location %><p class="text-sm text-gray-600"><%= show.location.name %></p><% end %>
+  </div>
+  <div class="rounded-2xl border border-gray-200 bg-white px-5 py-6 text-center space-y-3">
+    <% case @entry.status %>
+    <% when "waiting" %>
+      <p class="text-lg font-semibold text-gray-900">You're on the waitlist</p>
+      <p class="text-gray-700"><%= pluralize(@entry.quantity, "ticket") %> for <%= @entry.name %>. <%= @ahead.zero? ? "You're first in line." : "#{pluralize(@ahead, 'party')} ahead of you." %></p>
+      <p class="text-sm text-gray-600">If seats come back, we'll email <%= @entry.email %> an offer, held for 30 minutes.</p>
+      <% cid = "leave-waitlist" %>
+      <%= render "shared/button", text: "Leave the list", variant: "secondary", size: "small", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
+      <%= render "shared/confirm_modal", id: cid, title: "Leave the waitlist?", message: "You won't be offered seats for this date.", confirm_text: "Leave the list",
+            url: tickets_waitlist_path(token: @entry.token, **embed_params), method: :delete %>
+    <% when "offered" %>
+      <p class="text-lg font-semibold text-gray-900">Seats are held for you</p>
+      <p class="text-gray-700"><%= pluralize(@entry.quantity, "ticket") %>, until <%= @entry.offer_expires_at.strftime("%-l:%M %p") %>.</p>
+      <% if @entry.offer_order %>
+        <%= link_to tickets_checkout_path(token: @entry.offer_order.token, **embed_params) do %>
+          <%= render "shared/button", text: "Buy your tickets", variant: "primary", size: "jumbo" %>
+        <% end %>
+      <% end %>
+    <% when "bought" %>
+      <p class="text-lg font-semibold text-gray-900">You bought your tickets</p>
+      <% if @entry.offer_order %><%= link_to "Your tickets", tickets_order_path(token: @entry.offer_order.token, **embed_params), class: "text-pink-700 hover:text-pink-800 font-medium" %><% end %>
+    <% when "missed" %>
+      <p class="text-lg font-semibold text-gray-900">That offer passed</p>
+      <p class="text-gray-700">The seats went to the next person. <%= link_to "See every date on sale", tickets_event_path(org: @ticketing_profile.slug, event: @listing.production.public_key, **embed_params), class: "text-pink-700 hover:text-pink-800" %>.</p>
+    <% else %>
+      <p class="text-lg font-semibold text-gray-900">You've left the list</p>
+      <p class="text-gray-700"><%= link_to "Back to the show", tickets_event_path(org: @ticketing_profile.slug, event: @listing.slug, **embed_params), class: "text-pink-700 hover:text-pink-800" %></p>
+    <% end %>
+  </div>
+</div>
