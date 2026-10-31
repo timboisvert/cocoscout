@@ -1376,6 +1376,18 @@ Rails.application.routes.draw do
     post  "ticketing/settings/open",              to: "ticketing_settings#open_box_office", as: "ticketing_open_box_office"
     patch "ticketing/settings/notifications",     to: "ticketing_settings#update_notifications", as: "ticketing_settings_notifications"
     patch "ticketing/settings/sharing",           to: "ticketing_settings#update_sharing", as: "ticketing_settings_sharing"
+    # Seat charts (advanced ticketing §1), drawn for a room from Rooms and seating.
+    get    "ticketing/settings/seat-charts/new",                        to: "seat_charts#new",            as: "new_seat_chart"
+    post   "ticketing/settings/seat-charts",                            to: "seat_charts#create",         as: "seat_charts"
+    get    "ticketing/settings/seat-charts/:id",                        to: "seat_charts#show",           as: "seat_chart"
+    patch  "ticketing/settings/seat-charts/:id",                        to: "seat_charts#update"
+    delete "ticketing/settings/seat-charts/:id",                        to: "seat_charts#destroy"
+    post   "ticketing/settings/seat-charts/:id/status",                 to: "seat_charts#change_status",  as: "status_seat_chart"
+    post   "ticketing/settings/seat-charts/:id/sections",               to: "seat_charts#add_section",    as: "sections_seat_chart"
+    patch  "ticketing/settings/seat-charts/:id/sections/:section_id",   to: "seat_charts#update_section", as: "section_seat_chart"
+    delete "ticketing/settings/seat-charts/:id/sections/:section_id",   to: "seat_charts#remove_section"
+    post   "ticketing/settings/seat-charts/:id/sections/:section_id/rows", to: "seat_charts#add_rows",    as: "rows_seat_chart"
+    patch  "ticketing/settings/seat-charts/:id/seats",                  to: "seat_charts#update_seats",   as: "seats_seat_chart"
     patch "ticketing/settings/comps",             to: "ticketing_settings#update_comps",   as: "ticketing_settings_comps"
     # Ticketing's side of each room (RoomTicketingSetting): how it sells, its charts, buyer directions.
     patch "ticketing/settings/rooms/:id",         to: "ticketing_settings#update_room",  as: "ticketing_settings_room"
@@ -1498,6 +1510,10 @@ Rails.application.routes.draw do
     get    "ticketing/taxes",                     to: "ticket_taxes#show",               as: "ticket_taxes"
     post   "ticketing/taxes/paid",                to: "ticket_taxes#mark_paid",          as: "ticket_tax_remittances"
     delete "ticketing/taxes/paid/:id",            to: "ticket_taxes#unmark_paid",        as: "ticket_tax_remittance"
+    # A date's seat map and its holds (advanced ticketing §1).
+    get    "ticketing/shows/:id/seats",                    to: "ticket_seat_maps#show",         as: "ticket_listing_seats"
+    post   "ticketing/shows/:id/seats/holds",              to: "ticket_seat_maps#create_hold",  as: "ticket_listing_seat_holds"
+    delete "ticketing/shows/:id/seats/holds/:hold_id",     to: "ticket_seat_maps#release_hold", as: "ticket_listing_seat_hold"
     # Group sales (advanced ticketing §3): a date's blocks of seats on invoices.
     get    "ticketing/shows/:id/groups",                   to: "ticket_group_bookings#index",   as: "ticket_listing_groups"
     get    "ticketing/shows/:id/groups/new",               to: "ticket_group_bookings#new",     as: "new_ticket_listing_group"

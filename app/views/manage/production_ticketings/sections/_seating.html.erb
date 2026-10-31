@@ -1,0 +1,48 @@
+<%# How this production sells seats (advanced ticketing §1): follow each room's
+    setting, or pick a way and a chart for every date; then which sections
+    each ticket type sells (its zone). Locals: setup, production. %>
+<%
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  charts = Current.organization.seat_charts.usable.includes(location_space: :location).order(:name).to_a
+  chart = setup.seat_chart
+  sections = chart ? chart.sections.to_a : []
+  tiers = setup.ticket_tiers.active.reject(&:bundle?).sort_by { |t| [ t.position, t.id.to_i ] }
+  zone_ids = tiers.to_h { |t| [ t.id, t.seat_sections.map(&:id) ] }
+%>
+<%= form_with model: setup, scope: :production_ticketing, url: manage_update_production_ticketing_path(production, section: "seating"), method: :patch, data: { turbo: false }, class: "space-y-6" do |f| %>
+  <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
+    <p class="text-sm text-gray-600">Each room already says how tickets in it sell (<%= link_to "Rooms and seating", manage_ticketing_settings_path(section: "rooms"), class: "text-pink-600 hover:text-pink-700" %>). Leave it to the rooms, or choose for every date of <%= production.name %>; a single date can still choose for itself.</p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <label class="block text-sm font-medium text-gray-700"><span>How seats sell</span>
+        <%= f.select :seating_mode, options_for_select([ [ "Whatever each room says", "" ] ] + RoomTicketingSetting::SEATING_MODE_LABELS.map { |k, v| [ v, k ] }, setup.seating_mode), {}, class: input_class + " mt-1" %></label>
+      <label class="block text-sm font-medium text-gray-700"><span>Chart</span>
+        <%= f.select :seat_chart_id, options_for_select([ [ "The room's own chart", "" ] ] + charts.map { |c| [ "#{c.name} (#{c.location_space.location.name} · #{c.location_space.name}, #{pluralize(c.seat_count, 'seat')})", c.id ] }, setup.seat_chart_id), {}, class: input_class + " mt-1" %></label>
+    </div>
+    <% if charts.empty? %><p class="text-sm text-gray-600">No active chart yet. Draw one from <%= link_to "Rooms and seating", manage_ticketing_settings_path(section: "rooms"), class: "text-pink-600 hover:text-pink-700" %>.</p><% end %>
+  </div>
+
+  <% if chart && tiers.any? %>
+    <div class="bg-white border border-gray-200 rounded-lg">
+      <%= render "shared/section_heading", title: "Zones on #{chart.name}", intro: "Which sections each ticket type sells. A type with no section sells nothing on a seated date; a section with no type isn't for sale." %>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead><tr class="text-left text-xs text-gray-500 border-b border-gray-100"><th class="px-5 py-2">Ticket type</th><% sections.each do |s| %><th class="px-3 py-2 font-medium"><%= s.name %><span class="block text-[10px] font-normal text-gray-400"><%= s.standing? ? "standing, #{s.standing_capacity}" : pluralize(s.live_seat_count, 'seat') %></span></th><% end %></tr></thead>
+          <tbody class="divide-y divide-gray-100">
+            <% tiers.each do |tier| %>
+              <tr>
+                <td class="px-5 py-2 font-medium text-gray-900"><%= tier.name %> <span class="text-gray-500 font-normal">· <%= number_to_currency(tier.price_cents / 100.0) %></span></td>
+                <% sections.each do |s| %>
+                  <td class="px-3 py-2"><%= check_box_tag "zones[#{tier.id}][]", s.id, zone_ids[tier.id].include?(s.id), id: "zone-#{tier.id}-#{s.id}", class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500", "aria-label": "#{tier.name} sells #{s.name}" %></td>
+                <% end %>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      <%= hidden_field_tag "zones_present", "1" %>
+    </div>
+  <% elsif chart %>
+    <p class="text-sm text-gray-600">Add ticket types on the Tickets tab, then come back to say which sections each one sells.</p>
+  <% end %>
+  <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+<% end %>

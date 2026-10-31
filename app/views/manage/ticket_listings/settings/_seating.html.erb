@@ -1,0 +1,23 @@
+<%# One date's own way of selling seats; blank follows the production, then
+    the room. Locals: listing, setup. %>
+<%
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  charts = Current.organization.seat_charts.usable.includes(location_space: :location).order(:name).to_a
+  inherited = listing.seating_mode.blank? ? listing.effective_seating_mode : (setup&.seating_mode.presence || listing.room_ticketing_setting&.seating_mode || "general")
+  sold = listing.tickets.where(status: Ticket::SOLD_STATUSES).exists?
+%>
+<%= form_with model: listing, url: manage_ticket_listing_path(listing), method: :patch, data: { turbo: false }, class: "space-y-6" do |f| %>
+  <%= hidden_field_tag :section, "seating" %>
+  <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
+    <p class="text-sm text-gray-600">This date sells <strong><%= listing.seating_mode_label.downcase %></strong><% if listing.effective_seat_chart %> on <%= link_to listing.effective_seat_chart.name, manage_seat_chart_path(listing.effective_seat_chart), class: "text-pink-600 hover:text-pink-700" %><% end %>, <%= listing.seating_mode.present? ? "its own choice" : "following #{setup&.seating_mode.present? ? possessive(listing.production.name) + ' ticketing' : 'the room'}" %>.</p>
+    <% if sold %><p class="text-sm text-amber-700">Tickets are sold for this date. Changing how it sells keeps every ticket; seat numbers stay only if the new chart has those seats.</p><% end %>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <label class="block text-sm font-medium text-gray-700"><span>How seats sell</span>
+        <%= f.select :seating_mode, options_for_select([ [ "Same as the production and room (#{RoomTicketingSetting::SEATING_MODE_LABELS[inherited].downcase})", "" ] ] + RoomTicketingSetting::SEATING_MODE_LABELS.map { |k, v| [ v, k ] }, listing.seating_mode), {}, class: input_class + " mt-1" %></label>
+      <label class="block text-sm font-medium text-gray-700"><span>Chart</span>
+        <%= f.select :seat_chart_id, options_for_select([ [ "Same as the production and room", "" ] ] + charts.map { |c| [ "#{c.name} (#{c.location_space.location.name} · #{c.location_space.name})", c.id ] }, listing.seat_chart_id), {}, class: input_class + " mt-1" %></label>
+    </div>
+    <p class="text-xs text-gray-500">Zones (which sections each ticket type sells) are set on the production's Seating tab and come down to this date's ticket types.</p>
+  </div>
+  <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+<% end %>

@@ -1,0 +1,21 @@
+<% content_for :title, "New seat chart" %>
+<% input = "mt-1 block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Settings", manage_ticketing_settings_path ], [ "Rooms and seating", manage_ticketing_settings_path(section: "rooms") ] ], text: "New seat chart", links: [] } %>
+  <div class="max-w-xl -mx-4 sm:mx-auto bg-white sm:rounded-xl sm:border sm:border-gray-200 sm:shadow-sm overflow-hidden">
+    <div class="bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4"><h2 class="text-lg font-semibold text-white">A chart for <%= @room.name %></h2><p class="text-xs text-pink-100"><%= @room.location.name %></p></div>
+    <%= form_with model: @chart, url: manage_seat_charts_path, method: :post, data: { turbo: false } do |f| %>
+      <%= f.hidden_field :location_space_id %>
+      <div class="px-6 py-5 space-y-4">
+        <% if @chart.errors.any? %><div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"><%= @chart.errors.full_messages.to_sentence %></div><% end %>
+        <label class="block text-sm font-medium text-gray-700"><span>Name</span><%= f.text_field :name, class: input, placeholder: "Cabaret layout, Concert layout" %></label>
+        <p class="text-sm text-gray-600">Next you add its parts: rows of seats, tables, a standing area. A room can have more than one chart (the cabaret layout and the concert layout); a production or a date picks one.</p>
+      </div>
+      <div class="flex justify-end gap-2 px-6 py-4 bg-gray-50 border-t border-gray-200">
+        <%= link_to manage_ticketing_settings_path(section: "rooms") do %><%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button %><% end %>
+        <%= render "shared/button", text: "Start the chart", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+</div>

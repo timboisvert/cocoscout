@@ -21,6 +21,10 @@ class TicketTier < ApplicationRecord
   # The tickets a bundle made (they belong to its type, remembering the bundle).
   has_many :bundle_tickets, class_name: "Ticket", foreign_key: :bundle_tier_id, inverse_of: :bundle_tier, dependent: :restrict_with_error
   has_many :ticket_outside_sales, dependent: :destroy
+  # On a seated date, the sections this type sells (its price zone). A copy
+  # on a date follows its source's zone unless it has one of its own.
+  has_many :zones, class_name: "TicketTierZone", dependent: :destroy
+  has_many :seat_sections, through: :zones
 
   normalizes :unlock_code, with: ->(c) { c.to_s.strip.upcase.presence }
 
@@ -59,6 +63,23 @@ class TicketTier < ApplicationRecord
   SELLS_AT = %w[everywhere online door].freeze
   SELLS_AT_LABELS = { "everywhere" => "Online and at the door", "online" => "Online only", "door" => "At the door only" }.freeze
   validates :sells_at, inclusion: { in: SELLS_AT }
+
+  # The chart sections this type sells on a seated date: its own zone, else
+  # its source's (a date's copy of a production type), else none. A bundle's
+  # are its type's.
+  def zone_sections
+    return base_tier.zone_sections if bundle?
+
+    own = seat_sections.to_a
+    return own if own.any?
+
+    source_tier ? source_tier.zone_sections : []
+  end
+
+  def zone_section_ids = zone_sections.map(&:id)
+
+  # Sold by the seat (any seated section in its zone) or by count (a standing area).
+  def seated_zone? = zone_sections.any?(&:seated?)
 
   def sells_online?
     sells_at != "door"

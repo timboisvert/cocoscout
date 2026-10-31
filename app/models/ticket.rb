@@ -22,6 +22,9 @@ class Ticket < ApplicationRecord
   # The credit pass it was a credit from (punch card, season pass), if any.
   belongs_to :ticket_pass_holding, optional: true
   belongs_to :checked_in_by, class_name: "User", optional: true
+  # On a seated date: the seat, or the standing area, this ticket is for.
+  belongs_to :seat, optional: true
+  belongs_to :seat_section, optional: true
 
   has_many :tax_lines, as: :taxable, dependent: :delete_all
 
@@ -46,6 +49,14 @@ class Ticket < ApplicationRecord
 
   def checked_in?
     status == "checked_in"
+  end
+
+  # "Orchestra C 14", "Standing floor", or nil on a general-admission date.
+  def seat_label
+    return seat.full_label if seat
+    return seat_section.name if seat_section
+
+    nil
   end
 
   private

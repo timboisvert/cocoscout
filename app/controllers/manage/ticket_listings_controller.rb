@@ -14,7 +14,7 @@ module Manage
 
     GUEST_FILTERS = %w[all waiting in comps refunded].freeze
     # A date's Settings, a tab each with its own Save.
-    SETTINGS = { "tickets" => "Tickets", "products" => "Products", "sales" => "Sales", "page" => "Page", "codes" => "Discount codes", "comps" => "Comps" }.freeze
+    SETTINGS = { "tickets" => "Tickets", "products" => "Products", "sales" => "Sales", "page" => "Page", "codes" => "Discount codes", "comps" => "Comps", "seating" => "Seating" }.freeze
 
     before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code destroy_code cancel
                                            change_review tell_change mark_change_told outside_sales tier_availability]
@@ -329,10 +329,12 @@ module Manage
     def listing_params
       permitted = params.require(:ticket_listing).permit(
         :title, :description, :on_sale_at, :off_sale_at, :max_per_order, :fee_mode, :low_stock_threshold,
-        :door_note, :age_note, :accessibility_note, :sell_products,
+        :door_note, :age_note, :accessibility_note, :sell_products, :seating_mode, :seat_chart_id,
         ticket_tiers_attributes: %i[id name price quantity admits bundle_of_tier_id description position sells_at _destroy]
       )
       permitted[:fee_mode] = permitted[:fee_mode].presence if permitted.key?(:fee_mode)
+      permitted[:seating_mode] = permitted[:seating_mode].presence if permitted.key?(:seating_mode)
+      permitted[:seat_chart_id] = Current.organization.seat_charts.find_by(id: permitted[:seat_chart_id])&.id if permitted.key?(:seat_chart_id)
       permitted[:max_per_order] = permitted[:max_per_order].presence if permitted.key?(:max_per_order)
       permitted[:low_stock_threshold] = permitted[:low_stock_threshold].presence if permitted.key?(:low_stock_threshold)
       # The Page tab's ages: the production's, all ages here, or an age.

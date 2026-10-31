@@ -1,0 +1,89 @@
+<% content_for :title, "#{@chart.name} · Seat chart" %>
+<%
+  input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  label = "block text-xs font-medium text-gray-700"
+  links = []
+  links << { text: "Make it active", path: manage_status_seat_chart_path(@chart, status: "active"), method: :post } unless @chart.active?
+  links << { text: "Archive", path: manage_status_seat_chart_path(@chart, status: "archived"), method: :post } if @chart.active?
+  links << { text: "Delete", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "delete-chart" } } unless @chart.in_use?
+%>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Settings", manage_ticketing_settings_path ], [ "Rooms and seating", manage_ticketing_settings_path(section: "rooms") ] ], text: @chart.name, links: links } %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-white border border-gray-200 rounded-lg" data-controller="seat-map" data-seat-map-mode-value="edit" data-seat-map-payload-value="<%= @payload.to_json %>">
+        <%= render "shared/section_heading", title: "#{@chart.name}", intro: "#{@chart.location_space.location.name} · #{@chart.location_space.name} · #{pluralize(@chart.seat_count, 'seat')}#{", standing room for #{@chart.standing_capacity}" if @chart.standing_capacity.positive?} · #{@chart.status}" do %>
+          <%= form_with url: manage_seat_chart_path(@chart), method: :patch, data: { turbo: false }, class: "flex items-center gap-2" do %>
+            <%= text_field_tag "seat_chart[name]", @chart.name, class: input + " w-48", "aria-label": "Chart name" %>
+            <%= render "shared/button", text: "Rename", variant: "secondary", size: "xs", type: :submit %>
+          <% end %>
+        <% end %>
+        <div class="p-4 overflow-x-auto">
+          <svg data-seat-map-target="svg" class="w-full h-auto" style="min-height: 240px" role="img" aria-label="Seat chart"></svg>
+        </div>
+        <%= form_with url: manage_seats_seat_chart_path(@chart), method: :patch, data: { turbo: false }, class: "border-t border-gray-100 px-5 py-4 space-y-3" do %>
+          <div data-seat-map-target="inputs"></div>
+          <p class="text-sm text-gray-700">Tap seats to pick them: <span class="font-semibold tabular-nums" data-seat-map-target="count">0</span> picked <span class="text-gray-500" data-seat-map-target="summary"></span></p>
+          <div class="flex flex-wrap gap-2">
+            <% Seat::KIND_LABELS.each do |kind, text| %>
+              <%= render "shared/button", text: text, variant: "secondary", size: "xs", type: :submit, name: "kind", value: kind %>
+            <% end %>
+            <%= render "shared/button", text: "Kill (not for sale)", variant: "secondary", size: "xs", type: :submit, name: "killed", value: "1" %>
+            <%= render "shared/button", text: "Back on sale", variant: "secondary", size: "xs", type: :submit, name: "killed", value: "0" %>
+            <%= render "shared/button", text: "Clear picks", variant: "ghost", size: "xs", type: :button, data: { action: "seat-map#clear" } %>
+          </div>
+          <div class="flex items-center gap-2">
+            <%= text_field_tag :note, nil, placeholder: "A note buyers see on these seats (pillar, low rail)", class: input, maxlength: 120 %>
+            <%= render "shared/button", text: "Note", variant: "secondary", size: "xs", type: :submit %>
+          </div>
+          <p class="text-xs text-gray-500">W = wheelchair space, C = companion seat, R = restricted view. Killed seats are grey and never sold; a seat that's on a ticket can only be killed, never removed.</p>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <div class="bg-white border border-gray-200 rounded-lg">
+        <%= render "shared/section_heading", title: "Add a section" %>
+        <%= form_with url: manage_sections_seat_chart_path(@chart), method: :post, data: { turbo: false }, class: "px-5 py-4 space-y-3" do %>
+          <label class="<%= label %>">Name<%= text_field_tag "seat_section[name]", nil, placeholder: "Orchestra, Balcony, Floor", class: input + " mt-1" %></label>
+          <label class="<%= label %>">Kind<%= select_tag "seat_section[kind]", options_for_select(SeatSection::KIND_LABELS.map { |k, v| [ v, k ] }), class: input + " mt-1" %></label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="<%= label %>">Rows (or tables)<%= number_field_tag "seat_section[rows]", 5, min: 1, max: 60, class: input + " mt-1" %></label>
+            <label class="<%= label %>">Seats a row<%= number_field_tag "seat_section[per_row]", 10, min: 1, max: 60, class: input + " mt-1" %></label>
+            <label class="<%= label %>">First row<%= text_field_tag "seat_section[first_row]", nil, placeholder: "A (tables: T1)", class: input + " mt-1" %></label>
+            <label class="<%= label %>">First seat number<%= number_field_tag "seat_section[first_number]", 1, min: 1, class: input + " mt-1" %></label>
+          </div>
+          <label class="<%= label %>">Standing room for<%= number_field_tag "seat_section[standing_capacity]", nil, min: 0, placeholder: "Standing areas only", class: input + " mt-1" %></label>
+          <label class="<%= label %>">Best seats are<%= select_tag "seat_section[best_order]", options_for_select([ [ "The middle of each row, front first", "center" ], [ "The front, left to right", "front" ] ]), class: input + " mt-1" %></label>
+          <%= render "shared/button", text: "Add section", variant: "primary", size: "small", type: :submit %>
+        <% end %>
+      </div>
+
+      <% @sections.each do |section| %>
+        <div class="bg-white border border-gray-200 rounded-lg px-5 py-4 space-y-3">
+          <div class="flex items-start justify-between gap-2">
+            <div><p class="font-semibold text-gray-900"><%= section.name %></p><p class="text-xs text-gray-500"><%= section.kind_label %> · <%= section.standing? ? "room for #{section.standing_capacity}" : "#{pluralize(section.live_seat_count, 'seat')} in #{pluralize(section.rows.size, section.kind == 'tables' ? 'table' : 'row')}" %></p></div>
+            <% cid = "remove-section-#{section.id}" %>
+            <%= render "shared/button", text: "Remove", variant: "ghost", size: "xs", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
+            <%= render "shared/confirm_modal", id: cid, title: "Remove #{section.name}?", message: "Its seats go with it. A section with tickets on it can't be removed.", confirm_text: "Remove", url: manage_section_seat_chart_path(@chart, section), method: :delete %>
+          </div>
+          <%= form_with url: manage_section_seat_chart_path(@chart, section), method: :patch, data: { turbo: false }, class: "flex items-center gap-2" do %>
+            <%= text_field_tag "seat_section[name]", section.name, class: input, "aria-label": "Section name" %>
+            <% if section.standing? %><%= number_field_tag "seat_section[standing_capacity]", section.standing_capacity, min: 0, class: input + " w-24", "aria-label": "Standing room" %><% end %>
+            <%= render "shared/button", text: "Save", variant: "secondary", size: "xs", type: :submit %>
+          <% end %>
+          <% unless section.standing? %>
+            <%= form_with url: manage_rows_seat_chart_path(@chart, section), method: :post, data: { turbo: false }, class: "grid grid-cols-3 gap-2 items-end" do %>
+              <label class="<%= label %>">More rows<%= number_field_tag :rows, 1, min: 1, max: 60, class: input + " mt-1" %></label>
+              <label class="<%= label %>">Seats each<%= number_field_tag :per_row, section.rows.last&.last&.size || 10, min: 1, max: 60, class: input + " mt-1" %></label>
+              <%= render "shared/button", text: "Add rows", variant: "secondary", size: "xs", type: :submit %>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+  <%= render "shared/confirm_modal", id: "delete-chart", title: "Delete #{@chart.name}?", message: "The chart and every seat on it go. Nothing sells from it yet, so nothing else changes.", confirm_text: "Delete", url: manage_seat_chart_path(@chart), method: :delete %>
+</div>

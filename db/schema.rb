@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_01_000300) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_01_000400) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2516,8 +2516,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000300) do
     t.string "team_comps_limit"
     t.integer "team_comps_per_show"
     t.boolean "waitlist", default: false, null: false
+    t.string "seating_mode"
+    t.bigint "seat_chart_id"
     t.index ["organization_id"], name: "index_production_ticketings_on_organization_id"
     t.index ["production_id"], name: "index_production_ticketings_on_production_id", unique: true
+    t.index ["seat_chart_id"], name: "index_production_ticketings_on_seat_chart_id"
   end
 
   create_table "productions", force: :cascade do |t|
@@ -2919,6 +2922,51 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000300) do
     t.index ["organization_id"], name: "index_scheduling_rules_on_organization_id"
     t.index ["person_id"], name: "index_scheduling_rules_on_person_id"
     t.index ["production_id"], name: "index_scheduling_rules_on_production_id"
+  end
+
+  create_table "seat_charts", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "location_space_id", null: false
+    t.string "name", null: false
+    t.string "status", default: "draft", null: false
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["location_space_id"], name: "index_seat_charts_on_location_space_id"
+    t.index ["organization_id"], name: "index_seat_charts_on_organization_id"
+  end
+
+  create_table "seat_sections", force: :cascade do |t|
+    t.bigint "seat_chart_id", null: false
+    t.string "name", null: false
+    t.string "kind", default: "rows", null: false
+    t.integer "position", default: 0, null: false
+    t.integer "standing_capacity", default: 0, null: false
+    t.string "best_order", default: "center", null: false
+    t.integer "x", default: 0, null: false
+    t.integer "y", default: 0, null: false
+    t.integer "width", default: 0, null: false
+    t.integer "height", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["seat_chart_id"], name: "index_seat_sections_on_seat_chart_id"
+  end
+
+  create_table "seats", force: :cascade do |t|
+    t.bigint "seat_section_id", null: false
+    t.string "row_label", null: false
+    t.integer "number", null: false
+    t.string "label", null: false
+    t.integer "x", default: 0, null: false
+    t.integer "y", default: 0, null: false
+    t.string "kind", default: "standard", null: false
+    t.string "note"
+    t.integer "best_rank", default: 0, null: false
+    t.boolean "killed", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["seat_section_id", "row_label", "number"], name: "index_seats_on_seat_section_id_and_row_label_and_number", unique: true
+    t.index ["seat_section_id"], name: "index_seats_on_seat_section_id"
   end
 
   create_table "segments", force: :cascade do |t|
@@ -4082,11 +4130,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000300) do
     t.string "team_comps_limit"
     t.integer "team_comps_per_show"
     t.boolean "own_codes", default: false, null: false
+    t.string "seating_mode"
+    t.bigint "seat_chart_id"
     t.index ["contract_id"], name: "index_ticket_listings_on_contract_id"
     t.index ["organization_id", "slug"], name: "index_ticket_listings_on_organization_id_and_slug", unique: true
     t.index ["organization_id", "status"], name: "index_ticket_listings_on_organization_id_and_status"
     t.index ["organization_id"], name: "index_ticket_listings_on_organization_id"
     t.index ["production_id"], name: "index_ticket_listings_on_production_id"
+    t.index ["seat_chart_id"], name: "index_ticket_listings_on_seat_chart_id"
     t.index ["show_id"], name: "index_ticket_listings_on_show_id", unique: true
   end
 
@@ -4446,6 +4497,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000300) do
     t.index ["user_id"], name: "index_ticket_sales_viewers_on_user_id"
   end
 
+  create_table "ticket_seat_hold_seats", force: :cascade do |t|
+    t.bigint "ticket_seat_hold_id", null: false
+    t.bigint "ticket_listing_id", null: false
+    t.bigint "seat_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["seat_id"], name: "index_ticket_seat_hold_seats_on_seat_id"
+    t.index ["ticket_listing_id", "seat_id"], name: "index_ticket_seat_hold_seats_on_ticket_listing_id_and_seat_id", unique: true
+    t.index ["ticket_listing_id"], name: "index_ticket_seat_hold_seats_on_ticket_listing_id"
+    t.index ["ticket_seat_hold_id"], name: "index_ticket_seat_hold_seats_on_ticket_seat_hold_id"
+  end
+
+  create_table "ticket_seat_holds", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "ticket_listing_id", null: false
+    t.string "name", null: false
+    t.string "kind", default: "house", null: false
+    t.datetime "release_at"
+    t.string "owner_type"
+    t.bigint "owner_id"
+    t.datetime "released_at"
+    t.bigint "created_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_ticket_seat_holds_on_created_by_id"
+    t.index ["organization_id"], name: "index_ticket_seat_holds_on_organization_id"
+    t.index ["owner_type", "owner_id"], name: "index_ticket_seat_holds_on_owner_type_and_owner_id"
+    t.index ["ticket_listing_id"], name: "index_ticket_seat_holds_on_ticket_listing_id"
+  end
+
   create_table "ticket_sources", force: :cascade do |t|
     t.bigint "organization_id", null: false
     t.string "name", null: false
@@ -4458,6 +4539,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000300) do
     t.index ["organization_id", "position"], name: "index_ticket_sources_on_organization_id_and_position"
     t.index ["organization_id", "system_key"], name: "index_ticket_sources_on_organization_id_and_system_key", unique: true, where: "(system_key IS NOT NULL)"
     t.index ["organization_id"], name: "index_ticket_sources_on_organization_id"
+  end
+
+  create_table "ticket_tier_zones", force: :cascade do |t|
+    t.bigint "ticket_tier_id", null: false
+    t.bigint "seat_section_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["seat_section_id"], name: "index_ticket_tier_zones_on_seat_section_id"
+    t.index ["ticket_tier_id", "seat_section_id"], name: "index_ticket_tier_zones_on_ticket_tier_id_and_seat_section_id", unique: true
+    t.index ["ticket_tier_id"], name: "index_ticket_tier_zones_on_ticket_tier_id"
   end
 
   create_table "ticket_tiers", force: :cascade do |t|
@@ -4610,10 +4701,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000300) do
     t.bigint "ticket_pass_id"
     t.bigint "ticket_offer_id"
     t.bigint "ticket_pass_holding_id"
+    t.bigint "seat_id"
+    t.bigint "seat_section_id"
     t.index ["bundle_tier_id"], name: "index_tickets_on_bundle_tier_id"
     t.index ["checked_in_by_id"], name: "index_tickets_on_checked_in_by_id"
     t.index ["code"], name: "index_tickets_on_code", unique: true
+    t.index ["seat_id"], name: "index_tickets_on_seat_id"
+    t.index ["seat_section_id"], name: "index_tickets_on_seat_section_id"
     t.index ["ticket_listing_id", "external_barcode"], name: "index_tickets_on_ticket_listing_id_and_external_barcode", unique: true, where: "(external_barcode IS NOT NULL)"
+    t.index ["ticket_listing_id", "seat_id"], name: "index_tickets_one_live_ticket_per_seat", unique: true, where: "((seat_id IS NOT NULL) AND ((status)::text = ANY ((ARRAY['reserved'::character varying, 'valid'::character varying, 'checked_in'::character varying])::text[])))"
     t.index ["ticket_listing_id", "status"], name: "index_tickets_on_ticket_listing_id_and_status"
     t.index ["ticket_offer_id"], name: "index_tickets_on_ticket_offer_id"
     t.index ["ticket_order_id"], name: "index_tickets_on_ticket_order_id"
@@ -5016,6 +5112,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000300) do
   add_foreign_key "production_ticketing_shows", "shows"
   add_foreign_key "production_ticketings", "organizations"
   add_foreign_key "production_ticketings", "productions"
+  add_foreign_key "production_ticketings", "seat_charts"
   add_foreign_key "productions", "agreement_templates"
   add_foreign_key "productions", "organizations"
   add_foreign_key "question_options", "questions"
@@ -5046,6 +5143,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000300) do
   add_foreign_key "scheduling_rules", "organizations"
   add_foreign_key "scheduling_rules", "people"
   add_foreign_key "scheduling_rules", "productions"
+  add_foreign_key "seat_charts", "location_spaces"
+  add_foreign_key "seat_charts", "organizations"
+  add_foreign_key "seat_sections", "seat_charts"
+  add_foreign_key "seats", "seat_sections"
   add_foreign_key "segments", "organizations"
   add_foreign_key "sessions", "users"
   add_foreign_key "settlement_days", "organizations"
@@ -5186,6 +5287,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000300) do
   add_foreign_key "ticket_listings", "contracts", on_delete: :nullify
   add_foreign_key "ticket_listings", "organizations"
   add_foreign_key "ticket_listings", "productions"
+  add_foreign_key "ticket_listings", "seat_charts"
   add_foreign_key "ticket_listings", "shows"
   add_foreign_key "ticket_offers", "organizations"
   add_foreign_key "ticket_offers", "productions", column: "target_production_id"
@@ -5235,7 +5337,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000300) do
   add_foreign_key "ticket_sales_viewers", "users"
   add_foreign_key "ticket_sales_viewers", "users", column: "granted_by_id"
   add_foreign_key "ticket_sales_viewers", "users", column: "revoked_by_id"
+  add_foreign_key "ticket_seat_hold_seats", "seats"
+  add_foreign_key "ticket_seat_hold_seats", "ticket_listings"
+  add_foreign_key "ticket_seat_hold_seats", "ticket_seat_holds"
+  add_foreign_key "ticket_seat_holds", "organizations"
+  add_foreign_key "ticket_seat_holds", "ticket_listings"
+  add_foreign_key "ticket_seat_holds", "users", column: "created_by_id"
   add_foreign_key "ticket_sources", "organizations"
+  add_foreign_key "ticket_tier_zones", "seat_sections"
+  add_foreign_key "ticket_tier_zones", "ticket_tiers"
   add_foreign_key "ticket_tiers", "production_ticketings"
   add_foreign_key "ticket_tiers", "ticket_listings"
   add_foreign_key "ticket_tiers", "ticket_tiers", column: "bundle_of_tier_id"
@@ -5249,6 +5359,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000300) do
   add_foreign_key "ticketing_access_grants", "users", on_delete: :cascade
   add_foreign_key "ticketing_notification_logs", "organizations"
   add_foreign_key "ticketing_profiles", "organizations"
+  add_foreign_key "tickets", "seat_sections"
+  add_foreign_key "tickets", "seats"
   add_foreign_key "tickets", "ticket_listings"
   add_foreign_key "tickets", "ticket_offers"
   add_foreign_key "tickets", "ticket_orders"

@@ -24,6 +24,11 @@ class ProductionTicketing < ApplicationRecord
 
   belongs_to :organization
   belongs_to :production
+  # How this production's dates sell seats (advanced ticketing §1): nil
+  # follows each room's own setting; else general, reserved or mixed, on
+  # this chart.
+  belongs_to :seat_chart, optional: true
+  validates :seating_mode, inclusion: { in: RoomTicketingSetting::SEATING_MODES }, allow_nil: true
 
   has_many :ticket_tiers, -> { order(:position, :id) }, dependent: :destroy, inverse_of: :production_ticketing
   has_many :production_ticketing_shows, dependent: :delete_all

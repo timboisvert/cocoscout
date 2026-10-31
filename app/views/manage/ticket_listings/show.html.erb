@@ -22,6 +22,7 @@
     ({ text: "Door", description: "Scan tickets and sell at the door", path: door_path(@listing), icon: icons[:door] } if live && @listing.status != "draft"),
     { text: "Orders", description: "Every order for this show", path: manage_ticket_orders_path(listing_id: @listing.id), icon: icons[:orders] },
     ({ text: "Waitlist", description: (@waitlist_count.positive? ? "#{pluralize(@waitlist_count, 'party')} waiting for seats" : "Who's waiting for seats"), path: manage_ticket_listing_waitlist_path(@listing), icon: icons[:orders] } if @listing.production_ticketing&.waitlist? || @waitlist_count.positive?),
+    ({ text: "Seat map", description: "Every seat: free, sold or held; hold house seats", path: manage_ticket_listing_seats_path(@listing), icon: icons[:eye] } if @listing.seated?),
     ({ text: "Groups", description: (@group_count.positive? ? "#{pluralize(@group_count, 'group')} holding seats" : "Blocks of seats on an invoice"), path: manage_ticket_listing_groups_path(@listing), icon: icons[:orders] } if upcoming),
     { text: "Settings", description: "Prices, seats, sales window, page and image", path: manage_edit_ticket_listing_path(@listing), icon: icons[:cog] },
     { text: "Visibility", description: "Who can see this show's sales", path: manage_ticket_listing_visibility_path(@listing), icon: icons[:share] },

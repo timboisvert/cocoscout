@@ -22,6 +22,11 @@ class TicketListing < ApplicationRecord
   belongs_to :show
   belongs_to :production
   belongs_to :contract, optional: true
+  # This date's own way of selling seats; nil follows the production, then
+  # the room (advanced ticketing §1).
+  belongs_to :seat_chart, optional: true
+  validates :seating_mode, inclusion: { in: RoomTicketingSetting::SEATING_MODES }, allow_nil: true
+  has_many :seat_holds, class_name: "TicketSeatHold", dependent: :destroy
 
   has_many :ticket_tiers, -> { order(:position, :id) }, dependent: :destroy, inverse_of: :ticket_listing
   has_many :ticket_orders, dependent: :restrict_with_error
@@ -253,6 +258,37 @@ class TicketListing < ApplicationRecord
 
   def inventory
     Ticketing::Inventory.new(self)
+  end
+
+  # --- Seating ---------------------------------------------------------------
+  #
+  # The chain: this date, then its production, then the room it's in
+  # (RoomTicketingSetting). General admission unless something says seats.
+
+  def room_ticketing_setting
+    return @room_ticketing_setting if defined?(@room_ticketing_setting)
+
+    room = show.location_space
+    @room_ticketing_setting = room && RoomTicketingSetting.find_by(location_space_id: room.id)
+  end
+
+  def effective_seating_mode
+    seating_mode.presence || production_ticketing&.seating_mode.presence || room_ticketing_setting&.seating_mode || "general"
+  end
+
+  def effective_seat_chart
+    return @effective_seat_chart if defined?(@effective_seat_chart)
+
+    @effective_seat_chart = seat_chart || production_ticketing&.seat_chart || room_ticketing_setting&.default_seat_chart
+  end
+
+  # Sold by the seat (reserved or mixed, with a chart to sell from).
+  def seated?
+    effective_seating_mode != "general" && effective_seat_chart.present?
+  end
+
+  def seating_mode_label
+    seated? ? RoomTicketingSetting::SEATING_MODE_LABELS.fetch(effective_seating_mode) : "General admission"
   end
 
   # People can join this date's waitlist right now (Ticketing::Waitlist).

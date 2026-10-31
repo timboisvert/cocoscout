@@ -24,11 +24,20 @@ module Ticketing
       @excluding = Array(excluding).map(&:to_i).presence
     end
 
+    # Sold by the seat (advanced ticketing §1): counts come from the chart.
+    def seated? = @listing.seated?
+
+    def seating
+      @seating ||= Seating.new(@listing, at: @at, excluding: @excluding)
+    end
+
     # The seats on sale: the ticket types' seats added up, when every type
     # has a count; else the room's "most people allowed" (advanced ticketing
     # plan §0: the production's own counts win over the room's); else no
     # limit.
     def capacity
+      return seating.capacity if seated?
+
       # A bundle has no seats of its own: it uses its type's.
       tiers = @listing.ticket_tiers.active.reject(&:bundle?)
       return tiers.sum(&:quantity) if tiers.any? && tiers.all?(&:quantity)
@@ -109,6 +118,8 @@ module Ticketing
     # and the room's). A bundle's are its type's. nil = unlimited.
     def remaining(tier: nil)
       tier = tier.base_tier if tier&.bundle?
+      return seated_remaining(tier) if seated?
+
       overall = capacity && [ capacity - taken, 0 ].max
       return overall unless tier
 
@@ -128,8 +139,26 @@ module Ticketing
       open.empty? || open.all? { |tier| remaining(tier: tier)&.zero? }
     end
 
+    # On a seated date, a type's seats left are the free seats in its zone
+    # (and the standing room its areas have); the date's are every free seat
+    # and standing place.
+    def seated_remaining(tier)
+      if tier
+        standing = seating.standing_remaining(tier)
+        free = seating.free_seats(tier).size
+        tier.seated_zone? ? free + standing.to_i : standing.to_i
+      else
+        free = seating.seats.values.count { |s| !seating.taken?(s.id) }
+        free + @listing.effective_seat_chart.sections.standing.sum { |a| [ a.standing_capacity - seating.standing_taken([ a.id ]), 0 ].max }
+      end
+    end
+
     # Would this many of each tier fit right now? requests: { tier => quantity }.
     def fits?(requests)
+      if seated?
+        return requests.all? { |tier, quantity| quantity <= seated_remaining(tier.base_tier) }
+      end
+
       wanted = requests.values.sum
       overall = remaining
       return false if overall && wanted > overall
@@ -145,12 +174,41 @@ module Ticketing
     # buyers racing for the last seat serialize here; the loser gets SoldOut.
     # excluding: as for new, positional so a bare { tier => n } still reads
     # as the requests.
-    def self.reserve!(listing, requests, excluding = nil)
+    # seats: { tier => [seat ids] } on a seated date: those exact seats must
+    # be free (a lapsed hold's reserved tickets on them are voided first, so
+    # the one-live-ticket-per-seat index lets the new ones in), and the rest
+    # of each request is best available.
+    def self.reserve!(listing, requests, excluding = nil, seats: nil)
       listing.with_lock do
         TicketTier.where(id: requests.keys.map(&:id)).order(:id).lock.load
+        if seats.present?
+          wanted = seats.values.flatten.map(&:to_i).uniq
+          void_stale_holds!(listing, wanted)
+          taken = Seating.new(listing, excluding: excluding)
+          gone = wanted.select { |id| taken.taken?(id) || !taken.seats.key?(id) }
+          raise SoldOut if gone.any?
+
+          seats.each do |tier, ids|
+            allowed = tier.base_tier.zone_sections.select(&:seated?).map(&:id)
+            raise SoldOut unless ids.all? { |id| allowed.include?(taken.seats[id.to_i].seat_section_id) }
+          end
+        end
         raise SoldOut unless new(listing, excluding: excluding).fits?(requests)
 
         yield
+      end
+    end
+
+    # A hold that ran out still has reserved tickets on its seats until the
+    # expiry job gets to it; under the lock, let them go now.
+    def self.void_stale_holds!(listing, seat_ids)
+      stale = Ticket.where(ticket_listing_id: listing.id, seat_id: seat_ids, status: "reserved").joins(:ticket_order).merge(TicketOrder.stale)
+      orders = TicketOrder.where(id: stale.select(:ticket_order_id)).to_a
+      return if orders.empty?
+
+      orders.each do |order|
+        order.ticket_purchase ? order.ticket_purchase.expire! : order.update!(status: "expired")
+        order.tickets.where(status: "reserved").update_all(status: "void", updated_at: Time.current)
       end
     end
 

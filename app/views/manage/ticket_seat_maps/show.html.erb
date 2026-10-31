@@ -1,0 +1,57 @@
+<% content_for :title, "Seat map · #{@listing.display_title}" %>
+<% input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: ticket_listing_breadcrumbs(@listing), text: "Seat map", links: [ { text: "The chart", path: manage_seat_chart_path(@listing.effective_seat_chart), icon: "cog" } ] } %>
+
+  <div class="grid grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+    <% [ [ "Free", @free, "bg-white border border-gray-200" ], [ "Sold", @sold, @sold.positive? ? "bg-pink-50 border border-pink-100" : "bg-white border border-gray-200" ], [ "Held", @held, @held.positive? ? "bg-amber-50 border border-amber-100" : "bg-white border border-gray-200" ] ].each do |label, n, tone| %>
+      <div class="rounded-lg px-4 py-3 <%= tone %>"><div class="text-xs text-gray-500"><%= label %></div><div class="text-xl font-bold tabular-nums text-gray-900 mt-0.5"><%= n %></div></div>
+    <% end %>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" data-controller="seat-map" data-seat-map-mode-value="manage" data-seat-map-payload-value="<%= @payload.to_json %>">
+    <div class="lg:col-span-2 bg-white border border-gray-200 rounded-lg">
+      <%= render "shared/section_heading", title: @listing.effective_seat_chart.name, intro: "#{@listing.seating_mode_label}. White is free, grey sold, amber held, blue accessible. Tap seats to hold them." %>
+      <div class="p-4 overflow-x-auto"><svg data-seat-map-target="svg" class="w-full h-auto" style="min-height: 240px" role="img" aria-label="Seat map"></svg></div>
+      <div class="border-t border-gray-100 px-5 py-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
+        <% @tiers.each do |tier| %><span><span class="font-medium text-gray-900"><%= tier.name %></span> · <%= tier.zone_sections.map(&:name).presence&.to_sentence || "no sections" %> · <%= number_to_currency(TicketPricing.all_in_price_cents(@listing, tier) / 100.0) %></span><% end %>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <div class="bg-white border border-gray-200 rounded-lg">
+        <%= render "shared/section_heading", title: "Hold seats" %>
+        <%= form_with url: manage_ticket_listing_seat_holds_path(@listing), method: :post, data: { turbo: false }, class: "px-5 py-4 space-y-3" do %>
+          <div data-seat-map-target="inputs"></div>
+          <p class="text-sm text-gray-700"><span class="font-semibold tabular-nums" data-seat-map-target="count">0</span> picked <span class="text-gray-500" data-seat-map-target="summary"></span></p>
+          <label class="block text-xs font-medium text-gray-700">What for<%= select_tag :kind, options_for_select(TicketSeatHold::KIND_LABELS.except("group", "subscription").map { |k, v| [ v, k ] }, "house"), class: input + " mt-1" %></label>
+          <label class="block text-xs font-medium text-gray-700">Name<%= text_field_tag :name, nil, placeholder: "Press, the director's guests, Ticket Tailor's block", class: input + " mt-1" %></label>
+          <label class="block text-xs font-medium text-gray-700">Release by itself at <span class="font-normal text-gray-500">(optional)</span><%= datetime_field_tag :release_at, nil, class: input + " mt-1" %></label>
+          <div class="flex gap-2">
+            <%= render "shared/button", text: "Hold these seats", variant: "primary", size: "small", type: :submit %>
+            <%= render "shared/button", text: "Clear", variant: "ghost", size: "small", type: :button, data: { action: "seat-map#clear" } %>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="bg-white border border-gray-200 rounded-lg">
+        <%= render "shared/section_heading", title: "Holds on this date" %>
+        <% if @holds.empty? %>
+          <p class="px-5 py-4 text-sm text-gray-500">No seats held. Every free seat is for sale.</p>
+        <% else %>
+          <ul class="divide-y divide-gray-100">
+            <% @holds.each do |hold| %>
+              <li class="flex items-center gap-3 px-5 py-3">
+                <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-gray-900"><%= hold.name %></span><span class="block text-xs text-gray-500"><%= hold.kind_label %> · <%= pluralize(hold.hold_seats.size, "seat") %><% if hold.release_at %> · releases <%= hold.release_at.strftime("%b %-d, %-l:%M %p") %><% end %></span></span>
+                <% cid = "release-hold-#{hold.id}" %>
+                <%= render "shared/button", text: "Release", variant: "secondary", size: "xs", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
+                <%= render "shared/confirm_modal", id: cid, title: "Release #{hold.name}?", message: "#{pluralize(hold.hold_seats.size, 'seat')} go back on sale.", confirm_text: "Release", url: manage_ticket_listing_seat_hold_path(@listing, hold), method: :delete %>
+              </li>
+            <% end %>
+          </ul>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

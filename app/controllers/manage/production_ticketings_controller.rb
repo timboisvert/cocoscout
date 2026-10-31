@@ -8,7 +8,7 @@ module Manage
   # performances, some event types, or dates picked by hand.
   class ProductionTicketingsController < Manage::TicketingBaseController
     SECTIONS = { "dates" => "Dates", "tickets" => "Tickets", "products" => "Products", "sales" => "Sales & page", "refunds" => "Refunds",
-                 "codes" => "Discount codes", "comps" => "Comps" }.freeze
+                 "codes" => "Discount codes", "comps" => "Comps", "seating" => "Seating" }.freeze
     CLOSE_CHOICES = [ [ "At showtime", 0 ], [ "15 minutes before", 15 ], [ "30 minutes before", 30 ], [ "1 hour before", 60 ],
                       [ "2 hours before", 120 ], [ "The day before", 1440 ] ].freeze
 
@@ -57,6 +57,7 @@ module Manage
       when "refunds" then update_refunds
       when "products" then update_products
       when "comps" then update_comps
+      when "seating" then update_seating
       else redirect_to section_path("codes")
       end
     rescue ActiveRecord::RecordInvalid => e
@@ -133,6 +134,24 @@ module Manage
       result = ProductionTicketingDates.sync!(@setup)
       flash[:alert] = "#{helpers.pluralize(sync.skipped.size, 'date')} kept more seats than you set, because they've already sold more." if sync.skipped.any?
       finish(result)
+    end
+
+    # The Seating tab: how every date sells seats (blank follows the rooms),
+    # the chart, and each ticket type's zone on it.
+    def update_seating
+      raw = params.fetch(:production_ticketing, {}).permit(:seating_mode, :seat_chart_id)
+      chart = raw[:seat_chart_id].present? ? Current.organization.seat_charts.find_by(id: raw[:seat_chart_id]) : nil
+      @setup.update!(seating_mode: raw[:seating_mode].presence, seat_chart: chart)
+      if params[:zones_present] == "1" && (chart || @setup.seat_chart)
+        sections = (chart || @setup.seat_chart).sections.pluck(:id)
+        zones = params.fetch(:zones, {}).to_unsafe_h
+        @setup.ticket_tiers.active.reject(&:bundle?).each do |tier|
+          wanted = Array(zones[tier.id.to_s]).map(&:to_i) & sections
+          tier.zones.where.not(seat_section_id: wanted).delete_all
+          (wanted - tier.zones.pluck(:seat_section_id)).each { |sid| tier.zones.create!(seat_section_id: sid) }
+        end
+      end
+      redirect_to section_path("seating"), notice: "Saved. #{@setup.seating_mode.present? ? "Every date sells #{RoomTicketingSetting::SEATING_MODE_LABELS[@setup.seating_mode].downcase}." : 'Each date sells the way its room says.'}"
     end
 
     def update_sales
