@@ -114,10 +114,11 @@
               four of the order's limit. %>
           <% left = tier.marked_sold_out? ? 0 : tier.units_for(inventory.remaining(tier: tier)) %>
           <% most = [ left || tier.units_for(max_per_order), tier.units_for(max_per_order) ].min %>
-          <% added_tax = tax_added ? tier.seat_prices.sum { |cents| TaxCalculator.for_ticket(listing, tier.base_tier, cents).added_cents } : 0 %>
-          <% breakdown = tier.free? ? nil : ticket_price_breakdown(listing, tier) %>
+          <% price_now = tier.current_price_cents(listing) %>
+          <% added_tax = tax_added ? tier.seat_prices(price_now).sum { |cents| TaxCalculator.for_ticket(listing, tier.base_tier, cents).added_cents } : 0 %>
+          <% breakdown = price_now.zero? ? nil : ticket_price_breakdown(listing, tier) %>
           <li class="flex items-center gap-3 px-5 py-4" data-ticket-picker-target="row" data-name="<%= tier.name %>" data-tier-id="<%= tier.id %>"
-              data-price="<%= tier.price_cents %>" data-tax="<%= added_tax %>" data-max="<%= [ most, 0 ].max %>"
+              data-price="<%= price_now %>" data-tax="<%= added_tax %>" data-max="<%= [ most, 0 ].max %>"
               data-admits="<%= tier.admits %>" data-left="<%= left %>" data-per-order="<%= tier.units_for(max_per_order) %>">
             <div class="min-w-0 flex-1">
               <div class="font-semibold text-gray-900"><%= tier.name %></div>
@@ -140,7 +141,7 @@
               <% else %>
                 <div class="text-sm font-semibold text-gray-900 mt-0.5">
                   <%= ticket_price(TicketPricing.all_in_price_cents(listing, tier)) %>
-                  <% if !tier.free? && price_note %><span class="text-xs font-normal text-gray-600"><%= price_note %></span><% end %>
+                  <% if !price_now.zero? && price_note %><span class="text-xs font-normal text-gray-600"><%= price_note %></span><% end %>
                 </div>
               <% end %>
               <% if (low = listing.low_stock_note(left)) %><div class="text-xs font-semibold text-amber-700"><%= low %></div><% end %>

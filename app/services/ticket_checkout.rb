@@ -426,8 +426,9 @@ class TicketCheckout
   # theater changes its tax rate while they're checking out.
   def self.add_purchase(order, tier, discount)
     listing = order.ticket_listing
-    off = discount&.applies_to?(listing, tier) ? discount.discount_cents_for(tier.price_cents) : 0
-    tier.seat_prices.zip(tier.seat_prices(off)).each { |price, seat_off| add_ticket(order, tier, price, seat_off) }
+    price = tier.current_price_cents(listing)
+    off = discount&.applies_to?(listing, tier) ? discount.discount_cents_for(price) : 0
+    tier.seat_prices(price).zip(tier.seat_prices(off)).each { |seat_price, seat_off| add_ticket(order, tier, seat_price, seat_off) }
   end
 
   # One person's ticket: always of the type that holds the seat (a bundle's

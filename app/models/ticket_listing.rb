@@ -260,6 +260,11 @@ class TicketListing < ApplicationRecord
     Ticketing::Inventory.new(self)
   end
 
+  # The production's pricing rules, in order, read once per request.
+  def price_rules
+    @price_rules ||= production_ticketing ? production_ticketing.price_rules.enabled.in_order.includes(:ticket_tier).to_a : []
+  end
+
   # --- Seating ---------------------------------------------------------------
   #
   # The chain: this date, then its production, then the room it's in

@@ -137,6 +137,11 @@ class TicketTier < ApplicationRecord
   # One purchase's price split into one ticket per person: $70 for 4 is
   # [1750, 1750, 1750, 1750]; any odd cents go to the first tickets, so they
   # always add up to the price.
+  # What this type costs on a date right now, rules applied (TicketPricing).
+  def current_price_cents(listing)
+    TicketPricing.current_price_cents(listing, self)
+  end
+
   def seat_prices(cents = price_cents)
     self.class.split(cents, admits.to_i.clamp(1, 20))
   end

@@ -194,16 +194,17 @@ module TicketingHelper
   # break down.
   def ticket_price_breakdown(listing, tier)
     # A type admitting several people is taxed and priced ticket by ticket.
-    taxes = tier.seat_prices.map { |cents| TaxCalculator.for_ticket(listing, tier.base_tier, cents) }
+    price = tier.current_price_cents(listing)
+    taxes = tier.seat_prices(price).map { |cents| TaxCalculator.for_ticket(listing, tier.base_tier, cents) }
     taxed = taxes.flat_map(&:lines).reject(&:exempt)
     label = ticket_tax_label(taxed, rate: false)
     included = taxed.select(&:included).sum(&:tax_cents)
     added = taxes.sum(&:added_cents)
     total = TicketPricing.all_in_price_cents(listing, tier)
-    fees = total - tier.price_cents - added
+    fees = total - price - added
 
     # Tax inside the price is shown apart too, so the rows always add up.
-    rows = [ [ tier.bundle? ? tier.name : "Ticket", tier.price_cents - included ] ]
+    rows = [ [ tier.bundle? ? tier.name : "Ticket", price - included ] ]
     rows << [ "Fees", fees ] if fees.positive?
     rows << [ label, included + added ] if (included + added).positive?
     PriceBreakdown.new(rows: rows, total_cents: total)

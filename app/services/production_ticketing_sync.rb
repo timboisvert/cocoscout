@@ -10,7 +10,7 @@
 #
 # A show with its own prices (inherits_tiers false) is left alone.
 class ProductionTicketingSync
-  SYNCED = %w[name price_cents quantity admits description position hidden unlock_code min_per_order max_per_order sells_at].freeze
+  SYNCED = %w[name price_cents quantity admits description position hidden unlock_code min_per_order max_per_order sells_at price_floor_cents price_ceiling_cents].freeze
 
   Result = Data.define(:updated, :skipped)
 

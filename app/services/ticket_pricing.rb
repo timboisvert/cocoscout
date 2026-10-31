@@ -100,8 +100,27 @@ class TicketPricing
   # requires fees in the price; including tax as well means no surprise.)
   # A type that admits several people (a 4-pack) is priced as its tickets
   # together: 50¢ for each person, processing once.
+  # The price a type sells at on this date right now (advanced ticketing
+  # §7c): the list price, moved by the first pricing rule that matches,
+  # within the type's floor and ceiling. Tickets keep the price they were
+  # held at, so a flip never moves a checkout under way. Comps, groups,
+  # subscriptions and passes never read this.
+  def self.current_price_cents(listing, tier, at: Time.current)
+    rule = rule_for(listing, tier, at: at)
+    return tier.price_cents unless rule
+
+    cents = rule.apply(tier.price_cents)
+    cents = [ cents, tier.price_floor_cents ].max if tier.price_floor_cents
+    cents = [ cents, tier.price_ceiling_cents ].min if tier.price_ceiling_cents
+    cents
+  end
+
+  def self.rule_for(listing, tier, at: Time.current)
+    listing.price_rules.find { |rule| rule.covers?(tier) && rule.matches?(listing, at: at) }
+  end
+
   def self.all_in_price_cents(listing, tier)
-    items = tier.seat_prices.map do |cents|
+    items = tier.seat_prices(current_price_cents(listing, tier)).map do |cents|
       { price_cents: cents, discount_cents: 0, tax_cents: TaxCalculator.for_ticket(listing, tier.base_tier, cents).added_cents }
     end
     quote(items: items, fee_mode: listing.effective_fee_mode).total_cents

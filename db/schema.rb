@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_01_000500) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_01_000600) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -4366,6 +4366,40 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000500) do
     t.index ["organization_id"], name: "index_ticket_passes_on_organization_id"
   end
 
+  create_table "ticket_price_changes", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "ticket_listing_id", null: false
+    t.bigint "ticket_tier_id", null: false
+    t.bigint "ticket_price_rule_id"
+    t.integer "from_cents", null: false
+    t.integer "to_cents", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_ticket_price_changes_on_organization_id"
+    t.index ["ticket_listing_id"], name: "index_ticket_price_changes_on_ticket_listing_id"
+    t.index ["ticket_price_rule_id"], name: "index_ticket_price_changes_on_ticket_price_rule_id"
+    t.index ["ticket_tier_id"], name: "index_ticket_price_changes_on_ticket_tier_id"
+  end
+
+  create_table "ticket_price_rules", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "production_ticketing_id", null: false
+    t.bigint "ticket_tier_id"
+    t.integer "position", default: 0, null: false
+    t.boolean "enabled", default: true, null: false
+    t.string "name", default: "", null: false
+    t.string "condition", null: false
+    t.integer "threshold", default: 0, null: false
+    t.integer "days", default: 0, null: false
+    t.string "change_kind", null: false
+    t.integer "change_value", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_ticket_price_rules_on_organization_id"
+    t.index ["production_ticketing_id"], name: "index_ticket_price_rules_on_production_ticketing_id"
+    t.index ["ticket_tier_id"], name: "index_ticket_price_rules_on_ticket_tier_id"
+  end
+
   create_table "ticket_products", force: :cascade do |t|
     t.bigint "organization_id", null: false
     t.string "name", null: false
@@ -4573,6 +4607,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000500) do
     t.bigint "bundle_of_tier_id"
     t.string "availability", default: "on_sale", null: false
     t.string "sells_at", default: "everywhere", null: false
+    t.integer "price_floor_cents"
+    t.integer "price_ceiling_cents"
     t.index ["bundle_of_tier_id"], name: "index_ticket_tiers_on_bundle_of_tier_id"
     t.index ["production_ticketing_id"], name: "index_ticket_tiers_on_production_ticketing_id"
     t.index ["source_tier_id"], name: "index_ticket_tiers_on_source_tier_id"
@@ -5321,6 +5357,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000500) do
   add_foreign_key "ticket_pass_shows", "ticket_passes"
   add_foreign_key "ticket_pass_shows", "ticket_tiers"
   add_foreign_key "ticket_passes", "organizations"
+  add_foreign_key "ticket_price_changes", "organizations"
+  add_foreign_key "ticket_price_changes", "ticket_listings"
+  add_foreign_key "ticket_price_changes", "ticket_price_rules"
+  add_foreign_key "ticket_price_changes", "ticket_tiers"
+  add_foreign_key "ticket_price_rules", "organizations"
+  add_foreign_key "ticket_price_rules", "production_ticketings"
+  add_foreign_key "ticket_price_rules", "ticket_tiers"
   add_foreign_key "ticket_products", "organizations"
   add_foreign_key "ticket_purchases", "organizations"
   add_foreign_key "ticket_purchases", "ticket_gift_certificates"

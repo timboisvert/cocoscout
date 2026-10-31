@@ -125,13 +125,14 @@
           <%# Counts are purchases: a 4-pack is four seats and four tickets. %>
           <% left = tier.units_for(@listing.inventory.remaining(tier: tier)) %>
           <% most = [ left || tier.units_for(max_per_order), tier.units_for(max_per_order) ].min %>
-          <% added_tax = tier.seat_prices.sum { |cents| TaxCalculator.for_ticket(@listing, tier.base_tier, cents).added_cents } %>
+          <% price_now = tier.current_price_cents(@listing) %>
+            <% added_tax = tier.seat_prices(price_now).sum { |cents| TaxCalculator.for_ticket(@listing, tier.base_tier, cents).added_cents } %>
           <li class="flex items-center gap-3 py-3" data-door-sell-target="row"
-              data-price="<%= tier.price_cents %>" data-tax="<%= added_tax %>" data-max="<%= [ most, 0 ].max %>" data-admits="<%= tier.admits %>">
+              data-price="<%= price_now %>" data-tax="<%= added_tax %>" data-max="<%= [ most, 0 ].max %>" data-admits="<%= tier.admits %>">
             <%# How many of this type are left, kept current by the stats poll. %>
             <div class="min-w-0 flex-1">
               <div class="font-medium text-gray-900"><%= tier.name %></div>
-              <div class="text-sm text-gray-500"><%= ticket_price(tier.price_cents) %><% unless left.nil? %> · <span class="<%= 'text-red-700 font-medium' if left.zero? %>" data-door-target="tierLeft" data-tier-id="<%= tier.id %>"><%= left.zero? ? "Sold out" : "#{left} left" %></span><% end %></div>
+              <div class="text-sm text-gray-500"><%= ticket_price(price_now) %><% unless left.nil? %> · <span class="<%= 'text-red-700 font-medium' if left.zero? %>" data-door-target="tierLeft" data-tier-id="<%= tier.id %>"><%= left.zero? ? "Sold out" : "#{left} left" %></span><% end %></div>
             </div>
             <%= hidden_field_tag "quantities[#{tier.id}]", 0, id: nil, data: { door_sell_target: "input" } %>
             <div class="flex items-center gap-2">

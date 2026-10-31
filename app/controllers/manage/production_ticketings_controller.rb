@@ -8,7 +8,7 @@ module Manage
   # performances, some event types, or dates picked by hand.
   class ProductionTicketingsController < Manage::TicketingBaseController
     SECTIONS = { "dates" => "Dates", "tickets" => "Tickets", "products" => "Products", "sales" => "Sales & page", "refunds" => "Refunds",
-                 "codes" => "Discount codes", "comps" => "Comps", "seating" => "Seating" }.freeze
+                 "codes" => "Discount codes", "comps" => "Comps", "seating" => "Seating", "pricing" => "Pricing rules" }.freeze
     CLOSE_CHOICES = [ [ "At showtime", 0 ], [ "15 minutes before", 15 ], [ "30 minutes before", 30 ], [ "1 hour before", 60 ],
                       [ "2 hours before", 120 ], [ "The day before", 1440 ] ].freeze
 
@@ -58,6 +58,7 @@ module Manage
       when "products" then update_products
       when "comps" then update_comps
       when "seating" then update_seating
+      when "pricing" then update_pricing
       else redirect_to section_path("codes")
       end
     rescue ActiveRecord::RecordInvalid => e
@@ -157,6 +158,49 @@ module Manage
         end
       end
       redirect_to section_path("seating"), notice: "Saved. #{@setup.seating_mode.present? ? "Every date sells #{RoomTicketingSetting::SEATING_MODE_LABELS[@setup.seating_mode].downcase}." : 'Each date sells the way its room says.'}"
+    end
+
+    # The Pricing rules tab (advanced ticketing §7c): add, order, switch and
+    # remove rules; each type's floor and ceiling.
+    def update_pricing
+      case params[:pricing_action].to_s
+      when "add"
+        raw = params.require(:rule).permit(:name, :condition, :threshold, :days, :ticket_tier_id, :change_kind, :change_value)
+        tier = raw[:ticket_tier_id].present? ? @setup.ticket_tiers.find_by(id: raw[:ticket_tier_id]) : nil
+        value = raw[:change_kind] == "percent" ? raw[:change_value].to_i : (raw[:change_value].to_s.delete("$,").to_f * 100).round
+        rule = @setup.price_rules.create!(organization: Current.organization, ticket_tier: tier, name: raw[:name].to_s.squish, condition: raw[:condition],
+                                          threshold: raw[:threshold].to_i, days: raw[:days].to_i, change_kind: raw[:change_kind], change_value: value,
+                                          position: (@setup.price_rules.maximum(:position) || 0) + 1)
+        redirect_to section_path("pricing"), notice: "Added: #{rule.words}."
+      when "remove"
+        rule = @setup.price_rules.find(params[:rule_id])
+        rule.destroy!
+        redirect_to section_path("pricing"), notice: "Removed: #{rule.words}."
+      when "toggle"
+        rule = @setup.price_rules.find(params[:rule_id])
+        rule.update!(enabled: !rule.enabled)
+        redirect_to section_path("pricing"), notice: rule.enabled ? "On: #{rule.words}." : "Off: #{rule.words}."
+      when "up", "down"
+        rules = @setup.price_rules.in_order.to_a
+        i = rules.index { |r| r.id == params[:rule_id].to_i }
+        j = params[:pricing_action] == "up" ? i - 1 : i + 1
+        rules[i], rules[j] = rules[j], rules[i] if i && j.between?(0, rules.size - 1)
+        rules.each_with_index { |r, n| r.update_columns(position: n + 1) }
+        redirect_to section_path("pricing")
+      when "limits"
+        limits = params.fetch(:limits, {}).to_unsafe_h
+        @setup.ticket_tiers.active.each do |tier|
+          row = limits[tier.id.to_s] or next
+          floor = row["floor"].to_s.delete("$,").presence&.then { |v| (v.to_f * 100).round }
+          ceiling = row["ceiling"].to_s.delete("$,").presence&.then { |v| (v.to_f * 100).round }
+          return redirect_to(section_path("pricing"), alert: "#{tier.name}: the floor is above the ceiling.") if floor && ceiling && floor > ceiling
+          tier.update!(price_floor_cents: floor, price_ceiling_cents: ceiling)
+          tier.copies.update_all(price_floor_cents: floor, price_ceiling_cents: ceiling)
+        end
+        redirect_to section_path("pricing"), notice: "Saved the floors and ceilings."
+      else
+        redirect_to section_path("pricing")
+      end
     end
 
     def update_sales

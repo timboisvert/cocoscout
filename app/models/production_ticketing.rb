@@ -31,6 +31,7 @@ class ProductionTicketing < ApplicationRecord
   validates :seating_mode, inclusion: { in: RoomTicketingSetting::SEATING_MODES }, allow_nil: true
 
   has_many :ticket_tiers, -> { order(:position, :id) }, dependent: :destroy, inverse_of: :production_ticketing
+  has_many :price_rules, class_name: "TicketPriceRule", dependent: :destroy, inverse_of: :production_ticketing
   has_many :production_ticketing_shows, dependent: :delete_all
   has_many :production_ticketing_products, -> { order(:position, :id) }, dependent: :destroy, inverse_of: :production_ticketing
   has_many :ticket_products, through: :production_ticketing_products
