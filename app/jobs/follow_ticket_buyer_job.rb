@@ -18,7 +18,7 @@ class FollowTicketBuyerJob < ApplicationJob
               ticket_order_id: order.id, at: order.paid_at)
     elsif purchase_id
       purchase = TicketPurchase.find_by(id: purchase_id)
-      holding = purchase&.ticket_pass_holdings&.first
+      holding = purchase&.ticket_pass_holdings&.first || purchase&.ticket_memberships&.first
       return unless holding && holding.holder_email.present?
 
       follow!(purchase.organization, holding.holder_email, holding.holder_name, purchase.follow_list_ids, at: purchase.paid_at)

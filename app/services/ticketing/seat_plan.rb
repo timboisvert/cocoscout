@@ -10,9 +10,9 @@ module Ticketing
   class SeatPlan
     KEY = :cocoscout_seat_plan
 
-    def self.with(seat_ids, accessible: false)
+    def self.with(seat_ids, accessible: false, upgrade: false)
       previous = Thread.current[KEY]
-      Thread.current[KEY] = { seats: Array(seat_ids).map(&:to_i), accessible: accessible }
+      Thread.current[KEY] = { seats: Array(seat_ids).map(&:to_i), accessible: accessible, upgrade: upgrade }
       yield
     ensure
       Thread.current[KEY] = previous
@@ -25,8 +25,8 @@ module Ticketing
       plan = current
       return nil unless plan && plan[:seats].any?
 
-      allowed = tier.base_tier.zone_sections.select(&:seated?).map(&:id)
-      id = plan[:seats].find { |sid| (seat = seating.seats[sid]) && allowed.include?(seat.seat_section_id) }
+      allowed = plan[:upgrade] ? nil : tier.base_tier.zone_sections.select(&:seated?).map(&:id)
+      id = plan[:seats].find { |sid| (seat = seating.seats[sid]) && (allowed.nil? || allowed.include?(seat.seat_section_id)) }
       return nil unless id
 
       plan[:seats].delete(id)

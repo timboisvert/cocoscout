@@ -25,6 +25,12 @@
         <%= f.datetime_local_field :off_sale_at, value: local_time.call(listing.off_sale_at), class: input_class %>
         <p class="text-xs text-gray-500 mt-1">After that it's door sales.</p>
       </div>
+      <div>
+        <label for="ticket_listing_members_on_sale_at" class="block text-sm font-medium text-gray-700 mb-1.5">Members buy from</label>
+        <%= f.datetime_local_field :members_on_sale_at, value: local_time.call(listing.members_on_sale_at), class: input_class %>
+        <p class="mt-1 text-xs text-gray-500">Blank: public on-sale less the longest early access a membership level gives<% if listing.effective_members_on_sale_at && listing.members_on_sale_at.nil? %> (now <%= listing.effective_members_on_sale_at.strftime("%b %-d, %-l:%M %p") %>)<% end %>.</p>
+        <p class="text-xs text-gray-500 mt-1">After that it's door sales.</p>
+      </div>
     </div>
   </div>
 

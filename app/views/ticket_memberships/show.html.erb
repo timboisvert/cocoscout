@@ -1,0 +1,51 @@
+<% content_for :title, "#{@level.name} · #{@organization.name}" %>
+<div class="mx-auto max-w-xl space-y-5">
+  <div class="text-center space-y-1.5">
+    <p class="text-sm font-medium text-pink-700"><%= @organization.name %></p>
+    <h1 class="text-3xl sm:text-4xl coustard-regular text-gray-900"><%= @level.name %></h1>
+    <%
+      standing = case @membership.status
+      when "active" then "Member through #{@membership.ends_on.strftime('%B %-d, %Y')}"
+      when "renewed" then "Renewed#{": your new membership runs to #{@renewal.ends_on.strftime('%B %-d, %Y')}" if @renewal}"
+      when "expired" then "This membership ended #{@membership.ends_on.strftime('%B %-d, %Y')}"
+      else @membership.status_label
+      end
+    %>
+    <p class="text-base text-gray-800"><%= standing %></p>
+    <% if @membership.holder_name.present? %><p class="text-sm text-gray-500"><%= @membership.holder_name %></p><% end %>
+  </div>
+  <% if flash[:alert] %><div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 text-center"><%= flash[:alert] %></div><% end %>
+
+  <div class="rounded-2xl border border-gray-200 bg-white px-5 py-4">
+    <h2 class="font-semibold text-gray-900">Your perks</h2>
+    <% perks = @level.perk_words %>
+    <% if perks.any? %>
+      <ul class="mt-2 text-sm text-gray-800 space-y-1"><% perks.each do |w| %><li>· <%= w %></li><% end %></ul>
+    <% else %><p class="mt-2 text-sm text-gray-600">Your organization lists them on its members page.</p><% end %>
+    <p class="mt-3 text-xs text-gray-500">They apply when you buy tickets signed in as <span class="font-medium"><%= @membership.holder_email %></span>. Opening this page signs you in on this device for 30 days.</p>
+    <div class="mt-3"><%= link_to tickets_box_office_path(org: @ticketing_profile.slug, **embed_params) do %><%= render "shared/button", text: "Buy tickets", variant: "primary", size: "small" %><% end %></div>
+  </div>
+
+  <% if @membership.renewable? && @renewal.nil? %>
+    <div class="rounded-2xl border border-pink-200 bg-pink-50 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+      <p class="text-sm text-gray-800"><%= @membership.status == "expired" ? "Pick up where you left off." : "Renew now and your perks carry straight on from #{@membership.ends_on.strftime('%B %-d')}." %></p>
+      <%= form_with url: tickets_membership_renew_path(token: @membership.token, **embed_params), method: :post, data: { turbo: false } do %>
+        <%= render "shared/button", text: "Renew", variant: "primary", size: "small", type: :submit %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if @orders.any? %>
+    <div class="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+      <div class="px-5 py-4"><h2 class="font-semibold text-gray-900">Tickets bought as a member</h2></div>
+      <ul class="divide-y divide-gray-100">
+        <% @orders.each do |order| %>
+          <li class="px-5 py-3 flex items-center justify-between gap-3 text-sm">
+            <span><span class="font-medium text-gray-900"><%= order.ticket_listing.display_title %></span> <span class="text-gray-500">· <%= order.ticket_listing.show.date_and_time.strftime("%a %b %-d") %></span></span>
+            <%= link_to "Tickets", tickets_order_path(token: order.token, **embed_params), class: "text-pink-700 hover:text-pink-800 font-medium" %>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+</div>

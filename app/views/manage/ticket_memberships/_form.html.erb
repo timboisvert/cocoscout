@@ -1,0 +1,37 @@
+<%# A level: price and period, status, and the menu of perks as a checklist. Locals: level, url. %>
+<% input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+<% label = "block text-sm font-medium text-gray-700" %>
+<% check = "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+<%= form_with model: level, url: url, data: { turbo: false }, class: "space-y-6" do |f| %>
+  <% if level.errors.any? %><div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><%= level.errors.full_messages.to_sentence %></div><% end %>
+  <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <label class="<%= label %>">Name<%= f.text_field :name, placeholder: "Friend, Patron, Inner circle", class: input + " mt-1" %></label>
+      <label class="<%= label %>">Price<%= f.text_field :price, value: number_with_precision(level.price_cents / 100.0, precision: 2), class: input + " mt-1" %></label>
+      <label class="<%= label %>">Runs for<%= f.select :period_months, options_for_select([ [ "A year", 12 ], [ "6 months", 6 ], [ "3 months", 3 ], [ "1 month", 1 ] ], level.period_months), {}, class: input + " mt-1" %></label>
+      <label class="<%= label %>">Status<%= f.select :status, options_for_select(TicketMembershipLevel::STATUS_LABELS.map { |k, v| [ v, k ] }, level.status), {}, class: input + " mt-1" %></label>
+    </div>
+    <label class="<%= label %>">Description <span class="font-normal text-gray-500">(optional, on the members page)</span><%= f.text_area :description, rows: 3, class: input + " mt-1" %></label>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <%= render "shared/section_heading", title: "Perks", intro: "Each on or off. Nothing is included unless you turn it on." %>
+    <div class="px-5 py-4 divide-y divide-gray-100">
+      <div class="py-3 grid grid-cols-1 sm:grid-cols-[1fr_8rem] gap-3 items-center">
+        <div><p class="text-sm font-medium text-gray-900">A percentage off tickets</p><p class="text-xs text-gray-500">Applied at checkout when they're signed in. Not on top of a discount code.</p></div>
+        <%= f.number_field :discount_percent, min: 0, max: 100, class: input, "aria-label": "Percent off" %>
+      </div>
+      <div class="py-3 grid grid-cols-1 sm:grid-cols-[1fr_8rem] gap-3 items-center">
+        <div><p class="text-sm font-medium text-gray-900">Early access, days before public on-sale</p><p class="text-xs text-gray-500">0 means none. A date can set its own members-first time on its Sales settings.</p></div>
+        <%= f.number_field :presale_days, min: 0, max: 365, class: input, "aria-label": "Days before" %>
+      </div>
+      <label class="py-3 flex items-start gap-3"><%= f.check_box :free_exchanges, class: check + " mt-1" %><span><span class="block text-sm font-medium text-gray-900">Free date exchanges</span><span class="block text-xs text-gray-500">Listed on their card; the box office honors it when moving their tickets.</span></span></label>
+      <label class="py-3 flex items-start gap-3"><%= f.check_box :better_seats, class: check + " mt-1" %><span><span class="block text-sm font-medium text-gray-900">Better seats</span><span class="block text-xs text-gray-500">On a seated date, hold a block for members on its seat map (hold kind Members only); members' tickets take those seats first, best first.</span></span></label>
+      <label class="py-3 flex items-start gap-3"><%= f.check_box :section_upgrade, class: check + " mt-1" %><span><span class="block text-sm font-medium text-gray-900">Free section upgrade</span><span class="block text-xs text-gray-500">On a seated date, their tickets sit one zone up (the next dearer type) when seats are free there, at the price they paid.</span></span></label>
+      <div class="py-3">
+        <label class="<%= label %>">Anything else, one per line<%= f.text_area :extras, rows: 3, placeholder: "A free drink at every show\nA guest ticket once a season", class: input + " mt-1" %></label>
+      </div>
+    </div>
+  </div>
+  <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+<% end %>

@@ -1,0 +1,5 @@
+<% content_for :title, "Edit #{@level.name}" %>
+<div class="w-full mb-10">
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Memberships", manage_ticket_memberships_path ] ], text: @level.name } %>
+  <div class="max-w-3xl"><%= render "manage/ticket_memberships/form", level: @level, url: manage_ticket_membership_level_path(@level) %></div>
+</div>

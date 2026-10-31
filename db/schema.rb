@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_01_000600) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_01_000700) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3974,6 +3974,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000600) do
     t.index ["token"], name: "index_team_invitations_on_token", unique: true
   end
 
+  create_table "ticket_buyer_verifications", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.string "email", null: false
+    t.string "code_digest", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "consumed_at"
+    t.integer "attempts", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "email"], name: "index_ticket_buyer_verifications_on_organization_id_and_email"
+    t.index ["organization_id"], name: "index_ticket_buyer_verifications_on_organization_id"
+  end
+
   create_table "ticket_discount_codes", force: :cascade do |t|
     t.bigint "organization_id", null: false
     t.bigint "ticket_listing_id"
@@ -4132,6 +4145,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000600) do
     t.boolean "own_codes", default: false, null: false
     t.string "seating_mode"
     t.bigint "seat_chart_id"
+    t.datetime "members_on_sale_at"
     t.index ["contract_id"], name: "index_ticket_listings_on_contract_id"
     t.index ["organization_id", "slug"], name: "index_ticket_listings_on_organization_id_and_slug", unique: true
     t.index ["organization_id", "status"], name: "index_ticket_listings_on_organization_id_and_status"
@@ -4139,6 +4153,58 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000600) do
     t.index ["production_id"], name: "index_ticket_listings_on_production_id"
     t.index ["seat_chart_id"], name: "index_ticket_listings_on_seat_chart_id"
     t.index ["show_id"], name: "index_ticket_listings_on_show_id", unique: true
+  end
+
+  create_table "ticket_membership_levels", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.integer "price_cents", default: 0, null: false
+    t.integer "period_months", default: 12, null: false
+    t.string "status", default: "draft", null: false
+    t.integer "position", default: 0, null: false
+    t.integer "discount_percent", default: 0, null: false
+    t.integer "presale_days", default: 0, null: false
+    t.boolean "free_exchanges", default: false, null: false
+    t.boolean "better_seats", default: false, null: false
+    t.boolean "section_upgrade", default: false, null: false
+    t.text "extras"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_ticket_membership_levels_on_organization_id"
+  end
+
+  create_table "ticket_memberships", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "ticket_membership_level_id", null: false
+    t.bigint "ticket_purchase_id"
+    t.bigint "follower_id"
+    t.bigint "renewed_from_id"
+    t.string "token", null: false
+    t.string "status", default: "pending", null: false
+    t.string "holder_name"
+    t.string "holder_email"
+    t.date "starts_on", null: false
+    t.date "ends_on", null: false
+    t.integer "price_cents", default: 0, null: false
+    t.integer "tax_cents", default: 0, null: false
+    t.integer "platform_fee_cents", default: 0, null: false
+    t.integer "processing_cents", default: 0, null: false
+    t.integer "buyer_fee_cents", default: 0, null: false
+    t.integer "total_cents", default: 0, null: false
+    t.integer "org_net_cents", default: 0, null: false
+    t.integer "stripe_fee_cents"
+    t.datetime "paid_at"
+    t.integer "renewal_reminders", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["follower_id"], name: "index_ticket_memberships_on_follower_id"
+    t.index ["organization_id", "holder_email"], name: "index_ticket_memberships_on_organization_id_and_holder_email"
+    t.index ["organization_id"], name: "index_ticket_memberships_on_organization_id"
+    t.index ["renewed_from_id"], name: "index_ticket_memberships_on_renewed_from_id"
+    t.index ["ticket_membership_level_id"], name: "index_ticket_memberships_on_ticket_membership_level_id"
+    t.index ["ticket_purchase_id"], name: "index_ticket_memberships_on_ticket_purchase_id"
+    t.index ["token"], name: "index_ticket_memberships_on_token", unique: true
   end
 
   create_table "ticket_offers", force: :cascade do |t|
@@ -4251,6 +4317,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000600) do
     t.bigint "ticket_gift_certificate_id"
     t.integer "gift_certificate_cents", default: 0, null: false
     t.boolean "waitlist_offer", default: false, null: false
+    t.bigint "ticket_membership_id"
     t.index ["buyer_email"], name: "index_ticket_orders_on_buyer_email"
     t.index ["code"], name: "index_ticket_orders_on_code", unique: true
     t.index ["exchanged_from_id"], name: "index_ticket_orders_on_exchanged_from_id"
@@ -4264,6 +4331,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000600) do
     t.index ["ticket_gift_certificate_id"], name: "index_ticket_orders_on_ticket_gift_certificate_id"
     t.index ["ticket_listing_id", "status"], name: "index_ticket_orders_on_ticket_listing_id_and_status"
     t.index ["ticket_listing_id"], name: "index_ticket_orders_on_ticket_listing_id"
+    t.index ["ticket_membership_id"], name: "index_ticket_orders_on_ticket_membership_id"
     t.index ["ticket_purchase_id"], name: "index_ticket_orders_on_ticket_purchase_id"
     t.index ["token"], name: "index_ticket_orders_on_token", unique: true
     t.index ["user_id"], name: "index_ticket_orders_on_user_id"
@@ -5296,6 +5364,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000600) do
   add_foreign_key "team_invitations", "contracts"
   add_foreign_key "team_invitations", "organizations"
   add_foreign_key "team_invitations", "productions"
+  add_foreign_key "ticket_buyer_verifications", "organizations"
   add_foreign_key "ticket_discount_codes", "organizations"
   add_foreign_key "ticket_discount_codes", "productions"
   add_foreign_key "ticket_discount_codes", "ticket_listings"
@@ -5325,6 +5394,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000600) do
   add_foreign_key "ticket_listings", "productions"
   add_foreign_key "ticket_listings", "seat_charts"
   add_foreign_key "ticket_listings", "shows"
+  add_foreign_key "ticket_membership_levels", "organizations"
+  add_foreign_key "ticket_memberships", "followers"
+  add_foreign_key "ticket_memberships", "organizations"
+  add_foreign_key "ticket_memberships", "ticket_membership_levels"
+  add_foreign_key "ticket_memberships", "ticket_memberships", column: "renewed_from_id"
+  add_foreign_key "ticket_memberships", "ticket_purchases"
   add_foreign_key "ticket_offers", "organizations"
   add_foreign_key "ticket_offers", "productions", column: "target_production_id"
   add_foreign_key "ticket_offers", "productions", column: "trigger_production_id"
@@ -5340,6 +5415,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000600) do
   add_foreign_key "ticket_orders", "ticket_discount_codes", on_delete: :nullify
   add_foreign_key "ticket_orders", "ticket_gift_certificates"
   add_foreign_key "ticket_orders", "ticket_listings"
+  add_foreign_key "ticket_orders", "ticket_memberships"
   add_foreign_key "ticket_orders", "ticket_orders", column: "exchanged_from_id"
   add_foreign_key "ticket_orders", "ticket_purchases"
   add_foreign_key "ticket_orders", "users", column: "issued_by_id", on_delete: :nullify

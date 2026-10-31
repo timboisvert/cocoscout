@@ -53,7 +53,20 @@ class TicketPurchaseSettlement
     # Several shows: one email with all of them.
     TicketPurchaseConfirmationJob.perform_later(purchase.id) if orders.size > 1
     settle_passes!(purchase, payment_intent_id)
+    settle_memberships!(purchase, payment_intent_id)
     purchase
+  end
+
+  # Memberships in the purchase go active, their dues posted; with nothing
+  # else to carry it, the first one records what Stripe took.
+  def self.settle_memberships!(purchase, payment_intent_id)
+    memberships = purchase.ticket_memberships.to_a
+    return if memberships.empty?
+
+    memberships.each { |membership| Ticketing::Memberships.settle!(membership, paid_at: purchase.paid_at || Time.current) }
+    record_stripe_fee!(memberships.first, payment_intent_id || purchase.stripe_payment_intent_id) if purchase.ticket_orders.empty? && purchase.ticket_pass_holdings.empty?
+    memberships.each { |membership| CocoScoutLedgerPoster.post_for!(membership.reload) }
+    FollowTicketBuyerJob.perform_later(purchase_id: purchase.id) if purchase.follow_list_ids.present?
   end
 
   # Credit passes in the purchase go live, their money held; with no ticket
@@ -76,7 +89,7 @@ class TicketPurchaseSettlement
     fee = intent.latest_charge&.balance_transaction&.fee
     holding.update_columns(stripe_fee_cents: fee) if fee
   rescue Stripe::StripeError => e
-    Rails.logger.warn("[TicketPurchaseSettlement] pass holding #{holding.id}: couldn't read Stripe's fee: #{e.message}")
+    Rails.logger.warn("[TicketPurchaseSettlement] #{holding.class.name} #{holding.id}: couldn't read Stripe's fee: #{e.message}")
   end
 
   def self.refund_late_payment!(purchase, payment_intent_id)

@@ -26,11 +26,17 @@ class TicketCheckout
   # any type; each ticket takes one its type sells, the rest best available.
   # accessible: the buyer said they need accessible seating, so wheelchair
   # spaces and companion seats may be theirs while other seats are free.
-  def self.start!(listing:, quantities:, code: nil, channel: "online", client_ip: nil, referrer: nil, replacing: nil, at_door: false, via: nil, campaign: nil, seats: nil, accessible: false)
+  # membership: the verified buyer's membership (VerifiedBuyer), whose level
+  # may price the tickets, open a members-first window, seat them from the
+  # members' block or a section up.
+  def self.start!(listing:, quantities:, code: nil, channel: "online", client_ip: nil, referrer: nil, replacing: nil, at_door: false, via: nil, campaign: nil, seats: nil, accessible: false, membership: nil)
     picked_seat_ids = Array(seats).map(&:to_i).reject(&:zero?)
     at_door = false if at_door && listing.door_ahead?
+    membership = nil unless membership&.usable? && membership.organization_id == listing.organization_id
     if at_door
       raise Error, "This show was canceled." if listing.status == "canceled" || listing.show.canceled
+    elsif listing.members_presale_open?
+      raise Error, "Members buy first for this show. Sign in as a member, or come back when sales open to everyone." unless membership&.presale?
     else
       raise Error, "Tickets aren't on sale for this show right now." unless listing.selling?
     end
@@ -48,6 +54,22 @@ class TicketCheckout
     return held if held && same_request?(held, requests, discount) && picked_seat_ids.empty?
 
     chosen = picked_seat_ids.any? && listing.seated? ? chosen_seats!(listing, requests, picked_seat_ids, accessible) : nil
+    upgrade = false
+    if membership && listing.seated? && chosen.nil?
+      # Better seats: the members' block, best first. Else a section up.
+      if membership.better_seats?
+        block = requests.to_h { |tier, count| [ tier, Ticketing::Memberships.members_block_seats!(listing, tier, count * tier.admits.to_i.clamp(1, 20)) ] }.reject { |_, ids| ids.empty? }
+        chosen = block if block.any?
+      end
+      if chosen.nil? && membership.section_upgrade?
+        seating = Ticketing::Seating.new(listing)
+        up = requests.flat_map { |tier, count| Ticketing::Memberships.upgrade_seats(listing, tier, count * tier.admits.to_i.clamp(1, 20), seating: seating) }
+        if up.any?
+          chosen = { upgrade: up }
+          upgrade = true
+        end
+      end
+    end
 
     short_link = via.present? ? ShortLink.live.where(organization: listing.organization).find_by(code: via.to_s.strip.upcase) : nil
     order = nil
@@ -56,8 +78,8 @@ class TicketCheckout
       # lapsed hold), and anything else in its checkout goes with it; a
       # SoldOut below rolls this back too.
       held&.ticket_purchase ? held.ticket_purchase.expire! : held&.update!(status: "expired", expires_at: Time.current)
-      Ticketing::Inventory.reserve!(listing, seats, seats: chosen) do
-        Ticketing::SeatPlan.with(chosen&.values&.flatten, accessible: accessible) do
+      Ticketing::Inventory.reserve!(listing, seats, seats: (upgrade ? nil : chosen)) do
+        Ticketing::SeatPlan.with(chosen&.values&.flatten, accessible: accessible, upgrade: upgrade) do
         expires_at = TicketOrder::HOLD.from_now
         purchase = TicketPurchase.create!(organization: listing.organization, channel: channel, expires_at: expires_at)
         # The refund policy the buyer sees is the one this order keeps.
@@ -66,8 +88,8 @@ class TicketCheckout
                                     channel: channel, money_path: "cocoscout", fee_mode: listing.effective_fee_mode,
                                     expires_at: expires_at, ticket_discount_code: discount,
                                     client_ip: client_ip, referrer: referrer.to_s.first(500).presence,
-                                    short_link: short_link, utm: utm_for(short_link, campaign))
-        requests.each { |tier, count| count.times { add_purchase(order, tier, discount) } }
+                                    short_link: short_link, utm: utm_for(short_link, campaign), ticket_membership: membership)
+        requests.each { |tier, count| count.times { add_purchase(order, tier, discount, member_pct: membership&.discount_percent.to_i) } }
         # Products added on the old hold come along to the new one.
         set_items!(order, held_item_quantities(held), reprice: false) if held
         price!(order)
@@ -424,10 +446,12 @@ class TicketCheckout
   # tickets sharing its price and its discount), each with its tax, recorded
   # now so the price the buyer is quoted is the price they pay, even if the
   # theater changes its tax rate while they're checking out.
-  def self.add_purchase(order, tier, discount)
+  # A member's percentage off applies when no code does (no stacking).
+  def self.add_purchase(order, tier, discount, member_pct: 0)
     listing = order.ticket_listing
     price = tier.current_price_cents(listing)
     off = discount&.applies_to?(listing, tier) ? discount.discount_cents_for(price) : 0
+    off = (price * member_pct / 100.0).round.clamp(0, price) if off.zero? && member_pct.to_i.positive?
     tier.seat_prices(price).zip(tier.seat_prices(off)).each { |seat_price, seat_off| add_ticket(order, tier, seat_price, seat_off) }
   end
 

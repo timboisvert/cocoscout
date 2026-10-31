@@ -198,6 +198,20 @@ class TicketingTemplates
       body: %(<p>Hi {{first_name}},</p><p>You're on the waitlist for {{show_title}} on {{show_date}}. {{message}}</p>),
       variables: v(:first_name, :organization_name, :show_title, :show_date, :message) },
 
+    # --- Memberships (advanced ticketing §2b).
+    { key: "ticket_membership_welcome", name: "Membership: welcome", channel: "email",
+      subject: "Welcome to {{level_name}} at {{organization_name}}",
+      body: %(<p>Hi {{first_name}},</p><p>You're a member of {{organization_name}}: {{level_name}}, through {{ends_on}}. Your perks: {{perks}}.</p><p><a href="{{membership_url}}">Your membership card</a> has the details. When you buy tickets, sign in on the <a href="{{members_url}}">members page</a> with this email and your perks apply at checkout.</p>),
+      variables: v(:first_name, :organization_name, :level_name, :ends_on, :perks, :membership_url, :members_url) },
+    { key: "ticket_member_code", name: "Membership: sign-in code", channel: "email",
+      subject: "Your {{organization_name}} code: {{code}}",
+      body: %(<p>Your code to sign in at {{organization_name}} is <strong>{{code}}</strong>. It works for {{minutes}} minutes. If you didn't ask for it, ignore this email.</p>),
+      variables: v(:organization_name, :code, :minutes) },
+    { key: "ticket_membership_renewal", name: "Membership: time to renew", channel: "email",
+      subject: "Your {{organization_name}} membership ends {{ends_on}}",
+      body: %(<p>Hi {{first_name}},</p><p>Your {{level_name}} membership at {{organization_name}} ends {{ends_on}}. <a href="{{membership_url}}">Renew</a> and your perks ({{perks}}) carry straight on.</p>),
+      variables: v(:first_name, :organization_name, :level_name, :ends_on, :perks, :membership_url) },
+
     { key: "ticket_seats_changed", name: "Seats changed", channel: "email",
       subject: "Your seats changed: {{show_title}}, {{show_date}}",
       body: %(<p>Hi {{first_name}},</p><p>{{organization_name}} moved your seats for {{show_title}} on {{show_date}}: {{changes}}.</p><p>Your tickets and their codes are the same; the new seats are on them. <a href="{{order_url}}">Your tickets</a></p><p>Questions? Reply to this email.</p>),

@@ -415,13 +415,25 @@ Rails.application.routes.draw do
     get  "pass-checkout/:token/done",  to: "ticket_pass_purchases#done", as: "pass_purchase_done"
     get  "my-pass/:token",             to: "ticket_pass_holdings#show",  as: "pass_holding"
     post "my-pass/:token/use",         to: "ticket_pass_holdings#use",   as: "pass_holding_use"
+    # Memberships (advanced ticketing §2b): paying for one, and the member's own card.
+    get  "membership-checkout/:token",      to: "ticket_membership_purchases#show", as: "membership_purchase"
+    post "membership-checkout/:token/pay",  to: "ticket_membership_purchases#pay",  as: "membership_purchase_pay"
+    get  "membership-checkout/:token/done", to: "ticket_membership_purchases#done", as: "membership_purchase_done"
+    get  "my-membership/:token",            to: "ticket_memberships#show",          as: "membership"
+    post "my-membership/:token/renew",      to: "ticket_memberships#renew",         as: "membership_renew"
     # The waitlist (advanced ticketing plan §7b): join from a sold-out date; a place on the list has its own page.
     get    "waitlist/:token",          to: "ticket_waitlists#show",   as: "waitlist"
     # A group's page (advanced ticketing §3): the invoice, paying, names, tickets.
     get    "group/:token",             to: "ticket_groups#show",      as: "group"
     patch  "group/:token/names",       to: "ticket_groups#names",     as: "group_names"
     delete "waitlist/:token",          to: "ticket_waitlists#destroy"
-    get  ":org",                       to: "tickets#box_office",      as: "box_office"
+    get ":org",                       to: "tickets#box_office",      as: "box_office"
+    # The members page (advanced ticketing §2b): join, or sign in with an emailed code.
+    get    ":org/members",             to: "ticket_members#show",     as: "members"
+    post   ":org/members/join",        to: "ticket_members#join",     as: "members_join"
+    post   ":org/members/code",        to: "ticket_members#code",     as: "members_code"
+    post   ":org/members/verify",      to: "ticket_members#verify",   as: "members_verify"
+    delete ":org/members/session",     to: "ticket_members#signout",  as: "members_signout"
     # A pass: several shows sold together (TicketPass).
     get  ":org/passes/:pass",          to: "ticket_passes#show",      as: "pass"
     post ":org/passes/:pass/checkout", to: "ticket_passes#checkout",  as: "pass_checkout"
@@ -1408,6 +1420,14 @@ Rails.application.routes.draw do
     patch  "ticketing/passes/:id",                to: "ticket_passes#update"
     delete "ticketing/passes/:id",                to: "ticket_passes#destroy"
     post   "ticketing/passes/:id/holdings/:holding_id/refund", to: "ticket_passes#refund_holding", as: "ticket_pass_holding_refund"
+    # Memberships (advanced ticketing §2b): levels from a menu of perks, and who's a member.
+    get    "ticketing/memberships",                   to: "ticket_memberships#index",   as: "ticket_memberships"
+    get    "ticketing/memberships/levels/new",        to: "ticket_memberships#new",     as: "new_ticket_membership_level"
+    post   "ticketing/memberships/levels",            to: "ticket_memberships#create",  as: "ticket_membership_levels"
+    get    "ticketing/memberships/levels/:id/edit",   to: "ticket_memberships#edit",    as: "edit_ticket_membership_level"
+    patch  "ticketing/memberships/levels/:id",        to: "ticket_memberships#update",  as: "ticket_membership_level"
+    delete "ticketing/memberships/levels/:id",        to: "ticket_memberships#destroy"
+    post   "ticketing/memberships/:token/cancel",     to: "ticket_memberships#cancel",  as: "cancel_ticket_membership"
     get    "ticketing/deals",                     to: "ticket_offers#index",             as: "ticket_offers"
     # New and edit both run through the deal wizard.
     get    "ticketing/deals/new",                 to: "ticket_offer_wizard#start",       as: "new_ticket_offer"

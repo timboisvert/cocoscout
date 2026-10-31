@@ -1,0 +1,82 @@
+<%# The members page: the levels on sale, each with its perks and a Join
+    button; sign in with an emailed code; a signed-in member's card. %>
+<% content_for :title, "Members · #{@organization.name}" %>
+<% input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+<div class="mx-auto max-w-xl space-y-5">
+  <div class="text-center space-y-1.5">
+    <p class="text-sm font-medium text-pink-700"><%= @organization.name %></p>
+    <h1 class="text-3xl sm:text-4xl coustard-regular text-gray-900">Members</h1>
+  </div>
+  <% if flash[:alert] %><div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 text-center"><%= flash[:alert] %></div><% end %>
+  <% if flash[:notice] %><div class="rounded-xl border border-pink-200 bg-pink-50 px-4 py-3 text-sm text-pink-800 text-center"><%= flash[:notice] %></div><% end %>
+
+  <% if @membership %>
+    <div class="rounded-2xl border border-pink-200 bg-pink-50 px-5 py-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-pink-700">Your membership</p>
+      <p class="mt-1 text-lg font-semibold text-gray-900"><%= @membership.level.name %></p>
+      <p class="text-sm text-gray-700"><%= @membership.holder_name %> · through <%= @membership.ends_on.strftime("%B %-d, %Y") %></p>
+      <ul class="mt-2 text-sm text-gray-800 space-y-0.5"><% @membership.level.perk_words.each do |w| %><li>· <%= w %></li><% end %></ul>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <%= link_to tickets_membership_path(token: @membership.token, **embed_params) do %><%= render "shared/button", text: "Your card", variant: "secondary", size: "small" %><% end %>
+        <%= link_to tickets_box_office_path(org: @ticketing_profile.slug, **embed_params) do %><%= render "shared/button", text: "Buy tickets", variant: "primary", size: "small" %><% end %>
+      </div>
+    </div>
+  <% elsif @email %>
+    <div class="rounded-2xl border border-gray-200 bg-white px-5 py-4 text-sm text-gray-700">
+      Signed in as <span class="font-medium text-gray-900"><%= @email %></span><% if @past %> · your <%= @past.level.name %> membership <%= @past.status == "expired" ? "ended" : "is #{@past.status_label.downcase}" %><% end %>. No live membership on this email.
+      <% if @past&.renewable? %><%= link_to "Renew it", tickets_membership_path(token: @past.token, **embed_params), class: "text-pink-700 hover:text-pink-800 font-medium" %>.<% end %>
+    </div>
+  <% end %>
+
+  <% if @levels.empty? %>
+    <div class="rounded-2xl border border-gray-200 bg-white px-5 py-6 text-center text-sm text-gray-600">No memberships on sale right now.</div>
+  <% else %>
+    <% @levels.each do |level| %>
+      <% all_in = TicketPricing.quote(items: [ { price_cents: level.price_cents, discount_cents: 0, tax_cents: 0 } ], fee_mode: @ticketing_profile.default_fee_mode.presence || "buyer").total_cents %>
+      <div class="rounded-2xl border border-gray-200 bg-white px-5 py-4">
+        <div class="flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            <h2 class="text-lg font-semibold text-gray-900"><%= level.name %></h2>
+            <p class="text-sm text-gray-900"><span class="font-semibold"><%= number_to_currency(all_in / 100.0) %></span> <span class="text-gray-500">for <%= level.period_words %><%= ", incl. fees" if all_in != level.price_cents %></span></p>
+          </div>
+          <% unless @membership && @membership.ticket_membership_level_id == level.id %>
+            <%= form_with url: tickets_members_join_path(org: @ticketing_profile.slug, **embed_params), method: :post, data: { turbo: false } do %>
+              <%= render "tickets/bot_trap", id: "join_#{level.id}_website" %>
+              <%= hidden_field_tag :level_id, level.id, id: nil %>
+              <%= render "shared/button", text: "Join", variant: "primary", size: "small", type: :submit %>
+            <% end %>
+          <% end %>
+        </div>
+        <% if level.description.present? %><div class="mt-2 text-sm text-gray-700 leading-relaxed"><%= simple_format(level.description) %></div><% end %>
+        <% perks = level.perk_words %>
+        <% if perks.any? %><ul class="mt-3 text-sm text-gray-800 space-y-1"><% perks.each do |w| %><li class="flex gap-2"><svg class="w-4 h-4 mt-0.5 text-pink-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span><%= w %></span></li><% end %></ul><% end %>
+      </div>
+    <% end %>
+  <% end %>
+
+  <% unless @email %>
+    <div class="rounded-2xl border border-gray-200 bg-white px-5 py-4 space-y-3">
+      <h2 class="font-semibold text-gray-900">Already a member?</h2>
+      <% if @asking %>
+        <p class="text-sm text-gray-700">Type the six-digit code we emailed to <span class="font-medium"><%= params[:email] %></span>.</p>
+        <%= form_with url: tickets_members_verify_path(org: @ticketing_profile.slug, **embed_params), method: :post, data: { turbo: false }, class: "flex gap-2" do %>
+          <%= hidden_field_tag :email, params[:email], id: nil %>
+          <%= text_field_tag :code, nil, placeholder: "123456", inputmode: "numeric", autocomplete: "one-time-code", maxlength: 6, required: true, "aria-label": "Your code", class: input + " tracking-widest" %>
+          <%= render "shared/button", text: "Sign in", variant: "primary", size: "small", type: :submit %>
+        <% end %>
+        <p class="text-xs text-gray-500">Didn't get it? <%= link_to "Start over", tickets_members_path(org: @ticketing_profile.slug, **embed_params), class: "text-pink-700 hover:text-pink-800" %>.</p>
+      <% else %>
+        <p class="text-sm text-gray-700">Sign in with the email on your membership. We send a code; there's no password.</p>
+        <%= form_with url: tickets_members_code_path(org: @ticketing_profile.slug, **embed_params), method: :post, data: { turbo: false }, class: "flex gap-2" do %>
+          <%= render "tickets/bot_trap", id: "members_website" %>
+          <%= email_field_tag :email, nil, placeholder: "you@example.com", required: true, "aria-label": "Your member email", class: input %>
+          <%= render "shared/button", text: "Email me a code", variant: "secondary", size: "small", type: :submit %>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <%= form_with url: tickets_members_signout_path(org: @ticketing_profile.slug, **embed_params), method: :delete, data: { turbo: false }, class: "text-center" do %>
+      <%= render "shared/button", text: "Sign out", variant: "ghost", size: "small", type: :submit %>
+    <% end %>
+  <% end %>
+</div>

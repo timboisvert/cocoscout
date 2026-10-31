@@ -91,6 +91,9 @@ class Organization < ApplicationRecord
   has_many :ticketing_notification_logs, dependent: :delete_all
   has_one :ticketing_profile, dependent: :destroy
   has_many :seat_charts, dependent: :destroy
+  has_many :ticket_membership_levels, dependent: :destroy
+  has_many :ticket_memberships, dependent: :destroy
+  has_many :ticket_buyer_verifications, dependent: :destroy
   has_many :ticket_passes, dependent: :destroy
   has_many :ticket_offers, dependent: :destroy
   has_many :tax_lines, dependent: :delete_all

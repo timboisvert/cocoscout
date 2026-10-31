@@ -7,7 +7,10 @@
 <%
   show = listing.show
   note = public_listing_note(listing, inventory)
-  selling = listing.selling? && !inventory.sold_out? && !preview
+  membership = local_assigns[:membership]
+  members_presale = local_assigns[:members_presale] && !listing.selling?
+  member_pct = membership ? membership.discount_percent : 0
+  selling = (listing.selling? || (members_presale && membership&.presale?)) && !inventory.sold_out? && !preview
   max_per_order = listing.effective_max_per_order
   taxed = tax && tax.lines.any? { |line| !line.exempt }
   tax_added = taxed && tax.mode == "added"
@@ -30,7 +33,9 @@
     <p class="px-5 py-6 text-center text-gray-700">
       <%= note || (preview ? "This page is a preview. Buyers can't see it until the show is on sale." : "Tickets aren't on sale right now.") %>
     </p>
-    <% if !preview && listing.waitlist_open?(inventory) %>
+    <% if !preview && members_presale && !inventory.sold_out? %>
+      <%= render "tickets/members_presale", listing: listing, profile: profile, membership: membership %>
+    <% elsif !preview && listing.waitlist_open?(inventory) %>
       <%= render "tickets/waitlist_form", listing: listing, profile: profile %>
     <% end %>
   <% elsif tiers.empty? %>
@@ -105,6 +110,7 @@
                   ticket_picker_fixed_value: TicketPricing::PROCESSING_FIXED_CENTS,
                   ticket_picker_tax_label_value: tax_label } do %>
       <%= hidden_field_tag :code, code, data: { ticket_picker_target: "code" } if code %>
+      <% if members_presale && selling %><p class="px-5 pt-4 text-sm font-medium text-pink-700">Members first: you're buying before sales open to everyone.</p><% end %>
       <%= hidden_field_tag :hold, nil, id: nil, data: { ticket_picker_target: "holdInput" } %>
       <%= hidden_field_tag :embed, "1" if embed? %>
       <%= render "tickets/bot_trap", id: "event_website" %>
@@ -115,8 +121,9 @@
           <% left = tier.marked_sold_out? ? 0 : tier.units_for(inventory.remaining(tier: tier)) %>
           <% most = [ left || tier.units_for(max_per_order), tier.units_for(max_per_order) ].min %>
           <% price_now = tier.current_price_cents(listing) %>
+          <% price_now = (price_now * (100 - member_pct) / 100.0).round if member_pct.positive? %>
           <% added_tax = tax_added ? tier.seat_prices(price_now).sum { |cents| TaxCalculator.for_ticket(listing, tier.base_tier, cents).added_cents } : 0 %>
-          <% breakdown = price_now.zero? ? nil : ticket_price_breakdown(listing, tier) %>
+          <% breakdown = price_now.zero? || member_pct.positive? ? nil : ticket_price_breakdown(listing, tier) %>
           <li class="flex items-center gap-3 px-5 py-4" data-ticket-picker-target="row" data-name="<%= tier.name %>" data-tier-id="<%= tier.id %>"
               data-price="<%= price_now %>" data-tax="<%= added_tax %>" data-max="<%= [ most, 0 ].max %>"
               data-admits="<%= tier.admits %>" data-left="<%= left %>" data-per-order="<%= tier.units_for(max_per_order) %>">
@@ -140,7 +147,8 @@
                 </details>
               <% else %>
                 <div class="text-sm font-semibold text-gray-900 mt-0.5">
-                  <%= ticket_price(TicketPricing.all_in_price_cents(listing, tier)) %>
+                  <%= ticket_price(member_pct.positive? ? TicketPricing.quote(items: tier.seat_prices(price_now).map { |c| { price_cents: c, discount_cents: 0, tax_cents: TaxCalculator.for_ticket(listing, tier.base_tier, c).added_cents } }, fee_mode: listing.effective_fee_mode).total_cents : TicketPricing.all_in_price_cents(listing, tier)) %>
+                  <% if member_pct.positive? %><span class="text-xs font-normal text-pink-700">member price</span><% end %>
                   <% if !price_now.zero? && price_note %><span class="text-xs font-normal text-gray-600"><%= price_note %></span><% end %>
                 </div>
               <% end %>

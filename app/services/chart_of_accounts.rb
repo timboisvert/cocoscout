@@ -29,6 +29,7 @@ class ChartOfAccounts
     ticket_income: { code: "4000", name: "Ticket income", type: "income" },
     product_income: { code: "4010", name: "Product income", type: "income" },
     unused_pass_income: { code: "4020", name: "Unused pass credits", type: "income" },
+    membership_dues: { code: "4030", name: "Membership dues", type: "income" },
     contract_income: { code: "4100", name: "Rental and contract income", type: "income" },
     course_income: { code: "4200", name: "Course income", type: "income" },
     sponsorship_income: { code: "4300", name: "Sponsorship", type: "income" },

@@ -72,7 +72,7 @@ module Manage
       "manage/ticket_gift_certificates" => :ticketing,
       "manage/ticket_waitlists" => :ticketing,
       "manage/ticket_group_bookings" => :ticketing,
-      "manage/seat_charts" => :ticketing, "manage/ticket_seat_maps" => :ticketing,
+      "manage/seat_charts" => :ticketing, "manage/ticket_seat_maps" => :ticketing, "manage/ticket_memberships" => :ticketing,
       # Mailing lists
       "manage/mailing_lists" => :mailing_lists,
       "manage/mailing_list_settings" => :mailing_lists,

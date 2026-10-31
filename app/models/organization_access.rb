@@ -159,7 +159,7 @@ class OrganizationAccess
     "manage/ticket_offers" => "ticketing", "manage/ticket_offer_wizard" => "ticketing", "manage/ticket_passes" => "ticketing", "manage/ticket_products" => "ticketing",
     "manage/ticket_sales_viewers" => "ticketing", "manage/short_links" => "ticketing", "manage/ticket_gift_certificates" => "ticketing",
     "manage/ticket_waitlists" => "ticketing", "manage/ticket_group_bookings" => "ticketing",
-    "manage/seat_charts" => "ticketing", "manage/ticket_seat_maps" => "ticketing",
+    "manage/seat_charts" => "ticketing", "manage/ticket_seat_maps" => "ticketing", "manage/ticket_memberships" => "ticketing",
     "manage/mailing_lists" => "mailing_lists", "manage/mailing_list_settings" => "mailing_lists", "manage/list_followers" => "mailing_lists",
     "manage/segments" => "mailing_lists", "manage/follower_emails" => "mailing_lists",
     "manage/contracts" => "contracts", "manage/contract_settings" => "contracts", "manage/contract_templates" => "contracts", "manage/contract_signatures" => "contracts",

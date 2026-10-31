@@ -19,6 +19,7 @@ class TicketPurchase < ApplicationRecord
   has_many :ticket_orders, -> { order(:id) }, inverse_of: :ticket_purchase, dependent: :nullify
   # Credit passes bought in it (no show yet: credits used later).
   has_many :ticket_pass_holdings, -> { order(:id) }, dependent: :nullify
+  has_many :ticket_memberships, -> { order(:id) }, dependent: :nullify
   # A gift certificate paying for (some of) this checkout; the card pays the rest.
   belongs_to :ticket_gift_certificate, optional: true
   has_many :ticket_gift_certificate_redemptions, dependent: :nullify
@@ -60,8 +61,10 @@ class TicketPurchase < ApplicationRecord
   def price!
     orders = ticket_orders.includes(tickets: :tax_lines, ticket_order_items: :tax_lines).to_a
     holdings = ticket_pass_holdings.includes(:tax_lines, :ticket_pass).to_a
-    fee_mode = orders.first&.fee_mode || holdings.first&.ticket_pass&.fee_mode([]) || "buyer"
-    parts = orders.map { |order| TicketCheckout.order_items(order) } + holdings.map { |holding| self.class.holding_items(holding) }
+    memberships = ticket_memberships.to_a
+    fee_mode = orders.first&.fee_mode || holdings.first&.ticket_pass&.fee_mode([]) || (memberships.any? ? TicketingProfile.for(organization).default_fee_mode.presence : nil) || "buyer"
+    parts = orders.map { |order| TicketCheckout.order_items(order) } + holdings.map { |holding| self.class.holding_items(holding) } +
+            memberships.map { |membership| [ { price_cents: membership.price_cents, discount_cents: 0, tax_cents: 0 } ] }
     # A tap on the door phone is one in-person charge (TicketPricing in_person).
     in_person = orders.any? { |order| order.channel == "door_tap" }
     quote = TicketPricing.quote(items: parts.flatten, fee_mode: fee_mode, in_person: in_person)
@@ -91,8 +94,15 @@ class TicketPurchase < ApplicationRecord
                         buyer_fee_cents: buyer_fees[index], total_cents: total,
                         org_net_cents: total - processing[index] - own[index].platform_fee_cents)
       end
-      lines = orders + holdings
-      update!(subtotal_cents: orders.sum(&:subtotal_cents) + holdings.sum(&:price_cents), discount_cents: orders.sum(&:discount_cents),
+      memberships.each_with_index do |membership, offset|
+        index = orders.size + holdings.size + offset
+        total = bases[index] + buyer_fees[index]
+        membership.update!(platform_fee_cents: own[index].platform_fee_cents, processing_cents: processing[index],
+                           buyer_fee_cents: buyer_fees[index], total_cents: total,
+                           org_net_cents: total - processing[index] - own[index].platform_fee_cents)
+      end
+      lines = orders + holdings + memberships
+      update!(subtotal_cents: orders.sum(&:subtotal_cents) + holdings.sum(&:price_cents) + memberships.sum(&:price_cents), discount_cents: orders.sum(&:discount_cents),
               tax_cents: orders.sum(&:tax_cents) + holdings.sum(&:tax_cents), platform_fee_cents: lines.sum(&:platform_fee_cents),
               processing_cents: lines.sum(&:processing_cents), buyer_fee_cents: lines.sum(&:buyer_fee_cents),
               total_cents: lines.sum(&:total_cents), org_net_cents: lines.sum(&:org_net_cents))
@@ -116,6 +126,7 @@ class TicketPurchase < ApplicationRecord
     transaction do
       update!(status: "expired", expires_at: at)
       ticket_orders.where(status: "pending").update_all(status: "expired", expires_at: at, updated_at: at)
+      ticket_memberships.where(status: "pending").update_all(status: "canceled", updated_at: at)
       TicketGiftCertificates.release!(self)
     end
   end

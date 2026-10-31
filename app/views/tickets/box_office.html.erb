@@ -38,6 +38,12 @@
     <% end %>
   </div>
 <% end %>
+<% if @organization.ticket_membership_levels.on_sale.exists? %>
+  <%= link_to tickets_members_path(org: @ticketing_profile.slug, **embed_params), class: "mt-4 block rounded-2xl border border-pink-200 bg-pink-50 px-5 py-4 hover:bg-pink-100" do %>
+    <span class="block text-sm font-semibold text-gray-900"><%= current_membership(@organization) ? "Your membership" : "Become a member" %></span>
+    <span class="block text-sm text-gray-700"><%= current_membership(@organization) ? "Signed in: your perks apply at checkout." : @organization.ticket_membership_levels.on_sale.in_order.map(&:name).to_sentence + ". Perks on every ticket." %></span>
+  <% end %>
+<% end %>
 
 <% if @listings.empty? %>
   <p class="mt-6 rounded-xl border border-dashed border-gray-300 px-6 py-10 text-center text-sm text-gray-600">No shows on sale right now. Check back soon.</p>

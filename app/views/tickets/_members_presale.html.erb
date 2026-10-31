@@ -1,0 +1,20 @@
+<%# Members buy first (advanced ticketing §2b): before public on-sale, the
+    panel under a date that isn't selling yet. A verified member whose level
+    has early access never sees this (the picker sells to them). Locals:
+    listing, profile, membership. %>
+<% opens = listing.on_sale_at %>
+<div class="border-t border-gray-100 px-5 py-5 space-y-3">
+  <p class="text-sm font-semibold text-gray-900">Members buy first</p>
+  <p class="text-sm text-gray-700">Tickets open to everyone <%= opens.strftime("%A, %B %-d at %-l:%M %p") %>. Members of <%= listing.organization.name %> can buy now.</p>
+  <% if membership %>
+    <p class="text-sm text-gray-600">Your <%= membership.level.name %> membership doesn't include early access.</p>
+  <% else %>
+    <%= form_with url: tickets_members_code_path(org: profile.slug, **embed_params), method: :post, data: { turbo: false }, class: "flex gap-2" do %>
+      <%= render "tickets/bot_trap", id: "presale_website" %>
+      <%= email_field_tag :email, nil, placeholder: "Your member email", required: true, "aria-label": "Your member email",
+            class: "flex-1 min-w-0 px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+      <%= render "shared/button", text: "Sign in", variant: "primary", size: "small", type: :submit %>
+    <% end %>
+    <p class="text-xs text-gray-500">We email you a code; no password. Not a member? <%= link_to "See the memberships", tickets_members_path(org: profile.slug, **embed_params), class: "text-pink-700 hover:text-pink-800" %>.</p>
+  <% end %>
+</div>

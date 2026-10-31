@@ -1,0 +1,62 @@
+<% content_for :title, "Memberships" %>
+<% badge = { "draft" => "bg-gray-100 text-gray-700", "on_sale" => "bg-green-100 text-green-800", "closed" => "bg-gray-100 text-gray-500" } %>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Ticketing", manage_ticketing_path ] ], text: "Memberships", links: [ { text: "New level", path: manage_new_ticket_membership_level_path } ] } %>
+
+  <div class="max-w-3xl space-y-6">
+    <p class="text-sm text-gray-600">A membership is whatever you make it: pick its perks from the menu, name it, price it. Members join and sign in at <%= link_to @members_url, @members_url, class: "text-pink-600 hover:text-pink-700 break-all" %>, with an emailed code instead of a password. Every membership sold costs fifty cents, like a ticket.</p>
+
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/section_heading", title: "Levels" %>
+      <% if @levels.empty? %>
+        <%= render "shared/empty_state", compact: true, title: "No levels yet.", body: "Make one, turn on its perks, and put it on sale." %>
+      <% else %>
+        <ul class="divide-y divide-gray-100">
+          <% @levels.each do |level| %>
+            <li class="px-5 py-3 flex items-center gap-3">
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-semibold text-gray-900"><%= level.name %> <span class="ml-1 inline-flex px-2 py-0.5 rounded-full text-xs font-medium <%= badge[level.status] %>"><%= level.status_label %></span></p>
+                <p class="text-xs text-gray-500"><%= number_to_currency(level.price_cents / 100.0) %> for <%= level.period_words %> · <%= pluralize(@counts[level.id].to_i, "member") %> · <%= level.perk_words.to_sentence.presence || "no perks yet" %></p>
+              </div>
+              <%= link_to manage_edit_ticket_membership_level_path(level) do %><%= render "shared/button", text: "Edit", variant: "secondary", size: "xs" %><% end %>
+              <% cid = "remove-level-#{level.id}" %>
+              <%= render "shared/button", text: "Remove", variant: "secondary", size: "xs", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/section_heading", title: "Members" do %>
+        <%= form_with url: manage_ticket_memberships_path, method: :get, data: { turbo: false }, class: "flex gap-2" do %>
+          <%= text_field_tag :q, @q, placeholder: "Name or email", "aria-label": "Find a member", class: "px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" %>
+          <%= render "shared/button", text: "Find", variant: "secondary", size: "small", type: :submit %>
+        <% end %>
+      <% end %>
+      <% if @memberships.empty? %>
+        <p class="px-5 py-5 text-sm text-gray-500"><%= @q.present? ? "Nobody matches." : "No members yet." %></p>
+      <% else %>
+        <ul class="divide-y divide-gray-100">
+          <% @memberships.each do |m| %>
+            <li class="px-5 py-3 flex items-center gap-3">
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-semibold text-gray-900 truncate"><%= m.holder_name.presence || m.holder_email %></p>
+                <p class="text-xs text-gray-500 truncate"><%= m.holder_email %> · <%= m.level.name %> · <%= m.status_label %> · <%= m.starts_on.strftime("%b %-d, %Y") %> to <%= m.ends_on.strftime("%b %-d, %Y") %></p>
+              </div>
+              <% if m.status == "active" %>
+                <% cid = "cancel-#{m.id}" %>
+                <%= render "shared/button", text: "End", variant: "secondary", size: "xs", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
+                <%= render "shared/confirm_modal", id: cid, title: "End this membership?", message: "#{m.holder_name.presence || m.holder_email} loses the perks today. Any refund is yours to give from the purchase.", confirm_text: "End it", url: manage_cancel_ticket_membership_path(m.token), method: :post %>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+    </div>
+  </div>
+</div>
+<% @levels.each do |level| %>
+  <%= render "shared/confirm_modal", id: "remove-level-#{level.id}", title: "Remove #{level.name}?", message: "A level with members is closed instead, so they keep what they paid for.", confirm_text: "Remove", url: manage_ticket_membership_level_path(level), method: :delete %>
+<% end %>

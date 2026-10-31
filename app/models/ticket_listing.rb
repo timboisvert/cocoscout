@@ -249,6 +249,22 @@ class TicketListing < ApplicationRecord
     effective_fee_mode == "buyer"
   end
 
+  # When members may buy (advanced ticketing §2b): the date's own time, else
+  # public on-sale less the longest early access any level on sale gives.
+  def effective_members_on_sale_at
+    return members_on_sale_at if members_on_sale_at
+    return nil unless on_sale_at
+
+    days = organization.ticket_membership_levels.on_sale.maximum(:presale_days).to_i
+    days.positive? ? on_sale_at - days.days : nil
+  end
+
+  # Before public on-sale but inside the members' window.
+  def members_presale_open?(at = Time.current)
+    from = effective_members_on_sale_at
+    status == "on_sale" && !show.canceled && on_sale_at && on_sale_at > at && from && from <= at && (off_sale_at.nil? || at < off_sale_at)
+  end
+
   # Selling online right now: put on sale, inside its window, show not cancelled.
   def selling?(at = Time.current)
     status == "on_sale" && !show.canceled &&

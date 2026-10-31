@@ -37,6 +37,7 @@ class TicketOrder < ApplicationRecord
   # The checkout this order was paid in, with any other shows bought with it.
   belongs_to :ticket_purchase, optional: true, inverse_of: :ticket_orders
   belongs_to :ticket_discount_code, optional: true
+  belongs_to :ticket_membership, optional: true
   # A gift certificate that paid gift_certificate_cents of this order (its
   # checkout's, shared onto each show's order); the card paid the rest.
   belongs_to :ticket_gift_certificate, optional: true

@@ -7,6 +7,7 @@
 # can preview one that isn't yet (with a banner saying so).
 class TicketsController < ApplicationController
   include TicketingEmbeddable
+  include VerifiedBuyer
 
   allow_unauthenticated_access
 
@@ -108,6 +109,8 @@ class TicketsController < ApplicationController
       @inventory = @listing.inventory
       @tax = TaxCalculator.for_ticket(@listing, @tiers.first, 10_000) if @tiers.any?
       @seat_payload = Ticketing::Seating.new(@listing).payload(tiers: @tiers.reject(&:bundle?).select(&:selling?)) if @listing.seated? && @tiers.any?
+      @membership = current_membership(@organization)
+      @members_presale = @listing.members_presale_open?
       @passes = selling_passes.select do |pass|
         pass.credit_kind? ? pass.coverages.any? { |coverage| coverage.production_id == @listing.production_id } : pass.rows.any? { |row| row.ticket_listing_id == @listing.id }
       end

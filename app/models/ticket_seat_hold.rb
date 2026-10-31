@@ -7,8 +7,8 @@
 # themselves are TicketSeatHoldSeat rows; the database keeps one hold per
 # seat per date.
 class TicketSeatHold < ApplicationRecord
-  KINDS = %w[house accessible group subscription outside_sale manual].freeze
-  KIND_LABELS = { "house" => "House seats", "accessible" => "Accessible seating", "group" => "Group", "subscription" => "Subscription",
+  KINDS = %w[house accessible group subscription members outside_sale manual].freeze
+  KIND_LABELS = { "house" => "House seats", "accessible" => "Accessible seating", "group" => "Group", "subscription" => "Subscription", "members" => "Members only",
                   "outside_sale" => "Sold on another site", "manual" => "Held" }.freeze
 
   belongs_to :organization

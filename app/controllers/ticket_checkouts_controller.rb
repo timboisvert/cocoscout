@@ -11,6 +11,7 @@
 # first). Free orders skip Stripe.
 class TicketCheckoutsController < ApplicationController
   include TicketingEmbeddable
+  include VerifiedBuyer
 
   allow_unauthenticated_access
   # Buying never rides on a signed-in session: the order's secret token is the
@@ -45,7 +46,8 @@ class TicketCheckoutsController < ApplicationController
     order = TicketCheckout.start!(listing: listing, quantities: quantities, code: params[:code],
                                   client_ip: request.remote_ip, referrer: request.referer, replacing: params[:hold],
                                   via: cookies[ShortLinksController::COOKIE], campaign: cookies[TicketsController::CAMPAIGN_COOKIE],
-                                  seats: seat_ids.presence, accessible: params[:accessible] == "1")
+                                  seats: seat_ids.presence, accessible: params[:accessible] == "1",
+                                  membership: current_membership(listing.organization))
     redirect_to tickets_checkout_path(token: order.token, **embed_params)
   rescue TicketCheckout::Error => e
     redirect_to tickets_event_path(org: params[:org], event: params[:event], code: params[:code].presence, **embed_params), alert: e.message

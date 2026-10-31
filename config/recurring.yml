@@ -69,6 +69,10 @@ development:
     class: TicketPriceChangeJob
     schedule: every hour
 
+  membership_sweep:
+    class: MembershipSweepJob
+    schedule: every day at 8am America/Chicago
+
   group_hold_release:
     class: GroupHoldReleaseJob
     schedule: at 9am every day America/Chicago
@@ -203,6 +207,10 @@ production:
   ticket_price_changes:
     class: TicketPriceChangeJob
     schedule: every hour
+
+  membership_sweep:
+    class: MembershipSweepJob
+    schedule: every day at 8am America/Chicago
 
   group_hold_release:
     class: GroupHoldReleaseJob

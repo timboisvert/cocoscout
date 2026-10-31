@@ -1,0 +1,51 @@
+<%
+  total = @purchase.total_cents
+  free = total.zero?
+  back_path = tickets_members_path(org: @ticketing_profile.slug, **embed_params)
+  lines = [ [ "#{@level.name} membership, #{@level.period_words}", @membership.price_cents, false ] ]
+  fees = @memberships.sum(&:buyer_fee_cents)
+  lines << [ "Fees", fees, true ] if fees.positive?
+%>
+<% content_for :title, "Checkout · #{@level.name}" %>
+<% content_for :head do %>
+  <% unless free || @expired %><script src="https://js.stripe.com/v3/"></script><% end %>
+<% end %>
+
+<div class="mx-auto max-w-xl space-y-5">
+  <h1 class="text-center text-3xl sm:text-4xl coustard-regular text-gray-900">Checkout</h1>
+
+  <% if @expired %>
+    <%= render "shared/checkout/expired", held: "this price", back_path: back_path, back_text: "Back to memberships" %>
+  <% else %>
+    <%= form_with url: tickets_membership_purchase_pay_path(token: @purchase.token, **embed_params), method: :post, class: "space-y-5",
+          data: {
+            controller: "checkout",
+            action: "submit->checkout#submit",
+            checkout_target: "form",
+            checkout_publishable_key_value: stripe_publishable_key.to_s,
+            checkout_amount_value: total,
+            checkout_free_value: free,
+            checkout_return_url_value: tickets_membership_purchase_done_url(token: @purchase.token, **embed_params),
+            checkout_expires_at_value: @purchase.expires_at&.iso8601,
+            checkout_token_value: @purchase.token
+          } do %>
+      <%= render "tickets/bot_trap", id: "checkout_website" %>
+      <div class="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+        <div class="px-5 py-4">
+          <div class="font-semibold text-gray-900"><%= @level.name %><%= " · renewal" if @membership.renewed_from_id %></div>
+          <div class="text-sm text-gray-600"><%= @membership.starts_on.strftime("%b %-d, %Y") %> to <%= @membership.ends_on.strftime("%b %-d, %Y") %> · <%= @level.perk_words.to_sentence.presence || "membership" %></div>
+        </div>
+        <%= render "shared/checkout/summary", lines: lines, total_cents: total %>
+        <%= render "shared/checkout/countdown", back_path: back_path, back_text: "Change" %>
+      </div>
+
+      <%= render "shared/checkout/buyer_details", name: @membership.holder_name, email: @membership.holder_email, phone: nil, required: true,
+            email_note: "Your membership lives on this email: it's how you sign in to use it.",
+            follow_boxes: FollowCheckout.boxes_for(@purchase.organization), follow_ticked: FollowCheckout.ticked_by_default?(@purchase.organization) %>
+      <%= render "shared/checkout/payment" unless free %>
+      <p data-checkout-target="error" class="hidden text-sm text-red-600 text-center" role="alert"></p>
+      <%= render "shared/button", text: (free ? "Join" : "Pay #{number_to_currency(total / 100.0)}"), variant: "primary", size: "jumbo", type: :submit,
+            classes: "disabled:opacity-50", data: { checkout_target: "submit", pay_prefix: (free ? "" : "Pay ") } %>
+    <% end %>
+  <% end %>
+</div>
