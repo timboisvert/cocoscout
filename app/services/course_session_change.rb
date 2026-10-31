@@ -80,6 +80,8 @@ class CourseSessionChange
   end
 
   def self.described(time, location, space)
+    # A location's only room (every location has one) adds nothing to the place.
+    space = nil if space && location && location.location_spaces.count == 1
     venue = [ location&.name, space&.name ].compact.uniq.join(", ")
     [ time.strftime("%A, %B %-d at %-l:%M %p"), (" at #{venue}" if venue.present?) ].compact.join(",")
   end

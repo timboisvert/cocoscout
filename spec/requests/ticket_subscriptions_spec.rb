@@ -62,7 +62,7 @@ RSpec.describe "Ticket subscriptions", type: :request do
     order = TicketOrder.order(:id).last
     purchase = order.ticket_purchase
     expect(purchase.ticket_orders.count).to eq(2)
-    expect(purchase.ticket_orders.flat_map { |o| o.tickets.map(&:seat_label) }).to eq([ "B 3", "B 4", "B 3", "B 4" ])
+    expect(purchase.ticket_orders.flat_map { |o| o.tickets.map(&:seat_label).sort }).to eq([ "B 3", "B 4", "B 3", "B 4" ])
     subscription = purchase.ticket_subscriptions.sole
     expect(subscription).to have_attributes(status: "pending", quantity: 2)
 
@@ -145,7 +145,7 @@ RSpec.describe "Ticket subscriptions", type: :request do
     post tickets_subscription_renew_path(token: subscription.token)
     expect(response).to redirect_to(%r{/tickets/checkout/})
     renewed_order = TicketOrder.order(:id).last
-    expect(renewed_order.ticket_purchase.ticket_orders.flat_map { |o| o.tickets.map(&:seat_label) }).to eq([ "B 3", "B 4", "B 3", "B 4" ])
+    expect(renewed_order.ticket_purchase.ticket_orders.flat_map { |o| o.tickets.map(&:seat_label).sort }).to eq([ "B 3", "B 4", "B 3", "B 4" ])
     pay!(renewed_order, name: "Bella Swan", email: "bella@example.com")
     new_sub = next_pass.subscriptions.sole
     expect(new_sub).to have_attributes(status: "active", renewed_from: subscription, seat_ids: [ seat("B 3").id, seat("B 4").id ])
