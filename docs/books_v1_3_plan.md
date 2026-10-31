@@ -549,3 +549,16 @@ without handing them contracts, mailing lists, courses and the rest.
 22. The Overview's money strip is four boxes: the CocoScout balance with the sales
     tax set-aside shown inside it ("$236.16 of that is set aside for sales tax you
     owe"), waiting on upcoming shows, owed to payees, bank. [Yes]
+
+### 9.13 The bank file upload says what happens to the file (Tim, 10/31)
+
+Where a statement file is uploaded (Books → Bank), the page makes it plain, in words
+and not with lock clip art, that nothing is kept: the file travels over an
+encrypted connection; CocoScout reads the transactions out of it once, in the
+request, and deletes the file the moment they're in; the transactions kept are
+date, amount and the bank's description only, never an account number or login;
+CocoScout never asks for bank credentials to import. This sits as a short
+"What happens to your file" panel beside the upload, with one line per promise and
+a check mark per line, and the same words in the Integrations → Your bank section.
+The code must match the words: the upload is read from the request body (or a
+temporary file deleted in an `ensure`), never attached to anything.
