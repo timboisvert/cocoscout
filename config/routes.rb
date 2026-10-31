@@ -1614,7 +1614,11 @@ Rails.application.routes.draw do
     get "money", to: "money#index", as: "money_index"
     get "money/books", to: "books#show", as: "money_books"
     get "money/books/download", to: "books#download", as: "money_books_download"
-    get "money/books/bank", to: "bank_statements#show", as: "money_bank"
+    get  "money/books/bank", to: "bank_statements#show", as: "money_bank"
+    post "money/books/bank", to: "bank_statements#create", as: "money_bank_import"
+    post "money/books/bank/lines/:id/match",  to: "bank_statements#match",  as: "match_money_bank_line"
+    post "money/books/bank/lines/:id/ignore", to: "bank_statements#ignore", as: "ignore_money_bank_line"
+    post "money/books/bank/lines/:id/reopen", to: "bank_statements#reopen", as: "reopen_money_bank_line"
     # Money recorded by hand: the sheet, a recorded entry's page, change, remove.
     get    "money/books/record",            to: "money_records#new",     as: "new_money_record"
     post   "money/books/record",            to: "money_records#create",  as: "money_records"

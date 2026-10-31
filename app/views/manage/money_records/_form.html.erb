@@ -22,6 +22,7 @@
 <%= form_with model: record, url: url, method: (record.persisted? ? :patch : :post), id: "record-#{kind}",
       data: { turbo: false, tabs_target: (panel ? "panel" : nil), controller: "record-money", record_money_verb_value: verb }.compact do |f| %>
   <%= f.hidden_field :kind %>
+  <% if params[:bank_line].present? %><%= hidden_field_tag :bank_line, params[:bank_line], id: "bank-line-#{kind}" %><% end %>
   <div class="px-6 pt-5 pb-6 space-y-5">
     <p class="text-sm text-gray-600"><%= intro %></p>
     <% if record.errors.any? %>

@@ -1,5 +1,116 @@
 <% content_for :title, "Bank" %>
+<%
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  can_change = module_change?(:books)
+  input = "block w-full text-sm text-gray-700"
+  diff = @last&.closing_balance_cents && @books_bank_on_closing_cents ? @last.closing_balance_cents - @books_bank_on_closing_cents : nil
+%>
 <div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Money", manage_money_index_path ], [ "Books", manage_money_books_path ] ], text: "Bank", links: [] } %>
-  <%= render "shared/empty_state", icon: "money", title: "Bank statements are on their way", body: "Bring the month in as a file and match every line to the books." %>
+
+  <p class="max-w-3xl text-sm text-gray-600 mb-5">Download the month from your bank as CSV or OFX and bring it in here. Each line either matches something already on the books, gets recorded as money you had not written down, or is ignored. It is optional: the books stand on their own without it.</p>
+
+  <div class="grid grid-cols-1 lg:grid-cols-[1fr_22rem] gap-6 items-start">
+    <div class="space-y-6 min-w-0">
+      <%# The balance tiles: what the books say, what the bank said last. %>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="rounded-xl border border-gray-200 bg-white px-5 py-4"><span class="block text-[11px] font-medium uppercase tracking-wide text-gray-500">Bank, per your books</span><span class="block mt-0.5 text-2xl font-bold tabular-nums text-gray-900"><%= money.call(@books_bank_cents) %></span><span class="block mt-0.5 text-xs text-gray-600">Today</span></div>
+        <% if @last&.closing_balance_cents %>
+          <div class="rounded-xl border border-gray-200 bg-white px-5 py-4"><span class="block text-[11px] font-medium uppercase tracking-wide text-gray-500">Bank, per the statement</span><span class="block mt-0.5 text-2xl font-bold tabular-nums text-gray-900"><%= money.call(@last.closing_balance_cents) %></span><span class="block mt-0.5 text-xs text-gray-600">On <%= @last.closing_on&.strftime("%b %-d, %Y") %></span></div>
+          <div class="rounded-xl border px-5 py-4 <%= diff.to_i.zero? ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200' %>"><span class="block text-[11px] font-medium uppercase tracking-wide text-gray-500">Difference</span><span class="block mt-0.5 text-2xl font-bold tabular-nums text-gray-900"><%= money.call(diff.to_i) %></span><span class="block mt-0.5 text-xs text-gray-600"><%= diff.to_i.zero? ? "The books and the bank agree on that day." : "Books on #{@last.closing_on&.strftime('%b %-d')}: #{money.call(@books_bank_on_closing_cents)}. The lines below usually explain it." %></span></div>
+        <% else %>
+          <div class="sm:col-span-2 rounded-xl border border-dashed border-gray-200 bg-white px-5 py-4 text-sm text-gray-500"><%= @last ? "A CSV has no closing balance; an OFX download does, and this shows the bank's number beside the books'." : "Once a statement is in, the bank's closing balance sits here beside the books'." %></div>
+        <% end %>
+      </div>
+
+      <section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <%= render "shared/section_heading", padding: "px-5 py-3", title: "To deal with" do %>
+          <span class="text-xs text-gray-500"><%= @to_deal_with.empty? ? "Nothing" : pluralize(@to_deal_with.size, "line") %></span>
+        <% end %>
+        <% if @to_deal_with.empty? %>
+          <div class="px-5 py-6 text-sm text-gray-500 flex items-center gap-2"><span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-50 text-green-600 flex-none"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></span><%= @last ? "Every line is dealt with." : "Bring a statement in and its lines land here." %></div>
+        <% else %>
+          <ul class="divide-y divide-gray-100">
+            <% @to_deal_with.each do |line| %>
+              <% hint = @candidates[line.id] %>
+              <li class="px-5 py-3">
+                <div class="flex flex-wrap items-start gap-x-4 gap-y-1">
+                  <span class="w-20 text-sm text-gray-500 tabular-nums"><%= line.on.strftime("%b %-d") %></span>
+                  <span class="flex-1 min-w-[12rem] text-sm text-gray-900"><%= line.description.presence || "No description" %></span>
+                  <span class="text-sm font-semibold tabular-nums <%= line.deposit? ? 'text-green-700' : 'text-gray-900' %>"><%= line.deposit? ? "+" : "−" %><%= money.call(line.amount_cents.abs) %></span>
+                </div>
+                <% if line.suggested? && hint %>
+                  <div class="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-blue-50 border border-blue-100 px-3 py-2 text-sm text-blue-900">
+                    <span class="flex-1 min-w-[12rem]">Looks like <b><%= hint[:memo] %></b> on the books, <%= hint[:on].strftime("%b %-d") %>.</span>
+                    <% if can_change %>
+                      <%= render "shared/button", text: "Yes, that's it", variant: "primary", size: "small", path: manage_match_money_bank_line_path(line), method: :post, form: { data: { turbo: false } } %>
+                      <%= render "shared/button", text: "No", variant: "secondary", size: "small", path: manage_reopen_money_bank_line_path(line), method: :post, form: { data: { turbo: false } } %>
+                    <% end %>
+                  </div>
+                <% elsif can_change %>
+                  <div class="mt-2 flex flex-wrap items-center gap-2">
+                    <%= render "shared/button", text: "Record it", variant: "primary", size: "small", type: :link,
+                          path: manage_new_money_record_path(kind: (line.deposit? ? "in" : "out"), amount: format("%.2f", line.amount_cents.abs / 100.0), on: line.on.iso8601, memo: line.description, bank_line: line.id) %>
+                    <%= render "shared/button", text: "Ignore", variant: "secondary", size: "small", path: manage_ignore_money_bank_line_path(line), method: :post, form: { data: { turbo: false } } %>
+                    <span class="text-xs text-gray-500">Record it when the books do not have it yet. Ignore a transfer between your own accounts or a personal charge.</span>
+                  </div>
+                <% end %>
+              </li>
+            <% end %>
+          </ul>
+        <% end %>
+      </section>
+
+      <% if @recent_done.any? %>
+        <section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <%= render "shared/section_heading", padding: "px-5 py-3", title: "Dealt with" do %>
+            <span class="text-xs text-gray-500"><%= pluralize(@done_count, "line") %> in all</span>
+          <% end %>
+          <ul class="divide-y divide-gray-100">
+            <% @recent_done.each do |line| %>
+              <li class="px-5 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                <span class="w-20 text-gray-500 tabular-nums"><%= line.on.strftime("%b %-d") %></span>
+                <span class="flex-1 min-w-[12rem] text-gray-900 truncate"><%= line.description.presence || "No description" %></span>
+                <span class="tabular-nums <%= line.deposit? ? 'text-green-700' : 'text-gray-900' %>"><%= line.deposit? ? "+" : "−" %><%= money.call(line.amount_cents.abs) %></span>
+                <span class="inline-flex rounded-md px-1.5 py-0.5 text-xs font-medium <%= { 'matched' => 'bg-green-50 text-green-700', 'recorded' => 'bg-pink-50 text-pink-700', 'ignored' => 'bg-gray-100 text-gray-600' }[line.state] %>"><%= line.state.capitalize %></span>
+                <% if line.money_record %><%= link_to "Open", manage_money_record_path(line.money_record), class: "text-xs text-pink-600 hover:text-pink-700" %><% end %>
+                <% if can_change %><%= render "shared/button", text: "Undo", variant: "secondary", size: "small", path: manage_reopen_money_bank_line_path(line), method: :post, form: { data: { turbo: false } } %><% end %>
+              </li>
+            <% end %>
+          </ul>
+        </section>
+      <% end %>
+    </div>
+
+    <div class="space-y-4">
+      <% if can_change %>
+        <section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <div class="bg-gradient-to-r from-pink-500 to-pink-600 px-5 py-3"><h2 class="text-base font-semibold text-white">Bring a statement in</h2></div>
+          <%= form_with url: manage_money_bank_import_path, method: :post, multipart: true, data: { turbo: false } do %>
+            <div class="px-5 py-4 space-y-3">
+              <label class="block text-sm font-medium text-gray-700"><span>The file from your bank</span>
+                <span class="mt-1 flex items-center gap-3 rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-3">
+                  <input type="file" name="file" accept=".csv,.ofx,.qfx,text/csv,application/x-ofx" required class="<%= input %>">
+                </span>
+                <span class="block mt-1 text-xs text-gray-500">CSV or OFX (QFX works too). Most banks offer both under Download or Export.</span>
+              </label>
+              <%= render "shared/button", text: "Read the file", variant: "primary", size: "medium", type: :submit, classes: "w-full justify-center" %>
+            </div>
+          <% end %>
+        </section>
+      <% end %>
+      <%= render "shared/file_promises" %>
+      <% if @imports.any? %>
+        <section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <%= render "shared/section_heading", padding: "px-5 py-3", title: "Statements brought in" %>
+          <ul class="divide-y divide-gray-100">
+            <% @imports.each do |imp| %>
+              <li class="px-5 py-2.5 text-sm"><span class="font-medium text-gray-900"><%= imp.title %></span><span class="block text-xs text-gray-500"><%= imp.created_at.strftime("%b %-d, %Y") %> · <%= pluralize(imp.lines_count, "line") %><%= imp.new_lines_count < imp.lines_count ? ", #{imp.lines_count - imp.new_lines_count} already in" : "" %> · <%= imp.format.upcase %><% if imp.filename.present? %> · <%= imp.filename %><% end %></span></li>
+            <% end %>
+          </ul>
+        </section>
+      <% end %>
+    </div>
+  </div>
 </div>

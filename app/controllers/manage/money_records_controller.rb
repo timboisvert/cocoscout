@@ -18,6 +18,10 @@ module Manage
     def create
       @record = Current.organization.money_records.new(record_params.merge(recorded_by: Current.user))
       if @record.save
+        if params[:bank_line].present? && (line = Current.organization.bank_statement_lines.find_by(id: params[:bank_line]))
+          line.recorded!(@record)
+          return redirect_to manage_money_bank_path, notice: "Recorded. #{@record.kind_label}: #{helpers.number_to_currency(@record.amount)}, and the bank line is dealt with."
+        end
         redirect_to manage_money_record_path(@record), notice: "Recorded. #{@record.kind_label}: #{helpers.number_to_currency(@record.amount)}."
       else
         @kind = @record.kind.presence_in(MoneyRecord::KINDS) || "out"

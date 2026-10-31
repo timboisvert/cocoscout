@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_31_170100) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_31_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -346,6 +346,43 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_170100) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["organization_id", "payee_type", "payee_id"], name: "idx_bank_setup_emails_payee"
+  end
+
+  create_table "bank_statement_imports", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "imported_by_id"
+    t.string "filename"
+    t.string "format", default: "csv", null: false
+    t.date "from_on"
+    t.date "to_on"
+    t.integer "lines_count", default: 0, null: false
+    t.integer "new_lines_count", default: 0, null: false
+    t.bigint "closing_balance_cents"
+    t.date "closing_on"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["imported_by_id"], name: "index_bank_statement_imports_on_imported_by_id"
+    t.index ["organization_id"], name: "index_bank_statement_imports_on_organization_id"
+  end
+
+  create_table "bank_statement_lines", force: :cascade do |t|
+    t.bigint "bank_statement_import_id", null: false
+    t.bigint "organization_id", null: false
+    t.date "on", null: false
+    t.bigint "amount_cents", null: false
+    t.string "description", default: "", null: false
+    t.string "fingerprint", null: false
+    t.string "state", default: "open", null: false
+    t.bigint "journal_line_id"
+    t.bigint "money_record_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["bank_statement_import_id"], name: "index_bank_statement_lines_on_bank_statement_import_id"
+    t.index ["journal_line_id"], name: "index_bank_statement_lines_on_journal_line_id"
+    t.index ["money_record_id"], name: "index_bank_statement_lines_on_money_record_id"
+    t.index ["organization_id", "fingerprint"], name: "index_bank_statement_lines_on_organization_id_and_fingerprint", unique: true
+    t.index ["organization_id", "state", "on"], name: "index_bank_statement_lines_on_organization_id_and_state_and_on"
+    t.index ["organization_id"], name: "index_bank_statement_lines_on_organization_id"
   end
 
   create_table "bill_payments", force: :cascade do |t|
@@ -4663,6 +4700,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_170100) do
   add_foreign_key "balance_withdrawals", "users", column: "requested_by_id", on_delete: :nullify
   add_foreign_key "bank_setup_emails", "organizations"
   add_foreign_key "bank_setup_emails", "users", column: "sent_by_id"
+  add_foreign_key "bank_statement_imports", "organizations"
+  add_foreign_key "bank_statement_imports", "users", column: "imported_by_id"
+  add_foreign_key "bank_statement_lines", "bank_statement_imports"
+  add_foreign_key "bank_statement_lines", "journal_lines"
+  add_foreign_key "bank_statement_lines", "money_records"
+  add_foreign_key "bank_statement_lines", "organizations"
   add_foreign_key "bill_payments", "bills"
   add_foreign_key "bill_payments", "organizations"
   add_foreign_key "bill_payments", "users", column: "recorded_by_id"
