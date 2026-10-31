@@ -289,6 +289,17 @@ be clean on every organization.
     settings → Books). [Yes]
 12. CocoScout's Pro and usage bills post to the organization's books as Software and
     subscriptions. [Yes]
+13. Bank: files first, live later. A CSV or OFX statement import in 1.3; a live bank
+    connection (Plaid) rides the integrations home in 1.5. [Yes]
+14. Settle up replaces "Needs financials": the unit of work is a day, and a day with
+    one thing in it is just that thing's worksheet. [Yes]
+15. Square is the first register integration, optional, turned on per organization
+    in Organization settings → Integrations, connected with Square's own sign-in
+    (OAuth), never pasted keys. [Yes]
+16. Register money reaches the books only when its day is settled, never straight
+    from the pull. Tips are never split automatically; the day's worksheet asks. [Yes]
+17. Tips go to payees through the payout run, or are marked paid in cash at close.
+    No other rail. [Yes]
 
 ## 7. Critical files
 
@@ -306,6 +317,10 @@ be clean on every organization.
 - Categories: `config/expense_categories.yml`, `expense_categories.rb`,
   `expense_item.rb`, `production_expense.rb`.
 - Gating: `navigation_helper.rb`, `paid_feature_gate.rb`, the pricing page.
+- Settle up (§9): `show_financials_controller.rb`, `_worksheet_modal.html.erb`,
+  `money_financials_controller.rb`, `money_todo_service.rb`, `staff_time_entries`
+  and shift assignments (who worked), `organizations_controller.rb` and its
+  `section/:section` routes (the Integrations section).
 
 ## 8. Verification
 
@@ -315,3 +330,113 @@ be clean on every organization.
   and the new CocoScout-bill entries, then the six checks clean.
 - Static renders at 375px and desktop for every page in §4.
 - The full suite under `TZ=UTC` before the merge to main.
+
+## 9. Added 2026-10-31: settle up, Square, and the integrations home
+
+Tim's additions after the first review (his words, condensed): the organization
+makes money several ways, tickets and shows being one and the bar, on Square,
+another; the dream is Square tied in by API, each organization turning on its own
+integrations, pulled daily with callbacks; tips from the bar assigned to the people
+who worked, on a worksheet that someone checks off, never automatically; and the
+whole financial system reworked around "here's what you need to do", the way Home
+does it: a daily settlement that consumes the day's worksheets, with each show
+still having its own, collapsing to one when the day has one thing.
+
+### 9.1 The bank: files first, live later
+
+Import in 1.3, live connection in 1.5. The matching page (§5 D3) is the same
+either way: a line from the bank, a match on the books, or a Record button. Built
+on a statement file now, it loses nothing when the lines start arriving by
+themselves. A live connection means Plaid: a per-account monthly fee, a
+production-access review that takes weeks, and a second live integration to get
+right in the same release as Square. Square is the one live integration 1.3 needs
+to establish the pattern (an organization-level connection, a daily pull, callbacks,
+a pull log, a Pull now button), and the bank rides that pattern in 1.5 next to
+Eventbrite and Ticket Tailor.
+
+### 9.2 Settle up: the day is the unit
+
+Today each revenue show has a financials worksheet (ticket count, revenue, other
+revenue, expenses, a data-confirmed check), and the Money hub lists "Needs
+financials". That stays as the per-show piece. What changes:
+
+- **A settlement day** (`SettlementDay`: organization, date, status open/settled,
+  settled_at, settled_by) wraps everything with money that happened on one date:
+  each revenue show (its existing `ShowFinancials`), classes that met, register
+  sales from Square, door cash counted, tips, expenses dated that day. A day with
+  one show is that show's worksheet with the day's name on it; nothing is added
+  until there is something to add.
+- **The day's worksheet** is one page, section by section, each with its own
+  "Looks right" check: each show (tickets online, at the door, comps, adjustments:
+  refunds, price fixes, outside tickets; products at the door; flat fee or outside
+  revenue; expenses), the bar (Square's numbers, read-only, by category, with
+  "doesn't look right?" to re-pull or correct by hand), tips (§9.3), door cash
+  (expected from the door session vs counted, over or short explained), classes,
+  and other expenses. **Mark the day settled** when every section is checked.
+  Settling posts the day's outside money, register sales, fees, tax and tips to
+  the books in one go (kind `settlement`); a settled day can be reopened, and the
+  books restate by reversal as always.
+- **Production settlements don't change.** Contract shares, the show payout, and
+  payout runs still read `ShowFinancials`; the day confirms them, it doesn't
+  replace them.
+- **The to-do strip.** The Money hub's first thing is a `shared/_alert_panel` list:
+  days to settle (with the oldest date), tips to split, bills due this week, bank
+  lines to sort out, money overdue to you, payouts waiting. `MoneyTodoService`
+  grows the new sections; Home gets one Money line ("4 days to settle up") and a
+  show row's "Needs financials" chip becomes "Settle up".
+- **Settle up** takes Financials' place as the first card on the hub; the
+  per-production Financials pages stay as the record by production.
+
+### 9.3 Square, and the integrations home
+
+- **Where it lives:** Organization settings → Integrations, a new section next to
+  Services. It is the organization's, not Money's, because 1.5's Eventbrite,
+  Ticket Tailor and the bank join it. Money → Settings gets a line pointing there.
+  Each integration is a card: Square (connect), Clover and Toast (on the roadmap),
+  Eventbrite, Ticket Tailor and your bank (1.5).
+- **Connecting:** "Connect with Square" sends the owner to Square's own sign-in
+  (OAuth); we store the tokens encrypted (`Integration`: organization, provider,
+  status, credentials, settings, connected_by, last_synced_at, last_error). No
+  pasted keys on the page; a sandbox key field exists only for superadmins.
+- **Square's page:** the locations on their Square account, each mapped to one of
+  our locations (or "not ours", for a second business on the same account);
+  Square's item categories mapped to our money-in categories (Bar, Food, Merch,
+  Other); what comes in: sales by category, tips, sales tax collected, refunds,
+  Square's fees, net deposits; the schedule: every morning for the day before,
+  Square's webhooks during the night so a day is filling in before anyone looks,
+  and Pull now; the pull log (when, how many orders, errors).
+- **Data:** `RegisterDay` (integration, location, business date, by-category sums,
+  tips, tax, refunds, fees, net, order count, pulled_at) is what the day's
+  worksheet reads; raw orders are kept 90 days for a drill-down and then dropped.
+  A Square business day follows the location's closing time (a 1 AM sale belongs to
+  the night before), which is also how the door works.
+- **Books:** nothing posts on pull. When the day is settled: register sales to
+  income by category, Square's fees to Payment processing fees, sales tax collected
+  to Sales tax set aside (the Sales tax page shows Square as a second source, with
+  its own remittance line), refunds against income, tips to **Tips owed to staff**
+  (what you owe), and the net to **On its way from Square**, cleared when the bank
+  page matches the deposit.
+- **Tips:** the day's worksheet shows the tip total and who worked, pre-filled from
+  Staffing's shifts and hours that day; split evenly, by hours, or typed; each
+  person's share goes to their next payout run (the one rail) or is marked "paid in
+  cash at close" and comes out of door cash. Nothing is split until someone checks
+  the section.
+- **Other registers with APIs,** for the roadmap: Clover (REST API with OAuth,
+  common in bars) next, then Toast (API through its partner program, restaurant
+  heavy), Lightspeed, Shopify POS for merch. Stripe Terminal is already ours at the
+  door. Each is one adapter behind the same `RegisterDay`.
+
+### 9.4 Build order, revised
+
+C0 → C1 → **C4 Settle up** (days, the worksheet, the to-do strip; before Square so
+the bar has somewhere to land) → C2 → C3 → **G1 Integrations home + Square**
+(connect, pull, RegisterDay, the worksheet's bar and tips sections, books on
+settle) → D1 → D2 → D3 (file import) → E1 → E2 → E3 → F.
+
+### 9.5 Screens added or changed (canvas row 7)
+
+- Money hub: the to-do strip at the top; Settle up is the first card (changed).
+- Money → Settle up: the list of days, each with its pieces and state (new).
+- A day's worksheet: Friday Oct 24 with two shows, the bar, tips, door cash (new).
+- Organization settings → Integrations (new).
+- Square's page: locations, categories, schedule, pull log (new).
