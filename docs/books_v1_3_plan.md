@@ -562,3 +562,21 @@ CocoScout never asks for bank credentials to import. This sits as a short
 a check mark per line, and the same words in the Integrations → Your bank section.
 The code must match the words: the upload is read from the request body (or a
 temporary file deleted in an `ensure`), never attached to anything.
+
+## 10. Build log (2026-10-31)
+
+Built in one pass on `v1.3`, in the plan's order; each phase is one commit.
+
+1. **Access by module** (4e103c9d): templates and a None/View/Manage grid on Organization settings → People. The accountant seat (E3, "BooksViewer") collapsed into this: an Accountant template is a viewer of every money module.
+2. **Books opens** (a6d2f746): the Overview, the hub card for every Pro manager, Financials vs Books on Checks.
+3. **One category list** (df29a7c0): outside money to Bank, CocoScout bills on the organization's books.
+4. **Settle up by day** (58263665): one worksheet per day, smart days, reopen with a reason.
+5. **Record money by hand** (43c54246): in, out or moved, with the receipt; Books downloads the period.
+6. **Integrations home and Square** (7f45ce88): connect, pull, the day's bar and tips; the books post on settle. Square's net goes to Bank (no "On its way from Square" account yet).
+7. **Bills and invoices** (c13999f3): Money → Bills (overdue / this week / later; repeats), Send an invoice to anyone (`Invoice`, beside the older `ContractInvoice`), their pay page. Posting is remainder-based: the bill carries its unpaid amount in "Money you owe", each payment clears part of it. The "owed to you" reconciliation check is deferred: invoices and contract payments share the account.
+8. **Bank statements** (4fdc5da8): CSV or OFX read once in the request and never stored; fingerprint dedupe; exact-day match vs ±5-day suggestion; Record it / Ignore / Reopen.
+9. **Statements, closed months, Taxes** (05958ed4): P&L (one column or by production), balance sheet, cash flow; print, PDF, CSV, the whole ledger as CSV; lock through a month end (owner or superadmin unlocks). A restatement that lands in a closed month shifts to the first open day with a note in its memo, so closed months never change. Money documents (bills, receipts, W-9s, statements) are keyed under `organizations/{id}/…` in the one private bucket and served through `Manage::MoneyFilesController`, which checks the organization and the module before handing out a five-minute link.
+10. **Who pays the tax on tickets other sites sold** (46a1dfd0, Tim's question 10/31): a choice per ticket source on Money settings → Ticket sources (none / they pay it / we owe it). A "we owe" line carves the tax out of what arrived at the ticket tax rate into Tax to pay the government; the Sales tax page shows it by source for the period (in the bank, not set aside), the Taxes page and the reconciliation count it. 1.5's Ticket Tailor and Eventbrite imports will read the same switch and true up these lines with each order's own tax.
+11. **Phone-width pass**: every Books page rendered at 375px (static renders through the test stack, since the dev server is Tim's); one fix, the settle-up day calendar popover now spans the phone screen.
+
+Left for Tim: review on the v1.3 dev server; merge to main and deploy, running the migrations (`ticket_sources.tax_handling`, `bank_statement_imports`, `organizations.books_locked_*` and the earlier ones on the branch); confirm the S3 bucket's encryption at rest and access logging (Todo).
