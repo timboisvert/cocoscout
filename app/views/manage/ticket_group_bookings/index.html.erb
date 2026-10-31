@@ -1,0 +1,44 @@
+<% content_for :title, "Groups · #{@listing.display_title}" %>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: ticket_listing_breadcrumbs(@listing),
+    text: "Groups",
+    links: [ { text: "Book a group", path: manage_new_ticket_listing_group_path(@listing), icon: "plus" } ]
+  } %>
+
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+    <% held = @live.select(&:booked?); issued = @live.select(&:ticketed?) %>
+    <% [ [ "Seats held", held.sum(&:seats), "#{pluralize(held.size, 'group')} waiting to pay" ], [ "Tickets issued", issued.sum(&:seats), "to #{pluralize(issued.size, 'group')}" ],
+         [ "Owed", number_to_currency(held.sum { |b| b.invoice&.unpaid_cents.to_i } / 100.0), "on open invoices" ], [ "Released", @bookings.count { |b| !b.live? }, "didn't pay in time, or called off" ] ].each do |label, n, note| %>
+      <div class="rounded-lg px-4 py-3 <%= (n.is_a?(Integer) ? n.positive? : n != '$0.00') ? 'bg-pink-50 border border-pink-100' : 'bg-white border border-gray-200' %>">
+        <div class="text-xs text-gray-500"><%= label %></div>
+        <div class="text-xl font-bold tabular-nums text-gray-900 mt-0.5"><%= n %></div>
+        <div class="text-xs text-gray-500 mt-0.5"><%= note %></div>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-lg">
+    <%= render "shared/section_heading", title: "Groups on this date", intro: "A block of seats held on an invoice. Paid, it becomes tickets; unpaid by its release date, the seats go back on sale." %>
+    <% if @bookings.empty? %>
+      <div class="p-4"><%= render "shared/empty_state", compact: true, icon: "people", title: "No groups yet", body: "Book a school, a company or a party a block of seats; they get an invoice and a page of their own.",
+            actions: [ { text: "Book a group", path: manage_new_ticket_listing_group_path(@listing) } ] %></div>
+    <% else %>
+      <ul class="divide-y divide-gray-100">
+        <% @bookings.each do |b| %>
+          <li>
+            <%= link_to manage_ticket_listing_group_path(@listing, b), class: "flex flex-wrap items-center gap-3 px-5 py-3 hover:bg-gray-50" do %>
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm font-semibold text-gray-900"><%= b.name %> <span class="font-normal text-gray-500">· <%= pluralize(b.seat_count, "seat") %><%= " + #{b.comp_count} chaperone" if b.comp_count.positive? %> · <%= b.ticket_tier.name %></span></span>
+                <span class="block text-xs text-gray-500"><%= b.contact_name %> · <%= b.contact_email %><% if b.invoice %> · Invoice <%= b.invoice.display_number %>, <%= b.invoice.status_line.downcase %><% end %></span>
+              </span>
+              <span class="text-xs font-medium px-2 py-0.5 rounded-full <%= b.ticketed? ? 'bg-green-100 text-green-800' : (b.booked? ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600') %>"><%= b.status_label %></span>
+              <% if b.booked? %><span class="text-xs text-gray-500">held until <%= b.release_on.strftime("%b %-d") %></span><% end %>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </div>
+</div>

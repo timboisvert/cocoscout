@@ -91,8 +91,18 @@ module Ticketing
       outside_rows(tier).sum(:amount_cents)
     end
 
+    # Seats kept out of sale for someone (TicketQuantityHold: a group's
+    # block). A hold on a type counts against that type; a hold on the date
+    # as a whole counts against the date only.
+    def blocked(tier: nil)
+      tier = tier.base_tier if tier&.bundle?
+      rows = TicketQuantityHold.live.where(ticket_listing_id: @listing.id)
+      rows = rows.where(ticket_tier_id: tier.id) if tier
+      rows.sum(:quantity)
+    end
+
     def taken(tier: nil)
-      sold(tier: tier) + held(tier: tier) + outside(tier: tier)
+      sold(tier: tier) + held(tier: tier) + outside(tier: tier) + blocked(tier: tier)
     end
 
     # Seats left for the listing, or for one tier (the lesser of its own seats

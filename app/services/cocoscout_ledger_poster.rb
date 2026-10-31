@@ -28,6 +28,7 @@ class CocoScoutLedgerPoster
     "TicketOrder" => %w[ticket_fee ticket_processing processing_cost],
     "TicketPassHolding" => %w[ticket_fee ticket_processing processing_cost ticket_refund],
     "TicketRefund" => %w[ticket_refund],
+    "TicketGroupBooking" => %w[ticket_fee],
     "CourseRegistration" => %w[course_fee processing_cost course_refund],
     "ContractPayment" => %w[contract_processing processing_cost],
     "BillingInvoice" => %w[subscription usage],
@@ -36,7 +37,7 @@ class CocoScoutLedgerPoster
   }.freeze
 
   # Sources an OrgCashEntry can point at whose CocoScout share depends on it.
-  CASH_SOURCES = %w[TicketOrder TicketPassHolding TicketRefund CourseRegistration ContractPayment OrgPayout].freeze
+  CASH_SOURCES = %w[TicketOrder TicketPassHolding TicketRefund TicketGroupBooking CourseRegistration ContractPayment OrgPayout].freeze
 
   def self.post_for!(record)
     return if record.nil?
@@ -78,6 +79,7 @@ class CocoScoutLedgerPoster
     when TicketOrder then ticket_order(record)
     when TicketPassHolding then pass_holding(record)
     when TicketRefund then ticket_refund(record)
+    when TicketGroupBooking then group_booking(record)
     when CourseRegistration then course_registration(record)
     when ContractPayment then contract_payment(record)
     when BillingInvoice then billing_invoice(record)
@@ -103,6 +105,13 @@ class CocoScoutLedgerPoster
     { "ticket_fee" => order.platform_fee_cents.to_i,
       "ticket_processing" => order.total_cents.to_i - credit - order.platform_fee_cents.to_i,
       "processing_cost" => -order.stripe_fee_cents.to_i }
+  end
+
+  # A group's block paid on its invoice through our pay page: the 50¢ a seat
+  # the organization's balance gave up (Ticketing::GroupSales.fee!) is ours.
+  def self.group_booking(booking)
+    debit = cash(booking, "ticket_sale")
+    debit.nil? ? {} : { "ticket_fee" => -debit }
   end
 
   # A credit pass, like a ticket order: our 50¢ a credit, and the processing.
@@ -197,6 +206,7 @@ class CocoScoutLedgerPoster
     when TicketOrder then "Ticket order #{record.code}"
     when TicketPassHolding then "Pass #{record.ticket_pass.name} ##{record.id}"
     when TicketRefund then "Ticket refund, order ##{record.ticket_order_id}"
+    when TicketGroupBooking then "Group tickets, #{record.name}"
     when CourseRegistration then "Course registration ##{record.id}"
     when ContractPayment then "Contract payment ##{record.id}"
     when BillingInvoice then [ record.label, record.number ].compact.join(" ")
@@ -205,6 +215,6 @@ class CocoScoutLedgerPoster
     end
   end
 
-  private_class_method :entries_for, :cash, :ticket_order, :pass_holding, :ticket_refund, :course_registration, :contract_payment,
+  private_class_method :entries_for, :cash, :ticket_order, :pass_holding, :ticket_refund, :group_booking, :course_registration, :contract_payment,
                        :billing_invoice, :org_payout, :stripe_line, :occurred_at_for, :description_for
 end

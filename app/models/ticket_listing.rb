@@ -30,6 +30,8 @@ class TicketListing < ApplicationRecord
   has_many :ticket_order_items
   has_many :ticket_outside_sales, dependent: :destroy
   has_many :waitlist_entries, class_name: "TicketWaitlistEntry", dependent: :destroy
+  has_many :group_bookings, class_name: "TicketGroupBooking", dependent: :restrict_with_error
+  has_many :quantity_holds, class_name: "TicketQuantityHold", dependent: :destroy
 
   # Prices are edited in place on the listing page; an empty new row is skipped.
   accepts_nested_attributes_for :ticket_tiers, allow_destroy: true,

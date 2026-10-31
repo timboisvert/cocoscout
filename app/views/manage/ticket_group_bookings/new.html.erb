@@ -1,0 +1,59 @@
+<% content_for :title, "Book a group · #{@listing.display_title}" %>
+<%
+  input = "mt-1 block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  label = "block text-sm font-medium text-gray-700"
+  left = @listing.inventory.remaining
+%>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: ticket_listing_breadcrumbs(@listing) + [ [ "Groups", manage_ticket_listing_groups_path(@listing) ] ], text: "Book a group", links: [] } %>
+
+  <div class="max-w-3xl -mx-4 sm:mx-auto bg-white sm:rounded-xl sm:border sm:border-gray-200 sm:shadow-sm overflow-hidden">
+    <div class="bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h2 class="text-lg font-semibold text-white">Book a group</h2>
+      <p class="text-xs text-pink-100"><%= @listing.display_title %>, <%= @listing.show.date_and_time.strftime("%A, %B %-d at %-l:%M %p") %><%= " · #{pluralize(left, 'seat')} left" if left %></p>
+    </div>
+    <%= form_with model: @booking, url: manage_ticket_listing_groups_path(@listing), method: :post, data: { turbo: false } do |f| %>
+      <div class="px-6 pt-5 pb-6 space-y-6">
+        <fieldset class="space-y-4">
+          <legend class="text-[11px] font-medium uppercase tracking-wide text-gray-500">The group</legend>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label class="<%= label %>"><span>Group</span><%= f.text_field :name, placeholder: "Lincoln Park High School", required: true, class: input %></label>
+            <label class="<%= label %>"><span>Leader's name</span><%= f.text_field :contact_name, placeholder: "Who we talk to", required: true, class: input %></label>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label class="<%= label %>"><span>Leader's email</span><%= f.email_field :contact_email, placeholder: "The invoice and their group page go here", required: true, class: input %></label>
+            <label class="<%= label %>"><span>Phone <span class="font-normal text-gray-500">(optional)</span></span><%= f.telephone_field :contact_phone, class: input %></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="space-y-4">
+          <legend class="text-[11px] font-medium uppercase tracking-wide text-gray-500">The seats</legend>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <label class="<%= label %>"><span>Paid seats</span><%= f.number_field :seat_count, min: 1, max: TicketGroupBooking::MAX_SEATS, required: true, class: input %></label>
+            <label class="<%= label %>"><span>Chaperones <span class="font-normal text-gray-500">(free)</span></span><%= f.number_field :comp_count, min: 0, max: TicketGroupBooking::MAX_SEATS, class: input %></label>
+            <label class="<%= label %>"><span>Ticket type</span>
+              <%= f.select :ticket_tier_id, options_for_select(@tiers.map { |t| [ "#{t.name}, #{number_to_currency(t.price_cents / 100.0)}", t.id, { data: { price: format('%.2f', t.price_cents / 100.0) } } ] }, @booking.ticket_tier_id), {}, class: input %></label>
+            <label class="<%= label %>"><span>Group rate a seat</span>
+              <div class="relative mt-1"><span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm text-gray-500">$</span>
+              <%= text_field_tag "ticket_group_booking[price]", (@booking.price_cents ? format("%.2f", @booking.price_cents / 100.0) : (@tiers.first && format("%.2f", @tiers.first.price_cents / 100.0))), inputmode: "decimal", class: input.sub("mt-1 ", "") + " pl-7" %></div></label>
+          </div>
+          <p class="text-xs text-gray-500">The group rate can be anything; the invoice is a round number and the organization absorbs the fees. Sold through our pay page, each paid seat costs the organization 50¢.</p>
+        </fieldset>
+
+        <fieldset class="space-y-4">
+          <legend class="text-[11px] font-medium uppercase tracking-wide text-gray-500">The dates</legend>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label class="<%= label %>"><span>Payment due</span><%= f.date_field :due_on, required: true, class: input %></label>
+            <label class="<%= label %>"><span>Seats held until</span><%= f.date_field :release_on, required: true, class: input %><span class="block mt-1 text-xs text-gray-500">Unpaid by then, the seats go back on sale and the invoice is cancelled. The leader is warned <%= TicketGroupBooking::WARNING_DAYS %> days before.</span></label>
+          </div>
+          <label class="<%= label %>"><span>Notes <span class="font-normal text-gray-500">(for the box office, not the group)</span></span><%= f.text_area :notes, rows: 2, class: input %></label>
+        </fieldset>
+      </div>
+      <div class="flex items-center justify-end gap-2 px-6 py-4 bg-gray-50 border-t border-gray-200">
+        <%= link_to manage_ticket_listing_groups_path(@listing) do %><%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button %><% end %>
+        <%= render "shared/button", text: "Hold the seats and send the invoice", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+</div>

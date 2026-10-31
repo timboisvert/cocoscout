@@ -417,6 +417,9 @@ Rails.application.routes.draw do
     post "my-pass/:token/use",         to: "ticket_pass_holdings#use",   as: "pass_holding_use"
     # The waitlist (advanced ticketing plan §7b): join from a sold-out date; a place on the list has its own page.
     get    "waitlist/:token",          to: "ticket_waitlists#show",   as: "waitlist"
+    # A group's page (advanced ticketing §3): the invoice, paying, names, tickets.
+    get    "group/:token",             to: "ticket_groups#show",      as: "group"
+    patch  "group/:token/names",       to: "ticket_groups#names",     as: "group_names"
     delete "waitlist/:token",          to: "ticket_waitlists#destroy"
     get  ":org",                       to: "tickets#box_office",      as: "box_office"
     # A pass: several shows sold together (TicketPass).
@@ -1495,6 +1498,14 @@ Rails.application.routes.draw do
     get    "ticketing/taxes",                     to: "ticket_taxes#show",               as: "ticket_taxes"
     post   "ticketing/taxes/paid",                to: "ticket_taxes#mark_paid",          as: "ticket_tax_remittances"
     delete "ticketing/taxes/paid/:id",            to: "ticket_taxes#unmark_paid",        as: "ticket_tax_remittance"
+    # Group sales (advanced ticketing §3): a date's blocks of seats on invoices.
+    get    "ticketing/shows/:id/groups",                   to: "ticket_group_bookings#index",   as: "ticket_listing_groups"
+    get    "ticketing/shows/:id/groups/new",               to: "ticket_group_bookings#new",     as: "new_ticket_listing_group"
+    post   "ticketing/shows/:id/groups",                   to: "ticket_group_bookings#create"
+    get    "ticketing/shows/:id/groups/:token",            to: "ticket_group_bookings#show",    as: "ticket_listing_group"
+    post   "ticketing/shows/:id/groups/:token/issue",      to: "ticket_group_bookings#issue",   as: "issue_ticket_listing_group"
+    post   "ticketing/shows/:id/groups/:token/release",    to: "ticket_group_bookings#release", as: "release_ticket_listing_group"
+    patch  "ticketing/shows/:id/groups/:token/names",      to: "ticket_group_bookings#names",   as: "names_ticket_listing_group"
 
     # Staffing → Availability: the whole staff's availability on a month calendar.
     get   "staffing/availability",                to: "staffing/availability#index",     as: "staffing_availability"

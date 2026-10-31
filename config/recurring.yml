@@ -65,6 +65,10 @@ development:
     class: WaitlistOfferJob
     schedule: every 5 minutes
 
+  group_hold_release:
+    class: GroupHoldReleaseJob
+    schedule: at 9am every day America/Chicago
+
   ticket_money_release:
     class: TicketMoneyReleaseJob
     schedule: at 4am every day America/Chicago
@@ -191,6 +195,10 @@ production:
   waitlist_offers:
     class: WaitlistOfferJob
     schedule: every 5 minutes
+
+  group_hold_release:
+    class: GroupHoldReleaseJob
+    schedule: at 9am every day America/Chicago
 
   # Ticket money for yesterday's shows becomes the theater's to spend.
   ticket_money_release:

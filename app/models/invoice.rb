@@ -22,6 +22,8 @@ class Invoice < ApplicationRecord
   belongs_to :created_by, class_name: "User", optional: true
   has_many :invoice_lines, -> { order(:position, :id) }, dependent: :destroy, inverse_of: :invoice
   has_many :invoice_payments, dependent: :destroy
+  # A group's block of seats this invoice pays for (advanced ticketing §3).
+  has_one :ticket_group_booking, dependent: :nullify
   accepts_nested_attributes_for :invoice_lines, allow_destroy: true, reject_if: ->(attrs) { attrs["description"].blank? && attrs["unit"].blank? && attrs["unit_cents"].blank? }
 
   validates :number, presence: true, uniqueness: { scope: :organization_id }
@@ -86,11 +88,14 @@ class Invoice < ApplicationRecord
       new_paid = paid_cents + payment.amount_cents
       update!(paid_cents: new_paid, status: (new_paid >= total_cents ? "paid" : "open"), paid_on: (new_paid >= total_cents ? on : nil))
     end
+    Ticketing::GroupSales.invoice_paid!(ticket_group_booking, payment) if paid? && ticket_group_booking
     payment
   end
 
   def void!(reason)
     update!(status: "void", voided_at: Time.current, void_reason: reason.presence)
+    # Cancelling a group's invoice gives its seats back.
+    Ticketing::GroupSales.release!(ticket_group_booking, canceled: true) if ticket_group_booking&.booked?
   end
 
   def for_label

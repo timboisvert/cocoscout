@@ -17,7 +17,7 @@ module Ticketing
 
     # The breakdown's order: bought here first, in the channels' order, then
     # each other site, then comps.
-    CHANNEL_ORDER = %w[online embed pass door_cash door_card door_tap door_pass].freeze
+    CHANNEL_ORDER = %w[online embed pass group door_cash door_card door_tap door_pass].freeze
 
     attr_reader :organization, :from, :to, :production_id
 

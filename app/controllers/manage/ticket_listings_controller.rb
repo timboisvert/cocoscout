@@ -43,6 +43,7 @@ module Manage
       @outside_sources = Current.organization.ticket_sources.hand_made.active.ordered.to_a
       @outside_rows = @listing.ticket_outside_sales.index_by { |row| [ row.ticket_source_id, row.ticket_tier_id ] }
       @waitlist_count = @listing.waitlist_entries.live.count
+      @group_count = @listing.group_bookings.live.count
     end
 
     # Everyone holding tickets, as a spreadsheet.

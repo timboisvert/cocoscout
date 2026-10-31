@@ -71,6 +71,7 @@ module Manage
       "manage/invoices" => :money,
       "manage/ticket_gift_certificates" => :ticketing,
       "manage/ticket_waitlists" => :ticketing,
+      "manage/ticket_group_bookings" => :ticketing,
       # Mailing lists
       "manage/mailing_lists" => :mailing_lists,
       "manage/mailing_list_settings" => :mailing_lists,

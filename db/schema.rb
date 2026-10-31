@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_01_000200) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_01_000300) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -4016,6 +4016,41 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000200) do
     t.index ["voided_by_id"], name: "index_ticket_gift_certificates_on_voided_by_id"
   end
 
+  create_table "ticket_group_bookings", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "ticket_listing_id", null: false
+    t.bigint "ticket_tier_id", null: false
+    t.bigint "invoice_id"
+    t.bigint "ticket_order_id"
+    t.bigint "created_by_id"
+    t.string "name", null: false
+    t.string "contact_name", null: false
+    t.string "contact_email", null: false
+    t.string "contact_phone"
+    t.integer "seat_count", default: 0, null: false
+    t.integer "comp_count", default: 0, null: false
+    t.integer "price_cents", default: 0, null: false
+    t.date "due_on", null: false
+    t.date "release_on", null: false
+    t.text "notes"
+    t.text "names"
+    t.string "status", default: "booked", null: false
+    t.string "token", null: false
+    t.datetime "ticketed_at"
+    t.datetime "released_at"
+    t.datetime "warned_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_ticket_group_bookings_on_created_by_id"
+    t.index ["invoice_id"], name: "index_ticket_group_bookings_on_invoice_id"
+    t.index ["organization_id", "status"], name: "index_ticket_group_bookings_on_organization_id_and_status"
+    t.index ["organization_id"], name: "index_ticket_group_bookings_on_organization_id"
+    t.index ["ticket_listing_id"], name: "index_ticket_group_bookings_on_ticket_listing_id"
+    t.index ["ticket_order_id"], name: "index_ticket_group_bookings_on_ticket_order_id"
+    t.index ["ticket_tier_id"], name: "index_ticket_group_bookings_on_ticket_tier_id"
+    t.index ["token"], name: "index_ticket_group_bookings_on_token", unique: true
+  end
+
   create_table "ticket_listings", force: :cascade do |t|
     t.bigint "organization_id", null: false
     t.bigint "show_id", null: false
@@ -4325,6 +4360,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000200) do
     t.index ["token"], name: "index_ticket_purchases_on_token", unique: true
   end
 
+  create_table "ticket_quantity_holds", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "ticket_listing_id", null: false
+    t.bigint "ticket_tier_id"
+    t.integer "quantity", default: 0, null: false
+    t.string "owner_type", null: false
+    t.bigint "owner_id", null: false
+    t.datetime "released_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_ticket_quantity_holds_on_organization_id"
+    t.index ["owner_type", "owner_id"], name: "index_ticket_quantity_holds_on_owner_type_and_owner_id"
+    t.index ["ticket_listing_id", "released_at"], name: "idx_on_ticket_listing_id_released_at_2f98408c3e"
+    t.index ["ticket_listing_id"], name: "index_ticket_quantity_holds_on_ticket_listing_id"
+    t.index ["ticket_tier_id"], name: "index_ticket_quantity_holds_on_ticket_tier_id"
+  end
+
   create_table "ticket_refunds", force: :cascade do |t|
     t.bigint "organization_id", null: false
     t.bigint "ticket_order_id", null: false
@@ -4454,7 +4506,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000200) do
     t.datetime "updated_at", null: false
     t.index ["offer_order_id"], name: "index_ticket_waitlist_entries_on_offer_order_id"
     t.index ["organization_id"], name: "index_ticket_waitlist_entries_on_organization_id"
-    t.index ["ticket_listing_id", "email"], name: "index_ticket_waitlist_entries_one_live_per_email", unique: true, where: "((status)::text = ANY ((ARRAY['waiting'::character varying, 'offered'::character varying])::text[]))"
+    t.index ["ticket_listing_id", "email"], name: "index_ticket_waitlist_entries_one_live_per_email", unique: true, where: "((status)::text = ANY (ARRAY[('waiting'::character varying)::text, ('offered'::character varying)::text]))"
     t.index ["ticket_listing_id", "status", "position"], name: "idx_on_ticket_listing_id_status_position_868817f215"
     t.index ["ticket_listing_id"], name: "index_ticket_waitlist_entries_on_ticket_listing_id"
     t.index ["token"], name: "index_ticket_waitlist_entries_on_token", unique: true
@@ -5125,6 +5177,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000200) do
   add_foreign_key "ticket_gift_certificates", "organizations"
   add_foreign_key "ticket_gift_certificates", "users", column: "issued_by_id"
   add_foreign_key "ticket_gift_certificates", "users", column: "voided_by_id"
+  add_foreign_key "ticket_group_bookings", "invoices"
+  add_foreign_key "ticket_group_bookings", "organizations"
+  add_foreign_key "ticket_group_bookings", "ticket_listings"
+  add_foreign_key "ticket_group_bookings", "ticket_orders"
+  add_foreign_key "ticket_group_bookings", "ticket_tiers"
+  add_foreign_key "ticket_group_bookings", "users", column: "created_by_id"
   add_foreign_key "ticket_listings", "contracts", on_delete: :nullify
   add_foreign_key "ticket_listings", "organizations"
   add_foreign_key "ticket_listings", "productions"
@@ -5165,6 +5223,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000200) do
   add_foreign_key "ticket_purchases", "organizations"
   add_foreign_key "ticket_purchases", "ticket_gift_certificates"
   add_foreign_key "ticket_purchases", "ticket_purchases", column: "earned_by_purchase_id"
+  add_foreign_key "ticket_quantity_holds", "organizations"
+  add_foreign_key "ticket_quantity_holds", "ticket_listings"
+  add_foreign_key "ticket_quantity_holds", "ticket_tiers"
   add_foreign_key "ticket_refunds", "organizations"
   add_foreign_key "ticket_refunds", "ticket_orders"
   add_foreign_key "ticket_refunds", "users", column: "refunded_by_id", on_delete: :nullify

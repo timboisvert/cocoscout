@@ -1,0 +1,81 @@
+<% content_for :title, "#{@booking.name} · Groups" %>
+<%
+  input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  links = []
+  links << { text: "Group's page", path: tickets_group_path(token: @booking.token), icon: "eye" }
+  links << { text: "Invoice #{@invoice.display_number}", path: manage_money_invoice_path(@invoice), icon: "document" } if @invoice
+%>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: ticket_listing_breadcrumbs(@listing) + [ [ "Groups", manage_ticket_listing_groups_path(@listing) ] ], text: @booking.name, links: links } %>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-white border border-gray-200 rounded-lg">
+        <%= render "shared/section_heading", title: "The block" do %>
+          <span class="text-xs font-medium px-2 py-0.5 rounded-full <%= @booking.ticketed? ? 'bg-green-100 text-green-800' : (@booking.booked? ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600') %>"><%= @booking.status_label %></span>
+        <% end %>
+        <dl class="grid grid-cols-2 sm:grid-cols-4 gap-4 px-6 py-4 text-sm">
+          <div><dt class="text-xs text-gray-500">Paid seats</dt><dd class="font-semibold text-gray-900 tabular-nums"><%= @booking.seat_count %> × <%= number_to_currency(@booking.price_cents / 100.0) %></dd></div>
+          <div><dt class="text-xs text-gray-500">Chaperones</dt><dd class="font-semibold text-gray-900 tabular-nums"><%= @booking.comp_count %>, free</dd></div>
+          <div><dt class="text-xs text-gray-500">Ticket type</dt><dd class="font-semibold text-gray-900"><%= @booking.ticket_tier.name %></dd></div>
+          <div><dt class="text-xs text-gray-500">Invoice</dt><dd class="font-semibold text-gray-900 tabular-nums"><%= number_to_currency(@booking.total_cents / 100.0) %><% if @invoice %> · <%= @invoice.paid? ? "paid" : (@invoice.void? ? "cancelled" : "#{number_to_currency(@invoice.unpaid_cents / 100.0)} owed") %><% end %></dd></div>
+          <div><dt class="text-xs text-gray-500">Leader</dt><dd class="text-gray-900"><%= @booking.contact_name %><br><span class="text-xs text-gray-500"><%= @booking.contact_email %><%= " · #{@booking.contact_phone}" if @booking.contact_phone.present? %></span></dd></div>
+          <div><dt class="text-xs text-gray-500">Payment due</dt><dd class="text-gray-900"><%= @booking.due_on.strftime("%b %-d, %Y") %></dd></div>
+          <div><dt class="text-xs text-gray-500">Seats held until</dt><dd class="text-gray-900"><%= @booking.release_on.strftime("%b %-d, %Y") %></dd></div>
+          <% if @booking.ticket_order %><div><dt class="text-xs text-gray-500">Tickets</dt><dd><%= link_to "Order #{@booking.ticket_order.code}", manage_ticket_order_path(@booking.ticket_order), class: "text-pink-600 hover:text-pink-700 font-medium" %></dd></div><% end %>
+        </dl>
+        <% if @booking.notes.present? %><p class="px-6 pb-4 text-sm text-gray-600"><%= @booking.notes %></p><% end %>
+      </div>
+
+      <div class="bg-white border border-gray-200 rounded-lg">
+        <%= render "shared/section_heading", title: "Names", intro: "One a line, in seat order; the leader can add them on their page too. Unnamed tickets read as the group's at the door." %>
+        <%= form_with url: manage_names_ticket_listing_group_path(@listing, @booking), method: :patch, data: { turbo: false }, class: "px-6 py-4 space-y-3" do %>
+          <%= text_area_tag :names, @booking.names, rows: [ 6, @booking.seats ].min, placeholder: "Avery Smith\nBlake Jones", class: input %>
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-xs text-gray-500"><%= pluralize(@booking.names_list.size, "name") %> of <%= @booking.seats %></span>
+            <%= render "shared/button", text: "Save names", variant: "secondary", size: "small", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+
+      <% if @document %>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <%= render "shared/section_heading", title: "Invoice #{@invoice.display_number}", intro: "Record a check or send a reminder on the invoice's own page." %>
+          <div class="p-4"><%= render "shared/invoice_document", document: @document %></div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="space-y-4">
+      <% if @booking.booked? %>
+        <div class="bg-white border border-gray-200 rounded-lg px-5 py-4 space-y-3">
+          <h3 class="font-semibold text-gray-900">Issue the tickets now</h3>
+          <p class="text-sm text-gray-600">For a group you trust to pay: the tickets go out today and the invoice stays open until it's paid.</p>
+          <%= render "shared/button", text: "Issue tickets now", variant: "primary", size: "medium", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "issue-group" } %>
+          <%= render "shared/confirm_modal", id: "issue-group", title: "Issue #{pluralize(@booking.seats, 'ticket')} to #{@booking.name}?",
+                message: "The seats become tickets on the group's name today#{@booking.paid? ? '' : ", and the invoice for #{number_to_currency(@invoice.unpaid_cents / 100.0)} stays open"}.",
+                confirm_text: "Issue tickets", url: manage_issue_ticket_listing_group_path(@listing, @booking), method: :post %>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-lg px-5 py-4 space-y-3">
+          <h3 class="font-semibold text-gray-900">Release the seats</h3>
+          <p class="text-sm text-gray-600">They go back on sale, the invoice is cancelled, and the leader is told. Otherwise this happens by itself on <%= @booking.release_on.strftime("%B %-d") %> if the invoice isn't paid.</p>
+          <%= render "shared/button", text: "Release the seats", variant: "secondary", size: "medium", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "release-group" } %>
+          <%= render "shared/confirm_modal", id: "release-group", title: "Release #{@booking.name}'s seats?", message: "#{pluralize(@booking.seats, 'seat')} go back on sale and invoice #{@invoice&.display_number} is cancelled. The leader gets an email.",
+                confirm_text: "Release the seats", url: manage_release_ticket_listing_group_path(@listing, @booking), method: :post %>
+        </div>
+      <% elsif @booking.ticketed? %>
+        <div class="bg-white border border-gray-200 rounded-lg px-5 py-4 space-y-2">
+          <h3 class="font-semibold text-gray-900">Tickets issued</h3>
+          <p class="text-sm text-gray-600"><%= @booking.ticketed_at.strftime("%b %-d, %-l:%M %p") %>. Fewer coming? Refund single tickets from the order, like any other.</p>
+          <%= link_to manage_ticket_order_path(@booking.ticket_order) do %><%= render "shared/button", text: "The order", variant: "secondary", size: "small", type: :button %><% end %>
+        </div>
+      <% else %>
+        <div class="bg-white border border-gray-200 rounded-lg px-5 py-4">
+          <h3 class="font-semibold text-gray-900"><%= @booking.status_label %></h3>
+          <p class="text-sm text-gray-600"><%= @booking.released_at&.strftime("%b %-d, %Y") %>. The seats are back on sale<% if @invoice %>; the invoice is cancelled<% end %>.</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

@@ -198,6 +198,24 @@ class TicketingTemplates
       body: %(<p>Hi {{first_name}},</p><p>You're on the waitlist for {{show_title}} on {{show_date}}. {{message}}</p>),
       variables: v(:first_name, :organization_name, :show_title, :show_date, :message) },
 
+    # --- Group sales (advanced ticketing §3): the leader's emails.
+    { key: "ticket_group_booked", name: "Group sales: seats held", channel: "email",
+      subject: "{{seat_words}} held for {{group_name}}: {{show_title}}, {{show_date}}",
+      body: %(<p>Hi {{first_name}},</p><p>{{organization_name}} is holding {{seat_words}} for {{group_name}} at {{show_title}} on {{show_date}} at {{show_time}}.</p><p>Everything is on your group page: the invoice for {{amount}}, paying by card or bank transfer, and the names of the people coming.</p><p><a href="{{group_url}}">Your group page</a></p><p>Please pay by {{due_date}}. The seats are held until {{release_date}}; after that they go back on sale.</p>),
+      variables: v(:first_name, :group_name, :organization_name, :show_title, :show_date, :show_time, :seat_words, :amount, :group_url, :due_date, :release_date) },
+    { key: "ticket_group_tickets_ready", name: "Group sales: tickets are ready", channel: "email",
+      subject: "Your tickets for {{show_title}}, {{show_date}}",
+      body: %(<p>Hi {{first_name}},</p><p>{{organization_name}} has issued {{seat_words}} for {{group_name}} at {{show_title}} on {{show_date}} at {{show_time}}.</p><p><a href="{{group_url}}">Your group page</a> has every ticket in one PDF to print or forward, and the names on them. At the door, the group's name is enough.</p>),
+      variables: v(:first_name, :group_name, :organization_name, :show_title, :show_date, :show_time, :seat_words, :group_url) },
+    { key: "ticket_group_release_warning", name: "Group sales: seats about to be released", channel: "email",
+      subject: "{{release_date}}: the seats held for {{group_name}} go back on sale",
+      body: %(<p>Hi {{first_name}},</p><p>{{organization_name}} is holding {{seat_words}} for {{group_name}} at {{show_title}} on {{show_date}}, and the invoice for {{amount}} hasn't been paid yet.</p><p>The seats are held until {{release_date}}. Pay by then and they're yours:</p><p><a href="{{group_url}}">Your group page</a></p><p>If the plans changed, reply to this email and {{organization_name}} will sort it out.</p>),
+      variables: v(:first_name, :group_name, :organization_name, :show_title, :show_date, :seat_words, :amount, :group_url, :release_date) },
+    { key: "ticket_group_released", name: "Group sales: seats released", channel: "email",
+      subject: "The seats held for {{group_name}} were released",
+      body: %(<p>Hi {{first_name}},</p><p>The {{seat_words}} {{organization_name}} was holding for {{group_name}} at {{show_title}} on {{show_date}} went back on sale, since the invoice wasn't paid by {{release_date}}. The invoice is cancelled; there's nothing to pay.</p><p>Still want to come? Tickets may still be available: <a href="{{show_page_url}}">{{show_title}}</a>. Or reply to this email and {{organization_name}} will help.</p>),
+      variables: v(:first_name, :group_name, :organization_name, :show_title, :show_date, :seat_words, :release_date, :show_page_url) },
+
     # --- Invitations and producers.
     { key: "ticketing_door_invitation", name: "Ticketing: door access invitation", channel: "email",
       subject: "{{organization_name}} invited you to work the door",

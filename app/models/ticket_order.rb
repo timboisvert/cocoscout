@@ -21,7 +21,9 @@ class TicketOrder < ApplicationRecord
   # (Tap to Pay, TapToPay): an in-person charge, at Stripe's in-person rate.
   # pass / door_pass: a credit from a punch card or season pass, used online
   # or at the door (TicketPassCredits): nothing charged then.
-  CHANNELS = %w[online embed door_cash door_card door_tap comp pass door_pass].freeze
+  # group: a block paid on a group invoice (TicketGroupBooking); the money is
+  # the invoice's, so the order's money_path is external.
+  CHANNELS = %w[online embed door_cash door_card door_tap comp pass door_pass group].freeze
   # Paid standing at the door, by card: they're checked in the moment it's paid.
   DOOR_CARD_CHANNELS = %w[door_card door_tap].freeze
   MONEY_PATHS = %w[cocoscout external cash none].freeze
