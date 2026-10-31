@@ -285,4 +285,26 @@ RSpec.describe "Contracts — change dates", type: :request do
       expect(paid.reload.status).to eq("paid")
     end
   end
+
+  # Review is a GET, so the plan fits in the address only if a row that
+  # isn't moving sends nothing but its action: Puma stops at 10KB of query
+  # and answers an empty 400 that Turbo shows as nothing (Tim, 2026-10-31,
+  # a contract with a season of dates).
+  describe "the Change dates form" do
+    it "renders every row's move fields disabled, so a kept or removed date sends its action alone" do
+      rental, = booked_date!(future)
+      booked_date!(future + 1.week)
+
+      get amend_dates_manage_contract_path(contract)
+
+      page = Nokogiri::HTML(response.body)
+      form = page.at_css("form[action$='/amend/dates/review']")
+      expect(form["method"]).to eq("get")
+      enabled = form.css("input:not([disabled]), select:not([disabled])").map { |f| f["name"] }.compact
+      expect(enabled).to all(match(/\Adates\[\d+\]\[action\]\z/))
+      disabled = form.css("input[disabled]").map { |f| f["name"] }
+      expect(disabled).to include("dates[#{rental.id}][starts_at]", "dates[#{rental.id}][duration]",
+                                  "dates[#{rental.id}][separate_event_time]", "dates[#{rental.id}][event_starts_at]")
+    end
+  end
 end

@@ -33,9 +33,19 @@ module Authentication
   end
 
   def request_authentication
-    session[:return_to_after_authenticating] = request.url
+    session[:return_to_after_authenticating] = return_to_after_authenticating_url
     # The app opens on its welcome screen, not straight onto the form.
     redirect_to request.user_agent.to_s.include?("Turbo Native") ? welcome_path : signin_path
+  end
+
+  # The session rides in a 4KB cookie, so a long address (a GET form's
+  # worth of fields, say) comes back without its query rather than overflowing
+  # the cookie into a 500 on the way to the sign-in page.
+  RETURN_TO_URL_LIMIT = 2_000
+
+  def return_to_after_authenticating_url
+    url = request.url
+    url.bytesize <= RETURN_TO_URL_LIMIT ? url : request.base_url + request.path
   end
 
   def after_authentication_url
