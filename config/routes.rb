@@ -104,6 +104,12 @@ Rails.application.routes.draw do
   get  "/pay/contract/:token/success",  to: "contract_payment_checkout#success",  as: "pay_contract_success"
   get  "/pay/contract/:token/invoice",  to: "contract_payment_checkout#invoice",  as: "pay_contract_invoice", defaults: { format: "pdf" }
 
+  # Public, no-login invoice link (an invoice to anyone, plan D2). The token names one invoice.
+  get  "/pay/invoice/:token",          to: "invoice_checkout#show",     as: "pay_invoice"
+  post "/pay/invoice/:token/checkout", to: "invoice_checkout#checkout", as: "pay_invoice_checkout"
+  get  "/pay/invoice/:token/success",  to: "invoice_checkout#success",  as: "pay_invoice_success"
+  get  "/pay/invoice/:token/invoice",  to: "invoice_checkout#pdf",      as: "pay_invoice_pdf", defaults: { format: "pdf" }
+
   # Public, no-login contract signing link. The token names one contract.
   get  "/sign/contract/:token",      to: "contract_signing#show",    as: "sign_contract"
   post "/sign/contract/:token",      to: "contract_signing#sign"
@@ -1668,6 +1674,22 @@ Rails.application.routes.draw do
     # Incoming payments: the receivables mirror of Payouts. Money owed TO the org,
     # almost all of it from contracts. Detail route before :production_id so the
     # literal "payment" segment isn't captured as a production id.
+    # Bills (money you owe) and invoices to anyone (money owed to you), plan D1 and D2.
+    get    "money/bills",              to: "bills#index",   as: "money_bills"
+    get    "money/bills/new",          to: "bills#new",     as: "new_money_bill"
+    post   "money/bills",              to: "bills#create"
+    get    "money/bills/:id",          to: "bills#show",    as: "money_bill"
+    get    "money/bills/:id/edit",     to: "bills#edit",    as: "edit_money_bill"
+    patch  "money/bills/:id",          to: "bills#update"
+    post   "money/bills/:id/pay",      to: "bills#pay",     as: "pay_money_bill"
+    post   "money/bills/:id/void",     to: "bills#void",    as: "void_money_bill"
+    get    "money/invoices/new",       to: "invoices#new",    as: "new_money_invoice"
+    post   "money/invoices",           to: "invoices#create", as: "money_invoices"
+    get    "money/invoices/:id",       to: "invoices#show",   as: "money_invoice"
+    get    "money/invoices/:id/pdf",   to: "invoices#pdf",    as: "pdf_money_invoice", defaults: { format: "pdf" }
+    post   "money/invoices/:id/send",  to: "invoices#send_invoice", as: "send_money_invoice"
+    post   "money/invoices/:id/payments", to: "invoices#record_payment", as: "payments_money_invoice"
+    post   "money/invoices/:id/void",  to: "invoices#void",   as: "void_money_invoice"
     get  "money/incoming", to: "money_incoming#index", as: "money_incoming"
     get  "money/incoming/received", to: "money_incoming#received", as: "money_incoming_received"
     get  "money/incoming/payment/:id", to: "money_incoming#show", as: "money_incoming_payment"

@@ -1,0 +1,41 @@
+<% content_for :title, "Invoice #{@invoice.display_number} from #{@organization.name}" %>
+<% state = @invoice.state %>
+<div class="min-h-screen bg-gray-50 py-10 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-2xl mx-auto">
+    <div class="text-center mb-6">
+      <h1 class="text-3xl coustard-regular text-gray-900"><%= state == :paid ? "Paid to" : "Invoice from" %> <%= @organization.name %></h1>
+      <p class="mt-1 text-sm text-gray-600"><%= @invoice.bill_to_name %><% if @invoice.production %> · <%= @invoice.production.name %><% end %></p>
+    </div>
+    <% if flash[:alert] %>
+      <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg"><p class="text-sm text-red-600"><%= flash[:alert] %></p></div>
+    <% end %>
+    <% if @just_paid %>
+      <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+        <svg class="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+        <p class="text-sm text-green-800">Payment received. Thank you, there is nothing else to do.<% if @invoice.bill_to_email.present? %> A receipt is on its way to <%= @invoice.bill_to_email %>.<% end %></p>
+      </div>
+    <% end %>
+
+    <%= render "shared/invoice_document", document: @document %>
+    <% if state == :void %>
+      <p class="mt-4 text-sm text-gray-600 text-center">This invoice was cancelled. Check with <%= @organization.name %> if you think that is a mistake.</p>
+    <% end %>
+
+    <% if state.in?(%i[due overdue]) && @invoice.collectable_online? %>
+      <div class="mt-6">
+        <%= render "shared/button", text: "Pay #{number_to_currency(@invoice.unpaid_cents / 100.0)}", variant: "primary", size: "large", classes: "w-full justify-center",
+              path: pay_invoice_checkout_path(token: @token), method: :post, form: { data: { turbo: false } } %>
+        <p class="mt-3 text-xs text-gray-400 text-center">
+          <%= [ (@invoice.pay_by_card ? "Card" : nil), (@invoice.bank_transfer_allowed? ? "bank transfer" : nil) ].compact.to_sentence %>, processed securely by our payment provider.
+          <% if @invoice.pay_by_check %>Prefer a check? The invoice says where to send it.<% end %>
+        </p>
+      </div>
+    <% end %>
+
+    <div class="mt-6 flex justify-center">
+      <%= link_to pay_invoice_pdf_path(token: @token, format: :pdf), target: "_blank", rel: "noopener" do %>
+        <%= render "shared/button", text: (state == :paid ? "Download receipt (PDF)" : "Download invoice (PDF)"), variant: "secondary", size: "small", icon: "download", type: :button %>
+      <% end %>
+    </div>
+  </div>
+</div>

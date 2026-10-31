@@ -14,6 +14,7 @@
     (module_access?(:settle_up) ? { icon: "chart-bar", text: "Settle up", description: "Each day, checked off: shows, door cash, expenses", path: manage_money_settle_up_path } : nil),
     (module_access?(:payouts) ? { icon: "dollar-sign", text: "Payouts", description: "Calculate and distribute payments", path: manage_money_payouts_path } : nil),
     (module_access?(:bills_invoices) ? { icon: "banknotes", text: "Incoming Payments", description: "Track and collect money owed to you", path: manage_money_incoming_path } : nil),
+    (module_access?(:bills_invoices) ? { icon: "file", text: "Bills", description: "What you owe and have not paid yet", path: manage_money_bills_path } : nil),
     (module_access?(:books) ? { icon: "book", text: "Books", description: "All your money, and every dollar in and out", path: manage_money_books_path } : nil),
     (module_access?(:money_settings) ? { icon: "cog", text: "Settings", description: "How you pay people", path: manage_money_settings_path } : nil)
   ].compact
@@ -65,6 +66,13 @@
           headline: "#{number_to_currency(@todo.payouts.due_soon_amount)} due now",
           body: "#{number_to_currency(@todo.payouts.amount)} unpaid in all, across #{pluralize(@todo.payouts.count, 'production, course or contract')}.",
           actions: [ { text: "Payouts", path: manage_money_payouts_path } ] %>
+  <% end %>
+  <% if @todo.bills.overdue_count.to_i.positive? %>
+    <%= render "shared/alert_panel",
+          eyebrow: "Bills",
+          headline: "#{number_to_currency(@todo.bills.overdue_amount)} in bills past due",
+          body: "#{pluralize(@todo.bills.overdue_count, 'bill')} due before today. Mark each paid once the money goes out.",
+          actions: [ { text: "Bills", path: manage_money_bills_path } ] %>
   <% end %>
   <% if @todo.incoming.overdue_count.to_i.positive? %>
     <%= render "shared/alert_panel",
@@ -119,6 +127,22 @@
   <% end %>
 
   <%= render layout: "manage/money/todo_section",
+        locals: { title: "Bills due", section: @todo.bills, label: "Bill",
+                  columns: [ "Due", "Amount" ], min_width: "min-w-[420px]",
+                  subtitle: "#{number_to_currency(@todo.bills.amount)} to pay in the next 30 days",
+                  path: manage_money_bills_path, link_text: "Bills",
+                  empty: "No bills due in the next 30 days." } do %>
+    <% @todo.bills.items.each do |bill| %>
+      <%= render "shared/slim_list_row",
+            title: bill.vendor_name, subtitle: [ bill.production&.name, bill.memo.presence || bill.category_label ].compact.join(" · "),
+            badge: (bill.overdue? ? { text: "Overdue", color: "red" } : nil),
+            href: manage_money_bill_path(bill), col_labels: [ "Due", "Amount" ],
+            cells: [ { value: bill.due_on.strftime("%b %-d, %Y"), class: bill.overdue? ? "text-red-600 font-medium" : "text-gray-700" },
+                     { value: number_to_currency(bill.unpaid_cents / 100.0), class: "text-gray-900 font-semibold" } ] %>
+    <% end %>
+  <% end %>
+
+  <%= render layout: "manage/money/todo_section",
         locals: { title: "Owed to you", section: @todo.incoming, label: "Payer",
                   columns: [ "Due", "Amount" ], min_width: "min-w-[420px]",
                   subtitle: incoming_subtitle,
@@ -126,8 +150,8 @@
                   # lands on — Incoming defaults to three months, the hub to 30 days.
                   path: manage_money_incoming_path(window: "1m"), link_text: "Incoming Payments",
                   empty: "Nothing owed to you in the next 30 days." } do %>
-    <% @todo.incoming.items.each do |payment| %>
-      <%= render "manage/money_incoming/payment_slim_row", payment: payment, show_production: true %>
+    <% @todo.incoming.items.each do |item| %>
+      <%= render "manage/money_incoming/owed_row", item: item, show_production: true %>
     <% end %>
   <% end %>
 

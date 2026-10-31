@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_31_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_31_170100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -348,6 +348,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_160000) do
     t.index ["organization_id", "payee_type", "payee_id"], name: "idx_bank_setup_emails_payee"
   end
 
+  create_table "bill_payments", force: :cascade do |t|
+    t.bigint "bill_id", null: false
+    t.bigint "organization_id", null: false
+    t.date "on", null: false
+    t.integer "amount_cents", null: false
+    t.string "via", default: "bank", null: false
+    t.string "reference"
+    t.text "memo"
+    t.bigint "recorded_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["bill_id"], name: "index_bill_payments_on_bill_id"
+    t.index ["organization_id"], name: "index_bill_payments_on_organization_id"
+    t.index ["recorded_by_id"], name: "index_bill_payments_on_recorded_by_id"
+  end
+
   create_table "billing_invoices", force: :cascade do |t|
     t.bigint "organization_id", null: false
     t.string "stripe_invoice_id", null: false
@@ -376,6 +392,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_160000) do
     t.index ["organization_id"], name: "index_billing_invoices_on_organization_id"
     t.index ["stripe_invoice_id"], name: "index_billing_invoices_on_stripe_invoice_id", unique: true
     t.index ["stripe_payment_intent_id"], name: "index_billing_invoices_on_stripe_payment_intent_id"
+  end
+
+  create_table "bills", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.string "vendor_name", null: false
+    t.string "vendor_email"
+    t.string "vendor_reference"
+    t.integer "amount_cents", null: false
+    t.date "issued_on", null: false
+    t.date "due_on", null: false
+    t.string "category_key", null: false
+    t.bigint "production_id"
+    t.bigint "show_id"
+    t.text "memo"
+    t.string "repeats", default: "none", null: false
+    t.string "status", default: "open", null: false
+    t.integer "paid_cents", default: 0, null: false
+    t.date "paid_on"
+    t.datetime "voided_at"
+    t.string "void_reason"
+    t.bigint "repeated_from_id"
+    t.bigint "created_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_bills_on_created_by_id"
+    t.index ["organization_id", "status", "due_on"], name: "index_bills_on_organization_id_and_status_and_due_on"
+    t.index ["organization_id"], name: "index_bills_on_organization_id"
+    t.index ["production_id"], name: "index_bills_on_production_id"
+    t.index ["repeated_from_id"], name: "index_bills_on_repeated_from_id"
+    t.index ["show_id"], name: "index_bills_on_show_id"
   end
 
   create_table "cast_assignment_stages", force: :cascade do |t|
@@ -1257,6 +1303,78 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_160000) do
     t.index ["connected_by_id"], name: "index_integrations_on_connected_by_id"
     t.index ["organization_id", "provider"], name: "index_integrations_on_organization_id_and_provider", unique: true
     t.index ["organization_id"], name: "index_integrations_on_organization_id"
+  end
+
+  create_table "invoice_lines", force: :cascade do |t|
+    t.bigint "invoice_id", null: false
+    t.string "description", null: false
+    t.decimal "quantity", precision: 10, scale: 2, default: "1.0", null: false
+    t.integer "unit_cents", default: 0, null: false
+    t.integer "amount_cents", default: 0, null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["invoice_id"], name: "index_invoice_lines_on_invoice_id"
+  end
+
+  create_table "invoice_payments", force: :cascade do |t|
+    t.bigint "invoice_id", null: false
+    t.bigint "organization_id", null: false
+    t.date "on", null: false
+    t.integer "amount_cents", null: false
+    t.string "via", default: "check", null: false
+    t.string "reference"
+    t.text "memo"
+    t.bigint "recorded_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["invoice_id"], name: "index_invoice_payments_on_invoice_id"
+    t.index ["organization_id"], name: "index_invoice_payments_on_organization_id"
+    t.index ["recorded_by_id"], name: "index_invoice_payments_on_recorded_by_id"
+  end
+
+  create_table "invoices", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.integer "number", null: false
+    t.string "prefix", null: false
+    t.string "status", default: "open", null: false
+    t.string "bill_to_name", null: false
+    t.string "bill_to_email"
+    t.string "bill_to_attention"
+    t.text "bill_to_address"
+    t.date "issued_on", null: false
+    t.date "due_on", null: false
+    t.string "category_key", null: false
+    t.bigint "production_id"
+    t.bigint "show_id"
+    t.text "memo"
+    t.integer "total_cents", default: 0, null: false
+    t.integer "paid_cents", default: 0, null: false
+    t.date "paid_on"
+    t.string "payment_token"
+    t.boolean "pay_by_card", default: true, null: false
+    t.boolean "pay_by_bank", default: true, null: false
+    t.boolean "pay_by_check", default: true, null: false
+    t.string "reminders", default: "before_and_overdue", null: false
+    t.datetime "sent_at"
+    t.integer "sent_count", default: 0, null: false
+    t.datetime "opened_at"
+    t.datetime "voided_at"
+    t.string "void_reason"
+    t.string "stripe_checkout_session_id"
+    t.string "stripe_payment_intent_id"
+    t.integer "stripe_fee_cents"
+    t.datetime "receipt_emailed_at"
+    t.bigint "created_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_invoices_on_created_by_id"
+    t.index ["organization_id", "number"], name: "index_invoices_on_organization_id_and_number", unique: true
+    t.index ["organization_id", "status", "due_on"], name: "index_invoices_on_organization_id_and_status_and_due_on"
+    t.index ["organization_id"], name: "index_invoices_on_organization_id"
+    t.index ["payment_token"], name: "index_invoices_on_payment_token", unique: true
+    t.index ["production_id"], name: "index_invoices_on_production_id"
+    t.index ["show_id"], name: "index_invoices_on_show_id"
   end
 
   create_table "journal_entries", force: :cascade do |t|
@@ -4545,7 +4663,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_160000) do
   add_foreign_key "balance_withdrawals", "users", column: "requested_by_id", on_delete: :nullify
   add_foreign_key "bank_setup_emails", "organizations"
   add_foreign_key "bank_setup_emails", "users", column: "sent_by_id"
+  add_foreign_key "bill_payments", "bills"
+  add_foreign_key "bill_payments", "organizations"
+  add_foreign_key "bill_payments", "users", column: "recorded_by_id"
   add_foreign_key "billing_invoices", "organizations"
+  add_foreign_key "bills", "bills", column: "repeated_from_id"
+  add_foreign_key "bills", "organizations"
+  add_foreign_key "bills", "productions"
+  add_foreign_key "bills", "shows"
+  add_foreign_key "bills", "users", column: "created_by_id"
   add_foreign_key "cast_assignment_stages", "talent_pools"
   add_foreign_key "casting_table_draft_assignments", "casting_tables"
   add_foreign_key "casting_table_draft_assignments", "roles"
@@ -4641,6 +4767,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_31_160000) do
   add_foreign_key "house_services", "organizations"
   add_foreign_key "integrations", "organizations"
   add_foreign_key "integrations", "users", column: "connected_by_id"
+  add_foreign_key "invoice_lines", "invoices"
+  add_foreign_key "invoice_payments", "invoices"
+  add_foreign_key "invoice_payments", "organizations"
+  add_foreign_key "invoice_payments", "users", column: "recorded_by_id"
+  add_foreign_key "invoices", "organizations"
+  add_foreign_key "invoices", "productions"
+  add_foreign_key "invoices", "shows"
+  add_foreign_key "invoices", "users", column: "created_by_id"
   add_foreign_key "journal_entries", "journal_entries", column: "reversal_of_id"
   add_foreign_key "journal_entries", "organizations"
   add_foreign_key "journal_lines", "journal_entries"

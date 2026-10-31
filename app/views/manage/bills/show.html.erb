@@ -1,0 +1,125 @@
+<% content_for :title, "#{@bill.vendor_name}, #{number_to_currency(@bill.amount)}" %>
+<%
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  can_change = module_change?(:bills_invoices)
+  input = "mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  links = []
+  if can_change && @bill.open?
+    links << { text: "Change", path: manage_edit_money_bill_path(@bill) }
+    links << { text: "Mark paid", path: "#", data: { controller: "modal", action: "click->modal#open", modal_id: "pay-bill" } }
+  end
+  badge = @bill.void? ? [ "Cancelled", "bg-gray-100 text-gray-600" ] : (@bill.paid? ? [ "Paid", "bg-green-50 text-green-700" ] : (@bill.overdue? ? [ "Overdue", "bg-red-50 text-red-700" ] : [ "Due #{@bill.due_on.strftime('%b %-d')}", "bg-amber-50 text-amber-800" ]))
+%>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Money", manage_money_index_path ], [ "Bills", manage_money_bills_path ] ], text: "#{@bill.vendor_name}, #{money.call(@bill.amount_cents)}", links: links } %>
+
+  <div class="max-w-4xl space-y-4">
+    <section class="rounded-xl border border-gray-200 bg-white px-5 py-4">
+      <div class="flex items-center gap-2 text-xs">
+        <span class="inline-flex rounded-md px-1.5 py-0.5 font-medium <%= badge[1] %>"><%= badge[0] %></span>
+        <span class="text-gray-500">Bill</span>
+      </div>
+      <h2 class="mt-1 text-2xl font-bold tabular-nums text-gray-900"><%= money.call(@bill.amount_cents) %><% if @bill.open? && @bill.paid_cents.positive? %> <span class="text-base font-normal text-gray-600"><%= money.call(@bill.unpaid_cents) %> still to pay</span><% end %></h2>
+      <div class="text-sm text-gray-600"><%= @bill.vendor_name %><% if @bill.memo.present? %> · <%= @bill.memo %><% end %> · <%= @bill.for_label %> · <%= @bill.category_label %></div>
+      <dl class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 text-sm">
+        <div><dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Arrived</dt><dd class="text-gray-900"><%= @bill.issued_on.strftime("%b %-d, %Y") %></dd></div>
+        <div><dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Due</dt><dd class="text-gray-900"><%= @bill.due_on.strftime("%b %-d, %Y") %></dd></div>
+        <% if @bill.vendor_reference.present? %><div><dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Their number</dt><dd class="text-gray-900"><%= @bill.vendor_reference %></dd></div><% end %>
+        <% if @bill.repeats != "none" %><div><dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Repeats</dt><dd class="text-gray-900"><%= Bill::REPEATS[@bill.repeats] %></dd></div><% end %>
+        <% if @bill.created_by %><div><dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Added by</dt><dd class="text-gray-900"><%= @bill.created_by.default_person&.name || @bill.created_by.email_address %></dd></div><% end %>
+        <% if @bill.void_reason.present? %><div class="col-span-2"><dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Cancelled because</dt><dd class="text-gray-900"><%= @bill.void_reason %></dd></div><% end %>
+      </dl>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <%= render "shared/section_heading", padding: "px-5 py-3", title: "Payments" do %>
+          <span class="text-xs text-gray-500"><%= @bill.open? ? "Still to pay: #{money.call(@bill.unpaid_cents)}" : badge[0] %></span>
+        <% end %>
+        <% if @payments.empty? %>
+          <p class="px-5 py-4 text-sm text-gray-500">Nothing yet.<% if can_change && @bill.open? %> Mark it paid when the money goes out, part or whole.<% end %></p>
+        <% else %>
+          <ul class="divide-y divide-gray-100">
+            <% @payments.each do |p| %>
+              <li class="flex items-center gap-4 px-5 py-2.5 text-sm"><span class="w-24 text-gray-500 tabular-nums"><%= p.on.strftime("%b %-d, %Y") %></span><span class="flex-1 text-gray-900">From <%= p.via_label.downcase %><% if p.reference.present? %> · <%= p.reference %><% end %><% if p.memo.present? %> · <%= p.memo %><% end %></span><span class="tabular-nums text-gray-900"><%= money.call(p.amount_cents) %></span></li>
+            <% end %>
+          </ul>
+        <% end %>
+      </section>
+      <section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <%= render "shared/section_heading", padding: "px-5 py-3", title: "The bill itself" %>
+        <div class="px-5 py-4">
+          <% if @bill.document.attached? %>
+            <% if @bill.document.image? %>
+              <%= link_to url_for(@bill.document), target: "_blank", rel: "noopener" do %><%= image_tag @bill.document.variant(resize_to_limit: [ 800, 800 ]), alt: @bill.document.filename.to_s, class: "max-h-80 rounded-lg border border-gray-200 object-contain" %><% end %>
+            <% else %>
+              <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-600"><%= @bill.document.filename %></div>
+            <% end %>
+            <div class="mt-3 flex items-center justify-between text-xs text-gray-500"><span><%= @bill.document.filename %> · <%= number_to_human_size(@bill.document.byte_size) %></span><%= link_to "Open", url_for(@bill.document), target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700" %></div>
+          <% else %>
+            <p class="text-sm text-gray-500">None attached.<% if can_change && @bill.open? %> <%= link_to "Add it", manage_edit_money_bill_path(@bill), class: "text-pink-600 hover:text-pink-700" %>.<% end %></p>
+          <% end %>
+        </div>
+      </section>
+    </div>
+
+    <section class="rounded-xl border border-gray-200 bg-white px-5 py-4 text-sm text-gray-700">
+      <span class="text-[11px] font-medium uppercase tracking-wide text-gray-500 block mb-1">On the books</span>
+      <% if @bill.void? %>Cancelled: nothing stands on the books.<% else %>
+        <%= money.call(@bill.amount_cents) %> of <b><%= @bill.category_label %></b> spending<%= @bill.production ? " for #{@bill.production.name}" : "" %>, dated <%= @bill.issued_on.strftime("%b %-d") %>. <% if @bill.unpaid_cents.positive? %><%= money.call(@bill.unpaid_cents) %> sits in <b>Money you owe</b> until you pay it.<% end %> If you count money when it moved, it shows up on the day you pay instead.
+      <% end %>
+      <%= link_to "See the entries", manage_money_books_path(tab: "entries", kind: "bill"), class: "ml-1 text-pink-600 hover:text-pink-700" %>
+    </section>
+
+    <% if can_change && @bill.open? %>
+      <div class="flex justify-end">
+        <%= render "shared/button", text: "Cancel this bill", variant: "secondary", size: "small", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "void-bill" } %>
+      </div>
+
+      <%# Mark paid: the date, the amount, how. %>
+      <div id="pay-bill" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+        <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-md overflow-hidden" data-action="click->modal#stopPropagation">
+          <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+            <h3 class="text-lg font-semibold text-white">Mark paid</h3>
+            <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 cursor-pointer" aria-label="Close"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+          </div>
+          <%= form_with url: manage_pay_money_bill_path(@bill), method: :post, data: { turbo: false } do %>
+            <div class="px-6 py-5 space-y-4">
+              <div class="grid grid-cols-2 gap-4">
+                <label class="block text-sm font-medium text-gray-700"><span>Paid on</span><input type="date" name="on" value="<%= Date.current.iso8601 %>" class="<%= input %>"></label>
+                <label class="block text-sm font-medium text-gray-700"><span>Amount</span><span class="relative block"><span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 pt-1 text-gray-500">$</span><input type="text" name="amount" inputmode="decimal" value="<%= format('%.2f', @bill.unpaid_cents / 100.0) %>" class="<%= input %> pl-7 tabular-nums"></span></label>
+              </div>
+              <label class="block text-sm font-medium text-gray-700"><span>From</span>
+                <select name="via" class="<%= input %>"><% Bill::VIA.each do |k, (name, _)| %><option value="<%= k %>"><%= name %></option><% end %></select></label>
+              <label class="block text-sm font-medium text-gray-700"><span>Check number or reference <span class="font-normal text-gray-500">(optional)</span></span><input type="text" name="reference" class="<%= input %>"></label>
+            </div>
+            <div class="flex items-center justify-end gap-2 border-t border-gray-200 bg-gray-50 px-6 py-4">
+              <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+              <%= render "shared/button", text: "Mark paid", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <div id="void-bill" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+        <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-md overflow-hidden" data-action="click->modal#stopPropagation">
+          <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+            <h3 class="text-lg font-semibold text-white">Cancel this bill?</h3>
+            <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 cursor-pointer" aria-label="Close"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+          </div>
+          <%= form_with url: manage_void_money_bill_path(@bill), method: :post, data: { turbo: false } do %>
+            <div class="px-6 py-5 space-y-3">
+              <p class="text-sm text-gray-700">It comes off the books and off the list. Payments already recorded stay as they were.</p>
+              <label class="block text-sm font-medium text-gray-700"><span>Why <span class="font-normal text-gray-500">(optional)</span></span><input type="text" name="reason" class="<%= input %>"></label>
+            </div>
+            <div class="flex items-center justify-end gap-2 border-t border-gray-200 bg-gray-50 px-6 py-4">
+              <%= render "shared/button", text: "Keep it", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+              <%= render "shared/button", text: "Cancel the bill", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

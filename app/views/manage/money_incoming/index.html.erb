@@ -11,8 +11,24 @@
       ["Money", manage_money_index_path]
     ],
     text: @production ? @production.name : "Incoming Payments",
-    links: []
+    links: (module_change?(:bills_invoices) ? [ { text: "Send an invoice", path: manage_new_money_invoice_path } ] : [])
   } %>
+
+  <%# ---- Invoices to anyone (Books V1.3, plan D2): sponsors, schools, groups.
+      Open ones first; the paid ones live on each invoice's page and in Books. %>
+  <% if @invoices.any? %>
+    <div class="flex items-baseline justify-between gap-3 mb-3">
+      <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Invoices <span class="ml-1 text-gray-400 font-normal normal-case tracking-normal">(<%= @invoices.size %>)</span></h3>
+      <span class="text-sm text-gray-600"><%= number_to_currency(@invoices.sum(&:unpaid_cents) / 100.0) %> owed</span>
+    </div>
+    <div class="mb-8">
+      <%= render layout: "shared/slim_list", locals: { label: "Invoice", columns: [ "Due", "Amount" ] } do %>
+        <% @invoices.each do |invoice| %>
+          <%= render "manage/invoices/invoice_slim_row", invoice: invoice, show_production: @production.nil? %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
 
   <%# ---- Window filter ---------------------------------------------------- %>
   <% window_path = ->(key) { @production ? manage_money_production_incoming_path(@production, window: key) : manage_money_incoming_path(window: key, group: @group_by) } %>

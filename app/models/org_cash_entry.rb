@@ -29,7 +29,7 @@
 # Balances are always derived by summing — never cached. Posts are idempotent
 # on (source, entry_type), mirroring PayoutLedgerEntry.
 class OrgCashEntry < ApplicationRecord
-  ENTRY_TYPES = %w[course_registration contract_payment funding transfer
+  ENTRY_TYPES = %w[course_registration contract_payment invoice_payment funding transfer
                    refund transfer_reversal opening_balance adjustment
                    ticket_sale ticket_refund ticket_dispute ticket_exchange_out ticket_exchange_in
                    top_up pass_sale pass_refund].freeze

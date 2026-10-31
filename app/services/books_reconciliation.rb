@@ -50,7 +50,15 @@ class BooksReconciliation
   end
 
   def self.check(organization)
-    [ balance_check(organization), owed_check(organization), tax_check(organization) ].compact
+    [ balance_check(organization), owed_check(organization), tax_check(organization), bills_check(organization) ].compact
+  end
+
+  # Money you owe is the unpaid part of every open bill (Books V1.3). Money
+  # owed to you has no check yet: contract payments don't post at issue.
+  def self.bills_check(organization)
+    books = ChartOfAccounts.account(organization, :you_owe).natural_balance_cents
+    expected = Bill.open.where(organization: organization).sum("amount_cents - paid_cents")
+    Mismatch.new(account: "you_owe", books_cents: books, expected_cents: expected) unless books == expected
   end
 
   def self.balance_check(organization)
@@ -89,5 +97,5 @@ class BooksReconciliation
     Mismatch.new(account: "tax_to_remit", books_cents: books, expected_cents: expected) unless books == expected
   end
 
-  private_class_method :balance_check, :owed_check, :tax_check
+  private_class_method :balance_check, :owed_check, :tax_check, :bills_check
 end

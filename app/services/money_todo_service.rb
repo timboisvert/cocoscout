@@ -221,17 +221,33 @@ class MoneyTodoService
 
   # Money owed to us that's late or lands inside the horizon. TBD amounts count
   # as rows but contribute nothing to the dollar totals — there's no figure yet.
+  # Money owed to you in the next 30 days: contract payments and invoices to
+  # anyone, together, by when they are due. Overdue always counts.
   def incoming
     @incoming ||= begin
       horizon = Date.current + INCOMING_HORIZON
       base = self.class.collectable_incoming(organization).where(due_date: ..horizon)
-      rows = base.by_due_date.includes(contract: [ :contractor, :production ]).to_a
+      payments = base.by_due_date.includes(contract: [ :contractor, :production ]).to_a
+      invoices = organization.invoices.open.where(due_on: ..horizon).includes(:production, :invoice_lines).to_a
+      rows = (payments + invoices).sort_by { |r| [ r.is_a?(Invoice) ? r.due_on : (r.due_date || UNDATED), r.id ] }
       overdue = rows.select(&:overdue?)
 
       Section.new(count: rows.size,
                   amount: sum_amounts(rows),
                   overdue_count: overdue.size,
                   overdue_amount: sum_amounts(overdue),
+                  items: row_limit ? rows.first(row_limit) : rows)
+    end
+  end
+
+  # Bills to pay (Books V1.3, plan D1): open bills by due date; overdue
+  # always counts, and the rest within the horizon.
+  def bills
+    @bills ||= begin
+      rows = organization.bills.open.where(due_on: ..(Date.current + INCOMING_HORIZON)).includes(:production).by_due.to_a
+      overdue = rows.select(&:overdue?)
+      Section.new(count: rows.size, amount: rows.sum(&:unpaid_cents) / 100.0,
+                  overdue_count: overdue.size, overdue_amount: overdue.sum(&:unpaid_cents) / 100.0,
                   items: row_limit ? rows.first(row_limit) : rows)
     end
   end
@@ -246,8 +262,8 @@ class MoneyTodoService
     @productions ||= user.accessible_productions.to_a
   end
 
-  def sum_amounts(payments)
-    payments.reject(&:amount_tbd?).sum { |p| p.amount.to_f }
+  def sum_amounts(rows)
+    rows.sum { |r| r.is_a?(Invoice) ? r.unpaid_cents / 100.0 : (r.amount_tbd? ? 0.0 : r.amount.to_f) }
   end
 
   # A row with no date sorts to the end rather than to the front.

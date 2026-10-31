@@ -39,6 +39,11 @@ module Manage
       scope = scope.where(contracts: { production_id: @production.id }) if @production
       all_pending = scope.by_due_date.to_a
 
+      # Invoices to anyone sit above the contract payments, open ones only.
+      invoices = Current.organization.invoices.open.includes(:production, :invoice_lines).by_due
+      invoices = invoices.where(production_id: @production.id) if @production
+      @invoices = invoices.to_a
+
       # Grand totals — everything still owed, independent of the window.
       @total_outstanding = all_pending.sum { |p| p.amount.to_f }
       overdue_all = all_pending.select(&:overdue?)

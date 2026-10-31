@@ -1,0 +1,20 @@
+<%# One invoice to anyone as a shared/slim_list row (Due / Amount), beside the
+    contract payments. Locals: invoice, show_production (default false) %>
+<%
+  show_production = local_assigns.fetch(:show_production, false)
+  parts = [ (show_production ? invoice.production&.name : nil), invoice.invoice_lines.first&.description.presence || "Invoice" ].compact
+  paid = invoice.paid?
+  late = invoice.overdue?
+  date_value = paid ? (invoice.paid_on || invoice.due_on) : invoice.due_on
+%>
+<%= render "shared/slim_list_row",
+      title: invoice.bill_to_name,
+      subtitle: "#{invoice.display_number} · #{parts.join(' · ')}",
+      badge: (paid ? { text: "Paid", color: "green" } : (late ? { text: "Overdue", color: "red" } : { text: "Invoice", color: "blue" })),
+      href: manage_money_invoice_path(invoice),
+      col_labels: [ (paid ? "Paid" : "Due"), "Amount" ],
+      cells: [
+        { value: date_value.strftime("%b %-d, %Y"), class: late ? "text-red-600 font-medium" : "text-gray-700",
+          subvalue: (late ? "#{distance_of_time_in_words(invoice.due_on, Date.current)} overdue" : nil), subvalue_class: "text-red-500" },
+        { value: number_to_currency((paid ? invoice.total_cents : invoice.unpaid_cents) / 100.0), class: "text-green-600 font-semibold" }
+      ] %>

@@ -29,6 +29,10 @@ class BooksReport
     "contract_payment" => "Contract payment",
     "cocoscout_bill" => "CocoScout bill",
     "recorded" => "Recorded by hand",
+    "bill" => "Bill",
+    "bill_payment" => "Bill paid",
+    "invoice" => "Invoice sent",
+    "invoice_payment" => "Invoice paid",
     "settlement" => "Day settled"
   }.freeze
 
