@@ -10,6 +10,29 @@ RSpec.describe "Manage::MoneySettings", type: :request do
 
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
+  describe "Books section" do
+    it "lists the categories, and adds, removes and restores one of the organization's own" do
+      get manage_money_settings_section_path(section: "books")
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Tech and equipment", "Sponsorship", "Add a category of your own")
+
+      post manage_money_settings_categories_path, params: { name: "Costume shop", kind: "expense" }
+      account = org.ledger_accounts.find_by(name: "Costume shop")
+      expect(account).to be_present
+      expect(account.system).to be(false)
+      expect(account.code).to eq("5800")
+      expect(MoneyCategories.spending_options(org)).to include([ "Costume shop", "account_#{account.id}" ])
+
+      delete manage_money_settings_category_path(account)
+      expect(account.reload.active).to be(false)
+      get manage_money_settings_section_path(section: "books")
+      expect(response.body).to include("No longer in use")
+
+      patch manage_money_settings_restore_category_path(account)
+      expect(account.reload.active).to be(true)
+    end
+  end
+
   describe "GET show" do
     it "renders the offline-methods settings section" do
       get manage_money_settings_path

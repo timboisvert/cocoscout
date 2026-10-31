@@ -26,10 +26,10 @@ RSpec.describe BooksOutsidePoster do
 
     expect(balance(:ticket_income)).to eq(80_000)
     expect(balance(:other_income)).to eq(15_050)
-    expect(balance(:owed_to_you)).to eq(95_050)
     expect(balance(:venue)).to eq(30_000)
     expect(balance(:marketing)).to eq(2_525)
-    expect(balance(:bank)).to eq(-32_525)
+    # Outside money arrives in the bank; the expenses left it.
+    expect(balance(:bank)).to eq(95_050 - 32_525)
     expect(LedgerPosting.trial_balance(org).values.sum).to eq(0)
     expect(JournalEntry.live.where(organization: org, source: financials).pluck(:kind)).to contain_exactly("outside_tickets", "other_revenue", "expenses")
 
@@ -37,11 +37,11 @@ RSpec.describe BooksOutsidePoster do
     financials.expense_items.destroy_all
     expect(balance(:ticket_income)).to eq(50_000)
     expect(balance(:venue)).to eq(0)
-    expect(balance(:bank)).to eq(0)
+    expect(balance(:bank)).to eq(65_050)
 
     financials.destroy
     expect(balance(:ticket_income)).to eq(0)
-    expect(balance(:owed_to_you)).to eq(0)
+    expect(balance(:bank)).to eq(0)
   end
 
   it "leaves another seller's ticket money out, and the CocoScout row too" do
@@ -62,7 +62,7 @@ RSpec.describe BooksOutsidePoster do
   it "posts ticket revenue typed before sources existed, and stops counting a line once it's deleted" do
     financials = ShowFinancials.create!(show: show, revenue_type: "ticket_sales", ticket_revenue: 640, ticket_count: 32)
     expect(balance(:ticket_income)).to eq(64_000)
-    expect(balance(:owed_to_you)).to eq(64_000)
+    expect(balance(:bank)).to eq(64_000)
 
     line = financials.ticket_sales_lines.create!(ticket_source: tailor, tickets_sold: 10, amount: 200)
     expect(balance(:ticket_income)).to eq(20_000)
@@ -74,7 +74,7 @@ RSpec.describe BooksOutsidePoster do
   it "posts a flat fee only when no contract carries it" do
     financials = ShowFinancials.create!(show: show, revenue_type: "flat_fee", flat_fee: 120, ticket_revenue: 999)
     expect(balance(:contract_income)).to eq(12_000)
-    expect(balance(:owed_to_you)).to eq(12_000)
+    expect(balance(:bank)).to eq(12_000)
     expect(balance(:ticket_income)).to eq(0)
 
     create(:contract, organization: org, production: production)
@@ -170,5 +170,30 @@ RSpec.describe BooksOutsidePoster do
       expect(balance(:cocoscout_balance)).to eq(5_000)
       expect(balance(:ticket_income)).to eq(8_000)
     end
+  end
+
+  it "reads old category keys as the category they meant, and an organization's own category as its account" do
+    financials = ShowFinancials.create!(show: show, revenue_type: "ticket_sales")
+    financials.expense_items.create!(category: "talent", amount: 100)
+    financials.expense_items.create!(category: "tech", amount: 50)
+    own = org.ledger_accounts.create!(name: "Costume shop", account_type: "expense", code: "5800", system: false, active: true)
+    financials.expense_items.create!(category: "account_#{own.id}", amount: 20)
+    financials.reload
+    expect(balance(:performer_pay)).to eq(10_000)
+    expect(balance(:equipment)).to eq(5_000)
+    expect(own.natural_balance_cents).to eq(2_000)
+    expect(MoneyCategories.label_for("talent")).to eq("Performer pay")
+    expect(MoneyCategories.label_for("account_#{own.id}", organization: org)).to eq("Costume shop")
+    expect(MoneyCategories.spending_options(org).map(&:first)).to include("Costume shop")
+    expect(MoneyCategories.spending_options(org).last.last).to eq("other")
+  end
+
+  it "puts a paid CocoScout bill on the books as software spending" do
+    bill = BillingInvoice.create!(organization: org, stripe_invoice_id: "in_1", status: "open", kind: "pro", amount_due_cents: 2_000)
+    expect(balance(:software)).to eq(0)
+    bill.update!(status: "paid", amount_paid_cents: 2_000, paid_at: Time.current)
+    expect(balance(:software)).to eq(2_000)
+    expect(balance(:bank)).to eq(-2_000)
+    expect(JournalEntry.live.find_by(organization: org, source: bill, kind: "cocoscout_bill").memo).to include("CocoScout")
   end
 end

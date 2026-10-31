@@ -258,7 +258,7 @@
                   <%# Use ExpenseItem records %>
                   <% expense_item_records.each_with_index do |item, index| %>
                     <%
-                      category_label = ExpenseCategories.label_for(item.category)
+                      category_label = ExpenseCategories.label_for(item.category, organization: Current.organization)
                       display_text = item.description.present? ? "#{category_label}: #{item.description}" : category_label
                     %>
                     <div class="flex items-center justify-between bg-white rounded-lg px-3 py-2" data-line-item data-index="<%= index %>" data-expense-item-id="<%= item.id %>">
@@ -316,7 +316,7 @@
                   <% legacy_expense_items.each_with_index do |item, index| %>
                     <%
                       category = item["category"].presence || "other"
-                      category_label = ExpenseCategories.label_for(category)
+                      category_label = ExpenseCategories.label_for(category, organization: Current.organization)
                       description = item["description"].presence
                       display_text = description.present? ? "#{category_label}: #{description}" : category_label
                     %>
@@ -481,7 +481,7 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
           <select data-financials-form-target="expenseCategory"
                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:ring-pink-500">
-            <% ExpenseCategories.options_for_select.each do |label, key| %>
+            <% ExpenseCategories.options_for_select(Current.organization).each do |label, key| %>
               <option value="<%= key %>"><%= label %></option>
             <% end %>
           </select>

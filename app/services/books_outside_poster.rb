@@ -6,13 +6,14 @@
 # the production's expenses, so the books post from those records and
 # restate whenever they change.
 #
-#   Ticket sales lines from other sources, when the theater sells — income
-#                       the theater is owed (Money owed to you / Ticket income)
+#   Ticket sales lines from other sources, when the theater sells — money
+#                       that arrived in the bank (Bank / Ticket income)
 #   Other revenue       — likewise, less the "CocoScout products" line
-#                       ticketing writes itself (Money owed to you / Other income)
+#                       ticketing writes itself (Bank / Other income)
 #   Expenses            — paid from the bank, by category
 #   Flat fee            — a show played for a fee with no contract behind it
-#                       (Money owed to you / Rental and contract income)
+#                       (Bank / Rental and contract income)
+#   BillingInvoice      — a paid CocoScout bill: Software and subscriptions / Bank
 #   ProductionExpense   — a cost spread over shows, posted once on its date
 #   ContractPayment     — contract money that moved outside CocoScout: a check
 #                       or cash received (Bank / Rental and contract income),
@@ -20,8 +21,6 @@
 #                       pay / Bank). One collected online, deducted on a run or
 #                       paid through a run already posts from its ledger row.
 class BooksOutsidePoster
-  CATEGORY_ACCOUNTS = { "venue" => :venue, "production" => :production_costs, "marketing" => :marketing,
-                        "talent" => :performer_pay, "other" => :other_expenses }.freeze
   KINDS = %w[outside_tickets other_revenue flat_fee expenses].freeze
 
   def self.post_financials!(financials)
@@ -36,17 +35,17 @@ class BooksOutsidePoster
     tickets = outside_ticket_cents(financials, show)
     LedgerPosting.post!(organization: organization, source: financials, kind: "outside_tickets", entry_date: date, cash_date: date,
                         memo: "Ticket sales elsewhere · #{show.display_name}",
-                        lines: tickets.zero? ? [] : [ { account: :owed_to_you, amount_cents: tickets, **dims }, { account: :ticket_income, amount_cents: -tickets, **dims } ])
+                        lines: tickets.zero? ? [] : [ { account: :bank, amount_cents: tickets, **dims }, { account: :ticket_income, amount_cents: -tickets, **dims } ])
 
     other = other_revenue_cents(financials)
     LedgerPosting.post!(organization: organization, source: financials, kind: "other_revenue", entry_date: date, cash_date: date,
                         memo: "Other revenue · #{show.display_name}",
-                        lines: other.zero? ? [] : [ { account: :owed_to_you, amount_cents: other, **dims }, { account: :other_income, amount_cents: -other, **dims } ])
+                        lines: other.zero? ? [] : [ { account: :bank, amount_cents: other, **dims }, { account: :other_income, amount_cents: -other, **dims } ])
 
     fee = flat_fee_cents(financials, show)
     LedgerPosting.post!(organization: organization, source: financials, kind: "flat_fee", entry_date: date, cash_date: date,
                         memo: "Flat fee · #{show.display_name}",
-                        lines: fee.zero? ? [] : [ { account: :owed_to_you, amount_cents: fee, **dims }, { account: :contract_income, amount_cents: -fee, **dims } ])
+                        lines: fee.zero? ? [] : [ { account: :bank, amount_cents: fee, **dims }, { account: :contract_income, amount_cents: -fee, **dims } ])
 
     by_category = expense_cents(financials)
     total = by_category.values.sum
@@ -68,7 +67,7 @@ class BooksOutsidePoster
     production = expense.production
     date = expense.purchase_date || expense.created_at.to_date
     cents = (expense.total_amount.to_f * 100).round
-    lines = expense.active && cents.positive? ? [ { account: CATEGORY_ACCOUNTS.fetch(expense.category.to_s, :other_expenses), amount_cents: cents, production: production },
+    lines = expense.active && cents.positive? ? [ { account: MoneyCategories.account_for(expense.category, organization: production.organization), amount_cents: cents, production: production },
                                                    { account: :bank, amount_cents: -cents } ] : []
     LedgerPosting.post!(organization: production.organization, source: expense, kind: "production_expense", entry_date: date, cash_date: date,
                         memo: "#{expense.name} · #{production.name}", lines: lines)
@@ -80,6 +79,23 @@ class BooksOutsidePoster
 
   def self.remove_production_expense!(expense)
     LedgerPosting.unpost!(source: expense, kind: "production_expense")
+  end
+
+  # A CocoScout bill (Pro plan, usage) the organization paid: software
+  # spending, out of the bank. Nothing until it's paid; cash basis and
+  # accrual both see it on the day it was paid.
+  def self.post_billing_invoice!(invoice)
+    organization = invoice.organization
+    cents = invoice.amount_paid_cents.to_i
+    paid = invoice.status == "paid" && cents.positive?
+    date = (invoice.paid_at || invoice.finalized_at || invoice.created_at).to_date
+    lines = paid ? [ { account: :software, amount_cents: cents }, { account: :bank, amount_cents: -cents } ] : []
+    LedgerPosting.post!(organization: organization, source: invoice, kind: "cocoscout_bill", entry_date: date, cash_date: date,
+                        memo: "CocoScout · #{invoice.title}", lines: lines)
+  rescue StandardError => e
+    raise if Rails.env.test?
+
+    Rails.logger.error("[BooksOutsidePoster] billing invoice #{invoice.id}: #{e.class}: #{e.message}")
   end
 
   # Contract money that never touched CocoScout's rail. Idempotent, and
@@ -170,9 +186,10 @@ class BooksOutsidePoster
     else
       [ [ "other", financials.expenses ] ]
     end
+    organization = financials.show.production.organization
     rows.each_with_object(Hash.new(0)) do |(category, amount), sums|
       cents = (amount.to_f * 100).round
-      sums[CATEGORY_ACCOUNTS.fetch(category.to_s, :other_expenses)] += cents if cents.positive?
+      sums[MoneyCategories.account_for(category, organization: organization)] += cents if cents.positive?
     end
   end
 

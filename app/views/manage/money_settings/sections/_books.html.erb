@@ -1,0 +1,101 @@
+<%
+  input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+%>
+
+<div class="bg-white border border-gray-200 rounded-xl p-6">
+  <h2 class="text-lg font-semibold text-gray-900 mb-1">Books</h2>
+  <p class="text-sm text-gray-600">
+    Books is the record of every dollar: tickets, classes, contracts, payout runs, bills and whatever you record by hand.
+    It counts money when it was earned, or when it moved if you switch on the Books page. Nothing here needs setting up
+    before it works; these are the categories money is sorted into.
+  </p>
+</div>
+
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h3 class="text-sm font-semibold text-gray-900">Categories</h3>
+    <p class="text-xs text-gray-500 mt-0.5">Every organization gets these. Add your own below; they show up wherever a category is picked.</p>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+    <div class="px-6 py-4">
+      <div class="text-[11px] font-medium uppercase tracking-wide text-gray-500 mb-2">Money in</div>
+      <ul class="text-sm text-gray-800 space-y-1">
+        <% MoneyCategories.income.each do |_key, data| %>
+          <li><%= data["label"] %><% if data["description"] %> <span class="text-gray-500">· <%= data["description"] %></span><% end %></li>
+        <% end %>
+        <% @custom_income.each do |account| %>
+          <li class="flex items-center justify-between gap-2">
+            <span><%= account.name %> <span class="text-xs text-pink-600">yours</span></span>
+            <%= render "shared/button", text: "Remove", variant: "secondary", size: "small", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-archive-category-#{account.id}" } %>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+    <div class="px-6 py-4">
+      <div class="text-[11px] font-medium uppercase tracking-wide text-gray-500 mb-2">Money out</div>
+      <ul class="text-sm text-gray-800 space-y-1">
+        <% MoneyCategories.spending.each do |_key, data| %>
+          <li><%= data["label"] %><% if data["description"] %> <span class="text-gray-500">· <%= data["description"] %></span><% end %></li>
+        <% end %>
+        <% @custom_spending.each do |account| %>
+          <li class="flex items-center justify-between gap-2">
+            <span><%= account.name %> <span class="text-xs text-pink-600">yours</span></span>
+            <%= render "shared/button", text: "Remove", variant: "secondary", size: "small", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-archive-category-#{account.id}" } %>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<% (@custom_income + @custom_spending).each do |account| %>
+  <%= render "shared/confirm_modal", id: "confirm-archive-category-#{account.id}",
+        title: "Stop using this category?",
+        message: "#{ERB::Util.html_escape(account.name)} won't be offered on new entries. What's already in it stays on the books, and you can put it back any time.",
+        confirm_text: "Remove",
+        url: manage_money_settings_category_path(account),
+        method: :delete %>
+<% end %>
+
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h3 class="text-sm font-semibold text-gray-900">Add a category of your own</h3>
+  </div>
+  <%= form_with url: manage_money_settings_categories_path, method: :post, class: "px-6 py-5" do %>
+    <div class="flex flex-wrap items-end gap-3">
+      <div class="flex-1 min-w-[12rem]">
+        <label class="block text-xs font-medium text-gray-600 mb-1">Name</label>
+        <input type="text" name="name" placeholder="e.g. Membership dues, Costume shop" class="<%= input %>">
+      </div>
+      <div class="min-w-[10rem]">
+        <label class="block text-xs font-medium text-gray-600 mb-1">It's for</label>
+        <select name="kind" class="<%= input %>">
+          <option value="expense">Money out</option>
+          <option value="income">Money in</option>
+        </select>
+      </div>
+      <%= render "shared/button", text: "Add", variant: "primary", size: "small", type: :submit %>
+    </div>
+  <% end %>
+</div>
+
+<% if @archived_categories.any? %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-900">No longer in use</h3>
+      <p class="text-xs text-gray-500 mt-0.5">Kept so what's already on the books stays sorted.</p>
+    </div>
+    <div class="divide-y divide-gray-100">
+      <% @archived_categories.each do |account| %>
+        <div class="px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+          <span class="text-sm text-gray-600"><%= account.name %> <span class="text-xs text-gray-400"><%= account.account_type == "income" ? "money in" : "money out" %></span></span>
+          <%= form_with url: manage_money_settings_restore_category_path(account), method: :patch do %>
+            <%= render "shared/button", text: "Put back", variant: "secondary", size: "small", type: :submit %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>

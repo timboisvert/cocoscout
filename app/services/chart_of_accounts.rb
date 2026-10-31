@@ -29,6 +29,11 @@ class ChartOfAccounts
     unused_pass_income: { code: "4020", name: "Unused pass credits", type: "income" },
     contract_income: { code: "4100", name: "Rental and contract income", type: "income" },
     course_income: { code: "4200", name: "Course income", type: "income" },
+    sponsorship_income: { code: "4300", name: "Sponsorship", type: "income" },
+    donation_income: { code: "4310", name: "Donations", type: "income" },
+    grant_income: { code: "4320", name: "Grants", type: "income" },
+    bar_income: { code: "4400", name: "Bar and concessions", type: "income" },
+    merchandise_income: { code: "4410", name: "Merchandise", type: "income" },
     other_income: { code: "4900", name: "Other income", type: "income" },
     performer_pay: { code: "5000", name: "Performer pay", type: "expense" },
     instructor_pay: { code: "5050", name: "Instructor pay", type: "expense" },
@@ -37,11 +42,17 @@ class ChartOfAccounts
     venue: { code: "5200", name: "Venue", type: "expense" },
     production_costs: { code: "5300", name: "Production", type: "expense" },
     marketing: { code: "5400", name: "Marketing", type: "expense" },
-    equipment: { code: "5500", name: "Equipment", type: "expense" },
+    supplies: { code: "5310", name: "Supplies", type: "expense" },
+    travel: { code: "5320", name: "Travel", type: "expense" },
+    food_and_drink: { code: "5330", name: "Food and drink", type: "expense" },
+    licensing: { code: "5340", name: "Licensing and rights", type: "expense" },
+    insurance: { code: "5350", name: "Insurance", type: "expense" },
+    equipment: { code: "5500", name: "Tech and equipment", type: "expense" },
     ticketing_fees: { code: "5600", name: "Ticketing and card fees", type: "expense" },
     # Buyer-paid fees offset the fees line, so passing fees on nets to zero.
     fees_paid_by_buyers: { code: "5610", name: "Fees paid by buyers", type: "expense", subtype: "contra" },
     course_fees: { code: "5630", name: "Course platform and card fees", type: "expense" },
+    software: { code: "5700", name: "Software and subscriptions", type: "expense" },
     other_expenses: { code: "5900", name: "Other expenses", type: "expense" }
   }.freeze
 
@@ -60,6 +71,15 @@ class ChartOfAccounts
         created_at: now, updated_at: now }
     end
     LedgerAccount.insert_all(rows, unique_by: %i[organization_id code])
+  end
+
+  # A system account's name follows this list: when one is renamed here
+  # ("Equipment" became "Tech and equipment"), the rows catch up.
+  def self.rename!(organization)
+    organization.ledger_accounts.where(system: true).where.not(key: nil).find_each do |account|
+      spec = SYSTEM[account.key.to_sym]
+      account.update_column(:name, spec[:name]) if spec && account.name != spec[:name]
+    end
   end
 
   # The org's account for a system key, creating the chart on first use.

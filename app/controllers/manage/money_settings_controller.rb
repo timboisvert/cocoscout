@@ -6,11 +6,12 @@ module Manage
   # people outside CocoScout's Stripe rail, who hears about payout runs, and
   # where the org sells tickets.
   class MoneySettingsController < Manage::ManageController
-    SECTIONS = %w[offline_methods notifications ticket_sources].freeze
+    SECTIONS = %w[offline_methods notifications ticket_sources books].freeze
     SECTION_LABELS = {
       "offline_methods" => "Offline Methods",
       "notifications" => "Notifications",
-      "ticket_sources" => "Ticket Sources"
+      "ticket_sources" => "Ticket Sources",
+      "books" => "Books"
     }.freeze
     DEFAULT_SECTION = "offline_methods"
 
@@ -27,7 +28,41 @@ module Manage
       when "ticket_sources"
         @ticket_sources = Current.organization.ticket_sources.hand_made.active.ordered.to_a
         @archived_ticket_sources = Current.organization.ticket_sources.hand_made.archived.ordered.to_a
+      when "books"
+        custom = Current.organization.ledger_accounts.where(system: false).order(:name)
+        @custom_income = custom.active.where(account_type: "income").to_a
+        @custom_spending = custom.active.where(account_type: "expense").to_a
+        @archived_categories = custom.where(active: false).to_a
       end
+    end
+
+    # --- Books: the organization's own categories -------------------------------
+    # A category of their own is a non-system account under income or spending
+    # (MoneyCategories offers it everywhere a category is picked, as
+    # "account_<id>"). Archived, never destroyed: lines already posted to it stay.
+
+    def create_category
+      type = params[:kind] == "income" ? "income" : "expense"
+      name = params[:name].to_s.strip
+      account = Current.organization.ledger_accounts.new(name: name, account_type: type, system: false, active: true,
+                                                         code: next_custom_code(type))
+      if name.present? && account.save
+        redirect_to section_path("books"), notice: "Added #{account.name}."
+      else
+        redirect_to section_path("books"), alert: (name.blank? ? "Give the category a name." : account.errors.full_messages.to_sentence)
+      end
+    end
+
+    def archive_category
+      account = Current.organization.ledger_accounts.where(system: false).find(params[:id])
+      account.update!(active: false)
+      redirect_to section_path("books"), notice: "#{account.name} won't be offered on new entries. What's already in it stays."
+    end
+
+    def restore_category
+      account = Current.organization.ledger_accounts.where(system: false).find(params[:id])
+      account.update!(active: true)
+      redirect_to section_path("books"), notice: "#{account.name} is back on the list."
     end
 
     # --- Ticket sources ---------------------------------------------------------
@@ -93,6 +128,13 @@ module Manage
       end
     end
     helper_method :sections
+
+    # Custom income sits in 48xx, custom spending in 58xx, after the system codes.
+    def next_custom_code(type)
+      base = type == "income" ? 4800 : 5800
+      taken = Current.organization.ledger_accounts.where("code >= ? AND code < ?", base.to_s, (base + 100).to_s).pluck(:code).map(&:to_i)
+      ((base..(base + 99)).to_a - taken).first.to_s
+    end
 
     def section_path(key)
       manage_money_settings_section_path(section: key)

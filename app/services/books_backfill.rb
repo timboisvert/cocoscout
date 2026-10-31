@@ -7,7 +7,7 @@
 # posting rule changes. Dry run by default: everything is posted inside a
 # transaction, the reconciliation is read, and then it's rolled back.
 class BooksBackfill
-  Row = Data.define(:organization, :cash_rows, :owed_rows, :financials, :expenses, :contract_payments, :mismatches, :trial_balance_cents)
+  Row = Data.define(:organization, :cash_rows, :owed_rows, :financials, :expenses, :contract_payments, :bills, :mismatches, :trial_balance_cents)
   Result = Data.define(:rows, :dry_run)
 
   def self.run!(dry_run: true, organization_ids: nil)
@@ -21,6 +21,7 @@ class BooksBackfill
   end
 
   def self.post_organization!(organization)
+    ChartOfAccounts.rename!(organization)
     cash = OrgCashEntry.where(organization: organization)
     cash.find_each { |entry| BooksPoster.post!(entry) }
     owed = PayoutLedgerEntry.where(organization: organization)
@@ -32,8 +33,10 @@ class BooksBackfill
     expenses.find_each { |e| BooksOutsidePoster.post_production_expense!(e) }
     payments = ContractPayment.joins(:contract).where(contracts: { organization_id: organization.id }).status_paid
     payments.find_each { |payment| BooksOutsidePoster.post_contract_payment!(payment) }
+    bills = BillingInvoice.where(organization: organization)
+    bills.find_each { |bill| BooksOutsidePoster.post_billing_invoice!(bill) }
     Row.new(organization: organization, cash_rows: cash.count, owed_rows: owed.count, financials: financials.count, expenses: expenses.count,
-            contract_payments: payments.count,
+            contract_payments: payments.count, bills: bills.count,
             mismatches: BooksReconciliation.check(organization), trial_balance_cents: LedgerPosting.trial_balance(organization).values.sum)
   end
 end

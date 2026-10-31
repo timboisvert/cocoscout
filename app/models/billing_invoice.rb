@@ -22,6 +22,8 @@ class BillingInvoice < ApplicationRecord
   # Not on destroy: a bill that was paid stays in CocoScout's income even if
   # the org is deleted.
   after_commit -> { CocoScoutLedgerPoster.post_for!(self) }, on: %i[create update]
+  # And on the organization's own books: a paid bill is their software spending.
+  after_commit -> { BooksOutsidePoster.post_billing_invoice!(self) }, on: %i[create update]
 
   def label
     case kind

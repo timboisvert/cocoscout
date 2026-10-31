@@ -1607,6 +1607,9 @@ Rails.application.routes.draw do
     patch  "money/settings/ticket-sources/:id", to: "money_settings#update_ticket_source", as: "money_settings_ticket_source"
     delete "money/settings/ticket-sources/:id", to: "money_settings#archive_ticket_source"
     patch  "money/settings/ticket-sources/:id/restore", to: "money_settings#restore_ticket_source", as: "money_settings_restore_ticket_source"
+    post   "money/settings/categories", to: "money_settings#create_category", as: "money_settings_categories"
+    delete "money/settings/categories/:id", to: "money_settings#archive_category", as: "money_settings_category"
+    patch  "money/settings/categories/:id/restore", to: "money_settings#restore_category", as: "money_settings_restore_category"
     get    "money/settings/:section", to: "money_settings#show", as: "money_settings_section"
     get "money/financials", to: "money_financials#index", as: "money_financials"
     # Must precede the :production_id routes so "all" isn't eaten as an id.

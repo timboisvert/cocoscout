@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 namespace :books do
-  desc "Post every historical row to the books (Books stage B). Dry run by default; books:backfill[post] writes. ORG=id limits it."
+  desc "Post (or restate) every historical row on the books. Dry run by default; books:backfill[post] writes. ORG=id limits it."
   task :backfill, [ :mode ] => :environment do |_t, args|
     dry_run = args[:mode] != "post"
     ids = ENV["ORG"].presence&.split(",")&.map(&:to_i)
@@ -12,7 +12,7 @@ namespace :books do
     result = BooksBackfill.run!(dry_run: dry_run, organization_ids: ids)
     fmt = ->(cents) { format("$%.2f", cents / 100.0) }
     result.rows.each do |row|
-      puts "#{row.organization.name} (##{row.organization.id}): #{row.cash_rows} cash rows, #{row.owed_rows} payout rows, #{row.financials} shows' financials, #{row.expenses} production expenses, #{row.contract_payments} paid contract payments"
+      puts "#{row.organization.name} (##{row.organization.id}): #{row.cash_rows} cash rows, #{row.owed_rows} payout rows, #{row.financials} shows' financials, #{row.expenses} production expenses, #{row.contract_payments} paid contract payments, #{row.bills} CocoScout bills"
       puts "  trial balance: #{fmt.call(row.trial_balance_cents)}#{' (OUT OF BALANCE)' unless row.trial_balance_cents.zero?}"
       if row.mismatches.empty?
         puts "  checks: the books agree with the records behind them"

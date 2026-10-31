@@ -217,7 +217,7 @@
                       <%
                         items = grouped_expenses[category]
                         category_total = items.sum(&:amount)
-                        category_label = ExpenseCategories.label_for(category)
+                        category_label = ExpenseCategories.label_for(category, organization: Current.organization)
                       %>
                       <div class="flex justify-between text-sm">
                         <span class="text-gray-600">
@@ -242,7 +242,7 @@
                       <%
                         items = grouped_expenses[category]
                         category_total = items.sum { |i| i["amount"].to_f }
-                        category_label = ExpenseCategories.label_for(category)
+                        category_label = ExpenseCategories.label_for(category, organization: Current.organization)
                       %>
                       <div class="flex justify-between text-sm">
                         <span class="text-gray-600">

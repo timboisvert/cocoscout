@@ -1,0 +1,122 @@
+# The one list of money categories (Books V1.3, plan C1): what money in
+# is called, and what money out is for. Every place that picks a category
+# (Show Financials' expense lines, a production's spread expenses, Record
+# money, Bills, Invoices) reads this list, and each entry names the account
+# it posts to in ChartOfAccounts::SYSTEM. An organization adds its own on
+# Money settings → Books, which become accounts of their own.
+#
+# legacy: older keys that meant the same thing, so old rows keep posting.
+income:
+  tickets:
+    label: "Tickets"
+    account: ticket_income
+  products:
+    label: "Products"
+    description: "Bottles, merch and add-ons sold with tickets"
+    account: product_income
+  courses:
+    label: "Courses"
+    account: course_income
+  contract:
+    label: "Rental and contract"
+    description: "A renter's share, a flat fee, a rental"
+    account: contract_income
+  sponsorship:
+    label: "Sponsorship"
+    account: sponsorship_income
+  donation:
+    label: "Donation"
+    account: donation_income
+  grant:
+    label: "Grant"
+    account: grant_income
+  bar:
+    label: "Bar and concessions"
+    account: bar_income
+  merchandise:
+    label: "Merchandise"
+    account: merchandise_income
+  gift_certificate:
+    label: "Gift certificate"
+    description: "Sold now, spent on tickets later"
+    account: gift_certificates_outstanding
+  other:
+    label: "Other"
+    account: other_income
+
+spending:
+  venue:
+    label: "Venue"
+    description: "Space rental, theater fees"
+    icon: "building-office"
+    account: venue
+  performer_pay:
+    label: "Performer pay"
+    icon: "users"
+    account: performer_pay
+    legacy: [talent]
+  staff_pay:
+    label: "Staff pay"
+    description: "Crew, door, bar, box office"
+    icon: "users"
+    account: staff_pay
+    legacy: [staff]
+  contractors:
+    label: "Contractors"
+    description: "Designers, directors, anyone with a contract"
+    icon: "users"
+    account: contractor_pay
+  production:
+    label: "Production"
+    description: "Sets, costumes, props, royalties for one show"
+    icon: "sparkles"
+    account: production_costs
+    legacy: [costumes, props]
+  tech:
+    label: "Tech and equipment"
+    description: "Sound, lighting, AV, rentals"
+    icon: "speaker-wave"
+    account: equipment
+    legacy: [equipment]
+  supplies:
+    label: "Supplies"
+    description: "Consumables, office, cleaning"
+    icon: "shopping-bag"
+    account: supplies
+  marketing:
+    label: "Marketing"
+    description: "Ads, flyers, promotion"
+    icon: "megaphone"
+    account: marketing
+  travel:
+    label: "Travel"
+    description: "Transportation, parking, lodging"
+    icon: "truck"
+    account: travel
+  food:
+    label: "Food and drink"
+    description: "Catering, green room, bar stock"
+    icon: "cake"
+    account: food_and_drink
+  licensing:
+    label: "Licensing and rights"
+    description: "Music, script and performance rights"
+    icon: "document-text"
+    account: licensing
+  insurance:
+    label: "Insurance"
+    icon: "shield-check"
+    account: insurance
+  software:
+    label: "Software and subscriptions"
+    description: "CocoScout, your website, the tools you pay for monthly"
+    icon: "computer-desktop"
+    account: software
+  fees:
+    label: "Ticketing and card fees"
+    icon: "credit-card"
+    account: ticketing_fees
+  other:
+    label: "Other"
+    icon: "ellipsis-horizontal-circle"
+    account: other_expenses

@@ -18,7 +18,14 @@ class BooksReport
     "refund" => "Ticket refund",
     "recognition" => "Show happened: ticket income",
     "withdrawal" => "Withdrawal to the bank",
-    "dispute" => "Disputed charge"
+    "dispute" => "Disputed charge",
+    "outside_tickets" => "Tickets sold elsewhere",
+    "other_revenue" => "Other revenue",
+    "flat_fee" => "Flat fee",
+    "expenses" => "Show expenses",
+    "production_expense" => "Production expense",
+    "contract_payment" => "Contract payment",
+    "cocoscout_bill" => "CocoScout bill"
   }.freeze
 
   Row = Data.define(:account, :cents)
