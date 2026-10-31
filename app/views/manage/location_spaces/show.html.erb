@@ -47,6 +47,7 @@
           has the module. The room page offers the slot; it never reads the
           module's tables itself (advanced ticketing plan §0). %>
       <% if @can_edit && Current.organization.feature_available?(:ticketing) %>
+        <%= render "manage/access_profiles/card", owner: @space, path: manage_location_space_access_path(@location, @space) %>
         <%= render "manage/room_ticketing_settings/room_card", room: @space %>
       <% end %>
     </div>

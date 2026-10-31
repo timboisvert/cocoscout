@@ -120,6 +120,7 @@
     <% end %>
     <% if notes.any? %><p class="text-sm text-gray-600"><%= notes.join(" · ") %></p><% end %>
     <% if ages %><p class="text-sm font-semibold text-gray-900"><%= ages %></p><% end %>
+    <% if show %><%= render "tickets/access_modal", show: show, listings: @listings, org_slug: @ticketing_profile.slug %><% end %>
   </div>
 
   <% if @listings.empty? %>

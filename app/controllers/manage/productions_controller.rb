@@ -444,7 +444,7 @@ module Manage
     # Note: cast_talent_pool_ids and show_upcoming_event_types are processed
     # before this method is called to convert arrays to JSON strings
     def production_params
-      permitted = %i[name logo description notes contact_email public_key public_profile_enabled
+      permitted = %i[name logo description notes contact_email public_key public_profile_enabled content_note_text
                      show_cast_members show_upcoming_events show_upcoming_events_mode
                      show_upcoming_event_types cast_talent_pool_ids
                      auto_create_event_pages auto_create_event_pages_mode event_visibility_overrides]
@@ -455,7 +455,7 @@ module Manage
          (Current.user&.superadmin? || Current.organization.manageable_by?(Current.user))
         permitted += %i[agreement_template_id agreement_required agreement_auto_send]
       end
-      attrs = params.require(:production).permit(*permitted).merge(organization_id: Current.organization&.id)
+      attrs = params.require(:production).permit(*permitted, content_note_keys: []).merge(organization_id: Current.organization&.id)
       # One of this org's templates: a raw id attached another org's agreement.
       if attrs[:agreement_template_id].present?
         attrs[:agreement_template_id] = Current.organization.agreement_templates.find(attrs[:agreement_template_id]).id

@@ -15,6 +15,14 @@ class Show < ApplicationRecord
   # A show may be referenced as the primary_show in an EventLinkage
   has_one :primary_event_linkage, class_name: "EventLinkage", foreign_key: :primary_show_id, dependent: :nullify
 
+  include ContentNotes::Owner
+  has_many :access_services, class_name: "ShowAccessService", dependent: :destroy
+  accepts_nested_attributes_for :access_services, allow_destroy: true
+
+  # Accessibility (accessibility plan §2): this date's labels, and the
+  # production's content notes plus its own.
+  def access_labels = access_services.map(&:label)
+  def effective_content_note_words = ((production&.content_note_words || []) + content_note_words).uniq
   has_many :email_drafts, dependent: :nullify
   has_many :contract_payments, dependent: :nullify
   # Messages scoped to this show survive it — they're conversation history.

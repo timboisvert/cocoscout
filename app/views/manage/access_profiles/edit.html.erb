@@ -1,0 +1,98 @@
+<%# Accessibility for a location or a room (accessibility plan §1). We ask
+    feature by feature and sum the answers up in plain words; nothing here
+    says "compliant". %>
+<% content_for :title, "Accessibility · #{@owner.name}" %>
+<%
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  room = @space
+  location_profile = room ? AccessProfile.for(@location) : nil
+  crumbs = [ [ "Locations", manage_locations_path ], [ @location.name, manage_location_path(@location) ] ]
+  crumbs << [ room.name, manage_location_space_path(@location, room) ] if room
+%>
+<div class="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: crumbs, text: "Accessibility" } %>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+    <div class="bg-white border border-gray-200 rounded-lg p-5">
+      <div class="text-xs font-semibold uppercase tracking-wide text-gray-500">For guests</div>
+      <p class="mt-1 text-sm text-gray-900"><%= @profile.guest_words %></p>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-lg p-5">
+      <div class="text-xs font-semibold uppercase tracking-wide text-gray-500">For performers and crew</div>
+      <p class="mt-1 text-sm text-gray-900"><%= @profile.backstage_summary || "Backstage details not listed yet" %></p>
+    </div>
+  </div>
+  <p class="mt-3 text-xs text-gray-500">These lines are written from your answers below. We describe the place; we don't certify it.</p>
+
+  <%= form_with url: (room ? manage_location_space_access_path(@location, room) : manage_location_access_path(@location)), method: :patch, data: { turbo: false }, class: "mt-6 space-y-6" do |f| %>
+    <% if room %>
+      <div class="bg-white border border-gray-200 rounded-lg">
+        <%= render "shared/section_heading", title: "Only in this room", intro: "Facts about #{room.name} itself." %>
+        <div class="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <%= label_tag "location_space_wheelchair_spaces", "Wheelchair spaces", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+            <%= number_field_tag "location_space[wheelchair_spaces]", room.wheelchair_spaces, min: 0, class: input_class, id: "location_space_wheelchair_spaces" %>
+          </div>
+          <div>
+            <%= label_tag "location_space_wheelchair_spaces_note", "Where they are", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+            <%= text_field_tag "location_space[wheelchair_spaces_note]", room.wheelchair_spaces_note, placeholder: "Front left, level with the stage", class: input_class, id: "location_space_wheelchair_spaces_note" %>
+          </div>
+          <div>
+            <%= label_tag "location_space_stage_access", "Getting onto the stage", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+            <%= select_tag "location_space[stage_access]", options_for_select([ [ "Not answered", "" ] ] + LocationSpace::STAGE_ACCESS.map { |k| [ LocationSpace::STAGE_ACCESS_LABELS[k], k ] }, room.stage_access), class: input_class, id: "location_space_stage_access" %>
+          </div>
+          <div>
+            <%= label_tag "location_space_floor_label", "Floor", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+            <%= text_field_tag "location_space[floor_label]", room.floor_label, placeholder: "Ground floor", class: input_class, id: "location_space_floor_label" %>
+          </div>
+        </div>
+      </div>
+    <% else %>
+      <div class="bg-white border border-gray-200 rounded-lg">
+        <%= render "shared/section_heading", title: "Who to ask", intro: "Shown to guests with access questions, on the access guide." %>
+        <div class="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <%= label_tag "location_access_email", "Email", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+            <%= email_field_tag "location[access_email]", @location.access_email, class: input_class, id: "location_access_email" %>
+          </div>
+          <div>
+            <%= label_tag "location_access_phone", "Phone", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
+            <%= telephone_field_tag "location[access_phone]", @location.access_phone, class: input_class, id: "location_access_phone" %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <% AccessFeatures::GROUPS.each do |group| %>
+      <div class="bg-white border border-gray-200 rounded-lg">
+        <%= render "shared/section_heading", title: group[:label], intro: (group[:key] == "backstage" ? "For performers and crew." : nil) %>
+        <ul class="divide-y divide-gray-100">
+          <% group[:features].each do |feature| %>
+            <% own = @owner.access_answers.find { |a| a.feature_key == feature.key } %>
+            <% inherited = room && own.nil? ? location_profile.record(feature.key) : nil %>
+            <li class="px-6 py-4 grid grid-cols-1 sm:grid-cols-[1fr_11rem_1fr] gap-3 sm:items-center">
+              <div>
+                <div class="text-sm font-medium text-gray-900"><%= feature.label %></div>
+                <% if room %>
+                  <div class="text-xs text-gray-500"><%= inherited ? "Location says #{inherited.answer_label.downcase}#{inherited.note.present? ? " (#{inherited.note})" : ""}" : (own ? "Different in this room" : "Location hasn't answered") %></div>
+                <% end %>
+              </div>
+              <%= select_tag "answers[#{feature.key}]",
+                    options_for_select([ [ room ? "Same as the location" : "Not answered", "" ] ] + AccessFeatures::ANSWERS.map { |a| [ AccessFeatures::ANSWER_LABELS[a], a ] }, own&.answer),
+                    class: input_class, "aria-label": "#{feature.label}: answer" %>
+              <%= text_field_tag "notes[#{feature.key}]", own&.note, placeholder: "A note (optional)", maxlength: 200, class: input_class, "aria-label": "#{feature.label}: note" %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <div class="flex items-center justify-end gap-3">
+      <%= link_to (room ? manage_location_space_path(@location, room) : manage_location_path(@location)) do %>
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium" %>
+      <% end %>
+      <%= render "shared/button", text: "Save accessibility", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+</div>

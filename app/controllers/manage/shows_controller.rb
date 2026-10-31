@@ -1732,7 +1732,8 @@ module Manage
                                                :event_frequency, :recurrence_pattern, :recurrence_end_date, :recurrence_end_type, :recurrence_start_datetime, :recurrence_custom_end_date,
                                                :recurrence_edit_scope, :recurrence_group_id, :casting_enabled, :casting_source, :casting_mode, :is_online, :online_location_info,
                                                :public_profile_visible, :use_custom_roles, :call_time, :call_time_enabled, :attendance_enabled, :notes,
-                                               :tickets_override, :tickets_mode, :tickets_url)
+                                               :tickets_override, :tickets_mode, :tickets_url, :content_note_text, content_note_keys: [],
+                                               access_services_attributes: %i[id service detail _destroy])
 
       # The Tickets tab is Ticketing (Pro), the organization's managers': a
       # producer's save leaves where this date's tickets are alone.

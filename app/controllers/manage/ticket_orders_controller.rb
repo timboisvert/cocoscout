@@ -14,7 +14,7 @@ module Manage
       @listings = Current.organization.ticket_listings.joins(:show).includes(:show, :production)
                          .order("shows.date_and_time DESC").limit(200)
       scope = Current.organization.ticket_orders.where(status: TicketOrder::WAS_PAID)
-                     .includes(:tickets, ticket_listing: %i[show production]).order(paid_at: :desc, id: :desc)
+                     .includes(:tickets, :access_request, ticket_listing: %i[show production]).order(paid_at: :desc, id: :desc)
       @listing = Current.organization.ticket_listings.find_by(id: params[:listing_id]) if params[:listing_id].present?
       scope = scope.where(ticket_listing: @listing) if @listing
       @production = Current.organization.productions.find_by(id: params[:production_id]) if params[:production_id].present? && !@listing

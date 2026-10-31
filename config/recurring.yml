@@ -69,6 +69,10 @@ development:
     class: TicketPriceChangeJob
     schedule: every hour
 
+  purge_access_requests:
+    class: PurgeAccessRequestsJob
+    schedule: every day at 4am America/Chicago
+
   membership_sweep:
     class: MembershipSweepJob
     schedule: every day at 8am America/Chicago
@@ -207,6 +211,10 @@ production:
   ticket_price_changes:
     class: TicketPriceChangeJob
     schedule: every hour
+
+  purge_access_requests:
+    class: PurgeAccessRequestsJob
+    schedule: every day at 4am America/Chicago
 
   membership_sweep:
     class: MembershipSweepJob

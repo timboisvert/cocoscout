@@ -10,12 +10,26 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_01_000800) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_01_000900) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
   enable_extension "pgcrypto"
   enable_extension "uuid-ossp"
+
+  create_table "access_answers", force: :cascade do |t|
+    t.string "owner_type", null: false
+    t.bigint "owner_id", null: false
+    t.string "feature_key", null: false
+    t.string "answer", null: false
+    t.string "note"
+    t.bigint "updated_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["owner_type", "owner_id", "feature_key"], name: "idx_on_owner_type_owner_id_feature_key_af69aa965b", unique: true
+    t.index ["owner_type", "owner_id"], name: "index_access_answers_on_owner"
+    t.index ["updated_by_id"], name: "index_access_answers_on_updated_by_id"
+  end
 
   create_table "action_mailbox_inbound_emails", force: :cascade do |t|
     t.integer "status", default: 0, null: false
@@ -1478,6 +1492,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000800) do
     t.boolean "default", default: false, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "wheelchair_spaces"
+    t.string "wheelchair_spaces_note"
+    t.string "stage_access"
+    t.string "floor_label"
     t.index ["location_id", "default"], name: "index_location_spaces_one_default_per_location", unique: true, where: "(\"default\" = true)"
     t.index ["location_id"], name: "index_location_spaces_on_location_id"
   end
@@ -1494,6 +1512,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000800) do
     t.text "notes"
     t.bigint "organization_id"
     t.boolean "default", default: false, null: false
+    t.string "access_email"
+    t.string "access_phone"
     t.index ["organization_id"], name: "index_locations_on_organization_id"
   end
 
@@ -2556,6 +2576,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000800) do
     t.boolean "pays_performers", default: true, null: false
     t.string "tickets_mode", default: "unset", null: false
     t.string "tickets_url"
+    t.jsonb "content_note_keys", default: [], null: false
+    t.text "content_note_text"
     t.index ["agreement_template_id"], name: "index_productions_on_agreement_template_id"
     t.index ["archived_at"], name: "index_productions_on_archived_at"
     t.index ["casting_mode"], name: "index_productions_on_casting_mode"
@@ -3090,6 +3112,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000800) do
     t.index ["target_type", "target_id"], name: "index_short_links_on_target_type_and_target_id"
   end
 
+  create_table "show_access_services", force: :cascade do |t|
+    t.bigint "show_id", null: false
+    t.string "service", null: false
+    t.string "detail"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["show_id", "service"], name: "index_show_access_services_on_show_id_and_service", unique: true
+    t.index ["show_id"], name: "index_show_access_services_on_show_id"
+  end
+
   create_table "show_advance_waivers", force: :cascade do |t|
     t.bigint "show_id", null: false
     t.bigint "person_id", null: false
@@ -3330,6 +3362,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000800) do
     t.string "tickets_url"
     t.string "tickets_mode"
     t.jsonb "contract_terms", default: {}, null: false
+    t.jsonb "content_note_keys", default: [], null: false
+    t.text "content_note_text"
     t.index ["casting_mode"], name: "index_shows_on_casting_mode"
     t.index ["casting_source"], name: "index_shows_on_casting_source"
     t.index ["course_offering_id"], name: "index_shows_on_course_offering_id"
@@ -4237,6 +4271,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000800) do
     t.index ["trigger_production_id"], name: "index_ticket_offers_on_trigger_production_id"
   end
 
+  create_table "ticket_order_access_requests", force: :cascade do |t|
+    t.bigint "ticket_order_id", null: false
+    t.jsonb "request_keys", default: [], null: false
+    t.text "note"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ticket_order_id"], name: "index_ticket_order_access_requests_on_ticket_order_id", unique: true
+  end
+
   create_table "ticket_order_items", force: :cascade do |t|
     t.bigint "ticket_order_id", null: false
     t.bigint "organization_id", null: false
@@ -4988,6 +5031,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000800) do
     t.index ["status"], name: "index_webhook_events_on_status", where: "((status)::text <> 'processed'::text)"
   end
 
+  add_foreign_key "access_answers", "users", column: "updated_by_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "advance_recoveries", "person_advances"
   add_foreign_key "advance_recoveries", "show_payout_line_items"
@@ -5297,6 +5341,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000800) do
   add_foreign_key "shifts", "organizations"
   add_foreign_key "short_links", "organizations"
   add_foreign_key "short_links", "users", column: "created_by_id"
+  add_foreign_key "show_access_services", "shows"
   add_foreign_key "show_advance_waivers", "people"
   add_foreign_key "show_advance_waivers", "shows"
   add_foreign_key "show_advance_waivers", "users", column: "waived_by_id"
@@ -5435,6 +5480,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_000800) do
   add_foreign_key "ticket_offers", "productions", column: "trigger_production_id"
   add_foreign_key "ticket_offers", "ticket_listings", column: "trigger_listing_id"
   add_foreign_key "ticket_offers", "ticket_tiers", column: "target_tier_id"
+  add_foreign_key "ticket_order_access_requests", "ticket_orders"
   add_foreign_key "ticket_order_items", "organizations"
   add_foreign_key "ticket_order_items", "ticket_listings"
   add_foreign_key "ticket_order_items", "ticket_orders"

@@ -225,6 +225,16 @@
               data: { door_target: "filterChip", filter: "deliver", action: "click->door#chip" } %>
       </span>
     </div>
+    <%# Tonight's access needs, first (accessibility plan §4). %>
+    <% access = TicketOrderAccessRequest.joins(:ticket_order).where(ticket_orders: { ticket_listing_id: @listing.id, status: "paid" }).includes(:ticket_order).reject(&:empty?) %>
+    <% if access.any? %>
+      <div class="mt-3 rounded-lg border border-pink-200 bg-pink-50 px-4 py-3 text-sm">
+        <div class="font-semibold text-gray-900">Access needs tonight</div>
+        <ul class="mt-1 space-y-0.5 text-gray-800">
+          <% access.each do |r| %><li><span class="font-medium"><%= r.ticket_order.buyer_name.presence || r.ticket_order.code %></span> · <%= r.words %></li><% end %>
+        </ul>
+      </div>
+    <% end %>
     <% deliveries = @ahead ? "" : render("door/deliveries", listing: @listing) %>
     <div class="mt-3 text-sm <%= 'hidden' if deliveries.blank? %>" data-door-target="deliveries"><%= deliveries %></div>
     <div class="mt-2" data-door-target="results"><%= render "door/list", orders: @orders, listing: @listing, ahead: @ahead %></div>

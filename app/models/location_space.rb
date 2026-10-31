@@ -11,6 +11,16 @@ class LocationSpace < ApplicationRecord
 
   has_many :space_rentals, dependent: :restrict_with_error
   has_many :shows, dependent: :nullify
+  has_many :access_answers, as: :owner, dependent: :destroy
+
+  # Room-only accessibility facts (accessibility plan §1).
+  STAGE_ACCESS = %w[ramp lift floor_level steps_only].freeze
+  STAGE_ACCESS_LABELS = { "ramp" => "Ramp to the stage", "lift" => "Lift to the stage", "floor_level" => "Stage at floor level", "steps_only" => "Steps only" }.freeze
+  validates :stage_access, inclusion: { in: STAGE_ACCESS }, allow_blank: true
+  validates :wheelchair_spaces, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
+
+  def access_profile = AccessProfile.for(self)
+  def stage_access_label = stage_access.present? ? STAGE_ACCESS_LABELS.fetch(stage_access) : nil
 
   validates :name, presence: true, length: { maximum: 80 }
   validates :capacity, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true

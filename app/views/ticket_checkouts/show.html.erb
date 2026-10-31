@@ -104,6 +104,11 @@
               policies: policy_orders.map { |o| [ o.ticket_listing.display_title, RefundPolicy.from_snapshot(o.refund_policy) || RefundPolicy.for(o.ticket_listing) ] } %>
       <% end %>
 
+      <% unless at_door %>
+        <%= render "shared/checkout/access_needs", request: @order.access_request,
+              interpreted: policy_orders.any? { |o| o.ticket_listing.show.access_services.any? { |s| s.service == "interpreted" } } %>
+      <% end %>
+
       <p data-checkout-target="error" class="hidden text-sm text-red-600 text-center" role="alert"></p>
 
       <%= render "shared/button", text: pay_text, variant: "primary", size: "jumbo", type: :submit, classes: "disabled:opacity-50",

@@ -1,0 +1,17 @@
+<%# The accessibility card on a location's or room's page: the summary
+    lines and the way in to edit. Locals: owner, path. %>
+<% profile = owner.access_profile %>
+<div class="bg-white border border-gray-200 rounded-lg">
+  <%= render "shared/section_heading", title: "Accessibility" do %>
+    <%= link_to path do %>
+      <%= render "shared/button", text: (profile.answered? ? "Edit" : "Answer"), variant: "tertiary", size: "small" %>
+    <% end %>
+  <% end %>
+  <dl class="px-6 py-4 space-y-3 text-sm">
+    <div><dt class="font-medium text-gray-500">For guests</dt><dd class="mt-1 text-gray-900"><%= profile.guest_words %></dd></div>
+    <div><dt class="font-medium text-gray-500">For performers and crew</dt><dd class="mt-1 text-gray-900"><%= profile.backstage_summary || "Backstage details not listed yet" %></dd></div>
+    <% if owner.is_a?(LocationSpace) && owner.wheelchair_spaces.to_i.positive? %>
+      <div><dt class="font-medium text-gray-500">Wheelchair spaces</dt><dd class="mt-1 text-gray-900"><%= owner.wheelchair_spaces %><%= " · #{owner.wheelchair_spaces_note}" if owner.wheelchair_spaces_note.present? %></dd></div>
+    <% end %>
+  </dl>
+</div>

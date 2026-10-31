@@ -8,6 +8,10 @@ class Location < ApplicationRecord
   # ticketing plan §0). Every location has at least one, from the day it's
   # made; the first is the default.
   has_many :location_spaces, dependent: :destroy
+  has_many :access_answers, as: :owner, dependent: :destroy
+
+  # Accessibility (accessibility plan §1): the answers summed up.
+  def access_profile = AccessProfile.for(self)
   alias_method :rooms, :location_spaces
 
   validates :name, :address1, :city, :state, :postal_code, presence: true

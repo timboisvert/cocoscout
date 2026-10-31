@@ -436,6 +436,8 @@ Rails.application.routes.draw do
     post   ":org/members/code",        to: "ticket_members#code",     as: "members_code"
     post   ":org/members/verify",      to: "ticket_members#verify",   as: "members_verify"
     delete ":org/members/session",     to: "ticket_members#signout",  as: "members_signout"
+    # A room's access guide (accessibility plan §4).
+    get  ":org/access/:room",          to: "ticket_access_guides#show", as: "access_guide"
     # A pass: several shows sold together (TicketPass).
     get  ":org/passes/:pass",          to: "ticket_passes#show",      as: "pass"
     post ":org/passes/:pass/checkout", to: "ticket_passes#checkout",  as: "pass_checkout"
@@ -2046,6 +2048,12 @@ Rails.application.routes.draw do
     post "contracts/:contract_id/wizard/link_signer", to: "contract_wizard#link_signer", as: "link_signer_contract_wizard"
     post "contracts/:contract_id/wizard/unsign", to: "contract_wizard#unsign", as: "unsign_contract_wizard"
     delete "contracts/:contract_id/wizard/cancel", to: "contract_wizard#cancel", as: "cancel_contract_wizard"
+
+    # Accessibility for a location and for a room (accessibility plan §1).
+    get   "locations/:location_id/accessibility",                  to: "access_profiles#edit",   as: "location_access"
+    patch "locations/:location_id/accessibility",                  to: "access_profiles#update"
+    get   "locations/:location_id/spaces/:space_id/accessibility", to: "access_profiles#edit",   as: "location_space_access"
+    patch "locations/:location_id/spaces/:space_id/accessibility", to: "access_profiles#update"
 
     # Location spaces
     scope "locations/:location_id" do

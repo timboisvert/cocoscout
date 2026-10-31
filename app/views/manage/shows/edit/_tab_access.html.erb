@@ -1,0 +1,42 @@
+<%# Accessibility at this performance (accessibility plan §2): services
+    offered, and content notes a guest should know before they come. The
+    production's content notes apply to every date; a date can add more.
+    Locals: form, input_class. %>
+<%= render layout: "manage/shows/edit/card", locals: { title: "Accessibility and content notes" } do %>
+  <div>
+    <p class="block text-sm font-medium text-gray-700 mb-1">At this performance</p>
+    <p class="text-xs text-gray-500 mb-3">Tick what's offered and say how. These show as small labels on the calendar and the ticket page.</p>
+    <% existing = @show.access_services.index_by(&:service) %>
+    <ul class="space-y-2">
+      <% ShowAccessService::SERVICES.each_with_index do |service, i| %>
+        <% row = existing[service] %>
+        <li class="grid grid-cols-1 sm:grid-cols-[13rem_1fr] gap-2 sm:items-center">
+          <label class="flex items-center gap-2 text-sm text-gray-900">
+            <%= hidden_field_tag "show[access_services_attributes][#{i}][id]", row&.id if row %>
+            <%= hidden_field_tag "show[access_services_attributes][#{i}][service]", service %>
+            <%= hidden_field_tag "show[access_services_attributes][#{i}][_destroy]", row ? "0" : "1", id: "access_destroy_#{service}", data: { access_destroy: service } %>
+            <input type="checkbox" <%= "checked" if row %> class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+                   onchange="document.getElementById('access_destroy_<%= service %>').value = this.checked ? '0' : '1'">
+            <%= ShowAccessService::LABELS[service] %>
+          </label>
+          <%= text_field_tag "show[access_services_attributes][#{i}][detail]", row&.detail, placeholder: ShowAccessService::HINTS[service], maxlength: 200, class: input_class, "aria-label": "#{ShowAccessService::LABELS[service]}: detail" %>
+        </li>
+      <% end %>
+    </ul>
+  </div>
+  <div>
+    <p class="block text-sm font-medium text-gray-700 mb-1">Good to know before you come</p>
+    <% inherited = @show.production&.content_note_words || [] %>
+    <% if inherited.any? %><p class="text-xs text-gray-500 mb-2">From the production, on every date: <%= inherited.join(", ") %>.</p><% end %>
+    <%= hidden_field_tag "show[content_note_keys][]", "" %>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <% ContentNotes::KEYS.each do |key| %>
+        <label class="flex items-center gap-2 text-sm text-gray-900">
+          <%= check_box_tag "show[content_note_keys][]", key, @show.content_note_keys.include?(key), id: "show_content_note_#{key}", class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+          <%= ContentNotes::LABELS[key] %>
+        </label>
+      <% end %>
+    </div>
+    <%= form.text_field :content_note_text, placeholder: "Anything else, in a few words", maxlength: 200, class: "#{input_class} mt-3" %>
+  </div>
+<% end %>

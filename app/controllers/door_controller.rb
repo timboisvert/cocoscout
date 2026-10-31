@@ -328,6 +328,7 @@ class DoorController < ApplicationController
       message: result.message,
       holder: ticket && (ticket.holder_name.presence || order.buyer_name),
       seat: ticket&.seat_label,
+      access: order&.access_request&.words,
       order_code: order&.code,
       ticket_id: ticket&.id,
       party: order && order.ticket_listing_id == @listing.id ? party_line(order) : nil,

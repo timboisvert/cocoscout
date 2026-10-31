@@ -91,11 +91,27 @@ class TicketPdf
       pdf.move_down 5
       pdf.text winansi(place), size: 10.5, color: BODY
     end
+    if (guide = access_words(show))
+      pdf.move_down 3
+      pdf.text winansi(guide), size: 9, color: GRAY
+    end
     seat_block(pdf, ticket)
     pdf.move_down 12
     holder = ticket.holder_name.presence || order.buyer_name
     line = [ holder, ticket.type_label, "Order #{order.code}", count_words ].compact_blank.join(" · ")
     pdf.text winansi(line), size: 10, color: BODY
+  end
+
+  # Accessibility, in a line, with the room's access guide (accessibility plan §4).
+  def access_words(show)
+    room = show.location_space || show.location&.default_room
+    return nil unless room
+
+    profile = AccessProfile.for(room)
+    return nil unless profile.answered?
+
+    slug = TicketingProfile.for(show.production.organization).slug
+    "Accessibility: #{profile.guest_summary}. Access guide: #{Rails.application.routes.url_helpers.tickets_access_guide_url(org: slug, room: room.id, **(Rails.application.config.action_mailer.default_url_options || { host: "cocoscout.com" }))}"
   end
 
   # The room, then the venue, then its address; online shows say so.

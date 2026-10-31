@@ -1,0 +1,16 @@
+<%# Content notes for every date of a production (accessibility plan §2).
+    Locals: form, production. %>
+<div class="mt-5">
+  <p class="block text-sm font-medium text-gray-700 mb-1">Good to know before you come</p>
+  <p class="text-xs text-gray-500 mb-2">Shown on every date's ticket page. A single date can add more on its own page.</p>
+  <%= hidden_field_tag "production[content_note_keys][]", "" %>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+    <% ContentNotes::KEYS.each do |key| %>
+      <label class="flex items-center gap-2 text-sm text-gray-900">
+        <%= check_box_tag "production[content_note_keys][]", key, production.content_note_keys.include?(key), id: "production_content_note_#{key}", class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+        <%= ContentNotes::LABELS[key] %>
+      </label>
+    <% end %>
+  </div>
+  <%= form.text_field :content_note_text, placeholder: "Anything else, in a few words", maxlength: 200, class: "block w-full mt-3 px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+</div>

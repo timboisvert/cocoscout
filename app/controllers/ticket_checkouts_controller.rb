@@ -137,6 +137,10 @@ class TicketCheckoutsController < ApplicationController
       @order.assign_attributes(follow_list_ids: chosen, marketing_opt_in: chosen.any?)
     end
     @order.save!
+    # Their access needs for the visit (accessibility plan §4), on every show's order.
+    if params.key?(:access_request_keys) || params.key?(:access_note)
+      TicketOrderAccessRequest.record!(@purchase ? @purchase.ticket_orders.to_a : [ @order ], keys: params[:access_request_keys], note: params[:access_note])
+    end
     # Every show's order in the checkout belongs to the same buyer.
     if @purchase
       @purchase.ticket_orders.where.not(id: @order.id).update_all(buyer_name: @order.buyer_name, buyer_email: @order.buyer_email,

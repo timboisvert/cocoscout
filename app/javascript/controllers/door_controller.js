@@ -203,6 +203,7 @@ export default class extends Controller {
         const lines = [data.message]
         if (data.holder) lines.unshift(data.holder)
         if (data.seat) lines.splice(1, 0, data.seat)
+        if (data.access) lines.push("Access: " + data.access)
         if (data.party) lines.push(data.party)
         this.showBanner(tone, lines, data.kind === "admitted" ? data.ticket_id : null, data.items || [])
         if (data.counts) this.updateCounts(data.counts)

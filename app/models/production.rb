@@ -10,6 +10,7 @@ class Production < ApplicationRecord
   has_one :mic, dependent: :nullify
 
   has_many :posters, dependent: :destroy
+  include ContentNotes::Owner
   has_many :shows, dependent: :destroy
   has_many :ticket_discount_codes, dependent: :destroy
   has_many :scheduling_rules, dependent: :destroy

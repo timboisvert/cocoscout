@@ -1,0 +1,45 @@
+<% content_for :title, "Accessibility · #{@room.name} · #{@organization.name}" %>
+<%
+  place = [ @location.name, @room.name ].uniq.join(" · ")
+  address = [ @location.address1, @location.city, @location.state ].compact_blank.join(", ")
+%>
+<div class="mx-auto max-w-xl space-y-5">
+  <div class="text-center space-y-1.5">
+    <p class="text-sm font-medium text-pink-700"><%= @organization.name %></p>
+    <h1 class="text-3xl sm:text-4xl coustard-regular text-gray-900">Getting to <%= @room.name %></h1>
+    <p class="text-sm text-gray-600"><%= place %><% if address.present? %> · <%= address %><% end %></p>
+    <% if @room.floor_label.present? %><p class="text-sm text-gray-600"><%= @room.floor_label %></p><% end %>
+  </div>
+
+  <% unless @profile.answered? %>
+    <div class="rounded-2xl border border-gray-200 bg-white px-5 py-6 text-center text-gray-700">Accessibility details for this room aren't listed yet.<% if @profile.contact_email || @profile.contact_phone %> Ask us and we'll help.<% end %></div>
+  <% end %>
+
+  <% AccessFeatures::GROUPS.reject { |g| g[:key] == "backstage" }.each do |group| %>
+    <% rows = group[:features].filter_map { |f| a = @profile.answer(f.key); a && a != "no" ? [ f, a, @profile.note(f.key) ] : nil } %>
+    <% next if rows.empty? && !(group[:key] == "seating" && @room.wheelchair_spaces.to_i.positive?) %>
+    <div class="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+      <div class="px-5 py-4"><h2 class="font-semibold text-gray-900"><%= group[:label] %></h2></div>
+      <ul class="divide-y divide-gray-100 text-sm">
+        <% if group[:key] == "seating" && @room.wheelchair_spaces.to_i.positive? %>
+          <li class="px-5 py-3"><span class="font-medium text-gray-900"><%= @room.wheelchair_spaces %> wheelchair <%= "space".pluralize(@room.wheelchair_spaces) %></span><% if @room.wheelchair_spaces_note.present? %> <span class="text-gray-600">· <%= @room.wheelchair_spaces_note %></span><% end %></li>
+        <% end %>
+        <% rows.each do |feature, answer, note| %>
+          <% next if feature.key == "wheelchair_spaces" && @room.wheelchair_spaces.to_i.positive? %>
+          <li class="px-5 py-3 flex items-start justify-between gap-3">
+            <span><span class="font-medium text-gray-900"><%= feature.label %></span><% if note.present? %> <span class="text-gray-600">· <%= note %></span><% end %></span>
+            <span class="flex-shrink-0 text-xs font-semibold <%= answer == 'yes' ? 'text-pink-700' : 'text-gray-500' %>"><%= answer == "yes" ? "Yes" : "Ask us" %></span>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <% if @profile.contact_email || @profile.contact_phone %>
+    <div class="rounded-2xl border border-pink-200 bg-pink-50 px-5 py-4 text-sm text-gray-800">
+      <span class="font-semibold">Ask us.</span> Questions about your visit, or something not listed here:
+      <% if @profile.contact_email %><%= mail_to @profile.contact_email, @profile.contact_email, class: "text-pink-700 hover:text-pink-800 font-medium" %><% end %><% if @profile.contact_email && @profile.contact_phone %> · <% end %><% if @profile.contact_phone %><%= link_to @profile.contact_phone, "tel:#{@profile.contact_phone.gsub(/[^+\d]/, '')}", class: "text-pink-700 hover:text-pink-800 font-medium" %><% end %>.
+    </div>
+  <% end %>
+  <p class="text-center text-xs text-gray-500">Described by <%= @organization.name %>, feature by feature.</p>
+</div>

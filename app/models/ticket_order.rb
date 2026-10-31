@@ -49,6 +49,7 @@ class TicketOrder < ApplicationRecord
   # The order these tickets were moved from (TicketOrderExchange).
   belongs_to :exchanged_from, class_name: "TicketOrder", optional: true
 
+  has_one :access_request, class_name: "TicketOrderAccessRequest", dependent: :destroy
   has_many :tickets, dependent: :destroy
   has_many :ticket_order_items, dependent: :destroy
   has_many :ticket_refunds, dependent: :delete_all

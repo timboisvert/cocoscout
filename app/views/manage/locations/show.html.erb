@@ -69,6 +69,10 @@
       </div>
     </div>
 
+    <div class="lg:col-span-3">
+      <%= render "manage/access_profiles/card", owner: @location, path: manage_location_access_path(@location) %>
+    </div>
+
     <%# Rooms: each a row that opens the room's own page. %>
     <div class="lg:col-span-2">
       <div class="bg-white border border-gray-200 rounded-lg">

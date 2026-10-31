@@ -1,0 +1,61 @@
+<%# The show page's one quiet "Accessibility" line and its pop-up
+    (accessibility plan §4, closed by default): the room's features, what to
+    know before you come, each date's access services, the access guide and
+    who to ask. Locals: show, listings, org_slug. %>
+<%
+  room = show.location_space || show.location&.default_room
+  profile = room ? AccessProfile.for(room) : nil
+  chips = profile ? profile.chips(:guests) : []
+  notes = show.effective_content_note_words
+  dated = listings.select { |l| l.show.access_services.any? }
+  line = [ profile&.guest_summary, (notes.any? ? "content notes" : nil), (dated.any? ? "access services on some dates" : nil) ].compact.join(" · ")
+  mid = "access-#{show.id}"
+%>
+<% if room %>
+  <p class="text-sm text-gray-600">
+    <button type="button" class="text-pink-700 hover:text-pink-800 font-medium" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= mid %>">Accessibility</button><% if line.present? %> · <%= line %><% end %>
+  </p>
+  <div id="<%= mid %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+    <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-md sm:mx-4 overflow-hidden max-h-[90vh] overflow-y-auto text-left" data-action="click->modal#stopPropagation">
+      <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+        <h3 class="text-lg font-semibold text-white">Accessibility</h3>
+        <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" aria-label="Close">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div class="px-6 py-5 space-y-4 text-sm text-gray-700">
+        <div>
+          <div class="font-semibold text-gray-900"><%= room.name %></div>
+          <% if chips.any? %>
+            <div class="mt-2 flex flex-wrap gap-1.5">
+              <% chips.each do |chip| %><span class="inline-flex items-center rounded-full bg-pink-50 text-pink-700 px-2.5 py-0.5 text-xs font-medium"><%= chip %></span><% end %>
+            </div>
+          <% else %>
+            <p class="mt-1 text-gray-600">Accessibility details not listed yet.</p>
+          <% end %>
+          <% if room.wheelchair_spaces_note.present? %><p class="mt-2 text-gray-600">Wheelchair spaces: <%= room.wheelchair_spaces_note %>.</p><% end %>
+        </div>
+        <% if notes.any? %>
+          <div>
+            <div class="font-semibold text-gray-900">Before you come</div>
+            <p class="mt-1 text-gray-600"><%= notes.join(" · ") %></p>
+          </div>
+        <% end %>
+        <% if dated.any? %>
+          <div>
+            <div class="font-semibold text-gray-900">At these performances</div>
+            <ul class="mt-1 space-y-1">
+              <% dated.each do |l| %>
+                <li><span class="text-gray-900"><%= l.show.date_and_time.strftime("%a, %b %-d") %></span> · <%= l.show.access_services.map(&:words).join(", ") %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+        <div class="pt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <%= link_to "The room's access guide", tickets_access_guide_path(org: org_slug, room: room.id), class: "text-pink-700 hover:text-pink-800 font-medium" %>
+          <% if profile.contact_email %><span class="text-gray-500">Ask us: <%= mail_to profile.contact_email, profile.contact_email, class: "text-pink-700 hover:text-pink-800" %></span><% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>

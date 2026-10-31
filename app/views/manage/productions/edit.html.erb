@@ -140,6 +140,7 @@
                 <%= form.label :description, "Description", class: "block text-sm font-medium text-gray-700 mb-1" %>
                 <p class="text-xs text-gray-500 mb-2">A brief description of your production shown on public listings</p>
                 <%= form.textarea :description, rows: 4, class: ["block w-full rounded-lg border px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", {"border-gray-300": @production.errors[:description].none?, "border-pink-500": @production.errors[:description].any?}], placeholder: "Describe your production..." %>
+                <%= render "manage/productions/content_notes_fields", form: form, production: @production %>
               </div>
             <% end %>
           </div>

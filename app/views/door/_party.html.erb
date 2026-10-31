@@ -42,6 +42,9 @@
       <div class="text-xs text-gray-500 truncate">
         <%= by_type %><% if how %> · <%= how %><% end %><% if state == "some" %> · <%= inside %> of <%= tickets.size %> checked in<% elsif state == "in" %> · Checked in<% end %>
       </div>
+      <% if order.access_request && !order.access_request.empty? %>
+        <div class="text-xs text-pink-700 font-medium truncate">Access: <%= order.access_request.words %></div>
+      <% end %>
     </div>
     <% if state == "some" && !ahead %>
       <%= render "shared/button", text: "All #{waiting}", variant: "secondary", size: "xs", type: :button, title: "Check in all #{waiting}",
