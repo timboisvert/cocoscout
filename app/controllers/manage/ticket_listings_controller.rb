@@ -140,6 +140,15 @@ module Manage
       if attrs[:minimum_age] == :invalid
         return redirect_to(settings_path(@section), alert: "Type an age from 1 to 99.")
       end
+      if @section == "seating" && @listing.seats_in_use?
+        was = @listing.effective_seat_chart
+        @listing.assign_attributes(attrs)
+        @listing.remove_instance_variable(:@effective_seat_chart) if @listing.instance_variable_defined?(:@effective_seat_chart)
+        if !@listing.seated? || @listing.effective_seat_chart != was
+          @listing.restore_attributes
+          return redirect_to(settings_path(@section), alert: "Seats on this date are sold. It keeps #{was.name} until those tickets are refunded or moved.")
+        end
+      end
 
       if @listing.update(attrs)
         redirect_to settings_path(@section), notice: notice

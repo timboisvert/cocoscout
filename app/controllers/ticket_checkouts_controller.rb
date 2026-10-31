@@ -40,7 +40,8 @@ class TicketCheckoutsController < ApplicationController
     raise ActiveRecord::RecordNotFound unless listing && (profile.enabled? || preview_viewer?(profile.organization))
 
     seat_ids = Array(params[:seat_ids]).map(&:to_i).reject(&:zero?).uniq
-    quantities = seat_ids.any? ? quantities_for_seats(listing, seat_ids) : requested_quantities
+    # Seats picked on the map, plus any standing room typed beside it.
+    quantities = seat_ids.any? ? requested_quantities.merge(quantities_for_seats(listing, seat_ids)) { |_k, typed, picked| (typed.to_i + picked).to_s } : requested_quantities
     order = TicketCheckout.start!(listing: listing, quantities: quantities, code: params[:code],
                                   client_ip: request.remote_ip, referrer: request.referer, replacing: params[:hold],
                                   via: cookies[ShortLinksController::COOKIE], campaign: cookies[TicketsController::CAMPAIGN_COOKIE],
@@ -187,7 +188,7 @@ class TicketCheckoutsController < ApplicationController
       raise TicketCheckout::Error, "One of those seats isn't for sale." unless tier
       counts[tier.id.to_s] += 1
     end
-    counts
+    counts.transform_values(&:to_s)
   end
 
   def requested_quantities

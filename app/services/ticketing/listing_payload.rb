@@ -32,6 +32,7 @@ module Ticketing
         venue: venue,
         currency: "usd",
         fee_mode: @listing.effective_fee_mode,
+        seating: seating(inventory),
         tiers: @listing.ticket_tiers.active.reject(&:hidden).reject(&:unlisted?).select(&:sells_online?).map { |tier| tier_payload(tier, inventory) }
       }
     end
@@ -50,6 +51,21 @@ module Ticketing
         city: location.city,
         state: location.state,
         postal_code: location.postal_code
+      }
+    end
+
+    # How the date seats: general admission, or a chart with its sections
+    # and what's left in each.
+    def seating(inventory)
+      return { mode: "general" } unless @listing.seated?
+
+      seating = inventory.seating
+      {
+        mode: @listing.effective_seating_mode, chart: @listing.effective_seat_chart.name,
+        sections: @listing.effective_seat_chart.sections.map do |section|
+          { name: section.name, kind: section.kind,
+            remaining: section.standing? ? section.standing_capacity - seating.standing_taken([ section.id ]) : seating.seats.values.count { |s| s.seat_section_id == section.id && !seating.taken?(s.id) && !s.killed } }
+        end
       }
     end
 

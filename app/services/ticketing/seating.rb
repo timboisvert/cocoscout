@@ -108,7 +108,7 @@ module Ticketing
       elsif hold then "held"
       else "free"
       end
-      { id: seat.id, label: seat.label, x: seat.x, y: seat.y, kind: seat.kind, status: status, note: seat.note,
+      { id: seat.id, label: seat.label, row: seat.row_label, x: seat.x, y: seat.y, kind: seat.kind, status: status, note: seat.note,
         hold: hold && { id: hold.ticket_seat_hold_id, name: hold.ticket_seat_hold.name, kind: hold.ticket_seat_hold.kind },
         ticket_id: ticket&.id, order_id: ticket&.ticket_order_id }
     end

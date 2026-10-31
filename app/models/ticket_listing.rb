@@ -272,6 +272,12 @@ class TicketListing < ApplicationRecord
     @room_ticketing_setting = room && RoomTicketingSetting.find_by(location_space_id: room.id)
   end
 
+  # Sold tickets with seat numbers on this date: its chart can't change
+  # under them (advanced ticketing §1, "changing one date after sales").
+  def seats_in_use?
+    tickets.where(status: Ticket::SOLD_STATUSES).where.not(seat_id: nil).exists?
+  end
+
   def effective_seating_mode
     seating_mode.presence || production_ticketing&.seating_mode.presence || room_ticketing_setting&.seating_mode || "general"
   end

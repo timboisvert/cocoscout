@@ -46,6 +46,16 @@ export default class extends Controller {
         r.dataset.standing = section.id
         continue
       }
+      if (section.kind === "tables") {
+        // The table top under each ring of seats, named.
+        const tables = new Map()
+        for (const seat of section.seats) (tables.get(seat.row) || tables.set(seat.row, []).get(seat.row)).push(seat)
+        for (const [row, seats] of tables) {
+          const cx = seats.reduce((s, x) => s + x.x, 0) / seats.length, cy = seats.reduce((s, x) => s + x.y, 0) / seats.length
+          make("circle", { cx, cy, r: 26, class: "fill-gray-100 stroke-gray-300" }, g)
+          make("text", { x: cx, y: cy + 4, "text-anchor": "middle", class: "fill-gray-500 text-[10px] font-semibold pointer-events-none" }, g).textContent = row
+        }
+      }
       for (const seat of section.seats) {
         const c = make("circle", { cx: seat.x, cy: seat.y, r: 11, "data-seat-id": seat.id, "data-status": seat.status, "data-kind": seat.kind, class: this.seatClass(seat, section) }, g)
         const title = make("title", {}, c)

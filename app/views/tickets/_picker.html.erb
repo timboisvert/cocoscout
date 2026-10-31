@@ -63,6 +63,21 @@
                 <span><span class="font-medium text-gray-900"><%= s[:tier_name] %></span> <%= ticket_price(s[:price_cents]) %><% if price_note %> <%= price_note %><% end %></span>
               <% end %>
             </div>
+            <% standing = seat_payload[:sections].select { |s| s[:kind] == "standing" && s[:tier_id] } %>
+            <% if standing.any? %>
+              <ul class="divide-y divide-gray-100 border-t border-gray-100">
+                <% standing.each do |s| %>
+                  <% s_tier = tiers.find { |t| t.id == s[:tier_id] } %>
+                  <% s_left = [ s[:standing_remaining].to_i, max_per_order ].min %>
+                  <li class="flex items-center gap-3 px-5 py-3">
+                    <div class="min-w-0 flex-1"><div class="font-semibold text-gray-900"><%= s[:name] %> · <%= s[:tier_name] %></div><div class="text-sm text-gray-600"><%= ticket_price(s[:price_cents]) %> · standing, <%= s[:standing_remaining] %> left</div></div>
+                    <% if s_left.positive? %>
+                      <%= select_tag "quantities[#{s[:tier_id]}]", options_for_select((0..s_left).map { |n| [ n, n ] }, 0), class: "px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500", "aria-label": "How many #{s_tier&.name || s[:tier_name]}" %>
+                    <% else %><span class="text-sm font-medium text-gray-600">Sold out</span><% end %>
+                  </li>
+                <% end %>
+              </ul>
+            <% end %>
             <div class="px-5 py-4 border-t border-gray-100 space-y-3">
               <div data-seat-map-target="inputs"></div>
               <div class="flex items-baseline justify-between gap-3">

@@ -158,8 +158,8 @@ RSpec.describe "Ticketing models" do
 
     it "refuses a reservation that no longer fits" do
       sell(general, 3)
-      expect { Ticketing::Inventory.reserve!(listing, general => 1) { :never } }.to raise_error(Ticketing::Inventory::SoldOut)
-      expect(Ticketing::Inventory.reserve!(listing, vip => 2) { :reserved }).to eq(:reserved)
+      expect { Ticketing::Inventory.reserve!(listing, { general => 1 }) { :never } }.to raise_error(Ticketing::Inventory::SoldOut)
+      expect(Ticketing::Inventory.reserve!(listing, { vip => 2 }) { :reserved }).to eq(:reserved)
     end
   end
 

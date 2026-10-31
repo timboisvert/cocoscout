@@ -141,6 +141,11 @@ module Manage
     def update_seating
       raw = params.fetch(:production_ticketing, {}).permit(:seating_mode, :seat_chart_id)
       chart = raw[:seat_chart_id].present? ? Current.organization.seat_charts.find_by(id: raw[:seat_chart_id]) : nil
+      # Dates with seats sold keep the chart those seats are on.
+      stuck = @setup.production.ticket_listings.select { |l| l.seating_mode.blank? && l.seat_chart_id.nil? && l.seats_in_use? }
+      if stuck.any? { |l| l.effective_seat_chart != chart || raw[:seating_mode].blank? || raw[:seating_mode] == "general" }
+        return redirect_to(section_path("seating"), alert: "#{helpers.pluralize(stuck.size, 'date')} #{stuck.size == 1 ? 'has' : 'have'} seats sold on #{stuck.first.effective_seat_chart.name}. Give #{stuck.size == 1 ? 'it its' : 'them their'} own seating choice first, or refund and move those tickets.")
+      end
       @setup.update!(seating_mode: raw[:seating_mode].presence, seat_chart: chart)
       if params[:zones_present] == "1" && (chart || @setup.seat_chart)
         sections = (chart || @setup.seat_chart).sections.pluck(:id)

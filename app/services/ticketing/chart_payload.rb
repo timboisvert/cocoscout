@@ -10,7 +10,7 @@ module Ticketing
         sections: chart.sections.includes(:seats).map do |section|
           { id: section.id, name: section.name, kind: section.kind, x: section.x, y: section.y, width: section.width, height: section.height,
             standing_capacity: section.standing_capacity,
-            seats: section.seats.map { |s| { id: s.id, label: s.label, x: s.x, y: s.y, kind: s.kind, status: (s.killed ? "killed" : "free"), note: s.note } } }
+            seats: section.seats.map { |s| { id: s.id, label: s.label, row: s.row_label, x: s.x, y: s.y, kind: s.kind, status: (s.killed ? "killed" : "free"), note: s.note } } }
         end
       }
     end
