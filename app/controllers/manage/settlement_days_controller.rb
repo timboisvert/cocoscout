@@ -111,6 +111,10 @@ module Manage
     end
 
     def require_change!
+      starts = Current.organization.settle_up_starts_on
+      if starts && @date < starts
+        return redirect_to manage_money_settle_up_day_path(@date), alert: "This day is before Settle up started (#{starts.strftime('%b %-d, %Y')}). It stays as it was."
+      end
       return if OrganizationAccess.allows?(Current.user, Current.organization, :settle_up, :manage)
 
       redirect_to manage_money_settle_up_day_path(@date), alert: "You can look at this day but not change it."

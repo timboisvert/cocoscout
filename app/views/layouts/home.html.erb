@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title><%= content_for(:title) || "CocoScout" %></title>
+    <title><%= Dev::EnvironmentLabel.title_prefix %><%= content_for(:title) || "CocoScout" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=5">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
@@ -37,6 +37,7 @@
   </script>
 
   <body class="inter-regular text-slate-700 bg-[#f9f9f7]">
+  <%= render "shared/dev_indicator" %>
     <%= yield %>
   </body>
 

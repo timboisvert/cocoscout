@@ -1,9 +1,10 @@
 <%# V1.1, generation-2 builds in production mode: a soft pink strip under
     the native nav bar naming the organization. Sticky, so it never
-    scrolls away; tapping it changes organization. %>
+    scrolls away; tapping it opens the organization menu (the picker
+    sent someone with one organization straight back). %>
 <% if native_nav_generation.to_i >= 2 && native_production_mode? %>
-  <%= link_to select_organization_path, class: "sticky top-0 z-20 flex items-center justify-between gap-2.5 min-h-[44px] px-4 bg-pink-50 border-b border-pink-200 text-gray-900",
-        aria: { label: "Production mode, #{Current.organization.name}. Change organization" }, data: { production_strip: true } do %>
+  <%= link_to organization_menu_path, class: "sticky top-0 z-20 flex items-center justify-between gap-2.5 min-h-[44px] px-4 bg-pink-50 border-b border-pink-200 text-gray-900",
+        aria: { label: "Production mode, #{Current.organization.name}. Organization menu" }, data: { production_strip: true } do %>
     <span class="flex items-center gap-2 min-w-0 text-sm font-semibold">
       <%= render "shared/navigation/organization_monogram", organization: Current.organization, size: 24 %>
       <span class="truncate"><%= Current.organization.name %></span>

@@ -118,7 +118,12 @@ module Manage
     def update_settle_up
       mode = params[:settlement_day_mode].presence_in(SettlementDay::MODES) || "smart"
       hour = params[:settlement_day_starts_at].to_i.clamp(3, 9)
-      Current.organization.update!(settlement_day_mode: mode, settlement_day_starts_at: hour)
+      starts_on = begin
+        params[:settle_up_starts_on].present? ? [ Date.iso8601(params[:settle_up_starts_on]), Date.current ].min : Current.organization.settle_up_starts_on
+      rescue Date::Error
+        Current.organization.settle_up_starts_on
+      end
+      Current.organization.update!(settlement_day_mode: mode, settlement_day_starts_at: hour, settle_up_starts_on: starts_on)
       redirect_to section_path("settle_up"), notice: "Settle up settings saved."
     end
 

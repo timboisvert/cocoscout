@@ -6,7 +6,10 @@
 
     <%# Submits to review first — the plan is shown back before anything changes.
         GET, because review only previews — and because Turbo drops a POST
-        response that renders 200 HTML instead of redirecting. %>
+        response that renders 200 HTML instead of redirecting. A GET has to fit
+        in the address (Puma takes 10KB of query, then answers an empty 400 that
+        Turbo shows as nothing), so a row sends its times only while it's being
+        moved: the rest are disabled (amend_date_controller). %>
     <%= form_with url: review_amend_dates_manage_contract_path(@contract), method: :get, html: { novalidate: true } do %>
       <div class="space-y-3">
         <% @rentals.each do |rental| %>
@@ -72,7 +75,7 @@
             <%# Moving keeps the show itself, so its buyers, cast and staffing follow.
                 The booking and the show inside it each have their own times. %>
             <div data-amend-date-target="moveFields" class="hidden mt-3 pt-3 border-t border-gray-100">
-              <%= render "manage/contracts/night_times_fields", rental: rental, prefix: "dates[#{rental.id}]" %>
+              <%= render "manage/contracts/night_times_fields", rental: rental, prefix: "dates[#{rental.id}]", disabled: true %>
               <p class="text-xs text-gray-500 mt-3">The show keeps its ticket buyers, cast and staffing; they move with it.</p>
             </div>
           </div>

@@ -55,6 +55,14 @@ module Manage
       @organization = Organization.new
     end
 
+    # The organization menu (shared/navigation/organization_menu_items) as a
+    # page, for the apps: their production-mode row used to open the picker
+    # above, which sends someone with one organization straight back to
+    # Manage, so the ▾ looked like a refresh.
+    def menu
+      redirect_to select_organization_path and return unless Current.organization
+    end
+
     def set_organization
       organization = Current.user.accessible_organizations.find(params[:id])
 

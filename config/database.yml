@@ -17,20 +17,22 @@ postgres_default: &postgres_default
   prepared_statements: false
   schema_search_path: "public"
 
+# DEV_DATABASE exists so bin/seed_dev_from_prod can be tried on a throwaway
+# database; day to day, dev is cocoscout_development.
 development:
   primary:
     <<: *postgres_default
-    database: cocoscout_development
+    database: <%= ENV.fetch("DEV_DATABASE", "cocoscout_development") %>
     host: localhost
   cache:
     <<: *postgres_default
-    database: cocoscout_development
+    database: <%= ENV.fetch("DEV_DATABASE", "cocoscout_development") %>
     host: localhost
     migrations_paths: db/cache_migrate
     schema_dump: false
   queue:
     <<: *postgres_default
-    database: cocoscout_development
+    database: <%= ENV.fetch("DEV_DATABASE", "cocoscout_development") %>
     host: localhost
     migrations_paths: db/queue_migrate
     schema_dump: false

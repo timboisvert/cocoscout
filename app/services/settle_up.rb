@@ -60,7 +60,9 @@ class SettleUp
     def in_cents = shows.sum(&:in_cents) + register_sales_cents
     def out_cents = shows.sum(&:expenses_cents) + registers.sum(&:fees_cents)
     def any? = shows.any? || door_cash.any? || registers.any?
-    def to_settle? = any? && !settled? && ended?
+    def to_settle? = any? && !settled? && ended? && !before_start?
+    # Before the organization's Settle up start date: history, read only.
+    def before_start? = organization.settle_up_starts_on.present? && date < organization.settle_up_starts_on
     def param = date.iso8601
   end
 
@@ -78,13 +80,18 @@ class SettleUp
     dates.map { |date| build(organization, date, by_date.fetch(date, []), records[date]) }
   end
 
-  # Days that are over, had money in them, and nobody has settled.
+  # Days that are over, had money in them, and nobody has settled, from the
+  # organization's Settle up start date on (SettleUpStart): earlier days are
+  # history.
   def self.to_settle(organization, as_of: Time.current)
-    shows = revenue_shows(organization).where("date_and_time <= ?", as_of).to_a
+    starts = organization.settle_up_starts_on
+    shows = revenue_shows(organization).where("date_and_time <= ?", as_of)
+    shows = shows.where("date_and_time >= ?", starts.in_time_zone.beginning_of_day - 1.day) if starts
+    shows = shows.to_a
     settled = SettlementDay.where(organization: organization).settled.pluck(:date).to_set
     by_date = shows.group_by { |s| SettlementDay.day_for(organization, s.date_and_time) }
     register_days(organization).where("business_date <= ?", as_of.to_date).distinct.pluck(:business_date).each { |d| by_date[d] ||= [] }
-    by_date.reject { |date, _| settled.include?(date) || !SettlementDay.ended?(organization, date, now: as_of) }
+    by_date.reject { |date, _| settled.include?(date) || (starts && date < starts) || !SettlementDay.ended?(organization, date, now: as_of) }
            .sort_by { |date, _| date }
            .map { |date, day_shows| build(organization, date, day_shows, nil) }
   end

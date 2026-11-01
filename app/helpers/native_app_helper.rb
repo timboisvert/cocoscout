@@ -111,7 +111,9 @@ module NativeAppHelper
   #   sections      [{ label:, items: [{ id, title, path, icon, badge, locked }] }]
   #                 (the panel's nav: no Messages tile)
   #   icons         Messages and Notifications for the nav bar, with counts
-  #   organization  in production mode: name, initials, and where its sheet opens
+  #   organization  in production mode: name, initials, its logo (logoPath,
+  #                 nil without one), and where its sheet opens (the
+  #                 organization menu, never the picker)
   #   door          the Work the door bar (black), or nil
   #   modeSwitch    Enter or Exit production mode (CocoScout pink), or nil
   #   profilePath, settingsPath, signOutPath for the person card
@@ -133,12 +135,22 @@ module NativeAppHelper
         notifications: { path: icons[:notifications][:path], count: icons[:notifications][:count] }
       },
       organization: (if production
-                       { name: Current.organization.name, initials: Current.organization.initials, sheetPath: select_organization_path }
+                       { name: Current.organization.name, initials: Current.organization.initials,
+                         logoPath: native_organization_logo_path(Current.organization), sheetPath: organization_menu_path }
                      end),
       door: (production ? nil : native_door_item(user)),
       modeSwitch: panel_mode_switch(production_mode: production)&.slice(:label, :subtitle, :path, :enter),
       profilePath: profile_path, settingsPath: account_path, signOutPath: "/signout"
     }
+  end
+
+  # An organization's logo for the menu's square, relative to the site like
+  # headshot_path; nil without one (the app draws the two letters).
+  def native_organization_logo_path(organization)
+    logo = organization.logo
+    return nil unless logo.attached? && logo.variable?
+
+    url_for(logo.variant(resize_to_limit: [ 192, 192 ]))
   end
 
   # Who's signed in, for the top of the menu. headshot_path is relative to
