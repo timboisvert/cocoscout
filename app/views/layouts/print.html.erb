@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title><%= content_for(:title) || "CocoScout" %></title>
+    <title><%= Dev::EnvironmentLabel.title_prefix %><%= content_for(:title) || "CocoScout" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>

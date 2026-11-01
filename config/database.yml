@@ -17,20 +17,23 @@ postgres_default: &postgres_default
   prepared_statements: false
   schema_search_path: "public"
 
+# DEV_DATABASE picks another local database for one checkout, e.g. a scrubbed
+# copy of production (bin/prod_copy) in the v1.3 worktree's .env, while main
+# keeps cocoscout_development.
 development:
   primary:
     <<: *postgres_default
-    database: cocoscout_development
+    database: <%= ENV.fetch("DEV_DATABASE", "cocoscout_development") %>
     host: localhost
   cache:
     <<: *postgres_default
-    database: cocoscout_development
+    database: <%= ENV.fetch("DEV_DATABASE", "cocoscout_development") %>
     host: localhost
     migrations_paths: db/cache_migrate
     schema_dump: false
   queue:
     <<: *postgres_default
-    database: cocoscout_development
+    database: <%= ENV.fetch("DEV_DATABASE", "cocoscout_development") %>
     host: localhost
     migrations_paths: db/queue_migrate
     schema_dump: false

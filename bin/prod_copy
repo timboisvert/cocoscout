@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# A scrubbed copy of production in its own local database (Tim, 2026-11-01).
+#
+#   bin/prod_copy                 dump production, restore, scrub
+#   bin/prod_copy path/to.dump    restore and scrub an earlier dump
+#
+# 1. Dump: over ssh to one host (the jobs host by default), a throwaway
+#    postgres container runs pg_dump with the app's own DATABASE_URL. It only
+#    reads. Never `kamal app exec`, which runs on every host.
+# 2. Restore into cocoscout_prodcopy (dropped and recreated each time).
+#    Your normal cocoscout_development is never touched.
+# 3. Scrub (bin/rails prod_copy:scrub): only KEEP_EMAIL can sign in, every
+#    other email is rewritten, tokens, provider ids and tax ids are cleared,
+#    queued jobs are dropped.
+# 4. List the stored files the copy refers to (prod_copy:files).
+#
+# Then point a checkout at it by adding DEV_DATABASE=cocoscout_prodcopy to
+# that checkout's .env and run bin/rails db:migrate there. The dump holds real
+# people's data: it stays in tmp/prod_copy (git-ignored, readable only by you).
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+HOST="${PROD_COPY_HOST:-jobs.deploy.cocoscout.com}"
+ROLE="${PROD_COPY_ROLE:-job}"
+DB="${PROD_COPY_DB:-cocoscout_prodcopy}"
+KEEP_EMAIL="${KEEP_EMAIL:-boisvert@gmail.com}"
+PG_MAJOR="$(pg_restore --version | awk '{print $3}' | cut -d. -f1)"
+mkdir -p tmp/prod_copy && chmod 700 tmp/prod_copy
+
+case "$DB" in *prodcopy*) ;; *) echo "PROD_COPY_DB must contain 'prodcopy'"; exit 1 ;; esac
+
+DUMP="${1:-}"
+if [ -z "$DUMP" ]; then
+  DUMP="tmp/prod_copy/production-$(date +%Y%m%d-%H%M).dump"
+  ENV_FILE=".kamal/apps/cocoscout/env/roles/${ROLE}.env"
+  echo "Dumping production from $HOST with pg_dump $PG_MAJOR (read only)..."
+  if ! ssh "ec2-user@$HOST" "test -f \$HOME/$ENV_FILE"; then
+    echo "No $ENV_FILE on $HOST. Find the app's env file there (ls ~/.kamal/apps/cocoscout/env/roles/) and set PROD_COPY_ROLE." >&2
+    exit 1
+  fi
+  ssh "ec2-user@$HOST" "docker run --rm --env-file \$HOME/$ENV_FILE postgres:$PG_MAJOR sh -c 'pg_dump --format=custom --no-owner --no-privileges \"\$DATABASE_URL\"'" > "$DUMP.partial"
+  mv "$DUMP.partial" "$DUMP"
+  chmod 600 "$DUMP"
+  echo "Dump: $DUMP ($(du -h "$DUMP" | cut -f1))"
+fi
+COPY_DATE="$(date -r "$DUMP" +%Y-%m-%d)"
+
+echo "Restoring into $DB..."
+dropdb --if-exists "$DB"
+createdb "$DB"
+# Extensions and comments owned by the cloud provider produce harmless errors.
+pg_restore --no-owner --no-privileges --dbname="$DB" "$DUMP" 2> tmp/prod_copy/restore.log || true
+echo "  ($(grep -c "error" tmp/prod_copy/restore.log || true) restore warnings, see tmp/prod_copy/restore.log)"
+
+echo "Scrubbing..."
+DEV_DATABASE="$DB" KEEP_EMAIL="$KEEP_EMAIL" COPY_DATE="$COPY_DATE" bin/rails prod_copy:scrub
+DEV_DATABASE="$DB" bin/rails prod_copy:files
+
+cat <<NEXT
+
+Done. To use the copy in a checkout (the v1.3 worktree, say):
+  1. add DEV_DATABASE=$DB to that checkout's .env
+  2. bin/rails db:migrate there (brings production's schema up to that branch)
+  3. restart that checkout's server; the amber DEV tab now says "production copy"
+NEXT

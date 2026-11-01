@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title><%= content_for(:title) || "Tickets" %></title>
+    <title><%= Dev::EnvironmentLabel.title_prefix %><%= content_for(:title) || "Tickets" %></title>
     <meta name="viewport" content="<%= native_viewport %>">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
@@ -33,6 +33,7 @@
     storefront_brand = @storefront_brand || "Ticketing by CocoScout"
   %>
   <body class="inter-regular text-slate-700 bg-white">
+  <%= render "shared/dev_indicator" %>
     <%# Someone who works this door, on its show's page while the door is
         open: where to sell instead (TicketsController#door_banner_for). %>
     <% if @door_banner_listing %>

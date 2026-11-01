@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title><%= content_for(:title) || "CocoScout" %></title>
+    <title><%= Dev::EnvironmentLabel.title_prefix %><%= content_for(:title) || "CocoScout" %></title>
     <meta name="viewport" content="<%= native_viewport %>">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
@@ -28,6 +28,7 @@
   <% show_impersonation_bar = impersonating? && !turbo_native_app? %>
 
   <body class="inter-regular text-slate-700 bg-[#f9f9f7] <%= "impersonating" if show_impersonation_bar %>" data-controller="profile-visibility profile-nav">
+  <%= render "shared/dev_indicator" %>
 
     <%= render "shared/impersonation_bar" if show_impersonation_bar %>
     <%= render "shared/native/production_strip" if turbo_native_app? %>

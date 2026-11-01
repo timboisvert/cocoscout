@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title><%= content_for(:title) || "Door" %></title>
+    <title><%= Dev::EnvironmentLabel.title_prefix %><%= content_for(:title) || "Door" %></title>
     <%# Full-bleed in a browser; inside the app its bars keep the page in the safe area. %>
     <meta name="viewport" content="<%= native_viewport(cover: true) %>">
     <meta name="robots" content="noindex">
@@ -28,6 +28,7 @@
     native = turbo_native_app?
   %>
   <body class="inter-regular text-slate-700 bg-gray-50">
+  <%= render "shared/dev_indicator" %>
     <%# The header is a little box (Tim, 2026-10-18): "Work the door", the
         organization's name under it (plain words, never a link: a link to the
         ticket page confused people), the date and time under that. Nothing
