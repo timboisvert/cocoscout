@@ -43,7 +43,7 @@ data class NavIcon(val path: String, val count: Int = 0)
 data class NavIcons(val messages: NavIcon, val notifications: NavIcon)
 
 @Serializable
-data class NavOrganization(val name: String, val initials: String, val sheetPath: String)
+data class NavOrganization(val name: String, val initials: String, val logoPath: String? = null, val sheetPath: String)
 
 @Serializable
 data class NavModeSwitch(val label: String, val subtitle: String = "", val path: String, val enter: Boolean)

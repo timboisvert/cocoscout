@@ -31,7 +31,11 @@ struct NavData: Codable, Equatable {
     struct Organization: Codable, Equatable {
         let name: String
         let initials: String
+        /// Its logo, relative to the site; nil without one (the two letters instead).
+        var logoPath: String?
         let sheetPath: String
+
+        var logoURL: URL? { logoPath.map { AppConfig.url($0) } }
     }
 
     struct ModeSwitch: Codable, Equatable {

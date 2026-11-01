@@ -155,11 +155,7 @@ struct NavMenuView: View {
 
     private func organizationRow(_ organization: NavData.Organization) -> some View {
         HStack(spacing: 10) {
-            Text(organization.initials)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(.white)
-                .frame(width: 28, height: 28)
-                .background(RoundedRectangle(cornerRadius: 7).fill(Tailwind.pink600))
+            organizationSquare(organization)
             Text(organization.name)
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(Tailwind.gray900)
@@ -178,7 +174,28 @@ struct NavMenuView: View {
         .background(RoundedRectangle(cornerRadius: 14).fill(Tailwind.pink50))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Tailwind.pink200))
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Production mode, \(organization.name). Change organization")
+        .accessibilityLabel("Production mode, \(organization.name). Organization menu")
+    }
+
+    /// The organization's logo if it has one, else its two letters on pink
+    /// (shared/navigation/organization_monogram).
+    private func organizationSquare(_ organization: NavData.Organization) -> some View {
+        let initials = Text(organization.initials)
+            .font(.caption.weight(.bold))
+            .foregroundStyle(.white)
+            .frame(width: 28, height: 28)
+            .background(RoundedRectangle(cornerRadius: 7).fill(Tailwind.pink600))
+        return Group {
+            if let url = organization.logoURL {
+                AsyncImage(url: url) { phase in
+                    if let image = phase.image { image.resizable().scaledToFill() } else { initials }
+                }
+                .frame(width: 28, height: 28)
+                .clipShape(RoundedRectangle(cornerRadius: 7))
+            } else {
+                initials
+            }
+        }
     }
 
     // MARK: Tiles

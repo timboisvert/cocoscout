@@ -40,7 +40,8 @@
 <% if others.any? %>
   <div class="<%= label %> border-t border-gray-100">Switch to</div>
   <% others.each do |o| %>
-    <%= form_with url: set_organization_path, method: :post, data: { turbo: false } do %>
+    <%# A full reload on the website (the sidebar changes); the apps keep Turbo so the switch stays in the app. %>
+    <%= form_with url: set_organization_path, method: :post, data: { turbo: (false unless turbo_native_app?) } do %>
       <%= hidden_field_tag :id, o.id, id: nil %>
       <button type="submit" role="menuitem" class="w-full flex items-center gap-3 px-3.5 py-2.5 text-left cursor-pointer hover:bg-gray-50 transition-colors">
         <%= render "shared/navigation/organization_monogram", organization: o, size: 32 %>

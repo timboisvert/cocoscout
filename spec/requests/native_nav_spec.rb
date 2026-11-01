@@ -50,6 +50,27 @@ RSpec.describe "The app's V1.1 menu", type: :request do
     expect(nav.dig("icons", "messages", "path")).to eq(messages_path)
   end
 
+  # The row's ▾ used to open the organization picker, which sends someone
+  # with one organization straight back to Manage: it looked like a refresh.
+  it "opens the organization menu from the row, and draws the logo when there is one" do
+    get manage_path, headers: { "User-Agent" => v1_1 }
+    org_nav = JSON.parse(bridge["data-bridge--menu-nav-value"])["organization"]
+    expect(org_nav["sheetPath"]).to eq(organization_menu_path)
+    expect(org_nav["logoPath"]).to be_nil
+
+    org.logo.attach(io: File.open(Rails.root.join("spec/fixtures/files/test_image.png")), filename: "logo.png", content_type: "image/png")
+    get manage_path, headers: { "User-Agent" => v1_1 }
+    expect(JSON.parse(bridge["data-bridge--menu-nav-value"]).dig("organization", "logoPath")).to start_with("/rails/active_storage/")
+  end
+
+  it "shows the organization menu as a page to someone with one organization, not the picker's bounce" do
+    get manage_path, headers: { "User-Agent" => v1_1 }
+    get organization_menu_path, headers: { "User-Agent" => v1_1 }
+    expect(response).to have_http_status(:ok)
+    page = Nokogiri::HTML(response.body).at_css("[data-organization-menu-page]")
+    expect(page.text.squish).to include("Stars & Garters", "Exit production mode", "New organization")
+  end
+
   # Messages and Notifications belong to both modes: opening one from
   # production mode keeps production mode's menu and strip (Tim, 2026-10-29).
   # Account settings, Profile and Groups belong to neither mode: they keep
@@ -87,6 +108,8 @@ RSpec.describe "The app's production-mode strip", type: :request do
     v1 = "Mozilla/5.0 (iPhone) Hotwire Native iOS; Turbo Native iOS"
     get manage_path, headers: { "User-Agent" => "CocoScout/1.1 (12; nav 2) #{v1}" }
     expect(response.body).to include("data-production-strip")
+    strip = Nokogiri::HTML(response.body).at_css("[data-production-strip]")
+    expect(strip["href"]).to eq(organization_menu_path)
     get my_dashboard_path, headers: { "User-Agent" => "CocoScout/1.1 (12; nav 2) #{v1}" }
     expect(response.body).not_to include("data-production-strip")
   end
