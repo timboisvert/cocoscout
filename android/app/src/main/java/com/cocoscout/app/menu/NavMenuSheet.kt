@@ -181,8 +181,12 @@ private fun OrganizationRow(organization: NavOrganization, onClick: () -> Unit) 
         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(shape).background(Pink50).border(1.dp, Pink200, shape)
             .clickable(onClick = onClick).padding(horizontal = 14.dp)
     ) {
+        // Its logo if it has one, else its two letters on pink (shared/navigation/organization_monogram).
         Box(Modifier.size(28.dp).clip(RoundedCornerShape(7.dp)).background(Pink600), contentAlignment = Alignment.Center) {
             Text(organization.initials, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            organization.logoPath?.let { path ->
+                AsyncImage(model = AppConfig.url(path), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(28.dp))
+            }
         }
         Spacer(Modifier.width(10.dp))
         Text(organization.name, color = Gray900, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,

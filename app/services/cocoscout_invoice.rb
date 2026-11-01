@@ -46,15 +46,56 @@ class CocoScoutInvoice
     "#{@bill.period_start.to_date.strftime('%b %-d, %Y')} to #{@bill.period_end.to_date.strftime('%b %-d, %Y')}"
   end
 
-  # Stripe's lines, then any account credit Stripe applied, so the lines add up
-  # to what was charged.
+  # What the bill charges. A usage bill shows CocoScout's own count, the one
+  # it bills by (UsageRules): the active staff and active performers of the
+  # month it covers, at $5 and $3 each. Stripe's meter lines, and the
+  # correction that brought them to this count (UsageInvoiceCorrection), stay
+  # in Stripe: the theater never sees a meter it isn't billed by (Tim,
+  # 2026-11-01). A Pro bill shows Stripe's lines. Then any account credit
+  # Stripe applied, so the lines add up to what was charged.
   def items
-    lines = Array(@bill.lines).reject { |line| line["amount_cents"].to_i.zero? }.map do |line|
-      detail = "Brings the bill to what CocoScout's records show for the month." if line["description"].to_s.start_with?(UsageInvoiceCorrection::PREFIX)
-      InvoiceDocument::Line.new(description: line["description"], detail: detail, amount_cents: line["amount_cents"])
+    stripe_lines = Array(@bill.lines).reject { |line| line["amount_cents"].to_i.zero? }
+    billed = stripe_lines.sum { |line| line["amount_cents"].to_i }
+    lines = if usage_month
+      usage_items(billed)
+    else
+      stripe_lines.map { |line| InvoiceDocument::Line.new(description: line["description"], amount_cents: line["amount_cents"]) }
     end
-    credit = @bill.amount_due_cents - lines.sum(&:amount_cents)
+    credit = @bill.amount_due_cents - billed
     lines << InvoiceDocument::Line.new(description: "Credit from your CocoScout account", amount_cents: credit) if credit.negative?
+    lines
+  end
+
+  # A usage bill's lines from CocoScout's count. The total Stripe billed
+  # normally equals that count (the correction makes it so); when it doesn't,
+  # one more line says by how much, so the lines still add up to the bill.
+  def usage_items(billed)
+    month = usage_month
+    staff = StaffActivation.where(organization: @organization).for_month(month).count
+    performers = PerformerActivation.where(organization: @organization).for_month(month).count
+    counted = staff * StaffBillingService::PER_ACTIVE_STAFF_CENTS + performers * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS
+    lines = []
+    if staff.positive?
+      lines << InvoiceDocument::Line.new(description: "#{staff} active #{'staff member'.pluralize(staff)} × #{dollars(StaffBillingService::PER_ACTIVE_STAFF_CENTS)}",
+                                         detail: "Staff with a paid shift in #{month.strftime('%B %Y')}, counted once each.",
+                                         amount_cents: staff * StaffBillingService::PER_ACTIVE_STAFF_CENTS)
+    end
+    if performers.positive?
+      lines << InvoiceDocument::Line.new(description: "#{performers} active #{'performer'.pluralize(performers)} × #{dollars(PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS)}",
+                                         detail: "Performers paid for a show in #{month.strftime('%B %Y')}, counted once each.",
+                                         amount_cents: performers * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS)
+    end
+    difference = billed - counted
+    if difference.positive?
+      # A bill from before usage bills were checked against CocoScout's count
+      # (usage:overbilled gives the difference back).
+      lines << InvoiceDocument::Line.new(description: "Billed before this count was checked", amount_cents: difference,
+                                         detail: "This bill was issued before CocoScout checked it against its own records.")
+    elsif difference.negative?
+      # Paid work that ended after Stripe drafted the bill: counted, not charged.
+      lines << InvoiceDocument::Line.new(description: "Counted after this bill was issued", amount_cents: difference,
+                                         detail: "Not charged on this bill.")
+    end
     lines
   end
 
@@ -84,15 +125,20 @@ class CocoScoutInvoice
 
   # The people a usage bill counted, by name.
   def people
-    month = @bill.kind == "usage" && @bill.covered_month
+    month = usage_month
     return [] unless month
 
-    staff = names(StaffActivation, month)
-    performers = names(PerformerActivation, month)
     [
-      [ "Staff with a paid shift in #{month.strftime('%B %Y')} (#{staff.size} × #{dollars(StaffBillingService::PER_ACTIVE_STAFF_CENTS)})", staff ],
-      [ "Performers paid for a show in #{month.strftime('%B %Y')} (#{performers.size} × #{dollars(PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS)})", performers ]
+      [ "Staff with a paid shift in #{month.strftime('%B %Y')}", names(StaffActivation, month) ],
+      [ "Performers paid for a show in #{month.strftime('%B %Y')}", names(PerformerActivation, month) ]
     ]
+  end
+
+  # The month a usage bill covers; nil for any other bill.
+  def usage_month
+    return @usage_month if defined?(@usage_month)
+
+    @usage_month = @bill.kind == "usage" ? @bill.covered_month : nil
   end
 
   def names(model, month)

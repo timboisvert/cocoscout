@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title><%= content_for(:title) || "CocoScout" %></title>
+    <title><%= Dev::EnvironmentLabel.title_prefix %><%= content_for(:title) || "CocoScout" %></title>
     <%# No viewport-fit=cover: the app's opaque nav and tab bars already keep
         pages inside the safe area, and cover would slide content under them.
         maximum-scale=1: an app page never zooms. iPhone zooms in on any text
@@ -30,6 +30,7 @@
 
   <body class="inter-regular text-slate-700 bg-[#f9f9f7]"
         data-turbo-native="true">
+  <%= render "shared/dev_indicator" %>
 
     <%# No loading overlay: the page stays put while the next one loads, and
         Hotwire Native shows its own spinner only when a load is slow. %>

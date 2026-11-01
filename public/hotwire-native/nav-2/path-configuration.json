@@ -53,6 +53,15 @@
     },
     {
       "patterns": [
+        "^/select/organization/menu$"
+      ],
+      "properties": {
+        "context": "modal",
+        "pull_to_refresh_enabled": false
+      }
+    },
+    {
+      "patterns": [
         "/door/[0-9]+/card/"
       ],
       "properties": {

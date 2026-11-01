@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title><%= @title %> - CocoScout</title>
+    <title><%= Dev::EnvironmentLabel.title_prefix %><%= @title %> - CocoScout</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta charset="utf-8">
 
@@ -22,6 +22,7 @@
   </head>
 
   <body class="inter-regular text-slate-700 bg-white">
+  <%= render "shared/dev_indicator" %>
     <div class="min-h-screen flex flex-col items-center justify-center px-4">
       <%= yield %>
     </div>

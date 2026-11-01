@@ -32,7 +32,8 @@ RSpec.describe "Messaging a production", type: :request do
   describe "a performer" do
     it "gets Message a production, a sheet of their productions with why, and the window that sends it" do
       cast(emmanuel, late, at: Time.zone.local(2026, 11, 6, 20))
-      cast(emmanuel, brunch, at: 3.days.ago)
+      # Past as of the travel_to below (a relative date drifted into upcoming once the real clock passed it).
+      cast(emmanuel, brunch, at: Time.zone.local(2026, 10, 26, 20))
       sign_in(performer)
 
       travel_to Time.zone.local(2026, 10, 29, 12) do

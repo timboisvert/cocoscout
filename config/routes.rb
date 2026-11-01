@@ -463,6 +463,9 @@ Rails.application.routes.draw do
   scope "/select" do
     get  "/organization",        to: "manage/select#organization",     as: "select_organization"
     post "/organization",        to: "manage/select#set_organization", as: "set_organization"
+    # The organization menu as a page: the apps open it as a sheet from the
+    # production-mode row (the website draws the same items in place).
+    get  "/organization/menu",   to: "manage/select#menu",             as: "organization_menu"
   end
 
   # Talent-facing interface
