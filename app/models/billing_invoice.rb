@@ -34,18 +34,20 @@ class BillingInvoice < ApplicationRecord
     end
   end
 
-  # Where the bill stands, in words: paid, money on its way (and when it
-  # lands), when Stripe charges it, or that it waits on the organization.
+  # Where the bill stands, in a few words: paid, money on its way and the
+  # day it lands, the day it's charged, or its due date.
   def status_label
     case status
     when "paid" then "Paid"
     when "open"
       if failed_at.present? then "Payment failed"
       elsif collecting?
-        from = payment_method_type == "us_bank_account" ? "Coming from the bank account on file" : "Being collected"
-        lands_on ? "#{from}, lands about #{lands_on.strftime('%b %-d')}" : from
-      elsif collection_method == "send_invoice" then due_at ? "Waiting to be paid, due #{due_at.strftime('%b %-d')}" : "Waiting to be paid"
-      elsif next_payment_attempt_at&.future? then "Charges automatically #{next_payment_attempt_at.strftime('%b %-d')}"
+        bank = payment_method_type == "us_bank_account"
+        if lands_on then "#{bank ? 'Bank debit' : 'Payment'} lands #{lands_on.strftime('%b %-d')}"
+        else bank ? "Bank debit on its way" : "Payment on its way"
+        end
+      elsif collection_method == "send_invoice" then due_at ? "Due #{due_at.strftime('%b %-d')}" : "Due"
+      elsif next_payment_attempt_at&.future? then "Charges #{next_payment_attempt_at.strftime('%b %-d')}"
       else "Due"
       end
     when "uncollectible" then "Couldn't collect"
@@ -109,6 +111,12 @@ class BillingInvoice < ApplicationRecord
   # it was being collected.
   def credited_only_cents
     [ credit_notes_cents + balance_credited_cents - refunded_cents, 0 ].max
+  end
+
+  # Credit an organization has been given back on its bills that no bill has
+  # used up yet: what comes off its next bills.
+  def self.unused_credit_cents(scope = all)
+    [ -scope.with_credit.sum(&:earned_adjustment_cents), 0 ].max
   end
 
   # CocoScout's ledger is cash: a bill counts what was paid, less what was

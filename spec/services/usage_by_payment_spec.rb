@@ -142,6 +142,13 @@ RSpec.describe "Usage by the month people are paid", type: :request do
                                        "1 extra debit", "$8.00", "billed Dec 1", "Payout run funded from your bank", "Withdrawn", "$5,000.00 more free this month",
                                        "free up to $5,000 a month")
       expect(response.body).not_to include("Stripe")
+
+      # Credit given back on a bill, waiting for the next one.
+      BillingInvoice.create!(organization: org, stripe_invoice_id: "in_sep", number: "SG-0002", kind: "usage", status: "paid",
+                             amount_due_cents: 20_100, amount_paid_cents: 20_100, paid_at: Time.current, credit_notes_cents: 2_500,
+                             period_start: Time.zone.local(2026, 9, 1), period_end: Time.zone.local(2026, 10, 1))
+      get section_manage_organization_path(org, section: "billing")
+      expect(response.body).to include("You have <strong>$25.00</strong> of credit. It comes off your next bill.", "$25.00 credited", "Paid")
     end
   end
 end

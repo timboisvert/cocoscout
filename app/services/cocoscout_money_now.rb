@@ -221,7 +221,7 @@ class CocoScoutMoneyNow
   # Credit given back on bills that no bill has used up yet: what we'll
   # bill less for.
   def unused_credit_cents
-    @unused_credit_cents ||= [ -BillingInvoice.with_credit.sum(&:earned_adjustment_cents), 0 ].max
+    @unused_credit_cents ||= BillingInvoice.unused_credit_cents
   end
 
   # In Stripe and ours, but spoken for: overcharges to refund and credit

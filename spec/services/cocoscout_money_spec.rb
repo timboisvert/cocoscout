@@ -288,7 +288,7 @@ RSpec.describe BillingInvoiceSync do
       record = described_class.sync!(invoice)
       # Sat Oct 31 start: Mon, Tue, Wed, Thu.
       expect([ record.payment_status, record.collecting?, record.lands_on, record.late?(now: 10.days.from_now) ]).to eq([ "processing", true, Date.new(2026, 11, 5), false ])
-      expect(record.status_label).to eq("Coming from the bank account on file, lands about Nov 5")
+      expect(record.status_label).to eq("Bank debit lands Nov 5")
 
       paid = described_class.sync!(Stripe::Invoice.construct_from(invoice.to_hash.merge(status: "paid", amount_paid: 15_900, amount_remaining: 0,
                                                                                          post_payment_credit_notes_amount: 2_500, starting_balance: -1_000, ending_balance: 0)))
@@ -304,7 +304,7 @@ RSpec.describe BillingInvoiceSync do
       by_hand = described_class.sync!(Stripe::Invoice.construct_from(id: "in_hand", object: "invoice", customer: "cus_org", status: "open",
                                                                      collection_method: "send_invoice", due_date: Time.zone.local(2026, 11, 15).to_i,
                                                                      amount_due: 2_000, amount_remaining: 2_000, lines: { data: [] }))
-      expect([ auto.status_label, by_hand.status_label ]).to eq([ "Charges automatically Nov 3", "Waiting to be paid, due Nov 15" ])
+      expect([ auto.status_label, by_hand.status_label ]).to eq([ "Charges Nov 3", "Due Nov 15" ])
       expect([ auto.late?(now: 2.days.from_now), by_hand.late?(now: 10.days.from_now), by_hand.late?(now: 20.days.from_now) ]).to eq([ false, false, true ])
     end
   end
@@ -453,7 +453,7 @@ RSpec.describe UsageOverbilling do
     allow(Stripe::Invoice).to receive(:retrieve).and_return(Stripe::Invoice.construct_from(id: "in_coll"))
     allow(Stripe::Customer).to receive(:list_balance_transactions).and_return(double(auto_paging_each: []))
     expect(bill.full_title).to eq("September 2026 usage · billed Sep 30")
-    expect(bill.status_label).to eq("Being collected, lands about Oct 7")
+    expect(bill.status_label).to eq("Payment lands Oct 7")
 
     row = described_class.rows(org).sole
     expect([ row.charged_cents, row.over_cents ]).to eq([ 20_100, 20_100 ])
