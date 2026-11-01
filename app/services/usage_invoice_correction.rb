@@ -8,7 +8,8 @@
 # usage period that doesn't start on the 1st straddles two months. So when
 # Stripe drafts a usage bill (invoice.created, and Stripe holds the bill until
 # our webhook answers), the difference goes on it as one correction line,
-# and bank debits beyond the month's free ones go on it as another.
+# and bank debits beyond the month's free ones and withdrawals over the free
+# amount go on it as their own lines.
 class UsageInvoiceCorrection
   PREFIX = "Correction:"
 
@@ -27,7 +28,10 @@ class UsageInvoiceCorrection
     expected = 0 if record.duplicate?
     on_bill = record.lines.sum { |line| line["amount_cents"].to_i }
     difference = expected - on_bill
-    add_bank_debit_fee!(record, organization, month) unless record.duplicate?
+    unless record.duplicate?
+      add_bank_debit_fee!(record, organization, month)
+      add_withdrawal_fee!(record, organization, month)
+    end
     return if difference.zero?
 
     people = UsageRules.by_payment?(month) ? "#{staff} staff and #{performers} others paid" : "#{staff} staff and #{performers} performers paid"
@@ -36,6 +40,23 @@ class UsageInvoiceCorrection
         description: "#{PREFIX} #{people} through CocoScout in #{month.strftime('%B %Y')}",
         metadata: { kind: "usage_correction", organization_id: organization.id, month: month.iso8601 } },
       { idempotency_key: "usage-correction-#{record.stripe_invoice_id}-#{difference}" }
+    )
+  end
+
+  # Withdrawals over the month's free amount: our payment provider's 0.25% on
+  # the part over, as its own line.
+  def self.add_withdrawal_fee!(record, organization, month)
+    withdrawn = UsageRules.withdrawn_cents(organization, month)
+    fee = UsageRules.withdrawal_fee_cents(organization, month, withdrawn)
+    return if fee.zero?
+
+    over = ActiveSupport::NumberHelper.number_to_currency((withdrawn - UsageRules::FREE_WITHDRAWAL_CENTS) / 100.0)
+    Stripe::InvoiceItem.create(
+      { customer: organization.stripe_customer_id, invoice: record.stripe_invoice_id, currency: "usd", amount: fee,
+        description: "Withdrawals over #{ActiveSupport::NumberHelper.number_to_currency(UsageRules::FREE_WITHDRAWAL_CENTS / 100.0, precision: 0)} " \
+                     "in #{month.strftime('%B %Y')}: 0.25% of #{over}, our payment provider's cost",
+        metadata: { kind: "withdrawal_fee", organization_id: organization.id, month: month.iso8601, withdrawn_cents: withdrawn } },
+      { idempotency_key: "withdrawal-fee-#{record.stripe_invoice_id}-#{fee}" }
     )
   end
 

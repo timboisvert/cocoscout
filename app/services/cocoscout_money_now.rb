@@ -250,12 +250,14 @@ class CocoScoutMoneyNow
       range = UsageRules.range_for(month)
       debiting = PayoutBatch.where.not(funding_payment_intent_id: nil).where("COALESCE(funding_started_at, created_at) BETWEEN ? AND ?", range.first, range.last)
                             .distinct.pluck(:organization_id) +
-                 BalanceTopUp.where(created_at: range).where.not(stripe_payment_intent_id: nil).distinct.pluck(:organization_id)
+                 BalanceTopUp.where(created_at: range).where.not(stripe_payment_intent_id: nil).distinct.pluck(:organization_id) +
+                 BalanceWithdrawal.not_failed.where(created_at: range).distinct.pluck(:organization_id)
       orgs = Organization.where(id: (performers.keys + staff.keys + debiting).uniq).select(&:bills_usage?)
       rows = orgs.map do |org|
         debits = UsageRules.extra_bank_debits(org, month)
         cents = performers[org.id].to_i * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS +
-                staff[org.id].to_i * StaffBillingService::PER_ACTIVE_STAFF_CENTS + debits * UsageRules::EXTRA_BANK_DEBIT_CENTS
+                staff[org.id].to_i * StaffBillingService::PER_ACTIVE_STAFF_CENTS + debits * UsageRules::EXTRA_BANK_DEBIT_CENTS +
+                UsageRules.withdrawal_fee_cents(org, month)
         { organization: org, performers: performers[org.id].to_i, staff: staff[org.id].to_i, extra_debits: debits, cents: cents }
       end
       rows.select { |row| row[:cents].positive? }.sort_by { |row| -row[:cents] }

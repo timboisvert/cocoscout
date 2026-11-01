@@ -94,6 +94,39 @@ RSpec.describe "Usage by the month people are paid", type: :request do
     expect(UsageOverbilling.rows(org).sole.over_cents).to eq(0)
   end
 
+  it "lets $5,000 a month go to the organization's bank free, and passes on 0.25% of the part over on the bill" do
+    org.balance_withdrawals.create!(amount_cents: 400_000, status: "paid", created_at: Time.zone.local(2026, 11, 5))
+    expect(UsageRules.withdrawal_fee_cents(org, november)).to eq(0)
+    org.balance_withdrawals.create!(amount_cents: 300_000, status: "sent", created_at: Time.zone.local(2026, 11, 19))
+    org.balance_withdrawals.create!(amount_cents: 900_000, status: "failed", created_at: Time.zone.local(2026, 11, 20))
+    # $7,000 withdrawn: $2,000 over, 0.25% is $5.
+    expect([ UsageRules.withdrawn_cents(org, november), UsageRules.withdrawal_fee_cents(org, november) ]).to eq([ 700_000, 500 ])
+    # Not before November, when withdrawals were all free.
+    org.balance_withdrawals.create!(amount_cents: 900_000, status: "paid", created_at: Time.zone.local(2026, 10, 5))
+    expect(UsageRules.withdrawal_fee_cents(org, Date.new(2026, 10, 1))).to eq(0)
+
+    record = BillingInvoice.create!(organization: org, stripe_invoice_id: "in_wd", kind: "usage", status: "draft", amount_due_cents: 0,
+                                    period_start: Time.zone.local(2026, 11, 1), period_end: Time.zone.local(2026, 12, 1), lines: [])
+    expect(Stripe::InvoiceItem).to receive(:create)
+      .with(hash_including(invoice: "in_wd", amount: 500, description: "Withdrawals over $5,000 in November 2026: 0.25% of $2,000.00, our payment provider's cost"),
+            hash_including(idempotency_key: "withdrawal-fee-in_wd-500"))
+    UsageInvoiceCorrection.apply!(record)
+    record.update!(status: "paid", amount_due_cents: 500, amount_paid_cents: 500, lines: [ { "description" => "fee", "amount_cents" => 500 } ])
+    expect(CocoScoutInvoice.document(record).items.map { |line| [ line.description, line.amount_cents ] })
+      .to eq([ [ "Withdrawals over $5,000.00: 0.25% of $2,000.00", 500 ] ])
+    expect(UsageMonth.new(org, november)).to have_attributes(withdrawn_cents: 700_000, withdrawal_fee_cents: 500, free_withdrawal_left_cents: 0, total_cents: 500)
+  end
+
+  it "says before a withdrawal how much more goes free this month" do
+    travel_to Time.zone.local(2026, 11, 10) do
+      org.balance_withdrawals.create!(amount_cents: 150_000, status: "paid")
+      helper = Object.new.extend(BankDebitsHelper, ActionView::Helpers::NumberHelper)
+      expect(helper.withdrawal_fee_note(org)).to include("free up to $5,000 a month", "$3,500.00 left this month", "0.25% on the part over")
+      org.balance_withdrawals.create!(amount_cents: 400_000, status: "paid")
+      expect(helper.withdrawal_fee_note(org)).to include("You've withdrawn $5,000 this month", "$2.50 per $1,000")
+    end
+  end
+
   it "shows a Pro organization its usage, bank debits and bills on the Billing tab" do
     travel_to Time.zone.local(2026, 11, 20, 10) do
       manager = create(:user, password: "Password123!")
@@ -106,7 +139,8 @@ RSpec.describe "Usage by the month people are paid", type: :request do
       get manage_path
       get section_manage_organization_path(org, section: "billing")
       expect(response.body).to include("usage</h4>", "Everyone else paid", "Avery Lane", "Bank debits", "of 2 free",
-                                       "1 extra debit", "$8.00", "billed Dec 1", "Payout run funded from your bank")
+                                       "1 extra debit", "$8.00", "billed Dec 1", "Payout run funded from your bank", "Withdrawn", "$5,000.00 more free this month",
+                                       "free up to $5,000 a month")
       expect(response.body).not_to include("Stripe")
     end
   end

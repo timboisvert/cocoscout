@@ -110,6 +110,10 @@
             <%= render "shared/button", text: "Withdraw", variant: "primary", size: "medium", type: :button,
                   data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-withdraw" } %>
           <% end %>
+          <% withdraw_note = withdrawal_fee_note(org) %>
+          <% if withdraw_note %>
+            <p class="mt-2 text-xs text-gray-600"><%= withdraw_note %></p>
+          <% end %>
           <%# The form carries its own amount, so the modal submits it. %>
           <div id="confirm-withdraw" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
                data-controller="modal" data-action="click->modal#closeOnBackdrop">
@@ -123,6 +127,7 @@
               </div>
               <div class="px-6 py-5 text-sm text-gray-600">
                 The amount you entered leaves your CocoScout balance and goes to your bank.<%= " Anything over #{number_to_currency(@safe_cents / 100.0)} means your coming payouts need a bank debit first." if @obligations.any? %>
+                <%= " #{withdraw_note}" if withdraw_note %>
               </div>
               <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
                 <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>

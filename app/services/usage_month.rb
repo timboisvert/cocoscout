@@ -3,7 +3,8 @@
 # One organization's usage for one month, as its bill will charge it: the
 # staff ($5) and everyone else ($3) counted (StaffActivation and
 # PerformerActivation, kept to UsageRules), its bank debits and any beyond the
-# free ones ($5 each), and the bill that carries the month once there is one.
+# free ones ($5 each), what it withdrew (0.25% on the part over $5,000), and
+# the bill that carries the month once there is one.
 class UsageMonth
   attr_reader :organization, :month
 
@@ -33,7 +34,14 @@ class UsageMonth
   def extra_debits = by_payment? ? [ bank_debits.size - UsageRules::FREE_BANK_DEBITS, 0 ].max : 0
   def extra_debits_cents = extra_debits * UsageRules::EXTRA_BANK_DEBIT_CENTS
 
-  def total_cents = staff_cents + others_cents + extra_debits_cents
+  def withdrawn_cents
+    @withdrawn_cents ||= UsageRules.withdrawn_cents(organization, month)
+  end
+
+  def withdrawal_fee_cents = UsageRules.withdrawal_fee_cents(organization, month, withdrawn_cents)
+  def free_withdrawal_left_cents = [ UsageRules::FREE_WITHDRAWAL_CENTS - withdrawn_cents, 0 ].max
+
+  def total_cents = staff_cents + others_cents + extra_debits_cents + withdrawal_fee_cents
 
   # The bill for the month: the usage bill whose period it is (the first, if
   # a month ever had two).

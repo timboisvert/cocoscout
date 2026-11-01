@@ -150,6 +150,29 @@ module UsageRules
     extra_bank_debits(organization, month) * EXTRA_BANK_DEBIT_CENTS
   end
 
+  # Withdrawals to the organization's own bank are free up to $5,000 a month;
+  # above that it pays our payment provider's 0.25% on the part over, on the
+  # month's usage bill (Tim, 2026-11-01: passing on our cost, not making
+  # money on it).
+  FREE_WITHDRAWAL_CENTS = 500_000
+  WITHDRAWAL_FEE_BASIS_POINTS = 25
+
+  def withdrawn_cents(organization, month)
+    BalanceWithdrawal.not_failed.where(organization: organization, created_at: range_for(month)).sum(:amount_cents)
+  end
+
+  def withdrawal_fee_cents(organization, month, withdrawn = nil)
+    return 0 unless by_payment?(month)
+
+    over = [ (withdrawn || withdrawn_cents(organization, month)) - FREE_WITHDRAWAL_CENTS, 0 ].max
+    (over * WITHDRAWAL_FEE_BASIS_POINTS / 10_000.0).round
+  end
+
+  # Everything the month's usage bill charges beyond the people paid.
+  def fees_cents(organization, month)
+    bank_debit_fee_cents(organization, month) + withdrawal_fee_cents(organization, month)
+  end
+
   def paid_role?(member, role)
     cents = role.flat? ? member.flat_cents_for(role) : member.rate_cents_for(role)
     cents.to_i.positive?

@@ -1,4 +1,4 @@
-<%# Pro usage: what this month will cost so far, who's counted, the month's bank debits against the free ones, and the last six months with
+<%# Pro usage: what this month will cost so far, who's counted, the month's bank debits and withdrawals against the free ones, and the last months with
     their bills. From November 2026, everyone paid through CocoScout that month counts (UsageRules). locals: organization %>
 <% now = UsageMonth.new(organization) %>
 <% months = (1..5).map { |back| UsageMonth.new(organization, Date.current.beginning_of_month - back.months) } %>
@@ -21,7 +21,7 @@
     </div>
   </div>
 
-  <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+  <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
     <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
       <div class="text-xs text-gray-500 uppercase tracking-wider">Staff paid</div>
       <div class="text-xl font-semibold text-gray-900 mt-1 tabular-nums"><%= now.staff.size %></div>
@@ -45,9 +45,26 @@
         <% end %>
       </div>
     </div>
+
+    <div class="rounded-lg border <%= now.withdrawal_fee_cents.positive? ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-gray-50' %> p-4">
+      <div class="text-xs text-gray-500 uppercase tracking-wider">Withdrawn</div>
+      <div class="text-xl font-semibold text-gray-900 mt-1 tabular-nums"><%= number_to_currency(now.withdrawn_cents / 100.0) %></div>
+      <div class="text-xs mt-0.5 <%= now.withdrawal_fee_cents.positive? ? 'text-amber-800' : 'text-gray-500' %>">
+        <% if now.withdrawal_fee_cents.positive? %>
+          0.25% on the part over <%= number_to_currency(UsageRules::FREE_WITHDRAWAL_CENTS / 100.0, precision: 0) %>: <%= number_to_currency(now.withdrawal_fee_cents / 100.0) %>
+        <% else %>
+          <%= number_to_currency(now.free_withdrawal_left_cents / 100.0) %> more free this month
+        <% end %>
+      </div>
+    </div>
   </div>
 
   <p class="mt-3 text-xs text-gray-500 max-w-xl">
+    Withdrawals to your bank are free up to <%= number_to_currency(UsageRules::FREE_WITHDRAWAL_CENTS / 100.0, precision: 0) %> a month. Above that we pass on our payment
+    provider's 0.25% on the part over, on your monthly bill: it's their cost, not a fee we make money on.
+  </p>
+
+  <p class="mt-2 text-xs text-gray-500 max-w-xl">
     A bank debit is a payout run you fund from your bank, or funds you add from your bank. Pro includes <%= UsageRules::FREE_BANK_DEBITS %> a month;
     each one after that is <%= debit_price %> on your monthly bill. Funding bigger runs less often keeps it free.
   </p>
@@ -87,6 +104,7 @@
           <th class="text-right font-medium px-4 py-2">Staff</th>
           <th class="text-right font-medium px-4 py-2">Everyone else</th>
           <th class="text-right font-medium px-4 py-2">Extra debits</th>
+          <th class="text-right font-medium px-4 py-2">Withdrawal fee</th>
           <th class="text-right font-medium px-4 py-2">Total</th>
           <th class="text-left font-medium px-4 py-2">Bill</th>
         </tr>
@@ -98,6 +116,7 @@
             <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= m.staff.size %></td>
             <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= m.others.size %></td>
             <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= m.by_payment? ? m.extra_debits : "—" %></td>
+            <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= m.by_payment? ? number_to_currency(m.withdrawal_fee_cents / 100.0) : "—" %></td>
             <td class="px-4 py-2 text-right tabular-nums font-medium text-gray-900"><%= number_to_currency(m.total_cents / 100.0) %></td>
             <td class="px-4 py-2 text-gray-700">
               <% if (bill = m.bill) %>

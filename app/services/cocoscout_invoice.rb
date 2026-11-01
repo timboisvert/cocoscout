@@ -76,13 +76,20 @@ class CocoScoutInvoice
     staff = StaffActivation.where(organization: @organization).for_month(month).count
     performers = PerformerActivation.where(organization: @organization).for_month(month).count
     debits = UsageRules.extra_bank_debits(@organization, month)
+    withdrawn = UsageRules.withdrawn_cents(@organization, month)
+    withdrawal_fee = UsageRules.withdrawal_fee_cents(@organization, month, withdrawn)
     counted = staff * StaffBillingService::PER_ACTIVE_STAFF_CENTS + performers * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS +
-              debits * UsageRules::EXTRA_BANK_DEBIT_CENTS
+              debits * UsageRules::EXTRA_BANK_DEBIT_CENTS + withdrawal_fee
     lines = UsageRules.by_payment?(month) ? paid_people_items(month, staff, performers) : worked_people_items(month, staff, performers)
     if debits.positive?
       lines << InvoiceDocument::Line.new(description: "#{debits} bank #{'debit'.pluralize(debits)} beyond the #{UsageRules::FREE_BANK_DEBITS} free × #{dollars(UsageRules::EXTRA_BANK_DEBIT_CENTS)}",
                                          detail: "Payout runs funded from your bank, and funds added from it, in #{month.strftime('%B %Y')}.",
                                          amount_cents: debits * UsageRules::EXTRA_BANK_DEBIT_CENTS)
+    end
+    if withdrawal_fee.positive?
+      lines << InvoiceDocument::Line.new(description: "Withdrawals over #{dollars(UsageRules::FREE_WITHDRAWAL_CENTS)}: 0.25% of #{dollars(withdrawn - UsageRules::FREE_WITHDRAWAL_CENTS)}",
+                                         detail: "Our payment provider's cost for sending money to your bank, passed on. The first #{dollars(UsageRules::FREE_WITHDRAWAL_CENTS)} each month is free.",
+                                         amount_cents: withdrawal_fee)
     end
     difference = billed - counted
     if difference.positive?

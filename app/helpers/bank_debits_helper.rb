@@ -15,4 +15,18 @@ module BankDebitsHelper
       "You've used this month's #{UsageRules::FREE_BANK_DEBITS} free bank debits, so this one adds #{fee} to your monthly bill. Bigger, fewer debits stay free."
     end
   end
+
+  # Before a withdrawal: how much more can go free this month, and what the
+  # part over costs. Nil when withdrawals aren't billed (not Pro, usage comped).
+  def withdrawal_fee_note(organization)
+    return nil unless organization.bills_usage?
+
+    free = number_to_currency(UsageRules::FREE_WITHDRAWAL_CENTS / 100.0, precision: 0)
+    left = UsageMonth.new(organization).free_withdrawal_left_cents
+    if left.positive?
+      "Withdrawals are free up to #{free} a month: #{number_to_currency(left / 100.0)} left this month. Above that, we pass on our payment provider's 0.25% on the part over, on your monthly bill."
+    else
+      "You've withdrawn #{free} this month, the free amount. On anything more, we pass on our payment provider's 0.25% (#{number_to_currency(2.5)} per #{number_to_currency(1_000, precision: 0)}), on your monthly bill."
+    end
+  end
 end
