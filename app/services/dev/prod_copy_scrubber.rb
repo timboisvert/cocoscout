@@ -3,9 +3,10 @@
 require "bcrypt"
 
 module Dev
-  # Turns a restored copy of production into something safe to run in dev
-  # (Tim, 2026-11-01: "I want to copy the people, I don't want to copy all
-  # their logins. I want to keep my basic login there.").
+  # Makes production's data safe to live in the dev database after
+  # bin/seed_dev_from_prod loads it (Tim, 2026-11-01: "I want to copy the
+  # people, I don't want to copy all their logins. I want to keep my basic
+  # login there." ... "I want to basically seed my dev from prod.").
   #
   # Generic on purpose: it reads the live schema instead of a list of models,
   # so a table added later is covered by the column-name rules below without
@@ -13,7 +14,8 @@ module Dev
   # fails when a new secret-looking column slips past them.
   #
   # What it does, in one transaction:
-  # - keeps the one login named by keep_email exactly as it is;
+  # - keeps the logins named by keep_emails (their dev passwords are put back
+  #   afterwards by dev_seed:restore_logins);
   # - every other user: email rewritten to user-<id>@prodcopy.test, password
   #   replaced by one nobody knows;
   # - every other email column: rewritten to <table>-<id>@prodcopy.test, so
@@ -25,7 +27,7 @@ module Dev
   # - encrypted columns cleared: dev's keys can't read production's;
   # - sessions, device tokens, push apps (Apple and Google credentials) and
   #   their notifications, queued jobs and the cache emptied;
-  # - ar_internal_metadata records the copy, which the dev indicator shows.
+  # - ar_internal_metadata records the day, which the dev indicator shows.
   class ProdCopyScrubber
     SECRET_COLUMN = /\A(?:.*_)?(?:token|token_digest|secret|client_secret|access_token|refresh_token|credentials|api_key|otp_secret)\z|
                      \Astripe_(?:account|customer|subscription|person|bank_account|payment_method|setup_intent)_id\z|
@@ -37,8 +39,8 @@ module Dev
 
     class Refused < StandardError; end
 
-    def initialize(keep_email:, copied_on: Date.current, allow_test: false)
-      @keep = keep_email.to_s.strip.downcase
+    def initialize(keep_emails:, copied_on: Date.current, allow_test: false)
+      @keep = Array(keep_emails).map { |e| e.to_s.strip.downcase }.compact_blank
       @copied_on = copied_on
       @allow_test = allow_test
       @report = Hash.new(0)
@@ -59,14 +61,13 @@ module Dev
     private
 
     def conn = ActiveRecord::Base.connection
+    def kept_list = @keep.map { |e| conn.quote(e) }.join(", ")
 
     def guard!
-      raise Refused, "no keep_email: you would lock yourself out" if @keep.blank?
+      raise Refused, "no keep_emails: you would lock yourself out" if @keep.empty?
       return if @allow_test && Rails.env.test?
-      raise Refused, "only in development" unless Rails.env.development?
 
-      name = conn.current_database
-      raise Refused, "refusing to scrub #{name}: the copy's database name must contain \"prodcopy\"" unless name.include?("prodcopy")
+      raise Refused, "only in development" unless Rails.env.development?
     end
 
     def empty_tables
@@ -81,13 +82,11 @@ module Dev
       return unless conn.table_exists?("users") && conn.column_exists?(:users, :email_address)
 
       digest = BCrypt::Password.create(SecureRandom.hex(32))
-      keep = conn.quote(@keep)
       @report["users locked out"] = conn.update(<<~SQL)
         UPDATE users SET password_digest = #{conn.quote(digest)},
                          email_address = 'user-' || id || '@prodcopy.test'
-         WHERE lower(email_address) <> #{keep}
+         WHERE lower(email_address) NOT IN (#{kept_list})
       SQL
-      raise Refused, "#{@keep} is not a user in this copy: you would lock yourself out" unless conn.select_value("SELECT 1 FROM users WHERE lower(email_address) = #{keep}")
     end
 
     def scrub_table(table)
@@ -118,7 +117,7 @@ module Dev
       if text && col.name.match?(EMAIL_COLUMN)
         return (col.null ? "NULL" : "'{}'") if col.array
 
-        keep = "lower(#{conn.quote_column_name(col.name)}) = #{conn.quote(@keep)}"
+        keep = "lower(#{conn.quote_column_name(col.name)}) IN (#{kept_list})"
         fake = has_id ? "'#{table}-' || id || '@prodcopy.test'" : "md5(#{conn.quote_column_name(col.name)}) || '@prodcopy.test'"
         return "CASE WHEN #{keep} THEN #{conn.quote_column_name(col.name)} ELSE #{fake} END"
       end
@@ -133,7 +132,8 @@ module Dev
     PLACEHOLDER = "000000000"
 
     def clear_encrypted_columns
-      Rails.application.eager_load!
+      # Only the models: the rest of the app isn't needed to find them.
+      Rails.autoloaders.main.eager_load_dir(Rails.root.join("app/models").to_s)
       ActiveRecord::Base.descendants.each do |model|
         next if model.abstract_class? || !model.table_exists?
 
@@ -150,7 +150,7 @@ module Dev
     end
 
     def mark_copy
-      { "prod_copy_from" => @copied_on.iso8601, "prod_copy_scrubbed_at" => Time.current.iso8601 }.each do |key, value|
+      { "seeded_from_production_on" => @copied_on.iso8601, "seeded_at" => Time.current.iso8601 }.each do |key, value|
         conn.execute(<<~SQL)
           INSERT INTO ar_internal_metadata (key, value, created_at, updated_at)
           VALUES (#{conn.quote(key)}, #{conn.quote(value)}, now(), now())

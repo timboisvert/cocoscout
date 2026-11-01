@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# Seed the dev database from production (Tim, 2026-11-01): afterwards dev's
+# data is production's people, organizations, productions, shows, ticket
+# sales and everything else, and the only logins that work are the kept dev
+# ones, with their dev passwords.
+#
+#   bin/seed_dev_from_prod                  dump production, then seed dev
+#   bin/seed_dev_from_prod path/to.dump     seed dev from an earlier dump
+#   add --yes to skip the "are you sure"
+#
+# What it does:
+# 1. Remembers the kept logins (KEEP_EMAILS, default boisvert@gmail.com and
+#    dev-manager@cocoscout.test) and backs up the dev database to tmp/dev_seed.
+# 2. Dumps production over ssh: on one host (the jobs host by default) a
+#    throwaway postgres container runs a read-only pg_dump with the app's own
+#    DATABASE_URL. Sessions, queued jobs, cache and push credentials are left
+#    out of it. Never `kamal app exec`, which runs on every host.
+# 3. Replaces the dev database with it, then migrates it forward from main
+#    and every release worktree (.claude/worktrees/v1.*), so unreleased
+#    migrations, data conversions included, run on real data exactly as the
+#    deploy will. Each checkout's db/schema.rb is left as it was.
+# 4. Scrubs it: every other email rewritten, phones, tokens, payment-provider
+#    accounts and tax ids cleared, nobody else can sign in.
+# 5. Puts the kept logins back, and lists the stored files to copy.
+#
+# Your running dev servers lose their connection for a moment and reconnect.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+ROOT="$(pwd)"
+
+YES=""; DUMP=""
+for arg in "$@"; do case "$arg" in --yes) YES=1 ;; *) DUMP="$arg" ;; esac; done
+
+HOST="${PROD_HOST:-jobs.deploy.cocoscout.com}"
+ROLE="${PROD_ROLE:-job}"
+DB="${SEED_DB:-cocoscout_development}"
+export KEEP_EMAILS="${KEEP_EMAILS:-boisvert@gmail.com,dev-manager@cocoscout.test}"
+export DEV_DATABASE="$DB"
+PG_MAJOR="$(pg_restore --version | awk '{print $3}' | cut -d. -f1)"
+STAMP="$(date +%Y%m%d-%H%M)"
+mkdir -p tmp/dev_seed && chmod 700 tmp/dev_seed
+
+if [ -z "$YES" ]; then
+  read -r -p "This replaces everything in $DB with production's data. Type yes to go on: " answer
+  [ "$answer" = "yes" ] || { echo "Stopped."; exit 1; }
+fi
+
+echo "1. Remembering kept logins and backing up $DB..."
+bin/rails dev_seed:remember_logins
+pg_dump --format=custom --no-owner --no-privileges "$DB" > "tmp/dev_seed/before-$STAMP.dump"
+chmod 600 "tmp/dev_seed/before-$STAMP.dump"
+echo "   Backup: tmp/dev_seed/before-$STAMP.dump (restore with: pg_restore --clean --if-exists --no-owner -d $DB that file)"
+
+if [ -z "$DUMP" ]; then
+  DUMP="tmp/dev_seed/production-$STAMP.dump"
+  ENV_FILE=".kamal/apps/cocoscout/env/roles/${ROLE}.env"
+  echo "2. Dumping production from $HOST with pg_dump $PG_MAJOR (read only)..."
+  if ! ssh "ec2-user@$HOST" "test -f \$HOME/$ENV_FILE"; then
+    echo "No $ENV_FILE on $HOST. Find the app's env file there (ls ~/.kamal/apps/cocoscout/env/roles/) and set PROD_ROLE." >&2
+    exit 1
+  fi
+  EXCLUDE="--exclude-table-data=sessions --exclude-table-data=device_tokens --exclude-table-data=solid_cache_entries --exclude-table-data=solid_queue_* --exclude-table-data=rpush_*"
+  ssh "ec2-user@$HOST" "docker run --rm --env-file \$HOME/$ENV_FILE postgres:$PG_MAJOR sh -c 'pg_dump --format=custom --no-owner --no-privileges $EXCLUDE \"\$DATABASE_URL\"'" > "$DUMP.partial"
+  mv "$DUMP.partial" "$DUMP"
+  chmod 600 "$DUMP"
+  echo "   Dump: $DUMP ($(du -h "$DUMP" | cut -f1))"
+else
+  echo "2. Using $DUMP"
+fi
+SEEDED_ON="$(date -r "$DUMP" +%Y-%m-%d)"
+
+echo "3. Replacing $DB with production's data..."
+dropdb --force --if-exists "$DB"
+createdb "$DB"
+pg_restore --no-owner --no-privileges --dbname="$DB" "$DUMP" 2> tmp/dev_seed/restore.log || true
+echo "   ($(grep -c "error" tmp/dev_seed/restore.log || true) restore warnings, see tmp/dev_seed/restore.log)"
+
+for checkout in "$ROOT" "$ROOT"/.claude/worktrees/v1.*; do
+  [ -x "$checkout/bin/rails" ] || continue
+  clean=""; git -C "$checkout" diff --quiet -- db/schema.rb && clean=1
+  echo "   Migrating from $(basename "$checkout")..."
+  (cd "$checkout" && bin/rails db:migrate > /dev/null)
+  [ -n "$clean" ] && git -C "$checkout" checkout -q -- db/schema.rb
+done
+
+echo "4. Scrubbing..."
+SEEDED_ON="$SEEDED_ON" bin/rails dev_seed:scrub
+
+echo "5. Kept logins and files..."
+bin/rails dev_seed:restore_logins
+bin/rails dev_seed:files
+
+echo
+echo "Dev now holds production's data from $SEEDED_ON. Sign in as before; restart your dev servers if a page errors."
+echo "The production dump is in tmp/dev_seed (only you can read it); delete it when you're done with it."
