@@ -16,6 +16,11 @@ class TeamInvitation < ApplicationRecord
 
   before_validation :generate_token, on: :create
 
+  # Not yet accepted, onto the organization's team itself: not a
+  # production's team, and not a contract (those show on the contract, and
+  # accepting one never makes anyone part of the team).
+  scope :pending_for_team, -> { where(accepted_at: nil, production_id: nil, contract_id: nil) }
+
   def generate_token
     self.token ||= SecureRandom.hex(20)
   end
