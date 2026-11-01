@@ -29,30 +29,35 @@ module Superadmin
       end
     end
 
-    # Refund one bill that charged too much (a second bill for a month, or
-    # more than the month's paid work) to the card or bank it was paid from.
+    # Give back one bill that charged too much (a second bill for a month, or
+    # more than the month's paid work): refunded to the card or bank it was
+    # paid from, or (how=credit) taken off the organization's next bills.
     def give_back
       invoice = BillingInvoice.find(params[:id])
+      how = give_back_how
       row = UsageOverbilling.row_for(invoice)
       unless row&.refundable_now?
         message = row&.lands_on ? "its payment is still landing (about #{row.lands_on.strftime('%b %-d')})" : "there's nothing to give back on it"
-        redirect_to finances_path, alert: "#{invoice.organization.name}'s bill #{invoice.number} can't be refunded yet: #{message}."
+        redirect_to finances_path, alert: "#{invoice.organization.name}'s bill #{invoice.number} can't be given back yet: #{message}."
         return
       end
 
-      note = UsageOverbilling.give_back!(row, how: "refund")
-      redirect_to finances_path, notice: note ? "Refunded #{helpers.usd(row.over_cents)} to #{invoice.organization.name} on bill #{invoice.number}. It reaches their card or bank in a few days." :
-                                                "Bill #{invoice.number} has already been given back."
+      note = UsageOverbilling.give_back!(row, how: how)
+      done = how == "credit" ? "Credited #{helpers.usd(row.over_cents)} to #{invoice.organization.name}'s next bills, from bill #{invoice.number}." :
+                               "Refunded #{helpers.usd(row.over_cents)} to #{invoice.organization.name} on bill #{invoice.number}. It reaches their card or bank in a few days."
+      redirect_to finances_path, notice: note ? done : "Bill #{invoice.number} has already been given back."
     rescue Stripe::StripeError => e
-      redirect_to finances_path, alert: "The refund on bill #{invoice.number} didn't go through: #{e.message}"
+      redirect_to finances_path, alert: "Giving back bill #{invoice.number} didn't go through: #{e.message}"
     end
 
-    # Refund every bill that charged too much and can be refunded now.
+    # Give back every bill that charged too much and can go now, the same way.
     def give_back_all
+      how = give_back_how
       rows = UsageOverbilling.all_rows.select(&:refundable_now?)
-      rows.each { |row| UsageGiveBackJob.perform_later(row.invoice.id) }
-      redirect_to finances_path, notice: rows.any? ? "Refunding #{helpers.pluralize(rows.size, 'bill')} (#{helpers.usd(rows.sum(&:over_cents))}). Refresh in a minute to see them go." :
-                                                     "Nothing can be refunded right now."
+      rows.each { |row| UsageGiveBackJob.perform_later(row.invoice.id, how) }
+      verb = how == "credit" ? "Crediting" : "Refunding"
+      redirect_to finances_path, notice: rows.any? ? "#{verb} #{helpers.pluralize(rows.size, 'bill')} (#{helpers.usd(rows.sum(&:over_cents))}). Refresh in a minute to see them go." :
+                                                     "Nothing can be given back right now."
     end
 
     def organizations
@@ -157,6 +162,10 @@ module Superadmin
     end
 
     private
+
+    def give_back_how
+      params[:how] == "credit" ? "credit" : "refund"
+    end
 
     def use_superadmin_sidebar
       @show_my_sidebar = false

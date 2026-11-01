@@ -190,15 +190,21 @@
       <div class="px-4 py-3 border-b border-red-200 bg-red-50 flex flex-wrap items-center gap-3">
         <div class="flex-1 min-w-0">
           <h2 class="text-sm font-semibold text-red-800">Charged too much (<%= rows.size %>)</h2>
-          <p class="text-xs text-red-700"><%= usd(rows.sum(&:over_cents)) %> to give back<%= ", #{usd(ready.sum(&:over_cents))} of it now" if ready.any? %>. A refund goes back to the card or bank the bill was paid from.</p>
+          <p class="text-xs text-red-700"><%= usd(rows.sum(&:over_cents)) %> to give back<%= ", #{usd(ready.sum(&:over_cents))} of it now" if ready.any? %>. A refund goes back to the card or bank the bill was paid from; a credit comes off the organization's next bills.</p>
         </div>
         <% if ready.size > 1 %>
-          <% all_id = "confirm-give-back-all" %>
-          <%= render "shared/button", text: "Refund all #{ready.size} (#{usd(ready.sum(&:over_cents))})", variant: "primary", size: "small", type: :button,
-                data: { controller: "modal", action: "click->modal#open", modal_id: all_id } %>
-          <%= render "shared/confirm_modal", id: all_id, title: "Refund #{ready.size} bills?",
-                message: "#{usd(ready.sum(&:over_cents))} goes back to #{ready.map { |r| r.invoice.organization.name }.uniq.to_sentence}, each to the card or bank its bill was paid from. They each get a credit note from Stripe saying why.",
-                confirm_text: "Refund all #{ready.size}", url: finances_give_back_all_path, method: :post %>
+          <% total = usd(ready.sum(&:over_cents)) %>
+          <% names = ready.map { |r| r.invoice.organization.name }.uniq.to_sentence %>
+          <%= render "shared/button", text: "Credit all #{ready.size}", variant: "secondary", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-credit-all" } %>
+          <%= render "shared/confirm_modal", id: "confirm-credit-all", title: "Credit #{ready.size} bills?",
+                message: "#{total} comes off #{names}'s next bills. They each get a credit note from Stripe saying why.",
+                confirm_text: "Credit all #{ready.size}", url: finances_give_back_all_path, method: :post, params: { how: "credit" } %>
+          <%= render "shared/button", text: "Refund all #{ready.size} (#{total})", variant: "primary", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-give-back-all" } %>
+          <%= render "shared/confirm_modal", id: "confirm-give-back-all", title: "Refund #{ready.size} bills?",
+                message: "#{total} goes back to #{names}, each to the card or bank its bill was paid from. They each get a credit note from Stripe saying why.",
+                confirm_text: "Refund all #{ready.size}", url: finances_give_back_all_path, method: :post, params: { how: "refund" } %>
         <% end %>
       </div>
       <ul class="divide-y divide-gray-100 text-sm">
@@ -220,22 +226,28 @@
               </p>
               <p class="text-xs mt-0.5 <%= row.refundable_now? ? 'text-green-700' : 'text-amber-700' %>">
                 <% if row.refundable_now? %>
-                  Paid, so it can be refunded now.
+                  Paid, so it can be given back now: refunded, or credited on their next bills.
                 <% else %>
-                  Its payment is still landing<%= ", about #{row.lands_on.strftime('%b %-d')}" if row.lands_on %>. It can be refunded once it does.
+                  Its payment is still landing<%= ", about #{row.lands_on.strftime('%b %-d')}" if row.lands_on %>. It can be given back once it does.
                 <% end %>
               </p>
             </div>
             <span class="tabular-nums font-semibold text-gray-900"><%= usd(row.over_cents) %></span>
             <% if row.refundable_now? %>
+              <% credit_id = "confirm-credit-#{invoice.id}" %>
+              <%= render "shared/button", text: "Credit next bill", variant: "secondary", size: "small", type: :button,
+                    data: { controller: "modal", action: "click->modal#open", modal_id: credit_id } %>
+              <%= render "shared/confirm_modal", id: credit_id, title: "Credit #{usd(row.over_cents)}?",
+                    message: "#{usd(row.over_cents)} comes off #{invoice.organization.name}'s next bills, for bill #{invoice.number}. They get a credit note from Stripe saying why.",
+                    confirm_text: "Credit #{usd(row.over_cents)}", url: finances_give_back_path(invoice), method: :post, params: { how: "credit" } %>
               <% cid = "confirm-give-back-#{invoice.id}" %>
               <%= render "shared/button", text: "Refund", variant: "primary", size: "small", type: :button,
                     data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
               <%= render "shared/confirm_modal", id: cid, title: "Refund #{usd(row.over_cents)}?",
                     message: "#{usd(row.over_cents)} goes back to #{invoice.organization.name} on bill #{invoice.number}, to the card or bank it was paid from. They get a credit note from Stripe saying why.",
-                    confirm_text: "Refund #{usd(row.over_cents)}", url: finances_give_back_path(invoice), method: :post %>
+                    confirm_text: "Refund #{usd(row.over_cents)}", url: finances_give_back_path(invoice), method: :post, params: { how: "refund" } %>
             <% else %>
-              <%= render "shared/button", text: row.lands_on ? "Refund after #{row.lands_on.strftime('%b %-d')}" : "Refund once paid", variant: "secondary", size: "small", type: :button, disabled: true %>
+              <%= render "shared/button", text: row.lands_on ? "Give back after #{row.lands_on.strftime('%b %-d')}" : "Give back once paid", variant: "secondary", size: "small", type: :button, disabled: true %>
             <% end %>
           </li>
         <% end %>

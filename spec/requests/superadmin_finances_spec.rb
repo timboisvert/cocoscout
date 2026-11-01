@@ -89,20 +89,20 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
                                        payment_method_type: "us_bank_account", payment_started_at: Time.zone.local(2026, 10, 31, 20), **month)
 
       get finances_path
-      expect(response.body).to include("Charged too much (2)", "SG-0004", "SG-0005", "A second bill for October", "Paid, so it can be refunded now",
-                                       "Its payment is still landing, about Nov 5", "Refund after Nov 5", "Plus what we owe back", "$159.00 owed back")
-      expect(response.body).not_to include("Refund all")
+      expect(response.body).to include("Charged too much (2)", "SG-0004", "SG-0005", "A second bill for October", "Paid, so it can be given back now",
+                                       "Its payment is still landing, about Nov 5", "Give back after Nov 5", "Credit next bill", "Plus what we owe back", "$159.00 owed back")
+      expect(response.body).not_to include("Refund all", "Credit all")
 
       allow(Stripe::Invoice).to receive(:retrieve).and_return(Stripe::Invoice.construct_from(id: "in_b", post_payment_credit_notes_amount: 0))
       allow(Stripe::Customer).to receive(:list_balance_transactions).and_return(double(auto_paging_each: []))
       expect(Stripe::CreditNote).to receive(:create).with(hash_including(invoice: "in_b", refund_amount: 15_900), anything)
                                                     .and_return(Stripe::CreditNote.construct_from(id: "cn_1"))
-      post finances_give_back_path(paid_twice)
+      post finances_give_back_path(paid_twice), params: { how: "refund" }
       expect(flash[:notice]).to include("Refunded $159.00", organization.name, "SG-0004")
       expect(paid_twice.reload.credit_notes_cents).to eq(15_900)
 
       post finances_give_back_path(landing)
-      expect(flash[:alert]).to include("can't be refunded yet", "still landing (about Nov 5)")
+      expect(flash[:alert]).to include("be given back yet", "still landing (about Nov 5)")
     end
 
     it "refunds every bill that can go now with one button" do
@@ -115,10 +115,31 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
                                amount_due_cents: 15_900, amount_paid_cents: 15_900, **month)
       end
       get finances_path
-      expect(response.body).to include("Refund all 2 ($318.00)")
-      expect { post finances_give_back_all_path }.to have_enqueued_job(UsageGiveBackJob).exactly(2).times
-      expect(UsageGiveBackJob).to have_been_enqueued.with(bills[1].id)
+      expect(response.body).to include("Refund all 2 ($318.00)", "Credit all 2")
+      expect { post finances_give_back_all_path, params: { how: "refund" } }.to have_enqueued_job(UsageGiveBackJob).exactly(2).times
+      expect(UsageGiveBackJob).to have_been_enqueued.with(bills[1].id, "refund")
       expect(flash[:notice]).to include("Refunding 2 bills ($318.00)")
+
+      expect { post finances_give_back_all_path, params: { how: "credit" } }.to have_enqueued_job(UsageGiveBackJob).with(bills[2].id, "credit")
+      expect(flash[:notice]).to include("Crediting 2 bills ($318.00)")
+    end
+
+    it "credits a bill that charged too much on the organization's next bills" do
+      allow(UsageRules).to receive(:staff).and_return({})
+      allow(UsageRules).to receive(:performers).and_return(organization.id => (1..53).index_with { Time.current })
+      organization.update!(stripe_customer_id: "cus_sg")
+      month = { period_start: Time.zone.local(2026, 9, 1), period_end: Time.zone.local(2026, 10, 1) }
+      september = BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_sep", number: "SG-0002", kind: "usage", status: "paid",
+                                         amount_due_cents: 20_100, amount_paid_cents: 20_100, paid_at: Time.current, **month)
+      allow(Stripe::Invoice).to receive(:retrieve).and_return(Stripe::Invoice.construct_from(id: "in_sep", post_payment_credit_notes_amount: 0))
+      allow(Stripe::Customer).to receive(:list_balance_transactions).and_return(double(auto_paging_each: []))
+      expect(Stripe::CreditNote).to receive(:create).with(hash_including(invoice: "in_sep", credit_amount: 4_200), anything)
+                                                    .and_return(Stripe::CreditNote.construct_from(id: "cn_c"))
+      post finances_give_back_path(september), params: { how: "credit" }
+      expect(flash[:notice]).to include("Credited $42.00", "next bills", "SG-0002")
+      expect(september.reload.credit_notes_cents).to eq(4_200)
+      # Credit we've given and no bill has used yet stays out of what's ours to withdraw.
+      expect(CocoScoutMoneyNow.new(check: nil).unused_credit_cents).to eq(4_200)
     end
 
     it "lists each organization's money, and one organization's in full" do
