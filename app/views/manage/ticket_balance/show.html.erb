@@ -152,6 +152,9 @@
             </div>
             <%= render "shared/button", text: "Add funds", variant: "secondary", size: "medium", type: :submit %>
           <% end %>
+          <% if (note = bank_debit_note(org)) %>
+            <p class="mt-2 text-xs text-gray-600"><%= note %></p>
+          <% end %>
           <% if @top_ups.any? %>
             <ul class="mt-4 divide-y divide-gray-100 text-sm">
               <% @top_ups.each do |top_up| %>

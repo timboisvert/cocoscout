@@ -117,7 +117,7 @@ class CocoScoutFinances
           [ "Pro bills paid with credit given earlier", adjustment_cents(kind: "pro", what: :credit, sign: :more) ],
           [ "Stripe's processing on those bills", processing[:pro] ]
         ] ],
-        [ :usage, "Usage ($3 a performer, $5 a staff member)", [
+        [ :usage, "Usage ($5 a staff member, $3 everyone else paid, $5 a bank debit past 2)", [
           [ "Usage bills paid", income["usage"] ],
           [ "Usage bills sent, not yet paid", unpaid_cents("usage") ],
           [ "Charged too much, owed back", adjustment_cents(kind: "usage", what: :owed_back) ],

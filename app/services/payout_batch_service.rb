@@ -268,7 +268,7 @@ class PayoutBatchService
       transfer_group: "org_#{org.id}",
       metadata: { payout_batch_id: batch.id, organization_id: org.id }
     }, { idempotency_key: "payout-run-funding-#{batch.id}-#{attempt}" })
-    batch.update!(status: "funding", funding_payment_intent_id: intent.id, funding_status: intent.status)
+    batch.update!(status: "funding", funding_payment_intent_id: intent.id, funding_status: intent.status, funding_started_at: Time.current)
     advance_funding!(batch, intent.status, funded_cents: intent.amount, at_submit: true)
     # The run is submitted — tell the org's chosen managers (who's being paid,
     # how much, expected deposit window). Async; no recipients chosen = no-op.

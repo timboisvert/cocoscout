@@ -39,7 +39,8 @@ class UsageOverbilling
       staff = UsageRules.staff(month, organization: organization).fetch(organization.id, {}).size
       performers = UsageRules.performers(month, organization: organization).fetch(organization.id, {}).size
       duplicate = duplicates.include?(invoice.id)
-      owed = duplicate ? 0 : staff * StaffBillingService::PER_ACTIVE_STAFF_CENTS + performers * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS
+      owed = duplicate ? 0 : staff * StaffBillingService::PER_ACTIVE_STAFF_CENTS + performers * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS +
+                             UsageRules.bank_debit_fee_cents(organization, month)
       Row.new(invoice: invoice, month: month, staff: staff, performers: performers, owed_cents: owed, duplicate: duplicate,
               charged_cents: invoice.status == "paid" ? invoice.amount_paid_cents : invoice.amount_due_cents,
               credited_cents: invoice.credit_notes_cents + invoice.balance_credited_cents)

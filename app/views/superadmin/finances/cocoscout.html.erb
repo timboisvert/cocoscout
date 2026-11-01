@@ -182,7 +182,7 @@
           <ul class="divide-y divide-gray-100 text-sm">
             <% m.usage_so_far.each do |row| %>
               <li class="flex justify-between gap-4 px-4 py-2">
-                <span class="text-gray-700"><%= row[:organization].name %> <span class="text-gray-500">· <%= pluralize(row[:performers], "performer") %>, <%= pluralize(row[:staff], "staff member") %></span></span>
+                <span class="text-gray-700"><%= row[:organization].name %> <span class="text-gray-500">· <%= pluralize(row[:staff], "staff member") %>, <%= row[:performers] %> others paid<%= ", #{pluralize(row[:extra_debits], 'extra bank debit')}" if row[:extra_debits].positive? %></span></span>
                 <span class="tabular-nums text-gray-900"><%= usd(row[:cents]) %></span>
               </li>
             <% end %>

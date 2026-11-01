@@ -1,0 +1,115 @@
+<%# Pro usage: what this month will cost so far, who's counted, the month's bank debits against the free ones, and the last six months with
+    their bills. From November 2026, everyone paid through CocoScout that month counts (UsageRules). locals: organization %>
+<% now = UsageMonth.new(organization) %>
+<% months = (1..5).map { |back| UsageMonth.new(organization, Date.current.beginning_of_month - back.months) } %>
+<% staff_price = number_to_currency(StaffBillingService::PER_ACTIVE_STAFF_CENTS / 100.0, precision: 0) %>
+<% other_price = number_to_currency(PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS / 100.0, precision: 0) %>
+<% debit_price = number_to_currency(UsageRules::EXTRA_BANK_DEBIT_CENTS / 100.0, precision: 0) %>
+
+<div class="mt-8 border-t border-gray-200 pt-6">
+  <div class="flex items-start justify-between gap-4 flex-wrap">
+    <div class="min-w-0">
+      <h4 class="text-base font-semibold text-gray-900">This month's usage</h4>
+      <p class="text-sm text-gray-500 mt-1 max-w-xl">
+        Each month you're charged for the people you pay through CocoScout: <%= staff_price %> for each staff member, <%= other_price %> for everyone else
+        (performers, contractors, guests), once each however many times you pay them. That's what paying them costs CocoScout with our payment provider.
+      </p>
+    </div>
+    <div class="text-right">
+      <div class="text-2xl font-semibold text-gray-900 tabular-nums"><%= number_to_currency(now.total_cents / 100.0) %></div>
+      <div class="text-xs text-gray-500">so far · billed <%= now.billed_on.strftime("%b %-d") %>, taken automatically</div>
+    </div>
+  </div>
+
+  <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+      <div class="text-xs text-gray-500 uppercase tracking-wider">Staff paid</div>
+      <div class="text-xl font-semibold text-gray-900 mt-1 tabular-nums"><%= now.staff.size %></div>
+      <div class="text-xs text-gray-500 mt-0.5"><%= number_to_currency(now.staff_cents / 100.0) %> at <%= staff_price %> each</div>
+    </div>
+    <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+      <div class="text-xs text-gray-500 uppercase tracking-wider">Everyone else paid</div>
+      <div class="text-xl font-semibold text-gray-900 mt-1 tabular-nums"><%= now.others.size %></div>
+      <div class="text-xs text-gray-500 mt-0.5"><%= number_to_currency(now.others_cents / 100.0) %> at <%= other_price %> each</div>
+    </div>
+    <div class="rounded-lg border <%= now.extra_debits.positive? ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-gray-50' %> p-4">
+      <div class="text-xs text-gray-500 uppercase tracking-wider">Bank debits</div>
+      <div class="text-xl font-semibold text-gray-900 mt-1 tabular-nums"><%= now.bank_debits.size %> <span class="text-sm font-normal text-gray-500">of <%= UsageRules::FREE_BANK_DEBITS %> free</span></div>
+      <div class="text-xs mt-0.5 <%= now.extra_debits.positive? ? 'text-amber-800' : 'text-gray-500' %>">
+        <% if now.extra_debits.positive? %>
+          <%= pluralize(now.extra_debits, "extra debit") %>: <%= number_to_currency(now.extra_debits_cents / 100.0) %>
+        <% elsif now.free_debits_left.positive? %>
+          <%= pluralize(now.free_debits_left, "free debit") %> left this month
+        <% else %>
+          Free ones used: the next is <%= debit_price %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <p class="mt-3 text-xs text-gray-500 max-w-xl">
+    A bank debit is a payout run you fund from your bank, or funds you add from your bank. Pro includes <%= UsageRules::FREE_BANK_DEBITS %> a month;
+    each one after that is <%= debit_price %> on your monthly bill. Funding bigger runs less often keeps it free.
+  </p>
+
+  <% if now.bank_debits.any? %>
+    <ul class="mt-3 divide-y divide-gray-100 border border-gray-200 rounded-lg text-sm">
+      <% now.bank_debits.each_with_index do |(at, what, cents), index| %>
+        <li class="flex justify-between gap-4 px-4 py-2">
+          <span class="text-gray-700"><%= at.strftime("%b %-d") %> · <%= what %>, <%= number_to_currency(cents.to_i / 100.0) %></span>
+          <span class="text-xs <%= index < UsageRules::FREE_BANK_DEBITS ? 'text-green-700' : 'text-amber-800' %>"><%= index < UsageRules::FREE_BANK_DEBITS ? "Free" : debit_price %></span>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+
+  <% if now.staff.any? || now.others.any? %>
+    <div class="mt-4 space-y-3">
+      <% [ [ "Staff counted this month", now.staff ], [ "Everyone else counted this month", now.others ] ].each do |title, people| %>
+        <% next if people.empty? %>
+        <div>
+          <div class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2"><%= title %></div>
+          <div class="flex flex-wrap gap-2">
+            <% people.each do |person| %>
+              <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-white border border-gray-200 text-sm text-gray-700"><%= person.name %></span>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <div class="mt-6 overflow-x-auto border border-gray-200 rounded-lg">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+        <tr>
+          <th class="text-left font-medium px-4 py-2">Month</th>
+          <th class="text-right font-medium px-4 py-2">Staff</th>
+          <th class="text-right font-medium px-4 py-2">Everyone else</th>
+          <th class="text-right font-medium px-4 py-2">Extra debits</th>
+          <th class="text-right font-medium px-4 py-2">Total</th>
+          <th class="text-left font-medium px-4 py-2">Bill</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% months.each do |m| %>
+          <tr>
+            <td class="px-4 py-2 text-gray-900"><%= m.month.strftime("%B %Y") %></td>
+            <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= m.staff.size %></td>
+            <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= m.others.size %></td>
+            <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= m.by_payment? ? m.extra_debits : "—" %></td>
+            <td class="px-4 py-2 text-right tabular-nums font-medium text-gray-900"><%= number_to_currency(m.total_cents / 100.0) %></td>
+            <td class="px-4 py-2 text-gray-700">
+              <% if (bill = m.bill) %>
+                <%= link_to bill.status_label, manage_billing_invoice_path(bill), target: "_blank", rel: "noopener", class: "#{bill.failed? ? 'text-red-600 font-medium' : 'text-pink-600'} hover:underline" %>
+              <% else %>
+                <span class="text-gray-400">No bill</span>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+    <p class="px-4 py-2 border-t border-gray-200 text-xs text-gray-500">Until October 2026, a month counted the people whose paid work happened in it; from November, the people you paid in it.</p>
+  </div>
+</div>

@@ -7,7 +7,8 @@
 # October 2026's scheduled-but-unpaid staff before the rule was fixed), and a
 # usage period that doesn't start on the 1st straddles two months. So when
 # Stripe drafts a usage bill (invoice.created, and Stripe holds the bill until
-# our webhook answers), the difference goes on it as one correction line.
+# our webhook answers), the difference goes on it as one correction line,
+# and bank debits beyond the month's free ones go on it as another.
 class UsageInvoiceCorrection
   PREFIX = "Correction:"
 
@@ -26,13 +27,31 @@ class UsageInvoiceCorrection
     expected = 0 if record.duplicate?
     on_bill = record.lines.sum { |line| line["amount_cents"].to_i }
     difference = expected - on_bill
+    add_bank_debit_fee!(record, organization, month) unless record.duplicate?
     return if difference.zero?
 
+    people = UsageRules.by_payment?(month) ? "#{staff} staff and #{performers} others paid" : "#{staff} staff and #{performers} performers paid"
     Stripe::InvoiceItem.create(
       { customer: organization.stripe_customer_id, invoice: record.stripe_invoice_id, amount: difference, currency: "usd",
-        description: "#{PREFIX} #{staff} staff and #{performers} performers paid through CocoScout in #{month.strftime('%B %Y')}",
+        description: "#{PREFIX} #{people} through CocoScout in #{month.strftime('%B %Y')}",
         metadata: { kind: "usage_correction", organization_id: organization.id, month: month.iso8601 } },
       { idempotency_key: "usage-correction-#{record.stripe_invoice_id}-#{difference}" }
+    )
+  end
+
+  # Bank debits beyond the free ones that month, at a flat fee each, as their
+  # own line on the month's usage bill.
+  def self.add_bank_debit_fee!(record, organization, month)
+    extra = UsageRules.extra_bank_debits(organization, month)
+    return if extra.zero?
+
+    Stripe::InvoiceItem.create(
+      { customer: organization.stripe_customer_id, invoice: record.stripe_invoice_id, currency: "usd",
+        amount: extra * UsageRules::EXTRA_BANK_DEBIT_CENTS,
+        description: "#{extra} bank #{extra == 1 ? 'debit' : 'debits'} beyond the #{UsageRules::FREE_BANK_DEBITS} free in #{month.strftime('%B %Y')}, " \
+                     "$#{UsageRules::EXTRA_BANK_DEBIT_CENTS / 100} each",
+        metadata: { kind: "bank_debit_fee", organization_id: organization.id, month: month.iso8601, debits: extra } },
+      { idempotency_key: "bank-debit-fee-#{record.stripe_invoice_id}-#{extra}" }
     )
   end
 

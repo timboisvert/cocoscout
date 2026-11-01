@@ -240,17 +240,23 @@ class CocoScoutMoneyNow
   end
 
   # Usage building up this month that no bill carries yet: each billed
-  # organization's performers and staff so far, at their prices.
+  # organization's people paid so far at their prices, and its bank debits
+  # beyond the free ones.
   def usage_so_far
     @usage_so_far ||= begin
       month = @now.to_date.beginning_of_month
       performers = PerformerActivation.for_month(month).group(:organization_id).count
       staff = StaffActivation.for_month(month).group(:organization_id).count
-      orgs = Organization.where(id: (performers.keys + staff.keys).uniq).select(&:bills_usage?)
+      range = UsageRules.range_for(month)
+      debiting = PayoutBatch.where.not(funding_payment_intent_id: nil).where("COALESCE(funding_started_at, created_at) BETWEEN ? AND ?", range.first, range.last)
+                            .distinct.pluck(:organization_id) +
+                 BalanceTopUp.where(created_at: range).where.not(stripe_payment_intent_id: nil).distinct.pluck(:organization_id)
+      orgs = Organization.where(id: (performers.keys + staff.keys + debiting).uniq).select(&:bills_usage?)
       rows = orgs.map do |org|
+        debits = UsageRules.extra_bank_debits(org, month)
         cents = performers[org.id].to_i * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS +
-                staff[org.id].to_i * StaffBillingService::PER_ACTIVE_STAFF_CENTS
-        { organization: org, performers: performers[org.id].to_i, staff: staff[org.id].to_i, cents: cents }
+                staff[org.id].to_i * StaffBillingService::PER_ACTIVE_STAFF_CENTS + debits * UsageRules::EXTRA_BANK_DEBIT_CENTS
+        { organization: org, performers: performers[org.id].to_i, staff: staff[org.id].to_i, extra_debits: debits, cents: cents }
       end
       rows.select { |row| row[:cents].positive? }.sort_by { |row| -row[:cents] }
     end
