@@ -29,6 +29,15 @@ module Superadmin
       end
     end
 
+    # One month in full, for the month-by-month table's panel: where its
+    # money came from and where it went. Loaded when the panel opens.
+    def month
+      @finances = CocoScoutFinances.new(params[:month].to_s, give_back: UsageOverbilling.all_rows)
+      return head :not_found unless @finances.period == params[:month].to_s
+
+      render partial: "superadmin/finances/month_detail", locals: { finances: @finances }
+    end
+
     # Give back one bill that charged too much (a second bill for a month, or
     # more than the month's paid work): refunded to the card or bank it was
     # paid from, or (how=credit) taken off the organization's next bills.
@@ -48,6 +57,31 @@ module Superadmin
       redirect_to finances_path, notice: note ? done : "Bill #{invoice.number} has already been given back."
     rescue Stripe::StripeError => e
       redirect_to finances_path, alert: "Giving back bill #{invoice.number} didn't go through: #{e.message}"
+    end
+
+    # Move money from CocoScout's own bank into its Stripe balance (a Stripe
+    # top-up), to cover what the organizations' balances are owed. A bank
+    # transfer, so it takes a few business days to become available; the
+    # books count it as soon as Stripe shows it, which the check run right
+    # after picks up.
+    ADD_FUNDS_MAX_CENTS = 1_000_000
+
+    def add_funds
+      cents = (params[:amount].to_s.delete("$,").to_d * 100).round.to_i
+      unless cents.between?(100, ADD_FUNDS_MAX_CENTS)
+        redirect_to finances_path, alert: "Add between $1 and #{helpers.usd(ADD_FUNDS_MAX_CENTS)}."
+        return
+      end
+
+      topup = Stripe::Topup.create(
+        { amount: cents, currency: "usd", description: "Added from CocoScout's bank by #{Current.user&.email_address}" },
+        { idempotency_key: "cocoscout-add-funds-#{Current.user&.id}-#{cents}-#{Time.current.strftime('%Y%m%d%H%M')}" }
+      )
+      PlatformCheckNowJob.perform_later
+      lands = topup["expected_availability_date"] ? Time.zone.at(topup["expected_availability_date"]).strftime("%b %-d") : "in a few business days"
+      redirect_to finances_path, notice: "Adding #{helpers.usd(cents)} from CocoScout's bank. Stripe expects it #{lands}; it counts toward the gap as soon as Stripe shows it (refresh in a minute)."
+    rescue Stripe::StripeError => e
+      redirect_to finances_path, alert: "Stripe didn't take the transfer: #{e.message} You can also add it in Stripe under Balances, Add to balance."
     end
 
     # Give back every bill that charged too much and can go now, the same way.

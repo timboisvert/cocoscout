@@ -16,12 +16,25 @@ class CocoScoutFinances
   attr_reader :period
 
   def initialize(period = "this_month", now: Time.current, give_back: nil)
-    @period = PERIODS.key?(period) ? period : "this_month"
+    # A named period, or one month ("2026-10").
+    @period = PERIODS.key?(period) || month_period?(period) ? period : "this_month"
     @now = now
     @give_back = give_back
   end
 
+  def month_period?(value) = value.to_s.match?(/\A\d{4}-(0[1-9]|1[0-2])\z/)
+
+  # "October 2026" for a month, else the period's name.
+  def label
+    month_period?(period) ? Date.strptime(period, "%Y-%m").strftime("%B %Y") : PERIODS.fetch(period)
+  end
+
   def range
+    if month_period?(period)
+      first = Date.strptime(period, "%Y-%m").in_time_zone.beginning_of_month
+      return @range ||= first..first.end_of_month
+    end
+
     @range ||= case period
     when "last_month" then (@now - 1.month).beginning_of_month..(@now - 1.month).end_of_month
     when "last_30_days" then (@now - 30.days)..@now

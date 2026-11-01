@@ -331,6 +331,8 @@ Rails.application.routes.draw do
     post   "/finances/stripe/opening_difference", to: "superadmin/finances#opening_difference", as: "finances_opening_difference"
     get    "/finances/statements/:id", to: "superadmin/finances#statement", as: "finances_statement"
     get    "/finances/invoices/:id", to: "superadmin/finances#invoice", as: "finances_invoice"
+    get    "/finances/months/:month", to: "superadmin/finances#month", as: "finances_month"
+    post   "/finances/add_funds", to: "superadmin/finances#add_funds", as: "finances_add_funds"
     post   "/finances/bills/give_back_all", to: "superadmin/finances#give_back_all", as: "finances_give_back_all"
     post   "/finances/bills/:id/give_back", to: "superadmin/finances#give_back", as: "finances_give_back"
     post   "/finances/orgs/:org_id/statements", to: "superadmin/finances#make_statement", as: "finances_make_statement"

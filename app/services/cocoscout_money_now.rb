@@ -92,6 +92,92 @@ class CocoScoutMoneyNow
     [ ours_in_stripe_cents - held_back_cents - withdrawable_cents, 0 ].max
   end
 
+  # -- Short: Stripe holds less than the organizations' balances add up to.
+
+  # How much less. Zero when it holds enough.
+  def short_cents
+    [ -ours_in_stripe_cents, 0 ].max
+  end
+
+  # Bills we're owed that are coming (on their way, or charging
+  # automatically), soonest first, with the day each should land.
+  Coming = Data.define(:invoice, :cents, :lands_on)
+
+  def coming_in
+    @coming_in ||= unpaid_bills.select { |bill| %i[collecting due].include?(bill.state) }.map do |bill|
+      invoice = bill.invoice
+      on = invoice.lands_on || invoice.next_payment_attempt_at&.to_date&.then { |day| business_days_after(day, BillingInvoice::BANK_DEBIT_BUSINESS_DAYS) } ||
+           invoice.due_at&.to_date
+      Coming.new(invoice: invoice, cents: owed(invoice), lands_on: on)
+    end.sort_by { |row| row.lands_on || Date.new(9999) }
+  end
+
+  def coming_in_cents
+    coming_in.sum(&:cents)
+  end
+
+  # Still short once everything coming in has landed.
+  def short_after_coming_cents
+    [ short_cents - coming_in_cents, 0 ].max
+  end
+
+  # The day the last of it lands, when they all say.
+  def coming_in_by
+    days = coming_in.map(&:lands_on)
+    days.all? ? days.max : nil
+  end
+
+  # What a ticket has left CocoScout lately, after Stripe's processing: the
+  # last 90 days of ticket fees, processing buyers paid, refunds, and
+  # Stripe's processing on tickets, over the tickets sold. Nil without sales.
+  def per_ticket_cents
+    @per_ticket_cents ||= begin
+      recent = CocoScoutLedgerEntry.where(occurred_at: (@now - 90.days)..@now)
+      income = recent.where(entry_type: %w[ticket_fee ticket_processing ticket_refund]).sum(:amount_cents)
+      cost = recent.where(entry_type: "processing_cost", source_type: %w[TicketOrder TicketPassHolding]).sum(:amount_cents)
+      tickets = recent.where(entry_type: "ticket_fee").sum(:amount_cents) / TicketPricing::PLATFORM_FEE_CENTS
+      net = income + cost
+      tickets.positive? && net.positive? ? net / tickets.to_f : nil
+    end
+  end
+
+  # About how many more tickets close what's left.
+  def tickets_to_close(cents = short_after_coming_cents)
+    return nil unless per_ticket_cents && cents.positive?
+
+    (cents / per_ticket_cents).ceil
+  end
+
+  # This month's usage, billed on the 1st and taken from the banks on file:
+  # about when it lands.
+  def usage_lands_on
+    business_days_after(@now.to_date.next_month.beginning_of_month, BillingInvoice::BANK_DEBIT_BUSINESS_DAYS)
+  end
+
+  # What to add from CocoScout's bank to be even today, or once what's
+  # coming has landed: whole dollars.
+  def suggested_add_cents(after_coming: true)
+    cents = after_coming ? short_after_coming_cents : short_cents
+    (cents / 100.0).ceil * 100
+  end
+
+  # An organization's next bill from us, so a credit has somewhere to go:
+  # its usage on the 1st (and what's built up so far), or its Pro renewal.
+  # Nil when nothing is coming, and a credit would only sit there.
+  def next_bill_for(organization)
+    if organization.bills_usage?
+      so_far = usage_so_far.find { |row| row[:organization].id == organization.id }&.dig(:cents).to_i
+      { on: @now.to_date.next_month.beginning_of_month, what: "usage", so_far_cents: so_far }
+    elsif !organization.comped? && organization.subscription_status.in?(SubscriptionSyncService::ACCESS_STATUSES) && organization.subscription_current_period_end
+      { on: organization.subscription_current_period_end.to_date, what: "Pro plan", so_far_cents: nil }
+    end
+  end
+
+  # Money CocoScout added from its bank that Stripe hasn't made available yet.
+  def adding_from_bank
+    StripeBalanceTransaction.where(category: "added_from_bank", status: "pending").order(:occurred_at)
+  end
+
   # Every bill not yet paid, oldest first, with where it stands:
   #   :duplicate   bills a month another bill already carries: void it
   #   :late        payment failed, or unpaid more than LATE_AFTER with
@@ -172,6 +258,11 @@ class CocoScoutMoneyNow
 
   def usage_so_far_cents
     usage_so_far.sum { |row| row[:cents] }
+  end
+
+  def business_days_after(day, count)
+    count.times { day = day.next_day; day = day.next_day while day.saturday? || day.sunday? }
+    day
   end
 
   # Every bill in a period, newest first: did each organization pay?

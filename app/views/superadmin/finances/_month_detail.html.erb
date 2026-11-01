@@ -1,0 +1,14 @@
+<%# Where one month's money came from and went: each stream's lines, then who paid us. locals: finances (CocoScoutFinances for one month) %>
+<%= turbo_frame_tag "month-detail-#{finances.period}" do %>
+  <h4 class="mt-5 text-sm font-semibold text-gray-900">Where it came from and where it went</h4>
+  <%= render "superadmin/finances/streams", finances: finances, columns: 1 %>
+  <% payers = finances.by_organization %>
+  <% if payers.any? %>
+    <h4 class="mt-5 text-sm font-semibold text-gray-900">Who paid us in <%= finances.label.split.first %></h4>
+    <ul class="mt-2 divide-y divide-gray-100 rounded-lg border border-gray-200 text-sm">
+      <% payers.each do |org, cents| %>
+        <li class="flex justify-between gap-4 px-3 py-2"><span class="text-gray-900"><%= org.name %></span><span class="tabular-nums text-gray-900"><%= usd(cents) %></span></li>
+      <% end %>
+    </ul>
+  <% end %>
+<% end %>

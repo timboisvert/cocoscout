@@ -20,7 +20,7 @@
       <div class="text-sm text-gray-600">Ready to withdraw</div>
       <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(m.withdrawable_cents) %></div>
       <p class="text-xs text-gray-500 mt-1">
-        <% if m.stripe_available_cents.nil? %>Stripe hasn't told us its available balance yet<% else %>Ours, and available in Stripe today<% end %>
+        <% if m.stripe_available_cents.nil? %>Stripe hasn't told us its available balance yet<% elsif m.short_cents.positive? %>Nothing until the <%= usd(m.short_cents) %> we're short is back (Where our profit is)<% else %>Ours, and available in Stripe today<% end %>
       </p>
     </div>
     <div class="rounded-lg border <%= m.arriving_cents.positive? ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-white' %> p-4">
@@ -109,7 +109,17 @@
         <% if ours.negative? %>
           <div class="px-4 py-3 bg-amber-50">
             <div class="flex justify-between gap-4 font-semibold text-amber-900"><span>CocoScout is short</span><span class="tabular-nums"><%= usd(-ours) %></span></div>
-            <p class="text-xs text-amber-800 mt-1">Our bank has that much more than we've collected, so it's holding some of the organizations' money. <%= m.not_collected_cents.positive? ? "Bills being paid close the gap first; leave" : "Leave" %> the next <%= usd(-ours) %> we collect in Stripe.</p>
+            <p class="text-xs text-amber-800 mt-1">
+              Our bank holds some of the organizations' money.
+              <% if m.coming_in_cents.positive? %>
+                <%= usd([ m.coming_in_cents, m.short_cents ].min) %> of it is coming in<%= " by #{m.coming_in_by.strftime('%b %-d')}" if m.coming_in_by %><%= m.short_after_coming_cents.positive? ? ", leaving #{usd(m.short_after_coming_cents)}" : ", which covers it" %>.
+              <% end %>
+            </p>
+            <div class="mt-2">
+              <%= render "shared/button", text: "What to do about it", variant: "secondary", size: "small", type: :button,
+                    data: { controller: "modal", action: "click->modal#open", modal_id: "short-plan" } %>
+            </div>
+            <%= render "superadmin/finances/short_modal", id: "short-plan", money: m, check: @check %>
           </div>
         <% else %>
           <div class="px-4 py-3 bg-gray-50">
@@ -195,16 +205,14 @@
         <% if ready.size > 1 %>
           <% total = usd(ready.sum(&:over_cents)) %>
           <% names = ready.map { |r| r.invoice.organization.name }.uniq.to_sentence %>
-          <%= render "shared/button", text: "Credit all #{ready.size}", variant: "secondary", size: "small", type: :button,
+          <%= render "shared/button", text: "Credit all #{ready.size} (#{total})", variant: "primary", size: "small", type: :button,
                 data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-credit-all" } %>
           <%= render "shared/confirm_modal", id: "confirm-credit-all", title: "Credit #{ready.size} bills?",
                 message: "#{total} comes off #{names}'s next bills. They each get a credit note from Stripe saying why.",
                 confirm_text: "Credit all #{ready.size}", url: finances_give_back_all_path, method: :post, params: { how: "credit" } %>
-          <%= render "shared/button", text: "Refund all #{ready.size} (#{total})", variant: "primary", size: "small", type: :button,
+          <%= render "shared/button", text: "Refund all #{ready.size}", variant: "secondary", size: "small", type: :button,
                 data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-give-back-all" } %>
-          <%= render "shared/confirm_modal", id: "confirm-give-back-all", title: "Refund #{ready.size} bills?",
-                message: "#{total} goes back to #{names}, each to the card or bank its bill was paid from. They each get a credit note from Stripe saying why.",
-                confirm_text: "Refund all #{ready.size}", url: finances_give_back_all_path, method: :post, params: { how: "refund" } %>
+          <%= render "superadmin/finances/give_back_modal", id: "confirm-give-back-all", rows: ready, money: @money_now, url: finances_give_back_all_path %>
         <% end %>
       </div>
       <ul class="divide-y divide-gray-100 text-sm">
@@ -235,17 +243,15 @@
             <span class="tabular-nums font-semibold text-gray-900"><%= usd(row.over_cents) %></span>
             <% if row.refundable_now? %>
               <% credit_id = "confirm-credit-#{invoice.id}" %>
-              <%= render "shared/button", text: "Credit next bill", variant: "secondary", size: "small", type: :button,
+              <%= render "shared/button", text: "Credit next bill", variant: "primary", size: "small", type: :button,
                     data: { controller: "modal", action: "click->modal#open", modal_id: credit_id } %>
               <%= render "shared/confirm_modal", id: credit_id, title: "Credit #{usd(row.over_cents)}?",
                     message: "#{usd(row.over_cents)} comes off #{invoice.organization.name}'s next bills, for bill #{invoice.number}. They get a credit note from Stripe saying why.",
                     confirm_text: "Credit #{usd(row.over_cents)}", url: finances_give_back_path(invoice), method: :post, params: { how: "credit" } %>
               <% cid = "confirm-give-back-#{invoice.id}" %>
-              <%= render "shared/button", text: "Refund", variant: "primary", size: "small", type: :button,
+              <%= render "shared/button", text: "Refund", variant: "secondary", size: "small", type: :button,
                     data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
-              <%= render "shared/confirm_modal", id: cid, title: "Refund #{usd(row.over_cents)}?",
-                    message: "#{usd(row.over_cents)} goes back to #{invoice.organization.name} on bill #{invoice.number}, to the card or bank it was paid from. They get a credit note from Stripe saying why.",
-                    confirm_text: "Refund #{usd(row.over_cents)}", url: finances_give_back_path(invoice), method: :post, params: { how: "refund" } %>
+              <%= render "superadmin/finances/give_back_modal", id: cid, rows: [ row ], money: @money_now, url: finances_give_back_path(invoice) %>
             <% else %>
               <%= render "shared/button", text: row.lands_on ? "Give back after #{row.lands_on.strftime('%b %-d')}" : "Give back once paid", variant: "secondary", size: "small", type: :button, disabled: true %>
             <% end %>
@@ -260,6 +266,9 @@
     <% CocoScoutFinances::PERIODS.each do |value, label| %>
       <%= link_to label, finances_path(period: value),
             class: "px-3 py-1.5 text-sm font-medium rounded-full #{@finances.period == value ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}" %>
+    <% end %>
+    <% unless CocoScoutFinances::PERIODS.key?(@finances.period) %>
+      <span class="px-3 py-1.5 text-sm font-medium rounded-full bg-pink-500 text-white"><%= @finances.label %></span>
     <% end %>
     <span class="flex-1"></span>
     <%= render "shared/button", text: "Download for the CPA", variant: "secondary", size: "small", path: finances_path(period: @finances.period, format: :csv) %>
@@ -291,31 +300,7 @@
   </div>
 
   <%# Each stream's earnings beside what Stripe charged to bring them in. %>
-  <% streams = @finances.streams %>
-  <% if streams.empty? %>
-    <p class="mt-4 text-sm text-gray-500">Nothing earned or spent in this period.</p>
-  <% else %>
-    <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <% streams.each do |stream| %>
-        <div class="rounded-lg border border-gray-200 bg-white">
-          <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900"><%= stream[:name] %></h2>
-          <dl class="divide-y divide-gray-100 text-sm">
-            <% stream[:lines].each do |label, cents| %>
-              <div class="flex justify-between gap-4 px-4 py-2">
-                <dt class="text-gray-700"><%= label %></dt>
-                <dd class="tabular-nums <%= cents.negative? ? 'text-gray-600' : 'text-gray-900' %>"><%= cents.negative? ? "less #{usd(-cents)}" : usd(cents) %></dd>
-              </div>
-            <% end %>
-            <% kept = stream[:net_cents] %>
-            <div class="flex justify-between gap-4 px-4 py-2 bg-gray-50 font-semibold">
-              <dt class="text-gray-900"><%= kept.negative? ? "Cost us" : "We kept" %></dt>
-              <dd class="tabular-nums text-gray-900"><%= usd(kept.abs) %></dd>
-            </div>
-          </dl>
-        </div>
-      <% end %>
-    </div>
-  <% end %>
+  <%= render "superadmin/finances/streams", finances: @finances %>
 
   <%# Month by month: the twelve months, the current one so far. %>
   <div class="mt-4 rounded-lg border border-gray-200 bg-white overflow-x-auto">
@@ -332,8 +317,13 @@
       </thead>
       <tbody class="divide-y divide-gray-100">
         <% @monthly.each do |row| %>
-          <tr>
-            <td class="px-4 py-2 text-gray-900"><%= row[:month].strftime("%B %Y") %><%= " (so far)" if row[:partial] %></td>
+          <% busy = row[:earned_cents].nonzero? || row[:spent_cents].nonzero? %>
+          <tr class="<%= 'cursor-pointer hover:bg-pink-50' if busy %>"
+              <% if busy %>data-controller="modal" data-action="click->modal#open" data-modal-id="month-<%= row[:month].strftime('%Y-%m') %>"<% end %>>
+            <td class="px-4 py-2 text-gray-900">
+              <%= row[:month].strftime("%B %Y") %><%= " (so far)" if row[:partial] %>
+              <% if busy %><span class="ml-1 text-xs text-pink-600">where it came from and went</span><% end %>
+            </td>
             <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= number_with_delimiter(row[:tickets]) %></td>
             <td class="px-4 py-2 text-right tabular-nums text-gray-700">
               <%= usd(row[:earned_cents]) %>
@@ -357,8 +347,12 @@
         </tr>
       </tfoot>
     </table>
-    <p class="px-4 py-2 border-t border-gray-200 text-xs text-gray-500">Each month counts what it earned and what it cost, whenever the money moved: a usage bill is the month it covers, and Stripe's monthly fees are the month they're for.</p>
+    <p class="px-4 py-2 border-t border-gray-200 text-xs text-gray-500">Each month counts what it earned and what it cost, whenever the money moved: a usage bill is the month it covers, and Stripe's monthly fees are the month they're for. Click a month to see where its money came from and went.</p>
   </div>
+  <% @monthly.each do |row| %>
+    <% next unless row[:earned_cents].nonzero? || row[:spent_cents].nonzero? %>
+    <%= render "superadmin/finances/month_modal", month: row[:month], row: row %>
+  <% end %>
 
   <%# Did they pay? Every bill sent in the period. %>
   <% period_bills = CocoScoutMoneyNow.bills_in(@finances.range).to_a %>
