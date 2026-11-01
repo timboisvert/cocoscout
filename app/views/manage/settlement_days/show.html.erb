@@ -1,8 +1,10 @@
 <% content_for :title, "Settle up · #{@date.strftime('%a, %b %-d')}" %>
 <%
   money = ->(cents) { cents.negative? ? "−#{number_to_currency(-cents / 100.0)}" : number_to_currency(cents / 100.0) }
-  can_change = module_change?(:settle_up)
   day = @day
+  # A day before the organization's Settle up start date is history: shown,
+  # never changed here (SettleUpStart).
+  can_change = module_change?(:settle_up) && !day.before_start?
   record = day.record
   tiles = [
     [ "Tickets", money.call(day.shows.sum(&:tickets_cents)), "text-gray-900" ],
@@ -49,6 +51,7 @@
         <div class="flex flex-wrap gap-3 text-[11px] text-gray-500 -mt-6 px-1">
           <span class="inline-flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full bg-green-500"></span>settled</span>
           <span class="inline-flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-500"></span>to settle</span>
+          <span class="inline-flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full bg-gray-300"></span>before Settle up</span>
           <span>blank: nothing that day</span>
         </div>
       </div>
@@ -60,7 +63,13 @@
     <% end %>
   </div>
 
-  <% if day.settled? %>
+  <% if day.before_start? %>
+    <%= render "shared/alert_panel",
+          eyebrow: "Before Settle up",
+          headline: "#{@date.strftime('%A, %B %-d')} is before Settle up started",
+          body: "Settle up starts on #{Current.organization.settle_up_starts_on.strftime('%B %-d, %Y')}. Days before it stay as they were: their money is on the books from each show's Financials, and nothing here needs doing.",
+          actions: (module_change?(:settle_up) ? [ { text: "Change the start date", variant: "secondary", path: manage_money_settings_section_path(section: "settle_up") } ] : []) %>
+  <% elsif day.settled? %>
     <%= render "shared/alert_panel",
           eyebrow: "Settled",
           headline: "#{@date.strftime('%A, %B %-d')} is settled",
@@ -84,7 +93,7 @@
         <% end %>
       </p>
     </div>
-    <% if day.any? && !day.settled? %>
+    <% if day.any? && !day.settled? && !day.before_start? %>
       <div class="flex items-center gap-3">
         <span class="text-sm text-gray-600"><%= day.checked_count %> of <%= day.pieces.size %> checked</span>
         <% if can_change %>
