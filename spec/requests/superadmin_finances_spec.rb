@@ -26,7 +26,7 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
                                      held_for_orgs_cents: 130_985, cocoscout_cents: -30_985, imported_net_cents: 100_000, difference_cents: 0)
       CocoScoutLedgerEntry.create!(entry_type: "funding_cost", amount_cents: -50_000, occurred_at: Time.current)
       get finances_path
-      expect(response.body).to include("CocoScout is short", "Leave the next $500.00 of profit in Stripe", "$1,309.85 of it held for organizations",
+      expect(response.body).to include("CocoScout is short", "Leave the next $500.00 we collect in Stripe", "$1,309.85 of it held for organizations",
                                        "Spent more than earned", "$500.00 spent against $0.00 earned")
       expect(response.body).not_to include("-$309.85", "-$500.00", "theater")
     end
@@ -51,6 +51,8 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
       # Profit $120 (the paid Pro bill counts), $50 already at the bank: $70 ours; Stripe has $120 available.
       expect(body).to include("Ready to withdraw", "Profit since we started", "$120.00", "already gone to our bank", "Ours, still in Stripe")
       expect(body).to include("$70.00 ready to withdraw, $0.00 still arriving", "Pro bills paid")
+      # The late bill is earned, just not collected: $162 profit, $42 of it still to collect.
+      expect(body).to include("$162.00", "Less bills sent, not collected yet", "Since we started")
       expect(body).to include("Owed to us", "Late", late.title, "$42.00", "Bills not yet paid")
       expect(body).to include("Tickets", "50¢ ticket fees (300 tickets)", "$150.00", "card processing on tickets", "less $80.00", "We kept", "$160.00")
       expect(body).to include("Running CocoScout", "Stripe: Connect: Active Accounts", "Cost us", "$60.00")

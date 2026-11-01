@@ -59,6 +59,37 @@ class BillingInvoice < ApplicationRecord
     label
   end
 
+  # When CocoScout earned it: a usage bill on the last day of the month it
+  # covers (October's usage is October's money, however late it's paid), a
+  # plan bill when its period starts. Paid or not: collecting it is a
+  # separate question.
+  def earned_at
+    if kind == "usage" && (month = covered_month)
+      month.end_of_month.in_time_zone.change(hour: 12)
+    else
+      period_start || finalized_at || paid_at || created_at
+    end
+  end
+
+  # Sent, not paid, and still owed: what CocoScout has earned but not yet
+  # collected. Drafts aren't sent; void bills are gone.
+  def self.earned_unpaid
+    where(status: %w[open uncollectible]).where.not(id: duplicate_ids)
+  end
+
+  # Usage bills that bill a month another bill already carries (an org with
+  # two usage subscriptions gets one bill from each): every live usage bill
+  # for an org and month after the first.
+  def self.duplicate_ids
+    where(kind: "usage").where.not(status: "void").order(:id).to_a
+                        .group_by { |bill| [ bill.organization_id, bill.covered_month ] }
+                        .flat_map { |(_, month), bills| month ? bills.drop(1).map(&:id) : [] }
+  end
+
+  def duplicate?
+    self.class.duplicate_ids.include?(id)
+  end
+
   # The day Stripe billed it.
   def billed_on
     (finalized_at || period_end)&.to_date

@@ -27,8 +27,15 @@ class OrgStatementBuilder
   def self.totals(organization, month)
     month = month.to_date.beginning_of_month
     range = month.in_time_zone.beginning_of_day...month.next_month.in_time_zone.beginning_of_day
-    paid = CocoScoutLedgerEntry.where(organization: organization, occurred_at: range, entry_type: CocoScoutLedgerEntry.types_in(:income))
+    # What it paid this month: CocoScout's ledger dates a bill to the month it
+    # covers (that's when CocoScout earned it), so bills come from the day
+    # they were paid instead.
+    paid = CocoScoutLedgerEntry.where(organization: organization, occurred_at: range, entry_type: CocoScoutLedgerEntry.types_in(:income) - %w[subscription usage])
                                .group(:entry_type).sum(:amount_cents)
+    BillingInvoice.where(organization: organization, status: "paid", paid_at: range).group(:kind).sum(:amount_paid_cents).each do |kind, cents|
+      type = kind == "usage" ? "usage" : "subscription"
+      paid[type] = paid[type].to_i + cents
+    end
     orders = TicketOrder.where(organization: organization, money_path: "cocoscout", exchanged_from_id: nil, paid_at: range).where("total_cents > 0")
     cash = OrgCashEntry.where(organization: organization)
     moved = cash.where(occurred_at: range).group(:entry_type).sum(:amount_cents)

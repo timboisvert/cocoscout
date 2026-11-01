@@ -48,16 +48,50 @@
       <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Where our profit is</h2>
       <dl class="divide-y divide-gray-100 text-sm">
         <div class="flex justify-between gap-4 px-4 py-2">
-          <dt class="text-gray-700"><%= m.profit_cents.negative? ? "Lost since we started" : "Profit since we started" %></dt><dd class="tabular-nums text-gray-900"><%= usd(m.profit_cents.abs) %></dd>
+          <dt class="text-gray-700"><%= m.profit_cents.negative? ? "Lost since we started" : "Profit since we started" %><p class="text-xs text-gray-500">Earned less spent, counting every bill we've sent; month by month below</p></dt>
+          <dd class="tabular-nums text-gray-900"><%= usd(m.profit_cents.abs) %></dd>
         </div>
-        <div class="flex justify-between gap-4 px-4 py-2">
-          <dt class="text-gray-700">Less what's already gone to our bank</dt><dd class="tabular-nums text-gray-900"><%= usd(m.sent_to_bank_cents) %></dd>
-        </div>
-        <% if m.paid_by_hand_cents.nonzero? %>
+        <% if m.not_collected_cents.nonzero? %>
           <div class="flex justify-between gap-4 px-4 py-2">
-            <dt class="text-gray-700">Plus organizations we paid from our bank<p class="text-xs text-gray-500">Their balances gave that money up; it stayed in Stripe as ours</p></dt>
-            <dd class="tabular-nums text-gray-900"><%= usd(m.paid_by_hand_cents) %></dd>
+            <dt class="text-gray-700">Less bills sent, not collected yet<p class="text-xs text-gray-500">Earned, but not in Stripe until they're paid (Owed to us)</p></dt>
+            <dd class="tabular-nums text-gray-900"><%= usd(m.not_collected_cents) %></dd>
           </div>
+        <% end %>
+        <% moves = m.bank_moves.to_a %>
+        <details class="group">
+          <summary class="flex justify-between gap-4 px-4 py-2 cursor-pointer hover:bg-gray-50">
+            <span class="text-gray-700">Less what's already gone to our bank <span class="text-xs text-pink-600 group-open:hidden">which and when</span></span>
+            <span class="tabular-nums text-gray-900"><%= usd(m.sent_to_bank_cents) %></span>
+          </summary>
+          <% if moves.empty? %>
+            <p class="px-4 pb-2 text-xs text-gray-500">Nothing yet.</p>
+          <% else %>
+            <ul class="px-4 pb-2 text-xs text-gray-600 divide-y divide-gray-100">
+              <% moves.each do |entry| %>
+                <li class="flex justify-between gap-4 py-1">
+                  <span><%= entry.occurred_at.strftime("%b %-d, %Y") %> · <%= entry.label %><%= " (#{entry.description})" if entry.description.present? && entry.description != entry.label %></span>
+                  <span class="tabular-nums"><%= usd(entry.amount_cents.abs) %></span>
+                </li>
+              <% end %>
+            </ul>
+          <% end %>
+        </details>
+        <% if m.paid_by_hand_cents.nonzero? %>
+          <details class="group">
+            <summary class="flex justify-between gap-4 px-4 py-2 cursor-pointer hover:bg-gray-50">
+              <span class="text-gray-700">Plus organizations we paid from our bank <span class="text-xs text-pink-600 group-open:hidden">which and when</span>
+                <span class="block text-xs text-gray-500">We paid them from our bank; their balances gave that money up and it stayed in Stripe as ours, so part of what went to our bank paid us back</span></span>
+              <span class="tabular-nums text-gray-900"><%= usd(m.paid_by_hand_cents) %></span>
+            </summary>
+            <ul class="px-4 pb-2 text-xs text-gray-600 divide-y divide-gray-100">
+              <% m.bank_moves(by_hand: true).each do |entry| %>
+                <li class="flex justify-between gap-4 py-1">
+                  <span><%= entry.occurred_at.strftime("%b %-d, %Y") %> · <%= entry.organization&.name || entry.description %></span>
+                  <span class="tabular-nums"><%= usd(entry.amount_cents) %></span>
+                </li>
+              <% end %>
+            </ul>
+          </details>
         <% end %>
         <% if m.adjustments_cents.nonzero? %>
           <div class="flex justify-between gap-4 px-4 py-2">
@@ -69,7 +103,7 @@
         <% if ours.negative? %>
           <div class="px-4 py-3 bg-amber-50">
             <div class="flex justify-between gap-4 font-semibold text-amber-900"><span>CocoScout is short</span><span class="tabular-nums"><%= usd(-ours) %></span></div>
-            <p class="text-xs text-amber-800 mt-1">We've sent our bank that much more than our profit, so our bank is holding some of the organizations' money. Leave the next <%= usd(-ours) %> of profit in Stripe to close the gap.</p>
+            <p class="text-xs text-amber-800 mt-1">Our bank has that much more than we've collected, so it's holding some of the organizations' money. <%= m.not_collected_cents.positive? ? "Bills being paid close the gap first; leave" : "Leave" %> the next <%= usd(-ours) %> we collect in Stripe.</p>
           </div>
         <% else %>
           <div class="px-4 py-3 bg-gray-50">
@@ -89,7 +123,7 @@
     <%# Owed to us: every bill not yet paid, worst first. %>
     <div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Owed to us</h2>
-      <% bills = m.unpaid_bills.sort_by { |bill| [ %i[late collecting due].index(bill.state), -bill.days_old ] } %>
+      <% bills = m.unpaid_bills.sort_by { |bill| [ %i[duplicate late collecting due].index(bill.state), -bill.days_old ] } %>
       <% if bills.empty? %>
         <p class="px-4 py-3 text-sm text-gray-500">Every bill is paid.</p>
       <% else %>
@@ -105,7 +139,8 @@
                 <span class="tabular-nums font-medium text-gray-900"><%= usd(m.owed(invoice)) %></span>
               </div>
               <div class="mt-0.5 flex flex-wrap items-center gap-2 text-xs">
-                <% if bill.state == :late %><span class="inline-flex rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-red-700">Late</span>
+                <% if bill.state == :duplicate %><span class="inline-flex rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-red-700">Billed twice</span>
+                <% elsif bill.state == :late %><span class="inline-flex rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-red-700">Late</span>
                 <% elsif bill.state == :collecting %><span class="inline-flex rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-blue-700">On its way</span>
                 <% else %><span class="inline-flex rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-gray-600">Due</span>
                 <% end %>
@@ -114,6 +149,9 @@
                   · billed <%= (invoice.finalized_at || invoice.created_at).strftime("%b %-d") %><%= " (#{pluralize(bill.days_old, 'day')} ago)" if bill.days_old.positive? %>
                   <%= "· #{invoice.failure_message}" if invoice.failure_message.present? %>
                 </span>
+                <% if bill.state == :duplicate %>
+                  <span class="basis-full text-red-700">Another bill already charges this month. Void this one in Stripe; it isn't counted as owed.</span>
+                <% end %>
               </div>
             </li>
           <% end %>
@@ -172,12 +210,6 @@
       </div>
     <% end %>
   </div>
-  <% if @finances.early_in_month? %>
-    <p class="mt-2 text-xs text-gray-500 max-w-3xl">
-      <%= Date.current.strftime("%B") %> is only <%= pluralize(Date.current.day, "day") %> old. Stripe charges its monthly fees for last month in the first days, before most of this month's earnings come in.
-      <%= link_to "Last month", finances_path(period: "last_month"), class: "text-pink-600 hover:underline" %> is the whole picture.
-    </p>
-  <% end %>
 
   <%# Each stream's earnings beside what Stripe charged to bring them in. %>
   <% streams = @finances.streams %>
@@ -224,7 +256,10 @@
           <tr>
             <td class="px-4 py-2 text-gray-900"><%= row[:month].strftime("%B %Y") %><%= " (so far)" if row[:partial] %></td>
             <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= number_with_delimiter(row[:tickets]) %></td>
-            <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= usd(row[:earned_cents]) %></td>
+            <td class="px-4 py-2 text-right tabular-nums text-gray-700">
+              <%= usd(row[:earned_cents]) %>
+              <% if row[:unpaid_cents].positive? %><div class="text-xs text-gray-500"><%= usd(row[:unpaid_cents]) %> not paid yet</div><% end %>
+            </td>
             <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= usd(row[:spent_cents]) %></td>
             <td class="px-4 py-2 text-right tabular-nums font-medium <%= row[:kept_cents].negative? ? 'text-amber-700' : 'text-gray-900' %>">
               <%= row[:kept_cents].negative? ? "lost #{usd(-row[:kept_cents])}" : usd(row[:kept_cents]) %>
@@ -232,7 +267,18 @@
           </tr>
         <% end %>
       </tbody>
+      <% total = @monthly.sum { |row| row[:kept_cents] } %>
+      <tfoot class="border-t border-gray-200 bg-gray-50 font-semibold">
+        <tr>
+          <td class="px-4 py-2 text-gray-900">Since we started</td>
+          <td class="px-4 py-2 text-right tabular-nums text-gray-900"><%= number_with_delimiter(@monthly.sum { |row| row[:tickets] }) %></td>
+          <td class="px-4 py-2 text-right tabular-nums text-gray-900"><%= usd(@monthly.sum { |row| row[:earned_cents] }) %></td>
+          <td class="px-4 py-2 text-right tabular-nums text-gray-900"><%= usd(@monthly.sum { |row| row[:spent_cents] }) %></td>
+          <td class="px-4 py-2 text-right tabular-nums <%= total.negative? ? 'text-amber-700' : 'text-gray-900' %>"><%= total.negative? ? "lost #{usd(-total)}" : usd(total) %></td>
+        </tr>
+      </tfoot>
     </table>
+    <p class="px-4 py-2 border-t border-gray-200 text-xs text-gray-500">Each month counts what it earned and what it cost, whenever the money moved: a usage bill is the month it covers, and Stripe's monthly fees are the month they're for.</p>
   </div>
 
   <%# Did they pay? Every bill sent in the period. %>

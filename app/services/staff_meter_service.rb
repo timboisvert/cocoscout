@@ -53,6 +53,14 @@ module StaffMeterService
   # invoices, regardless of whether the Pro plan is monthly or annual. Created
   # once, lazily, on the first metered event. Best-effort: returns the
   # subscription id or nil (usage still records on the customer either way).
+  #
+  # Exactly one, ever: every activation reports in its own job, so a show that
+  # makes ten people billable runs ten jobs at once, and each used to find no
+  # subscription and make one. Stripe's meter counts per customer, so every
+  # extra subscription billed the whole month again (Stars & Garters got three
+  # October bills). Now the org row is locked while we look, a usage
+  # subscription Stripe already has is taken rather than duplicated, and the
+  # create carries an idempotency key.
   def ensure_staffing_subscription!(org)
     return org.staffing_subscription_id if org.staffing_subscription_id.present?
     return nil unless org.bills_usage?
@@ -60,20 +68,35 @@ module StaffMeterService
     items = SubscriptionPlan.staffing_subscription_items
     return nil if items.nil? || org.stripe_customer_id.blank?
 
-    # Bills calendar months (the 1st to the end of the month), the same months
-    # the Billing page counts, so a bill matches the table.
-    subscription = Stripe::Subscription.create(
-      customer: org.stripe_customer_id,
-      items: items,
-      metadata: { organization_id: org.id, kind: "staffing" },
-      billing_cycle_anchor_config: { day_of_month: 1 },
-      proration_behavior: "none"
-    )
-    org.update_column(:staffing_subscription_id, subscription.id)
-    subscription.id
+    org.with_lock do
+      return org.staffing_subscription_id if org.staffing_subscription_id.present?
+
+      id = existing_usage_subscription_id(org) || Stripe::Subscription.create(
+        {
+          customer: org.stripe_customer_id,
+          items: items,
+          metadata: { organization_id: org.id, kind: "staffing" },
+          # Bills calendar months (the 1st to the end of the month), the same
+          # months the Billing page counts, so a bill matches the table.
+          billing_cycle_anchor_config: { day_of_month: 1 },
+          proration_behavior: "none"
+        },
+        { idempotency_key: "staffing-subscription-#{org.id}-#{org.stripe_customer_id}-#{Date.current.iso8601}" }
+      ).id
+      org.update_column(:staffing_subscription_id, id)
+      id
+    end
   rescue Stripe::StripeError => e
     Rails.logger.warn("Staffing subscription create failed for org #{org.id}: #{e.message}")
     nil
+  end
+
+  # A usage subscription the customer already has in Stripe (one we lost track
+  # of): the newest live one carrying our usage metadata.
+  def existing_usage_subscription_id(org)
+    Stripe::Subscription.list(customer: org.stripe_customer_id, status: "all", limit: 100).data
+                        .select { |sub| sub.metadata.to_h.stringify_keys["kind"] == "staffing" && %w[active trialing past_due].include?(sub.status) }
+                        .max_by(&:created)&.id
   end
 
   # An org that no longer pays for usage (left Pro, or a superadmin comped its

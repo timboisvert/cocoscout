@@ -2,8 +2,11 @@
 
 # CocoScout's own money for a period, for superadmin Finances: what it earned
 # and spent, stream by stream and month by month, what moved to and from its
-# bank, and who paid it. Read only from CocoScout's ledger
-# (CocoScoutLedgerEntry), never from the theaters' money.
+# bank, and who paid it. Read from CocoScout's ledger (CocoScoutLedgerEntry),
+# never from the theaters' money, plus the bills it has sent and not yet been
+# paid: a bill is earned in the month it covers, and whether it's paid is a
+# question of collecting it (Tim, 2026-11-01). The ledger itself stays cash,
+# since it has to match Stripe to the cent.
 class CocoScoutFinances
   PERIODS = {
     "this_month" => "This month", "last_month" => "Last month", "last_30_days" => "Last 30 days",
@@ -37,7 +40,16 @@ class CocoScoutFinances
     CocoScoutLedgerEntry.types_in(group).filter_map { |type| [ type, sums[type] ] if sums[type].to_i.nonzero? }
   end
 
-  def income_cents = by_type(:income).sum { |_, cents| cents }
+  # Bills sent in the period and not yet paid, by when they were earned.
+  def unpaid_bills
+    @unpaid_bills ||= BillingInvoice.earned_unpaid.to_a.select { |bill| range.nil? || range.cover?(bill.earned_at) }
+  end
+
+  def unpaid_cents(kind = nil)
+    unpaid_bills.select { |bill| kind.nil? || (kind == "usage") == (bill.kind == "usage") }.sum(&:amount_remaining_cents)
+  end
+
+  def income_cents = by_type(:income).sum { |_, cents| cents } + unpaid_cents
   def costs_cents = by_type(:cost).sum { |_, cents| cents }
   def net_cents = income_cents + costs_cents
 
@@ -70,10 +82,12 @@ class CocoScoutFinances
         ] ],
         [ :pro, "Pro plans", [
           [ "Pro bills paid", income["subscription"] ],
+          [ "Pro bills sent, not yet paid", unpaid_cents("pro") ],
           [ "Stripe's processing on those bills", processing[:pro] ]
         ] ],
         [ :usage, "Usage ($3 a performer, $5 a staff member)", [
           [ "Usage bills paid", income["usage"] ],
+          [ "Usage bills sent, not yet paid", unpaid_cents("usage") ],
           [ "Stripe's processing on those bills", processing[:usage] ]
         ] ],
         [ :running, "Running CocoScout", stripe_fee_lines + [
@@ -89,10 +103,15 @@ class CocoScoutFinances
     end
   end
 
-  # Earned, spent and kept, month by month, newest first, for the last
-  # twelve months (the current one so far).
-  def self.monthly(months: 12, now: Time.current)
+  # Earned, spent and kept, month by month, newest first, from the first
+  # month with any money (at least twelve), the current one so far. Earned
+  # counts bills sent and not yet paid; unpaid_cents says how much of it.
+  def self.monthly(months: nil, now: Time.current)
+    first = CocoScoutLedgerEntry.minimum(:occurred_at)
+    months ||= [ first ? ((now.year * 12 + now.month) - (first.year * 12 + first.month) + 1) : 1, 12 ].max
     from = (now - (months - 1).months).beginning_of_month
+    unpaid = BillingInvoice.earned_unpaid.to_a.group_by { |bill| bill.earned_at.to_date.beginning_of_month }
+                           .transform_values { |bills| bills.sum(&:amount_remaining_cents) }
     zone = ActiveRecord::Base.connection.quote(Time.zone.tzinfo.name)
     month = Arel.sql("DATE_TRUNC('month', occurred_at AT TIME ZONE 'UTC' AT TIME ZONE #{zone})::date")
     income = CocoScoutLedgerEntry.where(occurred_at: from..now, entry_type: CocoScoutLedgerEntry.types_in(:income)).group(month).sum(:amount_cents)
@@ -100,18 +119,11 @@ class CocoScoutFinances
     fees = CocoScoutLedgerEntry.where(occurred_at: from..now, entry_type: "ticket_fee").group(month).sum(:amount_cents)
     (0...months).map do |back|
       day = (now - back.months).to_date.beginning_of_month
-      earned = income[day].to_i
+      earned = income[day].to_i + unpaid[day].to_i
       spent = -costs[day].to_i
-      { month: day, earned_cents: earned, spent_cents: spent, kept_cents: earned - spent,
+      { month: day, earned_cents: earned, spent_cents: spent, kept_cents: earned - spent, unpaid_cents: unpaid[day].to_i,
         tickets: fees[day].to_i / TicketPricing::PLATFORM_FEE_CENTS, partial: back.zero? }
     end
-  end
-
-  # The current month, only a few days in: Stripe's monthly fees for the
-  # month before land on the first days, ahead of most of this month's
-  # earnings, so the month can look like a loss when it isn't one yet.
-  def early_in_month?
-    period == "this_month" && @now.day <= 7
   end
 
   # Who paid CocoScout in the period, most first.

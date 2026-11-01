@@ -87,13 +87,39 @@ RSpec.describe StaffMeterService do
   end
 
   describe ".ensure_staffing_subscription!" do
+    def stripe_subscriptions(*subs)
+      allow(Stripe::Subscription).to receive(:list).and_return(Stripe::ListObject.construct_from(data: subs))
+    end
+
+    before { allow(SubscriptionPlan).to receive(:staffing_subscription_items).and_return([ { price: "price_staff" } ]) }
+
     it "bills calendar months, the months the Billing page counts" do
-      allow(SubscriptionPlan).to receive(:staffing_subscription_items).and_return([ { price: "price_staff" } ])
+      stripe_subscriptions
       expect(Stripe::Subscription).to receive(:create)
-        .with(hash_including(customer: "cus_meter", billing_cycle_anchor_config: { day_of_month: 1 }, metadata: hash_including(kind: "staffing")))
+        .with(hash_including(customer: "cus_meter", billing_cycle_anchor_config: { day_of_month: 1 }, metadata: hash_including(kind: "staffing")),
+              hash_including(idempotency_key: "staffing-subscription-#{org.id}-cus_meter-#{Date.current.iso8601}"))
         .and_return(double("subscription", id: "sub_usage"))
       expect(described_class.ensure_staffing_subscription!(org)).to eq("sub_usage")
       expect(org.reload.staffing_subscription_id).to eq("sub_usage")
+    end
+
+    # Stars & Garters got three October bills: three meter jobs at once each
+    # made a usage subscription, and each billed the whole month.
+    it "takes the usage subscription Stripe already has rather than making another" do
+      stripe_subscriptions({ id: "sub_pro", status: "active", created: 1, metadata: {} },
+                           { id: "sub_gone", status: "canceled", created: 3, metadata: { kind: "staffing" } },
+                           { id: "sub_live", status: "active", created: 2, metadata: { kind: "staffing" } })
+      expect(Stripe::Subscription).not_to receive(:create)
+      expect(described_class.ensure_staffing_subscription!(org)).to eq("sub_live")
+      expect(org.reload.staffing_subscription_id).to eq("sub_live")
+    end
+
+    it "makes none when another job got there first: it looks again under the lock" do
+      stripe_subscriptions
+      stale = Organization.find(org.id)
+      org.update_column(:staffing_subscription_id, "sub_first")
+      expect(Stripe::Subscription).not_to receive(:create)
+      expect(described_class.ensure_staffing_subscription!(stale)).to eq("sub_first")
     end
   end
 
@@ -102,7 +128,8 @@ RSpec.describe StaffMeterService do
       org.update!(staffing_subscription_id: "sub_old")
       allow(SubscriptionPlan).to receive(:staffing_subscription_items).and_return([ { price: "price_staff" } ])
       expect(Stripe::Subscription).to receive(:cancel).with("sub_old")
-      expect(Stripe::Subscription).to receive(:create).with(hash_including(billing_cycle_anchor_config: { day_of_month: 1 }))
+      allow(Stripe::Subscription).to receive(:list).and_return(Stripe::ListObject.construct_from(data: [ { id: "sub_old", status: "canceled", created: 1, metadata: { kind: "staffing" } } ]))
+      expect(Stripe::Subscription).to receive(:create).with(hash_including(billing_cycle_anchor_config: { day_of_month: 1 }), anything)
                                                       .and_return(double("subscription", id: "sub_cal"))
       expect(described_class.resubscribe_calendar_month!(org)).to eq("sub_cal")
       expect(org.reload.staffing_subscription_id).to eq("sub_cal")

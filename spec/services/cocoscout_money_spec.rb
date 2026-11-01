@@ -180,6 +180,42 @@ RSpec.describe "CocoScout's money" do
     expect(PlatformReconciliationCheck.run!.difference_cents).to eq(0)
   end
 
+  # Stripe charged October's fees on November 1 and Stars & Garters' October
+  # usage bill was still unpaid: the month by month showed a $192 November
+  # loss. Both are October's.
+  it "dates Stripe's monthly fees and a usage bill to the month they cover, not the day the money moved" do
+    travel_to Time.zone.local(2026, 11, 3, 10) do
+      fee = line("txn_connect", type: "stripe_fee", category: "fee", amount: -19_390)
+      fee.description = "Connect (2026-10-01 - 2026-10-31): Active Accounts"
+      StripeBalanceTransaction.import!(fee)
+      bill = BillingInvoice.create!(organization: org, stripe_invoice_id: "in_oct", kind: "usage", status: "paid", amount_due_cents: 15_900,
+                                    amount_paid_cents: 15_900, period_start: Time.zone.local(2026, 10, 1), period_end: Time.zone.local(2026, 11, 1),
+                                    finalized_at: Time.zone.local(2026, 10, 31, 20), paid_at: Time.current)
+      october = Date.new(2026, 10, 1)
+      expect(CocoScoutLedgerEntry.find_by(entry_type: "stripe_fee").occurred_at.to_date).to eq(Date.new(2026, 10, 31))
+      expect(CocoScoutLedgerEntry.find_by(entry_type: "usage", source: bill).occurred_at.to_date).to eq(Date.new(2026, 10, 31))
+      expect(CocoScoutFinances.monthly.find { |row| row[:month] == october }).to include(earned_cents: 15_900, spent_cents: 19_390)
+      expect(CocoScoutFinances.monthly.find { |row| row[:month] == Date.new(2026, 11, 1) }).to include(earned_cents: 0, spent_cents: 0)
+      # The statement still says the organization paid it in November.
+      expect(OrgStatementBuilder.totals(org, Date.new(2026, 11, 1))["total_paid_cents"]).to eq(15_900)
+      expect(OrgStatementBuilder.totals(org, october)["total_paid_cents"]).to eq(0)
+    end
+  end
+
+  it "counts a bill as earned once it's sent, paid or not, and a second bill for the same month not at all" do
+    month = { period_start: Time.zone.local(2026, 10, 1), period_end: Time.zone.local(2026, 11, 1) }
+    first = BillingInvoice.create!(organization: org, stripe_invoice_id: "in_a", kind: "usage", status: "open", amount_due_cents: 15_900,
+                                   amount_remaining_cents: 15_900, **month)
+    second = BillingInvoice.create!(organization: org, stripe_invoice_id: "in_b", kind: "usage", status: "open", amount_due_cents: 15_900,
+                                    amount_remaining_cents: 15_900, **month)
+    expect(BillingInvoice.earned_unpaid).to eq([ first ])
+    expect(second).to be_duplicate
+    money = CocoScoutMoneyNow.new(check: nil)
+    expect([ money.profit_cents, money.collected_profit_cents, money.not_collected_cents, money.unpaid_cents ]).to eq([ 15_900, 0, 15_900, 15_900 ])
+    expect(money.unpaid_bills.map(&:state)).to contain_exactly(:duplicate, :due)
+    expect(CocoScoutFinances.new("all_time").income_cents).to eq(15_900)
+  end
+
   it "gives back the fees a ticket refund returned to the buyer" do
     order = sell_two_tickets
     refund = TicketRefund.create!(organization: org, ticket_order: order, status: "succeeded", amount_cents: order.total_cents,

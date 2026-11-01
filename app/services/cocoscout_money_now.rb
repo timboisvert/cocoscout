@@ -4,7 +4,9 @@
 # how much of its profit is still in Stripe, how much of that it can take
 # out today, and what organizations owe it. Not tied to a period.
 #
-#   profit to date      every dollar earned less every dollar spent
+#   earned to date      every dollar earned (bills sent count, paid or not)
+#                       less every dollar spent
+#   not yet collected   bills sent and not yet paid
 #   sent to our bank    payouts to CocoScout's bank, less money added back
 #   paid by hand        organizations CocoScout paid from its own bank: the
 #                       money their balances gave up stays in Stripe, ours
@@ -31,8 +33,18 @@ class CocoScoutMoneyNow
     @sums ||= CocoScoutLedgerEntry.group(:entry_type).sum(:amount_cents)
   end
 
+  # Earned less spent since we started, counting every bill sent.
   def profit_cents
+    collected_profit_cents + not_collected_cents
+  end
+
+  # The same, counting only what's been paid: the ledger.
+  def collected_profit_cents
     (CocoScoutLedgerEntry.types_in(:income) + CocoScoutLedgerEntry.types_in(:cost)).sum { |type| sums[type].to_i }
+  end
+
+  def not_collected_cents
+    @not_collected_cents ||= BillingInvoice.earned_unpaid.sum(:amount_remaining_cents)
   end
 
   def sent_to_bank_cents
@@ -48,7 +60,14 @@ class CocoScoutMoneyNow
   end
 
   def ours_in_stripe_cents
-    profit_cents - sent_to_bank_cents + paid_by_hand_cents + adjustments_cents
+    collected_profit_cents - sent_to_bank_cents + paid_by_hand_cents + adjustments_cents
+  end
+
+  # Moves between Stripe and CocoScout's bank, newest first: payouts to the
+  # bank and money added back, or (by_hand) organizations paid from it.
+  def bank_moves(by_hand: false)
+    types = by_hand ? %w[paid_by_hand] : %w[payout_to_bank added_from_bank]
+    CocoScoutLedgerEntry.where(entry_type: types).includes(:organization).order(occurred_at: :desc)
   end
 
   # Stripe's available balance at the last check; nil when it couldn't be asked.
@@ -71,24 +90,29 @@ class CocoScoutMoneyNow
   end
 
   # Every bill not yet paid, oldest first, with where it stands:
+  #   :duplicate   bills a month another bill already carries: void it
   #   :late        payment failed, or unpaid more than LATE_AFTER
   #   :collecting  a bank debit on its way
   #   :due         billed, waiting on its automatic charge
   def unpaid_bills
-    @unpaid_bills ||= BillingInvoice.where(status: %w[draft open uncollectible]).includes(:organization)
-                                    .order(Arel.sql("COALESCE(finalized_at, created_at)")).map do |invoice|
-      billed = invoice.finalized_at || invoice.created_at
-      days = ((@now - billed) / 1.day).floor
-      state = if invoice.failed? || (billed < @now - LATE_AFTER && !invoice.collecting?) then :late
-      elsif invoice.collecting? then :collecting
-      else :due
+    @unpaid_bills ||= begin
+      duplicates = BillingInvoice.duplicate_ids
+      BillingInvoice.where(status: %w[draft open uncollectible]).includes(:organization)
+                    .order(Arel.sql("COALESCE(finalized_at, created_at)")).map do |invoice|
+        billed = invoice.finalized_at || invoice.created_at
+        days = ((@now - billed) / 1.day).floor
+        state = if duplicates.include?(invoice.id) then :duplicate
+        elsif invoice.failed? || (billed < @now - LATE_AFTER && !invoice.collecting?) then :late
+        elsif invoice.collecting? then :collecting
+        else :due
+        end
+        Bill.new(invoice: invoice, state: state, days_old: days)
       end
-      Bill.new(invoice: invoice, state: state, days_old: days)
     end
   end
 
   def unpaid_cents(state = nil)
-    bills = state ? unpaid_bills.select { |bill| bill.state == state } : unpaid_bills
+    bills = state ? unpaid_bills.select { |bill| bill.state == state } : unpaid_bills.reject { |bill| bill.state == :duplicate }
     bills.sum { |bill| owed(bill.invoice) }
   end
 

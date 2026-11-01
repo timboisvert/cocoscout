@@ -186,10 +186,26 @@ class CocoScoutLedgerPoster
     when TicketOrder, TicketPassHolding then record.paid_at || record.created_at
     when CourseRegistration then record.paid_at || record.registered_at || record.created_at
     when ContractPayment then record.paid_date&.in_time_zone || record.updated_at
-    when BillingInvoice then record.paid_at || record.finalized_at || record.created_at
-    when StripeBalanceTransaction then record.occurred_at
+    # A bill is earned in the month it covers, not the day it's paid.
+    when BillingInvoice then record.earned_at
+    # So is the processing Stripe took to collect it.
+    when StripeBalanceTransaction
+      fee_period_end(record) || (record.matched.earned_at if record.category == "billing" && record.matched.is_a?(BillingInvoice)) || record.occurred_at
     else record.created_at
     end || Time.current
+  end
+
+  # Stripe charges its monthly fees (Connect's active accounts and payouts,
+  # Billing) in the first days of the next month, naming the month in the
+  # line: "Connect (2026-10-01 - 2026-10-31): Active Accounts". They're that
+  # month's cost, so they're dated to its last day.
+  def self.fee_period_end(row)
+    return nil unless row.category == "stripe_fee"
+
+    dates = row.description.to_s.scan(/\d{4}-\d{2}-\d{2}/).filter_map { |text| Date.iso8601(text) rescue nil }
+    return nil if dates.size < 2
+
+    dates.max.in_time_zone.change(hour: 12)
   end
 
   def self.description_for(record)
@@ -206,5 +222,5 @@ class CocoScoutLedgerPoster
   end
 
   private_class_method :entries_for, :cash, :ticket_order, :pass_holding, :ticket_refund, :course_registration, :contract_payment,
-                       :billing_invoice, :org_payout, :stripe_line, :occurred_at_for, :description_for
+                       :billing_invoice, :org_payout, :stripe_line, :occurred_at_for, :fee_period_end, :description_for
 end
