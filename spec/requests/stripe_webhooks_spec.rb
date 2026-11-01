@@ -357,6 +357,9 @@ RSpec.describe "StripeWebhooksController", type: :request do
   describe "bill emails" do
     it "emails the owner the bill when Stripe issues it, and a receipt when it's paid, once each" do
       org.update!(stripe_customer_id: "cus_sg", staffing_subscription_id: "sub_usage")
+      # The email lists CocoScout's own count for the month, not Stripe's lines.
+      7.times { StaffActivation.record!(organization: org, person: create(:person), month: Date.new(2026, 9, 1)) }
+      2.times { PerformerActivation.record!(organization: org, person: create(:person), month: Date.new(2026, 9, 1)) }
       base = { id: "in_sep", object: "invoice", customer: "cus_sg", amount_due: 4_100, amount_remaining: 4_100, number: "SG-0009",
                period_start: Time.zone.local(2026, 9, 1).to_i, period_end: Time.zone.local(2026, 10, 1).to_i,
                hosted_invoice_url: "https://invoice.stripe.com/i/x", parent: { subscription_details: { subscription: "sub_usage" } },
@@ -368,7 +371,7 @@ RSpec.describe "StripeWebhooksController", type: :request do
       expect(mail.to).to eq([ owner.email_address ])
       expect(mail.subject).to eq("Your CocoScout bill: September 2026 usage, $41.00")
       # CocoScout's own invoice, attached and linked; never Stripe's page.
-      expect(mail.html_part&.body&.to_s || mail.body.to_s).to include("7 × active staff member: $35.00", "/manage/billing/invoices/")
+      expect(mail.html_part&.body&.to_s || mail.body.to_s).to include("7 active staff members × $5.00: $35.00", "2 active performers × $3.00: $6.00", "/manage/billing/invoices/")
       expect(mail.html_part&.body&.to_s || mail.body.to_s).not_to include("invoice.stripe.com")
       expect(mail.attachments.reject(&:inline?).map(&:filename)).to eq([ "CocoScout invoice SG-0009 (September 2026 usage).pdf" ])
 
