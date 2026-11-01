@@ -3,12 +3,20 @@
 # Configuration for the CocoScout Pro subscription. Stripe Price
 # IDs are stored in ENV / credentials (created once via
 # `rake stripe:setup_subscription_prices`); the cent amounts here are for display
-# and for creating those prices.
+# and for creating those prices. A Stripe price's amount can never change, so
+# a new price means new Price IDs (Tim, 2026-11-01: $29 a month or $299 a year,
+# up from $20 / $200, before anyone paid the old price).
 module SubscriptionPlan
-  PRO_MONTHLY_CENTS = 2000  # $20 / month
-  PRO_ANNUAL_CENTS  = 20000 # $200 / year
+  PRO_MONTHLY_CENTS = 2900  # $29 / month
+  PRO_ANNUAL_CENTS  = 29900 # $299 / year
 
   module_function
+
+  def monthly_dollars = PRO_MONTHLY_CENTS / 100
+  def annual_dollars = PRO_ANNUAL_CENTS / 100
+
+  # What a year costs less than twelve months: $49.
+  def annual_savings_dollars = (PRO_MONTHLY_CENTS * 12 - PRO_ANNUAL_CENTS) / 100
 
   # Stripe Price ID for a given billing interval ("month" or "year").
   def price_id(interval)

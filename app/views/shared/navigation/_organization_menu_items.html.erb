@@ -87,7 +87,7 @@
   <%# At the Producer plan's one production: the way to a second is Pro. %>
   <div class="mx-2.5 mt-1.5 mb-2.5 p-3 bg-pink-50 border border-pink-200 rounded-lg" data-organization-menu-pro-card>
     <p class="text-[13px] font-semibold text-gray-900">Running a second production?</p>
-    <p class="text-xs text-gray-600 mt-0.5">Pro runs any number of them, with ticketing, staffing and money. $20/mo or $200/yr.</p>
+    <p class="text-xs text-gray-600 mt-0.5">Pro runs any number of them, with ticketing, staffing and money. $<%= SubscriptionPlan.monthly_dollars %>/mo or $<%= SubscriptionPlan.annual_dollars %>/yr.</p>
     <div class="mt-2.5 flex items-center gap-2">
       <%= render "shared/button", text: "See Pro", variant: "primary", size: "small", path: section_manage_organization_path(org, section: "billing") %>
     </div>

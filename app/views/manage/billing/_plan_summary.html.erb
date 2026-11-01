@@ -41,7 +41,7 @@
       <% elsif paid && organization.subscription_current_period_end.present? %>
         <%= organization.subscription_canceled_at.present? ? "Your access ends" : "Renews" %>
         <%= organization.subscription_current_period_end.strftime("%B %-d, %Y") %>
-        · <%= organization.subscription_interval == "year" ? "$200/year" : "$20/month" %>
+        · <%= organization.subscription_interval == "year" ? "$#{SubscriptionPlan.annual_dollars}/year" : "$#{SubscriptionPlan.monthly_dollars}/month" %>
       <% elsif paid %>
         Unlimited productions and events, with every module unlocked.
       <% else %>

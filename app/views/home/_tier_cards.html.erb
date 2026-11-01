@@ -21,7 +21,7 @@
     <span class="absolute -top-3 left-8 inline-flex items-center rounded-full bg-pink-500 px-3 py-1 text-xs font-semibold text-white">Recommended</span>
     <h3 class="text-xl font-bold text-slate-900">Pro</h3>
     <p class="mt-2 text-4xl font-bold text-slate-900">$<%= SubscriptionPlan::PRO_MONTHLY_CENTS / 100 %><span class="text-base font-medium text-slate-500">/mo</span></p>
-    <p class="mt-0.5 text-xs text-slate-500">or $<%= SubscriptionPlan::PRO_ANNUAL_CENTS / 100 %>/year — two months free</p>
+    <p class="mt-0.5 text-xs text-slate-500">or $<%= SubscriptionPlan::PRO_ANNUAL_CENTS / 100 %>/year, save $<%= SubscriptionPlan.annual_savings_dollars %></p>
     <p class="mt-1 text-sm text-slate-500">Plus <button type="button" class="underline decoration-dotted underline-offset-2 text-pink-600 hover:text-pink-700 font-medium" data-controller="modal" data-action="click->modal#open" data-modal-id="usage-fees-modal">simple and fair usage-based fees</button> if you pay your staff and performers.</p>
     <ul class="mt-6 space-y-2 text-sm text-slate-700 flex-1">
       <% ["Everything in Producer", "Ticketing: your own box office, 50¢ a ticket", "Payouts, splits &amp; financials", "Contracts + e-signatures", "Reports &amp; analytics", "Multi-show casting tables", "Staffing, scheduling &amp; payroll", "Contractor payments + tax", "Unlimited productions &amp; events"].each do |f| %>
