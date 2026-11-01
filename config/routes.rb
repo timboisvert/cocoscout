@@ -1167,6 +1167,7 @@ Rails.application.routes.draw do
     get  "/billing/success",  to: "billing#success",  as: "billing_success"
     post "/billing/portal",   to: "billing#portal",   as: "billing_portal"
     post "/billing/cancel_pro", to: "billing#cancel_pro", as: "billing_cancel_pro"
+    post "/billing/keep_pro", to: "billing#keep_pro", as: "billing_keep_pro"
     get  "/billing/statements/:id", to: "billing#statement", as: "billing_statement"
     get  "/billing/invoices/:id", to: "billing#invoice", as: "billing_invoice"
     patch "/billing/contacts",   to: "billing#update_contacts", as: "billing_contacts"

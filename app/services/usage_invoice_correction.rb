@@ -28,12 +28,12 @@ class UsageInvoiceCorrection
     expected = staff * StaffBillingService::PER_ACTIVE_STAFF_CENTS + performers * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS
     # A month bills once. A second bill for it (a second usage subscription)
     # is corrected to nothing, never topped up to the month again.
-    expected = 0 if record.duplicate? || !organization.bills_usage?
+    expected = 0 if record.duplicate? || !organization.bills_usage_in?(month)
     on_bill = record.lines.sum { |line| line["amount_cents"].to_i }
     difference = expected - on_bill
     unless record.duplicate?
       add_pro_plan!(record, organization, month)
-      if organization.bills_usage?
+      if organization.bills_usage_in?(month)
         add_bank_debit_fee!(record, organization, month)
         add_withdrawal_fee!(record, organization, month)
       end

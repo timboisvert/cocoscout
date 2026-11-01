@@ -371,6 +371,19 @@ class Organization < ApplicationRecord
     on_paid_plan? && !comped_usage?
   end
 
+  # Whether a month's usage is billed: Pro at some point in that month and
+  # usage not comped. A comp that ended on December 31 still bills
+  # December's usage on the January 1 bill.
+  def bills_usage_in?(month)
+    return false if comped_usage?
+
+    first = month.to_date.beginning_of_month.in_time_zone
+    last = first.end_of_month
+    comped_indefinitely? || (comped_until.present? && comped_until >= first) ||
+      (pro_monthly_from.present? && pro_monthly_from <= last && (pro_monthly_until.nil? || pro_monthly_until >= first)) ||
+      subscription_status.in?(%w[active trialing past_due]) || (subscription_canceled_at.present? && subscription_canceled_at >= first)
+  end
+
   # Whether a given feature (symbol from PAID_FEATURES, or any free feature) is
   # available to this org. Free features and courses are always available.
   def feature_available?(feature)

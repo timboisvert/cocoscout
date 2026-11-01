@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_01_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_01_210000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1875,6 +1875,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_200000) do
     t.datetime "balance_pooled_at"
     t.datetime "pro_monthly_from"
     t.datetime "pro_monthly_until"
+    t.jsonb "comp_reminders", default: {}, null: false
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
     t.index ["organization_talent_pool_id"], name: "index_organizations_on_organization_talent_pool_id"
     t.index ["owner_id"], name: "index_organizations_on_owner_id"

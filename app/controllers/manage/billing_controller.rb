@@ -85,6 +85,21 @@ module Manage
       end
     end
 
+    # POST /manage/billing/keep_pro — complimentary Pro is ending and they
+    # want to stay. Monthly: Pro carries on on the monthly bill, paid from the
+    # card or bank on file (or checkout saves one first); the comp's days are
+    # never charged. Yearly: checkout, with the first year starting when the
+    # comp ends.
+    def keep_pro
+      @organization = Current.organization
+      return start_checkout("year") if params[:interval] == "year"
+      return start_checkout("month") unless payment_method_on_file?
+
+      @organization.start_pro_on_monthly_bill!
+      from = @organization.comped? && !@organization.comped_indefinitely? ? @organization.comped_until.next_day.strftime("%B %-d") : "today"
+      redirect_to org_billing_tab_path, notice: "You're keeping Pro. From #{from} it's $#{SubscriptionPlan.monthly_dollars} a month on your one monthly bill."
+    end
+
     # POST /manage/billing/cancel_pro — end Pro paid on the monthly bill at the
     # end of this month; that month's bill is the last.
     def cancel_pro
@@ -150,9 +165,12 @@ module Manage
         return
       end
 
-      # Annual: just the Pro base plan, paid once a year. Metered staffing usage bills on a separate
-      # monthly subscription (see StaffMeterService), so it works the same for
-      # annual and monthly subscribers.
+      # Annual: the Pro plan on its own, paid once a year; usage still comes on
+      # the monthly bill (StaffMeterService). Still on a comp, the first year
+      # starts when the comp ends.
+      subscription_data = { metadata: { organization_id: @organization.id } }
+      comp_end = @organization.comped_indefinitely? ? nil : @organization.comped_until
+      subscription_data[:trial_end] = comp_end.to_i if comp_end && comp_end > 3.days.from_now
       session = Stripe::Checkout::Session.create(
         mode: "subscription",
         customer: @organization.stripe_customer_id,
@@ -160,13 +178,22 @@ module Manage
         success_url: manage_billing_success_url + "?session_id={CHECKOUT_SESSION_ID}",
         cancel_url: org_billing_tab_url,
         metadata: { organization_id: @organization.id },
-        subscription_data: { metadata: { organization_id: @organization.id } }
+        subscription_data: subscription_data
       )
 
       redirect_to session.url, allow_other_host: true
     rescue Stripe::StripeError => e
       Rails.logger.error "Stripe subscription checkout failed for org #{@organization.id}: #{e.message}"
       redirect_to org_billing_tab_path, alert: "Unable to connect to our payment processor. Please try again."
+    end
+
+    # A card or bank the monthly bill can be paid from.
+    def payment_method_on_file?
+      return false if @organization.stripe_customer_id.blank?
+
+      Stripe::Customer.retrieve(@organization.stripe_customer_id).invoice_settings&.default_payment_method.present?
+    rescue Stripe::StripeError
+      false
     end
 
     def ensure_stripe_customer!

@@ -1,6 +1,7 @@
 <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
   <%= render "shared/section_heading", title: "Billing & Plan" %>
   <div class="p-6 bg-white">
+    <%= render "manage/billing/comp_ending", organization: @organization %>
     <%= render "manage/billing/plan_summary", organization: @organization %>
     <%# Usage ($5 a staff member, $3 everyone else paid, bank debits beyond the
         free ones) is Pro-only: the features that pay people are unavailable on

@@ -101,13 +101,15 @@ module StaffMeterService
   end
 
   # An org that no longer pays for usage (left Pro, or a superadmin comped its
-  # usage) keeps no usage subscription: cancel it without a final invoice, so
-  # the comp covers whatever was metered this month. Returns true if it
-  # canceled one.
+  # usage) keeps no usage subscription. Left Pro: a last bill now for what was
+  # metered so far. Usage comped: no last bill, the comp covers it. Returns
+  # true if it canceled one.
   def sync_usage_subscription!(org)
     return false if org.bills_usage? || org.pro_on_monthly_bill? || org.staffing_subscription_id.blank?
 
-    Stripe::Subscription.cancel(org.staffing_subscription_id)
+    # Pro ended (a comp ran out, the plan was canceled): what was metered so
+    # far still bills, on a last bill now. Usage comped: the comp covers it.
+    Stripe::Subscription.cancel(org.staffing_subscription_id, { invoice_now: !org.comped_usage?, prorate: false })
     org.update_column(:staffing_subscription_id, nil)
     true
   rescue Stripe::InvalidRequestError => e

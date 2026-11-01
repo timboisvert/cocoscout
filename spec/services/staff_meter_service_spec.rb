@@ -72,11 +72,17 @@ RSpec.describe StaffMeterService do
   end
 
   describe ".sync_usage_subscription!" do
-    it "cancels the usage subscription of an org that stopped paying for usage, without a final bill" do
+    it "cancels the usage subscription of an org whose usage was comped, without a final bill" do
       org.update!(staffing_subscription_id: "sub_usage", comped_usage: true)
-      expect(Stripe::Subscription).to receive(:cancel).with("sub_usage")
+      expect(Stripe::Subscription).to receive(:cancel).with("sub_usage", { invoice_now: false, prorate: false })
       expect(described_class.sync_usage_subscription!(org)).to be(true)
       expect(org.reload.staffing_subscription_id).to be_nil
+    end
+
+    it "sends a last bill for what was metered when an org leaves Pro" do
+      org.update!(staffing_subscription_id: "sub_usage", comped_indefinitely: false, comped_until: 1.day.ago)
+      expect(Stripe::Subscription).to receive(:cancel).with("sub_usage", { invoice_now: true, prorate: false })
+      expect(described_class.sync_usage_subscription!(org)).to be(true)
     end
 
     it "leaves a paying org's usage subscription alone" do
