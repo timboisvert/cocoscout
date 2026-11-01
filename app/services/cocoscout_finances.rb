@@ -15,9 +15,10 @@ class CocoScoutFinances
 
   attr_reader :period
 
-  def initialize(period = "this_month", now: Time.current)
+  def initialize(period = "this_month", now: Time.current, give_back: nil)
     @period = PERIODS.key?(period) ? period : "this_month"
     @now = now
+    @give_back = give_back
   end
 
   def range
@@ -40,16 +41,32 @@ class CocoScoutFinances
     CocoScoutLedgerEntry.types_in(group).filter_map { |type| [ type, sums[type] ] if sums[type].to_i.nonzero? }
   end
 
-  # Bills sent in the period and not yet paid, by when they were earned.
-  def unpaid_bills
-    @unpaid_bills ||= BillingInvoice.earned_unpaid.to_a.select { |bill| range.nil? || range.cover?(bill.earned_at) }
+  # What bills earned beyond the cash ledger, each dated to when it was
+  # earned: [earned_at, kind ("usage" or "pro"), what, cents].
+  #   :unpaid     sent, not yet paid
+  #   :owed_back  charged too much, not yet given back (UsageOverbilling)
+  #   :credit     credit given back on the bill (less), or credit given
+  #               earlier that paid it (more)
+  def self.bill_adjustments(give_back: nil)
+    give_back ||= UsageOverbilling.all_rows
+    kind = ->(bill) { bill.kind == "usage" ? "usage" : "pro" }
+    BillingInvoice.earned_unpaid.map { |bill| [ bill.earned_at, kind.call(bill), :unpaid, bill.amount_remaining_cents ] } +
+      give_back.filter_map { |row| [ row.invoice.earned_at, "usage", :owed_back, -row.over_cents ] if row.invoice.status == "paid" || !row.duplicate } +
+      BillingInvoice.with_credit.filter_map { |bill| [ bill.earned_at, kind.call(bill), :credit, bill.earned_adjustment_cents ] if bill.earned_adjustment_cents.nonzero? }
   end
 
-  def unpaid_cents(kind = nil)
-    unpaid_bills.select { |bill| kind.nil? || (kind == "usage") == (bill.kind == "usage") }.sum(&:amount_remaining_cents)
+  def adjustments
+    @adjustments ||= self.class.bill_adjustments(give_back: @give_back).select { |at, *| range.nil? || range.cover?(at) }
   end
 
-  def income_cents = by_type(:income).sum { |_, cents| cents } + unpaid_cents
+  def adjustment_cents(kind: nil, what: nil, sign: nil)
+    adjustments.select { |_, k, w, cents| (kind.nil? || k == kind) && (what.nil? || w == what) && (sign.nil? || cents.positive? == (sign == :more)) }
+               .sum(&:last)
+  end
+
+  def unpaid_cents(kind = nil) = adjustment_cents(kind: kind, what: :unpaid)
+
+  def income_cents = by_type(:income).sum { |_, cents| cents } + adjustment_cents
   def costs_cents = by_type(:cost).sum { |_, cents| cents }
   def net_cents = income_cents + costs_cents
 
@@ -83,11 +100,16 @@ class CocoScoutFinances
         [ :pro, "Pro plans", [
           [ "Pro bills paid", income["subscription"] ],
           [ "Pro bills sent, not yet paid", unpaid_cents("pro") ],
+          [ "Credit given back on Pro bills", adjustment_cents(kind: "pro", what: :credit, sign: :less) ],
+          [ "Pro bills paid with credit given earlier", adjustment_cents(kind: "pro", what: :credit, sign: :more) ],
           [ "Stripe's processing on those bills", processing[:pro] ]
         ] ],
         [ :usage, "Usage ($3 a performer, $5 a staff member)", [
           [ "Usage bills paid", income["usage"] ],
           [ "Usage bills sent, not yet paid", unpaid_cents("usage") ],
+          [ "Charged too much, owed back", adjustment_cents(kind: "usage", what: :owed_back) ],
+          [ "Credit given back on usage bills", adjustment_cents(kind: "usage", what: :credit, sign: :less) ],
+          [ "Usage bills paid with credit given earlier", adjustment_cents(kind: "usage", what: :credit, sign: :more) ],
           [ "Stripe's processing on those bills", processing[:usage] ]
         ] ],
         [ :running, "Running CocoScout", stripe_fee_lines + [
@@ -106,12 +128,11 @@ class CocoScoutFinances
   # Earned, spent and kept, month by month, newest first, from the first
   # month with any money (at least twelve), the current one so far. Earned
   # counts bills sent and not yet paid; unpaid_cents says how much of it.
-  def self.monthly(months: nil, now: Time.current)
+  def self.monthly(months: nil, now: Time.current, give_back: nil)
     first = CocoScoutLedgerEntry.minimum(:occurred_at)
     months ||= [ first ? ((now.year * 12 + now.month) - (first.year * 12 + first.month) + 1) : 1, 12 ].max
     from = (now - (months - 1).months).beginning_of_month
-    unpaid = BillingInvoice.earned_unpaid.to_a.group_by { |bill| bill.earned_at.to_date.beginning_of_month }
-                           .transform_values { |bills| bills.sum(&:amount_remaining_cents) }
+    by_month = bill_adjustments(give_back: give_back).group_by { |at, *| at.to_date.beginning_of_month }
     zone = ActiveRecord::Base.connection.quote(Time.zone.tzinfo.name)
     month = Arel.sql("DATE_TRUNC('month', occurred_at AT TIME ZONE 'UTC' AT TIME ZONE #{zone})::date")
     income = CocoScoutLedgerEntry.where(occurred_at: from..now, entry_type: CocoScoutLedgerEntry.types_in(:income)).group(month).sum(:amount_cents)
@@ -119,9 +140,11 @@ class CocoScoutFinances
     fees = CocoScoutLedgerEntry.where(occurred_at: from..now, entry_type: "ticket_fee").group(month).sum(:amount_cents)
     (0...months).map do |back|
       day = (now - back.months).to_date.beginning_of_month
-      earned = income[day].to_i + unpaid[day].to_i
+      adjust = by_month.fetch(day, [])
+      unpaid = adjust.select { |_, _, what, _| what == :unpaid }.sum(&:last)
+      earned = income[day].to_i + adjust.sum(&:last)
       spent = -costs[day].to_i
-      { month: day, earned_cents: earned, spent_cents: spent, kept_cents: earned - spent, unpaid_cents: unpaid[day].to_i,
+      { month: day, earned_cents: earned, spent_cents: spent, kept_cents: earned - spent, unpaid_cents: unpaid,
         tickets: fees[day].to_i / TicketPricing::PLATFORM_FEE_CENTS, partial: back.zero? }
     end
   end

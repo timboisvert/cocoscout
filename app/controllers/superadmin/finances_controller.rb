@@ -4,7 +4,7 @@
 # the bills CocoScout sends, and the daily check against Stripe. Four pages
 # and an org page:
 #
-#   /superadmin/finances                CocoScout: ours now, owed to us, profit by stream
+#   /superadmin/finances                CocoScout: ours now, owed to us, owed back, profit by stream
 #   /superadmin/finances/organizations  each org: held, in flight, billed, paid us
 #   /superadmin/finances/subscriptions  plans, comps, bills, usage
 #   /superadmin/finances/stripe         does it all match Stripe?
@@ -15,10 +15,11 @@ module Superadmin
     before_action :use_superadmin_sidebar
 
     def cocoscout
-      @finances = CocoScoutFinances.new(params[:period])
       @check = PlatformReconciliation.latest
-      @money_now = CocoScoutMoneyNow.new(check: @check)
-      @monthly = CocoScoutFinances.monthly
+      @give_back = UsageOverbilling.all_rows
+      @finances = CocoScoutFinances.new(params[:period], give_back: @give_back)
+      @money_now = CocoScoutMoneyNow.new(check: @check, give_back: @give_back)
+      @monthly = CocoScoutFinances.monthly(give_back: @give_back)
       respond_to do |format|
         format.html
         format.csv do
@@ -26,6 +27,32 @@ module Superadmin
                     filename: "cocoscout-ledger-#{@finances.period}-#{Date.current.iso8601}.csv", type: "text/csv"
         end
       end
+    end
+
+    # Refund one bill that charged too much (a second bill for a month, or
+    # more than the month's paid work) to the card or bank it was paid from.
+    def give_back
+      invoice = BillingInvoice.find(params[:id])
+      row = UsageOverbilling.row_for(invoice)
+      unless row&.refundable_now?
+        message = row&.lands_on ? "its payment is still landing (about #{row.lands_on.strftime('%b %-d')})" : "there's nothing to give back on it"
+        redirect_to finances_path, alert: "#{invoice.organization.name}'s bill #{invoice.number} can't be refunded yet: #{message}."
+        return
+      end
+
+      note = UsageOverbilling.give_back!(row, how: "refund")
+      redirect_to finances_path, notice: note ? "Refunded #{helpers.usd(row.over_cents)} to #{invoice.organization.name} on bill #{invoice.number}. It reaches their card or bank in a few days." :
+                                                "Bill #{invoice.number} has already been given back."
+    rescue Stripe::StripeError => e
+      redirect_to finances_path, alert: "The refund on bill #{invoice.number} didn't go through: #{e.message}"
+    end
+
+    # Refund every bill that charged too much and can be refunded now.
+    def give_back_all
+      rows = UsageOverbilling.all_rows.select(&:refundable_now?)
+      rows.each { |row| UsageGiveBackJob.perform_later(row.invoice.id) }
+      redirect_to finances_path, notice: rows.any? ? "Refunding #{helpers.pluralize(rows.size, 'bill')} (#{helpers.usd(rows.sum(&:over_cents))}). Refresh in a minute to see them go." :
+                                                     "Nothing can be refunded right now."
     end
 
     def organizations

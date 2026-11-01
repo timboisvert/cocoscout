@@ -194,8 +194,9 @@ RSpec.describe "CocoScout's money" do
       october = Date.new(2026, 10, 1)
       expect(CocoScoutLedgerEntry.find_by(entry_type: "stripe_fee").occurred_at.to_date).to eq(Date.new(2026, 10, 31))
       expect(CocoScoutLedgerEntry.find_by(entry_type: "usage", source: bill).occurred_at.to_date).to eq(Date.new(2026, 10, 31))
-      expect(CocoScoutFinances.monthly.find { |row| row[:month] == october }).to include(earned_cents: 15_900, spent_cents: 19_390)
-      expect(CocoScoutFinances.monthly.find { |row| row[:month] == Date.new(2026, 11, 1) }).to include(earned_cents: 0, spent_cents: 0)
+      monthly = CocoScoutFinances.monthly(give_back: [])
+      expect(monthly.find { |row| row[:month] == october }).to include(earned_cents: 15_900, spent_cents: 19_390)
+      expect(monthly.find { |row| row[:month] == Date.new(2026, 11, 1) }).to include(earned_cents: 0, spent_cents: 0)
       # The statement still says the organization paid it in November.
       expect(OrgStatementBuilder.totals(org, Date.new(2026, 11, 1))["total_paid_cents"]).to eq(15_900)
       expect(OrgStatementBuilder.totals(org, october)["total_paid_cents"]).to eq(0)
@@ -269,6 +270,43 @@ RSpec.describe BillingInvoiceSync do
       .to eq("kind" => "usage", "status" => "paid", "amount_paid_cents" => 3_500, "stripe_payment_intent_id" => "pi_usage", "stripe_subscription_id" => "sub_usage")
     expect(record.lines.first).to include("quantity" => 7, "amount_cents" => 3_500)
     expect(CocoScoutLedgerEntry.find_by(source: record).attributes.slice("entry_type", "amount_cents")).to eq("entry_type" => "usage", "amount_cents" => 3_500)
+  end
+
+  it "knows a bank debit is on its way, when it lands, and what's been given back" do
+    travel_to Time.zone.local(2026, 11, 1, 9) do
+      allow(Stripe::PaymentIntent).to receive(:retrieve).with(hash_including(id: "pi_ach"))
+        .and_return(Stripe::PaymentIntent.construct_from(id: "pi_ach", status: "processing",
+                                                         latest_charge: { id: "py_1", created: Time.zone.local(2026, 10, 31, 20).to_i,
+                                                                          payment_method_details: { type: "us_bank_account" } }))
+      invoice = Stripe::Invoice.construct_from(
+        id: "in_ach", object: "invoice", customer: "cus_org", status: "open", collection_method: "charge_automatically",
+        amount_due: 15_900, amount_paid: 0, amount_remaining: 15_900, next_payment_attempt: nil, post_payment_credit_notes_amount: 0,
+        starting_balance: 0, ending_balance: 0, payments: { data: [ { payment: { payment_intent: "pi_ach" } } ] }, lines: { data: [] },
+        period_start: Time.zone.local(2026, 10, 1).to_i, period_end: Time.zone.local(2026, 11, 1).to_i,
+        status_transitions: { finalized_at: Time.zone.local(2026, 10, 31, 19).to_i }
+      )
+      record = described_class.sync!(invoice)
+      # Sat Oct 31 start: Mon, Tue, Wed, Thu.
+      expect([ record.payment_status, record.collecting?, record.lands_on, record.late?(now: 10.days.from_now) ]).to eq([ "processing", true, Date.new(2026, 11, 5), false ])
+      expect(record.status_label).to eq("Coming from the bank account on file, lands about Nov 5")
+
+      paid = described_class.sync!(Stripe::Invoice.construct_from(invoice.to_hash.merge(status: "paid", amount_paid: 15_900, amount_remaining: 0,
+                                                                                         post_payment_credit_notes_amount: 2_500, starting_balance: -1_000, ending_balance: 0)))
+      expect([ paid.payment_status, paid.credit_notes_cents, paid.balance_applied_cents ]).to eq([ nil, 2_500, 1_000 ])
+    end
+  end
+
+  it "says when Stripe charges a bill, or that it waits to be paid" do
+    travel_to Time.zone.local(2026, 11, 1, 9) do
+      auto = described_class.sync!(Stripe::Invoice.construct_from(id: "in_auto", object: "invoice", customer: "cus_org", status: "open",
+                                                                  collection_method: "charge_automatically", next_payment_attempt: Time.zone.local(2026, 11, 3, 10).to_i,
+                                                                  amount_due: 2_000, amount_remaining: 2_000, lines: { data: [] }))
+      by_hand = described_class.sync!(Stripe::Invoice.construct_from(id: "in_hand", object: "invoice", customer: "cus_org", status: "open",
+                                                                     collection_method: "send_invoice", due_date: Time.zone.local(2026, 11, 15).to_i,
+                                                                     amount_due: 2_000, amount_remaining: 2_000, lines: { data: [] }))
+      expect([ auto.status_label, by_hand.status_label ]).to eq([ "Charges automatically Nov 3", "Waiting to be paid, due Nov 15" ])
+      expect([ auto.late?(now: 2.days.from_now), by_hand.late?(now: 10.days.from_now), by_hand.late?(now: 20.days.from_now) ]).to eq([ false, false, true ])
+    end
   end
 
   it "reads a bill in the older shape" do
@@ -427,6 +465,9 @@ RSpec.describe UsageOverbilling do
 
   # Stars & Garters, October 2026: three usage subscriptions, three $159 bills.
   it "gives back a second bill for a month in full, and Finances holds it as owed back until then" do
+    # October's paid work: 53 performers, $159.
+    allow(UsageRules).to receive(:staff).and_return({})
+    allow(UsageRules).to receive(:performers).and_return(org.id => (1..53).index_with { Time.current })
     month = { period_start: Time.zone.local(2026, 10, 1), period_end: Time.zone.local(2026, 11, 1) }
     first, second = %w[0003 0004].map do |n|
       BillingInvoice.create!(organization: org, stripe_invoice_id: "in_#{n}", number: "SG-#{n}", kind: "usage", status: "paid",
@@ -438,20 +479,42 @@ RSpec.describe UsageOverbilling do
     rows = described_class.rows(org)
     expect(rows.find { |row| row.invoice == first }.duplicate).to be(false)
     extra = rows.find { |row| row.invoice == second }
-    expect([ extra.duplicate, extra.owed_cents, extra.over_cents ]).to eq([ true, 0, 15_900 ])
+    expect([ extra.duplicate, extra.owed_cents, extra.over_cents, extra.refundable_now? ]).to eq([ true, 0, 15_900, true ])
+    expect(described_class.all_rows.map(&:invoice)).to eq([ second ])
 
     money = CocoScoutMoneyNow.new(check: nil)
-    expect([ money.paid_twice, money.owed_back_cents, money.profit_cents ]).to eq([ [ second ], 15_900, 15_900 ])
+    expect([ money.owed_back_cents, money.held_back_cents, money.profit_cents ]).to eq([ 15_900, 15_900, 15_900 ])
+    expect(CocoScoutFinances.monthly.find { |row| row[:month] == Date.new(2026, 10, 1) }[:earned_cents]).to eq(15_900)
 
     expect(Stripe::CreditNote).to receive(:create)
       .with(hash_including(invoice: "in_0004", refund_amount: 15_900, memo: a_string_including("billed twice")), anything)
       .and_return(Stripe::CreditNote.construct_from(id: "cn_2"))
     described_class.give_back!(extra, how: "refund")
+    # Given back: nothing is owed back, and until the refund's money moves
+    # the credit note keeps it out of what we earned.
+    expect(second.reload.credit_notes_cents).to eq(15_900)
+    expect(described_class.all_rows).to be_empty
+    money = CocoScoutMoneyNow.new(check: nil)
+    expect([ money.owed_back_cents, money.profit_cents ]).to eq([ 0, 15_900 ])
 
-    # The refund lands: nothing is owed back any more, and the income it brought is gone.
+    # The refund lands: still $159 earned, now in cash.
     StripeBalanceTransaction.create!(stripe_id: "txn_back", txn_type: "refund", reporting_category: "refund", amount_cents: -15_900, net_cents: -15_900,
                                      occurred_at: Time.current, category: "billing_refund", match_status: "matched", matched: second)
     money = CocoScoutMoneyNow.new(check: nil)
-    expect([ money.paid_twice, money.owed_back_cents, money.profit_cents ]).to eq([ [], 0, 15_900 ])
+    expect([ money.owed_back_cents, money.unused_credit_cents, money.collected_profit_cents, money.profit_cents ]).to eq([ 0, 0, 15_900, 15_900 ])
+  end
+
+  it "counts credit given back as less earned on that bill, and more on the bill it pays" do
+    september = BillingInvoice.create!(organization: org, stripe_invoice_id: "in_sep2", number: "SG-0002", kind: "usage", status: "paid",
+                                       amount_due_cents: 20_100, amount_paid_cents: 20_100, paid_at: Time.current, credit_notes_cents: 2_500,
+                                       period_start: Time.zone.local(2026, 9, 1), period_end: Time.zone.local(2026, 10, 1))
+    money = CocoScoutMoneyNow.new(check: nil, give_back: [])
+    expect([ september.earned_adjustment_cents, money.unused_credit_cents, money.profit_cents, money.held_back_cents ]).to eq([ -2_500, 2_500, 17_600, 2_500 ])
+
+    BillingInvoice.create!(organization: org, stripe_invoice_id: "in_dec", number: "SG-0006", kind: "usage", status: "paid",
+                           amount_due_cents: 13_400, amount_paid_cents: 13_400, paid_at: Time.current, balance_applied_cents: 2_500,
+                           period_start: Time.zone.local(2026, 11, 1), period_end: Time.zone.local(2026, 12, 1))
+    money = CocoScoutMoneyNow.new(check: nil, give_back: [])
+    expect([ money.unused_credit_cents, money.profit_cents ]).to eq([ 0, 17_600 + 15_900 ])
   end
 end

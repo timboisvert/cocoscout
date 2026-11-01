@@ -277,6 +277,7 @@ class StripeWebhooksController < ApplicationController
     return unless record
 
     BillingInvoiceEmailJob.perform_later(record.id, "bill") if event_type == "invoice.finalized"
+    BillingInvoiceRefreshJob.set(wait: 2.hours).perform_later(record.id) if event_type == "invoice.finalized" && record.status == "open"
     BillingInvoiceEmailJob.perform_later(record.id, "receipt") if event_type == "invoice.paid"
   end
 

@@ -8,6 +8,8 @@
 class BillingInvoice < ApplicationRecord
   KINDS = %w[pro usage other].freeze
   STATUSES = %w[draft open paid uncollectible void].freeze
+  # A bank debit lands about four business days after it starts.
+  BANK_DEBIT_BUSINESS_DAYS = 4
 
   belongs_to :organization
 
@@ -17,6 +19,7 @@ class BillingInvoice < ApplicationRecord
 
   scope :paid, -> { where(status: "paid") }
   scope :unpaid, -> { where(status: %w[open uncollectible]) }
+  scope :with_credit, -> { where("credit_notes_cents > 0 OR balance_credited_cents > 0 OR balance_applied_cents > 0") }
   scope :newest_first, -> { order(Arel.sql("COALESCE(period_start, created_at) DESC")) }
 
   # Not on destroy: a bill that was paid stays in CocoScout's income even if
@@ -31,12 +34,18 @@ class BillingInvoice < ApplicationRecord
     end
   end
 
+  # Where the bill stands, in words: paid, money on its way (and when it
+  # lands), when Stripe charges it, or that it waits on the organization.
   def status_label
     case status
     when "paid" then "Paid"
     when "open"
       if failed_at.present? then "Payment failed"
-      elsif collecting? then lands_on ? "Being collected, lands about #{lands_on.strftime('%b %-d')}" : "Being collected"
+      elsif collecting?
+        from = payment_method_type == "us_bank_account" ? "Coming from the bank account on file" : "Being collected"
+        lands_on ? "#{from}, lands about #{lands_on.strftime('%b %-d')}" : from
+      elsif collection_method == "send_invoice" then due_at ? "Waiting to be paid, due #{due_at.strftime('%b %-d')}" : "Waiting to be paid"
+      elsif next_payment_attempt_at&.future? then "Charges automatically #{next_payment_attempt_at.strftime('%b %-d')}"
       else "Due"
       end
     when "uncollectible" then "Couldn't collect"
@@ -90,6 +99,25 @@ class BillingInvoice < ApplicationRecord
     self.class.duplicate_ids.include?(id)
   end
 
+  # Refunded to the card or bank it was paid from: Stripe's refund lines.
+  def refunded_cents
+    -StripeBalanceTransaction.where(category: "billing_refund", matched: self).sum(:amount_cents)
+  end
+
+  # Given back as credit rather than money: credit notes that didn't refund
+  # (or haven't refunded yet), and credit put on the customer's balance while
+  # it was being collected.
+  def credited_only_cents
+    [ credit_notes_cents + balance_credited_cents - refunded_cents, 0 ].max
+  end
+
+  # CocoScout's ledger is cash: a bill counts what was paid, less what was
+  # refunded. What it earned also counts credit the bill used up and leaves
+  # out credit given back on it.
+  def earned_adjustment_cents
+    balance_applied_cents - credited_only_cents
+  end
+
   # The day Stripe billed it.
   def billed_on
     (finalized_at || period_end)&.to_date
@@ -108,12 +136,30 @@ class BillingInvoice < ApplicationRecord
     @collection_line = StripeBalanceTransaction.where(matched: self, category: "billing").order(:occurred_at).last
   end
 
+  # Money on its way: Stripe's balance shows the charge, or the payment says
+  # it's processing (a bank debit, before Stripe's balance shows it).
   def collecting?
-    status == "open" && failed_at.nil? && collection_line.present?
+    status == "open" && failed_at.nil? && (payment_status == "processing" || collection_line.present?)
   end
 
   def lands_on
-    collection_line&.available_on
+    return collection_line.available_on if collection_line&.available_on
+    return nil unless payment_started_at
+
+    day = payment_started_at.to_date
+    days = payment_method_type == "us_bank_account" || payment_method_type.nil? ? BANK_DEBIT_BUSINESS_DAYS : 2
+    days.times { day = day.next_day; day = day.next_day while day.saturday? || day.sunday? }
+    day
+  end
+
+  # Unpaid and not on its way: failed, or older than `after` with no charge
+  # coming (no payment in flight, no attempt scheduled, not before its due date).
+  def late?(now: Time.current, after: 7.days)
+    return false unless status.in?(%w[open uncollectible])
+    return true if failed?
+    return false if collecting? || next_payment_attempt_at&.>(now) || due_at&.>(now)
+
+    (finalized_at || created_at) < now - after
   end
 
   def failed?

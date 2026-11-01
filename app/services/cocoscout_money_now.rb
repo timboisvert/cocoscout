@@ -22,9 +22,10 @@ class CocoScoutMoneyNow
 
   Bill = Data.define(:invoice, :state, :days_old)
 
-  def initialize(check: PlatformReconciliation.latest, now: Time.current)
+  def initialize(check: PlatformReconciliation.latest, now: Time.current, give_back: nil)
     @check = check
     @now = now
+    @give_back = give_back
   end
 
   attr_reader :check
@@ -33,10 +34,11 @@ class CocoScoutMoneyNow
     @sums ||= CocoScoutLedgerEntry.group(:entry_type).sum(:amount_cents)
   end
 
-  # Earned less spent since we started, counting every bill sent, and not
-  # a second bill for a month that was paid (that's owed back).
+  # Earned less spent since we started: counting every bill sent, less what
+  # we charged too much (owed back), less credit given back that hasn't paid
+  # a bill yet.
   def profit_cents
-    collected_profit_cents + not_collected_cents - owed_back_cents
+    collected_profit_cents + not_collected_cents - owed_back_cents - unused_credit_cents
   end
 
   # The same, counting only what's been paid: the ledger.
@@ -78,7 +80,7 @@ class CocoScoutMoneyNow
 
   # What CocoScout can send to its bank today: ours, less what we owe back.
   def withdrawable_cents
-    ours = ours_in_stripe_cents - owed_back_cents
+    ours = ours_in_stripe_cents - held_back_cents
     return 0 unless ours.positive?
     return 0 if stripe_available_cents.nil?
 
@@ -87,14 +89,15 @@ class CocoScoutMoneyNow
 
   # Ours, but still on its way into Stripe's available balance.
   def arriving_cents
-    [ ours_in_stripe_cents - owed_back_cents - withdrawable_cents, 0 ].max
+    [ ours_in_stripe_cents - held_back_cents - withdrawable_cents, 0 ].max
   end
 
   # Every bill not yet paid, oldest first, with where it stands:
   #   :duplicate   bills a month another bill already carries: void it
-  #   :late        payment failed, or unpaid more than LATE_AFTER
-  #   :collecting  a bank debit on its way
-  #   :due         billed, waiting on its automatic charge
+  #   :late        payment failed, or unpaid more than LATE_AFTER with
+  #                nothing on its way and no charge or due date ahead
+  #   :collecting  the money is on its way (a bank debit takes days)
+  #   :due         billed, waiting on its automatic charge or its due date
   def unpaid_bills
     @unpaid_bills ||= begin
       duplicates = BillingInvoice.duplicate_ids
@@ -103,7 +106,7 @@ class CocoScoutMoneyNow
         billed = invoice.finalized_at || invoice.created_at
         days = ((@now - billed) / 1.day).floor
         state = if duplicates.include?(invoice.id) then :duplicate
-        elsif invoice.failed? || (billed < @now - LATE_AFTER && !invoice.collecting?) then :late
+        elsif invoice.late?(now: @now, after: LATE_AFTER) then :late
         elsif invoice.collecting? then :collecting
         else :due
         end
@@ -112,22 +115,33 @@ class CocoScoutMoneyNow
     end
   end
 
-  # Second bills for a month that were paid before anyone caught them, not
-  # yet given back: usage:overbilled[ORG_ID,refund] refunds them.
-  def paid_twice
-    @paid_twice ||= begin
-      refunded = StripeBalanceTransaction.where(category: "billing_refund", matched_type: "BillingInvoice").group(:matched_id).sum(:amount_cents)
-      BillingInvoice.where(id: BillingInvoice.duplicate_ids, status: "paid").includes(:organization).order(:id)
-                    .select { |bill| bill.amount_paid_cents + refunded[bill.id].to_i > 0 }
-    end
+  # Every overcharge not yet given back (UsageOverbilling): a second bill
+  # for a month, or a bill charged more than its month's paid work.
+  def give_back
+    @give_back ||= UsageOverbilling.all_rows
   end
 
+  # What we charged too much and haven't given back. A second bill not yet
+  # paid isn't counted anywhere, so it isn't owed back either.
   def owed_back_cents
-    @owed_back_cents ||= begin
-      refunded = StripeBalanceTransaction.where(category: "billing_refund", matched_type: "BillingInvoice", matched_id: paid_twice.map(&:id))
-                                         .group(:matched_id).sum(:amount_cents)
-      paid_twice.sum { |bill| bill.amount_paid_cents + refunded[bill.id].to_i }
-    end
+    give_back.sum { |row| row.invoice.status == "paid" || !row.duplicate ? row.over_cents : 0 }
+  end
+
+  # Of that, money already in Stripe: paid overcharges.
+  def owed_back_paid_cents
+    give_back.select(&:refundable_now?).sum(&:over_cents)
+  end
+
+  # Credit given back on bills that no bill has used up yet: what we'll
+  # bill less for.
+  def unused_credit_cents
+    @unused_credit_cents ||= [ -BillingInvoice.with_credit.sum(&:earned_adjustment_cents), 0 ].max
+  end
+
+  # In Stripe and ours, but spoken for: overcharges to refund and credit
+  # that pays down coming bills.
+  def held_back_cents
+    owed_back_paid_cents + unused_credit_cents
   end
 
   def unpaid_cents(state = nil)

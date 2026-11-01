@@ -75,15 +75,50 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
       expect(response.body).to include("Ticket fees (50¢ a ticket)", organization.name, "1.00")
     end
 
-    it "says when an organization paid a month twice, and keeps it out of what's ours" do
-      month = { period_start: Time.zone.local(2026, 10, 1), period_end: Time.zone.local(2026, 11, 1), paid_at: Time.current }
+    it "lists every bill that charged too much, when it can be refunded, and refunds it from the page" do
+      allow(UsageRules).to receive(:staff).and_return({})
+      allow(UsageRules).to receive(:performers).and_return(organization.id => (1..53).index_with { Time.current })
+      organization.update!(stripe_customer_id: "cus_sg")
+      month = { period_start: Time.zone.local(2026, 10, 1), period_end: Time.zone.local(2026, 11, 1) }
       BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_a", number: "SG-0003", kind: "usage", status: "paid",
-                             amount_due_cents: 15_900, amount_paid_cents: 15_900, **month)
-      BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_b", number: "SG-0004", kind: "usage", status: "paid",
-                             amount_due_cents: 15_900, amount_paid_cents: 15_900, **month)
+                             amount_due_cents: 15_900, amount_paid_cents: 15_900, paid_at: Time.current, **month)
+      paid_twice = BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_b", number: "SG-0004", kind: "usage", status: "paid",
+                                          amount_due_cents: 15_900, amount_paid_cents: 15_900, paid_at: Time.current, **month)
+      landing = BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_c", number: "SG-0005", kind: "usage", status: "open",
+                                       amount_due_cents: 15_900, amount_remaining_cents: 15_900, payment_status: "processing",
+                                       payment_method_type: "us_bank_account", payment_started_at: Time.zone.local(2026, 10, 31, 20), **month)
+
       get finances_path
-      expect(response.body).to include("paid October 2026 usage twice", "Bill SG-0004", "usage:overbilled[#{organization.id},refund]",
-                                       "Plus bills paid twice, owed back", "$159.00 owed back")
+      expect(response.body).to include("Charged too much (2)", "SG-0004", "SG-0005", "A second bill for October", "Paid, so it can be refunded now",
+                                       "Its payment is still landing, about Nov 5", "Refund after Nov 5", "Plus what we owe back", "$159.00 owed back")
+      expect(response.body).not_to include("Refund all")
+
+      allow(Stripe::Invoice).to receive(:retrieve).and_return(Stripe::Invoice.construct_from(id: "in_b", post_payment_credit_notes_amount: 0))
+      allow(Stripe::Customer).to receive(:list_balance_transactions).and_return(double(auto_paging_each: []))
+      expect(Stripe::CreditNote).to receive(:create).with(hash_including(invoice: "in_b", refund_amount: 15_900), anything)
+                                                    .and_return(Stripe::CreditNote.construct_from(id: "cn_1"))
+      post finances_give_back_path(paid_twice)
+      expect(flash[:notice]).to include("Refunded $159.00", organization.name, "SG-0004")
+      expect(paid_twice.reload.credit_notes_cents).to eq(15_900)
+
+      post finances_give_back_path(landing)
+      expect(flash[:alert]).to include("can't be refunded yet", "still landing (about Nov 5)")
+    end
+
+    it "refunds every bill that can go now with one button" do
+      allow(UsageRules).to receive(:staff).and_return({})
+      allow(UsageRules).to receive(:performers).and_return(organization.id => (1..53).index_with { Time.current })
+      organization.update!(stripe_customer_id: "cus_sg")
+      month = { period_start: Time.zone.local(2026, 10, 1), period_end: Time.zone.local(2026, 11, 1), paid_at: Time.current }
+      bills = %w[3 4 5].map do |n|
+        BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_#{n}", number: "SG-000#{n}", kind: "usage", status: "paid",
+                               amount_due_cents: 15_900, amount_paid_cents: 15_900, **month)
+      end
+      get finances_path
+      expect(response.body).to include("Refund all 2 ($318.00)")
+      expect { post finances_give_back_all_path }.to have_enqueued_job(UsageGiveBackJob).exactly(2).times
+      expect(UsageGiveBackJob).to have_been_enqueued.with(bills[1].id)
+      expect(flash[:notice]).to include("Refunding 2 bills ($318.00)")
     end
 
     it "lists each organization's money, and one organization's in full" do

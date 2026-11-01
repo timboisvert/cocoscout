@@ -30,8 +30,16 @@ class BillingInvoiceSync
       hosted_invoice_url: invoice["hosted_invoice_url"],
       invoice_pdf_url: invoice["invoice_pdf"],
       finalized_at: time(invoice.dig("status_transitions", "finalized_at")) || record.finalized_at,
-      paid_at: time(invoice.dig("status_transitions", "paid_at")) || record.paid_at
+      paid_at: time(invoice.dig("status_transitions", "paid_at")) || record.paid_at,
+      collection_method: invoice["collection_method"].presence || record.collection_method,
+      due_at: time(invoice["due_date"]),
+      next_payment_attempt_at: time(invoice["next_payment_attempt"]),
+      # Given back after it was paid (a refund or a credit), and credit from
+      # the customer's balance it used up (that's income too, just not cash).
+      credit_notes_cents: invoice.key?("post_payment_credit_notes_amount") ? invoice["post_payment_credit_notes_amount"].to_i : record.credit_notes_cents,
+      balance_applied_cents: invoice.key?("ending_balance") && !invoice["ending_balance"].nil? ? [ invoice["ending_balance"].to_i - invoice["starting_balance"].to_i, 0 ].max : record.balance_applied_cents
     )
+    track_payment(record)
     record.save! if record.changed?
     # A charge imported before its bill was known can match now.
     if record.stripe_payment_intent_id.present?
@@ -41,6 +49,27 @@ class BillingInvoiceSync
       end
     end
     record
+  end
+
+  # The payment in flight on an open bill: a bank debit sits "processing" for
+  # about four business days, and Stripe's balance only shows it once it
+  # lands, so ask the payment itself. Only when the invoice came with its
+  # payments (the nightly sweep and a paid bill's fetch); a paid or closed
+  # bill has nothing in flight.
+  def self.track_payment(record)
+    if record.status != "open"
+      record.payment_status = nil if record.payment_status == "processing"
+      return
+    end
+    return if record.stripe_payment_intent_id.blank?
+
+    intent = plain(Stripe::PaymentIntent.retrieve({ id: record.stripe_payment_intent_id, expand: [ "latest_charge" ] }))
+    charge = intent["latest_charge"].is_a?(Hash) ? intent["latest_charge"] : {}
+    record.payment_status = intent["status"]
+    record.payment_method_type = charge.dig("payment_method_details", "type") || Array(intent["payment_method_types"]).first
+    record.payment_started_at = time(charge["created"]) || (record.payment_status == "processing" ? record.payment_started_at || Time.current : nil)
+  rescue Stripe::StripeError => e
+    Rails.logger.warn("[BillingInvoiceSync] payment for #{record.stripe_invoice_id}: #{e.message}")
   end
 
   # A payment attempt failed: say so on the bill.
@@ -117,5 +146,5 @@ class BillingInvoiceSync
     value.present? ? Time.zone.at(value.to_i) : nil
   end
 
-  private_class_method :plain, :id_of, :subscription_id, :payment_intent_id, :kind_for, :price_ids, :lines_of, :line_items, :time
+  private_class_method :plain, :track_payment, :id_of, :subscription_id, :payment_intent_id, :kind_for, :price_ids, :lines_of, :line_items, :time
 end

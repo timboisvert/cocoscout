@@ -188,9 +188,9 @@ class CocoScoutLedgerPoster
     when ContractPayment then record.paid_date&.in_time_zone || record.updated_at
     # A bill is earned in the month it covers, not the day it's paid.
     when BillingInvoice then record.earned_at
-    # So is the processing Stripe took to collect it.
+    # So is the processing Stripe took to collect it, and a refund of it.
     when StripeBalanceTransaction
-      fee_period_end(record) || (record.matched.earned_at if record.category == "billing" && record.matched.is_a?(BillingInvoice)) || record.occurred_at
+      fee_period_end(record) || (record.matched.earned_at if record.category.in?(%w[billing billing_refund]) && record.matched.is_a?(BillingInvoice)) || record.occurred_at
     else record.created_at
     end || Time.current
   end
