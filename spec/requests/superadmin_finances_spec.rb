@@ -26,8 +26,35 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
                                      held_for_orgs_cents: 130_985, cocoscout_cents: -30_985, imported_net_cents: 100_000, difference_cents: 0)
       CocoScoutLedgerEntry.create!(entry_type: "funding_cost", amount_cents: -50_000, occurred_at: Time.current)
       get finances_path
-      expect(response.body).to include("CocoScout is short", "$309.85", "Held for organizations", "Spent more than earned", "$500.00 spent against $0.00 earned")
+      expect(response.body).to include("CocoScout is short", "Leave the next $500.00 of profit in Stripe", "$1,309.85 of it held for organizations",
+                                       "Spent more than earned", "$500.00 spent against $0.00 earned")
       expect(response.body).not_to include("-$309.85", "-$500.00", "theater")
+    end
+
+    it "says what's ours to withdraw, what's owed to us, and where each stream's profit comes from" do
+      PlatformReconciliation.create!(checked_at: Time.current, checked_on: Date.current, stripe_balance_cents: 500_000, held_for_orgs_cents: 480_000,
+                                     cocoscout_cents: 20_000, imported_net_cents: 500_000, difference_cents: 0,
+                                     details: { "stripe_available_cents" => 12_000, "stripe_pending_cents" => 488_000 })
+      CocoScoutLedgerEntry.create!(entry_type: "ticket_fee", amount_cents: 15_000, occurred_at: Time.current, organization: organization)
+      CocoScoutLedgerEntry.create!(entry_type: "ticket_processing", amount_cents: 9_000, occurred_at: Time.current, organization: organization)
+      CocoScoutLedgerEntry.create!(entry_type: "processing_cost", amount_cents: -8_000, occurred_at: Time.current, source_type: "TicketOrder", source_id: 1)
+      CocoScoutLedgerEntry.create!(entry_type: "stripe_fee", amount_cents: -6_000, occurred_at: Time.current,
+                                   description: "Connect (2026-10-01 - 2026-10-31): Active Accounts")
+      CocoScoutLedgerEntry.create!(entry_type: "payout_to_bank", amount_cents: -5_000, occurred_at: 2.days.ago)
+      late = BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_late", kind: "usage", status: "open", amount_due_cents: 4_200,
+                                    amount_remaining_cents: 4_200, finalized_at: 10.days.ago, created_at: 10.days.ago, period_start: 40.days.ago)
+      BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_paid", kind: "pro", status: "paid", amount_due_cents: 2_000,
+                             amount_paid_cents: 2_000, finalized_at: 1.hour.ago, paid_at: 1.hour.ago)
+
+      get finances_path
+      body = response.body
+      # Profit $120 (the paid Pro bill counts), $50 already at the bank: $70 ours; Stripe has $120 available.
+      expect(body).to include("Ready to withdraw", "Profit since we started", "$120.00", "already gone to our bank", "Ours, still in Stripe")
+      expect(body).to include("$70.00 ready to withdraw, $0.00 still arriving", "Pro bills paid")
+      expect(body).to include("Owed to us", "Late", late.title, "$42.00", "Bills not yet paid")
+      expect(body).to include("Tickets", "50¢ ticket fees (300 tickets)", "$150.00", "card processing on tickets", "less $80.00", "We kept", "$160.00")
+      expect(body).to include("Running CocoScout", "Stripe: Connect: Active Accounts", "Cost us", "$60.00")
+      expect(body).to include("Month by month", "Bills sent in this period", "Pro plan", "Paid")
     end
 
     it "shows CocoScout's own money, apart from the organizations'" do
@@ -39,7 +66,7 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
 
       get finances_path
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("What we earned", "Ticket fees (50¢ a ticket)", "$1.00", "Who paid us", organization.name)
+      expect(response.body).to include("Tickets", "50¢ ticket fees (2 tickets)", "$1.00", "Who paid us", organization.name)
 
       get finances_path(period: "this_month", format: :csv)
       expect(response.media_type).to eq("text/csv")

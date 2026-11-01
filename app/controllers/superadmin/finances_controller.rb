@@ -4,7 +4,7 @@
 # the bills CocoScout sends, and the daily check against Stripe. Four pages
 # and an org page:
 #
-#   /superadmin/finances                CocoScout: earned, spent, net, who paid
+#   /superadmin/finances                CocoScout: ours now, owed to us, profit by stream
 #   /superadmin/finances/organizations  each org: held, in flight, billed, paid us
 #   /superadmin/finances/subscriptions  plans, comps, bills, usage
 #   /superadmin/finances/stripe         does it all match Stripe?
@@ -17,6 +17,8 @@ module Superadmin
     def cocoscout
       @finances = CocoScoutFinances.new(params[:period])
       @check = PlatformReconciliation.latest
+      @money_now = CocoScoutMoneyNow.new(check: @check)
+      @monthly = CocoScoutFinances.monthly
       respond_to do |format|
         format.html
         format.csv do
