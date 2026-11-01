@@ -9,13 +9,18 @@
 # card or bank it was paid from (CocoScout's books then take the income back,
 # see StripeTransactionMatcher's billing_refund) or credited to the
 # customer's Stripe balance, which pays down their next bills.
+#
+# A second bill for a month another bill already carries (two usage
+# subscriptions, each billing the month: Stars & Garters, October 2026) owes
+# nothing, so all of it is the overcharge.
 class UsageOverbilling
-  Row = Data.define(:invoice, :month, :staff, :performers, :owed_cents, :charged_cents, :credited_cents) do
+  Row = Data.define(:invoice, :month, :staff, :performers, :owed_cents, :charged_cents, :credited_cents, :duplicate) do
     def over_cents = [ charged_cents - credited_cents - owed_cents, 0 ].max
   end
 
   def self.rows(organization)
-    BillingInvoice.where(organization: organization, kind: "usage").order(:period_start).filter_map do |invoice|
+    duplicates = BillingInvoice.duplicate_ids
+    BillingInvoice.where(organization: organization, kind: "usage").order(:period_start, :id).filter_map do |invoice|
       next unless invoice.status == "paid" || invoice.collecting?
 
       month = UsageInvoiceCorrection.billed_month(invoice)
@@ -23,8 +28,9 @@ class UsageOverbilling
 
       staff = UsageRules.staff(month, organization: organization).fetch(organization.id, {}).size
       performers = UsageRules.performers(month, organization: organization).fetch(organization.id, {}).size
-      owed = staff * StaffBillingService::PER_ACTIVE_STAFF_CENTS + performers * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS
-      Row.new(invoice: invoice, month: month, staff: staff, performers: performers, owed_cents: owed,
+      duplicate = duplicates.include?(invoice.id)
+      owed = duplicate ? 0 : staff * StaffBillingService::PER_ACTIVE_STAFF_CENTS + performers * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS
+      Row.new(invoice: invoice, month: month, staff: staff, performers: performers, owed_cents: owed, duplicate: duplicate,
               charged_cents: invoice.status == "paid" ? invoice.amount_paid_cents : invoice.amount_due_cents,
               credited_cents: credited_cents(invoice))
     end
@@ -51,7 +57,11 @@ class UsageOverbilling
     return nil unless row.over_cents.positive?
 
     cents = row.over_cents
-    words = "Usage for #{row.month.strftime('%B %Y')} corrected to paid work: #{row.staff} staff and #{row.performers} performers"
+    words = if row.duplicate
+      "#{row.month.strftime('%B %Y')} usage was billed twice; this bill is given back in full"
+    else
+      "Usage for #{row.month.strftime('%B %Y')} corrected to paid work: #{row.staff} staff and #{row.performers} performers"
+    end
     if row.invoice.collecting?
       return nil if how == "refund"
 
@@ -65,7 +75,7 @@ class UsageOverbilling
     params = {
       invoice: row.invoice.stripe_invoice_id,
       lines: [ { type: "custom_line_item", description: words, quantity: 1, unit_amount: cents } ],
-      memo: "#{words}. You were charged more than that; this gives back the difference.",
+      memo: row.duplicate ? "#{words}. We're sorry for the extra charge." : "#{words}. You were charged more than that; this gives back the difference.",
       metadata: { kind: "usage_overbilled", month: row.month.iso8601 }
     }
     params[how == "refund" ? :refund_amount : :credit_amount] = cents

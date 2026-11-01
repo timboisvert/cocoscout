@@ -57,6 +57,12 @@
             <dd class="tabular-nums text-gray-900"><%= usd(m.not_collected_cents) %></dd>
           </div>
         <% end %>
+        <% if m.owed_back_cents.positive? %>
+          <div class="flex justify-between gap-4 px-4 py-2">
+            <dt class="text-gray-700">Plus bills paid twice, owed back<p class="text-xs text-gray-500">In Stripe, but not ours: refund them (Owed to us)</p></dt>
+            <dd class="tabular-nums text-gray-900"><%= usd(m.owed_back_cents) %></dd>
+          </div>
+        <% end %>
         <% moves = m.bank_moves.to_a %>
         <details class="group">
           <summary class="flex justify-between gap-4 px-4 py-2 cursor-pointer hover:bg-gray-50">
@@ -108,7 +114,7 @@
         <% else %>
           <div class="px-4 py-3 bg-gray-50">
             <div class="flex justify-between gap-4 font-semibold text-gray-900"><span>Ours, still in Stripe</span><span class="tabular-nums"><%= usd(ours) %></span></div>
-            <p class="text-xs text-gray-500 mt-1"><%= usd(m.withdrawable_cents) %> ready to withdraw, <%= usd(m.arriving_cents) %> still arriving</p>
+            <p class="text-xs text-gray-500 mt-1"><%= usd(m.withdrawable_cents) %> ready to withdraw, <%= usd(m.arriving_cents) %> still arriving<%= ", #{usd(m.owed_back_cents)} owed back" if m.owed_back_cents.positive? %></p>
           </div>
         <% end %>
       </dl>
@@ -124,6 +130,19 @@
     <div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Owed to us</h2>
       <% bills = m.unpaid_bills.sort_by { |bill| [ %i[duplicate late collecting due].index(bill.state), -bill.days_old ] } %>
+      <% if m.paid_twice.any? %>
+        <ul class="divide-y divide-red-100 bg-red-50 text-sm border-b border-red-200">
+          <% m.paid_twice.each do |invoice| %>
+            <li class="px-4 py-2">
+              <div class="flex justify-between gap-4">
+                <span class="min-w-0 font-medium text-red-800"><%= invoice.organization.name %> paid <%= invoice.title %> twice</span>
+                <span class="tabular-nums font-medium text-red-800"><%= usd(invoice.amount_paid_cents) %></span>
+              </div>
+              <p class="text-xs text-red-700 mt-0.5">Bill <%= invoice.number %> is a second bill for the month. We owe it back: usage:overbilled[<%= invoice.organization_id %>,refund].</p>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
       <% if bills.empty? %>
         <p class="px-4 py-3 text-sm text-gray-500">Every bill is paid.</p>
       <% else %>
@@ -150,7 +169,7 @@
                   <%= "· #{invoice.failure_message}" if invoice.failure_message.present? %>
                 </span>
                 <% if bill.state == :duplicate %>
-                  <span class="basis-full text-red-700">Another bill already charges this month. Void this one in Stripe; it isn't counted as owed.</span>
+                  <span class="basis-full text-red-700">Another bill already charges this month; this one isn't counted as owed. Void it in Stripe, or once its payment lands, give it back with usage:overbilled[<%= invoice.organization_id %>,refund].</span>
                 <% end %>
               </div>
             </li>

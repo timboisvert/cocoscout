@@ -424,4 +424,34 @@ RSpec.describe UsageOverbilling do
       .with("cus_sg", hash_including(amount: -20_100, metadata: hash_including(usage_overbilled_invoice: "in_coll")), anything)
     described_class.give_back!(row, how: "credit")
   end
+
+  # Stars & Garters, October 2026: three usage subscriptions, three $159 bills.
+  it "gives back a second bill for a month in full, and Finances holds it as owed back until then" do
+    month = { period_start: Time.zone.local(2026, 10, 1), period_end: Time.zone.local(2026, 11, 1) }
+    first, second = %w[0003 0004].map do |n|
+      BillingInvoice.create!(organization: org, stripe_invoice_id: "in_#{n}", number: "SG-#{n}", kind: "usage", status: "paid",
+                             amount_due_cents: 15_900, amount_paid_cents: 15_900, paid_at: Time.current, **month)
+    end
+    allow(Stripe::Invoice).to receive(:retrieve).and_return(Stripe::Invoice.construct_from(id: "in_x", post_payment_credit_notes_amount: 0))
+    allow(Stripe::Customer).to receive(:list_balance_transactions).and_return(double(auto_paging_each: []))
+
+    rows = described_class.rows(org)
+    expect(rows.find { |row| row.invoice == first }.duplicate).to be(false)
+    extra = rows.find { |row| row.invoice == second }
+    expect([ extra.duplicate, extra.owed_cents, extra.over_cents ]).to eq([ true, 0, 15_900 ])
+
+    money = CocoScoutMoneyNow.new(check: nil)
+    expect([ money.paid_twice, money.owed_back_cents, money.profit_cents ]).to eq([ [ second ], 15_900, 15_900 ])
+
+    expect(Stripe::CreditNote).to receive(:create)
+      .with(hash_including(invoice: "in_0004", refund_amount: 15_900, memo: a_string_including("billed twice")), anything)
+      .and_return(Stripe::CreditNote.construct_from(id: "cn_2"))
+    described_class.give_back!(extra, how: "refund")
+
+    # The refund lands: nothing is owed back any more, and the income it brought is gone.
+    StripeBalanceTransaction.create!(stripe_id: "txn_back", txn_type: "refund", reporting_category: "refund", amount_cents: -15_900, net_cents: -15_900,
+                                     occurred_at: Time.current, category: "billing_refund", match_status: "matched", matched: second)
+    money = CocoScoutMoneyNow.new(check: nil)
+    expect([ money.paid_twice, money.owed_back_cents, money.profit_cents ]).to eq([ [], 0, 15_900 ])
+  end
 end

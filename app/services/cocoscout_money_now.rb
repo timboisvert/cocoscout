@@ -33,9 +33,10 @@ class CocoScoutMoneyNow
     @sums ||= CocoScoutLedgerEntry.group(:entry_type).sum(:amount_cents)
   end
 
-  # Earned less spent since we started, counting every bill sent.
+  # Earned less spent since we started, counting every bill sent, and not
+  # a second bill for a month that was paid (that's owed back).
   def profit_cents
-    collected_profit_cents + not_collected_cents
+    collected_profit_cents + not_collected_cents - owed_back_cents
   end
 
   # The same, counting only what's been paid: the ledger.
@@ -75,9 +76,9 @@ class CocoScoutMoneyNow
     check&.details&.dig("stripe_available_cents")
   end
 
-  # What CocoScout can send to its bank today.
+  # What CocoScout can send to its bank today: ours, less what we owe back.
   def withdrawable_cents
-    ours = ours_in_stripe_cents
+    ours = ours_in_stripe_cents - owed_back_cents
     return 0 unless ours.positive?
     return 0 if stripe_available_cents.nil?
 
@@ -86,7 +87,7 @@ class CocoScoutMoneyNow
 
   # Ours, but still on its way into Stripe's available balance.
   def arriving_cents
-    [ ours_in_stripe_cents - withdrawable_cents, 0 ].max
+    [ ours_in_stripe_cents - owed_back_cents - withdrawable_cents, 0 ].max
   end
 
   # Every bill not yet paid, oldest first, with where it stands:
@@ -108,6 +109,24 @@ class CocoScoutMoneyNow
         end
         Bill.new(invoice: invoice, state: state, days_old: days)
       end
+    end
+  end
+
+  # Second bills for a month that were paid before anyone caught them, not
+  # yet given back: usage:overbilled[ORG_ID,refund] refunds them.
+  def paid_twice
+    @paid_twice ||= begin
+      refunded = StripeBalanceTransaction.where(category: "billing_refund", matched_type: "BillingInvoice").group(:matched_id).sum(:amount_cents)
+      BillingInvoice.where(id: BillingInvoice.duplicate_ids, status: "paid").includes(:organization).order(:id)
+                    .select { |bill| bill.amount_paid_cents + refunded[bill.id].to_i > 0 }
+    end
+  end
+
+  def owed_back_cents
+    @owed_back_cents ||= begin
+      refunded = StripeBalanceTransaction.where(category: "billing_refund", matched_type: "BillingInvoice", matched_id: paid_twice.map(&:id))
+                                         .group(:matched_id).sum(:amount_cents)
+      paid_twice.sum { |bill| bill.amount_paid_cents + refunded[bill.id].to_i }
     end
   end
 

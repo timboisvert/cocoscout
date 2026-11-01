@@ -75,6 +75,17 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
       expect(response.body).to include("Ticket fees (50¢ a ticket)", organization.name, "1.00")
     end
 
+    it "says when an organization paid a month twice, and keeps it out of what's ours" do
+      month = { period_start: Time.zone.local(2026, 10, 1), period_end: Time.zone.local(2026, 11, 1), paid_at: Time.current }
+      BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_a", number: "SG-0003", kind: "usage", status: "paid",
+                             amount_due_cents: 15_900, amount_paid_cents: 15_900, **month)
+      BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_b", number: "SG-0004", kind: "usage", status: "paid",
+                             amount_due_cents: 15_900, amount_paid_cents: 15_900, **month)
+      get finances_path
+      expect(response.body).to include("paid October 2026 usage twice", "Bill SG-0004", "usage:overbilled[#{organization.id},refund]",
+                                       "Plus bills paid twice, owed back", "$159.00 owed back")
+    end
+
     it "lists each organization's money, and one organization's in full" do
       create(:course_registration, course_offering: course_offering, amount_cents: 10_000, status: "confirmed", stripe_payment_intent_id: "pi_c", cocoscout_fee_cents: 1_000)
       batch = organization.payout_batches.create!(kind: "payout", status: "funding", trigger: "manual", total_cents: 200_000, funding_status: "processing")

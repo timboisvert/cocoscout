@@ -95,7 +95,8 @@ namespace :usage do
       state = row.invoice.collecting? ? " (#{row.invoice.status_label.downcase})" : ""
       puts "#{row.invoice.number}#{state} covers #{row.month.strftime('%B %Y')}: charged #{fmt.call(row.charged_cents)}" \
            "#{", already credited #{fmt.call(row.credited_cents)}" if row.credited_cents.positive?}; " \
-           "owed #{fmt.call(row.owed_cents)} (#{row.staff} staff × $5, #{row.performers} performers × $3); overcharged #{fmt.call(row.over_cents)}"
+           "#{row.duplicate ? 'owed nothing (a second bill for the month)' : "owed #{fmt.call(row.owed_cents)} (#{row.staff} staff × $5, #{row.performers} performers × $3)"}; " \
+           "overcharged #{fmt.call(row.over_cents)}"
       next unless how && row.over_cents.positive?
 
       result = UsageOverbilling.give_back!(row, how: how)
