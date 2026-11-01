@@ -36,7 +36,7 @@ class CocoScoutApplication : Application() {
         TapToPaySetup.start(this)
 
         Hotwire.defaultFragmentDestination = WebFragment::class
-        Hotwire.registerFragmentDestinations(WebFragment::class)
+        Hotwire.registerFragmentDestinations(WebFragment::class, WebBottomSheetFragment::class)
 
         // The same bridge components as the iOS app, so the server's
         // native_bridge_component? reads this app the same way.

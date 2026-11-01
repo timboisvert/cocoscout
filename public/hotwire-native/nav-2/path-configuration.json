@@ -57,6 +57,9 @@
       ],
       "properties": {
         "context": "modal",
+        "modal_style": "medium",
+        "uri": "hotwire://fragment/web/modal/sheet",
+        "fallback_uri": "hotwire://fragment/web",
         "pull_to_refresh_enabled": false
       }
     },
