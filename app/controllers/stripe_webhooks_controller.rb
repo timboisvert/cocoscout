@@ -324,6 +324,13 @@ class StripeWebhooksController < ApplicationController
       return
     end
 
+    # Pro monthly: the card or bank is saved; Pro starts on the monthly bill.
+    if metadata["kind"] == ProMonthlyStart::KIND
+      organization = Organization.find_by(id: metadata["organization_id"])
+      ProMonthlyStart.from_session!(organization, session) if organization
+      return
+    end
+
     # A contractor paying us under a contract (see ContractPaymentCheckout).
     if metadata["contract_payment_id"].present?
       handle_contract_payment_completed(session, metadata)

@@ -168,9 +168,30 @@ module UsageRules
     (over * WITHDRAWAL_FEE_BASIS_POINTS / 10_000.0).round
   end
 
-  # Everything the month's usage bill charges beyond the people paid.
+  # Everything the month's usage bill charges beyond the people paid: Pro
+  # when it's paid on this bill, and the fees.
   def fees_cents(organization, month)
-    bank_debit_fee_cents(organization, month) + withdrawal_fee_cents(organization, month)
+    pro_cents(organization, month) + bank_debit_fee_cents(organization, month) + withdrawal_fee_cents(organization, month)
+  end
+
+  # Pro for the month, when the organization pays it on the monthly bill
+  # (Organization#pro_on_monthly_bill?): $29, by the day for a month it
+  # started or ended part way through, and nothing for days it was comped.
+  def pro_cents(organization, month)
+    return 0 if organization.pro_monthly_from.blank?
+
+    range = range_for(month)
+    from = [ organization.pro_monthly_from, range.first ].max
+    to = [ organization.pro_monthly_until || range.last, range.last ].min
+    comp_end = organization.comped_indefinitely? ? range.last : organization.comped_until
+    from = [ from, comp_end + 1.second ].max if comp_end
+    return 0 if to <= from
+
+    # Whole days, the first day counted: ending at midnight leaves that day out.
+    last_day = to == to.beginning_of_day ? to.to_date - 1 : to.to_date
+    days = (last_day - from.to_date).to_i + 1
+    month_days = month.to_date.end_of_month.day
+    days >= month_days ? SubscriptionPlan::PRO_MONTHLY_CENTS : (SubscriptionPlan::PRO_MONTHLY_CENTS * days / month_days.to_f).round
   end
 
   def paid_role?(member, role)

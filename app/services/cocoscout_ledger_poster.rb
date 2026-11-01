@@ -13,7 +13,8 @@
 #                        the fee that went back
 #   ContractPayment      collected online: the processing passed on to the
 #                        theater, Stripe's processing (they cancel out)
-#   BillingInvoice       a paid Pro or usage bill
+#   BillingInvoice       a paid Pro or usage bill (a monthly bill carrying Pro
+#                        posts its Pro line as Pro, the rest as usage)
 #   OrgPayout            a theater paid by hand from CocoScout's bank: the
 #                        Stripe money its balance gave up is CocoScout's
 #   StripeBalanceTransaction
@@ -149,7 +150,11 @@ class CocoScoutLedgerPoster
   def self.billing_invoice(invoice)
     return {} unless invoice.status == "paid"
 
-    { (invoice.kind == "usage" ? "usage" : "subscription") => invoice.amount_paid_cents.to_i }
+    return { "subscription" => invoice.amount_paid_cents.to_i } unless invoice.kind == "usage"
+
+    # The one monthly bill carries Pro beside the usage: Pro is Pro income.
+    pro = [ invoice.pro_plan_cents, invoice.amount_paid_cents.to_i ].min
+    { "subscription" => pro, "usage" => invoice.amount_paid_cents.to_i - pro }
   end
 
   # CocoScout paid the theater from its own bank; the money the theater's

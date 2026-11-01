@@ -321,7 +321,7 @@ RSpec.describe "StripeWebhooksController", type: :request do
 
   describe "a usage bill Stripe just drafted" do
     it "is corrected to the people CocoScout paid that month, before Stripe charges it" do
-      org.update!(stripe_customer_id: "cus_sg", staffing_subscription_id: "sub_usage")
+      org.update!(stripe_customer_id: "cus_sg", staffing_subscription_id: "sub_usage", comped_indefinitely: true)
       month = Date.new(2026, 10, 1)
       3.times { StaffActivation.record!(organization: org, person: create(:person), month: month) }
       7.times { PerformerActivation.record!(organization: org, person: create(:person), month: month) }
@@ -341,7 +341,7 @@ RSpec.describe "StripeWebhooksController", type: :request do
     end
 
     it "leaves a bill that already matches alone" do
-      org.update!(stripe_customer_id: "cus_sg", staffing_subscription_id: "sub_usage")
+      org.update!(stripe_customer_id: "cus_sg", staffing_subscription_id: "sub_usage", comped_indefinitely: true)
       StaffActivation.record!(organization: org, person: create(:person), month: Date.new(2026, 10, 1))
       draft = Stripe::Invoice.construct_from(
         id: "in_ok", object: "invoice", customer: "cus_sg", status: "draft", amount_due: 500,

@@ -165,9 +165,9 @@ class CocoScoutMoneyNow
   # its usage on the 1st (and what's built up so far), or its Pro renewal.
   # Nil when nothing is coming, and a credit would only sit there.
   def next_bill_for(organization)
-    if organization.bills_usage?
+    if organization.bills_usage? || organization.pro_on_monthly_bill?
       so_far = usage_so_far.find { |row| row[:organization].id == organization.id }&.dig(:cents).to_i
-      { on: @now.to_date.next_month.beginning_of_month, what: "usage", so_far_cents: so_far }
+      { on: @now.to_date.next_month.beginning_of_month, what: organization.pro_on_monthly_bill? ? "monthly bill" : "usage", so_far_cents: so_far }
     elsif !organization.comped? && organization.subscription_status.in?(SubscriptionSyncService::ACCESS_STATUSES) && organization.subscription_current_period_end
       { on: organization.subscription_current_period_end.to_date, what: "Pro plan", so_far_cents: nil }
     end
@@ -252,13 +252,15 @@ class CocoScoutMoneyNow
                             .distinct.pluck(:organization_id) +
                  BalanceTopUp.where(created_at: range).where.not(stripe_payment_intent_id: nil).distinct.pluck(:organization_id) +
                  BalanceWithdrawal.not_failed.where(created_at: range).distinct.pluck(:organization_id)
-      orgs = Organization.where(id: (performers.keys + staff.keys + debiting).uniq).select(&:bills_usage?)
+      monthly_pro = Organization.where.not(pro_monthly_from: nil).pluck(:id)
+      orgs = Organization.where(id: (performers.keys + staff.keys + debiting + monthly_pro).uniq).select { |org| org.bills_usage? || org.pro_on_monthly_bill? }
       rows = orgs.map do |org|
         debits = UsageRules.extra_bank_debits(org, month)
-        cents = performers[org.id].to_i * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS +
-                staff[org.id].to_i * StaffBillingService::PER_ACTIVE_STAFF_CENTS + debits * UsageRules::EXTRA_BANK_DEBIT_CENTS +
-                UsageRules.withdrawal_fee_cents(org, month)
-        { organization: org, performers: performers[org.id].to_i, staff: staff[org.id].to_i, extra_debits: debits, cents: cents }
+        pro = UsageRules.pro_cents(org, month)
+        usage = org.bills_usage? ? performers[org.id].to_i * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS +
+                                   staff[org.id].to_i * StaffBillingService::PER_ACTIVE_STAFF_CENTS + debits * UsageRules::EXTRA_BANK_DEBIT_CENTS +
+                                   UsageRules.withdrawal_fee_cents(org, month) : 0
+        { organization: org, performers: performers[org.id].to_i, staff: staff[org.id].to_i, extra_debits: debits, pro_cents: pro, cents: pro + usage }
       end
       rows.select { |row| row[:cents].positive? }.sort_by { |row| -row[:cents] }
     end

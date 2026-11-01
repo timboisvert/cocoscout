@@ -63,7 +63,8 @@ module StaffMeterService
   # create carries an idempotency key.
   def ensure_staffing_subscription!(org)
     return org.staffing_subscription_id if org.staffing_subscription_id.present?
-    return nil unless org.bills_usage?
+    # It sends the one monthly bill: usage, and Pro paid on it.
+    return nil unless org.bills_usage? || org.pro_on_monthly_bill?
 
     items = SubscriptionPlan.staffing_subscription_items
     return nil if items.nil? || org.stripe_customer_id.blank?
@@ -104,7 +105,7 @@ module StaffMeterService
   # the comp covers whatever was metered this month. Returns true if it
   # canceled one.
   def sync_usage_subscription!(org)
-    return false if org.bills_usage? || org.staffing_subscription_id.blank?
+    return false if org.bills_usage? || org.pro_on_monthly_bill? || org.staffing_subscription_id.blank?
 
     Stripe::Subscription.cancel(org.staffing_subscription_id)
     org.update_column(:staffing_subscription_id, nil)

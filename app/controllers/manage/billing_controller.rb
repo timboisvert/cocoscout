@@ -85,6 +85,18 @@ module Manage
       end
     end
 
+    # POST /manage/billing/cancel_pro — end Pro paid on the monthly bill at the
+    # end of this month; that month's bill is the last.
+    def cancel_pro
+      @organization = Current.organization
+      unless @organization.pro_on_monthly_bill?
+        redirect_to org_billing_tab_path, alert: "There's no monthly Pro plan to cancel." and return
+      end
+
+      @organization.cancel_pro_on_monthly_bill!
+      redirect_to org_billing_tab_path, notice: "Pro is canceled. It stays on through #{@organization.pro_monthly_until.strftime('%B %-d')}, and that month's bill is the last."
+    end
+
     # POST /manage/billing/portal — open the Stripe-hosted billing portal.
     def portal
       @organization = Current.organization
@@ -127,7 +139,18 @@ module Manage
 
       ensure_stripe_customer!
 
-      # Just the Pro base plan. Metered staffing usage bills on a separate
+      # Monthly: Pro goes on the one monthly bill with the usage, so checkout
+      # only saves the card or bank that bill is paid from (ProMonthlyStart).
+      if interval.to_s.in?(%w[month monthly])
+        session = Stripe::Checkout::Session.create(
+          ProMonthlyStart.session_params(@organization, success_url: manage_billing_success_url + "?session_id={CHECKOUT_SESSION_ID}",
+                                                        cancel_url: org_billing_tab_url)
+        )
+        redirect_to session.url, allow_other_host: true
+        return
+      end
+
+      # Annual: just the Pro base plan, paid once a year. Metered staffing usage bills on a separate
       # monthly subscription (see StaffMeterService), so it works the same for
       # annual and monthly subscribers.
       session = Stripe::Checkout::Session.create(
@@ -159,6 +182,7 @@ module Manage
 
     def sync_from_checkout_session(session_id)
       session = Stripe::Checkout::Session.retrieve(session_id)
+      return if ProMonthlyStart.from_session!(@organization, session)
       return if session.subscription.blank?
       return unless session.metadata["organization_id"].to_i == @organization.id
 

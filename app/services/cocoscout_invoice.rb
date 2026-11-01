@@ -75,12 +75,19 @@ class CocoScoutInvoice
     month = usage_month
     staff = StaffActivation.where(organization: @organization).for_month(month).count
     performers = PerformerActivation.where(organization: @organization).for_month(month).count
+    pro = UsageRules.pro_cents(@organization, month)
     debits = UsageRules.extra_bank_debits(@organization, month)
     withdrawn = UsageRules.withdrawn_cents(@organization, month)
     withdrawal_fee = UsageRules.withdrawal_fee_cents(@organization, month, withdrawn)
     counted = staff * StaffBillingService::PER_ACTIVE_STAFF_CENTS + performers * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS +
-              debits * UsageRules::EXTRA_BANK_DEBIT_CENTS + withdrawal_fee
-    lines = UsageRules.by_payment?(month) ? paid_people_items(month, staff, performers) : worked_people_items(month, staff, performers)
+              debits * UsageRules::EXTRA_BANK_DEBIT_CENTS + withdrawal_fee + pro
+    lines = []
+    if pro.positive?
+      lines << InvoiceDocument::Line.new(description: "Pro plan, #{month.strftime('%B %Y')}",
+                                         detail: pro == SubscriptionPlan::PRO_MONTHLY_CENTS ? "#{dollars(SubscriptionPlan::PRO_MONTHLY_CENTS)} a month." : "#{dollars(SubscriptionPlan::PRO_MONTHLY_CENTS)} a month, for the days you were on Pro.",
+                                         amount_cents: pro)
+    end
+    lines += UsageRules.by_payment?(month) ? paid_people_items(month, staff, performers) : worked_people_items(month, staff, performers)
     if debits.positive?
       lines << InvoiceDocument::Line.new(description: "#{debits} bank #{'debit'.pluralize(debits)} beyond the #{UsageRules::FREE_BANK_DEBITS} free × #{dollars(UsageRules::EXTRA_BANK_DEBIT_CENTS)}",
                                          detail: "Payout runs funded from your bank, and funds added from it, in #{month.strftime('%B %Y')}.",

@@ -12,6 +12,9 @@
 # amount go on it as their own lines.
 class UsageInvoiceCorrection
   PREFIX = "Correction:"
+  # The line that carries Pro on the monthly bill; CocoScout's books read it
+  # back as the plan, apart from the usage.
+  PRO_PLAN_PREFIX = "Pro plan,"
 
   def self.apply!(record)
     return unless record&.kind == "usage" && record.status == "draft"
@@ -25,12 +28,15 @@ class UsageInvoiceCorrection
     expected = staff * StaffBillingService::PER_ACTIVE_STAFF_CENTS + performers * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS
     # A month bills once. A second bill for it (a second usage subscription)
     # is corrected to nothing, never topped up to the month again.
-    expected = 0 if record.duplicate?
+    expected = 0 if record.duplicate? || !organization.bills_usage?
     on_bill = record.lines.sum { |line| line["amount_cents"].to_i }
     difference = expected - on_bill
     unless record.duplicate?
-      add_bank_debit_fee!(record, organization, month)
-      add_withdrawal_fee!(record, organization, month)
+      add_pro_plan!(record, organization, month)
+      if organization.bills_usage?
+        add_bank_debit_fee!(record, organization, month)
+        add_withdrawal_fee!(record, organization, month)
+      end
     end
     return if difference.zero?
 
@@ -40,6 +46,20 @@ class UsageInvoiceCorrection
         description: "#{PREFIX} #{people} through CocoScout in #{month.strftime('%B %Y')}",
         metadata: { kind: "usage_correction", organization_id: organization.id, month: month.iso8601 } },
       { idempotency_key: "usage-correction-#{record.stripe_invoice_id}-#{difference}" }
+    )
+  end
+
+  # Pro paid on the monthly bill: the plan for the month the bill covers, as
+  # its first line, so one bill carries the plan and the usage.
+  def self.add_pro_plan!(record, organization, month)
+    cents = UsageRules.pro_cents(organization, month)
+    return if cents.zero?
+
+    Stripe::InvoiceItem.create(
+      { customer: organization.stripe_customer_id, invoice: record.stripe_invoice_id, currency: "usd", amount: cents,
+        description: "#{PRO_PLAN_PREFIX} #{month.strftime('%B %Y')}",
+        metadata: { kind: "pro_plan", organization_id: organization.id, month: month.iso8601 } },
+      { idempotency_key: "pro-plan-#{record.stripe_invoice_id}-#{cents}" }
     )
   end
 

@@ -63,11 +63,22 @@ class BillingInvoice < ApplicationRecord
     UsageInvoiceCorrection.billed_month(self)
   end
 
-  # What the bill is for: "September 2026 usage", "Pro plan".
+  # What the bill is for: "September 2026 usage", "November 2026: Pro and
+  # usage" (the one monthly bill carrying Pro), "Pro plan".
   def title
-    return "#{covered_month.strftime('%B %Y')} usage" if kind == "usage" && covered_month
+    if kind == "usage" && covered_month
+      return "#{covered_month.strftime('%B %Y')}: Pro and usage" if pro_plan_cents.positive?
+
+      return "#{covered_month.strftime('%B %Y')} usage"
+    end
 
     label
+  end
+
+  # Pro on the monthly bill: its plan line (UsageInvoiceCorrection).
+  def pro_plan_cents
+    Array(lines).select { |line| line["description"].to_s.start_with?(UsageInvoiceCorrection::PRO_PLAN_PREFIX) }
+                .sum { |line| line["amount_cents"].to_i }
   end
 
   # When CocoScout earned it: a usage bill on the last day of the month it

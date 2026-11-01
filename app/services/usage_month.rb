@@ -41,7 +41,11 @@ class UsageMonth
   def withdrawal_fee_cents = UsageRules.withdrawal_fee_cents(organization, month, withdrawn_cents)
   def free_withdrawal_left_cents = [ UsageRules::FREE_WITHDRAWAL_CENTS - withdrawn_cents, 0 ].max
 
-  def total_cents = staff_cents + others_cents + extra_debits_cents + withdrawal_fee_cents
+  # Pro for the month, when it's paid on this bill.
+  def pro_cents = UsageRules.pro_cents(organization, month)
+
+  def usage_cents = staff_cents + others_cents + extra_debits_cents + withdrawal_fee_cents
+  def total_cents = pro_cents + usage_cents
 
   # The bill for the month: the usage bill whose period it is (the first, if
   # a month ever had two).

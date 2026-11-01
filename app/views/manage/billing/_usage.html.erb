@@ -9,7 +9,7 @@
 <div class="mt-8 border-t border-gray-200 pt-6">
   <div class="flex items-start justify-between gap-4 flex-wrap">
     <div class="min-w-0">
-      <h4 class="text-base font-semibold text-gray-900">This month's usage</h4>
+      <h4 class="text-base font-semibold text-gray-900"><%= now.pro_cents.positive? ? "This month's bill" : "This month's usage" %></h4>
       <p class="text-sm text-gray-500 mt-1 max-w-xl">
         Each month you're charged for the people you pay through CocoScout: <%= staff_price %> for each staff member, <%= other_price %> for everyone else
         (performers, contractors, guests), once each however many times you pay them. That's what paying them costs CocoScout with our payment provider.
@@ -18,6 +18,9 @@
     <div class="text-right">
       <div class="text-2xl font-semibold text-gray-900 tabular-nums"><%= number_to_currency(now.total_cents / 100.0) %></div>
       <div class="text-xs text-gray-500">so far · billed <%= now.billed_on.strftime("%b %-d") %>, taken automatically</div>
+      <% if now.pro_cents.positive? %>
+        <div class="text-xs text-gray-500">Pro plan <%= number_to_currency(now.pro_cents / 100.0) %> + usage <%= number_to_currency(now.usage_cents / 100.0) %>, on one bill</div>
+      <% end %>
     </div>
   </div>
 

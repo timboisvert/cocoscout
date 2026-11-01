@@ -121,8 +121,8 @@ module Superadmin
           staff: StaffActivation.where(organization: org).for_month(month).count }
       end
       @last_invoices = BillingInvoice.where(organization_id: @orgs.map(&:id)).newest_first.group_by(&:organization_id)
-      paying = @orgs.select { |o| !o.comped? && o.subscription_status.in?(SubscriptionSyncService::ACCESS_STATUSES) }
-      @mrr_cents = paying.sum { |o| o.subscription_interval == "year" ? (SubscriptionPlan::PRO_ANNUAL_CENTS / 12.0).round : SubscriptionPlan::PRO_MONTHLY_CENTS }
+      paying = @orgs.select { |o| !o.comped? && (o.pro_on_monthly_bill? || o.subscription_status.in?(SubscriptionSyncService::ACCESS_STATUSES)) }
+      @mrr_cents = paying.sum { |o| !o.pro_on_monthly_bill? && o.subscription_interval == "year" ? (SubscriptionPlan::PRO_ANNUAL_CENTS / 12.0).round : SubscriptionPlan::PRO_MONTHLY_CENTS }
       @paying_count = paying.size
       @comped = @orgs.select(&:comped?)
       @past_due = @orgs.select { |o| o.subscription_status == "past_due" }
