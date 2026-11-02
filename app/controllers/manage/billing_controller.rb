@@ -145,9 +145,12 @@ module Manage
     # Create a subscription Checkout Session for the given interval and redirect
     # to Stripe. Shared by the checkout action and the auto-upgrade path in show.
     def start_checkout(interval)
-      price_id = SubscriptionPlan.price_id(interval)
+      monthly = interval.to_s.in?(%w[month monthly])
+      # Monthly Pro has no price of its own (it's a line on the monthly bill);
+      # only the yearly plan needs one.
+      price_id = SubscriptionPlan.price_id(interval) unless monthly
 
-      if price_id.blank?
+      if !monthly && price_id.blank?
         redirect_to org_billing_tab_path, alert: "That plan isn't available right now."
         return
       end
@@ -156,7 +159,7 @@ module Manage
 
       # Monthly: Pro goes on the one monthly bill with the usage, so checkout
       # only saves the card or bank that bill is paid from (ProMonthlyStart).
-      if interval.to_s.in?(%w[month monthly])
+      if monthly
         session = Stripe::Checkout::Session.create(
           ProMonthlyStart.session_params(@organization, success_url: manage_billing_success_url + "?session_id={CHECKOUT_SESSION_ID}",
                                                         cancel_url: org_billing_tab_url)
