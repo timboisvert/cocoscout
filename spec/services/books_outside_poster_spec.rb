@@ -89,14 +89,17 @@ RSpec.describe BooksOutsidePoster do
       contract.contract_payments.create!(direction: direction, amount: amount, due_date: Date.new(2026, 10, 1), description: "Rent", **attrs)
     end
 
-    it "posts a check received on the day it was paid, and takes it back when it's unpaid again" do
+    # Earned on the date it's for (its due date), moved the day it was paid
+    # (Tim, 2026-11-02): an October rehearsal paid in November is October's.
+    it "posts a check received: earned on the date it's for, moved on the day it was paid; taken back when unpaid again" do
       rent = payment("incoming", 350)
       expect(balance(:contract_income)).to eq(0)
 
-      rent.mark_paid!(paid_on: Date.new(2026, 10, 3), method: "check")
+      rent.mark_paid!(paid_on: Date.new(2026, 11, 3), method: "check")
       expect(balance(:contract_income)).to eq(35_000)
       expect(balance(:bank)).to eq(35_000)
-      expect(JournalEntry.live.find_by(source: rent).entry_date).to eq(Date.new(2026, 10, 3))
+      entry = JournalEntry.live.find_by(source: rent)
+      expect([ entry.entry_date, entry.cash_date ]).to eq([ Date.new(2026, 10, 1), Date.new(2026, 11, 3) ])
 
       rent.update!(status: :pending, paid_date: nil)
       expect(balance(:contract_income)).to eq(0)
@@ -125,6 +128,23 @@ RSpec.describe BooksOutsidePoster do
       run_share.mark_paid_via_payout_run!(reference_id: "tr_1")
 
       expect(JournalEntry.live.where(source_type: "ContractPayment")).to be_empty
+    end
+
+    it "moves money already on the books to the date it's for, reversing on the old entry's own dates" do
+      rent = payment("incoming", 350)
+      rent.mark_paid!(paid_on: Date.new(2026, 11, 3), method: "check")
+      old = JournalEntry.live.find_by(source: rent)
+      old.update_columns(entry_date: Date.new(2026, 11, 3)) # as the books used to date it
+
+      expect(ContractMoneyRedate.run!).to eq(1)
+      expect(JournalEntry.live.find_by(source: rent).entry_date).to eq(Date.new(2026, 10, 1))
+      reversal = JournalEntry.find_by(reversal_of_id: old.id)
+      expect([ reversal.entry_date, reversal.cash_date ]).to eq([ Date.new(2026, 11, 3), Date.new(2026, 11, 3) ])
+      income_in = ->(month) { -JournalLine.joins(:journal_entry).where(ledger_account: ChartOfAccounts.account(org, :contract_income), journal_entries: { entry_date: month.all_month }).sum(:amount_cents) }
+      expect([ income_in.call(Date.new(2026, 10, 1)), income_in.call(Date.new(2026, 11, 1)) ]).to eq([ 35_000, 0 ])
+      expect(balance(:contract_income)).to eq(35_000)
+
+      expect(ContractMoneyRedate.run!).to eq(0)
     end
 
     it "is picked up by the backfill" do

@@ -631,13 +631,15 @@ RSpec.describe Contract, type: :model do
         expect(c.money_summary(2.weeks.ago..Time.current)).to eq(money_in: 1000.0, money_out: 700.0)
       end
 
-      it "counts a flat deal's payments by the day paid, or due while unpaid, when given a range" do
+      it "counts a flat deal's payments on the date they're for, once that date has come, when given a range" do
         flat = create(:contract, organization: org, production: production,
           draft_data: { "payment_structure" => "flat_fee", "payment_config" => { "flat_fee_direction" => "incoming" } })
-        create(:contract_payment, :paid, contract: flat, amount: 500, paid_date: 40.days.ago.to_date, due_date: 45.days.ago.to_date)
-        create(:contract_payment, contract: flat, amount: 200, due_date: 3.days.ago.to_date)
-        expect(flat.money_summary(10.days.ago..Time.current)).to eq(money_in: 200.0, money_out: 0.0)
-        expect(flat.money_summary).to eq(money_in: 700.0, money_out: 0.0)
+        create(:contract_payment, :paid, contract: flat, amount: 500, paid_date: 2.days.ago.to_date, due_date: 45.days.ago.to_date) # for a date 45 days ago
+        create(:contract_payment, contract: flat, amount: 200, due_date: 3.days.ago.to_date) # due, not paid yet
+        create(:contract_payment, contract: flat, amount: 90, due_date: 3.days.from_now.to_date) # a date still ahead
+        expect(flat.money_summary(10.days.ago..10.days.from_now)).to eq(money_in: 200.0, money_out: 0.0)
+        expect(flat.money_summary(50.days.ago..40.days.ago)).to eq(money_in: 500.0, money_out: 0.0)
+        expect(flat.money_summary).to eq(money_in: 790.0, money_out: 0.0)
       end
     end
 

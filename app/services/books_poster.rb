@@ -41,6 +41,21 @@ class BooksPoster
     Rails.logger.error("[BooksPoster] remove #{row.class.name} #{row.id}: #{e.class}: #{e.message}")
   end
 
+  # When the money was earned. Contract money belongs to the date it's for
+  # (its due date: "Rehearsal — Oct 7" is due Oct 7), not the day it moved;
+  # everything else was earned when it happened (Tim, 2026-11-02).
+  def self.earned_on(entry)
+    contract_payment_for(entry)&.due_date || entry.occurred_at.to_date
+  end
+
+  # The contract payment behind a ledger row: directly (collected online), or
+  # through the payout contribution that put a contract share on a run.
+  def self.contract_payment_for(entry)
+    source = entry.source
+    source = source.source if source.is_a?(PayoutContribution)
+    source if source.is_a?(ContractPayment)
+  end
+
   def self.kind_for(row)
     row.is_a?(OrgCashEntry) ? "cash" : "owed"
   end
@@ -55,7 +70,7 @@ class BooksPoster
     return if lines.nil?
 
     LedgerPosting.post!(organization: entry.organization, source: entry, kind: "cash",
-                        entry_date: entry.occurred_at.to_date, cash_date: entry.occurred_at.to_date,
+                        entry_date: earned_on(entry), cash_date: entry.occurred_at.to_date,
                         memo: entry.description.presence || entry.entry_type.humanize, lines: lines)
   end
 
@@ -140,7 +155,7 @@ class BooksPoster
     return LedgerPosting.unpost!(source: entry, kind: "owed") if lines.nil?
 
     LedgerPosting.post!(organization: entry.organization, source: entry, kind: "owed",
-                        entry_date: entry.occurred_at.to_date, cash_date: entry.occurred_at.to_date,
+                        entry_date: earned_on(entry), cash_date: entry.occurred_at.to_date,
                         memo: entry.description.presence || entry.entry_type.humanize, lines: lines)
   end
 
