@@ -408,6 +408,13 @@ module My
         .includes(role_vacancy: [ :role, { show: :production } ])
         .order("shows.date_and_time ASC")
 
+      # Shifts they've been asked to cover, still open.
+      @pending_shift_invitations = ShiftVacancyInvitation.unresolved.joins(shift_vacancy: :shift)
+        .where(person_id: people_ids)
+        .includes(shift_vacancy: { shift: [ :house_role, :organization ] })
+        .order("shifts.starts_at ASC")
+        .to_a
+
       # Contracts the org has signed and sent, waiting on this person's signature.
       @contracts_awaiting_signature = Contract.awaiting_signature_of(people_ids)
         .includes(:organization)

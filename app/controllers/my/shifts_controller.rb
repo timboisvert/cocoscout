@@ -15,7 +15,7 @@ module My
         .where(person_id: people_ids)
         .joins(:shift)
         .where("shifts.ends_at >= ?", Time.current)
-        .includes(:person, shift: [ :house_role, :additional_roles, :organization, :source, { shows: :production } ])
+        .includes(:person, shift: [ :house_role, :additional_roles, :organization, :source, :shift_vacancies, { shows: :production } ])
         .order("shifts.starts_at ASC")
         .to_a
 
@@ -26,13 +26,27 @@ module My
         finalized_weeks.include?([ a.shift.organization_id, a.shift.starts_at.to_date.beginning_of_week ])
       end
 
-      @rows = assignments.map { |a| { assignment: a, shift: a.shift, person: a.person } }
+      @rows = assignments.map { |a| { assignment: a, shift: a.shift, person: a.person, vacancy: a.active_vacancy } }
+      # Shifts they couldn't make that are settled (someone has it, or it's
+      # not being filled): their row is gone, so the vacancy stands in for it.
+      settled = ShiftVacancy.where(vacated_by_id: people_ids, status: %w[filled not_filling]).upcoming
+        .includes(:filled_by, :vacated_by, shift: [ :house_role, :additional_roles, :organization, :source, { shows: :production } ])
+        .order("shifts.starts_at ASC")
+        .to_a
+      settled.select! do |v|
+        finalized_weeks.include?([ v.shift.organization_id, v.shift.starts_at.to_date.beginning_of_week ])
+      end
+      @rows += settled.map { |v| { vacancy: v, shift: v.shift, person: v.vacated_by, outcome: true } }
+      @rows.sort_by! { |r| r[:shift].starts_at }
       @rows_by_day = @rows.group_by { |r| r[:shift].starts_at.to_date }
       # How many people to expect at the shows each shift covers, where the
       # organization shows its staff the count (ShiftExpectedAttendance).
       @expected_by_shift = ShiftExpectedAttendance.for(@rows.map { |r| r[:shift] })
       @has_any = @rows.any?
-      @upcoming_count = @rows.size
+      @upcoming_count = @rows.count { |r| r[:assignment]&.active? }
+
+      # Shifts they've been asked to cover, still open.
+      @pending_shift_invitations = pending_shift_invitations(people_ids)
 
       # Staff positions this person has been invited to but hasn't accepted yet —
       # surfaced as a prompt bar so they can accept their onboarding right here.
@@ -89,6 +103,14 @@ module My
     end
 
     private
+
+    def pending_shift_invitations(people_ids)
+      ShiftVacancyInvitation.unresolved.joins(shift_vacancy: :shift)
+                            .where(person_id: people_ids)
+                            .includes(shift_vacancy: { shift: [ :house_role, :organization ] })
+                            .order("shifts.starts_at ASC")
+                            .to_a
+    end
 
     # Load a shift assignment that belongs to one of the current user's people.
     def find_my_assignment
