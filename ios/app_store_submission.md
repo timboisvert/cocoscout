@@ -143,7 +143,8 @@ Everything else: not collected. In particular —
 User ID is declared (the conservative reading: a signed-in phone is tied to an account), so answer Yes to it here.
 
 Required reason APIs: UserDefaults, reason CA92.1 (the app's own settings:
-the cached menu and the push token). Already in the manifest.
+the cached menu, the cached V1.1 menu since 1.1.2, and the push token).
+Already in the manifest.
 
 ## The reviewer account
 
