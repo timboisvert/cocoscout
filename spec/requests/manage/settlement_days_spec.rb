@@ -83,7 +83,7 @@ RSpec.describe "Settle up", type: :request do
     expect(org.reload.settlement_day_mode).to eq("calendar")
     expect(org.settlement_day_starts_at).to eq(5)
     get manage_money_settings_section_path(section: "settle_up")
-    expect(response.body).to include("When a day ends", "At midnight")
+    expect(response.body).to include("When a day starts and ends", "A day starts", "A day ends", "At midnight")
   end
 end
 
