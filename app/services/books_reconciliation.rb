@@ -50,7 +50,7 @@ class BooksReconciliation
   end
 
   def self.check(organization)
-    [ balance_check(organization), owed_check(organization), tax_check(organization), bills_check(organization) ].compact
+    [ balance_check(organization), owed_check(organization), tax_check(organization), bills_check(organization), contractors_check(organization) ].compact
   end
 
   # Money you owe is the unpaid part of every open bill (Books V1.3). Money
@@ -59,6 +59,17 @@ class BooksReconciliation
     books = ChartOfAccounts.account(organization, :you_owe).natural_balance_cents
     expected = Bill.open.where(organization: organization).sum("amount_cents - paid_cents")
     Mismatch.new(account: "you_owe", books_cents: books, expected_cents: expected) unless books == expected
+  end
+
+  # Owed to contractors is every contract payment to them whose date has
+  # come and that isn't paid or on a run yet (BooksOutsidePoster).
+  def self.contractors_check(organization)
+    books = ChartOfAccounts.account(organization, :owed_to_contractors).natural_balance_cents
+    pending = ContractPayment.joins(:contract).where(contracts: { organization_id: organization.id })
+                             .status_pending.direction_outgoing.where(amount_tbd: false).where("amount > 0")
+                             .where("due_date <= ?", Date.current)
+    expected = pending.reject { |payment| BooksOutsidePoster.on_the_rail?(payment) }.sum(&:amount_cents)
+    Mismatch.new(account: "owed_to_contractors", books_cents: books, expected_cents: expected) unless books == expected
   end
 
   def self.balance_check(organization)

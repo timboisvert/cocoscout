@@ -51,14 +51,7 @@ class LedgerPosting
         # sits in a closed month, and a closed month never shifts: it stays.
         existing
       else
-        # The same money, only its dates or what it's tagged to (show,
-        # production) changed: a correction, not something that happened
-        # today, so the reversal sits on the old entry's own dates.
-        if existing && same_money?(existing, normalized)
-          reverse!(existing, on: existing.entry_date, cash_on: existing.cash_date)
-        elsif existing
-          reverse!(existing)
-        end
+        reverse!(existing) if existing
         write!(organization, source: source_attributes(source), kind: kind, entry_date: entry_date,
                              cash_date: cash_date, memo: memo, lines: normalized)
       end
@@ -71,10 +64,18 @@ class LedgerPosting
     entry && reverse!(entry)
   end
 
-  # Post the exact opposite of an entry, dated today (a correction lands when
-  # it's made, so a closed month never shifts), and mark the original reversed.
-  # on/cash_on: the reversal's dates; today unless a date-only correction.
-  def self.reverse!(entry, memo: nil, on: nil, cash_on: :today)
+  # Post the exact opposite of an entry on the entry's own dates, and mark
+  # the original reversed. A restatement or a withdrawal corrects what was
+  # recorded for that period, so it lands there; money that went back later
+  # (a refund, a dispute, a returned transfer) is its own entry, never a
+  # reversal (2026-11-02). Inside a closed month it lands on the first open
+  # day instead, and says so.
+  def self.reverse!(entry, memo: nil)
+    organization = entry.organization
+    memo ||= "Reverses: #{entry.memo || entry.kind}"
+    if BooksLock.locked?(organization, entry.entry_date) || BooksLock.locked?(organization, entry.cash_date)
+      memo = "#{memo} (books closed through #{BooksLock.label(organization)}; posted on the first open day)"
+    end
     JournalEntry.transaction do
       entry.update!(reversed_at: Time.current)
       opposite = entry.journal_lines.map do |line|
@@ -82,9 +83,10 @@ class LedgerPosting
             .slice(:ledger_account_id, :production_id, :show_id, :payee_type, :payee_id, :fund_id, :memo)
             .merge(amount_cents: -line.amount_cents)
       end
-      write!(entry.organization, source: { source_type: entry.source_type, source_id: entry.source_id }, kind: entry.kind,
-                                 entry_date: on || Date.current, cash_date: entry.cash_date && (cash_on == :today ? Date.current : cash_on),
-                                 memo: memo || "Reverses: #{entry.memo || entry.kind}",
+      write!(organization, source: { source_type: entry.source_type, source_id: entry.source_id }, kind: entry.kind,
+                           entry_date: BooksLock.posting_date(organization, entry.entry_date),
+                           cash_date: BooksLock.posting_date(organization, entry.cash_date),
+                           memo: memo,
                                  lines: opposite, reversal_of: entry)
     end
   end
