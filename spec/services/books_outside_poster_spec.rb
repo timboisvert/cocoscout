@@ -189,6 +189,18 @@ RSpec.describe BooksOutsidePoster do
       expect(JournalEntry.live.find_by(source: rent)).to eq(old)
     end
 
+    it "re-dates on the old entry's own dates when the payment also gained its show since" do
+      rent = payment("incoming", 350)
+      rent.mark_paid!(paid_on: Date.new(2026, 11, 3), method: "check")
+      old = JournalEntry.live.find_by(source: rent)
+      old.update_columns(entry_date: Date.new(2026, 11, 3))
+      rent.update_columns(show_id: show.id) # tagged to its show after it was posted
+
+      expect(ContractMoneyRedate.run!).to eq(1)
+      expect(JournalEntry.find_by(reversal_of_id: old.id).entry_date).to eq(Date.new(2026, 11, 3))
+      expect(JournalEntry.live.find_by(source: rent).journal_lines.pluck(:show_id)).to include(show.id)
+    end
+
     it "is picked up by the backfill" do
       rent = payment("incoming", 350)
       rent.update_columns(status: "paid", paid_date: Date.new(2026, 10, 3), payment_method: "cash")
