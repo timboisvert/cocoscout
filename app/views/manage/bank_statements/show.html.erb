@@ -1,21 +1,20 @@
 <% content_for :title, "Bank" %>
 <%# Books → Bank: the transactions as the bank knows them, full width, each
-    one matched to the books, recorded, or ignored. A statement comes in
-    through the modal the top-right button opens (Tim, 2026-11-02). %>
+    one matched to the books, recorded, or ignored without leaving the page
+    (Tim, 2026-11-02): an action on a row answers with a Turbo Stream that
+    swaps the row, and Record it fills a modal here. A statement comes in
+    through the modal the top-right button opens. %>
 <%
-  money = ->(cents) { number_to_currency(cents / 100.0) }
   can_change = module_change?(:books)
-  diff = @statement&.closing_balance_cents && @books_bank_on_closing_cents ? @statement.closing_balance_cents - @books_bank_on_closing_cents : nil
   filters = { month: @month, kind: @kind }.compact
   open_button = ->(text, variant = "primary", size = "small") { render "shared/button", text: text, variant: variant, size: size, type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "bank-import-modal" } }
   links = can_change ? [ { text: "Bring a statement in", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "bank-import-modal" } } ] : []
-  state_badge = { "matched" => "bg-green-50 text-green-700", "recorded" => "bg-pink-50 text-pink-700", "ignored" => "bg-gray-100 text-gray-600" }
 %>
-<div class="w-full mb-10">
+<div class="w-full mb-10" data-controller="bank-record">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: { breadcrumbs: books_breadcrumbs, text: "Bank", links: links } %>
 
-  <% if @last.nil? %>
+  <% if @summary.last.nil? %>
     <%# First visit: nothing to compare yet, so no balances, only the way in.
         The books can't know what's in the bank until a statement says so. %>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
@@ -33,88 +32,44 @@
       <%= render "shared/file_promises" %>
     </div>
   <% else %>
-    <% if @matching %>
+    <% if @summary.matching? %>
       <div class="mb-4 flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm text-blue-900" data-controller="auto-refresh" data-auto-refresh-interval-value="15000">
         <svg class="w-5 h-5 flex-none animate-spin text-blue-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
         <span>Matching the statement to the books. This takes a minute or two; you'll get a notification when it's done, and this page refreshes on its own.</span>
       </div>
-    <% elsif @failed %>
-      <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900">The matching for <b><%= @failed.title %></b> didn't finish. Its lines are here to deal with by hand; remove the statement and bring it in again to try the matching once more.</div>
+    <% elsif @summary.failed %>
+      <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900">The matching for <b><%= @summary.failed.title %></b> didn't finish. Its lines are here to deal with by hand; remove the statement and bring it in again to try the matching once more.</div>
     <% end %>
 
-    <%# The balance tiles: what the bank said last, what the books say. %>
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-      <% if @statement&.closing_balance_cents %>
-        <div class="rounded-xl border border-gray-200 bg-white px-5 py-4"><span class="block text-[11px] font-medium uppercase tracking-wide text-gray-500">Bank, per the statement</span><span class="block mt-0.5 text-2xl font-bold tabular-nums text-gray-900"><%= money.call(@statement.closing_balance_cents) %></span><span class="block mt-0.5 text-xs text-gray-600">On <%= @statement.closing_on.strftime("%b %-d, %Y") %></span></div>
-        <div class="rounded-xl border border-gray-200 bg-white px-5 py-4"><span class="block text-[11px] font-medium uppercase tracking-wide text-gray-500">Bank, per your books</span><span class="block mt-0.5 text-2xl font-bold tabular-nums text-gray-900"><%= money.call(@books_bank_on_closing_cents) %></span><span class="block mt-0.5 text-xs text-gray-600">On the same day · today <%= money.call(@books_bank_cents) %></span></div>
-        <div class="rounded-xl border px-5 py-4 <%= diff.to_i.zero? ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200' %>"><span class="block text-[11px] font-medium uppercase tracking-wide text-gray-500">Difference</span><span class="block mt-0.5 text-2xl font-bold tabular-nums text-gray-900"><%= money.call(diff.to_i) %></span><span class="block mt-0.5 text-xs text-gray-600"><% if diff.to_i.zero? %>The books and the bank agree on that day.<% elsif @open_count.positive? %><%= pluralize(@open_count, "line") %> below, <%= money.call(@open_total_cents) %> net, <%= @open_count == 1 ? "isn't" : "aren't" %> on the books yet.<% else %>Every line is dealt with; look for an entry the bank never saw.<% end %></span></div>
-      <% else %>
-        <div class="rounded-xl border border-gray-200 bg-white px-5 py-4"><span class="block text-[11px] font-medium uppercase tracking-wide text-gray-500">Bank, per your books</span><span class="block mt-0.5 text-2xl font-bold tabular-nums text-gray-900"><%= money.call(@books_bank_cents) %></span><span class="block mt-0.5 text-xs text-gray-600">Today</span></div>
-        <div class="sm:col-span-2 rounded-xl border border-dashed border-gray-200 bg-white px-5 py-4 text-sm text-gray-500">This statement has no balance column, so there is nothing to compare the books with. A file with a running balance, or an OFX download, puts the bank's number beside the books' here.</div>
-      <% end %>
-    </div>
+    <%= render "manage/bank_statements/tiles", summary: @summary %>
 
     <section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
       <%= render "shared/section_heading", padding: "px-5 py-3", title: "To deal with" do %>
-        <span class="text-xs text-gray-500"><%= @open_count.zero? ? "Nothing" : pluralize(@open_count, "line") %></span>
+        <%= render "manage/bank_statements/open_count", summary: @summary %>
       <% end %>
-      <% if @open_count.zero? %>
+      <% if @summary.open_count.zero? %>
         <div class="px-5 py-6 text-sm text-gray-500 flex items-center gap-2"><span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-50 text-green-600 flex-none"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></span>Every line is dealt with.</div>
+        <%= render "manage/bank_statements/yes_to_all", summary: @summary, filters: filters %>
       <% else %>
         <div class="px-5 py-3 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <%= render "shared/filters/filter_bar", bare: true, no_container: true, filter_groups: [
                 ({ partial: "shared/filters/dropdown_filter", locals: { label: "Month", name: "month", selected: @month.to_s,
-                     options: [ { value: "", text: "Every month" } ] + @months.map { |m| { value: m.strftime("%Y-%m"), text: m.strftime("%B %Y") } },
-                     extra_url_params: { kind: @kind } } } if @months.size > 1),
+                     options: [ { value: "", text: "Every month" } ] + @summary.months.map { |m| { value: m.strftime("%Y-%m"), text: m.strftime("%B %Y") } },
+                     extra_url_params: { kind: @kind } } } if @summary.months.size > 1),
                 { label: "Show", filters: [
                   { text: "All", path: manage_money_bank_path(filters.except(:kind)), active: @kind.nil? },
                   { text: "Money in", path: manage_money_bank_path(filters.merge(kind: "in")), active: @kind == "in" },
                   { text: "Money out", path: manage_money_bank_path(filters.merge(kind: "out")), active: @kind == "out" }
                 ] }
               ].compact %>
-          <% if can_change && @suggested_count.positive? %>
-            <%= render "shared/button", text: "Yes to all #{pluralize(@suggested_count, 'suggestion')}", variant: "secondary", size: "small", path: manage_match_all_money_bank_lines_path(filters), method: :post, form: { data: { turbo: false } } %>
-          <% end %>
+          <%= render "manage/bank_statements/yes_to_all", summary: @summary, filters: filters %>
         </div>
         <% if @lines.empty? %>
           <div class="px-5 py-6 text-sm text-gray-500">Nothing in this month<%= @kind ? " going #{@kind}" : "" %>.</div>
         <% else %>
           <ul class="divide-y divide-gray-100">
             <% @lines.each do |line| %>
-              <% looks_like = @candidates[line.id] %>
-              <% hint = line.open? && line.description_key ? @hints[line.description_key] : nil %>
-              <li class="px-5 py-2.5">
-                <div class="flex flex-wrap lg:flex-nowrap items-center gap-x-4 gap-y-2">
-                  <span class="w-24 flex-none text-sm text-gray-500 tabular-nums"><%= line.on.strftime("%b %-d, %Y") %></span>
-                  <span class="flex-1 min-w-[12rem] text-sm text-gray-900 truncate" title="<%= line.description %>"><%= line.description.presence || "No description" %></span>
-                  <span class="w-28 flex-none text-right text-sm font-semibold tabular-nums <%= line.deposit? ? 'text-green-700' : 'text-gray-900' %>"><%= line.deposit? ? "+" : "−" %><%= money.call(line.amount_cents.abs) %></span>
-                  <% if can_change %>
-                    <span class="flex-none flex items-center gap-2 lg:w-56 lg:justify-end">
-                      <% if line.suggested? && looks_like %>
-                        <%= render "shared/button", text: "Yes, that's it", variant: "primary", size: "small", path: manage_match_money_bank_line_path(line, filters), method: :post, form: { data: { turbo: false } } %>
-                        <%= render "shared/button", text: "No", variant: "secondary", size: "small", path: manage_reopen_money_bank_line_path(line, filters), method: :post, form: { data: { turbo: false } } %>
-                      <% else %>
-                        <%= render "shared/button", text: "Record it", variant: "primary", size: "small", type: :link,
-                              path: manage_new_money_record_path({ kind: (line.deposit? ? "in" : "out"), amount: format("%.2f", line.amount_cents.abs / 100.0), on: line.on.iso8601, memo: line.description, bank_line: line.id,
-                                                                   category_key: hint&.dig(:category_key), counterparty: hint&.dig(:counterparty) }.compact) %>
-                        <%= render "shared/button", text: "Ignore", variant: "secondary", size: "small", path: manage_ignore_money_bank_line_path(line, filters), method: :post, form: { data: { turbo: false } } %>
-                      <% end %>
-                    </span>
-                  <% end %>
-                </div>
-                <% if line.suggested? && looks_like %>
-                  <p class="mt-1 text-sm text-blue-900">
-                    <% if looks_like.size == 1 %>
-                      Looks like <b><%= looks_like.first[:memo] %></b> on the books, <%= looks_like.first[:on].strftime("%b %-d") %>.
-                    <% else %>
-                      Looks like <%= looks_like.size %> entries on the books that add up to it:
-                      <%= looks_like.map { |c| "#{c[:memo]} (#{money.call(c[:amount_cents].abs)}, #{c[:on].strftime('%b %-d')})" }.join("; ") %>.
-                    <% end %>
-                  </p>
-                <% elsif hint %>
-                  <p class="mt-1 text-xs text-gray-500">Last time: <%= hint[:label] %>. Record it starts from that.</p>
-                <% end %>
-              </li>
+              <%= render "manage/bank_statements/line", line: line, looks_like: @candidates[line.id], hint: (line.description_key && @hints[line.description_key]), filters: filters %>
             <% end %>
           </ul>
           <% if @pagy.pages > 1 %>
@@ -138,16 +93,7 @@
         <% end %>
         <ul class="divide-y divide-gray-100">
           <% @recent_done.each do |line| %>
-            <li class="px-5 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-              <span class="w-24 text-gray-500 tabular-nums"><%= line.on.strftime("%b %-d, %Y") %></span>
-              <span class="flex-1 min-w-[12rem] text-gray-900 truncate"><%= line.description.presence || "No description" %></span>
-              <span class="w-28 text-right tabular-nums <%= line.deposit? ? 'text-green-700' : 'text-gray-900' %>"><%= line.deposit? ? "+" : "−" %><%= money.call(line.amount_cents.abs) %></span>
-              <span class="inline-flex w-20 justify-center rounded-md px-1.5 py-0.5 text-xs font-medium <%= state_badge[line.state] %>"><%= line.state.capitalize %></span>
-              <span class="flex items-center gap-2 lg:w-32 lg:justify-end">
-                <% if line.money_record %><%= link_to "Open", manage_money_record_path(line.money_record), class: "text-xs text-pink-600 hover:text-pink-700" %><% end %>
-                <% if can_change %><%= render "shared/button", text: "Undo", variant: "secondary", size: "small", path: manage_reopen_money_bank_line_path(line, filters), method: :post, form: { data: { turbo: false } } %><% end %>
-              </span>
-            </li>
+            <%= render "manage/bank_statements/line", line: line, filters: filters %>
           <% end %>
         </ul>
       </section>
@@ -155,11 +101,12 @@
   <% end %>
 
   <% if can_change %>
-    <%= render "manage/bank_statements/import_modal", title: (@last.nil? ? "Bring your first statement in" : "Bring a statement in"), imports: @imports %>
-    <% @imports.each do |imp| %>
+    <%= render "manage/bank_statements/import_modal", title: (@summary.last.nil? ? "Bring your first statement in" : "Bring a statement in"), imports: @summary.imports %>
+    <% @summary.imports.each do |imp| %>
       <%= render "shared/confirm_modal", id: "remove-statement-#{imp.id}", title: "Remove #{imp.title}?",
             message: "Its #{pluralize(imp.new_lines_count, 'line')} leave this page, the ones you dealt with too. Money you recorded from them stays on the books.",
             confirm_text: "Remove", url: manage_money_bank_statement_path(imp), method: :delete, form_data: { turbo: false } %>
     <% end %>
+    <% if @summary.last %><%= render "manage/bank_statements/record_modal", **@modal %><% end %>
   <% end %>
 </div>

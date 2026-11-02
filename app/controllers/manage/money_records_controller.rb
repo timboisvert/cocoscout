@@ -5,6 +5,8 @@ module Manage
   # three tabs (in, out, moved), a page per recorded entry, change and
   # remove. Books access, by the grid; changing needs manage.
   class MoneyRecordsController < Manage::ManageController
+    include BankStatementStreams
+
     before_action :set_record, only: %i[show edit update destroy]
     before_action :require_change!, only: %i[new create edit update destroy]
     before_action :load_choices, only: %i[new create edit update]
@@ -18,9 +20,13 @@ module Manage
     def create
       @record = Current.organization.money_records.new(record_params.merge(recorded_by: Current.user))
       if @record.save
-        if params[:bank_line].present? && (line = Current.organization.bank_statement_lines.find_by(id: params[:bank_line]))
+        if (line = bank_line)
           line.recorded!(@record)
-          return redirect_to manage_money_bank_path, notice: "Recorded. #{@record.kind_label}: #{helpers.number_to_currency(@record.amount)}, and the bank line is dealt with."
+          return respond_to do |format|
+            # The bank page's Record this line modal: the row swaps, the modal resets.
+            format.turbo_stream { bank_line_streams(line, reset_modal: true) }
+            format.html { redirect_to manage_money_bank_path, notice: "Recorded. #{@record.kind_label}: #{helpers.number_to_currency(@record.amount)}, and the bank line is dealt with." }
+          end
         end
         notice = "Recorded. #{@record.kind_label}: #{helpers.number_to_currency(@record.amount)}."
         return redirect_to safe_return_to, notice: notice if safe_return_to
@@ -28,6 +34,11 @@ module Manage
         redirect_to manage_money_record_path(@record), notice: notice
       else
         @kind = @record.kind.presence_in(MoneyRecord::KINDS) || "out"
+        if bank_line && request.format.turbo_stream?
+          # Back into the bank page's modal, open, with what was typed.
+          return render turbo_stream: turbo_stream.replace("bank-record-modal", partial: "manage/bank_statements/record_modal",
+                                                           locals: bank_record_modal_locals(records: { @kind => @record }).merge(open_kind: @kind, bank_line: bank_line.id))
+        end
         @records = { "in" => blank("in"), "out" => blank("out"), "move" => blank("move") }
         @records[@kind] = @record
         render :new, status: :unprocessable_entity
@@ -74,6 +85,13 @@ module Manage
 
     def blank(kind)
       MoneyRecord.blank_for(Current.organization, kind)
+    end
+
+    # The bank line this record settles, when it comes from the bank page.
+    def bank_line
+      return @bank_line if defined?(@bank_line)
+
+      @bank_line = params[:bank_line].present? ? Current.organization.bank_statement_lines.find_by(id: params[:bank_line]) : nil
     end
 
     # The Record money modal sends the page it was opened on; only a Books

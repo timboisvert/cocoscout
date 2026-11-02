@@ -1,0 +1,18 @@
+<%# The balance tiles: what the bank said last, what the books say. Swapped
+    by Turbo Stream when a line changes, so the Difference moves with it.
+      summary: a BankStatementSummary %>
+<%
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  statement = summary.statement
+  diff = summary.difference_cents
+%>
+<div id="bank-tiles" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+  <% if statement&.closing_balance_cents %>
+    <div class="rounded-xl border border-gray-200 bg-white px-5 py-4"><span class="block text-[11px] font-medium uppercase tracking-wide text-gray-500">Bank, per the statement</span><span class="block mt-0.5 text-2xl font-bold tabular-nums text-gray-900"><%= money.call(statement.closing_balance_cents) %></span><span class="block mt-0.5 text-xs text-gray-600">On <%= statement.closing_on.strftime("%b %-d, %Y") %></span></div>
+    <div class="rounded-xl border border-gray-200 bg-white px-5 py-4"><span class="block text-[11px] font-medium uppercase tracking-wide text-gray-500">Bank, per your books</span><span class="block mt-0.5 text-2xl font-bold tabular-nums text-gray-900"><%= money.call(summary.books_bank_on_closing_cents) %></span><span class="block mt-0.5 text-xs text-gray-600">On the same day · today <%= money.call(summary.books_bank_cents) %></span></div>
+    <div class="rounded-xl border px-5 py-4 <%= diff.to_i.zero? ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200' %>"><span class="block text-[11px] font-medium uppercase tracking-wide text-gray-500">Difference</span><span class="block mt-0.5 text-2xl font-bold tabular-nums text-gray-900"><%= money.call(diff.to_i) %></span><span class="block mt-0.5 text-xs text-gray-600"><% if diff.to_i.zero? %>The books and the bank agree on that day.<% elsif summary.open_count.positive? %><%= pluralize(summary.open_count, "line") %> below, <%= money.call(summary.open_total_cents) %> net, <%= summary.open_count == 1 ? "isn't" : "aren't" %> on the books yet.<% else %>Every line is dealt with; look for an entry the bank never saw.<% end %></span></div>
+  <% else %>
+    <div class="rounded-xl border border-gray-200 bg-white px-5 py-4"><span class="block text-[11px] font-medium uppercase tracking-wide text-gray-500">Bank, per your books</span><span class="block mt-0.5 text-2xl font-bold tabular-nums text-gray-900"><%= money.call(summary.books_bank_cents) %></span><span class="block mt-0.5 text-xs text-gray-600">Today</span></div>
+    <div class="sm:col-span-2 rounded-xl border border-dashed border-gray-200 bg-white px-5 py-4 text-sm text-gray-500">This statement has no balance column, so there is nothing to compare the books with. A file with a running balance, or an OFX download, puts the bank's number beside the books' here.</div>
+  <% end %>
+</div>

@@ -1,0 +1,34 @@
+<%# Record this line: the Record money form as a modal on the bank page,
+    filled from the row by bank_record_controller.js. One form for money
+    in, one for money out; the row's sign picks which shows. Saving answers
+    with a Turbo Stream (the row swaps, this modal resets); a mistake comes
+    back here with the form as typed.
+      records:     { "in" => MoneyRecord, "out" => MoneyRecord } (blank, or the one with errors)
+      productions, shows: the choices for the production menus
+      open_kind:   the kind to show with the modal open (after a mistake), else nil
+      bank_line:   the bank line id to keep (after a mistake), else nil %>
+<%
+  open_kind = local_assigns[:open_kind]
+  bank_line = local_assigns[:bank_line]
+%>
+<div id="bank-record-modal"
+     class="<%= 'hidden' unless open_kind %> fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+     data-controller="modal" data-bank-record-target="modal"
+     data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-2xl sm:mx-4 max-h-[92vh] overflow-y-auto"
+       data-action="click->modal#stopPropagation">
+    <div class="sticky top-0 z-10 flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white">Record this line</h3>
+      <button type="button" data-action="click->modal#close" aria-label="Close"
+              class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p class="px-6 pt-4 text-sm font-medium text-gray-900 tabular-nums" data-bank-record-target="summary"><% if open_kind && (line = Current.organization.bank_statement_lines.find_by(id: bank_line)) %><%= line.on.strftime('%b %-d, %Y') %> · <%= line.deposit? ? '+' : '−' %><%= number_to_currency(line.amount_cents.abs / 100.0) %> · <%= line.description.presence || 'No description' %><% end %></p>
+    <% %w[in out].each do |kind| %>
+      <div class="<%= 'hidden' unless open_kind == kind %>" data-bank-record-target="form" data-kind="<%= kind %>">
+        <%= render "manage/money_records/form", record: records.fetch(kind), productions: productions, shows: shows, return_to: manage_money_bank_path, turbo: true, bank_line: (open_kind == kind ? bank_line : nil) %>
+      </div>
+    <% end %>
+  </div>
+</div>

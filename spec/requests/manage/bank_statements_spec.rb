@@ -152,7 +152,7 @@ RSpec.describe "Manage::BankStatements", type: :request do
 
     post manage_money_records_path, params: { bank_line: september.id, money_record: { kind: "out", on: "2026-09-20", amount: "240.00", category_key: "production", counterparty: "Chicago Lumber Co.", via: "bank" } }
     get manage_money_bank_path
-    expect(response.body).to include("Last time:", "Chicago Lumber Co.", %(counterparty=Chicago+Lumber+Co.), %(category_key=production))
+    expect(response.body).to include("Last time:", "Chicago Lumber Co.", %(data-bank-record-counterparty-param="Chicago Lumber Co."), %(data-bank-record-category-param="production"))
 
     get manage_money_bank_path(month: "2026-09")
     expect(response.body).not_to include("CHICAGO LUMBER CO 9920")
@@ -172,6 +172,43 @@ RSpec.describe "Manage::BankStatements", type: :request do
     expect(BankStatementImport.exists?(import.id)).to be(false)
     expect(org.bank_statement_lines.count).to eq(0)
     expect(org.money_records.count).to eq(3)
+  end
+
+  # Nothing bounces to another page (Tim, 2026-11-02): an action on a line
+  # answers with a Turbo Stream that swaps its row, and Record it is a modal
+  # on the page whose save does the same.
+  it "answers an action on a line with its row swapped in place, and records a line from the modal without leaving" do
+    org.money_records.create!(kind: "out", on: Date.new(2026, 10, 8), amount_cents: 12_500, category_key: "marketing", counterparty: "Facebook", via: "bank", recorded_by: owner)
+    csv = "Date,Description,Amount\n10/10/2026,FACEBK ADS,-125.00\n10/05/2026,CHICAGO LUMBER CO,-240.00\n"
+    perform_enqueued_jobs { post manage_money_bank_import_path, params: { file: upload(csv, "oct.csv") } }
+    ads = org.bank_statement_lines.find_by!(description: "FACEBK ADS")
+    lumber = org.bank_statement_lines.find_by!(description: "CHICAGO LUMBER CO")
+    expect(ads.state).to eq("suggested")
+
+    get manage_money_bank_path
+    expect(response.body).to include("bank-record-modal", "Record this line", "bank-record#open", %(data-bank-record-line-param="#{lumber.id}"), "Yes to all 1 suggestion")
+
+    stream = { "Accept" => "text/vnd.turbo-stream.html" }
+    post manage_match_money_bank_line_path(ads), headers: stream
+    expect(response.media_type).to eq("text/vnd.turbo-stream.html")
+    expect(response.body).to include(%(target="bank_statement_line_#{ads.id}"), "Matched", "Undo", %(target="bank-tiles"), %(target="bank-open-count"), "1 line", %(target="bank-yes-to-all"))
+    expect(response.body).not_to include("Yes to all")
+    expect(ads.reload.state).to eq("matched")
+
+    post manage_money_records_path, headers: stream, params: { bank_line: lumber.id, money_record: { kind: "out", on: "2026-10-05", amount: "240.00", category_key: "", counterparty: "Chicago Lumber Co.", via: "bank" } }
+    expect(response.media_type).to eq("text/vnd.turbo-stream.html")
+    expect(response.body).to include(%(target="bank-record-modal"), "Chicago Lumber Co.", %(value="#{lumber.id}"))
+    expect(response.body).not_to include(%(id="bank-record-modal"\n     class="hidden))
+    expect(lumber.reload.state).to eq("open")
+
+    post manage_money_records_path, headers: stream, params: { bank_line: lumber.id, money_record: { kind: "out", on: "2026-10-05", amount: "240.00", category_key: "production", counterparty: "Chicago Lumber Co.", via: "bank" } }
+    expect(response.media_type).to eq("text/vnd.turbo-stream.html")
+    expect(response.body).to include(%(target="bank_statement_line_#{lumber.id}"), "Recorded", %(target="bank-record-modal"), "Nothing")
+    expect(lumber.reload.state).to eq("recorded")
+
+    post manage_reopen_money_bank_line_path(lumber), headers: stream
+    expect(response.body).to include("Record it", "Ignore")
+    expect(lumber.reload.state).to eq("open")
   end
 
   it "says so when the file cannot be read" do

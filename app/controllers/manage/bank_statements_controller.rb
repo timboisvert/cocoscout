@@ -2,12 +2,16 @@
 
 module Manage
   # Money → Books → Bank (plan D3, §9.13): the transactions as the bank knows
-  # them, each one matched to something on the books, recorded, or ignored.
+  # them, each one matched to something on the books, recorded, or ignored
+  # in place: an action on a line answers with a Turbo Stream that swaps its
+  # row (BankStatementStreams), and Record it fills a modal on the page.
   # A statement comes in as a file from the modal; it is read once, here,
   # never kept, and its lines are matched in BankStatementMatchJob, which
   # tells the person when it's done. Books access, by the grid; changing
   # needs manage.
   class BankStatementsController < Manage::ManageController
+    include BankStatementStreams
+
     PER_PAGE = 100
 
     before_action :require_change!, only: %i[create match match_all ignore reopen destroy]
@@ -15,31 +19,18 @@ module Manage
 
     def show
       org = Current.organization
-      @imports = org.bank_statement_imports.order(created_at: :desc).limit(12).to_a
-      @last = @imports.first
-      @matching = @imports.any?(&:matching?)
-      @failed = @imports.find(&:failed?)
-      @statement = @imports.select(&:closing_on).max_by(&:closing_on)
-
-      all_open = org.bank_statement_lines.to_deal_with
-      @open_count = all_open.count
-      @open_total_cents = all_open.sum(:amount_cents)
-      @suggested_count = org.bank_statement_lines.where(state: "suggested").count
-      @months = all_open.unscope(:order).distinct.pluck(Arel.sql(%(date_trunc('month', "on")::date))).sort.reverse
+      @summary = BankStatementSummary.new(org)
       @month = params[:month].to_s[/\A\d{4}-\d{2}\z/]
       @kind = params[:kind].presence_in(%w[in out])
-      scope = all_open
+      scope = org.bank_statement_lines.to_deal_with
       scope = scope.where(on: Date.parse("#{@month}-01").all_month) if @month
       scope = scope.where(@kind == "in" ? "amount_cents > 0" : "amount_cents < 0") if @kind
       @pagy, @lines = pagy(scope, limit: PER_PAGE)
-      @candidates = candidates_for(@lines)
-      @hints = hints_for(@lines)
-
+      @candidates = BankStatementSummary.candidates_for(org, @lines)
+      @hints = BankStatementSummary.hints_for(org, @lines)
       @recent_done = org.bank_statement_lines.done.order(updated_at: :desc).limit(8).includes(:money_record).to_a
       @done_count = org.bank_statement_lines.done.count
-      bank = ChartOfAccounts.account(org, :bank)
-      @books_bank_cents = bank.natural_balance_cents
-      @books_bank_on_closing_cents = @statement ? bank.natural_balance_cents(basis: :cash, as_of: @statement.closing_on) : nil
+      @modal = bank_record_modal_locals if OrganizationAccess.allows?(Current.user, org, :books, :manage)
     end
 
     # The upload. The file's text is read out of the request and parsed
@@ -93,7 +84,7 @@ module Manage
       return redirect_to back_path, alert: "Pick the line on the books it matches." if lines.empty?
 
       @line.match!(lines)
-      redirect_to back_path, notice: "Matched."
+      answer "Matched."
     end
 
     # Every suggestion confirmed at once.
@@ -105,12 +96,12 @@ module Manage
 
     def ignore
       @line.ignore!
-      redirect_to back_path, notice: "Ignored. It stays in the list of what you have dealt with."
+      answer "Ignored. It stays in the list of what you have dealt with."
     end
 
     def reopen
       @line.reopen!
-      redirect_to back_path, notice: "Back in the list."
+      answer "Back in the list."
     end
 
     # A statement and its lines, gone. Money recorded from its lines stays
@@ -134,46 +125,19 @@ module Manage
       redirect_to manage_money_bank_path, alert: "You can look at the bank page but not change it."
     end
 
-    # Back to the page, with its filters, after an action on a line.
+    # After an action on a line: the row swaps in place (Turbo), or the page
+    # comes back with its filters.
+    def answer(notice)
+      respond_to do |format|
+        format.turbo_stream { bank_line_streams(@line) }
+        format.html { redirect_to back_path, notice: notice }
+      end
+    end
+
     def back_path
-      manage_money_bank_path(params.permit(:month, :kind, :page).to_h.compact_blank)
+      manage_money_bank_path(bank_filters)
     end
 
     def pluralize_lines(n) = "#{n} #{n == 1 ? 'line' : 'lines'}"
-
-    # For each line that looks like something on the books: the entries it
-    # looks like, in words, loaded in one go.
-    def candidates_for(lines)
-      ids = lines.flat_map(&:all_journal_line_ids).uniq
-      return {} if ids.empty?
-
-      journal_lines = JournalLine.where(id: ids, organization: Current.organization).includes(:journal_entry).index_by(&:id)
-      lines.each_with_object({}) do |line, out|
-        found = line.all_journal_line_ids.filter_map { |id| journal_lines[id] }
-        out[line.id] = found.map { |jl| describe(jl) } if found.any?
-      end
-    end
-
-    # What was recorded last time for the same payee: the category and the
-    # name, offered as the Record it defaults.
-    def hints_for(lines)
-      keys = lines.select(&:open?).filter_map(&:description_key).uniq
-      return {} if keys.empty?
-
-      Current.organization.bank_statement_lines.where(state: "recorded", description_key: keys).where.not(money_record_id: nil)
-             .order(updated_at: :desc).includes(:money_record).each_with_object({}) do |line, out|
-        record = line.money_record
-        next if record.nil? || out.key?(line.description_key)
-
-        out[line.description_key] = { category_key: record.category_key, counterparty: record.counterparty, label: [ record.category_label, record.counterparty ].compact_blank.join(", ") }
-      end
-    end
-
-    # A line on the books, in words: what it is, from which entry.
-    def describe(journal_line)
-      entry = journal_line.journal_entry
-      { on: entry.cash_date || entry.entry_date, memo: entry.memo.presence || BooksReport::KIND_LABELS.fetch(entry.kind, entry.kind.humanize),
-        kind: BooksReport::KIND_LABELS.fetch(entry.kind, entry.kind.humanize), amount_cents: journal_line.amount_cents }
-    end
   end
 end

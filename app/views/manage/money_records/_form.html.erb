@@ -7,10 +7,15 @@
     panel:        true when the form is a tabs panel (hidden until chosen)
     return_to:    in the Record money modal, the page to come back to; Cancel
                   then closes the modal instead of leaving the page
+    turbo:        true when the form submits through Turbo and the answer is
+                  a Turbo Stream (the bank page's Record this line modal)
+    bank_line:    the bank line this record settles (the bank page's modal;
+                  the field is there for the page's script to fill)
 %>
 <%
   panel = local_assigns.fetch(:panel, false)
   return_to = local_assigns[:return_to]
+  turbo = local_assigns.fetch(:turbo, false)
   kind = record.kind
   input = "mt-1 block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
   label = "block text-sm font-medium text-gray-700"
@@ -23,14 +28,15 @@
   url = record.persisted? ? manage_money_record_path(record) : manage_money_records_path
 %>
 <%= form_with model: record, url: url, method: (record.persisted? ? :patch : :post), id: "record-#{kind}",
-      data: { turbo: false, tabs_target: (panel ? "panel" : nil), controller: "record-money", record_money_verb_value: verb }.compact do |f| %>
+      data: { turbo: (turbo ? nil : false), tabs_target: (panel ? "panel" : nil), controller: "record-money", record_money_verb_value: verb }.compact do |f| %>
   <%= f.hidden_field :kind %>
   <% if return_to.present? %><%= hidden_field_tag :return_to, return_to, id: "return-to-#{kind}" %><% end %>
-  <% if params[:bank_line].present? %><%= hidden_field_tag :bank_line, params[:bank_line], id: "bank-line-#{kind}" %><% end %>
+  <% if local_assigns.key?(:bank_line) %><%= hidden_field_tag :bank_line, local_assigns[:bank_line], id: "bank-line-field-#{kind}" %>
+  <% elsif params[:bank_line].present? %><%= hidden_field_tag :bank_line, params[:bank_line], id: "bank-line-field-#{kind}" %><% end %>
   <div class="px-6 pt-5 pb-6 space-y-5">
     <p class="text-sm text-gray-600"><%= intro %></p>
     <% if record.errors.any? %>
-      <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+      <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700" data-bank-record-errors>
         <%= record.errors.full_messages.to_sentence %>
       </div>
     <% end %>
