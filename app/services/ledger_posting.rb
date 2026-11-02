@@ -45,6 +45,11 @@ class LedgerPosting
         nil
       elsif existing && same?(existing, normalized, entry_date, cash_date)
         existing
+      elsif existing && same?(existing, normalized, existing.entry_date, existing.cash_date) &&
+            (BooksLock.locked?(organization, existing.entry_date) || BooksLock.locked?(organization, existing.cash_date))
+        # Only the dates changed, but the entry sits in a closed month, and a
+        # closed month never shifts: it keeps its date.
+        existing
       else
         # Only the dates changed: a correction of when, not something that
         # happened today, so the reversal sits on the old entry's own dates.

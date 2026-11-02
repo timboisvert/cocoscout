@@ -178,6 +178,17 @@ RSpec.describe BooksOutsidePoster do
       expect(ContractMoneyRedate.run!).to eq(0)
     end
 
+    it "leaves money in a closed month where it is when only its date would change" do
+      rent = payment("incoming", 350)
+      rent.mark_paid!(paid_on: Date.new(2026, 10, 3), method: "check")
+      old = JournalEntry.live.find_by(source: rent)
+      old.update_columns(entry_date: Date.new(2026, 10, 3)) # as the books used to date it
+      org.update!(books_locked_through: Date.new(2026, 10, 31))
+
+      expect(ContractMoneyRedate.run!).to eq(0)
+      expect(JournalEntry.live.find_by(source: rent)).to eq(old)
+    end
+
     it "is picked up by the backfill" do
       rent = payment("incoming", 350)
       rent.update_columns(status: "paid", paid_date: Date.new(2026, 10, 3), payment_method: "cash")
