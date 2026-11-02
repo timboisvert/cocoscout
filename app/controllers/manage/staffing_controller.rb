@@ -370,7 +370,9 @@ module Manage
 
       pairs_by_person = Hash.new { |h, k| h[k] = [] }
       shifts.each do |shift|
-        shift.shift_assignments.each { |a| pairs_by_person[a.person] << [ a, shift ] if a.person }
+        # Someone who can't make it keeps their row but is off the shift: not an
+        # update to send, and never re-sent the shift they declined.
+        shift.active_assignments.each { |a| pairs_by_person[a.person] << [ a, shift ] if a.person }
       end
 
       removals = Current.organization.staff_schedule_removals.pending
@@ -413,7 +415,7 @@ module Manage
       week_range = week_start.beginning_of_day..(week_start + 6.days).end_of_day
 
       shifts_by_person = Hash.new { |h, k| h[k] = [] }
-      shifts.each { |s| s.shift_assignments.each { |a| shifts_by_person[a.person_id] << s } }
+      shifts.each { |s| s.active_assignments.each { |a| shifts_by_person[a.person_id] << s } }
 
       removals_by_person = Current.organization.staff_schedule_removals.pending
                                   .where(shift_starts_at: week_range).group_by(&:person_id)

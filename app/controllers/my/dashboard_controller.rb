@@ -345,6 +345,8 @@ module My
           .where("shifts.starts_at >= ? AND shifts.starts_at <= ?", cal_start, cal_end)
           .includes(shift: [ :house_role, :additional_roles, :organization ])
           .each do |a|
+            next unless a.active?
+
             shift = a.shift
             next unless finalized_weeks.include?([ shift.organization_id, shift.starts_at.to_date.beginning_of_week ])
 
