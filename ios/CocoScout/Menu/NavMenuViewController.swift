@@ -9,13 +9,29 @@ import UIKit
 /// pinned to the bottom (Tim, 2026-10-20). Messages and Notifications aren't
 /// tiles: they're icons in the nav bar.
 final class NavMenuViewController: UIHostingController<NavMenuView> {
+    private let person: MenuPerson?
+    private let onOpen: (String) -> Void
+    private let onSignOut: () -> Void
+
     init(nav: NavData, person: MenuPerson?, onOpen: @escaping (String) -> Void, onSignOut: @escaping () -> Void) {
+        self.person = person
+        self.onOpen = onOpen
+        self.onSignOut = onSignOut
         super.init(rootView: NavMenuView(nav: nav, person: person, onOpen: onOpen, onSignOut: onSignOut))
         modalPresentationStyle = .pageSheet
         if let sheet = sheetPresentationController {
             sheet.detents = [.large()]
             sheet.prefersGrabberVisible = true
         }
+        // The page underneath may bring a newer menu while the sheet is up
+        // (last launch's cached one, then the page's own): redraw, so the
+        // band, the tiles and the switch always match the page.
+        NotificationCenter.default.addObserver(self, selector: #selector(navChanged), name: .cocoNavChanged, object: nil)
+    }
+
+    @objc private func navChanged(_ notification: Notification) {
+        guard let nav = notification.object as? NavData, nav != rootView.nav else { return }
+        rootView = NavMenuView(nav: nav, person: person, onOpen: onOpen, onSignOut: onSignOut)
     }
 
     @available(*, unavailable)
