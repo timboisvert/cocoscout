@@ -1359,7 +1359,8 @@ class Contract < ApplicationRecord
   # Returns { money_in:, money_out: } in dollars.
   # range: only the money that belongs to that period (the Money hub's This
   # month, Last quarter...): shows dated in it, and for flat deals payments
-  # paid in it (or due in it, while unpaid). nil is the whole contract.
+  # for a date in it that has come (payments_amount_sum). nil is the whole
+  # contract.
   def money_summary(range = nil)
     if revenue_share?
       summary = range ? build_revenue_share_summary(money_shows_in(range)) : revenue_share_summary
@@ -1394,7 +1395,16 @@ class Contract < ApplicationRecord
   def payments_amount_sum(direction, range = nil)
     payments = contract_payments.loaded? ? contract_payments.to_a : contract_payments.where(direction: direction).where.not(status: "cancelled").to_a
     payments = payments.select { |p| p.direction == direction && !p.status_cancelled? }
-    payments = payments.select { |p| (day = p.paid_date || p.due_date) && range.cover?(day.in_time_zone) } if range
+    # A period counts a payment on the date it's for (its due date: "Rehearsal
+    # — Oct 7" is due Oct 7), the way Books counts money when earned, and
+    # only once that date has come or it's paid: like a show, money for a date
+    # still ahead isn't this period's yet (Tim, 2026-11-02).
+    if range
+      payments = payments.select do |p|
+        day = p.due_date || p.paid_date
+        day && range.cover?(day.in_time_zone) && (p.status_paid? || day <= Date.current)
+      end
+    end
     payments.sum { |p| p.amount.to_f }
   end
 

@@ -46,7 +46,13 @@ class LedgerPosting
       elsif existing && same?(existing, normalized, entry_date, cash_date)
         existing
       else
-        reverse!(existing) if existing
+        # Only the dates changed: a correction of when, not something that
+        # happened today, so the reversal sits on the old entry's own dates.
+        if existing && same?(existing, normalized, existing.entry_date, existing.cash_date)
+          reverse!(existing, on: existing.entry_date, cash_on: existing.cash_date)
+        elsif existing
+          reverse!(existing)
+        end
         write!(organization, source: source_attributes(source), kind: kind, entry_date: entry_date,
                              cash_date: cash_date, memo: memo, lines: normalized)
       end
@@ -61,7 +67,8 @@ class LedgerPosting
 
   # Post the exact opposite of an entry, dated today (a correction lands when
   # it's made, so a closed month never shifts), and mark the original reversed.
-  def self.reverse!(entry, memo: nil)
+  # on/cash_on: the reversal's dates; today unless a date-only correction.
+  def self.reverse!(entry, memo: nil, on: nil, cash_on: :today)
     JournalEntry.transaction do
       entry.update!(reversed_at: Time.current)
       opposite = entry.journal_lines.map do |line|
@@ -70,7 +77,7 @@ class LedgerPosting
             .merge(amount_cents: -line.amount_cents)
       end
       write!(entry.organization, source: { source_type: entry.source_type, source_id: entry.source_id }, kind: entry.kind,
-                                 entry_date: Date.current, cash_date: entry.cash_date && Date.current,
+                                 entry_date: on || Date.current, cash_date: entry.cash_date && (cash_on == :today ? Date.current : cash_on),
                                  memo: memo || "Reverses: #{entry.memo || entry.kind}",
                                  lines: opposite, reversal_of: entry)
     end

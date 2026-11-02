@@ -118,8 +118,10 @@ class BooksOutsidePoster
         [ { account: :contractor_pay, amount_cents: cents, **dims }, { account: :bank, amount_cents: -cents } ]
       end
     end
-    date = payment.paid_date || payment.updated_at.to_date
-    LedgerPosting.post!(organization: contract.organization, source: payment, kind: "contract_payment", entry_date: date, cash_date: date,
+    # Earned on the date it's for (its due date), moved on the day it was paid.
+    paid_on = payment.paid_date || payment.updated_at.to_date
+    LedgerPosting.post!(organization: contract.organization, source: payment, kind: "contract_payment",
+                        entry_date: payment.due_date || paid_on, cash_date: paid_on,
                         memo: [ payment.description.presence || "Contract payment", contract.contractor&.name ].compact.join(" · "), lines: lines)
   rescue StandardError => e
     raise if Rails.env.test?
