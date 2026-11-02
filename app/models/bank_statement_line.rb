@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# One line of a bank statement: the date, the amount (deposits positive,
+# One line of a bank statement, newest first on the page: the date, the amount (deposits positive,
 # withdrawals negative) and the bank's description. Nothing else from the
 # file is kept. Each line ends up matched to a line already on the books
 # (or to a group of them: one deposit from a ticket seller, several shows'
@@ -29,7 +29,7 @@ class BankStatementLine < ApplicationRecord
     self.description_key ||= self.class.description_key_for(description)
   end
 
-  scope :to_deal_with, -> { where(state: %w[open suggested]).order(:on, :id) }
+  scope :to_deal_with, -> { where(state: %w[open suggested]).order(on: :desc, id: :desc) }
   scope :done, -> { where(state: %w[matched recorded ignored]) }
 
   # seq: the nth identical line on the same day (0 for the first; its

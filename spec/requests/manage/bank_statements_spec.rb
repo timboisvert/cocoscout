@@ -77,6 +77,8 @@ RSpec.describe "Manage::BankStatements", type: :request do
 
     get manage_money_bank_path
     expect(response.body).to include("CHICAGO LUMBER CO", "TRANSFER TO SAVINGS", "Record it", "Ignore", "October 2026", "Bring a statement in", "Remove")
+    # Newest first, the way the bank lists them (Tim, 2026-11-02).
+    expect(response.body.index("TRANSFER TO SAVINGS")).to be < response.body.index("CHICAGO LUMBER CO")
     expect(response.body).not_to include("Looks like", "Matching the statement")
 
     # The same file again adds nothing.
