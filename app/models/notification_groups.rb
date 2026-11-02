@@ -52,7 +52,8 @@ module NotificationGroups
     "course_registration_confirmed" => "courses", "course_registration_producer_notification" => "courses",
     "course_cancelled_registrant" => "courses",
     # Shifts and hours
-    "shift_declined_manager" => "shifts",
+    "shift_declined_manager" => "shifts", "shift_vacancy_invitation" => "shifts",
+    "shift_vacancy_filled" => "shifts", "shift_vacancy_reclaimed" => "shifts",
     "shift_canceled" => "shifts", "shift_moved" => "shifts",
     # Pay and Contracts, from senders that still go through messages
     "staff_1099_ready" => "pay", "contract_person_added" => "contracts",

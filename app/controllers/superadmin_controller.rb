@@ -1844,6 +1844,9 @@ class SuperadminController < ApplicationController
     source.role_vacancy_invitations.update_all(person_id: target.id)
     RoleVacancy.where(vacated_by_id: source.id).update_all(vacated_by_id: target.id)
     RoleVacancy.where(filled_by_id: source.id).update_all(filled_by_id: target.id)
+    source.shift_vacancy_invitations.update_all(person_id: target.id)
+    ShiftVacancy.where(vacated_by_id: source.id).update_all(vacated_by_id: target.id)
+    ShiftVacancy.where(filled_by_id: source.id).update_all(filled_by_id: target.id)
 
     # Transfer show availabilities
     source.show_availabilities.update_all(available_entity_id: target.id)

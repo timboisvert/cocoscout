@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_02_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_02_140100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2726,6 +2726,43 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_130000) do
     t.index ["shift_id"], name: "index_shift_assignments_on_shift_id"
   end
 
+  create_table "shift_vacancies", force: :cascade do |t|
+    t.bigint "shift_id", null: false
+    t.bigint "vacated_by_id", null: false
+    t.datetime "vacated_at", null: false
+    t.text "reason"
+    t.string "status", default: "open", null: false
+    t.bigint "filled_by_id"
+    t.datetime "filled_at"
+    t.bigint "closed_by_id"
+    t.datetime "closed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["closed_by_id"], name: "index_shift_vacancies_on_closed_by_id"
+    t.index ["filled_by_id"], name: "index_shift_vacancies_on_filled_by_id"
+    t.index ["shift_id", "status"], name: "index_shift_vacancies_on_shift_id_and_status"
+    t.index ["shift_id", "vacated_by_id"], name: "idx_shift_vacancies_one_active_per_person", unique: true, where: "((status)::text = ANY ((ARRAY['open'::character varying, 'finding_replacement'::character varying])::text[]))"
+    t.index ["shift_id"], name: "index_shift_vacancies_on_shift_id"
+    t.index ["vacated_by_id"], name: "index_shift_vacancies_on_vacated_by_id"
+  end
+
+  create_table "shift_vacancy_invitations", force: :cascade do |t|
+    t.bigint "shift_vacancy_id", null: false
+    t.bigint "person_id", null: false
+    t.string "token", null: false
+    t.datetime "invited_at"
+    t.datetime "claimed_at"
+    t.datetime "declined_at"
+    t.string "email_subject"
+    t.text "email_body"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["person_id"], name: "index_shift_vacancy_invitations_on_person_id"
+    t.index ["shift_vacancy_id", "person_id"], name: "idx_on_shift_vacancy_id_person_id_058b3428d8", unique: true
+    t.index ["shift_vacancy_id"], name: "index_shift_vacancy_invitations_on_shift_vacancy_id"
+    t.index ["token"], name: "index_shift_vacancy_invitations_on_token", unique: true
+  end
+
   create_table "shift_shows", force: :cascade do |t|
     t.bigint "shift_id", null: false
     t.bigint "show_id", null: false
@@ -4661,6 +4698,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_130000) do
   add_foreign_key "shift_additional_roles", "shows", on_delete: :cascade
   add_foreign_key "shift_assignments", "people"
   add_foreign_key "shift_assignments", "shifts"
+  add_foreign_key "shift_vacancies", "people", column: "filled_by_id"
+  add_foreign_key "shift_vacancies", "people", column: "vacated_by_id"
+  add_foreign_key "shift_vacancies", "shifts"
+  add_foreign_key "shift_vacancies", "users", column: "closed_by_id"
+  add_foreign_key "shift_vacancy_invitations", "people"
+  add_foreign_key "shift_vacancy_invitations", "shift_vacancies"
   add_foreign_key "shift_shows", "shifts"
   add_foreign_key "shift_shows", "shows"
   add_foreign_key "shifts", "house_roles"

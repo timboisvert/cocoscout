@@ -59,21 +59,32 @@ module My
       @availability_picture = @availability_person && WorkAvailabilityPicture.new(@availability_person)
     end
 
-    # "I can't make it" on an assigned shift — records the decline (+ optional
-    # reason) so the org's managers see it on the scheduling page. We don't offer
-    # the shift to anyone else automatically.
+    # "I can't make it" on an assigned shift: the decline (+ optional note)
+    # opens a ShiftVacancy, which tells the org's chosen managers so they can
+    # find cover. A shift that's already over has nothing to cover.
     def decline
       assignment = find_my_assignment or return
+      if assignment.shift.ends_at < Time.current
+        redirect_to my_shifts_path, alert: "That shift is already over." and return
+      end
+
       assignment.decline!(reason: params[:reason])
-      ShiftDeclinedNotificationJob.perform_later(assignment.id)
       redirect_to my_shifts_path,
                   notice: "Thanks — we've let #{assignment.shift.organization.name} know you can't make this shift."
     end
 
-    # Undo a "can't make it".
+    # "I'm back on": takes the vacancy back while nobody has covered it yet,
+    # and the managers hear.
     def undo_decline
       assignment = find_my_assignment or return
-      assignment.undo_decline!
+      vacancy = assignment.active_vacancy
+      if vacancy
+        vacancy.reclaim!
+      elsif assignment.declined?
+        assignment.undo_decline!
+      else
+        redirect_to my_shifts_path, alert: "That shift has already been covered." and return
+      end
       redirect_to my_shifts_path, notice: "You're back on for that shift."
     end
 
