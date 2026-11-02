@@ -48,6 +48,23 @@ class ShiftVacancyNotificationService
               variables: shift_variables(shift).merge(person_name: vacancy.vacated_by.name, vacancy_url: vacancy_url(vacancy)))
     end
 
+    # The invitation's words (the vacancy page's draft and the mailer): the
+    # shift, where, the shows that night, and for one recipient their name
+    # and claim link. Without a person, those two tokens stay for the mailer.
+    def invitation_variables(vacancy, person: nil, claim_url: nil)
+      shift = vacancy.shift
+      shows = shift.covered_shows.map { |s| "#{s.production&.name} (#{s.date_and_time.strftime("%-l:%M %p")})" }
+      location = shift.house_role&.location&.name || shift.source.try(:location).try(:name)
+      shift_variables(shift).merge(
+        person_name: vacancy.vacated_by.name,
+        shift_info: "#{shift.starts_at.strftime("%A, %B %-d")}, #{shift.starts_at.strftime("%-l:%M %p")}–#{shift.ends_at.strftime("%-l:%M %p")}",
+        location_name: location.presence,
+        shows_list: shows.join(", ").presence,
+        recipient_name: person&.name&.split&.first,
+        claim_url: claim_url
+      ).compact
+    end
+
     private
 
     def deliver(template_key, recipients, organization, variables:, for_managers:)

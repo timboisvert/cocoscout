@@ -97,7 +97,7 @@ module Manage
         .joins(:shift)
         .where(shifts: { organization_id: Current.organization.id })
         .where("shifts.ends_at >= ?", Time.current)
-        .includes(shift: [ :house_role, :additional_roles, :source, :shift_assignments, { shows: :production } ], person: HEADSHOT_PRELOAD)
+        .includes(shift: [ :house_role, :additional_roles, :source, :shift_assignments, :shift_vacancies, { shows: :production } ], person: HEADSHOT_PRELOAD)
         .order("shifts.starts_at ASC")
         .to_a
     end

@@ -120,7 +120,9 @@
             <span class="block text-gray-600"><%= s.starts_at.strftime("%a, %b %-d") %> · <%= shift_time_range(s) %><%= " · #{show_names.join(', ')}" if show_names.any? %></span>
             <% if a.decline_reason.present? %><span class="block text-red-700 mt-0.5">“<%= a.decline_reason %>”</span><% end %>
           </span>
-          <% if s.needs_assignment? %>
+          <% if (vacancy = a.active_vacancy) %>
+            <%= render "shared/button", text: "Find cover", variant: "primary", size: "xs", type: :link, path: manage_staffing_vacancy_path(vacancy) %>
+          <% elsif s.needs_assignment? %>
             <%= render "shared/button", text: "Find someone", variant: "primary", size: "xs", type: :button,
                   data: { action: "click->modal#close click->shift-assign#open", "shift-id": s.id, "role-id": s.house_role_id,
                           "role-name": s.house_role.name, "time-range": shift_time_range(s),
@@ -132,12 +134,12 @@
         <div class="px-4 sm:px-6 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400"><%= declined_count.positive? ? "And #{other_declined} in other weeks" : "Coming up" %></div>
         <% @declined_other_weeks.each do |a| %>
           <% s = a.shift %>
-          <%= link_to manage_staffing_scheduling_path(day: s.starts_at.to_date.iso8601), class: "flex items-center gap-3 px-4 sm:px-6 py-2.5 text-sm hover:bg-gray-50" do %>
+          <%= link_to (a.active_vacancy ? manage_staffing_vacancy_path(a.active_vacancy) : manage_staffing_scheduling_path(day: s.starts_at.to_date.iso8601)), class: "flex items-center gap-3 px-4 sm:px-6 py-2.5 text-sm hover:bg-gray-50" do %>
             <span class="flex-1 min-w-0">
               <span class="block text-gray-900"><span class="font-medium"><%= a.person.name %></span> · <%= s.role_label %></span>
               <span class="block text-xs text-gray-500"><%= s.starts_at.strftime("%a, %b %-d") %> · <%= shift_time_range(s) %><% if a.decline_reason.present? %> · “<%= a.decline_reason %>”<% end %></span>
             </span>
-            <span class="text-xs text-pink-600 flex-shrink-0">Go to that day</span>
+            <span class="text-xs text-pink-600 flex-shrink-0"><%= a.active_vacancy ? "Find cover" : "Go to that day" %></span>
           <% end %>
         <% end %>
       <% end %>

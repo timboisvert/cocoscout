@@ -1,0 +1,99 @@
+<% content_for :title, "Cover a shift" %>
+<%# The claim page a shift cover invitation links to (claim_vacancy/show's
+    shape): the shift, who else is on it, their own clashes as warnings,
+    Claim or Decline. %>
+<div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md mx-auto">
+    <div class="text-center mb-8">
+      <h1 class="text-2xl font-bold text-gray-900">Can you cover a shift?</h1>
+      <p class="mt-2 text-sm text-gray-600"><%= @organization.name %> needs someone on <%= @shift.role_label %>.</p>
+    </div>
+
+    <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+    <% if @invitation.claimed? %>
+      <div class="bg-white shadow rounded-lg p-6 text-center" data-claim-state="claimed">
+        <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+          <svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+        </div>
+        <h2 class="text-lg font-semibold text-gray-900 mb-2">You're on it</h2>
+        <p class="text-gray-600 text-sm">You claimed this shift. It's on <%= link_to "My Shifts", my_shifts_path, class: "text-pink-600 underline" %>.</p>
+      </div>
+
+    <% elsif !@invitation.can_claim? %>
+      <div class="bg-white shadow rounded-lg p-6 text-center" data-claim-state="gone">
+        <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-gray-100 mb-4">
+          <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+        </div>
+        <h2 class="text-lg font-semibold text-gray-900 mb-2">No longer available</h2>
+        <p class="text-gray-600 text-sm"><%= @vacancy.filled? ? "Someone else has this shift now." : "This shift is no longer open." %></p>
+      </div>
+
+    <% else %>
+      <div class="bg-white shadow rounded-lg overflow-hidden mb-6" data-claim-state="open">
+        <div class="p-4 bg-pink-50">
+          <div class="text-xs text-pink-600 uppercase tracking-wide font-semibold mb-1">Shift</div>
+          <div class="text-xl font-bold text-gray-900"><%= @shift.role_label %></div>
+        </div>
+        <div class="p-4 space-y-1">
+          <p class="text-sm font-medium text-gray-900"><%= @organization.name %></p>
+          <p class="text-sm text-gray-600"><%= @shift.starts_at.strftime("%A, %B %-d") %> · <%= shift_time_range(@shift) %></p>
+          <% location_name = @shift.house_role.location&.name || @shift.source.try(:location).try(:name) %>
+          <% if location_name.present? %><p class="text-xs text-gray-500"><%= location_name %></p><% end %>
+          <% show_names = @shift.covered_shows.map { |s| "#{s.production&.name} (#{s.date_and_time.strftime('%-l:%M %p')})" } %>
+          <% if show_names.any? %><p class="text-xs text-purple-700">That night: <%= show_names.to_sentence %></p><% end %>
+        </div>
+      </div>
+
+      <% if @others_on_shift.any? %>
+        <div class="bg-white shadow rounded-lg overflow-hidden mb-6">
+          <div class="p-4 border-b border-gray-200"><p class="text-sm font-medium text-gray-700">Also on this shift</p></div>
+          <div class="p-4 space-y-2">
+            <% @others_on_shift.each do |person| %>
+              <div class="flex items-center gap-2">
+                <% v = person.safe_headshot_variant(:thumb) %>
+                <% if v %>
+                  <%= image_tag v, alt: person.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
+                <% else %>
+                  <div class="w-8 h-8 rounded-lg bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-xs flex-shrink-0"><%= person.initials %></div>
+                <% end %>
+                <span class="text-sm font-medium text-gray-900"><%= person.name %></span>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <% if @row && (@row.clash? || @row.status.in?(%w[blocked partial])) %>
+        <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 mb-6 text-sm text-amber-900 space-y-1" data-claim-warnings>
+          <% if @row.status.in?(%w[blocked partial]) %>
+            <p>You said you can't work all of this shift: <%= @row.verdict[:detail] || @row.verdict[:badge] %></p>
+          <% end %>
+          <% @row.conflicts.each do |c| %>
+            <p>You're on another shift then: <%= c[:role] %>, <%= c[:day] %> <%= c[:time_range] %>.</p>
+          <% end %>
+          <% @row.cast.each do |label| %>
+            <p>You're in a show that night: <%= label %>.</p>
+          <% end %>
+          <p class="text-amber-800">You know your day; claim it if it works.</p>
+        </div>
+      <% end %>
+
+      <% if @invitation.declined? %>
+        <p class="text-center text-sm text-gray-600 mb-4">You declined, but you can still claim it while it's open.</p>
+      <% end %>
+
+      <div class="space-y-3">
+        <%= form_with url: do_claim_shift_path(@invitation.token), method: :post do %>
+          <%= render "shared/button", text: "Claim this shift", variant: "primary", size: "jumbo", type: :submit %>
+        <% end %>
+        <% unless @invitation.declined? %>
+          <%= form_with url: decline_claim_shift_path(@invitation.token), method: :post do %>
+            <%= render "shared/button", text: "Decline", variant: "secondary", size: "jumbo", type: :submit %>
+          <% end %>
+        <% end %>
+      </div>
+      <p class="text-center text-xs text-gray-500 mt-4">First to claim gets it.</p>
+    <% end %>
+  </div>
+</div>

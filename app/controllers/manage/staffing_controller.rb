@@ -86,7 +86,7 @@ module Manage
       week_range = (@week_start..@week_end)
       shifts = Current.organization.shifts
         .for_week(@week_start)
-        .includes(:house_role, :additional_roles, { shift_additional_roles: :house_role }, :source, { shows: :production },
+        .includes(:house_role, :additional_roles, { shift_additional_roles: :house_role }, :source, :shift_vacancies, { shows: :production },
                   shift_assignments: { person: HEADSHOT_PRELOAD })
         .ordered
         .to_a

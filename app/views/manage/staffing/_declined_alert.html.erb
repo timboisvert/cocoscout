@@ -23,6 +23,9 @@
             <span class="text-gray-400">·</span>
             <span class="text-purple-700 truncate"><%= show_names.join(", ") %></span>
           <% end %>
+          <% if (vacancy = a.active_vacancy) %>
+            <span class="ml-auto"><%= render "shared/button", text: "Find cover", variant: "primary", size: "xs", type: :link, path: manage_staffing_vacancy_path(vacancy) %></span>
+          <% end %>
           <% if a.decline_reason.present? %>
             <span class="w-full text-xs text-pink-700 mt-0.5">“<%= a.decline_reason %>”</span>
           <% end %>
