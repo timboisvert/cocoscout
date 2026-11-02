@@ -7,6 +7,7 @@ module Manage
   # books through a date. Books access, by the grid; locking needs manage,
   # unlocking the owner.
   class BooksStatementsController < Manage::ManageController
+    include BooksCategoriesGate
     KINDS = %w[pnl balance cash].freeze
 
     before_action :require_change!, only: %i[lock unlock]

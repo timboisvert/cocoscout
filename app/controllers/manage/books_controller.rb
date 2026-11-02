@@ -9,6 +9,7 @@ module Manage
   # Open to the organization's managers and to anyone whose access grid
   # gives them Books (OrganizationAccess); Pro, by the feature gate.
   class BooksController < Manage::ManageController
+    include BooksCategoriesGate
     SECTIONS = %w[overview accounts entries shows checks].freeze
 
     def show

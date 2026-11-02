@@ -10,6 +10,7 @@ module Manage
   # tells the person when it's done. Books access, by the grid; changing
   # needs manage.
   class BankStatementsController < Manage::ManageController
+    include BooksCategoriesGate
     include BankStatementStreams
 
     PER_PAGE = 100

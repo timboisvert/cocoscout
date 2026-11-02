@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_02_180100) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_02_193000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -373,9 +373,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_180100) do
     t.bigint "created_by_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "show_id"
     t.index ["created_by_id"], name: "index_bank_rules_on_created_by_id"
     t.index ["organization_id"], name: "index_bank_rules_on_organization_id"
     t.index ["production_id"], name: "index_bank_rules_on_production_id"
+    t.index ["show_id"], name: "index_bank_rules_on_show_id"
   end
 
   create_table "bank_statement_imports", force: :cascade do |t|
@@ -2115,10 +2117,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_180100) do
     t.datetime "books_locked_at"
     t.bigint "books_locked_by_id"
     t.boolean "books_nonprofit", default: false, null: false
+    t.jsonb "books_profile", default: {}, null: false
+    t.jsonb "money_categories_hidden", default: [], null: false
+    t.datetime "books_categories_set_up_at"
+    t.bigint "books_categories_set_up_by_id"
     t.date "settle_up_starts_on"
     t.datetime "pro_monthly_from"
     t.datetime "pro_monthly_until"
     t.jsonb "comp_reminders", default: {}, null: false
+    t.index ["books_categories_set_up_by_id"], name: "index_organizations_on_books_categories_set_up_by_id"
     t.index ["books_locked_by_id"], name: "index_organizations_on_books_locked_by_id"
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
     t.index ["organization_talent_pool_id"], name: "index_organizations_on_organization_talent_pool_id"
@@ -4763,6 +4770,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_180100) do
   add_foreign_key "bank_rule_dismissals", "users", column: "dismissed_by_id"
   add_foreign_key "bank_rules", "organizations"
   add_foreign_key "bank_rules", "productions"
+  add_foreign_key "bank_rules", "shows"
   add_foreign_key "bank_rules", "users", column: "created_by_id"
   add_foreign_key "bank_statement_imports", "organizations"
   add_foreign_key "bank_statement_imports", "users", column: "imported_by_id"
@@ -4941,6 +4949,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_180100) do
   add_foreign_key "organization_staff_members", "staff_agreement_templates"
   add_foreign_key "organization_tax_settings", "organizations"
   add_foreign_key "organizations", "talent_pools", column: "organization_talent_pool_id"
+  add_foreign_key "organizations", "users", column: "books_categories_set_up_by_id"
   add_foreign_key "organizations", "users", column: "books_locked_by_id"
   add_foreign_key "organizations", "users", column: "owner_id"
   add_foreign_key "payout_batch_items", "payout_batches"

@@ -156,7 +156,8 @@ RSpec.describe "Manage::BankRules", type: :request do
     create(:organization_role, user: viewer, organization: org, company_role: "viewer").update!(module_grants: { "books" => "view" })
     post handle_signin_path, params: { email_address: viewer.email_address, password: password }
     post manage_money_bank_rules_path, params: { bank_rule: { contains: "X", direction: "out", action: "ignore" } }
-    expect(response).to redirect_to(manage_money_bank_path)
+    # The module gate turns a viewer's POST away (bank rules are Books).
+    expect(response).to have_http_status(:redirect)
     expect(org.bank_rules.count).to eq(0)
   end
 end

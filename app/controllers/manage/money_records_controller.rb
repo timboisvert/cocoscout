@@ -5,6 +5,7 @@ module Manage
   # three tabs (in, out, moved), a page per recorded entry, change and
   # remove. Books access, by the grid; changing needs manage.
   class MoneyRecordsController < Manage::ManageController
+    include BooksCategoriesGate
     include BankStatementStreams
 
     before_action :set_record, only: %i[show edit update destroy]

@@ -31,7 +31,7 @@ class BankRules
       else
         record = organization.money_records.create!(
           kind: (line.deposit? ? "in" : "out"), on: line.on, amount_cents: line.amount_cents.abs, category_key: rule.category_key,
-          counterparty: rule.counterparty.presence, production: rule.production, via: "bank", memo: line.description, recorded_by: by
+          counterparty: rule.counterparty.presence, production: rule.production, show: rule.show, via: "bank", memo: line.description, recorded_by: by
         )
         line.recorded!(record)
         result.recorded += 1

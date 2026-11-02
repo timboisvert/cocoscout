@@ -12,6 +12,7 @@ class BankRule < ApplicationRecord
 
   belongs_to :organization
   belongs_to :production, optional: true
+  belongs_to :show, optional: true
   belongs_to :created_by, class_name: "User", optional: true
 
   validates :contains, presence: true
@@ -20,6 +21,7 @@ class BankRule < ApplicationRecord
   validates :direction, inclusion: { in: %w[in out], message: "must be money in or money out to record it" }, if: :record?
   validates :category_key, presence: true, if: :record?
   validate :production_is_ours
+  validate :show_is_the_productions
 
   before_validation { self.contains = contains.to_s.split(",").map { |s| s.strip.squeeze(" ") }.compact_blank.join(", ") }
 
@@ -54,7 +56,8 @@ class BankRule < ApplicationRecord
   def does
     return "Ignore" if ignore?
 
-    [ "Record as #{category_label}", counterparty.presence, production&.name ].compact.join(", ")
+    where = production && (show ? "#{production.name} on #{show.date_and_time.strftime('%b %-d, %Y')}" : production.name)
+    [ "Record as #{category_label}", counterparty.presence, where ].compact.join(", ")
   end
 
   def direction_label
@@ -65,5 +68,13 @@ class BankRule < ApplicationRecord
 
   def production_is_ours
     errors.add(:production, "isn't yours") if production && production.organization_id != organization_id
+  end
+
+  # A date comes with its production; one from another production is a mistake.
+  def show_is_the_productions
+    return if show.nil?
+
+    self.production ||= show.production
+    errors.add(:show, "is not part of that production") if show.production_id != production&.id
   end
 end

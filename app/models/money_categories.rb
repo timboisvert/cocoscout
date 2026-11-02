@@ -4,6 +4,9 @@
 # kinds and spending categories, each with the account it posts to. An
 # organization's own categories (Money settings → Books) are non-system
 # LedgerAccounts and show up in the same lists under the key "account_<id>".
+# The built-in ones an organization said no to when it set Books up
+# (BooksCategorySetup, money_categories_hidden) stay out of the options,
+# but a row already in one keeps its label and its account.
 #
 #   MoneyCategories.spending_options(organization)   # [[label, key], ...]
 #   MoneyCategories.account_for("venue")             # => :venue
@@ -82,6 +85,12 @@ class MoneyCategories
     def options_for(list, organization, account_type)
       system = list.map { |key, data| [ data["label"], key ] }
       return system if organization.nil?
+
+      hidden = organization.money_categories_hidden
+      if hidden.any?
+        kind = account_type == "income" ? "income" : "spending"
+        system = system.reject { |_, key| key != "other" && hidden.include?("#{kind}:#{key}") }
+      end
 
       custom = organization.ledger_accounts.active.where(system: false, account_type: account_type).order(:name)
                            .map { |a| [ a.name, "account_#{a.id}" ] }

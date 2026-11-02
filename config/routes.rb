@@ -1623,6 +1623,9 @@ Rails.application.routes.draw do
     get "money", to: "money#index", as: "money_index"
     get "money/books", to: "books#show", as: "money_books"
     get "money/books/download", to: "books#download", as: "money_books_download"
+    # Books starts with its categories: a few questions, a recommended list, an acknowledgment.
+    get   "money/books/setup", to: "books_setup#show",   as: "money_books_setup"
+    patch "money/books/setup", to: "books_setup#update"
     # Books' sections, each its own page under the Books landing page
     # (Tim, 2026-11-02: sections, the way Money has them, not tabs).
     get "money/books/:section", to: "books#show", as: "money_books_section", constraints: { section: /accounts|entries|shows|checks/ }

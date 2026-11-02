@@ -10,12 +10,14 @@
 
   # Financials, Payouts and Incoming are things to do; Books is what happened,
   # in dollars. Each card shows only to someone whose access opens it.
+  # Books starts with its categories: until a manager has set them up, the card goes there.
+  books_setup_needed = Current.organization.books_categories_set_up_at.nil? && OrganizationAccess.allows?(Current.user, Current.organization, :books, :manage)
   money_actions = [
     (module_access?(:settle_up) ? { icon: "chart-bar", text: "Settle up", description: "Each day, checked off: shows, door cash, expenses", path: manage_money_settle_up_path } : nil),
     (module_access?(:payouts) ? { icon: "dollar-sign", text: "Payouts", description: "Calculate and distribute payments", path: manage_money_payouts_path } : nil),
     (module_access?(:bills_invoices) ? { icon: "banknotes", text: "Incoming Payments", description: "Track and collect money owed to you", path: manage_money_incoming_path } : nil),
     (module_access?(:bills_invoices) ? { icon: "file", text: "Bills", description: "What you owe and have not paid yet", path: manage_money_bills_path } : nil),
-    (module_access?(:books) ? { icon: "book", text: "Books", description: "All your money, and every dollar in and out", path: manage_money_books_path } : nil),
+    (module_access?(:books) ? (books_setup_needed ? { icon: "book", text: "Books", description: "Start by setting up your categories", path: manage_money_books_setup_path } : { icon: "book", text: "Books", description: "All your money, and every dollar in and out", path: manage_money_books_path }) : nil),
     (module_access?(:money_settings) ? { icon: "cog", text: "Settings", description: "How you pay people", path: manage_money_settings_path } : nil)
   ].compact
 

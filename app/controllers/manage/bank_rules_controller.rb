@@ -6,6 +6,7 @@ module Manage
   # runs over the lines waiting right away; a big run goes to the
   # background. Changing needs manage on Books.
   class BankRulesController < Manage::ManageController
+    include BooksCategoriesGate
     before_action :require_change!
     before_action :set_rule, only: %i[update destroy]
 
@@ -94,7 +95,7 @@ module Manage
     end
 
     def rule_params
-      params.require(:bank_rule).permit(:contains, :direction, :action, :category_key, :counterparty, :production_id, :on_import)
+      params.require(:bank_rule).permit(:contains, :direction, :action, :category_key, :counterparty, :production_id, :show_id, :on_import)
     end
 
     # rule_action, since params[:action] is this action's own name.

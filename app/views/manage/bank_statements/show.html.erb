@@ -117,7 +117,7 @@
     <% end %>
     <% if @summary.last %><%= render "manage/bank_statements/record_modal", **@modal %><% end %>
     <%= render "manage/bank_statements/rules_modal", rules: @rules, catches: @rule_catches, suggestions: @suggestions, summary: @summary %>
-    <%= render "manage/bank_statements/rule_modal", productions: @modal[:productions] %>
+    <%= render "manage/bank_statements/rule_modal", productions: @modal[:productions], shows: @modal[:shows] %>
     <% @rules.each do |rule| %>
       <%= render "shared/confirm_modal", id: "remove-rule-#{rule.id}", title: "Remove this rule?",
             message: "“#{rule.contains}” · #{rule.does}. What it already did stays as it is.",

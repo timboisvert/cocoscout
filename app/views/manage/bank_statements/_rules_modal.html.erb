@@ -83,7 +83,7 @@
                   <%= render "shared/button", text: "Edit", variant: "secondary", size: "small", type: :button,
                         data: { action: "click->bank-rule#open", bank_rule_id_param: rule.id, bank_rule_contains_param: rule.contains, bank_rule_direction_param: rule.direction,
                                 bank_rule_kind_param: rule.action, bank_rule_category_param: rule.category_key, bank_rule_counterparty_param: rule.counterparty,
-                                bank_rule_production_param: rule.production_id, bank_rule_on_import_param: rule.on_import } %>
+                                bank_rule_production_param: rule.production_id, bank_rule_show_param: rule.show_id, bank_rule_on_import_param: rule.on_import } %>
                   <%= render "shared/button", text: "Remove", variant: "secondary", size: "small", type: :button,
                         data: { controller: "modal", action: "click->modal#open", modal_id: "remove-rule-#{rule.id}" } %>
                 </span>

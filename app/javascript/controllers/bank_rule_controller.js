@@ -8,10 +8,11 @@ import { Controller } from "@hotwired/stimulus"
 // bank-record. The modal's own modal controller closes it.
 //
 // Rule link / Edit: data-action="click->bank-rule#open" with
-// data-bank-rule-{id,contains,direction,kind,category,counterparty,production,on-import}-param.
+// data-bank-rule-{id,contains,direction,kind,category,counterparty,production,show,on-import}-param.
+// The production and date switches belong to record-money, nested in the form.
 export default class extends Controller {
     static targets = ["modal", "rulesModal", "form", "method", "title", "contains", "matches", "recordFields", "categoryOut", "categoryIn",
-        "counterparty", "counterpartyLabel", "production", "onImport"]
+        "counterparty", "counterpartyLabel", "production", "show", "onImport"]
 
     disconnect() {
         clearTimeout(this.timer)
@@ -44,7 +45,7 @@ export default class extends Controller {
         this.check("bank_rule[direction]", p.direction || "out")
         this.check("bank_rule[action]", p.kind || "record")
         this.counterpartyTarget.value = p.counterparty || ""
-        if (this.hasProductionTarget) this.productionTarget.value = p.production ? String(p.production) : ""
+        this.setWhere(p.production, p.show)
         this.onImportTarget.checked = p.onImport === undefined || p.onImport === null || p.onImport === true || p.onImport === "true"
         this.refresh()
         const category = this.activeCategory()
@@ -54,6 +55,25 @@ export default class extends Controller {
         this.modalTarget.classList.remove("hidden")
         this.preview()
         this.containsTarget.focus()
+    }
+
+    // The production and date switches: on when the rule has one, then the
+    // menus set (record-money reacts to the change events and filters the dates).
+    setWhere(production, show) {
+        const form = this.formTarget
+        const flip = (name, on) => {
+            const box = form.querySelector(`[data-record-money-target="${name}"]`)
+            if (!box) return
+            box.checked = on
+            box.dispatchEvent(new Event("change", { bubbles: true }))
+        }
+        flip("forProduction", !!production)
+        if (this.hasProductionTarget) {
+            this.productionTarget.value = production ? String(production) : ""
+            this.productionTarget.dispatchEvent(new Event("change", { bubbles: true }))
+        }
+        flip("forShow", !!show)
+        if (this.hasShowTarget && show) this.showTarget.value = String(show)
     }
 
     // Direction → which category list; action → whether the record fields show.
