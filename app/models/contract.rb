@@ -1820,11 +1820,15 @@ class Contract < ApplicationRecord
       # Positional pairing (kept as a fallback for deals whose due dates sit
       # off the event dates) drifts as soon as any settled payment drops out
       # of settlement_payments, linking a show to its neighbor's payment.
+      # A payment already tied to another show is that show's, never this
+      # one's by position (removing Sep 3's settlement handed its ticket money
+      # to Jan 1's; FUNHAÜS, 2026-11-02).
       revenue_payments.detect { |p| p.due_date == show.date_and_time.to_date } ||
         begin
           all_shows = deal_shows_scope(linkable_shows).order(:date_and_time).to_a
           show_index = all_shows.index { |s| s.id == show.id }
-          show_index ? revenue_payments.to_a[show_index] : nil
+          candidate = show_index ? revenue_payments.to_a[show_index] : nil
+          candidate if candidate && (candidate.show_id.nil? || candidate.show_id == show.id)
         end
     when "weekly"
       show_week_start = show.date_and_time.to_date.beginning_of_week

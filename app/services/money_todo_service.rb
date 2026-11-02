@@ -29,11 +29,12 @@ class MoneyTodoService
   # already earned — a show that's happened, a course that's run — is due the
   # moment it's calculated; a contract payment is due once its date lands
   # inside this window (or it never had one). Everything else is owed, but
-  # later, and a box that headlines a payment six months out isn't a to-do.
+  # later: it sits in the Upcoming column, never in To pay. To pay means
+  # "you can go pay this now" (Tim, 2026-11-02).
   DUE_SOON_HORIZON = 7.days
 
   # count/amount describe everything; items is what's rendered (possibly fewer).
-  # due_soon_amount is the slice of amounts[:to_pay] inside DUE_SOON_HORIZON.
+  # due_soon_amount is amounts[:to_pay]: what can be paid right now.
   Section = Struct.new(:count, :amount, :amounts, :columns, :items,
                        :overdue_count, :overdue_amount, :due_soon_amount, keyword_init: true) do
     def any? = count.to_i.positive?
@@ -183,7 +184,7 @@ class MoneyTodoService
       items.sort_by! { |i| payout_sort_key(i) }
 
       columns = [ :to_pay ]
-      %i[in_draft in_flight paid].each do |col|
+      %i[upcoming in_draft in_flight paid].each do |col|
         columns << col if items.any? { |i| i[:amounts][col].to_f > 0.004 }
       end
       link_production_items!(items, columns)
@@ -194,7 +195,7 @@ class MoneyTodoService
       Section.new(count: items.size,
                   amount: items.sum { |i| i[:amount].to_f },
                   amounts: totals,
-                  due_soon_amount: items.sum { |i| i[:due_soon].to_f },
+                  due_soon_amount: totals[:to_pay],
                   columns: columns,
                   items: row_limit ? items.first(row_limit) : items)
     end
@@ -281,19 +282,26 @@ class MoneyTodoService
       shows = by_production[production.id]
       next if shows.blank?
 
-      breakdown = self.class.payout_breakdown(shows.flat_map { |s| s.show_payout.line_items })
-      amounts = breakdown[:amounts]
-      counts = breakdown[:counts]
+      # A payout worked out ahead of its show isn't payable until the show's
+      # been: that money is upcoming, not to pay.
+      breakdowns = shows.map { |s| self.class.payout_breakdown(s.show_payout.line_items, upcoming: self.class.upcoming_show?(s)) }
+      amounts = Hash.new(0.0)
+      counts = Hash.new(0)
+      breakdowns.each do |b|
+        b[:amounts].each { |col, v| amounts[col] += v }
+        b[:counts].each { |col, v| counts[col] += v }
+      end
 
       # Say what state the money is in, not just that it exists.
       parts = [ "#{shows.size} #{'show'.pluralize(shows.size)}" ]
       parts << "#{counts[:to_pay]} #{'payee'.pluralize(counts[:to_pay])} to pay" if counts[:to_pay].positive?
+      parts << "#{counts[:upcoming]} after the show" if counts[:upcoming].positive?
       parts << "#{counts[:in_draft]} in a draft run" if counts[:in_draft].positive?
       parts << "#{counts[:in_flight]} in flight" if counts[:in_flight].positive?
       parts << "#{counts[:paid]} already paid" if counts[:paid].positive?
 
       { name: production.name, kind: :production,
-        amount: amounts[:to_pay] + amounts[:in_draft] + amounts[:in_flight],
+        amount: amounts[:to_pay] + amounts[:upcoming] + amounts[:in_draft] + amounts[:in_flight],
         amounts: amounts,
         # The show has happened; whatever's untouched is due now.
         due_soon: amounts[:to_pay],
@@ -353,9 +361,7 @@ class MoneyTodoService
     organization.contracts
                 .includes({ contract_payments: [ :show, { payout_contribution: :payout_batch } ] }, :contractor).each do |contract|
       outgoing = contract.contract_payments.select(&:direction_outgoing?)
-      # A settlement from a show's ticket sales isn't owed until the show is
-      # over: before then it's sales so far (ContractPayment#settles_after_show?).
-      pending = outgoing.select(&:status_pending?).reject { |p| p.settles_after_show? && !p.in_payout_run? }
+      pending = outgoing.select(&:status_pending?)
 
       # What a settlement actually hands over: services they owe us that net
       # out of it (deduct-from-payout charges) come off before any money moves,
@@ -371,22 +377,36 @@ class MoneyTodoService
       next unless amount.positive?
 
       # Contract payments can be staged in payout runs too — split them the
-      # same way as show payouts.
-      by_col = pending.group_by { |p| self.class.payout_bucket(p.payout_contribution&.payout_batch, paid: false) }
+      # same way as show payouts. Untouched money that can't be paid yet is
+      # upcoming: a settlement from a show's ticket sales before the show is
+      # over (sales so far, ContractPayment#settles_after_show?), or a payment
+      # dated past the horizon — a payment for a show next spring is owed,
+      # not to pay.
+      by_col = pending.group_by do |p|
+        upcoming = p.settles_after_show? || !due_soon?(p.due_date)
+        self.class.payout_bucket(p.payout_contribution&.payout_batch, paid: false, upcoming: upcoming)
+      end
       paid_payments = outgoing.select(&:status_paid?)
       amounts = by_col.transform_values { |ps| ps.sum { |p| net.call(p) } }
       amounts[:paid] = paid_payments.sum { |p| net.call(p) }
-      # Of the untouched money, only what's due inside the horizon (or carries
-      # no date at all) is due now — a payment for a show next spring is owed,
-      # not overdue.
-      due_soon = (by_col[:to_pay] || []).select { |p| due_soon?(p.due_date) }.sum { |p| net.call(p) }
+      due_soon = amounts[:to_pay].to_f
 
-      parts = [ "#{pending.count} contract #{'payment'.pluralize(pending.count)} due" ]
-      due = pending.filter_map(&:due_date).min
-      if due
-        due_label = pending.size == 1 ? "due" : "next due"
-        parts << (due < Date.current ? "overdue since #{due.strftime('%b %-d')}" : "#{due_label} #{due.strftime('%b %-d')}")
+      upcoming = by_col[:upcoming] || []
+      current = pending - upcoming
+      parts = []
+      due = current.filter_map(&:due_date).min
+      if current.any?
+        parts << "#{current.count} contract #{'payment'.pluralize(current.count)} due"
+        if due
+          due_label = current.size == 1 ? "due" : "next due"
+          parts << (due < Date.current ? "overdue since #{due.strftime('%b %-d')}" : "#{due_label} #{due.strftime('%b %-d')}")
+        end
       end
+      if upcoming.any?
+        next_up = upcoming.filter_map { |p| p.show&.date_and_time&.to_date || p.due_date }.min
+        parts << [ "#{upcoming.count} upcoming", ("from #{next_up.strftime('%b %-d')}" if next_up) ].compact.join(" ")
+      end
+      due ||= upcoming.filter_map(&:due_date).min
       parts << "#{by_col[:in_draft].size} in a draft run" if by_col[:in_draft].present?
       parts << "#{by_col[:in_flight].size} in flight" if by_col[:in_flight].present?
       parts << "#{paid_payments.count} already paid" if paid_payments.any?
@@ -489,9 +509,11 @@ class MoneyTodoService
 
   # Which column a piece of money belongs in: nobody's touched it, it's staged
   # in an unsubmitted run, it's in a submitted one, or it's out the door.
-  def self.payout_bucket(batch, paid:)
+  # Untouched money that can't be paid yet (upcoming: its show hasn't
+  # happened, or its date is past the horizon) is :upcoming, not :to_pay.
+  def self.payout_bucket(batch, paid:, upcoming: false)
     return :paid if paid
-    return :to_pay if batch.nil?
+    return (upcoming ? :upcoming : :to_pay) if batch.nil?
 
     if batch.status == "draft"
       :in_draft
@@ -502,14 +524,19 @@ class MoneyTodoService
     end
   end
 
-  # Splits show-payout line items into the four buckets.
+  # A show that hasn't started yet: whatever its payout says, it isn't owed.
+  def self.upcoming_show?(show)
+    show.date_and_time.present? && show.date_and_time > Time.current
+  end
+
+  # Splits show-payout line items into the buckets.
   # { amounts: {col => Float}, counts: {col => Integer} } — amounts are the
-  # payees' nets, counts are people.
-  def self.payout_breakdown(line_items)
+  # payees' nets, counts are people. upcoming: the show hasn't happened yet.
+  def self.payout_breakdown(line_items, upcoming: false)
     amounts = Hash.new(0.0)
     counts = Hash.new(0)
     line_items.each do |item|
-      col = payout_bucket(item.payout_contribution&.payout_batch, paid: item.paid?)
+      col = payout_bucket(item.payout_contribution&.payout_batch, paid: item.paid?, upcoming: upcoming)
       amounts[col] += item.net_amount.to_f
       counts[col] += 1
     end

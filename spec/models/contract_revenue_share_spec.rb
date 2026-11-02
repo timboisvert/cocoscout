@@ -219,6 +219,16 @@ RSpec.describe Contract, "revenue share methods", type: :model do
 
         expect(contract.find_payment_for_show(show)).to eq(close_payment)
       end
+
+      # Sep 3's settlement removed: positional pairing would hand Sep 3 the
+      # Jan 1 payment, which belongs to the Jan 1 show (FUNHAÜS, 2026-11-02).
+      it "never pairs by position with a payment tied to another show" do
+        show = create(:show, production: production, date_and_time: Date.new(2026, 3, 3).to_time)
+        later = create(:show, production: production, date_and_time: Date.new(2026, 5, 1).to_time)
+        create(:contract_payment, :revenue_share_tbd, contract: contract, due_date: Date.new(2026, 5, 1), show: later)
+
+        expect(contract.find_payment_for_show(show)).to be_nil
+      end
     end
 
     it "returns nil for non-revenue-share contracts" do
