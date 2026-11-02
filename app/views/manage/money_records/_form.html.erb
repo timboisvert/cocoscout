@@ -5,9 +5,12 @@
     productions:  the organization's active productions
     shows:        their shows (id, production_id, date_and_time, secondary_name)
     panel:        true when the form is a tabs panel (hidden until chosen)
+    return_to:    in the Record money modal, the page to come back to; Cancel
+                  then closes the modal instead of leaving the page
 %>
 <%
   panel = local_assigns.fetch(:panel, false)
+  return_to = local_assigns[:return_to]
   kind = record.kind
   input = "mt-1 block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
   label = "block text-sm font-medium text-gray-700"
@@ -22,6 +25,7 @@
 <%= form_with model: record, url: url, method: (record.persisted? ? :patch : :post), id: "record-#{kind}",
       data: { turbo: false, tabs_target: (panel ? "panel" : nil), controller: "record-money", record_money_verb_value: verb }.compact do |f| %>
   <%= f.hidden_field :kind %>
+  <% if return_to.present? %><%= hidden_field_tag :return_to, return_to, id: "return-to-#{kind}" %><% end %>
   <% if params[:bank_line].present? %><%= hidden_field_tag :bank_line, params[:bank_line], id: "bank-line-#{kind}" %><% end %>
   <div class="px-6 pt-5 pb-6 space-y-5">
     <p class="text-sm text-gray-600"><%= intro %></p>
@@ -130,7 +134,11 @@
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4 sticky bottom-0">
     <span class="text-xs text-gray-500"><%= record.persisted? ? "Changing it reverses the earlier entry and writes a new one." : "Goes on the books dated as above. You can change or remove it later." %></span>
     <span class="flex items-center gap-2 justify-end">
-      <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :link, path: (record.persisted? ? manage_money_record_path(record) : manage_money_books_path) %>
+      <% if return_to.present? %>
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+      <% else %>
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :link, path: (record.persisted? ? manage_money_record_path(record) : manage_money_books_path) %>
+      <% end %>
       <%= render "shared/button", text: verb, variant: "primary", size: "medium", type: :submit, data: { record_money_target: "submit" } %>
     </span>
   </div>

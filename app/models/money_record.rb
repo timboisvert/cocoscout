@@ -11,6 +11,12 @@
 class MoneyRecord < ApplicationRecord
   KINDS = %w[in out move].freeze
 
+  # A new record of one kind, with the form's starting choices: today, from
+  # the bank, door cash deposited to the bank.
+  def self.blank_for(organization, kind)
+    organization.money_records.new(kind: kind, on: Date.current, via: "bank", from_account: "door_cash", to_account: "bank")
+  end
+
   # Where money came from or went, in the words the sheet uses. The
   # "owed" choices don't move cash: money in that's still owed sits as
   # money owed to you; money out that someone covered sits as money you owe.

@@ -14,9 +14,26 @@ RSpec.describe "Manage::MoneyRecords", type: :request do
 
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
-  it "opens the sheet with its three tabs, from Books" do
-    get manage_money_books_path
-    expect(response.body).to include(manage_new_money_record_path)
+  # Record money opens as a modal on the Books page you're on, and saving
+  # comes back there (Tim, 2026-11-02).
+  it "opens Record money as a modal on any Books section, and comes back after saving" do
+    %w[overview accounts entries shows checks].each do |tab|
+      get manage_money_books_path(tab: tab)
+      expect(response.body).to include('id="record-money-modal"', 'data-modal-id="record-money-modal"', "Moved between your accounts", "Holiday Revue")
+      expect(response.body).to include(manage_money_statements_path, manage_money_taxes_path, manage_money_bank_path) # the sections strip
+    end
+
+    post manage_money_records_path, params: { return_to: "/manage/money/books?tab=entries",
+                                              money_record: { kind: "out", on: "2026-10-27", amount: "40.00", category_key: "supplies", via: "bank" } }
+    expect(response).to redirect_to("/manage/money/books?tab=entries")
+    expect(flash[:notice]).to include("Recorded")
+
+    post manage_money_records_path, params: { return_to: "https://example.org/manage/money/books",
+                                              money_record: { kind: "out", on: "2026-10-27", amount: "40.00", category_key: "supplies", via: "bank" } }
+    expect(response).to redirect_to(manage_money_record_path(org.money_records.order(:id).last))
+  end
+
+  it "opens the sheet with its three tabs, as its own page too" do
     get manage_new_money_record_path
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Money out", "Money in", "Moved between your accounts", "Holiday Revue")

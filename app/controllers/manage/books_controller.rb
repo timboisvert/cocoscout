@@ -22,6 +22,8 @@ module Manage
         # find_by, not ChartOfAccounts.account: looking never creates the chart.
         @owed_to_payees_cents = Current.organization.ledger_accounts.find_by(key: "owed_to_payees")&.natural_balance_cents.to_i
         @bank_cents = Current.organization.ledger_accounts.find_by(key: "bank")&.natural_balance_cents.to_i
+        # The books can't know what's in the bank until a statement says so.
+        @bank_known = Current.organization.bank_statement_imports.exists?
         # Nothing to check, and no chart to create, before the first posting.
         @mismatches = Current.organization.ledger_accounts.exists? ? BooksReconciliation.check(Current.organization) : []
       when "entries"
@@ -37,6 +39,7 @@ module Manage
         @mismatches = BooksReconciliation.check(Current.organization)
         @disagreements = BooksReconciliation.financials_vs_books(Current.organization, period_key: @period)
       end
+      load_record_choices
     end
 
     # "Download this period": the Overview's money in and out as a CSV, one
@@ -47,6 +50,17 @@ module Manage
       production_id = Current.organization.productions.find_by(id: params[:production])&.id
       csv = report.to_csv(range: BooksReport.period_range(period), production_id: production_id)
       send_data csv, type: "text/csv", filename: "books-#{period.tr('_', '-')}-#{report.basis == :cash ? 'when-moved' : 'when-earned'}.csv"
+    end
+
+    private
+
+    # The Record money modal's production and show menus.
+    def load_record_choices
+      return unless OrganizationAccess.allows?(Current.user, Current.organization, :books, :manage)
+
+      @record_productions = Current.organization.productions.active.order(:name)
+      @record_shows = Show.where(production_id: @record_productions.map(&:id), canceled: false)
+                          .order(date_and_time: :desc).limit(400).select(:id, :production_id, :date_and_time, :secondary_name)
     end
   end
 end

@@ -19,10 +19,24 @@ RSpec.describe "Manage::BankStatements", type: :request do
     Rack::Test::UploadedFile.new(file.path, "text/csv", original_filename: name)
   end
 
-  it "shows the page with the promises and the books' bank balance" do
+  # The books can't know what's in the bank until a statement says so: the
+  # first visit is only the way in (Tim, 2026-11-02).
+  it "first visit: no balances, just the way to bring a statement in" do
     get manage_money_bank_path
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("What happens to your file", "never stored", "Bank, per your books", "Read the file")
+    expect(response.body).to include("What happens to your file", "never stored", "Bring your first statement in", "Read the file")
+    expect(response.body).not_to include("Bank, per your books", "To deal with")
+
+    get manage_money_books_path
+    expect(response.body).not_to include("Bank, per your books")
+  end
+
+  it "shows the books' bank balance beside the statement once one is in" do
+    org.bank_statement_imports.create!(imported_by: owner, filename: "october.csv", format: "csv", lines_count: 0)
+    get manage_money_bank_path
+    expect(response.body).to include("Bank, per your books", "To deal with", "Statements brought in")
+    get manage_money_books_path
+    expect(response.body).to include("Bank, per your books")
   end
 
   it "reads a CSV, matches what the books already have, and leaves the rest to deal with; the file is not kept" do

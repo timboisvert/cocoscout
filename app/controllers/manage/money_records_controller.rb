@@ -22,7 +22,10 @@ module Manage
           line.recorded!(@record)
           return redirect_to manage_money_bank_path, notice: "Recorded. #{@record.kind_label}: #{helpers.number_to_currency(@record.amount)}, and the bank line is dealt with."
         end
-        redirect_to manage_money_record_path(@record), notice: "Recorded. #{@record.kind_label}: #{helpers.number_to_currency(@record.amount)}."
+        notice = "Recorded. #{@record.kind_label}: #{helpers.number_to_currency(@record.amount)}."
+        return redirect_to safe_return_to, notice: notice if safe_return_to
+
+        redirect_to manage_money_record_path(@record), notice: notice
       else
         @kind = @record.kind.presence_in(MoneyRecord::KINDS) || "out"
         @records = { "in" => blank("in"), "out" => blank("out"), "move" => blank("move") }
@@ -70,7 +73,14 @@ module Manage
     end
 
     def blank(kind)
-      Current.organization.money_records.new(kind: kind, on: Date.current, via: "bank", from_account: "door_cash", to_account: "bank")
+      MoneyRecord.blank_for(Current.organization, kind)
+    end
+
+    # The Record money modal sends the page it was opened on; only a Books
+    # page of ours, never another site.
+    def safe_return_to
+      path = params[:return_to].to_s
+      path if path.start_with?("/manage/money/books") && !path.start_with?("//")
     end
 
     # A link from elsewhere (the bank page's "Record it") can bring the

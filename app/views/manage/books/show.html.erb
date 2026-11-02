@@ -15,56 +15,41 @@
   end
   overview_params = { period: @period, basis: (@report.basis == :cash ? "cash" : nil), production: @production_id }.compact
   top_links = []
-  top_links << { text: "Record money", path: manage_new_money_record_path } if module_change?(:books)
+  top_links << record_money_link if module_change?(:books)
+  basis_param = @report.basis == :cash ? "cash" : nil
+  # The filters, each shown in the part of the page it changes: never above
+  # the boxes that stay the same whatever the period (Tim, 2026-11-02).
+  period_filter = { partial: "shared/filters/dropdown_filter", locals: {
+    label: "Period", name: "period", selected: @period,
+    options: BooksReport::PERIOD_LABELS.map { |k, v| { value: k, text: v } },
+    extra_url_params: { tab: (@tab unless @tab == "overview"), basis: basis_param, production: @production_id }.compact } }
+  production_filter = { partial: "shared/filters/production_dropdown_filter", locals: {
+    label: "Production", name: "production", selected: @production_id.to_s,
+    options: [ { value: "", text: "All productions" } ] + Array(@productions).map { |pr| { value: pr.id, text: pr.name, type: pr.production_type } },
+    extra_url_params: { basis: basis_param, period: @period }.compact } }
+  basis_filter = { label: "Count money", filters: [
+    { text: "When earned", path: manage_money_books_path({ tab: (@tab unless @tab == "overview"), period: (@period unless @period == "this_month"), production: @production_id }.compact), active: @report.basis == :accrual },
+    { text: "When it moved", path: manage_money_books_path({ tab: (@tab unless @tab == "overview"), basis: "cash", period: (@period unless @period == "this_month"), production: @production_id }.compact), active: @report.basis == :cash }
+  ] }
   top_links << { text: "Download this period", path: manage_money_books_download_path(overview_params) } if @tab == "overview" && @overview && !@overview.empty?
 %>
 
-<div class="w-full mb-10">
-  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
-  <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [ [ "Money", manage_money_index_path ] ],
-    text: "Books",
-    links: top_links
-  } %>
-
+<%= render layout: "shared/settings_layout", locals: {
+  title: "Books",
+  breadcrumbs: [ [ "Money", manage_money_index_path ] ],
+  sections: books_sections(basis: basis_param, period: (@period unless @period == "this_month")),
+  current: @tab,
+  links: top_links,
+  width: "w-full"
+} do %>
   <% if @tab == "overview" %>
-    <div class="max-w-3xl text-sm text-gray-600 mb-5 space-y-1">
+    <div class="max-w-3xl text-sm text-gray-600 space-y-1">
       <p>What happened, in dollars. Every ticket, class, contract, payout run, bill and receipt lands here the moment it happens, on real double-entry books you never have to look at.</p>
       <p>Financials and Payouts are what to do next; Books is the record. Money is counted when it was earned, or when it moved if you switch.</p>
     </div>
   <% end %>
 
-  <div class="mb-4">
-    <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
-      { label: "View", filters: [
-        { text: "Overview", path: tab_path.call("overview"), active: @tab == "overview" },
-        { text: "Accounts", path: tab_path.call("accounts"), active: @tab == "accounts" },
-        { text: "Entries", path: tab_path.call("entries"), active: @tab == "entries" },
-        { text: "By show", path: tab_path.call("shows"), active: @tab == "shows" },
-        { text: "Checks", path: tab_path.call("checks"), active: @tab == "checks" }
-      ] },
-      { separator: true },
-      { label: "Also", filters: [
-        { text: "Statements", path: manage_money_statements_path, active: false },
-        { text: "Taxes", path: manage_money_taxes_path, active: false },
-        { text: "Bank", path: manage_money_bank_path, active: false }
-      ] },
-      ({ separator: true } if %w[accounts overview checks].include?(@tab)),
-      ({ partial: "shared/filters/dropdown_filter", locals: {
-        label: "Period", name: "period", selected: @period,
-        options: BooksReport::PERIOD_LABELS.map { |k, v| { value: k, text: v } },
-        extra_url_params: { tab: @tab, basis: (@report.basis == :cash ? "cash" : nil), production: @production_id } } } if %w[overview checks].include?(@tab)),
-      ({ partial: "shared/filters/production_dropdown_filter", locals: {
-        label: "Production", name: "production", selected: @production_id.to_s,
-        options: [ { value: "", text: "All productions" } ] + @productions.map { |pr| { value: pr.id, text: pr.name, type: pr.production_type } },
-        extra_url_params: { tab: "overview", basis: (@report.basis == :cash ? "cash" : nil), period: @period } } } if @tab == "overview"),
-      ({ label: "Count money", filters: [
-        { text: "When earned", path: manage_money_books_path(tab: @tab, period: @period, production: @production_id), active: @report.basis == :accrual },
-        { text: "When it moved", path: manage_money_books_path(tab: @tab, basis: "cash", period: @period, production: @production_id), active: @report.basis == :cash }
-      ] } if %w[accounts overview].include?(@tab))
-    ].compact %>
-  </div>
-
+  <div>
   <% case @tab %>
   <% when "overview" %>
     <%
@@ -80,14 +65,14 @@
         { label: "CocoScout balance", cents: total_balance, note: balance_note, path: manage_ticket_balance_path, tint: total_balance.positive? ? "bg-green-50 border-green-200" : "bg-white border-gray-200" },
         { label: "Waiting on upcoming shows", cents: @balance.upcoming_cents, note: "Yours the day after each show", path: manage_ticket_balance_path, tint: @balance.upcoming_cents.positive? ? "bg-blue-50 border-blue-200" : "bg-white border-gray-200" },
         { label: "Owed to performers and staff", cents: @owed_to_payees_cents, note: "Goes out on the next payout run", path: (module_access?(:payouts) ? manage_money_payouts_path : nil), tint: "bg-white border-gray-200" },
-        { label: "Bank, per your books", cents: @bank_cents, note: "What the books say is in the bank; check it against a statement", path: manage_money_bank_path, tint: "bg-white border-gray-200" }
-      ]
+        ({ label: "Bank, per your books", cents: @bank_cents, note: "What the books say is in the bank, checked against your last statement", path: manage_money_bank_path, tint: "bg-white border-gray-200" } if @bank_known)
+      ].compact
       period_label = BooksReport::PERIOD_LABELS[@period]
       tile = ->(label, cents, color = "text-gray-900") { "<div class='rounded-xl border border-gray-200 bg-white px-5 py-4'><div class='text-[11px] font-medium uppercase tracking-wide text-gray-500'>#{label}</div><div class='mt-0.5 text-2xl font-bold tabular-nums #{color}'>#{money.call(cents)}</div></div>".html_safe }
     %>
 
     <h2 class="text-sm font-semibold text-gray-900 mb-2">All your money, wherever it sits</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 <%= strip.size == 4 ? 'xl:grid-cols-4' : 'xl:grid-cols-3' %> gap-3 mb-8">
       <% strip.each do |box| %>
         <% inner = capture do %>
           <span class="block text-[11px] font-medium uppercase tracking-wide text-gray-500"><%= box[:label] %></span>
@@ -102,6 +87,10 @@
       <% end %>
     </div>
 
+    <div class="mb-4">
+      <%= render "shared/filters/filter_bar", bare: true, filter_groups: [ period_filter, production_filter, { separator: true }, basis_filter ] %>
+    </div>
+
     <div class="flex flex-wrap items-baseline justify-between gap-2 mb-3">
       <h2 class="text-sm font-semibold text-gray-900">Money in, money out · <%= period_label %><% if @production_id %> · <%= @productions.find { |pr| pr.id == @production_id }&.name %><% end %></h2>
       <span class="text-xs text-gray-500">Counted <%= @report.basis == :cash ? "when it moved" : "when it was earned" %></span>
@@ -109,7 +98,7 @@
 
     <% if @overview.empty? %>
       <%= render "shared/empty_state", icon: "money", title: "Nothing on the books for #{period_label.downcase}", body: "Ticket sales, classes, contracts and payout runs land here by themselves. Money that happened elsewhere, a sponsor's check or a receipt, you record by hand.",
-            actions: (module_change?(:books) ? [ { text: "Record money", path: manage_new_money_record_path } ] : []) %>
+            actions: (module_change?(:books) ? [ record_money_link.merge(type: :button) ] : []) %>
     <% else %>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         <%= tile.call("Money in", @overview.in_cents) %>
@@ -205,19 +194,17 @@
     <% end %>
 
     <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm border-t border-gray-200 pt-4">
-      <span class="text-xs font-medium uppercase tracking-wide text-gray-500">The record</span>
-      <%= link_to "Accounts", tab_path.call("accounts"), class: "text-pink-600 hover:text-pink-700" %>
-      <%= link_to "Entries", tab_path.call("entries"), class: "text-pink-600 hover:text-pink-700" %>
-      <%= link_to "By show", tab_path.call("shows"), class: "text-pink-600 hover:text-pink-700" %>
-      <%= link_to "Checks", tab_path.call("checks"), class: "text-pink-600 hover:text-pink-700" %>
       <% if @mismatches.empty? %>
-        <span class="inline-flex items-center gap-1.5 text-xs text-green-700 sm:ml-auto"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 6L9 17l-5-5"/></svg>The books agree with every record behind them</span>
+        <span class="inline-flex items-center gap-1.5 text-xs text-green-700"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 6L9 17l-5-5"/></svg>The books agree with every record behind them</span>
       <% else %>
-        <%= link_to tab_path.call("checks"), class: "inline-flex items-center gap-1.5 text-xs text-red-700 sm:ml-auto" do %><%= pluralize(@mismatches.size, "account") %> disagree with the records behind them<% end %>
+        <%= link_to tab_path.call("checks"), class: "inline-flex items-center gap-1.5 text-xs text-red-700" do %><%= pluralize(@mismatches.size, "account") %> disagree with the records behind them<% end %>
       <% end %>
     </div>
 
   <% when "accounts" %>
+    <div class="mb-4">
+      <%= render "shared/filters/filter_bar", bare: true, filter_groups: [ basis_filter ] %>
+    </div>
     <% groups = @report.groups %>
     <% if groups.empty? %>
       <%= render "shared/empty_state", icon: "money", title: "Nothing on the books yet", body: "The first ticket sale starts them." %>
@@ -363,6 +350,9 @@
           </ul>
         <% end %>
       </div>
+      <div class="pt-2">
+        <%= render "shared/filters/filter_bar", bare: true, filter_groups: [ period_filter ] %>
+      </div>
       <div class="rounded-xl border px-5 py-4 <%= @disagreements.empty? ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200' %>">
         <div class="text-sm font-semibold text-gray-900"><%= @disagreements.empty? ? "Financials and Books agree, #{BooksReport::PERIOD_LABELS[@period].downcase}" : "#{pluralize(@disagreements.size, 'production')} where Financials and Books disagree, #{BooksReport::PERIOD_LABELS[@period].downcase}" %></div>
         <p class="text-xs text-gray-600 mt-1">The Money hub's revenue and costs for each production, against the books' income and spending for the same period. Usually a number typed into Show Financials that the books haven't caught up with, or money the books know about that Financials doesn't.</p>
@@ -379,4 +369,6 @@
       </div>
     </div>
   <% end %>
-</div>
+  </div>
+  <% if module_change?(:books) %><%= render "manage/money_records/modal", productions: @record_productions, shows: @record_shows %><% end %>
+<% end %>
