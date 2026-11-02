@@ -202,7 +202,7 @@ class ContractPaymentSyncService
   # Whether a payment is one of the contract's core settlements (as opposed to
   # a one-off added by hand), so we only ever reset those back to TBD.
   def settlement_payment?(payment)
-    @contract.ticket_revenue_minus_fee? || payment.revenue_share?
+    @contract.ticket_revenue_minus_fee? || @contract.settlement_payment?(payment)
   end
 
   def update_payment(payment, amount, show_details, pending_count: 0)

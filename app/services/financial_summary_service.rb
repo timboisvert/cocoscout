@@ -226,11 +226,19 @@ class FinancialSummaryService
     third_party = @productions.select(&:type_third_party?)
     ActiveRecord::Associations::Preloader.new(records: third_party, associations: :contracts).call
 
-    with_contracts = third_party.filter_map { |p| [ p, p.contract ] if p.contract }
+    # Every contract that was ever live, not only the newest: a production
+    # on its second deal still earned under the first (Hags' August show sat
+    # under a completed contract and went uncounted, 2026-11-02). Each
+    # contract's shows are its own (Contract#contract_shows), so nothing
+    # counts twice.
+    with_contracts = third_party.flat_map do |p|
+      p.contracts.reject { |c| c.status_draft? || c.status_cancelled? }.map { |c| [ p, c ] }
+    end
     Contract.preload_money_data(with_contracts.map(&:last))
 
     with_contracts.each_with_object({}) do |(production, contract), out|
-      out[production.id] = contract.money_summary(date_range)
+      money = contract.money_summary(date_range)
+      out[production.id] = out[production.id] ? out[production.id].merge(money) { |_, a, b| (a + b).round(2) } : money
     end
   end
 

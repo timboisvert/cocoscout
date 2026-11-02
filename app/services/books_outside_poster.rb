@@ -169,6 +169,18 @@ class BooksOutsidePoster
       PayoutLedgerEntry.exists?(source: payment)
   end
 
+  # The same for many payments at once: the ids of those on the rail.
+  def self.on_the_rail_ids(payments)
+    ids = payments.map(&:id)
+    return Set.new if ids.empty?
+
+    on = Set.new(payments.select { |p| p.stripe_checkout_session_id.present? }.map(&:id))
+    [ OrgCashEntry, PayoutContribution, PayoutLedgerEntry ].each do |model|
+      on.merge(model.where(source_type: "ContractPayment", source_id: ids).distinct.pluck(:source_id))
+    end
+    on
+  end
+
   # Ticket money taken elsewhere is the theater's only when it sells the
   # tickets (a contractor who sells reports their own sales and owes a share,
   # which is contract income). A flat-fee show's tickets aren't the theater's.
