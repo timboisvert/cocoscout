@@ -621,6 +621,24 @@ RSpec.describe Contract, type: :model do
 
         expect(c.money_summary).to eq(money_in: 500.0, money_out: 120.0)
       end
+
+      # The Money hub's This month, Last month... count only that period's
+      # money, never the whole contract every time (Checks page, 11/2).
+      it "counts only a period's shows and payments when given a range" do
+        c = contract_for("who_sells_tickets" => "org", "settlement_basis" => "revenue_share",
+                         "revenue_our_share" => 30, "revenue_their_share" => 70)
+        expect(c.money_summary(1.day.ago..Time.current)).to eq(money_in: 0.0, money_out: 0.0)
+        expect(c.money_summary(2.weeks.ago..Time.current)).to eq(money_in: 1000.0, money_out: 700.0)
+      end
+
+      it "counts a flat deal's payments by the day paid, or due while unpaid, when given a range" do
+        flat = create(:contract, organization: org, production: production,
+          draft_data: { "payment_structure" => "flat_fee", "payment_config" => { "flat_fee_direction" => "incoming" } })
+        create(:contract_payment, :paid, contract: flat, amount: 500, paid_date: 40.days.ago.to_date, due_date: 45.days.ago.to_date)
+        create(:contract_payment, contract: flat, amount: 200, due_date: 3.days.ago.to_date)
+        expect(flat.money_summary(10.days.ago..Time.current)).to eq(money_in: 200.0, money_out: 0.0)
+        expect(flat.money_summary).to eq(money_in: 700.0, money_out: 0.0)
+      end
     end
 
     # Display wrapper: made vs cost vs net, plus how many shows still owe

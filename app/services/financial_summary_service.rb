@@ -122,7 +122,7 @@ class FinancialSummaryService
       end
     end
 
-    contract_money = contract_money_by_production
+    contract_money = contract_money_by_production(date_range)
     contract_money.each do |production_id, money|
       total[:contract_money_in] += money[:money_in]
       total[:contract_money_out] += money[:money_out]
@@ -215,7 +215,8 @@ class FinancialSummaryService
   # Contract money folded in so third-party deals aren't siloed: their revenue
   # lands in money-in and their contractor payouts in money-out, like any show.
   # (Gross model — see Contract#money_summary.)
-  def contract_money_by_production
+  # Only the period's money (date_range nil = all time), the same as the shows.
+  def contract_money_by_production(date_range = nil)
     third_party = @productions.select(&:type_third_party?)
     ActiveRecord::Associations::Preloader.new(records: third_party, associations: :contracts).call
 
@@ -223,7 +224,7 @@ class FinancialSummaryService
     Contract.preload_money_data(with_contracts.map(&:last))
 
     with_contracts.each_with_object({}) do |(production, contract), out|
-      out[production.id] = contract.money_summary
+      out[production.id] = contract.money_summary(date_range)
     end
   end
 
