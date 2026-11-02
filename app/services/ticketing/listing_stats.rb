@@ -59,11 +59,13 @@ module Ticketing
       item_tax = TaxLine.joins("JOIN ticket_order_items ON ticket_order_items.id = tax_lines.taxable_id")
                         .where(taxable_type: "TicketOrderItem", included: true, ticket_order_items: { ticket_listing_id: ids })
                         .group("tax_lines.taxable_id").sum(:tax_cents)
+      counts = Ticketing::Inventory.counts_for(ids)
 
       listings.to_h do |listing|
         [ listing.id, new(listing, tickets: tickets.fetch(listing.id, []), orders: orders.fetch(listing.id, []),
                                    refunds: refunds.fetch(listing.id, []), tax: included_tax, tiers: tiers.fetch(listing.id, []),
-                                   moved_out_cents: moved_out.fetch(listing.id, 0), items: items.fetch(listing.id, []), item_tax: item_tax) ]
+                                   moved_out_cents: moved_out.fetch(listing.id, 0), items: items.fetch(listing.id, []), item_tax: item_tax,
+                                   counts: counts[listing.id]) ]
       end
     end
 
@@ -72,8 +74,9 @@ module Ticketing
       self.for([ listing ]).fetch(listing.id)
     end
 
-    def initialize(listing, tickets:, orders:, refunds:, tax:, tiers:, moved_out_cents: 0, items: [], item_tax: {})
+    def initialize(listing, tickets:, orders:, refunds:, tax:, tiers:, moved_out_cents: 0, items: [], item_tax: {}, counts: nil)
       @listing = listing
+      @counts = counts
       @moved_out_cents = moved_out_cents
       @items = items
       @item_tax = item_tax
@@ -85,7 +88,7 @@ module Ticketing
     end
 
     def inventory
-      @inventory ||= listing.inventory
+      @inventory ||= Ticketing::Inventory.new(listing, counts: @counts, tiers: @tiers)
     end
 
     def capacity

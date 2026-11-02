@@ -15,28 +15,65 @@ module Ticketing
   class Inventory
     class SoldOut < StandardError; end
 
+    # The seat counts for many listings at once (ListingStats.for): what's
+    # sold and held, by ticket type and by bundle, and what other sites sold.
+    Counts = Data.define(:sold, :sold_in_bundles, :held, :held_in_bundles, :outside)
+
     # excluding: tickets that are giving up their seats in the same breath
     # (a move to another ticket type on the same date), so they don't count
     # against the seats they're moving into.
-    def initialize(listing, at: Time.current, excluding: nil)
+    # counts: this listing's Counts, already read for a batch; never with
+    # excluding, since the counts would include the tickets moving.
+    # tiers: the listing's ticket types, when the caller already has them.
+    def initialize(listing, at: Time.current, excluding: nil, counts: nil, tiers: nil)
       @listing = listing
       @at = at
       @excluding = Array(excluding).map(&:to_i).presence
+      @counts = counts unless @excluding
+      @tiers = tiers
+    end
+
+    # { listing id => Counts } in five queries, however many listings (the
+    # Home week was counting each show's seats on its own, 2026-11-02).
+    def self.counts_for(listing_ids, at: Time.current)
+      ids = Array(listing_ids)
+      return {} if ids.empty?
+
+      sold = Ticket.where(ticket_listing_id: ids, status: Ticket::SOLD_STATUSES)
+      held = Ticket.where(ticket_listing_id: ids, status: "reserved").joins(:ticket_order).merge(TicketOrder.holding(at))
+      by_listing = lambda do |grouped|
+        out = Hash.new { |h, k| h[k] = {} }
+        grouped.each { |(listing_id, tier_id), n| out[listing_id][tier_id] = n }
+        out
+      end
+      sold_by_tier = by_listing.call(sold.group(:ticket_listing_id, :ticket_tier_id).count)
+      sold_by_bundle = by_listing.call(sold.where.not(bundle_tier_id: nil).group(:ticket_listing_id, :bundle_tier_id).count)
+      held_by_tier = by_listing.call(held.group(:ticket_listing_id, :ticket_tier_id).count)
+      held_by_bundle = by_listing.call(held.where.not(bundle_tier_id: nil).group(:ticket_listing_id, :bundle_tier_id).count)
+      outside = by_listing.call(TicketOutsideSale.where(ticket_listing_id: ids).group(:ticket_listing_id, :ticket_tier_id).sum(:tickets_sold))
+      ids.to_h do |id|
+        [ id, Counts.new(sold: sold_by_tier[id], sold_in_bundles: sold_by_bundle[id], held: held_by_tier[id],
+                         held_in_bundles: held_by_bundle[id], outside: outside[id]) ]
+      end
     end
 
     # The seats on sale: the ticket types' seats added up, when every type
     # has a count; otherwise there's no limit.
     def capacity
       # A bundle has no seats of its own: it uses its type's.
-      tiers = @listing.ticket_tiers.active.reject(&:bundle?)
+      tiers = active_tiers.reject(&:bundle?)
       tiers.sum(&:quantity) if tiers.any? && tiers.all?(&:quantity)
     end
 
     def sold(tier: nil)
+      return counted(@counts.sold, @counts.sold_in_bundles, tier) if @counts
+
       scope(tier).where(status: Ticket::SOLD_STATUSES).count
     end
 
     def held(tier: nil)
+      return counted(@counts.held, @counts.held_in_bundles, tier) if @counts
+
       scope(tier).where(status: "reserved").joins(:ticket_order).merge(TicketOrder.holding(@at)).count
     end
 
@@ -53,7 +90,7 @@ module Ticketing
     end
 
     def outside_by_tier
-      @outside_by_tier ||= TicketOutsideSale.where(ticket_listing_id: @listing.id).group(:ticket_tier_id).sum(:tickets_sold)
+      @outside_by_tier ||= @counts&.outside || TicketOutsideSale.where(ticket_listing_id: @listing.id).group(:ticket_tier_id).sum(:tickets_sold)
     end
 
     # "10 on Ticket Tailor and 2 on Eventbrite", for one type or the show.
@@ -106,7 +143,7 @@ module Ticketing
     def sold_out?
       return true if remaining&.zero?
 
-      selling = @listing.ticket_tiers.active.reject(&:hidden).reject(&:bundle?).select(&:sells_online?)
+      selling = active_tiers.reject(&:hidden).reject(&:bundle?).select(&:sells_online?)
       return false if selling.empty?
 
       open = selling.select(&:available?)
@@ -140,6 +177,18 @@ module Ticketing
     end
 
     private
+
+    def active_tiers
+      @tiers ? @tiers.reject(&:archived_at) : @listing.ticket_tiers.active.to_a
+    end
+
+    # One of the batch's counts, read the way scope(tier) filters: the whole
+    # listing, one bundle's purchases, or one type's tickets.
+    def counted(by_tier, by_bundle, tier)
+      return by_tier.values.sum unless tier
+
+      tier.bundle? ? by_bundle.fetch(tier.id, 0) : by_tier.fetch(tier.id, 0)
+    end
 
     # A bundle's sales elsewhere are its type's.
     def outside_rows(tier)
