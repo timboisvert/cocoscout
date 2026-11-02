@@ -64,6 +64,10 @@ development:
     class: TicketMoneyReleaseJob
     schedule: at 4am every day America/Chicago
 
+  contract_money_due:
+    class: ContractMoneyDueJob
+    schedule: at 4:10am every day America/Chicago
+
   books_reconciliation:
     class: BooksReconciliationJob
     schedule: at 5am every day America/Chicago
@@ -186,6 +190,10 @@ production:
   ticket_money_release:
     class: TicketMoneyReleaseJob
     schedule: at 4am every day America/Chicago
+
+  contract_money_due:
+    class: ContractMoneyDueJob
+    schedule: at 4:10am every day America/Chicago
 
   # Theaters that turned on automatic withdrawal get their balance sent to
   # their bank (weekly on Mondays, or the day after each show).

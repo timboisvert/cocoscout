@@ -56,11 +56,16 @@ class Production < ApplicationRecord
   # Backwards-compatible accessor: "the" contract for this production, i.e. the most
   # recent one. Prefer show.space_rental&.contract when you need the contract for a
   # specific show, since a production may carry several contracts.
+  # The production's contract: the newest one that's still live. A cancelled
+  # contract never speaks for the production while another one runs
+  # (Improvised Animorphs had a cancelled flat deal picked over its running
+  # revenue share, so the Money hub showed it as nothing; 2026-11-02).
   def contract
     if contracts.loaded?
-      contracts.max_by { |c| [ c.created_at, c.id ] }
+      all = contracts.to_a
+      (all.reject(&:status_cancelled?).presence || all).max_by { |c| [ c.created_at, c.id ] }
     else
-      contracts.order(:created_at, :id).last
+      contracts.where.not(status: "cancelled").order(:created_at, :id).last || contracts.order(:created_at, :id).last
     end
   end
 

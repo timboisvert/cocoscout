@@ -82,6 +82,24 @@ RSpec.describe Production, type: :model do
     end
   end
 
+  describe "#contract" do
+    let(:production) { create(:production, production_type: "third_party") }
+
+    # A cancelled contract never speaks for the production while another runs
+    # (Improvised Animorphs' cancelled flat deal hid its revenue share, 11/2).
+    it "is the newest contract that's still live, read fresh or from the loaded list" do
+      live = create(:contract, production: production, organization: production.organization, status: "active")
+      create(:contract, production: production, organization: production.organization, status: "cancelled")
+      expect(production.contract).to eq(live)
+      expect(Production.includes(:contracts).find(production.id).contract).to eq(live)
+    end
+
+    it "falls back to a cancelled one when nothing else exists" do
+      only = create(:contract, production: production, organization: production.organization, status: "cancelled")
+      expect(production.contract).to eq(only)
+    end
+  end
+
   describe '#next_show' do
     let(:production) { create(:production) }
 

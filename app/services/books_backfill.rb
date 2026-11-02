@@ -30,7 +30,8 @@ class BooksBackfill
     financials.find_each { |f| BooksOutsidePoster.post_financials!(f) }
     expenses = ProductionExpense.joins(:production).where(productions: { organization_id: organization.id })
     expenses.find_each { |e| BooksOutsidePoster.post_production_expense!(e) }
-    payments = ContractPayment.joins(:contract).where(contracts: { organization_id: organization.id }).status_paid
+    payments = ContractPayment.joins(:contract).where(contracts: { organization_id: organization.id })
+                              .where("contract_payments.status = 'paid' OR (contract_payments.status = 'pending' AND NOT contract_payments.amount_tbd AND contract_payments.amount > 0 AND contract_payments.due_date <= ?)", Date.current)
     payments.find_each { |payment| BooksOutsidePoster.post_contract_payment!(payment) }
     Row.new(organization: organization, cash_rows: cash.count, owed_rows: owed.count, financials: financials.count, expenses: expenses.count,
             contract_payments: payments.count,

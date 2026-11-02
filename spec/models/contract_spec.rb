@@ -631,6 +631,42 @@ RSpec.describe Contract, type: :model do
         expect(c.money_summary(2.weeks.ago..Time.current)).to eq(money_in: 1000.0, money_out: 700.0)
       end
 
+      # A rehearsal night at its own rate and a Booth Tech charge are the
+      # deal's money too, beside the ticket settlement (Vampire Lesbians sat
+      # $380 apart from its payments, 11/2).
+      it "counts a share deal's rehearsals and service charges beside the settlement" do
+        c = contract_for("who_sells_tickets" => "org", "settlement_basis" => "revenue_share",
+                         "revenue_our_share" => 30, "revenue_their_share" => 70)
+        c.update!(draft_data: c.draft_data.deep_merge("payment_config" => { "event_rates" => [ { "event_type" => "rehearsal", "amount" => 150 } ] },
+                                                      "services" => [ { "name" => "Booth Tech", "amount" => 80 } ]))
+        rehearsal = create(:show, :online, production: production, event_type: "rehearsal", date_and_time: 3.days.ago)
+        c.contract_payments.create!(direction: "incoming", amount: 150, due_date: 3.days.ago.to_date, description: "Rehearsal — #{3.days.ago.strftime('%b %-d')}", show: rehearsal)
+        c.contract_payments.create!(direction: "incoming", amount: 80, due_date: 1.week.ago.to_date, description: "Booth Tech — #{1.week.ago.strftime('%b %-d')}", show: c.production.shows.first)
+        c.contract_payments.create!(direction: "outgoing", amount: 700, due_date: 1.week.ago.to_date, description: "#{1.week.ago.strftime('%b %-d')} — 70% to them", show: c.production.shows.first)
+        c.contract_payments.create!(direction: "incoming", amount: 999, due_date: 2.days.from_now.to_date, description: "Deposit")
+
+        # All time counts the whole deal, the deposit still ahead included.
+        expect(c.money_summary).to eq(money_in: 2229.0, money_out: 700.0)
+        expect(c.money_summary(5.days.ago..Time.current)).to eq(money_in: 150.0, money_out: 0.0)
+        expect(c.money_summary(10.days.ago..Time.current)).to eq(money_in: 1230.0, money_out: 700.0)
+      end
+
+      # Rounded once per settlement, with the other side as the remainder, so
+      # the shares always add up to the revenue and match what's paid
+      # (Magic Toybox: 50% of $161.25 is paid as $80.63, never $80.62).
+      it "rounds the share the way it's paid: per settlement, the rest to the other side" do
+        c = contract_for("who_sells_tickets" => "org", "settlement_basis" => "revenue_share",
+                         "revenue_our_share" => 50, "revenue_their_share" => 50, "revenue_settlement" => "per_event")
+        c.production.shows.first.show_financials.update!(ticket_revenue: 161.25)
+        second = create(:show, :online, production: production, date_and_time: 2.weeks.ago, duration_minutes: 90)
+        create(:show_financials, :complete, show: second, ticket_revenue: 100.05, other_revenue: 0.0)
+
+        summary = c.revenue_share_summary
+        # Paid as $80.63 and $50.03: theirs is 130.66, ours the rest.
+        expect([ summary[:our_share], summary[:contractor_share] ]).to eq([ 130.64, 130.66 ])
+        expect(c.money_summary).to eq(money_in: 261.3, money_out: 130.66)
+      end
+
       it "counts a flat deal's payments on the date they're for, once that date has come, when given a range" do
         flat = create(:contract, organization: org, production: production,
           draft_data: { "payment_structure" => "flat_fee", "payment_config" => { "flat_fee_direction" => "incoming" } })

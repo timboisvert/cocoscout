@@ -15,6 +15,7 @@ class ChartOfAccounts
     advances: { code: "1200", name: "Advances to performers", type: "asset" },
     you_owe: { code: "2000", name: "Money you owe", type: "liability" },
     owed_to_payees: { code: "2100", name: "Owed to performers and staff", type: "liability" },
+    owed_to_contractors: { code: "2120", name: "Owed to contractors", type: "liability" },
     advance_ticket_sales: { code: "2200", name: "Tickets sold for upcoming shows", type: "liability" },
     advance_product_sales: { code: "2210", name: "Products sold for upcoming shows", type: "liability" },
     pass_credits_unused: { code: "2220", name: "Pass credits not yet used", type: "liability" },

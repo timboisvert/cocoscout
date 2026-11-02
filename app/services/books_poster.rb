@@ -27,6 +27,7 @@ class BooksPoster
     when OrgCashEntry then post_cash!(row)
     when PayoutLedgerEntry then post_owed!(row)
     end
+    restate_contract_payment(row)
   rescue StandardError => e
     raise if Rails.env.test?
 
@@ -35,6 +36,7 @@ class BooksPoster
 
   def self.remove!(row)
     LedgerPosting.unpost!(source: row, kind: kind_for(row))
+    restate_contract_payment(row)
   rescue StandardError => e
     raise if Rails.env.test?
 
@@ -54,6 +56,13 @@ class BooksPoster
     source = entry.source
     source = source.source if source.is_a?(PayoutContribution)
     source if source.is_a?(ContractPayment)
+  end
+
+  # Contract money owed on its own (BooksOutsidePoster) is covered by the
+  # ledger row once it reaches one, and owed again if the row goes away.
+  def self.restate_contract_payment(row)
+    payment = contract_payment_for(row)
+    BooksOutsidePoster.post_contract_payment!(payment.reload) if payment && !payment.destroyed?
   end
 
   def self.kind_for(row)

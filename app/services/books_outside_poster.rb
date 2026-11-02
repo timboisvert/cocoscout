@@ -14,11 +14,14 @@
 #   Flat fee            — a show played for a fee with no contract behind it
 #                       (Money owed to you / Rental and contract income)
 #   ProductionExpense   — a cost spread over shows, posted once on its date
-#   ContractPayment     — contract money that moved outside CocoScout: a check
+#   ContractPayment     — contract money, from the date it's for. Due and not
+#                       paid yet: owed to you (Money owed to you / Rental and
+#                       contract income) or owed to them (Contractor pay /
+#                       Owed to contractors). Moved outside CocoScout: a check
 #                       or cash received (Bank / Rental and contract income),
 #                       or a contractor paid by hand or by offset (Contractor
 #                       pay / Bank). One collected online, deducted on a run or
-#                       paid through a run already posts from its ledger row.
+#                       on a run already posts from its ledger row.
 class BooksOutsidePoster
   CATEGORY_ACCOUNTS = { "venue" => :venue, "production" => :production_costs, "marketing" => :marketing,
                         "talent" => :performer_pay, "other" => :other_expenses }.freeze
@@ -82,26 +85,36 @@ class BooksOutsidePoster
     LedgerPosting.unpost!(source: expense, kind: "production_expense")
   end
 
-  # Contract money that never touched CocoScout's rail. Idempotent, and
-  # withdrawn again when the payment goes back to unpaid.
+  # Contract money that never touched CocoScout's rail, on the books from
+  # the date it's for: owed once that date has come, paid once it's paid.
+  # Idempotent; restated as the payment moves, withdrawn when it's cancelled
+  # or goes onto a run (the run's ledger row posts it then).
   def self.post_contract_payment!(payment)
     return remove_contract_payment!(payment) if payment.destroyed?
 
     contract = payment.contract
     cents = payment.amount_cents
     lines = []
-    if payment.status_paid? && cents.positive? && !on_the_rail?(payment)
+    if cents.positive? && !on_the_rail?(payment)
       dims = { show: payment.show, production: payment.show&.production || contract.production }.compact
-      lines = if payment.direction_incoming?
-        [ { account: :bank, amount_cents: cents }, { account: :contract_income, amount_cents: -cents, **dims } ]
-      else
-        [ { account: :contractor_pay, amount_cents: cents, **dims }, { account: :bank, amount_cents: -cents } ]
+      if payment.status_paid?
+        lines = if payment.direction_incoming?
+          [ { account: :bank, amount_cents: cents }, { account: :contract_income, amount_cents: -cents, **dims } ]
+        else
+          [ { account: :contractor_pay, amount_cents: cents, **dims }, { account: :bank, amount_cents: -cents } ]
+        end
+      elsif due?(payment)
+        lines = if payment.direction_incoming?
+          [ { account: :owed_to_you, amount_cents: cents }, { account: :contract_income, amount_cents: -cents, **dims } ]
+        else
+          [ { account: :contractor_pay, amount_cents: cents, **dims }, { account: :owed_to_contractors, amount_cents: -cents } ]
+        end
       end
     end
     # Earned on the date it's for (its due date), moved on the day it was paid.
     paid_on = payment.paid_date || payment.updated_at.to_date
     LedgerPosting.post!(organization: contract.organization, source: payment, kind: "contract_payment",
-                        entry_date: payment.due_date || paid_on, cash_date: paid_on,
+                        entry_date: payment.due_date || paid_on, cash_date: (paid_on if payment.status_paid?),
                         memo: [ payment.description.presence || "Contract payment", contract.contractor&.name ].compact.join(" · "), lines: lines)
   rescue StandardError => e
     raise if Rails.env.test?
@@ -111,6 +124,18 @@ class BooksOutsidePoster
 
   def self.remove_contract_payment!(payment)
     LedgerPosting.unpost!(source: payment, kind: "contract_payment")
+  end
+
+  # Not paid, but its date has come and its amount is known: money owed.
+  def self.due?(payment, on: Date.current)
+    payment.status_pending? && !payment.amount_tbd? && payment.due_date.present? && payment.due_date <= on
+  end
+
+  # Every pending payment whose date has come goes on the books as owed
+  # (ContractMoneyDueJob, daily). Posting what already stands is a no-op.
+  def self.post_contract_payments_due!(on: Date.current)
+    ContractPayment.status_pending.where(amount_tbd: false).where("amount > 0").where("due_date <= ?", on)
+                   .includes(:contract, :show).find_each { |payment| post_contract_payment!(payment) }
   end
 
   # Already on the books through a ledger row: collected online (the cash
@@ -178,5 +203,5 @@ class BooksOutsidePoster
     end
   end
 
-  private_class_method :on_the_rail?, :outside_ticket_cents, :contract_for, :org_sells?, :flat_fee_cents, :other_revenue_cents, :expense_cents
+  private_class_method :outside_ticket_cents, :contract_for, :org_sells?, :flat_fee_cents, :other_revenue_cents, :expense_cents
 end
