@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_02_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_02_150100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -361,6 +361,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_130000) do
     t.date "closing_on"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "status", default: "ready", null: false
+    t.integer "matched_count", default: 0, null: false
+    t.integer "suggested_count", default: 0, null: false
+    t.bigint "opening_balance_cents"
+    t.date "opening_on"
+    t.string "error"
     t.index ["imported_by_id"], name: "index_bank_statement_imports_on_imported_by_id"
     t.index ["organization_id"], name: "index_bank_statement_imports_on_organization_id"
   end
@@ -377,9 +383,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_130000) do
     t.bigint "money_record_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "journal_line_ids", default: [], null: false, array: true
+    t.string "description_key"
     t.index ["bank_statement_import_id"], name: "index_bank_statement_lines_on_bank_statement_import_id"
     t.index ["journal_line_id"], name: "index_bank_statement_lines_on_journal_line_id"
     t.index ["money_record_id"], name: "index_bank_statement_lines_on_money_record_id"
+    t.index ["organization_id", "description_key"], name: "index_bank_statement_lines_on_org_and_description_key"
     t.index ["organization_id", "fingerprint"], name: "index_bank_statement_lines_on_organization_id_and_fingerprint", unique: true
     t.index ["organization_id", "state", "on"], name: "index_bank_statement_lines_on_organization_id_and_state_and_on"
     t.index ["organization_id"], name: "index_bank_statement_lines_on_organization_id"

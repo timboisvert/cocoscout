@@ -1637,6 +1637,8 @@ Rails.application.routes.draw do
     post "money/books/bank/lines/:id/match",  to: "bank_statements#match",  as: "match_money_bank_line"
     post "money/books/bank/lines/:id/ignore", to: "bank_statements#ignore", as: "ignore_money_bank_line"
     post "money/books/bank/lines/:id/reopen", to: "bank_statements#reopen", as: "reopen_money_bank_line"
+    post "money/books/bank/lines/match-all", to: "bank_statements#match_all", as: "match_all_money_bank_lines"
+    delete "money/books/bank/statements/:id", to: "bank_statements#destroy", as: "money_bank_statement"
     # Money recorded by hand: the sheet, a recorded entry's page, change, remove.
     get    "money/books/record",            to: "money_records#new",     as: "new_money_record"
     post   "money/books/record",            to: "money_records#create",  as: "money_records"

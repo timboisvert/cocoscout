@@ -26,6 +26,7 @@ module NotificationGroups
     Group.new("contracts", "Contracts", "Requests and reminders to sign, signed and countersigned, and ones that stall or expire.", :yours, true, :always, true, true, [], "Contracts"),
     Group.new("shifts", "Shifts and hours", "Shifts assigned, hours approved, onboarding steps.", :yours, false, :person, true, true, [], "Shifts"),
     Group.new("courses", "Courses", "Registrations, cancellations and session reminders.", :yours, false, :person, true, true, [], "Courses"),
+    Group.new("books", "Books and bank", "A bank statement read and matched to the books.", :yours, true, :person, true, true, [], "Books"),
     Group.new("ticketing_sales", "Sales as they happen", "Each online sale, door sale, comp and pass.", :ticketing, true, :plan, false, true, [], "Ticketing"),
     Group.new("ticketing_reports", "Reports", "Daily summary, show day, after the show.", :ticketing, false, :plan, false, true, [], "Ticketing"),
     Group.new("ticketing_milestones", "Milestones", "Sales opened, almost sold out, sold out.", :ticketing, true, :plan, false, true, [], "Ticketing"),
