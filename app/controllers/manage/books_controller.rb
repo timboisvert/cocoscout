@@ -1,16 +1,19 @@
 # frozen_string_literal: true
 
 module Manage
-  # The organization's books (Money → Books): the Overview (all your money,
-  # money in and out for a period), then the record behind it: accounts,
-  # entries, ticket money by show, and whether the nightly check agrees.
+  # The organization's books (Money → Books): the landing page (all your
+  # money, money in and out for a period, and the sections), then the record
+  # behind it, a page per section: accounts, entries, ticket money by show,
+  # and whether the nightly check agrees. Statements, Taxes and Bank have
+  # controllers of their own.
   # Open to the organization's managers and to anyone whose access grid
   # gives them Books (OrganizationAccess); Pro, by the feature gate.
   class BooksController < Manage::ManageController
-    TABS = %w[overview accounts entries shows checks].freeze
+    SECTIONS = %w[overview accounts entries shows checks].freeze
 
     def show
-      @tab = params[:tab].presence_in(TABS) || "overview"
+      # ?tab= was the old address of a section; it still answers.
+      @tab = params[:section].presence_in(SECTIONS) || params[:tab].presence_in(SECTIONS) || "overview"
       @report = BooksReport.new(Current.organization, basis: params[:basis])
       @period = params[:period].presence_in(BooksReport::PERIODS.keys) || "this_month"
       case @tab
@@ -24,8 +27,6 @@ module Manage
         @bank_cents = Current.organization.ledger_accounts.find_by(key: "bank")&.natural_balance_cents.to_i
         # The books can't know what's in the bank until a statement says so.
         @bank_known = Current.organization.bank_statement_imports.exists?
-        # Nothing to check, and no chart to create, before the first posting.
-        @mismatches = Current.organization.ledger_accounts.exists? ? BooksReconciliation.check(Current.organization) : []
       when "entries"
         @accounts = Current.organization.ledger_accounts.order(:code)
         @account = @accounts.find { |a| a.id == params[:account_id].to_i } if params[:account_id].present?
@@ -36,9 +37,11 @@ module Manage
       when "shows"
         @show_rows = @report.by_show
       when "checks"
-        @mismatches = BooksReconciliation.check(Current.organization)
         @disagreements = BooksReconciliation.financials_vs_books(Current.organization, period_key: @period)
       end
+      # Nothing to check, and no chart to create, before the first posting.
+      # Every page says how the checks stand (the Checks card's badge).
+      @mismatches = Current.organization.ledger_accounts.exists? ? BooksReconciliation.check(Current.organization) : []
       load_record_choices
     end
 

@@ -71,7 +71,7 @@
 
   <section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
     <%= render "shared/section_heading", padding: "px-5 py-3", title: (@filter == "to_pay" ? "Paid in #{Date.current.strftime('%B')}" : "Paid") do %>
-      <%= link_to "Every paid bill is in Books → Entries", manage_money_books_path(tab: "entries", kind: "bill_payment"), class: "text-xs text-pink-600 hover:text-pink-700" %>
+      <%= link_to "Every paid bill is in Books → Entries", manage_money_books_section_path(section: "entries", kind: "bill_payment"), class: "text-xs text-pink-600 hover:text-pink-700" %>
     <% end %>
     <% if @paid.empty? %>
       <p class="px-5 py-4 text-sm text-gray-500">Nothing paid <%= @filter == "to_pay" ? "this month" : "yet" %>.</p>

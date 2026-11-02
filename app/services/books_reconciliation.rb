@@ -31,10 +31,13 @@ class BooksReconciliation
     productions = organization.productions.active.order(:name).to_a
     return [] if productions.empty?
 
-    hub_period = { "this_month" => :this_month, "last_month" => :last_month, "this_quarter" => :this_quarter,
-                   "this_year" => :this_year, "last_year" => :last_year, "all_time" => :all_time }.fetch(period_key.to_s, :this_month)
-    hub = FinancialSummaryService.summaries_by_production(productions, hub_period)[:by_production]
-    books = BooksReport.new(organization).overview(range: BooksReport.period_range(period_key)).productions.index_by { |r| r.production&.id }
+    # Compared through today: a show still ahead this month has presales
+    # Financials already count, which the books hold as tickets sold for
+    # upcoming shows until the day after the show (2026-11-02).
+    range = BooksReport.period_range(period_key)
+    range = range.begin..[ range.end, Time.current.end_of_day ].min if range && range.end > Time.current
+    hub = FinancialSummaryService.summaries_by_production_in(productions, range)[:by_production]
+    books = BooksReport.new(organization).overview(range: range).productions.index_by { |r| r.production&.id }
     productions.filter_map do |production|
       h = hub[production.id]
       b = books[production.id]

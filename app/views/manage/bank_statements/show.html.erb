@@ -4,14 +4,9 @@
   can_change = module_change?(:books)
   diff = @last&.closing_balance_cents && @books_bank_on_closing_cents ? @last.closing_balance_cents - @books_bank_on_closing_cents : nil
 %>
-<%= render layout: "shared/settings_layout", locals: {
-  title: "Books",
-  breadcrumbs: [ [ "Money", manage_money_index_path ] ],
-  sections: books_sections,
-  current: "bank",
-  links: [],
-  width: "w-full"
-} do %>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: books_breadcrumbs, text: "Bank", links: [] } %>
 <div>
 
   <% if @last.nil? %>
@@ -121,4 +116,4 @@
   </div>
   <% end %>
 </div>
-<% end %>
+</div>

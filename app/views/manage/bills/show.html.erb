@@ -69,7 +69,7 @@
       <% if @bill.void? %>Cancelled: nothing stands on the books.<% else %>
         <%= money.call(@bill.amount_cents) %> of <b><%= @bill.category_label %></b> spending<%= @bill.production ? " for #{@bill.production.name}" : "" %>, dated <%= @bill.issued_on.strftime("%b %-d") %>. <% if @bill.unpaid_cents.positive? %><%= money.call(@bill.unpaid_cents) %> sits in <b>Money you owe</b> until you pay it.<% end %> If you count money when it moved, it shows up on the day you pay instead.
       <% end %>
-      <%= link_to "See the entries", manage_money_books_path(tab: "entries", kind: "bill"), class: "ml-1 text-pink-600 hover:text-pink-700" %>
+      <%= link_to "See the entries", manage_money_books_section_path(section: "entries", kind: "bill"), class: "ml-1 text-pink-600 hover:text-pink-700" %>
     </section>
 
     <% if can_change && @bill.open? %>

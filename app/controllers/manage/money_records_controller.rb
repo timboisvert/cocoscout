@@ -51,7 +51,7 @@ module Manage
 
     def destroy
       @record.destroy!
-      redirect_to manage_money_books_path(tab: "entries"), notice: "Removed. The entry was reversed on the books."
+      redirect_to manage_money_books_section_path(section: "entries"), notice: "Removed. The entry was reversed on the books."
     end
 
     private

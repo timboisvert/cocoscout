@@ -14,18 +14,17 @@
     <p class="mt-4 text-xs text-gray-400">From CocoScout Books, <%= Time.current.strftime("%B %-d, %Y") %>.</p>
   </div>
 <% else %>
-<%= render layout: "shared/settings_layout", locals: {
-  title: "Books",
-  breadcrumbs: [ [ "Money", manage_money_index_path ] ],
-  sections: books_sections,
-  current: "statements",
-  links: [
-    { text: "Print", path: path.call(print: "1"), data: { turbo: false } },
-    { text: "PDF", path: path.call(format: :pdf), data: { turbo: false } },
-    { text: "CSV", path: path.call(format: :csv), data: { turbo: false } }
-  ],
-  width: "w-full"
-} do %>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: books_breadcrumbs,
+    text: "Statements",
+    links: [
+      { text: "Print", path: path.call(print: "1"), data: { turbo: false } },
+      { text: "PDF", path: path.call(format: :pdf), data: { turbo: false } },
+      { text: "CSV", path: path.call(format: :csv), data: { turbo: false } }
+    ]
+  } %>
 <div>
 
   <div class="mb-4">
@@ -114,5 +113,5 @@
     <%= render "shared/confirm_modal", id: "unlock-books", title: "Unlock the books?", message: "Anyone with Books access can date entries inside the closed months again until you lock them back.", confirm_text: "Unlock", url: manage_money_statements_unlock_path, method: :post %>
   <% end %>
 </div>
-<% end %>
+</div>
 <% end %>
