@@ -8,6 +8,10 @@
 #   bin/seed_dev_from_prod path/to.dump     seed dev from an earlier dump
 #   add --yes to skip the "are you sure"
 #
+# It signs in to production the way Kamal does: ec2-user with the key in
+# config/deploy.yml (PROD_SSH_KEY overrides it), and checks that before
+# asking anything.
+#
 # What it does:
 # 1. Remembers the kept logins (KEEP_EMAILS, default boisvert@gmail.com and
 #    dev-manager@cocoscout.test) and backs up the dev database to tmp/dev_seed.
@@ -40,6 +44,32 @@ PG_MAJOR="$(pg_restore --version | awk '{print $3}' | cut -d. -f1)"
 STAMP="$(date +%Y%m%d-%H%M)"
 mkdir -p tmp/dev_seed && chmod 700 tmp/dev_seed
 
+# Reach production the way Kamal does: its user and key from config/deploy.yml.
+SSH_KEY="${PROD_SSH_KEY:-$(sed -n 's/^ *keys: *\[ *"\([^"]*\)".*/\1/p' config/deploy.yml | head -1)}"
+SSH_KEY="${SSH_KEY/#\~/$HOME}"
+SSH=(ssh -o IdentitiesOnly=yes -o ConnectTimeout=15)
+[ -n "$SSH_KEY" ] && SSH+=(-i "$SSH_KEY")
+SSH+=("ec2-user@$HOST")
+ENV_FILE=".kamal/apps/cocoscout/env/roles/${ROLE}.env"
+
+# Check production can be reached before touching anything.
+if [ -z "$DUMP" ]; then
+  if [ -n "$SSH_KEY" ] && [ ! -r "$SSH_KEY" ]; then
+    echo "Can't read the ssh key $SSH_KEY. Set PROD_SSH_KEY to the key Kamal uses (config/deploy.yml, ssh keys)." >&2
+    exit 1
+  fi
+  if ! "${SSH[@]}" true; then
+    echo "Couldn't sign in to $HOST over ssh as ec2-user${SSH_KEY:+ with $SSH_KEY}. Nothing was changed." >&2
+    echo "Try: ssh -i ${SSH_KEY:-<key>} ec2-user@$HOST, or set PROD_SSH_KEY / PROD_HOST." >&2
+    exit 1
+  fi
+  if ! "${SSH[@]}" "test -f \$HOME/$ENV_FILE"; then
+    echo "Signed in to $HOST, but there's no ~/$ENV_FILE. Nothing was changed." >&2
+    echo "See what's there with: ssh -i ${SSH_KEY:-<key>} ec2-user@$HOST ls ~/.kamal/apps/cocoscout/env/roles/  then set PROD_ROLE." >&2
+    exit 1
+  fi
+fi
+
 if [ -z "$YES" ]; then
   read -r -p "This replaces everything in $DB with production's data. Type yes to go on: " answer
   [ "$answer" = "yes" ] || { echo "Stopped."; exit 1; }
@@ -53,14 +83,9 @@ echo "   Backup: tmp/dev_seed/before-$STAMP.dump (restore with: pg_restore --cle
 
 if [ -z "$DUMP" ]; then
   DUMP="tmp/dev_seed/production-$STAMP.dump"
-  ENV_FILE=".kamal/apps/cocoscout/env/roles/${ROLE}.env"
   echo "2. Dumping production from $HOST with pg_dump $PG_MAJOR (read only)..."
-  if ! ssh "ec2-user@$HOST" "test -f \$HOME/$ENV_FILE"; then
-    echo "No $ENV_FILE on $HOST. Find the app's env file there (ls ~/.kamal/apps/cocoscout/env/roles/) and set PROD_ROLE." >&2
-    exit 1
-  fi
   EXCLUDE="--exclude-table-data=sessions --exclude-table-data=device_tokens --exclude-table-data=solid_cache_entries --exclude-table-data=solid_queue_* --exclude-table-data=rpush_*"
-  ssh "ec2-user@$HOST" "docker run --rm --env-file \$HOME/$ENV_FILE postgres:$PG_MAJOR sh -c 'pg_dump --format=custom --no-owner --no-privileges $EXCLUDE \"\$DATABASE_URL\"'" > "$DUMP.partial"
+  "${SSH[@]}" "docker run --rm --env-file \$HOME/$ENV_FILE postgres:$PG_MAJOR sh -c 'pg_dump --format=custom --no-owner --no-privileges $EXCLUDE \"\$DATABASE_URL\"'" > "$DUMP.partial"
   mv "$DUMP.partial" "$DUMP"
   chmod 600 "$DUMP"
   echo "   Dump: $DUMP ($(du -h "$DUMP" | cut -f1))"
