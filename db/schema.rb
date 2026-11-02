@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_02_170000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_02_180100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -346,6 +346,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_170000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["organization_id", "payee_type", "payee_id"], name: "idx_bank_setup_emails_payee"
+  end
+
+  create_table "bank_rule_dismissals", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.string "phrase", null: false
+    t.string "direction", default: "any", null: false
+    t.bigint "dismissed_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["dismissed_by_id"], name: "index_bank_rule_dismissals_on_dismissed_by_id"
+    t.index ["organization_id", "phrase", "direction"], name: "index_bank_rule_dismissals_on_org_phrase_direction", unique: true
+    t.index ["organization_id"], name: "index_bank_rule_dismissals_on_organization_id"
   end
 
   create_table "bank_rules", force: :cascade do |t|
@@ -4747,6 +4759,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_170000) do
   add_foreign_key "balance_withdrawals", "users", column: "requested_by_id", on_delete: :nullify
   add_foreign_key "bank_setup_emails", "organizations"
   add_foreign_key "bank_setup_emails", "users", column: "sent_by_id"
+  add_foreign_key "bank_rule_dismissals", "organizations"
+  add_foreign_key "bank_rule_dismissals", "users", column: "dismissed_by_id"
   add_foreign_key "bank_rules", "organizations"
   add_foreign_key "bank_rules", "productions"
   add_foreign_key "bank_rules", "users", column: "created_by_id"

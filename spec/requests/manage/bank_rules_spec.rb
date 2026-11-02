@@ -28,7 +28,7 @@ RSpec.describe "Manage::BankRules", type: :request do
     savings = line(Date.new(2026, 10, 6), -50_000, "ONLINE TRANSFER TO SAVINGS")
 
     get manage_money_bank_path
-    expect(response.body).to include("bank-rules-modal", "bank-rule-modal", "No rules yet", ">Rule<", %(data-bank-rule-contains-param="RESTAURANT DEPOT CHICAGO IL"))
+    expect(response.body).to include("bank-rules-modal", "bank-rule-modal", "No rules yet", "Make a rule", %(data-bank-rule-contains-param="RESTAURANT DEPOT CHICAGO IL"))
 
     get manage_preview_money_bank_rules_path(contains: "restaurant depot, restaurant dep", direction: "out"), headers: { "Accept" => "application/json" }
     expect(response.parsed_body).to eq("count" => 2, "samples" => [ "RESTAURANT DEP 0612", "RESTAURANT DEPOT #0612 CHICAGO IL" ])
@@ -95,6 +95,60 @@ RSpec.describe "Manage::BankRules", type: :request do
     expect { perform_enqueued_jobs(only: BankRulesApplyJob) }.to change { owner.notifications.count }.by(1)
     expect(org.bank_statement_lines.to_deal_with.count).to eq(0)
     expect(owner.notifications.last.title).to include("40 lines", "0 left")
+  end
+
+  # Suggested rules (Tim, 2026-11-02): from this organization's own lines
+  # and what was done with them; yes makes and runs the rule, no hides it.
+  it "suggests rules from payees seen more than once, with what was done before and how many lines they catch" do
+    a = line(Date.new(2026, 10, 3), -18_250, "POS DEBIT RESTAURANT DEPOT CHICAGO IL")
+    b = line(Date.new(2026, 10, 10), -9_900, "POS DEBIT RESTAURANT DEPOT CHICAGO IL")
+    line(Date.new(2026, 10, 17), -7_700, "POS DEBIT RESTAURANT DEPOT CHICAGO IL")
+    line(Date.new(2026, 10, 4), 41_200, "ORIG CO NAME:ChgTheatres334CR ORIG ID:3630393341 DESC DATE:251004")
+    line(Date.new(2026, 10, 11), 39_100, "ORIG CO NAME:ChgTheatres334CR ORIG ID:3630393341 DESC DATE:251011")
+    once = line(Date.new(2026, 10, 5), -1_200, "ONLY ONCE LLC")
+    savings1 = line(Date.new(2026, 10, 6), -50_000, "Online Transfer to SAV ...9921 transaction#: 1")
+    savings2 = line(Date.new(2026, 10, 20), -50_000, "Online Transfer to SAV ...9921 transaction#: 2")
+    [ a, b ].each do |l|
+      post manage_money_records_path, params: { bank_line: l.id, money_record: { kind: "out", on: l.on.iso8601, amount: format("%.2f", l.amount_cents.abs / 100.0), category_key: "production", counterparty: "Restaurant Depot", via: "bank" } }
+    end
+    post manage_ignore_money_bank_line_path(savings1)
+
+    suggestions = BankRuleSuggestions.for(org)
+    depot = suggestions.find { |sg| sg.phrase == "RESTAURANT DEPOT" }
+    expect(depot).to have_attributes(direction: "out", action: "record", category_key: "production", counterparty: "Restaurant Depot", waiting_count: 1, seen_count: 3, times: 2)
+    theatres = suggestions.find { |sg| sg.phrase == "CHGTHEATRES" }
+    expect(theatres).to have_attributes(direction: "in", action: nil, waiting_count: 2, seen_count: 2)
+    # A transfer ignored by hand once suggests ignoring the rest; a payee seen once suggests nothing.
+    expect(suggestions.find { |sg| sg.phrase == "SAV" }).to have_attributes(direction: "out", action: "ignore", times: 1, waiting_count: 1)
+    expect(suggestions.map(&:phrase)).not_to include("ONLY ONCE")
+    expect(once.reload.state).to eq("open")
+
+    get manage_money_bank_path
+    expect(response.body).to include("Suggested from your statements", "Has “RESTAURANT DEPOT”", "what you did 2 times", "Catches 1 line waiting", "seen 3 times",
+                                     "Has “CHGTHEATRES”", "Needs a category", "Yes, choose a category", "bank-rule-suggestion-#{depot.key}")
+
+    stream = { "Accept" => "text/vnd.turbo-stream.html" }
+    post manage_accept_money_bank_rule_suggestion_path(key: depot.key, contains: depot.phrase, direction: "out", rule_action: "record", category_key: "production", counterparty: "Restaurant Depot"), headers: stream
+    expect(response.media_type).to eq("text/vnd.turbo-stream.html")
+    expect(response.body).to include(%(target="bank-rule-suggestion-#{depot.key}"), "1 line dealt with", "data-bank-rules-changed")
+    rule = org.bank_rules.reload.last
+    expect(rule.contains).to eq("RESTAURANT DEPOT")
+    expect(org.bank_statement_lines.where(description_key: a.description_key).pluck(:state).uniq).to eq([ "recorded" ])
+    expect(BankRuleSuggestions.for(org).map(&:phrase)).not_to include("RESTAURANT DEPOT")
+
+    post manage_dismiss_money_bank_rule_suggestion_path(key: theatres.key, phrase: theatres.phrase, direction: "in"), headers: stream
+    expect(response.body).to include(%(target="bank-rule-suggestion-#{theatres.key}"))
+    expect(response.body).not_to include("data-bank-rules-changed")
+    expect(org.bank_rule_dismissals.pluck(:phrase, :direction)).to eq([ [ "CHGTHEATRES", "in" ] ])
+    expect(BankRuleSuggestions.for(org).map(&:phrase)).not_to include("CHGTHEATRES")
+
+    # A rule says how many lines waiting it would catch now, and can be applied by itself.
+    savings2.reopen! if savings2.reload.state != "open"
+    org.bank_rules.create!(contains: "Transfer to SAV", direction: "out", action: "ignore")
+    get manage_money_bank_path
+    expect(response.body).to include("Catches 1 line waiting · not used yet", ">Apply<")
+    post manage_apply_money_bank_rules_path(id: org.bank_rules.reload.last.id)
+    expect(savings2.reload.state).to eq("ignored")
   end
 
   it "keeps the bank page read-only for someone without manage on Books" do

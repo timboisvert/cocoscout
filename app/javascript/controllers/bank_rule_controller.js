@@ -10,11 +10,26 @@ import { Controller } from "@hotwired/stimulus"
 // Rule link / Edit: data-action="click->bank-rule#open" with
 // data-bank-rule-{id,contains,direction,kind,category,counterparty,production,on-import}-param.
 export default class extends Controller {
-    static targets = ["modal", "form", "method", "title", "contains", "matches", "recordFields", "categoryOut", "categoryIn",
+    static targets = ["modal", "rulesModal", "form", "method", "title", "contains", "matches", "recordFields", "categoryOut", "categoryIn",
         "counterparty", "counterpartyLabel", "production", "onImport"]
 
     disconnect() {
         clearTimeout(this.timer)
+    }
+
+    // The Rules modal closes like any other, except that a suggestion taken
+    // changed lines on the page behind it: then the page reloads.
+    closeRules() {
+        if (!this.hasRulesModalTarget) return
+        if (this.rulesModalTarget.querySelector("[data-bank-rules-changed]")) {
+            window.location.reload()
+            return
+        }
+        this.rulesModalTarget.classList.add("hidden")
+    }
+
+    closeRulesOnBackdrop(event) {
+        if (event.target === event.currentTarget) this.closeRules()
     }
 
     open(event) {
@@ -35,6 +50,7 @@ export default class extends Controller {
         const category = this.activeCategory()
         if (category) category.value = p.category && Array.from(category.options).some(o => o.value === p.category) ? p.category : ""
 
+        if (this.hasRulesModalTarget) this.rulesModalTarget.classList.add("hidden")
         this.modalTarget.classList.remove("hidden")
         this.preview()
         this.containsTarget.focus()

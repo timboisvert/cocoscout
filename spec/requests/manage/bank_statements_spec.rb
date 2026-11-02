@@ -191,7 +191,7 @@ RSpec.describe "Manage::BankStatements", type: :request do
     stream = { "Accept" => "text/vnd.turbo-stream.html" }
     post manage_match_money_bank_line_path(ads), headers: stream
     expect(response.media_type).to eq("text/vnd.turbo-stream.html")
-    expect(response.body).to include(%(target="bank_statement_line_#{ads.id}"), "Matched", "Undo", %(target="bank-tiles"), %(target="bank-open-count"), "1 line", %(target="bank-yes-to-all"))
+    expect(response.body).to include(%(target="bank_statement_line_#{ads.id}"), "Matched", "Undo", "bank-line-#{ads.id}-actions", %(target="bank-tiles"), %(target="bank-open-count"), "1 line", %(target="bank-yes-to-all"))
     expect(response.body).not_to include("Yes to all")
     expect(ads.reload.state).to eq("matched")
 

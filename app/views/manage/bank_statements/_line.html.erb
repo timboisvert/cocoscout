@@ -13,6 +13,9 @@
   hint = line.open? ? local_assigns[:hint] : nil
   state_badge = { "matched" => "bg-green-50 text-green-700", "recorded" => "bg-pink-50 text-pink-700", "ignored" => "bg-gray-100 text-gray-600" }
   summary = "#{line.on.strftime('%b %-d, %Y')} · #{line.deposit? ? '+' : '−'}#{money.call(line.amount_cents.abs)} · #{line.description.presence || 'No description'}"
+  # "Make a rule" opens the rule modal with this line's words and direction.
+  rule_data = { action: "click->bank-rule#open", bank_rule_contains_param: (line.description_key.presence || line.description), bank_rule_direction_param: (line.deposit? ? "in" : "out"),
+                bank_rule_category_param: hint&.dig(:category_key), bank_rule_counterparty_param: hint&.dig(:counterparty) }
 %>
 <li id="<%= dom_id(line) %>" class="px-5 py-2.5">
   <div class="flex flex-wrap lg:flex-nowrap items-center gap-x-4 gap-y-2">
@@ -21,26 +24,31 @@
     <span class="w-28 flex-none text-right text-sm font-semibold tabular-nums <%= line.deposit? ? 'text-green-700' : 'text-gray-900' %>"><%= line.deposit? ? "+" : "−" %><%= money.call(line.amount_cents.abs) %></span>
     <% if line.done? %>
       <span class="inline-flex w-20 justify-center rounded-md px-1.5 py-0.5 text-xs font-medium <%= state_badge[line.state] %>"><%= line.state.capitalize %></span>
-      <span class="flex-none flex items-center gap-2 lg:w-32 lg:justify-end">
-        <% if line.money_record %><%= link_to "Open", manage_money_record_path(line.money_record), class: "text-xs text-pink-600 hover:text-pink-700" %><% end %>
-        <% if can_change %><%= render "shared/button", text: "Undo", variant: "secondary", size: "small", path: manage_reopen_money_bank_line_path(line, filters), method: :post %><% end %>
-      </span>
-    <% elsif can_change %>
-      <span class="flex-none flex items-center gap-2 lg:w-64 lg:justify-end">
-        <% if line.suggested? && looks_like %>
+    <% end %>
+    <% if can_change %>
+      <%# One visible button, the rest behind ⋯ (Tim, 2026-11-02); the row
+          swaps whole, so the menu always fits the line's state. %>
+      <span class="flex-none flex items-center gap-2 lg:w-44 lg:justify-end">
+        <% if line.done? %>
+          <% items = [ ({ text: "Open the record", path: manage_money_record_path(line.money_record) } if line.money_record),
+                       { text: "Undo", path: manage_reopen_money_bank_line_path(line, filters), method: :post } ] %>
+        <% elsif line.suggested? && looks_like %>
           <%= render "shared/button", text: "Yes, that's it", variant: "primary", size: "small", path: manage_match_money_bank_line_path(line, filters), method: :post %>
-          <%= render "shared/button", text: "No", variant: "secondary", size: "small", path: manage_reopen_money_bank_line_path(line, filters), method: :post %>
+          <% items = [ { text: "No, not that", path: manage_reopen_money_bank_line_path(line, filters), method: :post },
+                       { text: "Ignore", path: manage_ignore_money_bank_line_path(line, filters), method: :post },
+                       { text: "Make a rule", path: "#", data: rule_data } ] %>
         <% else %>
           <%= render "shared/button", text: "Record it", variant: "primary", size: "small", type: :button,
                 data: { action: "click->bank-record#open", bank_record_kind_param: (line.deposit? ? "in" : "out"), bank_record_amount_param: format("%.2f", line.amount_cents.abs / 100.0),
                         bank_record_on_param: line.on.iso8601, bank_record_memo_param: line.description, bank_record_line_param: line.id,
                         bank_record_category_param: hint&.dig(:category_key), bank_record_counterparty_param: hint&.dig(:counterparty), bank_record_summary_param: summary } %>
-          <%= render "shared/button", text: "Ignore", variant: "secondary", size: "small", path: manage_ignore_money_bank_line_path(line, filters), method: :post %>
-          <button type="button" class="text-xs text-pink-600 hover:text-pink-700 cursor-pointer" title="A rule for every line like this one"
-                  data-action="click->bank-rule#open" data-bank-rule-contains-param="<%= line.description_key.presence || line.description %>" data-bank-rule-direction-param="<%= line.deposit? ? 'in' : 'out' %>"
-                  data-bank-rule-category-param="<%= hint&.dig(:category_key) %>" data-bank-rule-counterparty-param="<%= hint&.dig(:counterparty) %>">Rule</button>
+          <% items = [ { text: "Ignore", path: manage_ignore_money_bank_line_path(line, filters), method: :post },
+                       { text: "Make a rule", path: "#", data: rule_data } ] %>
         <% end %>
+        <%= render "shared/action_menu", id: "bank-line-#{line.id}-actions", items: items, title: "This line" %>
       </span>
+    <% elsif line.money_record %>
+      <%= link_to "Open", manage_money_record_path(line.money_record), class: "text-xs text-pink-600 hover:text-pink-700" %>
     <% end %>
   </div>
   <% if line.suggested? && looks_like %>

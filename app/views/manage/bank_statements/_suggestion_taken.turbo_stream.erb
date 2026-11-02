@@ -1,0 +1,9 @@
+<%# A suggestion answered: its row goes; a yes says what it did, and marks
+    the modal so closing it reloads the page when lines changed. %>
+<%= turbo_stream.remove "bank-rule-suggestion-#{key}" %>
+<% if note.present? %>
+  <%= turbo_stream.update "bank-rules-note", note %>
+<% end %>
+<% if changed %>
+  <%= turbo_stream.append "bank-rules-note" do %><span hidden data-bank-rules-changed></span><% end %>
+<% end %>

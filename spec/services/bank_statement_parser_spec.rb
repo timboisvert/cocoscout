@@ -39,7 +39,9 @@ RSpec.describe BankStatementParser do
 
   it "keys a description without the bank's noise" do
     expect(BankStatementLine.description_key_for("ORIG CO NAME:HOTTIX LLC ORIG ID:1234567890 DESC DATE:102926 CO ENTRY DESCR:PAYMENTS SEC:CCD TRACE#:021000029876543 EED:261029 IND ID:SG00012"))
-      .to eq("HOTTIX LLC DESC DATE PAYMENTS")
+      .to eq("HOTTIX LLC PAYMENTS")
     expect(BankStatementLine.description_key_for("CHICAGO LUMBER CO 7781")).to eq(BankStatementLine.description_key_for("CHICAGO LUMBER CO 9920"))
+    # A payee with digits in its name keeps its letters; an id goes.
+    expect(BankStatementLine.description_key_for("ORIG CO NAME:ChgTheatres334CR ORIG ID:3630393341 DESC DATE:251004")).to eq("CHGTHEATRES")
   end
 end

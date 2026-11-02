@@ -116,7 +116,7 @@
             confirm_text: "Remove", url: manage_money_bank_statement_path(imp), method: :delete, form_data: { turbo: false } %>
     <% end %>
     <% if @summary.last %><%= render "manage/bank_statements/record_modal", **@modal %><% end %>
-    <%= render "manage/bank_statements/rules_modal", rules: @rules, summary: @summary %>
+    <%= render "manage/bank_statements/rules_modal", rules: @rules, catches: @rule_catches, suggestions: @suggestions, summary: @summary %>
     <%= render "manage/bank_statements/rule_modal", productions: @modal[:productions] %>
     <% @rules.each do |rule| %>
       <%= render "shared/confirm_modal", id: "remove-rule-#{rule.id}", title: "Remove this rule?",

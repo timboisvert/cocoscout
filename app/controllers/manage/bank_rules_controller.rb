@@ -32,9 +32,44 @@ module Manage
       redirect_to manage_money_bank_path, notice: "Rule removed. What it already did stays as it is."
     end
 
-    # Every rule over every line waiting.
+    # Every rule over every line waiting, or one rule (id) by itself.
     def apply
-      run(nil, nil)
+      run(params[:id].present? ? Current.organization.bank_rules.find(params[:id]) : nil, nil)
+    end
+
+    # A suggested rule (BankRuleSuggestions) taken: made, run over the lines
+    # waiting, and the Rules modal told, without leaving the page.
+    def accept
+      org = Current.organization
+      rule = org.bank_rules.new(suggestion_params.merge(created_by: Current.user))
+      return redirect_to manage_money_bank_path, alert: "The rule wasn't saved: #{rule.errors.full_messages.to_sentence}." unless rule.save
+
+      lines = rule.waiting_lines
+      note = if lines.empty?
+        "Rule saved. It fits none of the lines waiting; it'll run on statements brought in later."
+      elsif lines.size <= BankRules::IN_REQUEST
+        result = BankRules.apply!(org, rules: [ rule ], lines: lines, by: Current.user)
+        "Rule saved. #{pluralize(result.dealt_with, 'line')} dealt with: #{result.recorded} recorded, #{result.ignored} ignored."
+      else
+        Rails.cache.write(BankRules.applying_key(org), Time.current.to_i, expires_in: 20.minutes)
+        BankRulesApplyJob.perform_later(org.id, Current.user.id, rule.id)
+        "Rule saved. #{pluralize(lines.size, 'line')} fit; they're being dealt with in the background."
+      end
+      respond_to do |format|
+        format.turbo_stream { render partial: "manage/bank_statements/suggestion_taken", formats: [ :turbo_stream ], locals: { key: params[:key].to_s, note: note, changed: lines.any? } }
+        format.html { redirect_to manage_money_bank_path, notice: note }
+      end
+    end
+
+    # A suggestion said no to: not suggested again.
+    def dismiss
+      Current.organization.bank_rule_dismissals.find_or_create_by!(phrase: params[:phrase].to_s, direction: params[:direction].presence_in(BankRule::DIRECTIONS) || "any") do |d|
+        d.dismissed_by = Current.user
+      end
+      respond_to do |format|
+        format.turbo_stream { render partial: "manage/bank_statements/suggestion_taken", formats: [ :turbo_stream ], locals: { key: params[:key].to_s, note: nil, changed: false } }
+        format.html { redirect_to manage_money_bank_path, notice: "Not suggested again." }
+      end
     end
 
     private
@@ -60,6 +95,11 @@ module Manage
 
     def rule_params
       params.require(:bank_rule).permit(:contains, :direction, :action, :category_key, :counterparty, :production_id, :on_import)
+    end
+
+    # rule_action, since params[:action] is this action's own name.
+    def suggestion_params
+      params.permit(:contains, :direction, :rule_action, :category_key, :counterparty).to_h.symbolize_keys.then { |h| h.merge(action: h.delete(:rule_action)) }
     end
 
     def set_rule

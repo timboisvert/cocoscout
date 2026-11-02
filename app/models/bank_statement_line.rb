@@ -13,7 +13,7 @@
 class BankStatementLine < ApplicationRecord
   STATES = %w[open suggested matched recorded ignored].freeze
   # The parts of a bank description that change every time.
-  NOISE = /\b(ORIG|IND|TRACE|EED|TRN|CO|SEC|ID|NAME|ENTRY|DESCR|CCD|PPD|WEB|TEL|POS|DEBIT|CREDIT|CARD|PURCHASE|PAYMENT|ONLINE|ACH|TRANSFER|WITHDRAWAL|DEPOSIT)\b|[#*]\s*\w+|\b\w*\d\w*\b/i
+  NOISE = /\b(ORIG|IND|TRACE|EED|TRN|CO|SEC|ID|NAME|ENTRY|DESCR|DESC|DATE|CCD|PPD|WEB|TEL|POS|DEBIT|CREDIT|CARD|PURCHASE|PAYMENT|ONLINE|ACH|TRANSFER|WITHDRAWAL|DEPOSIT)\b|[#*]\s*\w+/i
 
   belongs_to :bank_statement_import
   belongs_to :organization
@@ -40,9 +40,17 @@ class BankStatementLine < ApplicationRecord
     Digest::SHA256.hexdigest(text)[0, 40]
   end
 
+  # A word with digits in it is an id or a date and goes, unless it is
+  # mostly a name (ChgTheatres334CR): then its longest run of letters
+  # stays, a piece a rule's phrase can find in the description.
   def self.description_key_for(description)
-    key = description.to_s.upcase.gsub(NOISE, " ").gsub(/[^A-Z&' ]/, " ").squeeze(" ").strip
-    key.presence&.first(40)
+    words = description.to_s.upcase.gsub(NOISE, " ").split(/[^A-Z0-9&']+/).filter_map do |word|
+      next word unless word.match?(/\d/)
+
+      run = word.scan(/[A-Z]+/).max_by(&:size).to_s
+      run if run.size >= 4
+    end
+    words.join(" ").squeeze(" ").strip.presence&.first(40)
   end
 
   def deposit? = amount_cents.positive?

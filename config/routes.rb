@@ -1642,6 +1642,8 @@ Rails.application.routes.draw do
     # Bank rules: a phrase in the bank's description records or ignores the line.
     get    "money/books/bank/rules/preview", to: "bank_rules#preview", as: "preview_money_bank_rules"
     post   "money/books/bank/rules/apply",   to: "bank_rules#apply",   as: "apply_money_bank_rules"
+    post   "money/books/bank/rules/suggestions/accept",  to: "bank_rules#accept",  as: "accept_money_bank_rule_suggestion"
+    post   "money/books/bank/rules/suggestions/dismiss", to: "bank_rules#dismiss", as: "dismiss_money_bank_rule_suggestion"
     post   "money/books/bank/rules",         to: "bank_rules#create",  as: "money_bank_rules"
     patch  "money/books/bank/rules/:id",     to: "bank_rules#update",  as: "money_bank_rule"
     delete "money/books/bank/rules/:id",     to: "bank_rules#destroy"

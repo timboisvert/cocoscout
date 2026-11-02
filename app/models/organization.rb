@@ -70,6 +70,7 @@ class Organization < ApplicationRecord
   has_many :bank_statement_imports, dependent: :destroy
   has_many :bank_statement_lines, dependent: :destroy
   has_many :bank_rules, dependent: :destroy
+  has_many :bank_rule_dismissals, dependent: :destroy
   has_many :register_days, dependent: :destroy
   has_many :ledger_accounts, dependent: :delete_all
   # Ticketing. Orders go before listings (a listing with orders refuses to be
