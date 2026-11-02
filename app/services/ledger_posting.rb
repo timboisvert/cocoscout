@@ -38,9 +38,10 @@ class LedgerPosting
       elsif existing && same?(existing, normalized, entry_date, cash_date)
         existing
       else
-        # Only the dates changed: a correction of when, not something that
-        # happened today, so the reversal sits on the old entry's own dates.
-        if existing && same?(existing, normalized, existing.entry_date, existing.cash_date)
+        # The same money, only its dates or what it's tagged to (show,
+        # production) changed: a correction, not something that happened
+        # today, so the reversal sits on the old entry's own dates.
+        if existing && same_money?(existing, normalized)
           reverse!(existing, on: existing.entry_date, cash_on: existing.cash_date)
         elsif existing
           reverse!(existing)
@@ -127,6 +128,12 @@ class LedgerPosting
         memo: line[:memo]
       }
     end
+  end
+
+  # The same accounts and amounts, whatever the dates and tags.
+  def self.same_money?(entry, normalized)
+    money = ->(rows) { rows.map { |r| [ r[:ledger_account_id], r[:amount_cents] ] }.sort }
+    money.call(entry.journal_lines.map { |l| l.attributes.symbolize_keys }) == money.call(normalized)
   end
 
   def self.same?(entry, normalized, entry_date, cash_date)
