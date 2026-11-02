@@ -11,18 +11,23 @@
 
   <% if @last.nil? %>
     <%# First visit: nothing to compare yet, so no balances, only the way in.
-        The books can't know what's in the bank until a statement says so. %>
-    <div class="max-w-xl space-y-4">
-      <div class="text-sm text-gray-600 space-y-2">
-        <p>Bring in a statement from your bank to check the books against it. Download a month as CSV or OFX from your bank's website.</p>
-        <p>Each line on it either matches something already on the books, gets recorded as money you hadn't written down, or is ignored. This is optional: the books stand on their own without it.</p>
+        The books can't know what's in the bank until a statement says so.
+        Same two-column frame as the page has once a statement is in. %>
+    <div class="grid grid-cols-1 lg:grid-cols-[1fr_22rem] gap-6 items-start">
+      <div class="space-y-6 min-w-0">
+        <div class="max-w-3xl text-sm text-gray-600 space-y-2">
+          <p>Bring in a statement from your bank to check the books against it. Download a month as CSV or OFX from your bank's website.</p>
+          <p>Each line on it either matches something already on the books, gets recorded as money you hadn't written down, or is ignored. This is optional: the books stand on their own without it.</p>
+        </div>
+        <%= render "shared/file_promises" %>
       </div>
-      <% if can_change %>
-        <%= render "manage/bank_statements/import_form", title: "Bring your first statement in" %>
-      <% else %>
-        <p class="text-sm text-gray-500">No statement has been brought in yet.</p>
-      <% end %>
-      <%= render "shared/file_promises" %>
+      <div class="space-y-4">
+        <% if can_change %>
+          <%= render "manage/bank_statements/import_form", title: "Bring your first statement in" %>
+        <% else %>
+          <p class="text-sm text-gray-500">No statement has been brought in yet.</p>
+        <% end %>
+      </div>
     </div>
   <% else %>
   <p class="max-w-3xl text-sm text-gray-600 mb-5">Download the month from your bank as CSV or OFX and bring it in here. Each line either matches something already on the books, gets recorded as money you had not written down, or is ignored.</p>

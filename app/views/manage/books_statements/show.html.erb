@@ -22,8 +22,9 @@
     links: [
       { text: "Print", path: path.call(print: "1"), data: { turbo: false } },
       { text: "PDF", path: path.call(format: :pdf), data: { turbo: false } },
-      { text: "CSV", path: path.call(format: :csv), data: { turbo: false } }
-    ]
+      { text: "CSV", path: path.call(format: :csv), data: { turbo: false } },
+      ({ text: "Every line (CSV)", path: manage_money_books_download_path({ period: @period, basis: base[:basis] }.compact), data: { turbo: false } } if @kind != "balance")
+    ].compact
   } %>
 <div>
 

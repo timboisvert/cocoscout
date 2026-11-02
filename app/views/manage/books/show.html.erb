@@ -23,7 +23,6 @@
     when "MoneyRecord" then [ "Open", manage_money_record_path(entry.source_id) ]
     end
   end
-  overview_params = { period: @period, basis: (@report.basis == :cash ? "cash" : nil), production: @production_id }.compact
   top_links = []
   top_links << record_money_link if module_change?(:books)
   # The filters, each shown in the part of the page it changes: never above
@@ -90,17 +89,11 @@
       <% end %>
     </div>
 
-    <%# The period's filters, and the two things to do from here, on one line. %>
-    <div class="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+    <%# The period's filters. The landing page is for seeing and going on to a
+        section: Record money lives on the sections' top menus, the period's
+        line-by-line download on Statements. %>
+    <div class="mb-4">
       <%= render "shared/filters/filter_bar", bare: true, filter_groups: [ period_filter, production_filter, { separator: true }, basis_filter ] %>
-      <div class="flex items-center gap-2">
-        <% if @overview && !@overview.empty? %>
-          <%= render "shared/button", text: "Download this period", variant: "secondary", size: "small", path: manage_money_books_download_path(overview_params) %>
-        <% end %>
-        <% if module_change?(:books) %>
-          <%= render "shared/button", text: "Record money", variant: "primary", size: "small", type: :button, data: record_money_link[:data] %>
-        <% end %>
-      </div>
     </div>
 
     <div class="flex flex-wrap items-baseline justify-between gap-2 mb-3">
@@ -109,8 +102,7 @@
     </div>
 
     <% if @overview.empty? %>
-      <%= render "shared/empty_state", icon: "money", title: "Nothing on the books for #{period_label.downcase}", body: "Ticket sales, classes, contracts and payout runs land here by themselves. Money that happened elsewhere, a sponsor's check or a receipt, you record by hand.",
-            actions: (module_change?(:books) ? [ record_money_link.merge(type: :button) ] : []) %>
+      <%= render "shared/empty_state", icon: "money", title: "Nothing on the books for #{period_label.downcase}", body: "Ticket sales, classes, contracts and payout runs land here by themselves. Money that happened elsewhere, a sponsor's check or a receipt, you record by hand on Entries." %>
     <% else %>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
         <%= tile.call("Money in", @overview.in_cents) %>
@@ -382,5 +374,5 @@
     </div>
   <% end %>
   </div>
-  <% if module_change?(:books) %><%= render "manage/money_records/modal", productions: @record_productions, shows: @record_shows %><% end %>
+  <% if @tab != "overview" && module_change?(:books) %><%= render "manage/money_records/modal", productions: @record_productions, shows: @record_shows %><% end %>
 </div>

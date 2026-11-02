@@ -14,13 +14,18 @@ RSpec.describe "Manage::MoneyRecords", type: :request do
 
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
-  # Record money opens as a modal on the Books page you're on, and saving
-  # comes back there (Tim, 2026-11-02).
+  # Record money opens as a modal on the Books section you're on, and saving
+  # comes back there (Tim, 2026-11-02). The landing page is for looking and
+  # going on to a section: no Record money, no download (Tim, 2026-11-02).
   it "opens Record money as a modal on any Books section, and comes back after saving" do
-    [ manage_money_books_path, *%w[accounts entries shows checks].map { |s| manage_money_books_section_path(section: s) } ].each do |page|
+    %w[accounts entries shows checks].map { |s| manage_money_books_section_path(section: s) }.each do |page|
       get page
       expect(response.body).to include('id="record-money-modal"', 'data-modal-id="record-money-modal"', "Moved between your accounts", "Holiday Revue")
     end
+    get manage_money_books_path
+    expect(response.body).not_to include("record-money-modal", "Download this period")
+    get manage_money_statements_path
+    expect(response.body).to include("Every line (CSV)", manage_money_books_download_path(period: "this_month"))
 
     post manage_money_records_path, params: { return_to: "/manage/money/books/entries",
                                               money_record: { kind: "out", on: "2026-10-27", amount: "40.00", category_key: "supplies", via: "bank" } }

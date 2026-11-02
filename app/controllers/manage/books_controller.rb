@@ -43,11 +43,11 @@ module Manage
       # Nothing to check, and no chart to create, before the first posting.
       # Every page says how the checks stand (the Checks card's badge).
       @mismatches = Current.organization.ledger_accounts.exists? ? BooksReconciliation.check(Current.organization) : []
-      load_record_choices
+      load_record_choices unless @tab == "overview"
     end
 
-    # "Download this period": the Overview's money in and out as a CSV, one
-    # row per line, with the show, production and category it belongs to.
+    # The period's money in and out as a CSV, one row per line, with the show,
+    # production and category it belongs to: "Every line" on Statements.
     def download
       report = BooksReport.new(Current.organization, basis: params[:basis])
       period = params[:period].presence_in(BooksReport::PERIODS.keys) || "this_month"
