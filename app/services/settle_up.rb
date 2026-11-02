@@ -77,7 +77,9 @@ class SettleUp
     by_date = shows.group_by { |s| SettlementDay.day_for(organization, s.date_and_time) }.select { |d, _| range.cover?(d) }
     register_dates = register_days(organization).where(business_date: range).distinct.pluck(:business_date)
     dates = (by_date.keys + records.keys + register_dates).uniq.sort.reverse
-    dates.map { |date| build(organization, date, by_date.fetch(date, []), records[date]) }
+    registers = registers_by_date(organization, dates)
+    cash = door_cash_by_listing(shows)
+    dates.map { |date| build(organization, date, by_date.fetch(date, []), records[date], registers: registers.fetch(date, []), cash: cash) }
   end
 
   # Days that are over, had money in them, and nobody has settled, from the
@@ -91,9 +93,29 @@ class SettleUp
     settled = SettlementDay.where(organization: organization).settled.pluck(:date).to_set
     by_date = shows.group_by { |s| SettlementDay.day_for(organization, s.date_and_time) }
     register_days(organization).where("business_date <= ?", as_of.to_date).distinct.pluck(:business_date).each { |d| by_date[d] ||= [] }
-    by_date.reject { |date, _| settled.include?(date) || (starts && date < starts) || !SettlementDay.ended?(organization, date, now: as_of) }
-           .sort_by { |date, _| date }
-           .map { |date, day_shows| build(organization, date, day_shows, nil) }
+    open = by_date.reject { |date, _| settled.include?(date) || (starts && date < starts) || !SettlementDay.ended?(organization, date, now: as_of) }
+                  .sort_by { |date, _| date }
+    registers = registers_by_date(organization, open.map(&:first))
+    cash = door_cash_by_listing(open.flat_map(&:last))
+    open.map { |date, day_shows| build(organization, date, day_shows, nil, registers: registers.fetch(date, []), cash: cash) }
+  end
+
+  # The register days for many dates at once, by date (the Settle up list
+  # was asking for each day's on its own, 2026-11-02).
+  def self.registers_by_date(organization, dates)
+    return {} if dates.empty?
+
+    register_days(organization).where(business_date: dates).includes(:integration, :location).order(:external_location_id).to_a.group_by(&:business_date)
+  end
+
+  # Cash at the door by listing, for many days at once: [taken, refunded, orders].
+  def self.door_cash_by_listing(shows)
+    ids = shows.filter_map { |s| s.ticket_listing&.id }
+    return {} if ids.empty?
+
+    TicketOrder.where(ticket_listing_id: ids, money_path: "cash", status: TicketOrder::WAS_PAID).group(:ticket_listing_id)
+               .pluck(:ticket_listing_id, Arel.sql("COALESCE(SUM(total_cents), 0)"), Arel.sql("COALESCE(SUM(refunded_cents), 0)"), Arel.sql("COUNT(*)"))
+               .to_h { |id, taken, refunded, count| [ id, [ taken.to_i, refunded.to_i, count.to_i ] ] }
   end
 
   # Register days from connected integrations, with something in them.
@@ -116,10 +138,11 @@ class SettleUp
         .order(:date_and_time)
   end
 
-  def self.build(organization, date, shows, record)
+  # registers and cash: read for many days at once by days / to_settle.
+  def self.build(organization, date, shows, record, registers: nil, cash: nil)
     pieces = shows.sort_by(&:date_and_time).map { |show| show_piece(organization, show) }
-    registers = register_days(organization).on(date).includes(:integration, :location).order(:external_location_id).to_a
-    Day.new(organization: organization, date: date, record: record, shows: pieces, door_cash: door_cash(organization, date, shows, record),
+    registers ||= register_days(organization).on(date).includes(:integration, :location).order(:external_location_id).to_a
+    Day.new(organization: organization, date: date, record: record, shows: pieces, door_cash: door_cash(organization, date, shows, record, cash: cash),
             registers: registers, tips: tips(organization, date, registers, record))
   end
 
@@ -173,8 +196,13 @@ class SettleUp
 
   # Cash taken at the door for the day's shows (tickets and products paid
   # in cash), which should be in the box at close.
-  def self.door_cash(organization, date, shows, record)
+  def self.door_cash(organization, date, shows, record, cash: nil)
     listing_ids = shows.filter_map { |s| s.ticket_listing&.id }
+    if cash
+      rows = listing_ids.map { |id| cash.fetch(id, [ 0, 0, 0 ]) }
+      return DoorCash.new(expected_cents: rows.sum { |taken, refunded, _| taken - refunded }, cash_orders_count: rows.sum(&:last), record: record)
+    end
+
     orders = listing_ids.any? ? TicketOrder.where(ticket_listing_id: listing_ids, money_path: "cash", status: TicketOrder::WAS_PAID) : TicketOrder.none
     DoorCash.new(expected_cents: orders.sum(:total_cents) - orders.sum(:refunded_cents), cash_orders_count: orders.count, record: record)
   end

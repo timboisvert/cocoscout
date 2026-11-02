@@ -24,6 +24,7 @@ module Manage
         @balance = CocoScoutBalance.summary(Current.organization)
         # find_by, not ChartOfAccounts.account: looking never creates the chart.
         @owed_to_payees_cents = Current.organization.ledger_accounts.find_by(key: "owed_to_payees")&.natural_balance_cents.to_i
+        @owed_to_contractors_cents = Current.organization.ledger_accounts.find_by(key: "owed_to_contractors")&.natural_balance_cents.to_i
         @bank_cents = Current.organization.ledger_accounts.find_by(key: "bank")&.natural_balance_cents.to_i
         # The books can't know what's in the bank until a statement says so.
         @bank_known = Current.organization.bank_statement_imports.exists?

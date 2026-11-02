@@ -67,6 +67,7 @@
         { label: "CocoScout balance", cents: total_balance, note: balance_note, path: manage_ticket_balance_path, tint: total_balance.positive? ? "bg-green-50 border-green-200" : "bg-white border-gray-200" },
         { label: "Waiting on upcoming shows", cents: @balance.upcoming_cents, note: "Yours the day after each show", path: manage_ticket_balance_path, tint: @balance.upcoming_cents.positive? ? "bg-blue-50 border-blue-200" : "bg-white border-gray-200" },
         { label: "Owed to performers and staff", cents: @owed_to_payees_cents, note: "Goes out on the next payout run", path: (module_access?(:payouts) ? manage_money_payouts_path : nil), tint: "bg-white border-gray-200" },
+        ({ label: "Owed to contractors", cents: @owed_to_contractors_cents, note: "Contract money due and not paid yet", path: (module_access?(:payouts) ? manage_money_payouts_path : nil), tint: "bg-white border-gray-200" } if @owed_to_contractors_cents.positive?),
         ({ label: "Bank, per your books", cents: @bank_cents, note: "What the books say is in the bank, checked against your last statement", path: manage_money_bank_path, tint: "bg-white border-gray-200" } if @bank_known)
       ].compact
       period_label = BooksReport::PERIOD_LABELS[@period]
