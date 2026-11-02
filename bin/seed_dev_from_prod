@@ -25,7 +25,10 @@
 #    deploy will. Each checkout's db/schema.rb is left as it was.
 # 4. Scrubs it: every other email rewritten, phones, tokens, payment-provider
 #    accounts and tax ids cleared, nobody else can sign in.
-# 5. Puts the kept logins back, and lists the stored files to copy.
+# 5. Puts the kept logins back.
+# 6. Copies production's images into the dev bucket inside S3 (documents,
+#    W-9s and email logs stay), skipping what's already there. SKIP_FILES=1 leaves
+#    it out; bin/rails dev_seed:files runs it alone.
 #
 # Your running dev servers lose their connection for a moment and reconnect.
 set -euo pipefail
@@ -111,9 +114,15 @@ done
 echo "4. Scrubbing..."
 SEEDED_ON="$SEEDED_ON" bin/rails dev_seed:scrub
 
-echo "5. Kept logins and files..."
+echo "5. Putting the kept logins back..."
 bin/rails dev_seed:restore_logins
-bin/rails dev_seed:files
+
+if [ -n "${SKIP_FILES:-}" ]; then
+  echo "6. Files skipped (SKIP_FILES). Copy them later with: bin/rails dev_seed:files"
+else
+  echo "6. Copying production's images into the dev bucket (about 1.6 GB; documents stay in production)..."
+  bin/rails dev_seed:files || echo "   The copy stopped; the data is seeded. Run bin/rails dev_seed:files to finish it."
+fi
 
 echo
 echo "Dev now holds production's data from $SEEDED_ON. Sign in as before; restart your dev servers if a page errors."
