@@ -26,7 +26,7 @@
         if awaiting_only
           # Status columns matching the parent Awaiting Payout grid; the columns
           # carry the amounts, so the subtitle just tracks people.
-          breakdown = awaiting_payout_breakdown(items)
+          breakdown = awaiting_payout_breakdown(items, upcoming: MoneyTodoService.upcoming_show?(show))
           subtitle = "#{paid_items.count} of #{items.count} paid"
           col_labels = cols.map { |c| Manage::MoneyPayoutsHelper::AWAITING_PAYOUT_COLUMNS.fetch(c)[:label] }
           cells = cols.map { |c| awaiting_payout_cell(breakdown[:amounts][c], c) }
