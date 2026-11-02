@@ -52,6 +52,11 @@ class BalanceWithdrawalService
                             { account: :cocoscout_balance, amount_cents: -amount_cents }
                           ])
       TicketingNotifier.notify(organization, :withdrawal, variables: TicketingNotificationContent.withdrawal(withdrawal))
+      # Over the month's free amount: the fee goes on the monthly usage bill,
+      # so the organization needs the subscription that sends one.
+      if organization.bills_usage? && UsageRules.withdrawal_fee_cents(organization, Date.current).positive?
+        StaffMeterService.ensure_staffing_subscription!(organization)
+      end
     rescue StandardError => e
       raise if Rails.env.test?
 

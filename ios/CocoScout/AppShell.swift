@@ -135,7 +135,7 @@ final class AppShell {
         guard !menu.isEmpty else { return }
         if let nav {
             let sheet = NavMenuViewController(nav: nav, person: person, onOpen: { [weak self] path in
-                self?.tabBarController.dismiss(animated: true) { self?.replaceScreen(with: AppConfig.url(path)) }
+                self?.tabBarController.dismiss(animated: true) { self?.openFromMenu(AppConfig.url(path)) }
             }, onSignOut: { [weak self] in
                 self?.tabBarController.dismiss(animated: true) { self?.tabBarController.activeNavigator.route(AppConfig.url("/signout")) }
             })
@@ -156,6 +156,16 @@ final class AppShell {
             case .signOut:
                 self.tabBarController.activeNavigator.route(AppConfig.url("/signout"))
             }
+        }
+    }
+
+    /// A page the path configuration shows as a sheet (the organization
+    /// menu) slides up over the screen; any other becomes the whole screen.
+    private func openFromMenu(_ url: URL) {
+        if Hotwire.config.pathConfiguration.properties(for: url)["context"] as? String == "modal" {
+            tabBarController.activeNavigator.route(url)
+        } else {
+            replaceScreen(with: url)
         }
     }
 

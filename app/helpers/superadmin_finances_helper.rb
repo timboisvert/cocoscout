@@ -10,6 +10,7 @@ module SuperadminFinancesHelper
   def plan_words(org)
     plan = if org.comped_indefinitely? then "Plan comped"
     elsif org.comped? then "Plan comped until #{org.comped_until.strftime('%b %-d')}"
+    elsif org.pro_on_monthly_bill? then org.pro_monthly_until ? "Pro, monthly, ends #{org.pro_monthly_until.strftime('%b %-d')}" : "Pro, monthly"
     elsif org.subscription_status == "past_due" then "Pro, past due"
     elsif org.subscription_status.in?(SubscriptionSyncService::ACCESS_STATUSES) then org.subscription_interval == "year" ? "Pro, yearly" : "Pro, monthly"
     else "Free"

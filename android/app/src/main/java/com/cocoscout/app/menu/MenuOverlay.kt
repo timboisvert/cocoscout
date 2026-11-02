@@ -56,7 +56,7 @@ fun MenuOverlay() {
             onDismiss = { showMenu = false },
             onOpen = { path ->
                 showMenu = false
-                AppShell.replaceScreen(path)
+                AppShell.openFromMenu(path)
             },
             onSignOut = {
                 showMenu = false

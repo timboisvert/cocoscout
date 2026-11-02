@@ -1,0 +1,28 @@
+<%# Each stream's earnings beside what Stripe charged to bring them in, for a period. locals: finances (CocoScoutFinances), columns (default 2) %>
+<% cols = local_assigns.fetch(:columns, 2) %>
+<% streams = finances.streams %>
+  <% if streams.empty? %>
+    <p class="mt-4 text-sm text-gray-500">Nothing earned or spent in this period.</p>
+  <% else %>
+    <div class="mt-4 grid grid-cols-1 <%= cols == 2 ? 'lg:grid-cols-2' : '' %> gap-4">
+      <% streams.each do |stream| %>
+        <div class="rounded-lg border border-gray-200 bg-white">
+          <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900"><%= stream[:name] %></h2>
+          <dl class="divide-y divide-gray-100 text-sm">
+            <% stream[:lines].each do |label, cents| %>
+              <div class="flex justify-between gap-4 px-4 py-2">
+                <dt class="text-gray-700"><%= label %></dt>
+                <dd class="tabular-nums <%= cents.negative? ? 'text-gray-600' : 'text-gray-900' %>"><%= cents.negative? ? "less #{usd(-cents)}" : usd(cents) %></dd>
+              </div>
+            <% end %>
+            <% kept = stream[:net_cents] %>
+            <div class="flex justify-between gap-4 px-4 py-2 bg-gray-50 font-semibold">
+              <dt class="text-gray-900"><%= kept.negative? ? "Cost us" : "We kept" %></dt>
+              <dd class="tabular-nums text-gray-900"><%= usd(kept.abs) %></dd>
+            </div>
+          </dl>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+

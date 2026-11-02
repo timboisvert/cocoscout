@@ -321,7 +321,7 @@ RSpec.describe "StripeWebhooksController", type: :request do
 
   describe "a usage bill Stripe just drafted" do
     it "is corrected to the people CocoScout paid that month, before Stripe charges it" do
-      org.update!(stripe_customer_id: "cus_sg", staffing_subscription_id: "sub_usage")
+      org.update!(stripe_customer_id: "cus_sg", staffing_subscription_id: "sub_usage", comped_indefinitely: true)
       month = Date.new(2026, 10, 1)
       3.times { StaffActivation.record!(organization: org, person: create(:person), month: month) }
       7.times { PerformerActivation.record!(organization: org, person: create(:person), month: month) }
@@ -341,7 +341,7 @@ RSpec.describe "StripeWebhooksController", type: :request do
     end
 
     it "leaves a bill that already matches alone" do
-      org.update!(stripe_customer_id: "cus_sg", staffing_subscription_id: "sub_usage")
+      org.update!(stripe_customer_id: "cus_sg", staffing_subscription_id: "sub_usage", comped_indefinitely: true)
       StaffActivation.record!(organization: org, person: create(:person), month: Date.new(2026, 10, 1))
       draft = Stripe::Invoice.construct_from(
         id: "in_ok", object: "invoice", customer: "cus_sg", status: "draft", amount_due: 500,
@@ -351,6 +351,23 @@ RSpec.describe "StripeWebhooksController", type: :request do
       )
       expect(Stripe::InvoiceItem).not_to receive(:create)
       deliver("invoice.created", draft)
+    end
+
+    it "corrects a second bill for a month that's already billed to nothing, never up to the month again" do
+      org.update!(stripe_customer_id: "cus_sg", staffing_subscription_id: "sub_usage")
+      StaffActivation.record!(organization: org, person: create(:person), month: Date.new(2026, 10, 1))
+      BillingInvoice.create!(organization: org, stripe_invoice_id: "in_first", kind: "usage", status: "open", amount_due_cents: 500,
+                             amount_remaining_cents: 500, period_start: Time.zone.local(2026, 10, 1), period_end: Time.zone.local(2026, 11, 1))
+      draft = Stripe::Invoice.construct_from(
+        id: "in_again", object: "invoice", customer: "cus_sg", status: "draft", amount_due: 500,
+        period_start: Time.zone.local(2026, 10, 1).to_i, period_end: Time.zone.local(2026, 11, 1).to_i,
+        parent: { subscription_details: { subscription: "sub_extra" } },
+        lines: { data: [ { description: "1 × active staff member", quantity: 1, amount: 500, pricing: { price_details: { price: "price_staff" } } } ] }
+      )
+      allow(SubscriptionPlan).to receive(:staff_active_price_id).and_return("price_staff")
+      expect(Stripe::InvoiceItem).to receive(:create).with(hash_including(invoice: "in_again", amount: -500), anything)
+      deliver("invoice.created", draft)
+      expect(BillingInvoice.find_by(stripe_invoice_id: "in_again")).to be_duplicate
     end
   end
 

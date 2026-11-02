@@ -88,7 +88,7 @@ module Manage
         @role = @organization.role_for(Current.user)
         @is_owner = @organization.owned_by?(Current.user)
         @team_members = @organization.users.includes(:default_person, :organization_roles)
-        @team_invitations = @organization.team_invitations.where(accepted_at: nil, production_id: nil)
+        @team_invitations = @organization.team_invitations.pending_for_team
         @locations = @organization.locations.order(:created_at)
         @team_invitation = TeamInvitation.new
         @productions = @organization.productions.active.order(:name)
@@ -180,7 +180,7 @@ module Manage
       case @section
       when "team"
         @team_members = @organization.users.includes(:default_person, :organization_roles)
-        @team_invitations = @organization.team_invitations.where(accepted_at: nil, production_id: nil)
+        @team_invitations = @organization.team_invitations.pending_for_team
         @team_invitation = TeamInvitation.new
       when "locations"
         @locations = @organization.locations.order(:created_at)

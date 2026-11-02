@@ -27,8 +27,8 @@ module Manage
         .where(company_role: %w[manager viewer])
         .pluck(:user_id)
 
-      # Find emails with pending invitations
-      pending_emails = Current.organization.team_invitations.where(accepted_at: nil).pluck(:email).map(&:downcase)
+      # Find emails with pending team invitations (a contract invitation isn't one)
+      pending_emails = Current.organization.team_invitations.where(accepted_at: nil, contract_id: nil).pluck(:email).map(&:downcase)
 
       render partial: "manage/team/search_results",
              locals: { people: people, query: q, team_user_ids: team_user_ids, pending_emails: pending_emails,

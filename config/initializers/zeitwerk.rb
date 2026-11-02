@@ -10,6 +10,7 @@ Rails.autoloaders.each do |autoloader|
     "cocoscout_ledger_backfill" => "CocoScoutLedgerBackfill",
     "cocoscout_finances" => "CocoScoutFinances",
     "cocoscout_identity" => "CocoScoutIdentity",
-    "cocoscout_invoice" => "CocoScoutInvoice"
+    "cocoscout_invoice" => "CocoScoutInvoice",
+    "cocoscout_money_now" => "CocoScoutMoneyNow"
   )
 end

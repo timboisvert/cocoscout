@@ -15,7 +15,7 @@
           "type": "controller",
           "class": "Manage::MessagesController",
           "method": "show",
-          "line": 276,
+          "line": 193,
           "file": "app/controllers/manage/messages_controller.rb",
           "rendered": {
             "name": "manage/messages/show",
@@ -69,7 +69,7 @@
           "type": "controller",
           "class": "Manage::MessagesController",
           "method": "show",
-          "line": 276,
+          "line": 193,
           "file": "app/controllers/manage/messages_controller.rb",
           "rendered": {
             "name": "manage/messages/show",
@@ -123,7 +123,7 @@
           "type": "controller",
           "class": "Manage::MessagesController",
           "method": "show",
-          "line": 276,
+          "line": 193,
           "file": "app/controllers/manage/messages_controller.rb",
           "rendered": {
             "name": "manage/messages/show",
@@ -169,7 +169,7 @@
       "check_name": "Render",
       "message": "Render path contains parameter value",
       "file": "app/views/manage/casting_settings/show.html.erb",
-      "line": 14,
+      "line": 13,
       "link": "https://brakemanscanner.org/docs/warning_types/dynamic_render_path/",
       "code": "render(action => \"manage/casting_settings/sections/#{(params[:section] or \"source\")}\", {})",
       "render_path": [
@@ -177,7 +177,7 @@
           "type": "controller",
           "class": "Manage::CastingSettingsController",
           "method": "show",
-          "line": 22,
+          "line": 24,
           "file": "app/controllers/manage/casting_settings_controller.rb",
           "rendered": {
             "name": "manage/casting_settings/show",
@@ -203,7 +203,7 @@
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
       "file": "app/controllers/my/contracts_controller.rb",
-      "line": 122,
+      "line": 129,
       "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
       "code": "params.fetch(:financials, {}).permit!",
       "render_path": null,
@@ -226,7 +226,7 @@
       "check_name": "CrossSiteScripting",
       "message": "Unescaped model attribute",
       "file": "app/views/my/productions/show.html.erb",
-      "line": 402,
+      "line": 424,
       "link": "https://brakemanscanner.org/docs/warning_types/cross_site_scripting",
       "code": "Production.find(params[:id]).agreement_signature_for(Current.user.person).content_snapshot",
       "render_path": [
@@ -234,7 +234,7 @@
           "type": "controller",
           "class": "My::ProductionsController",
           "method": "show",
-          "line": 157,
+          "line": 165,
           "file": "app/controllers/my/productions_controller.rb",
           "rendered": {
             "name": "my/productions/show",
@@ -260,7 +260,7 @@
       "check_name": "UnsafeReflection",
       "message": "Unsafe reflection method `constantize` called on parameter value",
       "file": "app/controllers/manage/casting_tables_controller.rb",
-      "line": 496,
+      "line": 483,
       "link": "https://brakemanscanner.org/docs/warning_types/remote_code_execution/",
       "code": "params[:assignable_type].constantize",
       "render_path": null,
@@ -283,7 +283,7 @@
       "check_name": "CrossSiteScripting",
       "message": "Unescaped model attribute",
       "file": "app/views/manage/contractors/show.html.erb",
-      "line": 213,
+      "line": 209,
       "link": "https://brakemanscanner.org/docs/warning_types/cross_site_scripting",
       "code": "(invitation_preview(Current.organization.contractors.find(params[:id]).person) or nil)[:body]",
       "render_path": [
@@ -291,7 +291,7 @@
           "type": "controller",
           "class": "Manage::ContractorsController",
           "method": "show",
-          "line": 53,
+          "line": 52,
           "file": "app/controllers/manage/contractors_controller.rb",
           "rendered": {
             "name": "manage/contractors/show",
@@ -325,7 +325,7 @@
           "type": "controller",
           "class": "Manage::CourseSettingsController",
           "method": "show",
-          "line": 22,
+          "line": 23,
           "file": "app/controllers/manage/course_settings_controller.rb",
           "rendered": {
             "name": "manage/course_settings/show",
@@ -351,7 +351,7 @@
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
       "file": "app/controllers/manage/course_offerings_controller.rb",
-      "line": 480,
+      "line": 489,
       "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
       "code": "params.fetch(:attended, {}).permit!",
       "render_path": null,
@@ -408,7 +408,7 @@
       "check_name": "Render",
       "message": "Render path contains parameter value",
       "file": "app/views/manage/staffing/settings/show.html.erb",
-      "line": 12,
+      "line": 11,
       "link": "https://brakemanscanner.org/docs/warning_types/dynamic_render_path/",
       "code": "render(action => \"manage/staffing/settings/sections/#{(params[:section] or \"source\")}\", {})",
       "render_path": [
@@ -450,7 +450,7 @@
           "type": "controller",
           "class": "Manage::ContractSettingsController",
           "method": "show",
-          "line": 16,
+          "line": 15,
           "file": "app/controllers/manage/contract_settings_controller.rb",
           "rendered": {
             "name": "manage/contract_settings/show",
@@ -466,6 +466,40 @@
       "confidence": "Medium",
       "cwe_id": [
         22
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 2,
+      "fingerprint": "d3354e52b793d818fd7630d8c000cdbe13e26d3a7f25fa37ff726891edd52178",
+      "check_name": "CrossSiteScripting",
+      "message": "Unescaped model attribute",
+      "file": "app/views/manage/ticket_gift_certificates/send_preview.html.erb",
+      "line": 33,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross_site_scripting",
+      "code": "TicketGiftCertificateMailer.rendered(Current.organization.ticket_gift_certificates.find(params[:id]))[:body]",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::TicketGiftCertificatesController",
+          "method": "send_preview",
+          "line": 66,
+          "file": "app/controllers/manage/ticket_gift_certificates_controller.rb",
+          "rendered": {
+            "name": "manage/ticket_gift_certificates/send_preview",
+            "file": "app/views/manage/ticket_gift_certificates/send_preview.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/ticket_gift_certificates/send_preview"
+      },
+      "user_input": "Current.organization.ticket_gift_certificates",
+      "confidence": "Weak",
+      "cwe_id": [
+        79
       ],
       "note": ""
     },
@@ -493,5 +527,5 @@
       "note": ""
     }
   ],
-  "brakeman_version": "8.0.6"
+  "brakeman_version": "8.1.0"
 }

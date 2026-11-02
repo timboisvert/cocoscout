@@ -74,10 +74,10 @@
   <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
     <div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
       <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Their bills from CocoScout</h2>
-      <% usage = s.usage_this_month %>
+      <% usage = UsageMonth.new(@org) %>
       <p class="px-4 pt-3 text-sm text-gray-700">
-        This month so far: <%= pluralize(usage[:performers], "performer") %> paid, <%= pluralize(usage[:staff], "staff member") %> scheduled<% if @org.bills_usage? %>,
-        <%= usd(usage[:performers] * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS + usage[:staff] * StaffBillingService::PER_ACTIVE_STAFF_CENTS) %> on next month's usage bill<% else %> (not billed: <%= @org.on_paid_plan? ? "usage comped" : "not on Pro" %>)<% end %>.
+        This month so far: <%= pluralize(usage.staff.size, "staff member") %> and <%= usage.others.size %> others paid<%= ", #{pluralize(usage.extra_debits, 'extra bank debit')}" if usage.extra_debits.positive? %><%= ", #{usd(usage.withdrawn_cents)} withdrawn" if usage.withdrawn_cents.positive? %><% if @org.bills_usage? %>,
+        <%= usd(usage.total_cents) %> on next month's usage bill<% else %> (not billed: <%= @org.on_paid_plan? ? "usage comped" : "not on Pro" %>)<% end %>.
       </p>
       <% invoices = s.invoices.limit(24) %>
       <% if invoices.empty? %>

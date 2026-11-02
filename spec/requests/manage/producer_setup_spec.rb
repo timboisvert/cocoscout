@@ -83,8 +83,8 @@ RSpec.describe "Producer setup", type: :request do
       get manage_producer_setup_plan_path
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Annual ($200/yr)")
-      expect(response.body).to include("Monthly ($20/mo)")
+      expect(response.body).to include("Annual ($299/yr)")
+      expect(response.body).to include("Monthly ($29/mo)")
       expect(response.body).to include("free forever")
     end
 

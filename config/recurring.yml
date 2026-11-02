@@ -49,6 +49,9 @@ development:
   billing_invoice_sync:
     class: BillingInvoiceSyncJob
     schedule: at 3am every day
+  pro_comp_ending:
+    class: ProCompEndingJob
+    schedule: at 10am every day
   platform_reconciliation:
     class: PlatformReconciliationJob
     schedule: at 6am every day
@@ -148,6 +151,9 @@ production:
   billing_invoice_sync:
     class: BillingInvoiceSyncJob
     schedule: at 3am every day
+  pro_comp_ending:
+    class: ProCompEndingJob
+    schedule: at 10am every day
   platform_reconciliation:
     class: PlatformReconciliationJob
     schedule: at 6am every day

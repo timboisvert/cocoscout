@@ -1,4 +1,5 @@
 <% content_for :title, "Finances" %>
+<% m = @money_now %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
@@ -7,48 +8,267 @@
   <%= render "superadmin/finances/tabs", current: :cocoscout %>
 
   <p class="mt-4 text-sm text-gray-600 max-w-3xl">
-    CocoScout's own money: what it earned, what it spent, what went to its bank. The organizations' money in the same Stripe balance is on
+    CocoScout's own money: what's ours right now, what we're owed, and where our profit comes from. The organizations' money in the same Stripe balance is on
     <%= link_to "Organizations", finances_organizations_path, class: "text-pink-600 hover:underline" %>.
   </p>
 
   <div class="mt-4"><%= render "superadmin/finances/check_line", check: @check %></div>
 
-  <% if @check&.stripe_balance_cents %>
-    <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <div class="rounded-lg border border-gray-200 bg-white p-4">
-        <div class="text-sm text-gray-600">In Stripe now</div>
-        <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(@check.stripe_balance_cents) %></div>
-        <p class="text-xs text-gray-500 mt-1">Everything in CocoScout's Stripe balance</p>
-      </div>
-      <div class="rounded-lg border border-gray-200 bg-white p-4">
-        <div class="text-sm text-gray-600">Held for organizations</div>
-        <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(@check.held_for_orgs_cents) %></div>
-        <p class="text-xs text-gray-500 mt-1">Their money, not ours</p>
-      </div>
-      <%# What's left after the organizations' money is CocoScout's. Below zero
-          it isn't a balance at all: the organizations are owed more than the
-          account holds, so say that in words, never as a minus sign. %>
-      <% own = @check.cocoscout_cents %>
-      <% if own.negative? %>
-        <div class="rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <div class="text-sm text-amber-800">CocoScout is short</div>
-          <div class="text-2xl font-bold tabular-nums text-amber-900 mt-0.5"><%= usd(-own) %></div>
-          <p class="text-xs text-amber-800 mt-1">The Stripe balance holds that much less than organizations are owed. CocoScout's costs (funding fees it absorbs, Stripe's charges, money sent to its bank) have outrun what it earned; its next earnings close the gap.</p>
+  <%# Right now: not tied to the period below. %>
+  <div class="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="rounded-lg border <%= m.withdrawable_cents.positive? ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-white' %> p-4">
+      <div class="text-sm text-gray-600">Ready to withdraw</div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(m.withdrawable_cents) %></div>
+      <p class="text-xs text-gray-500 mt-1">
+        <% if m.stripe_available_cents.nil? %>Stripe hasn't told us its available balance yet<% elsif m.short_cents.positive? %>Nothing until the <%= usd(m.short_cents) %> we're short is back (Where our profit is)<% else %>Ours, and available in Stripe today<% end %>
+      </p>
+    </div>
+    <div class="rounded-lg border <%= m.arriving_cents.positive? ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-white' %> p-4">
+      <div class="text-sm text-gray-600">Still arriving</div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(m.arriving_cents) %></div>
+      <p class="text-xs text-gray-500 mt-1">Ours, still settling in Stripe (about two days)</p>
+    </div>
+    <div class="rounded-lg border <%= m.unpaid_cents(:late).positive? ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white' %> p-4">
+      <div class="text-sm text-gray-600">Bills not yet paid</div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(m.unpaid_cents) %></div>
+      <p class="text-xs text-gray-500 mt-1">
+        <% if m.unpaid_cents(:late).positive? %><%= usd(m.unpaid_cents(:late)) %> of it late<% else %>Nothing late<% end %>
+      </p>
+    </div>
+    <div class="rounded-lg border border-gray-200 bg-white p-4">
+      <div class="text-sm text-gray-600">Building up for <%= Date.current.next_month.beginning_of_month.strftime("%b %-d") %></div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(m.usage_so_far_cents) %></div>
+      <p class="text-xs text-gray-500 mt-1"><%= Date.current.strftime("%B") %> so far, billed <%= Date.current.next_month.beginning_of_month.strftime("%b %-d") %> and charged automatically</p>
+    </div>
+  </div>
+
+  <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <%# Where our profit is: how profit to date becomes what's ours in Stripe. %>
+    <div class="rounded-lg border border-gray-200 bg-white">
+      <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Where our profit is</h2>
+      <dl class="divide-y divide-gray-100 text-sm">
+        <div class="flex justify-between gap-4 px-4 py-2">
+          <dt class="text-gray-700"><%= m.profit_cents.negative? ? "Lost since we started" : "Profit since we started" %><p class="text-xs text-gray-500">Earned less spent, counting every bill we've sent; month by month below</p></dt>
+          <dd class="tabular-nums text-gray-900"><%= usd(m.profit_cents.abs) %></dd>
         </div>
-      <% else %>
-        <div class="rounded-lg border <%= own.positive? ? 'border-pink-200 bg-pink-50' : 'border-gray-200 bg-white' %> p-4">
-          <div class="text-sm text-gray-600">CocoScout's own, in Stripe</div>
-          <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(own) %></div>
-          <p class="text-xs text-gray-500 mt-1">Earned and not yet sent to our bank</p>
-        </div>
+        <% if m.not_collected_cents.nonzero? %>
+          <div class="flex justify-between gap-4 px-4 py-2">
+            <dt class="text-gray-700">Less bills sent, not collected yet<p class="text-xs text-gray-500">Earned, but not in Stripe until they're paid (Owed to us)</p></dt>
+            <dd class="tabular-nums text-gray-900"><%= usd(m.not_collected_cents) %></dd>
+          </div>
+        <% end %>
+        <% if (m.owed_back_cents + m.unused_credit_cents).positive? %>
+          <div class="flex justify-between gap-4 px-4 py-2">
+            <dt class="text-gray-700">Plus what we owe back<p class="text-xs text-gray-500">Overcharges to refund (Charged too much, below)<%= " and credit we gave on their next bills" if m.unused_credit_cents.positive? %>: not profit, but still in Stripe until it goes back</p></dt>
+            <dd class="tabular-nums text-gray-900"><%= usd(m.owed_back_cents + m.unused_credit_cents) %></dd>
+          </div>
+        <% end %>
+        <% moves = m.bank_moves.to_a %>
+        <details class="group">
+          <summary class="flex justify-between gap-4 px-4 py-2 cursor-pointer hover:bg-gray-50">
+            <span class="text-gray-700">Less what's already gone to our bank <span class="text-xs text-pink-600 group-open:hidden">which and when</span></span>
+            <span class="tabular-nums text-gray-900"><%= usd(m.sent_to_bank_cents) %></span>
+          </summary>
+          <% if moves.empty? %>
+            <p class="px-4 pb-2 text-xs text-gray-500">Nothing yet.</p>
+          <% else %>
+            <ul class="px-4 pb-2 text-xs text-gray-600 divide-y divide-gray-100">
+              <% moves.each do |entry| %>
+                <li class="flex justify-between gap-4 py-1">
+                  <span><%= entry.occurred_at.strftime("%b %-d, %Y") %> · <%= entry.label %><%= " (#{entry.description})" if entry.description.present? && entry.description != entry.label %></span>
+                  <span class="tabular-nums"><%= usd(entry.amount_cents.abs) %></span>
+                </li>
+              <% end %>
+            </ul>
+          <% end %>
+        </details>
+        <% if m.paid_by_hand_cents.nonzero? %>
+          <details class="group">
+            <summary class="flex justify-between gap-4 px-4 py-2 cursor-pointer hover:bg-gray-50">
+              <span class="text-gray-700">Plus organizations we paid from our bank <span class="text-xs text-pink-600 group-open:hidden">which and when</span>
+                <span class="block text-xs text-gray-500">We paid them from our bank; their balances gave that money up and it stayed in Stripe as ours, so part of what went to our bank paid us back</span></span>
+              <span class="tabular-nums text-gray-900"><%= usd(m.paid_by_hand_cents) %></span>
+            </summary>
+            <ul class="px-4 pb-2 text-xs text-gray-600 divide-y divide-gray-100">
+              <% m.bank_moves(by_hand: true).each do |entry| %>
+                <li class="flex justify-between gap-4 py-1">
+                  <span><%= entry.occurred_at.strftime("%b %-d, %Y") %> · <%= entry.organization&.name || entry.description %></span>
+                  <span class="tabular-nums"><%= usd(entry.amount_cents) %></span>
+                </li>
+              <% end %>
+            </ul>
+          </details>
+        <% end %>
+        <% if m.adjustments_cents.nonzero? %>
+          <div class="flex justify-between gap-4 px-4 py-2">
+            <dt class="text-gray-700">Adjustments<p class="text-xs text-gray-500">The opening difference and Stripe lines explained by hand</p></dt>
+            <dd class="tabular-nums text-gray-900"><%= usd(m.adjustments_cents) %></dd>
+          </div>
+        <% end %>
+        <% ours = m.ours_in_stripe_cents %>
+        <% if ours.negative? %>
+          <div class="px-4 py-3 bg-amber-50">
+            <div class="flex justify-between gap-4 font-semibold text-amber-900"><span>CocoScout is short</span><span class="tabular-nums"><%= usd(-ours) %></span></div>
+            <p class="text-xs text-amber-800 mt-1">
+              Our bank holds some of the organizations' money.
+              <% if m.coming_in_cents.positive? %>
+                <%= usd([ m.coming_in_cents, m.short_cents ].min) %> of it is coming in<%= " by #{m.coming_in_by.strftime('%b %-d')}" if m.coming_in_by %><%= m.short_after_coming_cents.positive? ? ", leaving #{usd(m.short_after_coming_cents)}" : ", which covers it" %>.
+              <% end %>
+            </p>
+            <div class="mt-2">
+              <%= render "shared/button", text: "What to do about it", variant: "secondary", size: "small", type: :button,
+                    data: { controller: "modal", action: "click->modal#open", modal_id: "short-plan" } %>
+            </div>
+            <%= render "superadmin/finances/short_modal", id: "short-plan", money: m, check: @check %>
+          </div>
+        <% else %>
+          <div class="px-4 py-3 bg-gray-50">
+            <div class="flex justify-between gap-4 font-semibold text-gray-900"><span>Ours, still in Stripe</span><span class="tabular-nums"><%= usd(ours) %></span></div>
+            <p class="text-xs text-gray-500 mt-1"><%= usd(m.withdrawable_cents) %> ready to withdraw, <%= usd(m.arriving_cents) %> still arriving<%= ", #{usd(m.held_back_cents)} owed back" if m.held_back_cents.positive? %></p>
+          </div>
+        <% end %>
+      </dl>
+      <% if @check&.stripe_balance_cents %>
+        <p class="px-4 py-3 border-t border-gray-200 text-xs text-gray-500">
+          Stripe holds <%= usd(@check.stripe_balance_cents) %> in all, <%= usd(@check.held_for_orgs_cents) %> of it held for organizations (their money, not ours),
+          as of <%= @check.checked_at.strftime("%b %-d, %-l:%M %p") %>.
+        </p>
       <% end %>
+    </div>
+
+    <%# Owed to us: every bill not yet paid, worst first. %>
+    <div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+      <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Owed to us</h2>
+      <% bills = m.unpaid_bills.sort_by { |bill| [ %i[duplicate late collecting due].index(bill.state), -bill.days_old ] } %>
+      <% if bills.empty? %>
+        <p class="px-4 py-3 text-sm text-gray-500">Every bill is paid.</p>
+      <% else %>
+        <ul class="divide-y divide-gray-100 text-sm">
+          <% bills.each do |bill| %>
+            <% invoice = bill.invoice %>
+            <li class="px-4 py-2">
+              <div class="flex justify-between gap-4">
+                <span class="min-w-0">
+                  <%= link_to invoice.organization.name, finances_org_detail_path(org_id: invoice.organization_id), class: "font-medium text-gray-900 hover:text-pink-600" %>
+                  <span class="text-gray-500">· <%= link_to invoice.title, finances_invoice_path(invoice), class: "hover:text-pink-600", target: "_blank" %></span>
+                </span>
+                <span class="tabular-nums font-medium text-gray-900"><%= usd(m.owed(invoice)) %></span>
+              </div>
+              <div class="mt-0.5 flex flex-wrap items-center gap-2 text-xs">
+                <% if bill.state == :duplicate %><span class="inline-flex rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-red-700">Billed twice</span>
+                <% elsif bill.state == :late %><span class="inline-flex rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-red-700">Late</span>
+                <% elsif bill.state == :collecting %><span class="inline-flex rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-blue-700">On its way</span>
+                <% else %><span class="inline-flex rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-gray-600">Due</span>
+                <% end %>
+                <span class="text-gray-500">
+                  <%= invoice.status_label %>
+                  · billed <%= (invoice.finalized_at || invoice.created_at).strftime("%b %-d") %><%= " (#{pluralize(bill.days_old, 'day')} ago)" if bill.days_old.positive? %>
+                  <%= "· #{invoice.failure_message}" if invoice.failure_message.present? %>
+                </span>
+                <% if bill.state == :duplicate %>
+                  <span class="basis-full text-red-700">Another bill already charges this month; this one isn't counted as owed. <%= invoice.collecting? ? "Refund it under Charged too much once its payment lands." : "Void it in Stripe." %></span>
+                <% end %>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+      <% if m.usage_so_far.any? %>
+        <details class="border-t border-gray-200">
+          <summary class="px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-50 flex justify-between gap-4">
+            <span><%= Date.current.strftime("%B") %>'s bills, not sent yet (<%= pluralize(m.usage_so_far.size, "organization") %>)</span>
+            <span class="tabular-nums text-gray-900"><%= usd(m.usage_so_far_cents) %></span>
+          </summary>
+          <ul class="divide-y divide-gray-100 text-sm">
+            <% m.usage_so_far.each do |row| %>
+              <li class="flex justify-between gap-4 px-4 py-2">
+                <span class="text-gray-700"><%= row[:organization].name %> <span class="text-gray-500">· <%= pluralize(row[:staff], "staff member") %>, <%= row[:performers] %> others paid<%= ", #{pluralize(row[:extra_debits], 'extra bank debit')}" if row[:extra_debits].positive? %><%= ", Pro #{usd(row[:pro_cents])}" if row[:pro_cents].positive? %></span></span>
+                <span class="tabular-nums text-gray-900"><%= usd(row[:cents]) %></span>
+              </li>
+            <% end %>
+          </ul>
+        </details>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Charged too much: every bill to give back, when it can go, and the buttons that send it. %>
+  <% rows = @give_back %>
+  <% if rows.any? %>
+    <% ready = rows.select(&:refundable_now?) %>
+    <div class="mt-4 rounded-lg border border-red-200 bg-white overflow-hidden">
+      <div class="px-4 py-3 border-b border-red-200 bg-red-50 flex flex-wrap items-center gap-3">
+        <div class="flex-1 min-w-0">
+          <h2 class="text-sm font-semibold text-red-800">Charged too much (<%= rows.size %>)</h2>
+          <p class="text-xs text-red-700"><%= usd(rows.sum(&:over_cents)) %> to give back<%= ", #{usd(ready.sum(&:over_cents))} of it now" if ready.any? %>. A refund goes back to the card or bank the bill was paid from; a credit comes off the organization's next bills.</p>
+        </div>
+        <% if ready.size > 1 %>
+          <% total = usd(ready.sum(&:over_cents)) %>
+          <% names = ready.map { |r| r.invoice.organization.name }.uniq.to_sentence %>
+          <%= render "shared/button", text: "Credit all #{ready.size} (#{total})", variant: "primary", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-credit-all" } %>
+          <%= render "shared/confirm_modal", id: "confirm-credit-all", title: "Credit #{ready.size} bills?",
+                message: "#{total} comes off #{names}'s next bills. They each get a credit note from Stripe saying why.",
+                confirm_text: "Credit all #{ready.size}", url: finances_give_back_all_path, method: :post, params: { how: "credit" } %>
+          <%= render "shared/button", text: "Refund all #{ready.size}", variant: "secondary", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-give-back-all" } %>
+          <%= render "superadmin/finances/give_back_modal", id: "confirm-give-back-all", rows: ready, money: @money_now, url: finances_give_back_all_path %>
+        <% end %>
+      </div>
+      <ul class="divide-y divide-gray-100 text-sm">
+        <% rows.each do |row| %>
+          <% invoice = row.invoice %>
+          <li class="px-4 py-3 flex flex-wrap items-center gap-3">
+            <div class="flex-1 min-w-0">
+              <div>
+                <%= link_to invoice.organization.name, finances_org_detail_path(org_id: invoice.organization_id), class: "font-medium text-gray-900 hover:text-pink-600" %>
+                <span class="text-gray-500">· <%= link_to "#{invoice.title} (#{invoice.number})", finances_invoice_path(invoice), class: "hover:text-pink-600", target: "_blank" %></span>
+              </div>
+              <p class="text-xs text-gray-600 mt-0.5">
+                <% if row.duplicate %>
+                  A second bill for <%= row.month.strftime("%B") %>: another bill already charged the month, so all <%= usd(row.charged_cents) %> goes back.
+                <% else %>
+                  Charged <%= usd(row.charged_cents) %>; <%= row.month.strftime("%B") %>'s paid work was <%= usd(row.owed_cents) %> (<%= pluralize(row.staff, "staff member") %>, <%= pluralize(row.performers, "performer") %>).
+                <% end %>
+                <%= "#{usd(row.credited_cents)} already given back." if row.credited_cents.positive? %>
+              </p>
+              <p class="text-xs mt-0.5 <%= row.refundable_now? ? 'text-green-700' : 'text-amber-700' %>">
+                <% if row.refundable_now? %>
+                  Paid, so it can be given back now: refunded, or credited on their next bills.
+                <% else %>
+                  Its payment is still landing<%= ", about #{row.lands_on.strftime('%b %-d')}" if row.lands_on %>. It can be given back once it does.
+                <% end %>
+              </p>
+            </div>
+            <span class="tabular-nums font-semibold text-gray-900"><%= usd(row.over_cents) %></span>
+            <% if row.refundable_now? %>
+              <% credit_id = "confirm-credit-#{invoice.id}" %>
+              <%= render "shared/button", text: "Credit next bill", variant: "primary", size: "small", type: :button,
+                    data: { controller: "modal", action: "click->modal#open", modal_id: credit_id } %>
+              <%= render "shared/confirm_modal", id: credit_id, title: "Credit #{usd(row.over_cents)}?",
+                    message: "#{usd(row.over_cents)} comes off #{invoice.organization.name}'s next bills, for bill #{invoice.number}. They get a credit note from Stripe saying why.",
+                    confirm_text: "Credit #{usd(row.over_cents)}", url: finances_give_back_path(invoice), method: :post, params: { how: "credit" } %>
+              <% cid = "confirm-give-back-#{invoice.id}" %>
+              <%= render "shared/button", text: "Refund", variant: "secondary", size: "small", type: :button,
+                    data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
+              <%= render "superadmin/finances/give_back_modal", id: cid, rows: [ row ], money: @money_now, url: finances_give_back_path(invoice) %>
+            <% else %>
+              <%= render "shared/button", text: row.lands_on ? "Give back after #{row.lands_on.strftime('%b %-d')}" : "Give back once paid", variant: "secondary", size: "small", type: :button, disabled: true %>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
     </div>
   <% end %>
 
-  <div class="mt-6 flex flex-wrap items-center gap-2">
+  <%# A period: where the profit comes from. %>
+  <div class="mt-8 flex flex-wrap items-center gap-2">
     <% CocoScoutFinances::PERIODS.each do |value, label| %>
       <%= link_to label, finances_path(period: value),
             class: "px-3 py-1.5 text-sm font-medium rounded-full #{@finances.period == value ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}" %>
+    <% end %>
+    <% unless CocoScoutFinances::PERIODS.key?(@finances.period) %>
+      <span class="px-3 py-1.5 text-sm font-medium rounded-full bg-pink-500 text-white"><%= @finances.label %></span>
     <% end %>
     <span class="flex-1"></span>
     <%= render "shared/button", text: "Download for the CPA", variant: "secondary", size: "small", path: finances_path(period: @finances.period, format: :csv) %>
@@ -72,45 +292,127 @@
       </div>
     <% else %>
       <div class="rounded-lg border <%= net.positive? ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-white' %> p-4">
-        <div class="text-sm text-gray-600">Kept</div>
+        <div class="text-sm text-gray-600">Profit</div>
         <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(net) %></div>
         <p class="text-xs text-gray-500 mt-1">Earned less spent</p>
       </div>
     <% end %>
   </div>
 
-  <% daily = @finances.daily_net %>
-  <% if daily.size > 1 && daily.size <= 400 %>
-    <div class="mt-4 rounded-lg border border-gray-200 bg-white p-4">
-      <h2 class="text-sm font-semibold text-gray-900">Net, day by day</h2>
-      <div class="h-48 mt-2" data-controller="line-chart" data-line-chart-data-value="<%= daily.to_json %>"
-           data-line-chart-color-value="#ec4899" data-line-chart-label-value="Net ($)">
-        <canvas data-line-chart-target="canvas"></canvas>
-      </div>
-    </div>
+  <%# Each stream's earnings beside what Stripe charged to bring them in. %>
+  <%= render "superadmin/finances/streams", finances: @finances %>
+
+  <%# Month by month: the twelve months, the current one so far. %>
+  <div class="mt-4 rounded-lg border border-gray-200 bg-white overflow-x-auto">
+    <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Month by month</h2>
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <tr>
+          <th class="px-4 py-2">Month</th>
+          <th class="px-4 py-2 text-right">Tickets</th>
+          <th class="px-4 py-2 text-right">Earned</th>
+          <th class="px-4 py-2 text-right">Spent</th>
+          <th class="px-4 py-2 text-right">Profit</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% @monthly.each do |row| %>
+          <% busy = row[:earned_cents].nonzero? || row[:spent_cents].nonzero? %>
+          <tr class="<%= 'cursor-pointer hover:bg-pink-50' if busy %>"
+              <% if busy %>data-controller="modal" data-action="click->modal#open" data-modal-id="month-<%= row[:month].strftime('%Y-%m') %>"<% end %>>
+            <td class="px-4 py-2 text-gray-900">
+              <%= row[:month].strftime("%B %Y") %><%= " (so far)" if row[:partial] %>
+              <% if busy %><span class="ml-1 text-xs text-pink-600">where it came from and went</span><% end %>
+            </td>
+            <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= number_with_delimiter(row[:tickets]) %></td>
+            <td class="px-4 py-2 text-right tabular-nums text-gray-700">
+              <%= usd(row[:earned_cents]) %>
+              <% if row[:unpaid_cents].positive? %><div class="text-xs text-gray-500"><%= usd(row[:unpaid_cents]) %> not paid yet</div><% end %>
+            </td>
+            <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= usd(row[:spent_cents]) %></td>
+            <td class="px-4 py-2 text-right tabular-nums font-medium <%= row[:kept_cents].negative? ? 'text-amber-700' : 'text-gray-900' %>">
+              <%= row[:kept_cents].negative? ? "lost #{usd(-row[:kept_cents])}" : usd(row[:kept_cents]) %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+      <% total = @monthly.sum { |row| row[:kept_cents] } %>
+      <tfoot class="border-t border-gray-200 bg-gray-50 font-semibold">
+        <tr>
+          <td class="px-4 py-2 text-gray-900">Since we started</td>
+          <td class="px-4 py-2 text-right tabular-nums text-gray-900"><%= number_with_delimiter(@monthly.sum { |row| row[:tickets] }) %></td>
+          <td class="px-4 py-2 text-right tabular-nums text-gray-900"><%= usd(@monthly.sum { |row| row[:earned_cents] }) %></td>
+          <td class="px-4 py-2 text-right tabular-nums text-gray-900"><%= usd(@monthly.sum { |row| row[:spent_cents] }) %></td>
+          <td class="px-4 py-2 text-right tabular-nums <%= total.negative? ? 'text-amber-700' : 'text-gray-900' %>"><%= total.negative? ? "lost #{usd(-total)}" : usd(total) %></td>
+        </tr>
+      </tfoot>
+    </table>
+    <p class="px-4 py-2 border-t border-gray-200 text-xs text-gray-500">Each month counts what it earned and what it cost, whenever the money moved: a usage bill is the month it covers, and Stripe's monthly fees are the month they're for. Click a month to see where its money came from and went.</p>
+  </div>
+  <% @monthly.each do |row| %>
+    <% next unless row[:earned_cents].nonzero? || row[:spent_cents].nonzero? %>
+    <%= render "superadmin/finances/month_modal", month: row[:month], row: row %>
   <% end %>
 
+  <%# Did they pay? Every bill sent in the period. %>
+  <% period_bills = CocoScoutMoneyNow.bills_in(@finances.range).to_a %>
+  <div class="mt-4 rounded-lg border border-gray-200 bg-white overflow-x-auto">
+    <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Bills sent in this period</h2>
+    <% if period_bills.empty? %>
+      <p class="px-4 py-3 text-sm text-gray-500">No bills in this period.</p>
+    <% else %>
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <tr>
+            <th class="px-4 py-2">Organization</th>
+            <th class="px-4 py-2">Bill</th>
+            <th class="px-4 py-2 text-right">Amount</th>
+            <th class="px-4 py-2">Paid?</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% period_bills.each do |invoice| %>
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-2"><%= link_to invoice.organization.name, finances_org_detail_path(org_id: invoice.organization_id), class: "font-medium text-gray-900 hover:text-pink-600" %></td>
+              <td class="px-4 py-2 text-gray-700"><%= link_to invoice.full_title, finances_invoice_path(invoice), class: "hover:text-pink-600", target: "_blank" %></td>
+              <td class="px-4 py-2 text-right tabular-nums text-gray-900"><%= usd(invoice.amount_due_cents) %></td>
+              <td class="px-4 py-2">
+                <% if invoice.status == "paid" %>
+                  <span class="text-green-700">Paid<%= " #{invoice.paid_at.strftime('%b %-d')}" if invoice.paid_at %></span>
+                <% else %>
+                  <span class="<%= invoice.failed? ? 'text-red-600 font-medium' : 'text-gray-700' %>"><%= invoice.status_label %></span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+  </div>
+
   <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-    <div class="rounded-lg border border-gray-200 bg-white">
-      <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">What we earned</h2>
-      <dl class="divide-y divide-gray-100 text-sm">
-        <% @finances.by_type(:income).each do |type, cents| %>
-          <div class="flex justify-between gap-4 px-4 py-2"><dt class="text-gray-700"><%= CocoScoutLedgerEntry.label(type) %></dt><dd class="tabular-nums text-gray-900"><%= usd(cents) %></dd></div>
-        <% end %>
-        <% if @finances.by_type(:income).empty? %><div class="px-4 py-3 text-gray-500">Nothing yet in this period.</div><% end %>
-      </dl>
+    <div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+      <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Who paid us</h2>
+      <% rows = @finances.by_organization %>
+      <% if rows.empty? %>
+        <p class="px-4 py-3 text-sm text-gray-500">Nobody in this period.</p>
+      <% else %>
+        <ul class="divide-y divide-gray-100 text-sm">
+          <% rows.each do |org, cents| %>
+            <li><%= link_to finances_org_detail_path(org_id: org.id), class: "flex justify-between gap-4 px-4 py-2 hover:bg-gray-50" do %>
+              <span class="text-gray-900"><%= org.name %></span><span class="tabular-nums text-gray-900"><%= usd(cents) %></span>
+            <% end %></li>
+          <% end %>
+        </ul>
+      <% end %>
     </div>
-    <div class="rounded-lg border border-gray-200 bg-white">
-      <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">What we spent</h2>
-      <dl class="divide-y divide-gray-100 text-sm">
-        <% @finances.by_type(:cost).each do |type, cents| %>
-          <div class="flex justify-between gap-4 px-4 py-2"><dt class="text-gray-700"><%= CocoScoutLedgerEntry.label(type) %></dt><dd class="tabular-nums text-gray-900"><%= usd(-cents) %></dd></div>
-        <% end %>
-        <% if @finances.by_type(:cost).empty? %><div class="px-4 py-3 text-gray-500">Nothing yet in this period.</div><% end %>
-      </dl>
-      <% bank = @finances.by_type(:bank) + @finances.by_type(:adjustment) %>
-      <% if bank.any? %>
-        <h3 class="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-500 border-t border-gray-200">Moved, not earned or spent</h3>
+
+    <% bank = @finances.by_type(:bank) + @finances.by_type(:adjustment) %>
+    <div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
+      <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Moved, not earned or spent</h2>
+      <% if bank.empty? %>
+        <p class="px-4 py-3 text-sm text-gray-500">Nothing moved in this period.</p>
+      <% else %>
         <dl class="divide-y divide-gray-100 text-sm">
           <% bank.each do |type, cents| %>
             <div class="flex justify-between gap-4 px-4 py-2"><dt class="text-gray-700"><%= CocoScoutLedgerEntry.label(type) %></dt><dd class="tabular-nums text-gray-900"><%= usd(cents) %></dd></div>
@@ -118,21 +420,5 @@
         </dl>
       <% end %>
     </div>
-  </div>
-
-  <div class="mt-4 rounded-lg border border-gray-200 bg-white overflow-hidden">
-    <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Who paid us</h2>
-    <% rows = @finances.by_organization %>
-    <% if rows.empty? %>
-      <p class="px-4 py-3 text-sm text-gray-500">Nobody in this period.</p>
-    <% else %>
-      <ul class="divide-y divide-gray-100 text-sm">
-        <% rows.each do |org, cents| %>
-          <li><%= link_to finances_org_detail_path(org_id: org.id), class: "flex justify-between gap-4 px-4 py-2 hover:bg-gray-50" do %>
-            <span class="text-gray-900"><%= org.name %></span><span class="tabular-nums text-gray-900"><%= usd(cents) %></span>
-          <% end %></li>
-        <% end %>
-      </ul>
-    <% end %>
   </div>
 </div>

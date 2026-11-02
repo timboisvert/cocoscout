@@ -38,6 +38,14 @@ RSpec.describe "The apps' page rules" do
     expect(nav2["rules"].index(pages)).to be > nav2["rules"].index(modal)
   end
 
+  # A sheet from the bottom, not a page pushed in from the side (Tim, 2026-11-01).
+  # Android builds without the sheet screen fall back to the plain page.
+  it "slides the organization menu up as a half-height sheet" do
+    sheet = rule(nav2, "^/select/organization/menu$")["properties"]
+    expect(sheet).to include("context" => "modal", "modal_style" => "medium",
+                             "uri" => "hotwire://fragment/web/modal/sheet", "fallback_uri" => "hotwire://fragment/web")
+  end
+
   it "hands files to the phone's viewer: tax forms, invoices, calendars, and the CSV exports" do
     documents = rule(nav2, "^/rails/active_storage/")
     expect(documents.dig("properties", "open_in")).to eq("document")

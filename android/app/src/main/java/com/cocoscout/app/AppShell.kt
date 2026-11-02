@@ -4,6 +4,8 @@ import android.content.Context
 import android.webkit.CookieManager
 import androidx.lifecycle.lifecycleScope
 import dev.hotwire.core.config.Hotwire
+import dev.hotwire.core.turbo.config.context
+import dev.hotwire.core.turbo.nav.PresentationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -115,6 +117,19 @@ object AppShell {
             return
         }
         navigator.route(AppConfig.url(path))
+    }
+
+    /**
+     * A page the path configuration shows as a sheet (the organization menu)
+     * slides up over the screen; any other becomes the whole screen.
+     */
+    fun openFromMenu(path: String) {
+        val url = AppConfig.url(path)
+        if (Hotwire.config.pathConfiguration.properties(url).context == PresentationContext.MODAL) {
+            activity?.currentNavigator?.route(url)
+        } else {
+            replaceScreen(path)
+        }
     }
 
     /**

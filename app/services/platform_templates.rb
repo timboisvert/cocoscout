@@ -56,7 +56,18 @@ class PlatformTemplates
                    { "name" => "paid_on", "description" => "The day it was paid" },
                    { "name" => "lines", "description" => "What was on the bill, line by line" },
                    { "name" => "invoice_url", "description" => "CocoScout's invoice for the bill (PDF)" },
-                   { "name" => "billing_url", "description" => "Their Billing & Plan page" } ] }
+                   { "name" => "billing_url", "description" => "Their Billing & Plan page" } ] },
+    { key: "pro_comp_ending", name: "Complimentary Pro ending", channel: "email",
+      subject: "Your complimentary CocoScout Pro ends {{ends_on}}",
+      body: %(<p>Hi {{first_name}},</p><p>{{organization_name}}'s complimentary CocoScout Pro ends on <strong>{{ends_on}}</strong>, {{days_left}} from now.</p>{{value_lines}}<p>To keep all of it, choose <strong>Keep Pro</strong> on your <a href="{{keep_url}}">Billing &amp; Plan page</a>. Pro picks up the day your complimentary access ends, with nothing to set up again. {{price_line}}</p><p>If you don't, {{organization_name}} moves to the free Producer plan on {{ends_on}}, without:</p>{{lose_lines}}<p>Questions? Just reply to this email.</p>),
+      variables: [ { "name" => "first_name", "description" => "The billing contact's first name" },
+                   { "name" => "organization_name", "description" => "The organization" },
+                   { "name" => "ends_on", "description" => "The day the complimentary Pro ends, e.g. December 31" },
+                   { "name" => "days_left", "description" => "How long until then, e.g. 14 days" },
+                   { "name" => "value_lines", "description" => "What Pro did for them in the last three months, as a list (empty when nothing happened)" },
+                   { "name" => "price_line", "description" => "What Pro costs: the plan and the usage" },
+                   { "name" => "lose_lines", "description" => "What they'd lose on Producer, as a list" },
+                   { "name" => "keep_url", "description" => "Their Billing & Plan page, where Keep Pro is" } ] }
   ].freeze
 
   def self.ensure!(keys: nil, overwrite: false)

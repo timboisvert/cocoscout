@@ -116,6 +116,14 @@ RSpec.describe "Contract wizard: People step", type: :request do
     invitation = TeamInvitation.find_by(email: "sam@brightlights.org", contract: contract)
     expect(invitation.production_id).to be_nil
 
+    # Contract invitations show on the contract, never on the organization's Team page.
+    TeamInvitation.create!(email: "teammate@example.com", organization: org)
+    get section_manage_organization_path(org, section: "team")
+    expect(response.body).to include("teammate@example.com")
+    expect(response.body).not_to include("sam@brightlights.org", "athena@example.com")
+    get manage_contract_path(contract)
+    expect(response.body).to include("sam@brightlights.org")
+
     # Accepting makes a contract person who lands on My Contracts: no role in the organization, no production permission.
     get signout_path
     post do_accept_manage_team_invitations_path(invitation.token), params: { password: password }

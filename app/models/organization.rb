@@ -343,8 +343,28 @@ class Organization < ApplicationRecord
   def on_paid_plan?
     return true if comped_indefinitely?
     return true if comped_until.present? && comped_until.future?
+    return true if pro_on_monthly_bill?
 
     subscription_status.in?(%w[active trialing past_due])
+  end
+
+  # Pro paid month by month on the one monthly bill, beside the usage (Tim,
+  # 2026-11-01), rather than on a Stripe subscription of its own.
+  def pro_on_monthly_bill?(at = Time.current)
+    pro_monthly_from.present? && pro_monthly_from <= at && (pro_monthly_until.nil? || pro_monthly_until > at)
+  end
+
+  # Start Pro on the monthly bill: the month's bill carries the plan from
+  # today, and the subscription that sends that bill is made if it isn't
+  # there yet.
+  def start_pro_on_monthly_bill!(at: Time.current)
+    update!(pro_monthly_from: at, pro_monthly_until: nil)
+    StaffMeterService.ensure_staffing_subscription!(self)
+  end
+
+  # Cancel it: Pro lasts to the end of the month, which the last bill carries.
+  def cancel_pro_on_monthly_bill!(at: Time.current)
+    update!(pro_monthly_until: at.end_of_month)
   end
 
   # True when the org's Pro access comes from a comp rather than a paid Stripe subscription.
@@ -352,12 +372,26 @@ class Organization < ApplicationRecord
     comped_indefinitely? || (comped_until.present? && comped_until.future?)
   end
 
-  # Whether the monthly usage charges ($3 per performer paid, $5 per staff
-  # member scheduled) are billed. Usage rides Pro, so a free or lapsed org is
+  # Whether the monthly usage charges ($5 per staff member and $3 per
+  # everyone else paid, bank debits and withdrawals beyond the free ones) are
+  # billed. Usage rides Pro, so a free or lapsed org is
   # never metered, and a superadmin can comp usage on its own: an org can be
   # comped on the plan and still pay for usage, or the other way round.
   def bills_usage?
     on_paid_plan? && !comped_usage?
+  end
+
+  # Whether a month's usage is billed: Pro at some point in that month and
+  # usage not comped. A comp that ended on December 31 still bills
+  # December's usage on the January 1 bill.
+  def bills_usage_in?(month)
+    return false if comped_usage?
+
+    first = month.to_date.beginning_of_month.in_time_zone
+    last = first.end_of_month
+    comped_indefinitely? || (comped_until.present? && comped_until >= first) ||
+      (pro_monthly_from.present? && pro_monthly_from <= last && (pro_monthly_until.nil? || pro_monthly_until >= first)) ||
+      subscription_status.in?(%w[active trialing past_due]) || (subscription_canceled_at.present? && subscription_canceled_at >= first)
   end
 
   # Whether a given feature (symbol from PAID_FEATURES, or any free feature) is

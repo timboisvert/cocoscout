@@ -1,0 +1,35 @@
+<%# Complimentary Pro is ending: what Pro has done for them lately, what staying costs, what they'd lose, and Keep Pro (ProCompEnding).
+    locals: organization %>
+<% ending = ProCompEnding.new(organization) %>
+<% if ending.ending_soon? %>
+  <% details = capture do %>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+      <div>
+        <% if ending.value_lines.any? %>
+          <div class="font-semibold text-gray-900">In the last three months, with Pro, you:</div>
+          <ul class="mt-1 space-y-1 text-gray-700">
+            <% ending.value_lines.each do |line| %>
+              <li class="flex gap-2"><svg class="w-4 h-4 mt-0.5 flex-shrink-0 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg><span><%= line %></span></li>
+            <% end %>
+          </ul>
+        <% end %>
+        <p class="mt-3 text-gray-600"><%= ending.price_line %></p>
+      </div>
+      <div>
+        <div class="font-semibold text-gray-900">On the free Producer plan you'd lose:</div>
+        <ul class="mt-1 space-y-1 text-gray-600 list-disc pl-5">
+          <% ProCompEnding::PRO_UNLOCKS.each do |unlock| %><li><%= unlock %></li><% end %>
+        </ul>
+      </div>
+    </div>
+  <% end %>
+  <%= render "shared/alert_panel",
+        eyebrow: "Your complimentary Pro ends #{ending.ends_on.strftime('%B %-d')}",
+        headline: ending.days_left.zero? ? "Ends today" : "#{pluralize(ending.days_left, 'day')} left",
+        body: "Keep Pro and nothing changes: it picks up the day your complimentary access ends, with nothing to set up again. Nothing is charged unless you choose it.",
+        actions: [
+          { text: "Keep Pro, $#{SubscriptionPlan.monthly_dollars}/month", path: manage_billing_keep_pro_path(interval: "month"), method: :post, form: { data: { turbo: false } } },
+          { text: "Keep Pro, $#{SubscriptionPlan.annual_dollars}/year", path: manage_billing_keep_pro_path(interval: "year"), method: :post, form: { data: { turbo: false } } }
+        ],
+        details: details %>
+<% end %>
