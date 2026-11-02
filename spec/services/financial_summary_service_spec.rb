@@ -136,6 +136,36 @@ RSpec.describe FinancialSummaryService do
     end
   end
 
+  # A production on its second deal still earned under the first: every
+  # contract that was live counts, each over its own nights (Hags' August
+  # show sat under a completed contract and went uncounted, 2026-11-02).
+  describe "a production with more than one contract" do
+    let(:location) { create(:location, organization: organization) }
+    let(:third_party) { create(:production, organization: organization, production_type: "third_party") }
+
+    def deal(status, starts_at)
+      contract = create(:contract, :revenue_share_per_event, organization: organization, production: third_party, status: status)
+      rental = contract.space_rentals.create!(location: location, starts_at: starts_at, ends_at: starts_at + 2.hours, confirmed: true)
+      show = third_party.shows.create!(date_and_time: starts_at, duration_minutes: 120, location: location, space_rental: rental)
+      create(:show_financials, :complete, show: show, ticket_revenue: 100.0, other_revenue: 0.0)
+      contract
+    end
+
+    it "counts every contract that was live, never a cancelled one" do
+      travel_to(Time.zone.local(2026, 11, 15, 12)) do
+        finished = deal("completed", Time.zone.local(2026, 8, 21, 19))
+        running = deal("active", Time.zone.local(2026, 10, 16, 19))
+        deal("cancelled", Time.zone.local(2026, 9, 10, 19))
+        range = Time.current.beginning_of_year..Time.current.end_of_year
+        money = FinancialSummaryService.summaries_by_production([ third_party ], :this_year)[:by_production][third_party.id]
+
+        expect(finished.money_summary(range)[:money_in]).to be_positive
+        expect(money[:gross_revenue]).to eq(finished.money_summary(range)[:money_in] + running.money_summary(range)[:money_in])
+        expect(money[:cost_of_shows]).to eq(finished.money_summary(range)[:money_out] + running.money_summary(range)[:money_out])
+      end
+    end
+  end
+
   describe "with multiple productions" do
     let(:production2) { create(:production, organization: organization) }
     let(:service) { described_class.new([ production, production2 ]) }

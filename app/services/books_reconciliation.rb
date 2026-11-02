@@ -32,7 +32,9 @@ class BooksReconciliation
     pending = ContractPayment.joins(:contract).where(contracts: { organization_id: organization.id })
                              .status_pending.direction_outgoing.where(amount_tbd: false).where("amount > 0")
                              .where("due_date <= ?", Date.current)
-    expected = pending.reject { |payment| BooksOutsidePoster.on_the_rail?(payment) }.sum(&:amount_cents)
+    pending = pending.to_a
+    on_rail = BooksOutsidePoster.on_the_rail_ids(pending)
+    expected = pending.reject { |payment| on_rail.include?(payment.id) }.sum(&:amount_cents)
     Mismatch.new(account: "owed_to_contractors", books_cents: books, expected_cents: expected) unless books == expected
   end
 
