@@ -14,12 +14,15 @@ class VacancyInvitationMailer < ApplicationMailer
     rendered = ContentTemplateService.render("vacancy_invitation", build_template_vars)
 
     @subject = invitation.email_subject.presence || rendered[:subject]
-    @body = rendered[:body]
+    # The manager's edited draft, when the vacancy page stored one (it used to
+    # be ignored: only the subject was honoured). The page can't know the
+    # claim link or the recipient, so those tokens are filled in here.
+    @body = invitation.email_body.present? ? ContentTemplate.interpolate(invitation.email_body, build_template_vars) : rendered[:body]
 
     headers["X-Email-Batch-ID"] = email_batch_id.to_s if email_batch_id.present?
 
     # Also send in-app message since vacancy_invitation is channel "both"
-    send_in_app_message(rendered)
+    send_in_app_message(rendered.merge(body: @body))
 
     mail(to: @person.email, subject: @subject) do |format|
       format.html { render html: @body.html_safe, layout: "mailer" }

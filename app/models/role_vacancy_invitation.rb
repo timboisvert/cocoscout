@@ -8,7 +8,10 @@ class RoleVacancyInvitation < ApplicationRecord
   scope :pending, -> { where(claimed_at: nil, declined_at: nil) }
   scope :claimed, -> { where.not(claimed_at: nil) }
   scope :declined, -> { where.not(declined_at: nil) }
-  scope :unresolved, -> { joins(:role_vacancy).where(claimed_at: nil).merge(RoleVacancy.open) }
+  # Still worth showing the invitee: not claimed, and the vacancy is still
+  # active (open, or finding_replacement once invitations are out, which is
+  # the state every invited vacancy is in).
+  scope :unresolved, -> { joins(:role_vacancy).where(claimed_at: nil).merge(RoleVacancy.active) }
 
   validates :token, uniqueness: true, allow_nil: true
 
