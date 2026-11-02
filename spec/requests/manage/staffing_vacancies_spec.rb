@@ -57,6 +57,11 @@ RSpec.describe "Manage::Staffing shift vacancies", type: :request do
     expect(JSON.parse(add_all["data-members"]).map { |m| m["name"] }).to contain_exactly("Priya Kaur", "Lee Chen", "Sam Oduya")
     expect(doc.at_css("[data-sticky-actions]").text).to include("Send invitations")
     expect(response.body).to include("Not filling it", "Put Dana back", "Assign someone directly")
+    # The draft is filled in with the shift; only the per-person tokens stay.
+    expect(doc.at_css("input[name='email_draft[title]']")["value"]).to include("Bar shift")
+    draft = doc.at_css("input[name='email_draft[body]']")["value"]
+    expect(draft).to include("{{recipient_name}}", "{{claim_url}}")
+    expect(draft).not_to include("{{#", "{{role_name}}")
 
     # The picker's list: the dropper, the one on it and the free ones marked.
     get manage_people_picker_search_path(params), headers: { "X-Requested-With" => "XMLHttpRequest" }
@@ -64,6 +69,13 @@ RSpec.describe "Manage::Staffing shift vacancies", type: :request do
     expect(body).to include("Priya Kaur", "Lee Chen", "Can&#39;t make it", "Assigned")
     expect(body.index("Priya Kaur")).to be < body.index("Dana Morris")
     expect(body.index("Lee Chen")).to be < body.index("Marco Ruiz")
+
+    # The assign picker (no exclude params) still marks the one who dropped it, and a
+    # search that finds nobody says so instead of "no one is qualified".
+    get manage_people_picker_search_path(scope: "staff", shift_id: shift.id), headers: { "X-Requested-With" => "XMLHttpRequest" }
+    expect(response.body).to include("Can&#39;t make it")
+    get manage_people_picker_search_path(scope: "staff", shift_id: shift.id, q: "Zelda"), headers: { "X-Requested-With" => "XMLHttpRequest" }
+    expect(response.body).to include("No one qualified for Bar is named that.")
   end
 
   it "sends the manager's words to the chosen people, each with their own claim link" do

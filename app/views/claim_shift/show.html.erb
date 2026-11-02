@@ -39,7 +39,7 @@
           <p class="text-sm font-medium text-gray-900"><%= @organization.name %></p>
           <p class="text-sm text-gray-600"><%= @shift.starts_at.strftime("%A, %B %-d") %> · <%= shift_time_range(@shift) %></p>
           <% location_name = @shift.house_role.location&.name || @shift.source.try(:location).try(:name) %>
-          <% if location_name.present? %><p class="text-xs text-gray-500"><%= location_name %></p><% end %>
+          <% if location_name.present? && location_name != @shift.organization.name %><p class="text-xs text-gray-500"><%= location_name %></p><% end %>
           <% show_names = @shift.covered_shows.map { |s| "#{s.production&.name} (#{s.date_and_time.strftime('%-l:%M %p')})" } %>
           <% if show_names.any? %><p class="text-xs text-purple-700">That night: <%= show_names.to_sentence %></p><% end %>
         </div>

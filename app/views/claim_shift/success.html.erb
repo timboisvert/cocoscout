@@ -13,7 +13,7 @@
     <div class="bg-white shadow rounded-lg p-4 mb-6">
       <p class="text-sm font-medium text-gray-900"><%= @shift.starts_at.strftime("%A, %B %-d") %> · <%= shift_time_range(@shift) %></p>
       <% location_name = @shift.house_role.location&.name || @shift.source.try(:location).try(:name) %>
-      <% if location_name.present? %><p class="text-xs text-gray-500 mt-1"><%= location_name %></p><% end %>
+      <% if location_name.present? && location_name != @shift.organization.name %><p class="text-xs text-gray-500 mt-1"><%= location_name %></p><% end %>
     </div>
     <p class="text-center text-sm text-gray-600">It's on <%= link_to "My Shifts", my_shifts_path, class: "text-pink-600 underline" %> with the rest of your schedule.</p>
   </div>

@@ -95,23 +95,25 @@ class ShiftVacancyNotificationService
     end
 
     def vacancy_url(vacancy)
-      url_helpers.manage_staffing_vacancy_url(vacancy, host: default_host)
+      url_helpers.manage_staffing_vacancy_url(vacancy, **url_options)
     end
 
     def scheduling_url(shift)
-      url_helpers.manage_staffing_scheduling_url(day: shift.starts_at.to_date.iso8601, host: default_host)
+      url_helpers.manage_staffing_scheduling_url(day: shift.starts_at.to_date.iso8601, **url_options)
     end
 
     def my_shifts_url
-      url_helpers.my_shifts_url(host: default_host)
+      url_helpers.my_shifts_url(**url_options)
     end
 
     def url_helpers
       Rails.application.routes.url_helpers
     end
 
-    def default_host
-      Rails.application.config.action_mailer.default_url_options&.dig(:host) || "localhost:3000"
+    # The mailer's host and port (the links in an email are the mailer's).
+    def url_options
+      opts = Rails.application.config.action_mailer.default_url_options.presence || { host: "localhost", port: 3000 }
+      opts.slice(:host, :port, :protocol)
     end
   end
 end

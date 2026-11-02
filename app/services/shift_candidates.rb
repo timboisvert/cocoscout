@@ -12,10 +12,12 @@ class ShiftCandidates
   FIT = { "free" => 0, "partial" => 2, "unknown" => 4, "blocked" => 6 }.freeze
   HEADSHOTS = { profile_headshots: { image_attachment: :blob } }.freeze
 
-  Row = Struct.new(:person, :status, :verdict, :cast, :conflicts, :on_shift, :excluded, :invited, keyword_init: true) do
+  # dropped: they said they can't make this shift (a declined row), so no
+  # picker offers them, not even the assign one.
+  Row = Struct.new(:person, :status, :verdict, :cast, :conflicts, :on_shift, :excluded, :invited, :dropped, keyword_init: true) do
     def free? = status == "free"
     def clash? = cast.any? || conflicts.any?
-    def pickable? = !on_shift && !excluded && !invited
+    def pickable? = !on_shift && !excluded && !invited && !dropped
   end
 
   attr_reader :shift
@@ -58,6 +60,7 @@ class ShiftCandidates
     rows.each do |r|
       key = "Person_#{r.person.id}"
       if r.on_shift then already[key] = "Assigned"
+      elsif r.dropped then already[key] = "Can't make it"
       elsif r.excluded then already[key] = @exclude_label
       elsif r.invited then already[key] = "Already invited"
       elsif r.cast.any? then badges[key] << "In a show"
@@ -70,10 +73,21 @@ class ShiftCandidates
     end
     { people: rows.map(&:person), already: already, badges: badges, extras: extras,
       heading: "Qualified for #{shift.house_role.name}",
-      empty: (@fit == "all" ? "No one is qualified for this role yet." : "No one who can work this shift.") }
+      empty: empty_text }
+  end
+
+  # Everyone qualified who isn't on the shift, kept out, asked or dropped.
+  def askable
+    rows.select(&:pickable?)
   end
 
   private
+
+  def empty_text
+    return "No one qualified for #{shift.house_role.name} is named that." if @query.present?
+
+    @fit == "all" ? "No one is qualified for this role yet." : "No one who can work this shift."
+  end
 
   def qualified_people
     members = StaffRoleQualification.joins(organization_staff_member: :person)
@@ -89,6 +103,7 @@ class ShiftCandidates
     ids = people.map(&:id)
     resolver = StaffAvailabilityResolver.new(ids, from: shift.starts_at.to_date, to: shift.ends_at.to_date)
     on_shift = shift.active_assignments.map(&:person_id).to_set
+    dropped = shift.shift_assignments.declined.pluck(:person_id).to_set
     day = shift.source.is_a?(Show) ? shift.source.date_and_time.to_date : shift.starts_at.to_date
     shows = Show.joins(:production).where(productions: { organization_id: @organization.id }, date_and_time: day.all_day).includes(:production)
     cast = ShowPersonRoleAssignment.where(show_id: shows.map(&:id), assignable_type: "Person", assignable_id: ids)
@@ -109,7 +124,8 @@ class ShiftCandidates
       Row.new(person: person, status: status,
               verdict: { status: status, badge: StaffAvailabilityWording.badge(verdict), detail: StaffAvailabilityWording.detail(verdict) },
               cast: (cast[person.id] || []).map { |id| show_label[id] }.compact, conflicts: busy[person.id],
-              on_shift: on_shift.include?(person.id), excluded: @excluded_ids.include?(person.id), invited: @invited_ids.include?(person.id))
+              on_shift: on_shift.include?(person.id), excluded: @excluded_ids.include?(person.id), invited: @invited_ids.include?(person.id),
+              dropped: dropped.include?(person.id))
     end
     rows.select! { |r| r.status != "blocked" } if @fit == "can_work"
     rows.select! { |r| r.status.in?(%w[free unknown]) } if @fit == "free"
@@ -118,7 +134,7 @@ class ShiftCandidates
   end
 
   def rank(row)
-    return 9 if row.on_shift
+    return 9 if row.on_shift || row.dropped
     return 8 unless row.pickable?
 
     FIT.fetch(row.status, 4) + (row.clash? ? 1 : 0)

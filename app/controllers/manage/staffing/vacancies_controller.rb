@@ -19,7 +19,12 @@ module Manage
 
         @candidates = ShiftCandidates.new(@shift, exclude_keys: [ "Person_#{@vacancy.vacated_by_id}" ], exclude_label: "Can't make it",
                                                   invited_ids: @invitations.map(&:person_id))
-        @email_draft = EmailDraft.new(title: template.subject, body: template.body)
+        # The draft reads as the shift's own words (the role, the hours, the
+        # shows); only each person's name and claim link stay as tokens, and
+        # the page says so under the box.
+        variables = ShiftVacancyNotificationService.invitation_variables(@vacancy)
+        @email_draft = EmailDraft.new(title: ContentTemplate.interpolate(template.subject, variables),
+                                      body: ContentTemplate.interpolate(template.body, variables))
       end
 
       # The chosen people each get the manager's words with a claim link of

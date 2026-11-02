@@ -18,6 +18,7 @@
     end
   show_names = shift.covered_shows.map { |s| s.production&.name }.compact.uniq
   location_name = shift.house_role.location&.name || shift.source.try(:location).try(:name)
+  location_name = nil if location_name == shift.organization.name # the row already says the organization
   done_dot = "bg-pink-500 ring-pink-500"
   todo_dot = "bg-gray-200 ring-white"
   steps = [
@@ -186,7 +187,8 @@
             <% end %>
           <% end %>
         <% else %>
-          <p class="text-sm text-gray-500">Everyone qualified for <%= shift.house_role.name %> is on the shift or has been asked already.</p>
+          <% others = @candidates.rows.count { |r| !r.dropped && !r.excluded } %>
+          <p class="text-sm text-gray-500"><%= others.zero? ? "No one else is qualified for #{shift.house_role.name}. Add qualifications on Manage roles, or assign someone directly." : "Everyone else qualified for #{shift.house_role.name} is on the shift or has been asked already." %></p>
         <% end %>
       </div>
     </div>
