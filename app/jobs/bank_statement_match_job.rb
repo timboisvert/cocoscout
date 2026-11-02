@@ -14,6 +14,8 @@ class BankStatementMatchJob < ApplicationJob
 
     org = import.organization
     BankStatementMatcher.run!(org, org.bank_statement_lines.where(state: "open"))
+    # Then the organization's rules, over what the matching left open.
+    BankRules.apply!(org, rules: org.bank_rules.on_import.order(:id).to_a, lines: org.bank_statement_lines.where(state: "open").to_a, by: import.imported_by)
     lines = import.bank_statement_lines
     import.update!(status: "ready", error: nil, matched_count: lines.where(state: "matched").count, suggested_count: lines.where(state: "suggested").count)
     notify(import, lines)

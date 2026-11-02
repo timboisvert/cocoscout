@@ -8,9 +8,12 @@
   can_change = module_change?(:books)
   filters = { month: @month, kind: @kind }.compact
   open_button = ->(text, variant = "primary", size = "small") { render "shared/button", text: text, variant: variant, size: size, type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "bank-import-modal" } }
-  links = can_change ? [ { text: "Bring a statement in", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "bank-import-modal" } } ] : []
+  links = can_change ? [
+    { text: "Rules", variant: "secondary", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "bank-rules-modal" } },
+    { text: "Bring a statement in", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "bank-import-modal" } }
+  ] : []
 %>
-<div class="w-full mb-10" data-controller="bank-record">
+<div class="w-full mb-10" data-controller="bank-record bank-rule">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: { breadcrumbs: books_breadcrumbs, text: "Bank", links: links } %>
 
@@ -36,6 +39,11 @@
       <div class="mb-4 flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm text-blue-900" data-controller="auto-refresh" data-auto-refresh-interval-value="15000">
         <svg class="w-5 h-5 flex-none animate-spin text-blue-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
         <span>Matching the statement to the books. This takes a minute or two; you'll get a notification when it's done, and this page refreshes on its own.</span>
+      </div>
+    <% elsif @summary.applying_rules? %>
+      <div class="mb-4 flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm text-blue-900" data-controller="auto-refresh" data-auto-refresh-interval-value="15000">
+        <svg class="w-5 h-5 flex-none animate-spin text-blue-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
+        <span>Your rules are going through the lines waiting. You'll get a notification when that's done, and this page refreshes on its own.</span>
       </div>
     <% elsif @summary.failed %>
       <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900">The matching for <b><%= @summary.failed.title %></b> didn't finish. Its lines are here to deal with by hand; remove the statement and bring it in again to try the matching once more.</div>
@@ -108,5 +116,12 @@
             confirm_text: "Remove", url: manage_money_bank_statement_path(imp), method: :delete, form_data: { turbo: false } %>
     <% end %>
     <% if @summary.last %><%= render "manage/bank_statements/record_modal", **@modal %><% end %>
+    <%= render "manage/bank_statements/rules_modal", rules: @rules, summary: @summary %>
+    <%= render "manage/bank_statements/rule_modal", productions: @modal[:productions] %>
+    <% @rules.each do |rule| %>
+      <%= render "shared/confirm_modal", id: "remove-rule-#{rule.id}", title: "Remove this rule?",
+            message: "“#{rule.contains}” · #{rule.does}. What it already did stays as it is.",
+            confirm_text: "Remove", url: manage_money_bank_rule_path(rule), method: :delete, form_data: { turbo: false } %>
+    <% end %>
   <% end %>
 </div>

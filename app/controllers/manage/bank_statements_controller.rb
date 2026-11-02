@@ -30,6 +30,7 @@ module Manage
       @hints = BankStatementSummary.hints_for(org, @lines)
       @recent_done = org.bank_statement_lines.done.order(updated_at: :desc).limit(8).includes(:money_record).to_a
       @done_count = org.bank_statement_lines.done.count
+      @rules = org.bank_rules.includes(:production).order(:id).to_a
       @modal = bank_record_modal_locals if OrganizationAccess.allows?(Current.user, org, :books, :manage)
     end
 

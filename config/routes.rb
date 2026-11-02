@@ -1639,6 +1639,12 @@ Rails.application.routes.draw do
     post "money/books/bank/lines/:id/reopen", to: "bank_statements#reopen", as: "reopen_money_bank_line"
     post "money/books/bank/lines/match-all", to: "bank_statements#match_all", as: "match_all_money_bank_lines"
     delete "money/books/bank/statements/:id", to: "bank_statements#destroy", as: "money_bank_statement"
+    # Bank rules: a phrase in the bank's description records or ignores the line.
+    get    "money/books/bank/rules/preview", to: "bank_rules#preview", as: "preview_money_bank_rules"
+    post   "money/books/bank/rules/apply",   to: "bank_rules#apply",   as: "apply_money_bank_rules"
+    post   "money/books/bank/rules",         to: "bank_rules#create",  as: "money_bank_rules"
+    patch  "money/books/bank/rules/:id",     to: "bank_rules#update",  as: "money_bank_rule"
+    delete "money/books/bank/rules/:id",     to: "bank_rules#destroy"
     # Money recorded by hand: the sheet, a recorded entry's page, change, remove.
     get    "money/books/record",            to: "money_records#new",     as: "new_money_record"
     post   "money/books/record",            to: "money_records#create",  as: "money_records"

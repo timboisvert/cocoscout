@@ -24,6 +24,7 @@ class BankStatementSummary
   end
 
   def matching? = @imports.any?(&:matching?)
+  def applying_rules? = BankRules.applying?(organization)
   def failed = @imports.find(&:failed?)
   def difference_cents = statement&.closing_balance_cents && books_bank_on_closing_cents ? statement.closing_balance_cents - books_bank_on_closing_cents : nil
 

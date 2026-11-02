@@ -1,0 +1,85 @@
+<%# One rule, new or being changed: bank_rule_controller.js fills it from a
+    line's Rule link or a rule's Edit, and shows how many lines waiting it
+    fits as the phrase is typed. Saving runs it over those lines.
+      productions: the organization's productions, for the menu %>
+<%
+  input = "mt-1 block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  label = "block text-sm font-medium text-gray-700"
+  radio = "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500"
+  org = Current.organization
+%>
+<div id="bank-rule-modal"
+     class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+     data-controller="modal" data-bank-rule-target="modal"
+     data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-xl sm:mx-4 max-h-[92vh] overflow-y-auto"
+       data-action="click->modal#stopPropagation">
+    <div class="sticky top-0 z-10 flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white" data-bank-rule-target="title">New rule</h3>
+      <button type="button" data-action="click->modal#close" aria-label="Close"
+              class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <%= form_with url: manage_money_bank_rules_path, method: :post, data: { turbo: false, bank_rule_target: "form", bank_rule_preview_url_value: manage_preview_money_bank_rules_path } do |f| %>
+      <input type="hidden" name="_method" value="post" data-bank-rule-target="method">
+      <div class="px-6 pt-5 pb-6 space-y-5">
+        <label class="<%= label %>">
+          <span>When the bank's description has</span>
+          <input type="text" name="bank_rule[contains]" required placeholder="RESTAURANT DEPOT" class="<%= input %>" data-bank-rule-target="contains" data-action="input->bank-rule#preview">
+          <span class="block mt-1 text-xs text-gray-500">Capitals don't matter. Several phrases, separated by commas, when the bank spells a payee more than one way: any of them counts.</span>
+        </label>
+        <p class="text-sm text-gray-600 min-h-[1.25rem]" data-bank-rule-target="matches"></p>
+
+        <fieldset>
+          <legend class="<%= label %>">And the money goes</legend>
+          <div class="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+            <% [ [ "out", "Out" ], [ "in", "In" ], [ "any", "Either way" ] ].each do |value, name| %>
+              <label class="inline-flex items-center gap-2 text-sm text-gray-700"><input type="radio" name="bank_rule[direction]" value="<%= value %>" <%= "checked" if value == "out" %> class="<%= radio %>" data-action="change->bank-rule#refresh"> <%= name %></label>
+            <% end %>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend class="<%= label %>">Then</legend>
+          <div class="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700"><input type="radio" name="bank_rule[action]" value="record" checked class="<%= radio %>" data-action="change->bank-rule#refresh"> Record it as</label>
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700"><input type="radio" name="bank_rule[action]" value="ignore" class="<%= radio %>" data-action="change->bank-rule#refresh"> Ignore it</label>
+          </div>
+          <p class="mt-1 text-xs text-gray-500">Ignore a transfer between your own accounts or a personal charge. Either way needs Ignore; recording needs to know whether it's income or spending.</p>
+        </fieldset>
+
+        <div class="space-y-4" data-bank-rule-target="recordFields">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label class="<%= label %>" data-bank-rule-target="categoryOut">
+              <span>Category</span>
+              <%= select_tag "bank_rule[category_key]", options_for_select(MoneyCategories.spending_options(org)), prompt: "Choose one", class: input, id: "bank-rule-category-out" %>
+            </label>
+            <label class="<%= label %> hidden" data-bank-rule-target="categoryIn">
+              <span>Kind</span>
+              <%= select_tag "bank_rule[category_key]", options_for_select(MoneyCategories.income_options(org)), prompt: "Choose one", class: input, id: "bank-rule-category-in", disabled: true %>
+            </label>
+            <label class="<%= label %>">
+              <span data-bank-rule-target="counterpartyLabel">Paid to</span>
+              <input type="text" name="bank_rule[counterparty]" placeholder="Restaurant Depot" class="<%= input %>" data-bank-rule-target="counterparty">
+            </label>
+          </div>
+          <label class="<%= label %>">
+            <span>For a production <span class="font-normal text-gray-500">(optional)</span></span>
+            <%= select_tag "bank_rule[production_id]", options_for_select([ [ "Nothing in particular", "" ] ] + productions.map { |pr| [ pr.name, pr.id ] }), class: input, data: { bank_rule_target: "production" } %>
+          </label>
+        </div>
+
+        <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+          <input type="hidden" name="bank_rule[on_import]" value="0">
+          <input type="checkbox" name="bank_rule[on_import]" value="1" checked class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" data-bank-rule-target="onImport">
+          Also run it on statements brought in later
+        </label>
+      </div>
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+        <%= render "shared/button", text: "Save and apply", variant: "primary", size: "medium", type: :submit, data: { bank_rule_target: "submit" } %>
+      </div>
+    <% end %>
+  </div>
+</div>

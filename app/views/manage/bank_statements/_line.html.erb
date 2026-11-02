@@ -26,7 +26,7 @@
         <% if can_change %><%= render "shared/button", text: "Undo", variant: "secondary", size: "small", path: manage_reopen_money_bank_line_path(line, filters), method: :post %><% end %>
       </span>
     <% elsif can_change %>
-      <span class="flex-none flex items-center gap-2 lg:w-56 lg:justify-end">
+      <span class="flex-none flex items-center gap-2 lg:w-64 lg:justify-end">
         <% if line.suggested? && looks_like %>
           <%= render "shared/button", text: "Yes, that's it", variant: "primary", size: "small", path: manage_match_money_bank_line_path(line, filters), method: :post %>
           <%= render "shared/button", text: "No", variant: "secondary", size: "small", path: manage_reopen_money_bank_line_path(line, filters), method: :post %>
@@ -36,6 +36,9 @@
                         bank_record_on_param: line.on.iso8601, bank_record_memo_param: line.description, bank_record_line_param: line.id,
                         bank_record_category_param: hint&.dig(:category_key), bank_record_counterparty_param: hint&.dig(:counterparty), bank_record_summary_param: summary } %>
           <%= render "shared/button", text: "Ignore", variant: "secondary", size: "small", path: manage_ignore_money_bank_line_path(line, filters), method: :post %>
+          <button type="button" class="text-xs text-pink-600 hover:text-pink-700 cursor-pointer" title="A rule for every line like this one"
+                  data-action="click->bank-rule#open" data-bank-rule-contains-param="<%= line.description_key.presence || line.description %>" data-bank-rule-direction-param="<%= line.deposit? ? 'in' : 'out' %>"
+                  data-bank-rule-category-param="<%= hint&.dig(:category_key) %>" data-bank-rule-counterparty-param="<%= hint&.dig(:counterparty) %>">Rule</button>
         <% end %>
       </span>
     <% end %>

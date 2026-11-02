@@ -82,17 +82,34 @@
         </label>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <label class="<%= label %>">
-          <span>For</span>
-          <%= f.select :production_id, productions.map { |pr| [ pr.name, pr.id ] }, { include_blank: "Nothing in particular" }, class: input,
-                data: { record_money_target: "production", action: "change->record-money#filterShows" } %>
+      <%# A production and a date, each behind a switch (Tim, 2026-11-02):
+          most money is for nothing in particular, so the menus only show
+          when asked for. %>
+      <div class="space-y-3">
+        <label class="flex items-center gap-3 text-sm text-gray-700">
+          <%= render "shared/toggle_switch", checked: record.production_id.present?, aria_label: "For a specific production",
+                data: { record_money_target: "forProduction", action: "change->record-money#toggleProduction" } %>
+          <span>For a specific production</span>
         </label>
-        <label class="<%= label %>">
-          <span>A particular date <span class="font-normal text-gray-500">(optional)</span></span>
-          <%= f.select :show_id, options_for_select([ [ "The whole production", "" ] ] + shows.map { |s| [ "#{s.date_and_time.strftime('%b %-d, %Y')}#{" · #{s.secondary_name}" if s.secondary_name.present?}", s.id, { data: { production: s.production_id } } ] }, record.show_id),
-                {}, class: input, data: { record_money_target: "show" } %>
-        </label>
+        <div class="<%= 'hidden' if record.production_id.blank? %> space-y-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3" data-record-money-target="productionFields">
+          <label class="<%= label %>">
+            <span>Which production</span>
+            <%= f.select :production_id, productions.map { |pr| [ pr.name, pr.id ] }, { prompt: "Choose one" }, class: input,
+                  data: { record_money_target: "production", action: "change->record-money#filterShows" } %>
+          </label>
+          <label class="flex items-center gap-3 text-sm text-gray-700">
+            <%= render "shared/toggle_switch", checked: record.show_id.present?, aria_label: "For one of its dates",
+                  data: { record_money_target: "forShow", action: "change->record-money#toggleShow" } %>
+            <span>For one of its dates</span>
+          </label>
+          <div class="<%= 'hidden' if record.show_id.blank? %>" data-record-money-target="showFields">
+            <label class="<%= label %>">
+              <span>Which date</span>
+              <%= f.select :show_id, options_for_select([ [ "Choose one", "" ] ] + shows.map { |s| [ "#{s.date_and_time.strftime('%b %-d, %Y')}#{" · #{s.secondary_name}" if s.secondary_name.present?}", s.id, { data: { production: s.production_id } } ] }, record.show_id),
+                    {}, class: input, data: { record_money_target: "show" } %>
+            </label>
+          </div>
+        </div>
       </div>
 
       <fieldset>

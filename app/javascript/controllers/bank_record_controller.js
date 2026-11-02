@@ -45,8 +45,11 @@ export default class extends Controller {
         if (via) via.checked = true
         const amount = form.querySelector('[name="money_record[amount]"]')
         if (amount) amount.dispatchEvent(new Event("input", { bubbles: true }))
-        const production = form.querySelector('[name="money_record[production_id]"]')
-        if (production) production.dispatchEvent(new Event("change", { bubbles: true }))
+        const forProduction = form.querySelector('[data-record-money-target="forProduction"]')
+        if (forProduction) {
+            forProduction.checked = false
+            forProduction.dispatchEvent(new Event("change", { bubbles: true }))
+        }
         form.querySelectorAll("[data-bank-record-errors]").forEach(el => el.remove())
 
         if (this.hasSummaryTarget) this.summaryTarget.textContent = p.summary || ""
