@@ -37,6 +37,18 @@ module NativeAppHelper
     NativeAppVersion.production_mode?(request.user_agent)
   end
 
+  # The room every page leaves at its foot. In the app the floating Coco
+  # button is native, drawn over the page (60pt across, 20 in from the right,
+  # reaching 10 below the safe area on iPhone; about 76dp tall on Android),
+  # and the page is never told it is there. So an app page ends 112px above
+  # the bottom, and whatever sits last on it (a form's Save, a wizard's
+  # Next, Pay now) is beside the button when scrolled to the end, never under
+  # it (Tim, 2026-11-02). A browser keeps the usual 32px. Pinned bars make
+  # their own room for the button's width (shared/sticky_actions).
+  def page_bottom
+    turbo_native_app? ? "pb-28" : "pb-8"
+  end
+
   # The store this phone's web browser belongs to (:ios or :android), or nil
   # on a desktop and inside the app itself. For "get the app" nudges that
   # name one store, never two.
