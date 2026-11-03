@@ -1647,14 +1647,24 @@ Rails.application.routes.draw do
     post "money/books/bank/lines/:id/reopen", to: "bank_statements#reopen", as: "reopen_money_bank_line"
     post "money/books/bank/lines/match-all", to: "bank_statements#match_all", as: "match_all_money_bank_lines"
     delete "money/books/bank/statements/:id", to: "bank_statements#destroy", as: "money_bank_statement"
-    # Bank rules: a phrase in the bank's description records or ignores the line.
+    # Bank rules (a page of their own, Tim 2026-11-03): a phrase in the
+    # bank's description records or ignores the line. Sorting takes what's
+    # waiting one payee, then one line, at a time.
+    get    "money/books/bank/rules",         to: "bank_rules#index",   as: "money_bank_rules"
+    get    "money/books/bank/rules/new",     to: "bank_rules#new",     as: "new_money_bank_rule"
     get    "money/books/bank/rules/preview", to: "bank_rules#preview", as: "preview_money_bank_rules"
+    get    "money/books/bank/rules/export",  to: "bank_rules#export",  as: "export_money_bank_rules"
+    post   "money/books/bank/rules/import",  to: "bank_rules#import",  as: "import_money_bank_rules"
     post   "money/books/bank/rules/apply",   to: "bank_rules#apply",   as: "apply_money_bank_rules"
-    post   "money/books/bank/rules/suggestions/accept",  to: "bank_rules#accept",  as: "accept_money_bank_rule_suggestion"
-    post   "money/books/bank/rules/suggestions/dismiss", to: "bank_rules#dismiss", as: "dismiss_money_bank_rule_suggestion"
-    post   "money/books/bank/rules",         to: "bank_rules#create",  as: "money_bank_rules"
+    post   "money/books/bank/rules/dismiss", to: "bank_rules#dismiss", as: "dismiss_money_bank_payee"
+    post   "money/books/bank/rules",         to: "bank_rules#create"
+    get    "money/books/bank/rules/:id/edit", to: "bank_rules#edit",   as: "edit_money_bank_rule"
     patch  "money/books/bank/rules/:id",     to: "bank_rules#update",  as: "money_bank_rule"
     delete "money/books/bank/rules/:id",     to: "bank_rules#destroy"
+    get    "money/books/bank/sort",          to: "bank_sort#show",     as: "money_bank_sort"
+    post   "money/books/bank/sort/payee",    to: "bank_sort#payee",    as: "money_bank_sort_payee"
+    post   "money/books/bank/sort/line",     to: "bank_sort#line",     as: "money_bank_sort_line"
+    delete "money/books/bank/sort",          to: "bank_sort#stop"
     # Money recorded by hand: the sheet, a recorded entry's page, change, remove.
     get    "money/books/record",            to: "money_records#new",     as: "new_money_record"
     post   "money/books/record",            to: "money_records#create",  as: "money_records"

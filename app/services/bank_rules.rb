@@ -42,14 +42,27 @@ class BankRules
     result
   end
 
-  # How many lines waiting a rule would fit, and a few of them, for the
-  # rule form as it is typed.
-  def self.preview(organization, contains:, direction:)
-    rule = BankRule.new(organization: organization, contains: contains, direction: direction.presence_in(BankRule::DIRECTIONS) || "any")
-    return { count: 0, samples: [] } if rule.phrases.empty?
+  # What a rule as typed would do, for the rule page: how many lines
+  # waiting it fits, the first of them, what they add up to, and whether
+  # the lines already dealt with that it fits agree with it (recorded as
+  # the same category, or ignored by an ignore rule) or say otherwise.
+  def self.preview(organization, contains:, direction:, action: "record", category_key: nil)
+    rule = BankRule.new(organization: organization, contains: contains, direction: direction.presence_in(BankRule::DIRECTIONS) || "any",
+                        action: action.presence_in(BankRule::ACTIONS) || "record", category_key: category_key.presence)
+    empty = { count: 0, samples: [], lines: [], total_cents: 0, from: nil, to: nil, agree: 0, disagree: 0 }
+    return empty if rule.phrases.empty?
 
     lines = rule.waiting_lines
-    { count: lines.size, samples: lines.map(&:description).uniq.first(4) }
+    done = organization.bank_statement_lines.done.includes(:money_record).select { |line| rule.matches?(line) }
+    agree, disagree = done.partition do |line|
+      if line.state == "recorded" then rule.record? && line.money_record&.category_key == rule.category_key
+      elsif line.state == "ignored" then rule.ignore?
+      end
+    end
+    { count: lines.size, samples: lines.map(&:description).uniq.first(4),
+      lines: lines.first(8).map { |l| { on: l.on.strftime("%b %-d"), description: l.description, amount_cents: l.amount_cents } },
+      total_cents: lines.sum(&:amount_cents), from: lines.map(&:on).min&.strftime("%b %-d, %Y"), to: lines.map(&:on).max&.strftime("%b %-d, %Y"),
+      agree: agree.size, disagree: disagree.count { |l| l.state != "matched" } }
   end
 
   # The "applying" flag the bank page shows while a run is in the background.

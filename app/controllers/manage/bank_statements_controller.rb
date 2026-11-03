@@ -7,8 +7,9 @@ module Manage
   # row (BankStatementStreams), and Record it fills a modal on the page.
   # A statement comes in as a file from the modal; it is read once, here,
   # never kept, and its lines are matched in BankStatementMatchJob, which
-  # tells the person when it's done. Books access, by the grid; changing
-  # needs manage.
+  # tells the person when it's done. Rules and sorting have pages of their
+  # own (BankRulesController, BankSortController). Books access, by the
+  # grid; changing needs manage.
   class BankStatementsController < Manage::ManageController
     include BooksCategoriesGate
     include BankStatementStreams
@@ -31,14 +32,11 @@ module Manage
       @hints = BankStatementSummary.hints_for(org, @lines)
       @recent_done = org.bank_statement_lines.done.order(updated_at: :desc).limit(8).includes(:money_record).to_a
       @done_count = org.bank_statement_lines.done.count
-      @rules = org.bank_rules.includes(:production).order(:id).to_a
       return unless OrganizationAccess.allows?(Current.user, org, :books, :manage)
 
       @modal = bank_record_modal_locals
-      # What each rule would catch now, and the rules the lines suggest.
-      waiting = org.bank_statement_lines.to_deal_with.to_a
-      @rule_catches = @rules.to_h { |rule| [ rule.id, waiting.count { |line| rule.matches?(line) } ] }
-      @suggestions = BankRuleSuggestions.for(org)
+      # A lot waiting: the panel at the top counts the payees sorting would take first.
+      @payees = BankSort.payees(org) if @summary.open_count >= BankSort::THRESHOLD
     end
 
     # The upload. The file's text is read out of the request and parsed

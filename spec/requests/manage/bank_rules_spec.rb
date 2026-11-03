@@ -27,14 +27,21 @@ RSpec.describe "Manage::BankRules", type: :request do
     square_fee = line(Date.new(2026, 10, 5), -1_200, "SQUARE INC FEES")
     savings = line(Date.new(2026, 10, 6), -50_000, "ONLINE TRANSFER TO SAVINGS")
 
+    # The bank page points to the Rules page; a line's menu opens the rule page with its payee filled in.
     get manage_money_bank_path
-    expect(response.body).to include("bank-rules-modal", "bank-rule-modal", "No rules yet", "Make a rule", %(data-bank-rule-contains-param="RESTAURANT DEPOT CHICAGO IL"))
+    expect(response.body).to include(manage_money_bank_rules_path, manage_money_bank_sort_path, "Make a rule", ERB::Util.html_escape(manage_new_money_bank_rule_path(contains: "RESTAURANT DEPOT", direction: "out")))
+    expect(response.body).not_to include("bank-rules-modal", "bank-rule-modal")
+    get manage_money_bank_rules_path
+    expect(response.body).to include("Rules are what make the bank easy", "No rules yet", "Start sorting, 5 lines", "Export rules", "Import rules")
+    get manage_new_money_bank_rule_path(contains: "RESTAURANT DEPOT", direction: "out")
+    expect(response.body).to include("New rule", %(value="RESTAURANT DEPOT"), "What it catches", "Save and apply")
 
     get manage_preview_money_bank_rules_path(contains: "restaurant depot, restaurant dep", direction: "out"), headers: { "Accept" => "application/json" }
-    expect(response.parsed_body).to eq("count" => 2, "samples" => [ "RESTAURANT DEP 0612", "RESTAURANT DEPOT #0612 CHICAGO IL" ])
+    expect(response.parsed_body).to include("count" => 2, "samples" => [ "RESTAURANT DEP 0612", "RESTAURANT DEPOT #0612 CHICAGO IL" ], "total_cents" => -28_150, "from" => "Oct 3, 2026", "to" => "Oct 17, 2026", "agree" => 0, "disagree" => 0)
+    expect(response.parsed_body["lines"].map { |l| l["amount_cents"] }).to eq([ -9_900, -18_250 ])
 
     post manage_money_bank_rules_path, params: { bank_rule: { contains: "restaurant depot, restaurant dep", direction: "out", action: "record", category_key: "production", counterparty: "Restaurant Depot", on_import: "1" } }
-    expect(response).to redirect_to(manage_money_bank_path)
+    expect(response).to redirect_to(manage_money_bank_rules_path)
     expect(flash[:notice]).to include("Rule saved.", "2 lines dealt with", "2 recorded")
     expect(depot1.reload.state).to eq("recorded")
     expect(depot2.reload.state).to eq("recorded")
@@ -56,12 +63,21 @@ RSpec.describe "Manage::BankRules", type: :request do
     post manage_money_bank_rules_path, params: { bank_rule: { contains: "TRANSFER TO SAVINGS", direction: "any", action: "ignore" } }
     expect(savings.reload.state).to eq("ignored")
 
-    # Recording needs to know income from spending.
+    # Recording needs to know income from spending: the page comes back with the mistake.
     post manage_money_bank_rules_path, params: { bank_rule: { contains: "FLOOD BROTHERS", direction: "any", action: "record", category_key: "production" } }
-    expect(flash[:alert]).to include("money in or money out")
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.body).to include("money in or money out")
 
-    get manage_money_bank_path
-    expect(response.body).to include("“restaurant depot” or “restaurant dep”", "Record as", "Restaurant Depot", "2 lines so far", "Ignore", "remove-rule-#{rule.id}")
+    # The lines already dealt with say whether a rule as typed agrees with them.
+    get manage_preview_money_bank_rules_path(contains: "restaurant depot", direction: "out", rule_action: "record", category_key: "marketing"), headers: { "Accept" => "application/json" }
+    expect(response.parsed_body).to include("count" => 0, "agree" => 0, "disagree" => 1)
+    get manage_preview_money_bank_rules_path(contains: "restaurant depot", direction: "out", rule_action: "record", category_key: "production"), headers: { "Accept" => "application/json" }
+    expect(response.parsed_body).to include("agree" => 1, "disagree" => 0)
+
+    get manage_money_bank_rules_path
+    expect(response.body).to include("“restaurant depot” or “restaurant dep”", "Record as", "Restaurant Depot", "2 lines so far", "Ignore", "remove-rule-#{rule.id}", manage_edit_money_bank_rule_path(rule))
+    get manage_edit_money_bank_rule_path(rule)
+    expect(response.body).to include("Change this rule", %(value="restaurant depot, restaurant dep"), "Restaurant Depot")
 
     patch manage_money_bank_rule_path(rule), params: { bank_rule: { contains: "RESTAURANT DEPOT", direction: "out", action: "record", category_key: "production", counterparty: "Restaurant Depot, Inc." } }
     expect(rule.reload.counterparty).to eq("Restaurant Depot, Inc.")
@@ -97,58 +113,81 @@ RSpec.describe "Manage::BankRules", type: :request do
     expect(owner.notifications.last.title).to include("40 lines", "0 left")
   end
 
-  # Suggested rules (Tim, 2026-11-02): from this organization's own lines
-  # and what was done with them; yes makes and runs the rule, no hides it.
-  it "suggests rules from payees seen more than once, with what was done before and how many lines they catch" do
-    a = line(Date.new(2026, 10, 3), -18_250, "POS DEBIT RESTAURANT DEPOT CHICAGO IL")
-    b = line(Date.new(2026, 10, 10), -9_900, "POS DEBIT RESTAURANT DEPOT CHICAGO IL")
-    line(Date.new(2026, 10, 17), -7_700, "POS DEBIT RESTAURANT DEPOT CHICAGO IL")
+  # The payees without a rule (BankPayees, Tim 2026-11-03): grouped by what
+  # the bank says, most lines first; "it varies" takes one off the list.
+  it "lists the payees without a rule, grouped the bank's way, and takes one off for good" do
+    3.times { |i| line(Date.new(2026, 10, 3 + i), -18_250, "FACEBK *UDRM#{i}VHTS2 650-5434800 DE 10/0#{3 + i}") }
+    line(Date.new(2026, 10, 9), -4_400, "FACEBK *QUW2CBWZB4 650-5434800 CA 10/09")
     line(Date.new(2026, 10, 4), 41_200, "ORIG CO NAME:ChgTheatres334CR ORIG ID:3630393341 DESC DATE:251004")
     line(Date.new(2026, 10, 11), 39_100, "ORIG CO NAME:ChgTheatres334CR ORIG ID:3630393341 DESC DATE:251011")
-    once = line(Date.new(2026, 10, 5), -1_200, "ONLY ONCE LLC")
-    savings1 = line(Date.new(2026, 10, 6), -50_000, "Online Transfer to SAV ...9921 transaction#: 1")
-    savings2 = line(Date.new(2026, 10, 20), -50_000, "Online Transfer to SAV ...9921 transaction#: 2")
-    [ a, b ].each do |l|
-      post manage_money_records_path, params: { bank_line: l.id, money_record: { kind: "out", on: l.on.iso8601, amount: format("%.2f", l.amount_cents.abs / 100.0), category_key: "production", counterparty: "Restaurant Depot", via: "bank" } }
-    end
-    post manage_ignore_money_bank_line_path(savings1)
+    line(Date.new(2026, 10, 5), -1_200, "ONLY ONCE LLC")
+    line(Date.new(2026, 10, 6), -50_000, "Online Transfer to SAV ...9921 transaction#: 1")
+    line(Date.new(2026, 10, 20), 50_000, "Online Transfer from SAV ...9921 transaction#: 2")
+    line(Date.new(2026, 10, 7), -12_500, "Zelle payment to Jaki Torres Cleaner JPM99cpv028k")
+    line(Date.new(2026, 10, 14), -12_500, "Zelle payment to Jaki Torres Cleaner JPM99clkdxub")
+    line(Date.new(2026, 10, 15), -32_400, "CHECK 143")
+    line(Date.new(2026, 10, 16), -10_000, "CHECK 144")
 
-    suggestions = BankRuleSuggestions.for(org)
-    depot = suggestions.find { |sg| sg.phrase == "RESTAURANT DEPOT" }
-    expect(depot).to have_attributes(direction: "out", action: "record", category_key: "production", counterparty: "Restaurant Depot", waiting_count: 1, seen_count: 3, times: 2)
-    theatres = suggestions.find { |sg| sg.phrase == "CHGTHEATRES" }
-    expect(theatres).to have_attributes(direction: "in", action: nil, waiting_count: 2, seen_count: 2)
-    # A transfer ignored by hand once suggests ignoring the rest; a payee seen once suggests nothing.
-    expect(suggestions.find { |sg| sg.phrase == "SAV" }).to have_attributes(direction: "out", action: "ignore", times: 1, waiting_count: 1)
-    expect(suggestions.map(&:phrase)).not_to include("ONLY ONCE")
-    expect(once.reload.state).to eq("open")
+    payees = BankSort.payees(org)
+    expect(payees.map { |g| [ g.name, g.kind, g.direction, g.count ] }).to eq([
+      [ "Facebook", "card", "out", 4 ], [ "Your own accounts", "transfer", "any", 2 ], [ "ChgTheatres334CR", "draft", "in", 2 ],
+      [ "Jaki Torres Cleaner", "zelle_to", "out", 2 ], [ "Checks", "check", "out", 2 ]
+    ])
+    expect(payees.first.phrases).to eq([ "FACEBK" ])
+    expect(payees.find { |g| g.kind == "transfer" }.phrases).to eq([ "Online Transfer" ])
+    expect(payees.find { |g| g.kind == "zelle_to" }.phrases).to eq([ "to Jaki Torres Cleaner" ])
+    expect(payees.last.rule?).to be(false)
 
-    get manage_money_bank_path
-    expect(response.body).to include("Suggested from your statements", "Has “RESTAURANT DEPOT”", "what you did 2 times", "Catches 1 line waiting", "seen 3 times",
-                                     "Has “CHGTHEATRES”", "Needs a category", "Yes, choose a category", "bank-rule-suggestion-#{depot.key}")
+    get manage_money_bank_rules_path
+    expect(response.body).to include("Payees without a rule", ">5<", "Facebook", "Card purchase", "FACEBK", "Your own accounts", "Transfers between your own accounts", "Jaki Torres Cleaner", "Checks", "Record each one")
+    expect(response.body).not_to include("Only Once")
 
-    stream = { "Accept" => "text/vnd.turbo-stream.html" }
-    post manage_accept_money_bank_rule_suggestion_path(key: depot.key, contains: depot.phrase, direction: "out", rule_action: "record", category_key: "production", counterparty: "Restaurant Depot"), headers: stream
-    expect(response.media_type).to eq("text/vnd.turbo-stream.html")
-    expect(response.body).to include(%(target="bank-rule-suggestion-#{depot.key}"), "1 line dealt with", "data-bank-rules-changed")
-    rule = org.bank_rules.reload.last
-    expect(rule.contains).to eq("RESTAURANT DEPOT")
-    expect(org.bank_statement_lines.where(description_key: a.description_key).pluck(:state).uniq).to eq([ "recorded" ])
-    expect(BankRuleSuggestions.for(org).map(&:phrase)).not_to include("RESTAURANT DEPOT")
+    post manage_dismiss_money_bank_payee_path(key: payees.first.key, direction: "out")
+    expect(org.bank_rule_dismissals.pluck(:phrase, :direction)).to eq([ [ payees.first.key, "out" ] ])
+    expect(BankSort.payees(org).map(&:name)).not_to include("Facebook")
 
-    post manage_dismiss_money_bank_rule_suggestion_path(key: theatres.key, phrase: theatres.phrase, direction: "in"), headers: stream
-    expect(response.body).to include(%(target="bank-rule-suggestion-#{theatres.key}"))
-    expect(response.body).not_to include("data-bank-rules-changed")
-    expect(org.bank_rule_dismissals.pluck(:phrase, :direction)).to eq([ [ "CHGTHEATRES", "in" ] ])
-    expect(BankRuleSuggestions.for(org).map(&:phrase)).not_to include("CHGTHEATRES")
+    # A rule that fits a payee's lines takes it off the list too, and says how many it catches.
+    org.bank_rules.create!(contains: "Online Transfer", direction: "any", action: "ignore")
+    get manage_money_bank_rules_path
+    expect(response.body).to include("Catches 2 lines waiting · not used yet", ">Apply<")
+    expect(response.body).not_to include("Your own accounts")
+    post manage_apply_money_bank_rules_path(id: org.bank_rules.last.id)
+    expect(response).to redirect_to(manage_money_bank_rules_path)
+    expect(org.bank_statement_lines.where(state: "ignored").count).to eq(2)
+  end
 
-    # A rule says how many lines waiting it would catch now, and can be applied by itself.
-    savings2.reopen! if savings2.reload.state != "open"
-    org.bank_rules.create!(contains: "Transfer to SAV", direction: "out", action: "ignore")
-    get manage_money_bank_path
-    expect(response.body).to include("Catches 1 line waiting · not used yet", ">Apply<")
-    post manage_apply_money_bank_rules_path(id: org.bank_rules.reload.last.id)
-    expect(savings2.reload.state).to eq("ignored")
+  # Rules as a file (Tim, 2026-11-03): made in development, carried to production.
+  it "exports the rules to a file and imports them, skipping the ones already there" do
+    production = create(:production, organization: org, name: "Dracula")
+    org.bank_rules.create!(contains: "RESTAURANT DEPOT, RESTAURANT DEP", direction: "out", action: "record", category_key: "production", counterparty: "Restaurant Depot", production: production)
+    org.bank_rules.create!(contains: "Online Transfer", direction: "any", action: "ignore", on_import: false)
+    get manage_export_money_bank_rules_path
+    expect(response.media_type).to eq("application/json")
+    expect(response.headers["Content-Disposition"]).to include("cocoscout-bank-rules-")
+    file = response.body
+    data = JSON.parse(file)
+    expect(data["rules"]).to eq([
+      { "contains" => "RESTAURANT DEPOT, RESTAURANT DEP", "direction" => "out", "action" => "record", "category_key" => "production", "counterparty" => "Restaurant Depot", "production" => "Dracula", "on_import" => true },
+      { "contains" => "Online Transfer", "direction" => "any", "action" => "ignore", "category_key" => nil, "counterparty" => nil, "production" => nil, "on_import" => false }
+    ])
+
+    other = create(:organization, :pro, owner: owner)
+    create(:organization_role, :manager, user: owner, organization: other)
+    other.bank_rules.create!(contains: "online transfer", direction: "any", action: "ignore")
+    extra = JSON.parse(file)
+    extra["rules"] << { "contains" => "NOPE", "direction" => "out", "action" => "record", "category_key" => "not_a_category" }
+    extra["rules"] << { "contains" => "", "direction" => "out", "action" => "ignore" }
+    result = BankRulesFile.import!(other, JSON.generate(extra), by: owner)
+    expect(result.to_h).to eq(added: 1, already: 1, skipped: 2)
+    added = other.bank_rules.order(:id).last
+    expect(added).to have_attributes(contains: "RESTAURANT DEPOT, RESTAURANT DEP", direction: "out", category_key: "production", counterparty: "Restaurant Depot", production: nil, on_import: true, created_by: owner)
+
+    upload = Rack::Test::UploadedFile.new(StringIO.new(file), "application/json", original_filename: "rules.json")
+    post manage_import_money_bank_rules_path, params: { file: upload }
+    expect(response).to redirect_to(manage_money_bank_rules_path)
+    expect(flash[:notice]).to include("0 rules added", "2 already here")
+    post manage_import_money_bank_rules_path, params: { file: Rack::Test::UploadedFile.new(StringIO.new("{\"nope\": true}"), "application/json", original_filename: "x.json") }
+    expect(flash[:alert]).to include("isn't a CocoScout rules file")
   end
 
   it "keeps the bank page read-only for someone without manage on Books" do
@@ -159,5 +198,7 @@ RSpec.describe "Manage::BankRules", type: :request do
     # The module gate turns a viewer's POST away (bank rules are Books).
     expect(response).to have_http_status(:redirect)
     expect(org.bank_rules.count).to eq(0)
+    get manage_money_bank_sort_path
+    expect(response).to redirect_to(manage_money_bank_path)
   end
 end

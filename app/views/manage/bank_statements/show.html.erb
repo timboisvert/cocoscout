@@ -3,17 +3,22 @@
     one matched to the books, recorded, or ignored without leaving the page
     (Tim, 2026-11-02): an action on a row answers with a Turbo Stream that
     swaps the row, and Record it fills a modal here. A statement comes in
-    through the modal the top-right button opens. %>
+    through the modal the top-right button opens. Rules and Sort are pages
+    of their own (2026-11-03); with a lot waiting, the panel at the top
+    points there. %>
 <%
   can_change = module_change?(:books)
   filters = { month: @month, kind: @kind }.compact
   open_button = ->(text, variant = "primary", size = "small") { render "shared/button", text: text, variant: variant, size: size, type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "bank-import-modal" } }
-  links = can_change ? [
-    { text: "Rules", variant: "secondary", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "bank-rules-modal" } },
-    { text: "Bring a statement in", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "bank-import-modal" } }
-  ] : []
+  links = if can_change
+    [ ({ text: "Sort", variant: "secondary", path: manage_money_bank_sort_path } if @summary.open_count.positive?),
+      { text: "Rules", variant: "secondary", path: manage_money_bank_rules_path },
+      { text: "Bring a statement in", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "bank-import-modal" } } ].compact
+  else
+    [ { text: "Rules", variant: "secondary", path: manage_money_bank_rules_path } ]
+  end
 %>
-<div class="w-full mb-10" data-controller="bank-record bank-rule">
+<div class="w-full mb-10" data-controller="bank-record">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: { breadcrumbs: books_breadcrumbs, text: "Bank", links: links } %>
 
@@ -49,6 +54,13 @@
       <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900">The matching for <b><%= @summary.failed.title %></b> didn't finish. Its lines are here to deal with by hand; remove the statement and bring it in again to try the matching once more.</div>
     <% end %>
 
+    <% if @payees %>
+      <%# A lot to sort (BankSort::THRESHOLD lines waiting): the way through it, before the tiles. %>
+      <%= render "shared/alert_panel", eyebrow: "A lot to sort",
+            headline: "#{number_with_delimiter(@summary.open_count)} lines waiting#{@payees.any? ? " · #{@payees.size} payees you see again and again" : ''}",
+            body: "Let's go through it together. First the payees that keep coming back, one at a time; say what each one is and a rule takes care of every line from them, now and every statement after. Then the rest, one line at a time, with the usual answers a tap away.#{" On this statement the first #{[ @payees.size, 10 ].min} payees alone cover #{@payees.first(10).sum(&:count)} lines." if @payees.size > 1}",
+            actions: [ { text: "Sort them with me", path: manage_money_bank_sort_path }, { text: "Rules", path: manage_money_bank_rules_path } ] %>
+    <% end %>
     <%= render "manage/bank_statements/tiles", summary: @summary %>
 
     <section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
@@ -116,12 +128,5 @@
             confirm_text: "Remove", url: manage_money_bank_statement_path(imp), method: :delete, form_data: { turbo: false } %>
     <% end %>
     <% if @summary.last %><%= render "manage/bank_statements/record_modal", **@modal %><% end %>
-    <%= render "manage/bank_statements/rules_modal", rules: @rules, catches: @rule_catches, suggestions: @suggestions, summary: @summary %>
-    <%= render "manage/bank_statements/rule_modal", productions: @modal[:productions], shows: @modal[:shows] %>
-    <% @rules.each do |rule| %>
-      <%= render "shared/confirm_modal", id: "remove-rule-#{rule.id}", title: "Remove this rule?",
-            message: "“#{rule.contains}” · #{rule.does}. What it already did stays as it is.",
-            confirm_text: "Remove", url: manage_money_bank_rule_path(rule), method: :delete, form_data: { turbo: false } %>
-    <% end %>
   <% end %>
 </div>

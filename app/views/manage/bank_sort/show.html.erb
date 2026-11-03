@@ -1,0 +1,34 @@
+<% content_for :title, "Sorting" %>
+<%# Books → Bank → Sort (Tim, 2026-11-03): the progress band for the whole
+    job, then one payee (part 1) or one line (part 2) a screen. Every
+    answer posts and the next one loads; Stop for now keeps what's done. %>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <% if @done %>
+    <%= render partial: "shared/top_menu", locals: { breadcrumbs: books_breadcrumbs + [ [ "Bank", manage_money_bank_path ] ], text: "Sorting" } %>
+    <div class="rounded-xl border border-gray-200 bg-white px-5 py-6 text-sm text-gray-600 flex items-center gap-3">
+      <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-50 text-green-600 flex-none"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></span>
+      <span>Every line is dealt with. <%= link_to "Back to the bank", manage_money_bank_path, class: "text-pink-600 hover:text-pink-700" %> or <%= link_to "look at your rules", manage_money_bank_rules_path, class: "text-pink-600 hover:text-pink-700" %>.</span>
+    </div>
+  <% else %>
+    <%
+      sorted = @state.sorted(@waiting)
+      percent = @state.total.positive? ? [ (sorted * 100.0 / @state.total).round, 2 ].max : 2
+      heading = @payee ? "Sorting · payee #{@position} of #{@payees_count}" : "Sorting · #{pluralize(@left, 'line')} left"
+    %>
+    <%= render partial: "shared/top_menu", locals: { breadcrumbs: books_breadcrumbs + [ [ "Bank", manage_money_bank_path ] ], text: heading,
+          links: [ { text: "Stop for now", variant: "secondary", path: manage_money_bank_sort_path, method: :delete, form: { data: { turbo: false } } } ] } %>
+    <div class="mb-5">
+      <div class="flex items-center justify-between text-xs text-gray-600 mb-1.5">
+        <span><%= @payee ? "Part 1 of 2, the payees you see often" : "Part 2 of 2, one line at a time" %> · <%= number_with_delimiter(sorted) %> of <%= number_with_delimiter(@state.total) %> sorted</span>
+        <span class="tabular-nums"><%= pluralize(@state.rules_made, "rule") %> made</span>
+      </div>
+      <div class="h-2 rounded-full bg-gray-100 overflow-hidden"><div class="h-full bg-pink-500 rounded-full" style="width: <%= percent %>%"></div></div>
+    </div>
+    <% if @payee %>
+      <%= render "manage/bank_sort/payee", group: @payee, siblings: @siblings, guess: @guess %>
+    <% else %>
+      <%= render "manage/bank_sort/line", line: @line, reading: @reading, looks_like: @looks_like, hint: @hint, kind: @kind, chips: @chips, productions: @productions, shows: @shows %>
+    <% end %>
+  <% end %>
+</div>

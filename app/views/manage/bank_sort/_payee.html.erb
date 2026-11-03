@@ -1,0 +1,134 @@
+<%# Part 1, one payee: what the bank shows on the left, what it is on the
+    right. Record or ignore every time writes the rule (the siblings
+    ticked join it); it varies dismisses the payee; skip puts it off.
+    Checks have nothing for a rule to go on: shown once, then left.
+      group:    a BankPayees::Group
+      siblings: groups that look like the same payee, offered
+      guess:    [category_key, counterparty] or nil %>
+<%
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  org = Current.organization
+  input = "mt-1 block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  own = BankPayees::KIND_NAMES.key?(group.kind)
+  sign = group.direction == "in" ? "+" : (group.direction == "out" ? "−" : "")
+  explain = case group.kind
+  when "provider" then "Looks like payouts from a payment provider: the bank names the sender by your own name, and the reference starts with ST-."
+  when "transfer" then "Money moved between your own accounts. It isn't income or spending; the books already know both sides."
+  when "deposit" then "Cash and checks you took to the bank. Usually door or bar cash; say what it is and every deposit is recorded that way."
+  when "withdrawal" then "Cash taken out at the bank or an ATM."
+  when "fee" then "What the bank charges you."
+  when "check" then "The bank doesn't say who a check went to, so no rule can tell one from another. They come up one by one in part 2, where each is recorded with its number."
+  when "zelle_to" then "A person you pay by Zelle.#{' The same amount most times, so it reads like a wage.' if group.steady?}"
+  when "zelle_from" then "A person who pays you by Zelle."
+  when "card" then "A card purchase at the same place."
+  when "draft" then "A bank draft: a company that takes its payment from your account."
+  when "online" then "A payment you sent from the bank's website."
+  end
+  answers = group.kind == "check" ? [] : [
+    [ "record", "Record it, every time", "Money #{group.direction == 'in' ? 'in from' : 'out to'} this payee is always the same kind of thing." ],
+    [ "ignore", "Ignore it, every time", "A transfer between your own accounts, or not the organization's money." ],
+    [ "varies", "It varies, no rule", "Leave these to record one by one. We won't ask about this payee again." ]
+  ]
+%>
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start" data-controller="bank-sort">
+  <section class="lg:col-span-2 rounded-xl border border-gray-200 bg-white overflow-hidden">
+    <%= render "shared/section_heading", padding: "px-5 py-3", title: "What the bank shows" %>
+    <div class="px-5 py-4 space-y-4 text-sm">
+      <div>
+        <div class="text-xs text-gray-500"><%= group.kind_label %></div>
+        <div class="text-2xl font-bold text-gray-900"><%= group.name %></div>
+        <% if explain %><div class="text-gray-600 mt-0.5"><%= explain %></div><% end %>
+      </div>
+      <dl class="grid grid-cols-2 gap-x-4 gap-y-2">
+        <div><dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Lines</dt><dd class="font-semibold tabular-nums"><%= group.count %> · money <%= group.direction == "any" ? "either way" : group.direction %></dd></div>
+        <div><dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Adds up to</dt><dd class="font-semibold tabular-nums <%= group.direction == 'in' ? 'text-green-700' : '' %>"><%= sign %><%= money.call(group.total_cents) %></dd></div>
+        <div><dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">When</dt><dd class="tabular-nums"><%= group.from.strftime("%b %-d") %> to <%= group.to.strftime("%b %-d, %Y") %><% if group.count >= 4 %>, about <%= group.per_week >= 1 ? "#{group.per_week.round} a week" : "#{(group.per_week * 4.3).round} a month" %><% end %></dd></div>
+        <div><dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Typically</dt><dd class="tabular-nums"><%= money.call(group.typical_cents) %><% if group.biggest_cents != group.typical_cents %> · the biggest <%= money.call(group.biggest_cents) %><% end %></dd></div>
+      </dl>
+      <% if group.spellings.any? { |p, _| p.present? } %>
+        <div>
+          <div class="text-[11px] font-medium uppercase tracking-wide text-gray-500 mb-1">The bank spells it</div>
+          <div class="flex flex-wrap gap-1.5">
+            <% group.spellings.each do |phrase, n| %>
+              <% next if phrase.blank? %>
+              <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-700"><%= phrase %> <span class="ml-1 text-gray-400"><%= n %></span></span>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+      <% if siblings.any? && group.rule? %>
+        <div class="rounded-lg border border-pink-200 bg-pink-50 px-3 py-2.5">
+          <div class="text-xs font-medium text-pink-700 mb-1">Also these? They look like the same payee.</div>
+          <% siblings.each do |s| %>
+            <label class="flex items-center gap-2 text-sm text-gray-800 py-0.5">
+              <input type="checkbox" name="also[]" value="<%= s.key %>" form="bank-sort-payee" data-count="<%= s.open.size %>" data-action="change->bank-sort#also" class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+              <span><%= s.name %> <span class="text-gray-500">· <%= pluralize(s.count, "line") %>, <%= sign %><%= money.call(s.total_cents) %><%= s.spellings.first && s.spellings.first.first != s.name ? ", “#{s.spellings.first.first}”" : "" %></span></span>
+            </label>
+          <% end %>
+        </div>
+      <% end %>
+      <div>
+        <div class="text-[11px] font-medium uppercase tracking-wide text-gray-500 mb-1">A few of the lines</div>
+        <ul class="divide-y divide-gray-100 rounded-lg border border-gray-200 text-xs">
+          <% group.samples.each do |l| %>
+            <li class="px-3 py-2 flex gap-3"><span class="w-20 flex-none text-gray-500 tabular-nums"><%= l.on.strftime("%b %-d, %Y") %></span><span class="flex-1 min-w-0 truncate text-gray-700" title="<%= l.description %>"><%= l.description %></span><span class="flex-none text-right tabular-nums font-semibold <%= l.deposit? ? 'text-green-700' : 'text-gray-900' %>"><%= l.deposit? ? "+" : "−" %><%= money.call(l.amount_cents.abs) %></span></li>
+          <% end %>
+        </ul>
+        <% if group.suggested.any? %>
+          <p class="mt-2 text-xs text-blue-900"><%= pluralize(group.suggested.size, "of these looks", plural: "of these look") %> like something already on the books. A rule leaves those for you to confirm one by one.</p>
+        <% end %>
+      </div>
+    </div>
+  </section>
+
+  <section class="lg:col-span-3 rounded-xl border border-gray-200 bg-white overflow-hidden">
+    <%= render "shared/section_heading", padding: "px-5 py-3", title: "What is it?" %>
+    <%= form_with url: manage_money_bank_sort_payee_path, method: :post, id: "bank-sort-payee", data: { turbo: false } do %>
+      <input type="hidden" name="key" value="<%= group.key %>">
+      <div class="px-5 py-4 space-y-3 text-sm">
+        <% if group.kind == "check" %>
+          <p class="text-gray-600">No rule to make here. Leave them and go on, or ignore every check if the organization pays nothing by check.</p>
+        <% end %>
+        <% answers.each_with_index do |(value, title, blurb), i| %>
+          <label class="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-400 has-[:checked]:bg-pink-50">
+            <input type="radio" name="answer" value="<%= value %>" <%= "checked" if i.zero? %> class="mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" data-action="change->bank-sort#choose">
+            <span class="flex-1 min-w-0">
+              <span class="font-medium text-gray-900"><%= title %></span>
+              <span class="block text-gray-600"><%= blurb %></span>
+              <% if value == "record" %>
+                <span class="block mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3" data-bank-sort-target="recordFields">
+                  <span class="block">
+                    <span class="block text-sm font-medium text-gray-700 mb-1"><%= group.direction == "in" ? "Kind" : "Category" %></span>
+                    <%= render "shared/category_picker", name: "category_key", kind: (group.direction == "in" ? :income : :spending), organization: org, value: guess&.first, id: "bank-sort-category" %>
+                  </span>
+                  <span class="block">
+                    <span class="block text-sm font-medium text-gray-700 mb-1"><%= group.direction == "in" ? "From" : "Paid to" %></span>
+                    <input type="text" name="counterparty" value="<%= guess ? guess.last : (own ? '' : group.name) %>" class="<%= input %> mt-0" placeholder="<%= own ? 'Optional' : group.name %>">
+                  </span>
+                </span>
+                <% if guess %>
+                  <span class="block mt-2 text-xs text-gray-500">We guessed <%= MoneyCategories.label_for(guess.first, group.direction == "in" ? :income : :spending, organization: org) %><%= case group.kind when "provider" then " because these arrive the way a ticket seller pays out" when "fee" then " because the bank says so" when "zelle_to" then " from the steady amount" end %>. Change it if that's wrong.</span>
+                <% end %>
+              <% end %>
+            </span>
+          </label>
+        <% end %>
+        <% if group.rule? %>
+          <label class="pt-2 flex items-center gap-3 text-gray-700" data-bank-sort-target="ruleFields">
+            <%= render "shared/toggle_switch", name: "on_import", checked: true, hidden_false: true, aria_label: "Also run it on statements brought in later" %>
+            <span>Also run it on statements brought in later</span>
+          </label>
+        <% end %>
+      </div>
+      <div class="px-5 py-4 bg-gray-50 border-t border-gray-200 flex flex-col-reverse sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-2">
+        <% if group.kind == "check" %>
+          <%= render "shared/button", text: "Ignore every check", variant: "secondary", size: "medium", type: :submit, name: "answer", value: "ignore_all" %>
+          <%= render "shared/button", text: "Leave them, go on", variant: "primary", size: "medium", type: :submit, name: "answer", value: "skip" %>
+        <% else %>
+          <%= render "shared/button", text: "Skip, ask me later", variant: "secondary", size: "medium", type: :submit, name: "answer", value: "skip", data: { bank_sort_target: "skip" } %>
+          <%= render "shared/button", text: "Save the rule, #{pluralize(group.open.size, 'line')}, and go on", variant: "primary", size: "medium", type: :submit, data: { bank_sort_target: "submit", bank_sort_base_param: group.open.size, bank_sort_record_text_param: "Save the rule, {lines}, and go on", bank_sort_ignore_text_param: "Save the rule, {lines}, and go on", bank_sort_varies_text_param: "No rule, go on" } %>
+        <% end %>
+      </div>
+    <% end %>
+  </section>
+</div>

@@ -1,0 +1,118 @@
+<% content_for :title, (@rule.persisted? ? "Change this rule" : "New rule") %>
+<%# One rule, on a page (Tim, 2026-11-03): the form on the left, and on the
+    right what it will catch, listed as the phrase is typed, with the
+    lines already dealt with that agree or say otherwise
+    (bank_rule_controller.js, BankRules.preview). %>
+<%
+  input = "mt-1 block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  label = "block text-sm font-medium text-gray-700"
+  radio = "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500"
+  org = Current.organization
+  productions = org.productions.active.order(:name)
+  shows = Show.where(production_id: productions.map(&:id), canceled: false).order(date_and_time: :desc).limit(400).select(:id, :production_id, :date_and_time, :secondary_name)
+  income = @rule.direction == "in"
+%>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: books_breadcrumbs + [ [ "Bank", manage_money_bank_path ], [ "Rules", manage_money_bank_rules_path ] ], text: (@rule.persisted? ? "Change this rule" : "New rule") } %>
+
+  <% if @rule.errors.any? %>
+    <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-sm text-red-800">The rule wasn't saved: <%= @rule.errors.full_messages.to_sentence %>.</div>
+  <% end %>
+
+  <%= form_with url: (@rule.persisted? ? manage_money_bank_rule_path(@rule) : manage_money_bank_rules_path), method: (@rule.persisted? ? :patch : :post),
+        data: { turbo: false, controller: "bank-rule", bank_rule_preview_url_value: manage_preview_money_bank_rules_path, bank_rule_target: "form", action: "change->bank-rule#preview" } do %>
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+      <section class="lg:col-span-3 rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <%= render "shared/section_heading", padding: "px-5 py-3", title: "The rule" %>
+        <div class="px-5 py-4 space-y-5">
+          <label class="<%= label %>">
+            <span>When the bank's description has</span>
+            <input type="text" name="bank_rule[contains]" required value="<%= @rule.contains %>" placeholder="RESTAURANT DEPOT" class="<%= input %>" data-bank-rule-target="contains" data-action="input->bank-rule#preview">
+            <span class="block mt-1 text-xs text-gray-500">Capitals don't matter. Several phrases, separated by commas, when the bank spells a payee more than one way: any of them counts.</span>
+          </label>
+
+          <fieldset>
+            <legend class="<%= label %>">And the money goes</legend>
+            <div class="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+              <% [ [ "out", "Out" ], [ "in", "In" ], [ "any", "Either way" ] ].each do |value, name| %>
+                <label class="inline-flex items-center gap-2 text-sm text-gray-700"><input type="radio" name="bank_rule[direction]" value="<%= value %>" <%= "checked" if @rule.direction == value %> class="<%= radio %>" data-action="change->bank-rule#refresh"> <%= name %></label>
+              <% end %>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend class="<%= label %>">Then</legend>
+            <div class="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+              <label class="inline-flex items-center gap-2 text-sm text-gray-700"><input type="radio" name="bank_rule[action]" value="record" <%= "checked" if @rule.action == "record" %> class="<%= radio %>" data-action="change->bank-rule#refresh"> Record it as</label>
+              <label class="inline-flex items-center gap-2 text-sm text-gray-700"><input type="radio" name="bank_rule[action]" value="ignore" <%= "checked" if @rule.action == "ignore" %> class="<%= radio %>" data-action="change->bank-rule#refresh"> Ignore it</label>
+            </div>
+            <p class="mt-1 text-xs text-gray-500">Ignore a transfer between your own accounts or a personal charge. Either way needs Ignore; recording needs to know whether it's income or spending.</p>
+          </fieldset>
+
+          <div class="space-y-4" data-bank-rule-target="recordFields">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <%# One picker per direction, the same name; the one not in use is disabled and sends nothing. %>
+              <div class="<%= label %> <%= 'hidden' if income %>">
+                <span>Category</span>
+                <%= render "shared/category_picker", name: "bank_rule[category_key]", kind: :spending, organization: org, value: (@rule.category_key unless income), id: "bank-rule-category-out", disabled: income, data: { bank_rule_target: "categoryOut" } %>
+              </div>
+              <div class="<%= label %> <%= 'hidden' unless income %>">
+                <span>Kind</span>
+                <%= render "shared/category_picker", name: "bank_rule[category_key]", kind: :income, organization: org, value: (@rule.category_key if income), id: "bank-rule-category-in", disabled: !income, data: { bank_rule_target: "categoryIn" } %>
+              </div>
+              <label class="<%= label %>">
+                <span data-bank-rule-target="counterpartyLabel"><%= income ? "From" : "Paid to" %></span>
+                <input type="text" name="bank_rule[counterparty]" value="<%= @rule.counterparty %>" placeholder="Restaurant Depot" class="<%= input %>">
+              </label>
+            </div>
+            <div class="space-y-3" data-controller="record-money">
+              <label class="flex items-center gap-3 text-sm text-gray-700">
+                <%= render "shared/toggle_switch", checked: @rule.production_id.present?, aria_label: "For a specific production",
+                      data: { record_money_target: "forProduction", action: "change->record-money#toggleProduction" } %>
+                <span>For a specific production</span>
+              </label>
+              <div class="<%= 'hidden' if @rule.production_id.blank? %> space-y-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3" data-record-money-target="productionFields">
+                <label class="<%= label %>">
+                  <span>Which production</span>
+                  <%= select_tag "bank_rule[production_id]", options_for_select(productions.map { |pr| [ pr.name, pr.id ] }, @rule.production_id), prompt: "Choose one", class: input,
+                        data: { record_money_target: "production", action: "change->record-money#filterShows" } %>
+                </label>
+                <label class="flex items-center gap-3 text-sm text-gray-700">
+                  <%= render "shared/toggle_switch", checked: @rule.show_id.present?, aria_label: "For one of its dates",
+                        data: { record_money_target: "forShow", action: "change->record-money#toggleShow" } %>
+                  <span>For one of its dates</span>
+                </label>
+                <div class="<%= 'hidden' if @rule.show_id.blank? %>" data-record-money-target="showFields">
+                  <label class="<%= label %>">
+                    <span>Which date</span>
+                    <%= select_tag "bank_rule[show_id]", options_for_select([ [ "Choose one", "" ] ] + shows.map { |s| [ "#{s.date_and_time.strftime('%b %-d, %Y')}#{" · #{s.secondary_name}" if s.secondary_name.present?}", s.id, { data: { production: s.production_id } } ] }, @rule.show_id),
+                          class: input, data: { record_money_target: "show" } %>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <label class="flex items-center gap-3 text-sm text-gray-700">
+            <%= render "shared/toggle_switch", name: "bank_rule[on_import]", checked: @rule.on_import, hidden_false: true, aria_label: "Also run it on statements brought in later" %>
+            <span>Also run it on statements brought in later</span>
+          </label>
+        </div>
+        <div class="px-5 py-4 bg-gray-50 border-t border-gray-200 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
+          <%= link_to manage_money_bank_rules_path do %><%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button %><% end %>
+          <%= render "shared/button", text: (@rule.persisted? ? "Save and apply" : "Save and apply"), variant: "primary", size: "medium", type: :submit, data: { bank_rule_target: "submit" } %>
+        </div>
+      </section>
+
+      <section class="lg:col-span-2 rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <%= render "shared/section_heading", padding: "px-5 py-3", title: "What it catches" do %>
+          <span class="text-xs text-gray-500">as you type</span>
+        <% end %>
+        <div class="px-5 py-3 border-b border-gray-100 text-sm text-gray-600" data-bank-rule-target="matches">Type a phrase to see the lines waiting it fits.</div>
+        <ul class="divide-y divide-gray-100 text-xs" data-bank-rule-target="list"></ul>
+        <div class="px-5 py-3 border-t border-gray-100 text-xs text-gray-600 hidden" data-bank-rule-target="agree"></div>
+      </section>
+    </div>
+  <% end %>
+</div>

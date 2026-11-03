@@ -74,13 +74,17 @@ class BankStatementLine < ApplicationRecord
     update!(state: "suggested", journal_line: lines.first, journal_line_ids: lines.map(&:id), money_record: nil)
   end
 
-  def ignore!
-    update!(state: "ignored", journal_line: nil, journal_line_ids: [], money_record: nil)
+  # note: why, in the person's words (the sorting mode asks).
+  def ignore!(note: nil)
+    update!(state: "ignored", journal_line: nil, journal_line_ids: [], money_record: nil, note: note.to_s.strip.presence)
   end
 
   def reopen!
-    update!(state: "open", journal_line: nil, journal_line_ids: [], money_record: nil)
+    update!(state: "open", journal_line: nil, journal_line_ids: [], money_record: nil, note: nil)
   end
+
+  # Who the bank says it is from or to (BankPayees).
+  def payee = BankPayees.read(description)
 
   # Money recorded by hand from this line: the record's own bank line is the match.
   def recorded!(record)

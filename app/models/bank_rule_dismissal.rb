@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
-# A suggested bank rule (BankRuleSuggestions) the organization said no to:
-# the phrase and direction, so it is not suggested again.
+# A payee the organization said "it varies, no rule" to (BankSort, the
+# Rules page): the payee group's key (BankPayees) as the phrase, and the
+# direction, so it is not offered again.
 class BankRuleDismissal < ApplicationRecord
   belongs_to :organization
   belongs_to :dismissed_by, class_name: "User", optional: true

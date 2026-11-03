@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_03_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -380,6 +380,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.index ["show_id"], name: "index_bank_rules_on_show_id"
   end
 
+  create_table "bank_sort_passes", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "user_id", null: false
+    t.integer "total", default: 0, null: false
+    t.integer "rules_made", default: 0, null: false
+    t.string "skipped_payees", default: [], null: false, array: true
+    t.bigint "skipped_lines", default: [], null: false, array: true
+    t.boolean "revisited", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "user_id"], name: "index_bank_sort_passes_on_organization_id_and_user_id", unique: true
+    t.index ["organization_id"], name: "index_bank_sort_passes_on_organization_id"
+    t.index ["user_id"], name: "index_bank_sort_passes_on_user_id"
+  end
+
   create_table "bank_statement_imports", force: :cascade do |t|
     t.bigint "organization_id", null: false
     t.bigint "imported_by_id"
@@ -417,6 +432,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
     t.datetime "updated_at", null: false
     t.bigint "journal_line_ids", default: [], null: false, array: true
     t.string "description_key"
+    t.string "note"
     t.index ["bank_statement_import_id"], name: "index_bank_statement_lines_on_bank_statement_import_id"
     t.index ["journal_line_id"], name: "index_bank_statement_lines_on_journal_line_id"
     t.index ["money_record_id"], name: "index_bank_statement_lines_on_money_record_id"
@@ -4810,6 +4826,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_210000) do
   add_foreign_key "bank_rules", "productions"
   add_foreign_key "bank_rules", "shows"
   add_foreign_key "bank_rules", "users", column: "created_by_id"
+  add_foreign_key "bank_sort_passes", "organizations"
+  add_foreign_key "bank_sort_passes", "users"
   add_foreign_key "bank_statement_imports", "organizations"
   add_foreign_key "bank_statement_imports", "users", column: "imported_by_id"
   add_foreign_key "bank_statement_lines", "bank_statement_imports"

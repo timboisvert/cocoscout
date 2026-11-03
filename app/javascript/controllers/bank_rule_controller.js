@@ -1,78 +1,25 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Books → Bank rules: the rule modal, filled from a line's Rule link (its
-// words and direction) or a rule's Edit (everything, and the form then
-// changes that rule), with a live count of the lines waiting it fits.
+// Books → Bank → Rules: the rule page (Tim, 2026-11-03, no longer a modal).
 // Direction decides which category picker shows (income or spending);
-// Ignore hides the record fields. Sits on the page wrapper beside
-// bank-record. The modal's own modal controller closes it.
+// Ignore hides the record fields. As the phrase is typed, "What it
+// catches" lists the lines waiting the rule fits, what they add up to,
+// and whether the lines already dealt with agree (BankRules.preview).
 //
-// Rule link / Edit: data-action="click->bank-rule#open" with
-// data-bank-rule-{id,contains,direction,kind,category,counterparty,production,show,on-import}-param.
-// The production and date switches belong to record-money, nested in the form.
+// On the form: data-controller="bank-rule" data-bank-rule-preview-url-value
+// Targets: contains, matches (the one-line summary), list (the lines),
+// agree (the lines dealt with), recordFields, categoryOut, categoryIn,
+// counterpartyLabel, submit.
 export default class extends Controller {
-    static targets = ["modal", "rulesModal", "form", "method", "title", "contains", "matches", "recordFields", "categoryOut", "categoryIn",
-        "counterparty", "counterpartyLabel", "production", "show", "onImport"]
+    static targets = ["contains", "matches", "list", "agree", "recordFields", "categoryOut", "categoryIn", "counterpartyLabel", "submit"]
+    static values = { previewUrl: String }
+
+    connect() {
+        this.refresh()
+    }
 
     disconnect() {
         clearTimeout(this.timer)
-    }
-
-    // The Rules modal closes like any other, except that a suggestion taken
-    // changed lines on the page behind it: then the page reloads.
-    closeRules() {
-        if (!this.hasRulesModalTarget) return
-        if (this.rulesModalTarget.querySelector("[data-bank-rules-changed]")) {
-            window.location.reload()
-            return
-        }
-        this.rulesModalTarget.classList.add("hidden")
-    }
-
-    closeRulesOnBackdrop(event) {
-        if (event.target === event.currentTarget) this.closeRules()
-    }
-
-    open(event) {
-        event.preventDefault()
-        const p = event.params || {}
-        const editing = !!p.id
-        this.formTarget.action = editing ? this.formTarget.action.replace(/\/rules(\/\d+)?$/, `/rules/${p.id}`) : this.formTarget.action.replace(/\/rules\/\d+$/, "/rules")
-        this.methodTarget.value = editing ? "patch" : "post"
-        this.titleTarget.textContent = editing ? "Change this rule" : "New rule"
-
-        this.containsTarget.value = p.contains || ""
-        this.check("bank_rule[direction]", p.direction || "out")
-        this.check("bank_rule[action]", p.kind || "record")
-        this.counterpartyTarget.value = p.counterparty || ""
-        this.setWhere(p.production, p.show)
-        this.onImportTarget.checked = p.onImport === undefined || p.onImport === null || p.onImport === true || p.onImport === "true"
-        this.refresh()
-        this.activeCategory()?.set(p.category || "")
-
-        if (this.hasRulesModalTarget) this.rulesModalTarget.classList.add("hidden")
-        this.modalTarget.classList.remove("hidden")
-        this.preview()
-        this.containsTarget.focus()
-    }
-
-    // The production and date switches: on when the rule has one, then the
-    // menus set (record-money reacts to the change events and filters the dates).
-    setWhere(production, show) {
-        const form = this.formTarget
-        const flip = (name, on) => {
-            const box = form.querySelector(`[data-record-money-target="${name}"]`)
-            if (!box) return
-            box.checked = on
-            box.dispatchEvent(new Event("change", { bubbles: true }))
-        }
-        flip("forProduction", !!production)
-        if (this.hasProductionTarget) {
-            this.productionTarget.value = production ? String(production) : ""
-            this.productionTarget.dispatchEvent(new Event("change", { bubbles: true }))
-        }
-        flip("forShow", !!show)
-        if (this.hasShowTarget && show) this.showTarget.value = String(show)
     }
 
     // Direction → which category list; action → whether the record fields show.
@@ -90,7 +37,7 @@ export default class extends Controller {
         this.preview()
     }
 
-    // How many lines waiting the phrase fits, a moment after typing stops.
+    // A moment after typing stops.
     preview() {
         clearTimeout(this.timer)
         this.timer = setTimeout(() => this.fetchPreview(), 250)
@@ -98,23 +45,65 @@ export default class extends Controller {
 
     async fetchPreview() {
         const contains = this.containsTarget.value.trim()
-        if (!contains) { this.matchesTarget.textContent = ""; return }
-        const url = new URL(this.formTarget.dataset.bankRulePreviewUrlValue, window.location.origin)
+        if (!contains) { this.show(null); return }
+        const url = new URL(this.previewUrlValue, window.location.origin)
         url.searchParams.set("contains", contains)
         url.searchParams.set("direction", this.checked("bank_rule[direction]"))
+        url.searchParams.set("rule_action", this.checked("bank_rule[action]"))
+        url.searchParams.set("category_key", this.activeCategory()?.value || "")
         try {
             const response = await fetch(url, { headers: { "Accept": "application/json" } })
-            if (!response.ok) return
-            const data = await response.json()
-            if (data.count === 0) {
-                this.matchesTarget.textContent = "Fits none of the lines waiting. It will still run on statements brought in later."
-            } else {
-                const samples = data.samples.length ? ` Such as: ${data.samples.join("; ")}.` : ""
-                this.matchesTarget.textContent = `Fits ${data.count} ${data.count === 1 ? "line" : "lines"} waiting.${samples}`
-            }
+            if (response.ok) this.show(await response.json())
         } catch (_) {
-            this.matchesTarget.textContent = ""
+            this.show(null)
         }
+    }
+
+    show(data) {
+        this.listTarget.innerHTML = ""
+        this.agreeTarget.classList.add("hidden")
+        if (!data) {
+            this.matchesTarget.textContent = "Type a phrase to see the lines waiting it fits."
+            this.submitTarget.querySelector("span").textContent = "Save and apply"
+            return
+        }
+        const n = data.count
+        if (n === 0) {
+            this.matchesTarget.textContent = "Fits none of the lines waiting. It will still run on statements brought in later."
+            this.submitTarget.querySelector("span").textContent = "Save"
+        } else {
+            const span = data.from === data.to ? data.from : `${data.from} to ${data.to}`
+            this.matchesTarget.innerHTML = `<span class="font-semibold text-gray-900 tabular-nums">${n} ${n === 1 ? "line" : "lines"} waiting</span> <span class="text-gray-500">· ${this.money(data.total_cents)} · ${span}</span>`
+            this.submitTarget.querySelector("span").textContent = `Save and apply to ${n} ${n === 1 ? "line" : "lines"}`
+            data.lines.forEach(line => {
+                const li = document.createElement("li")
+                li.className = "px-5 py-2 flex gap-3"
+                li.innerHTML = `<span class="w-14 flex-none text-gray-500 tabular-nums"></span><span class="flex-1 min-w-0 truncate text-gray-700"></span><span class="tabular-nums font-semibold"></span>`
+                li.children[0].textContent = line.on
+                li.children[1].textContent = line.description
+                li.children[1].title = line.description
+                li.children[2].textContent = this.money(line.amount_cents)
+                this.listTarget.appendChild(li)
+            })
+            if (n > data.lines.length) {
+                const li = document.createElement("li")
+                li.className = "px-5 py-2 text-gray-500"
+                li.textContent = `… ${n - data.lines.length} more`
+                this.listTarget.appendChild(li)
+            }
+        }
+        if (data.agree || data.disagree) {
+            const parts = []
+            if (data.agree) parts.push(`<span class="font-medium text-green-700">Agrees</span> with ${data.agree} ${data.agree === 1 ? "line" : "lines"} you already dealt with.`)
+            if (data.disagree) parts.push(`<span class="font-medium text-amber-700">${data.disagree} ${data.disagree === 1 ? "line" : "lines"}</span> you dealt with by hand ${data.disagree === 1 ? "says" : "say"} otherwise; ${data.disagree === 1 ? "it stays" : "they stay"} as ${data.disagree === 1 ? "it is" : "they are"}.`)
+            this.agreeTarget.innerHTML = parts.join(" ")
+            this.agreeTarget.classList.remove("hidden")
+        }
+    }
+
+    money(cents) {
+        const sign = cents < 0 ? "−" : (cents > 0 ? "+" : "")
+        return sign + "$" + (Math.abs(cents) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     }
 
     // The category picker (shared/category_picker) for the direction chosen.
@@ -128,12 +117,12 @@ export default class extends Controller {
     }
 
     check(name, value) {
-        const radio = this.formTarget.querySelector(`[name="${name}"][value="${value}"]`)
+        const radio = this.element.querySelector(`[name="${name}"][value="${value}"]`)
         if (radio) radio.checked = true
     }
 
     checked(name) {
-        const radio = this.formTarget.querySelector(`[name="${name}"]:checked`)
+        const radio = this.element.querySelector(`[name="${name}"]:checked`)
         return radio ? radio.value : ""
     }
 }
