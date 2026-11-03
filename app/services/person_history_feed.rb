@@ -43,6 +43,8 @@ class PersonHistoryFeed
     all.concat(course_entries(per_source_limit, before))
     all.concat(vacancy_created_entries(per_source_limit, before))
     all.concat(vacancy_filled_entries(per_source_limit, before))
+    all.concat(shift_vacancy_created_entries(per_source_limit, before))
+    all.concat(shift_vacancy_filled_entries(per_source_limit, before))
     all.concat(cast_assignment_entries(per_source_limit, before))
 
     all.sort_by { |e| -e.occurred_at.to_f }.first(limit)
@@ -63,6 +65,8 @@ class PersonHistoryFeed
     "audition_session_availabilities.updated_at",
     "COALESCE(role_vacancies.vacated_at, role_vacancies.created_at)",
     "role_vacancies.filled_at",
+    "shift_vacancies.vacated_at",
+    "shift_vacancies.filled_at",
     "shows.casting_finalized_at"
   ].freeze
 
@@ -240,6 +244,42 @@ class PersonHistoryFeed
         title: "Accepted a vacancy",
         subtitle: v.show&.respond_to?(:display_name) ? v.show.display_name : nil,
         details: [ v.role&.name, v.show&.date_and_time&.strftime("%a %b %-d") ].compact.join(" · "),
+        url: nil,
+        answers: []
+      )
+    end
+  end
+
+  # Shifts they said they couldn't make (ShiftVacancy, the staff flow).
+  def shift_vacancy_created_entries(limit, before)
+    scope = ShiftVacancy.where(vacated_by_id: @person.id)
+    scope = scope_with_cursor(scope, "shift_vacancies.vacated_at", before, limit).includes(shift: [ :house_role, :organization ])
+
+    scope.map do |v|
+      Entry.new(
+        occurred_at: v.vacated_at,
+        kind: :vacancy_created,
+        title: "Said they can't make a shift",
+        subtitle: v.shift.organization&.name,
+        details: [ v.shift.role_label, v.shift.starts_at&.strftime("%a %b %-d"), (v.reason.present? ? "“#{v.reason}”" : nil) ].compact.join(" · "),
+        url: nil,
+        answers: []
+      )
+    end
+  end
+
+  # Shifts they covered for someone who couldn't make it.
+  def shift_vacancy_filled_entries(limit, before)
+    scope = ShiftVacancy.where(filled_by_id: @person.id).where.not(filled_at: nil)
+    scope = scope_with_cursor(scope, "shift_vacancies.filled_at", before, limit).includes(:vacated_by, shift: [ :house_role, :organization ])
+
+    scope.map do |v|
+      Entry.new(
+        occurred_at: v.filled_at,
+        kind: :vacancy_filled,
+        title: "Covered a shift",
+        subtitle: v.shift.organization&.name,
+        details: [ v.shift.role_label, v.shift.starts_at&.strftime("%a %b %-d"), "for #{v.vacated_by&.name}" ].compact.join(" · "),
         url: nil,
         answers: []
       )

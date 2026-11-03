@@ -53,6 +53,7 @@ class Person < ApplicationRecord
 
   # Vacancy associations
   has_many :role_vacancy_invitations, dependent: :destroy
+  has_many :shift_vacancy_invitations, dependent: :destroy
   has_many :vacated_role_vacancies, class_name: "RoleVacancy", foreign_key: :vacated_by_id, dependent: :nullify
   has_many :filled_role_vacancies, class_name: "RoleVacancy", foreign_key: :filled_by_id, dependent: :nullify
 

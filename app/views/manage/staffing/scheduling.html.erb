@@ -108,50 +108,7 @@
     </div>
   <% end %>
 
-  <%# === Assign: the shared People Picker (V1.1 plan §5), listing everyone
-      qualified for the shift's role, free for all of it first, with the
-      Everyone / Can work / Available the whole shift filters. A pick that
-      collides (another shift, a show that night, hours they said they can't
-      work) goes through the conflict modal below first. %>
-  <%= render "shared/people_picker", id: "shift-picker", title: "Assign", scope: "staff",
-        filters: [ [ "Everyone", "all" ], [ "Can work", "can_work" ], [ "Available the whole shift", "free" ] ], filter_param: "fit",
-        placeholder: "Search by name", pick_action: "people-picker:pick->shift-assign#picked" %>
-  <%# JS rewrites this form's action; pass the session CSRF token — the default per-form token is minted for "#" and gets rejected. %>
-  <%= form_with url: "#", method: :post, local: true,
-                authenticity_token: form_authenticity_token,
-                class: "hidden",
-                data: { "shift-assign-target": "form" } do %>
-    <input type="hidden" name="person_id" data-shift-assign-target="personIdInput">
-  <% end %>
-
-  <%# === Scheduling-conflict modal (shown when assigning would double-book) === %>
-  <div data-shift-assign-target="collisionModal"
-       class="hidden fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm overflow-y-auto"
-       data-action="click->shift-assign#collisionBackdropClose keydown.esc@window->shift-assign#cancelCollision">
-    <div class="flex min-h-full items-start justify-center p-4 py-12">
-      <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl"
-           data-action="click->shift-assign#stopPropagation">
-        <div class="flex items-center justify-between px-5 py-4 bg-pink-500 rounded-t-xl">
-          <h3 class="text-lg font-semibold text-white">Scheduling conflict</h3>
-          <button type="button" data-action="click->shift-assign#cancelCollision" class="text-white/70 hover:text-white cursor-pointer">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
-        </div>
-
-        <div class="px-5 py-4" data-shift-assign-target="collisionBody">
-          <%# populated by JS %>
-        </div>
-
-        <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
-          <button type="button" data-action="click->shift-assign#cancelCollision" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
-          <button type="button" data-action="click->shift-assign#confirmCollision"
-                  class="px-4 py-2 text-sm font-medium rounded bg-pink-500 hover:bg-pink-600 text-white cursor-pointer transition-colors">
-            Assign anyway
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
+  <%= render "manage/staffing/assign_picker" %>
 
   <%# === Edit time modal === %>
   <div data-shift-edit-target="modal"

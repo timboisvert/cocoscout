@@ -1587,6 +1587,11 @@ Rails.application.routes.draw do
     post   "staffing/shifts/:id/split",           to: "staffing/shifts#split",           as: "split_staffing_shift"
     post   "staffing/shifts/:id/merge_with_next", to: "staffing/shifts#merge_with_next", as: "merge_with_next_staffing_shift"
     post   "staffing/shifts/:id/merge",           to: "staffing/shifts#merge",           as: "merge_staffing_shift"
+    # A shift someone can't make: where the manager finds cover (ShiftVacancy).
+    get    "staffing/vacancies/:id",              to: "staffing/vacancies#show",         as: "staffing_vacancy"
+    post   "staffing/vacancies/:id/send_invitations", to: "staffing/vacancies#send_invitations", as: "send_invitations_staffing_vacancy"
+    post   "staffing/vacancies/:id/cancel",       to: "staffing/vacancies#cancel",       as: "cancel_staffing_vacancy"
+    post   "staffing/vacancies/:id/reclaim",      to: "staffing/vacancies#reclaim",      as: "reclaim_staffing_vacancy"
     # A show canceled, taken away or moved: tell its cast and staff
     # (docs/show_change_notices_plan.md).
     post "show-changes/canceled/:show_id", to: "show_changes#for_canceled_show", as: "tell_canceled_show"
@@ -2088,6 +2093,14 @@ Rails.application.routes.draw do
     get "/",        to: "vacancy#show",    as: "vacancy"
     post "/confirm", to: "vacancy#confirm", as: "vacancy_confirm"
     get "/success",  to: "vacancy#success", as: "vacancy_success"
+  end
+
+  # Claim a shift someone can't make (the staff cover invitation's link; no login)
+  scope "/claim-shift/:token" do
+    get "/",         to: "claim_shift#show",    as: "claim_shift"
+    post "/claim",   to: "claim_shift#claim",   as: "do_claim_shift"
+    post "/decline", to: "claim_shift#decline", as: "decline_claim_shift"
+    get "/success",  to: "claim_shift#success", as: "claim_shift_success"
   end
 
   # Claim vacancy flow (invited person claims a role)

@@ -1,7 +1,7 @@
 <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
   <div class="px-6 py-4 border-b border-gray-200">
     <h2 class="text-lg font-semibold text-gray-900">Can't-make-it alerts</h2>
-    <p class="text-sm text-gray-600 mt-1">Pick the managers who should get an in-app message when a staff member says they can't make a shift. If no one is selected, no alerts are sent.</p>
+    <p class="text-sm text-gray-600 mt-1">Pick the managers who hear, by message and email, when a staff member says they can't make a shift, when someone covers it, and when they're back on. If no one is selected, no alerts are sent.</p>
   </div>
   <%= form_with url: manage_staffing_settings_path, method: :patch, class: "px-6 py-5" do %>
     <%# Marker param so an all-unchecked submit still routes to this setting. %>

@@ -314,13 +314,13 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
       expect(bar.at_css("[data-status='slots']").text).to include("0 of 1 slots staffed")
     end
 
-    it "lists this week's can't-make-its with the reason and Find someone, and later ones by their day" do
+    it "lists this week's can't-make-its with the reason and Find cover, and later ones by their day" do
       staff!(gus, bartender)
       at = ->(d) { [ d.in_time_zone.change(hour: 18), d.in_time_zone.change(hour: 22) ] }
       soon = create(:shift, organization: org, house_role: bartender, starts_at: at.(week_start + 8)[0], ends_at: at.(week_start + 8)[1])
-      soon.shift_assignments.create!(person: gus).decline!(reason: "Family thing")
+      soon_row = soon.shift_assignments.create!(person: gus).tap { |a| a.decline!(reason: "Family thing") }
       later = create(:shift, organization: org, house_role: bartender, starts_at: at.(week_start + 16)[0], ends_at: at.(week_start + 16)[1])
-      later.shift_assignments.create!(person: gus).decline!
+      later_row = later.shift_assignments.create!(person: gus).tap(&:decline!)
 
       get manage_staffing_scheduling_path(week_start: (week_start + 7).to_s)
       page = Nokogiri::HTML(response.body)
@@ -328,9 +328,10 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
       sheet = page.at_css("#scheduling-declined")
       row = sheet.at_css("[data-declined-row]")
       expect(row.text).to include("Gus Lee", "Bartender", "Family thing")
-      expect(row.at_css("button[data-action='click->modal#close click->shift-assign#open']")["data-shift-id"]).to eq(soon.id.to_s)
+      # Finding cover is the vacancy page's job (the performer flow, for staff).
+      expect(row.at_css("a[href='#{manage_staffing_vacancy_path(soon_row.active_vacancy)}']").text).to include("Find cover")
       expect(sheet.text).to include("And 1 in other weeks")
-      expect(sheet.at_css("a[href='#{manage_staffing_scheduling_path(day: (week_start + 16).iso8601)}']")).to be_present
+      expect(sheet.at_css("a[href='#{manage_staffing_vacancy_path(later_row.active_vacancy)}']").text).to include("Find cover")
     end
 
     it "opens a two-month calendar whose week rows go to that week, each dotted by its status" do

@@ -61,7 +61,10 @@ module Manage
         next_position = (@shift.shift_assignments.maximum(:position) || 0) + 1
         assignment = @shift.shift_assignments.new(person: person, position: next_position)
         if assignment.save
-          redirect_to_scheduling notice: "Assigned #{person.name}.#{availability_note(person, @shift)}"
+          # Put on by hand while someone couldn't make it: that covers the shift.
+          covered = ShiftVacancy.fill_from_assignment!(assignment, by: Current.user)
+          covered_note = covered ? " That covers the shift #{covered.vacated_by.name} couldn't make." : ""
+          redirect_to_scheduling notice: "Assigned #{person.name}.#{covered_note}#{availability_note(person, @shift)}"
         else
           redirect_to_scheduling alert: assignment.errors.full_messages.to_sentence.presence || "Couldn't assign."
         end
@@ -72,6 +75,8 @@ module Manage
         if assignment
           name = assignment.person.name
           record_removal_if_notified(assignment)
+          # Removing the one who couldn't make it closes the hole, with no notice.
+          assignment.active_vacancy&.cancel!(by: Current.user) if assignment.declined?
           assignment.destroy!
           redirect_to_scheduling notice: "Removed #{name} from this shift."
         else
@@ -119,6 +124,7 @@ module Manage
             end
           end
           @shift.update!(starts_at: new_start, ends_at: new_end)
+          others.each { |o| carry_vacancies(o, @shift) }
           others.each(&:destroy!)
           @shift.shows = extra_shows if extra_shows.any?
           @shift.reload.assign_additional_roles!(role_ids, show_ids_by_role)
@@ -202,6 +208,7 @@ module Manage
                                              notified_at: a.notified_at, accepted_at: a.accepted_at, declined_at: a.declined_at)
           end
           @shift.update!(ends_at: [ next_shift.ends_at, @shift.ends_at ].max)
+          carry_vacancies(next_shift, @shift)
           next_shift.destroy!
           @shift.shows = extra_shows if extra_shows.any?
           @shift.reload.assign_additional_roles!(role_ids, show_ids_by_role)
@@ -298,6 +305,22 @@ module Manage
         redirect_to_scheduling notice: "Split into #{shows.size} per-show shifts."
       rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
         redirect_to_scheduling alert: "Couldn't split: #{e.message}"
+      end
+
+      # A merge copies the rows across, declined ones included, so the
+      # vacancies around them come too (a merge is never cover). One whose
+      # row didn't carry, or whose person the merged shift already has an
+      # active vacancy for, closes quietly.
+      def carry_vacancies(from, to)
+        from.shift_vacancies.each do |vacancy|
+          carried = to.shift_assignments.declined.exists?(person_id: vacancy.vacated_by_id)
+          doubled = to.shift_vacancies.active.exists?(vacated_by_id: vacancy.vacated_by_id)
+          if vacancy.active? && (!carried || doubled)
+            vacancy.cancel!(by: Current.user)
+          else
+            vacancy.update!(shift_id: to.id)
+          end
+        end
       end
 
       # If this assignment was already notified to the person, log a pending

@@ -1,0 +1,27 @@
+<%# Who to ask to cover a shift (the performer page's invitee chips, for
+    staff): picks from the shared People Picker's staff scope, which lists
+    everyone qualified for the role free for the whole shift first, says who
+    can't make it, is on it or was asked already, and carries each person's
+    clashes. Locals: shift, vacancy, quick ([{ key, name, initials,
+    headshotUrl }] for "Add everyone who's free"), invited_ids. %>
+<% quick = local_assigns.fetch(:quick, []) %>
+<div data-controller="invite-picks" data-vacancy-invitees>
+  <div class="flex flex-wrap items-center gap-2 mb-2">
+    <%= render "shared/button", text: "Choose people", variant: "primary", size: "small", type: :button, icon: "plus",
+          data: { controller: "people-picker-trigger", action: "click->people-picker-trigger#open",
+                  "people-picker-trigger-id-value": "vacancy-picker", "people-picker-trigger-title-value": "Who to ask" } %>
+    <% if quick.any? %>
+      <%= render "shared/button", text: "Add everyone who's free", variant: "secondary", size: "small", type: :button,
+            data: { action: "click->invite-picks#addAll", members: quick.to_json } %>
+    <% end %>
+    <span class="text-xs text-gray-500" data-invite-picks-target="count">Nobody chosen yet</span>
+  </div>
+  <div class="flex flex-wrap gap-2 min-h-[2rem]" data-invite-picks-target="chips"></div>
+  <div data-invite-picks-target="fields"></div>
+  <%= render "shared/people_picker", id: "vacancy-picker", title: "Who to ask", scope: "staff", multi: true,
+        shift_id: shift.id, invited: local_assigns.fetch(:invited_ids, []),
+        exclude: [ "Person_#{vacancy.vacated_by_id}" ], exclude_label: "Can't make it",
+        filters: [ [ "Everyone", "all" ], [ "Can work", "can_work" ], [ "Available the whole shift", "free" ] ], filter_param: "fit",
+        placeholder: "Search by name", hint: "Tap everyone to ask; the sheet stays open",
+        pick_action: "people-picker:pick->invite-picks#picked" %>
+</div>

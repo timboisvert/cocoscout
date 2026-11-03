@@ -101,6 +101,7 @@
 
   <!-- Pending Vacancy Invitations -->
   <%= render "my/vacancy_invitation_alerts", invitations: @pending_vacancy_invitations %>
+  <%= render "my/shift_vacancy_invitation_alerts", invitations: @pending_shift_invitations %>
 
   <!-- Contracts waiting on your signature -->
   <% @contracts_awaiting_signature.each do |contract| %>
