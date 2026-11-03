@@ -35,6 +35,7 @@
     <%= render "my/shifts/onboarding_invite_bar", invites: @pending_onboarding_invites %>
     <%= render "my/shifts/staff_agreement_prompt", memberships: @pending_staff_agreements %>
     <%= render "my/shifts/w9_prompt", memberships: @pending_w9s %>
+    <%= render "my/shift_vacancy_invitation_alerts", invitations: @pending_shift_invitations %>
 
     <%# Glance %>
     <%= render "my/shifts/summary" %>

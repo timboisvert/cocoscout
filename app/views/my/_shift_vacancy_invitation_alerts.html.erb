@@ -1,0 +1,24 @@
+<%# "You're invited to cover a shift" — one alert per open invitation
+    (my/_vacancy_invitation_alerts, for staff). Shared by My Shifts and My
+    Calendar. Local: invitations (Array<ShiftVacancyInvitation>). %>
+<% invitations.each do |invitation| %>
+  <%
+    vacancy = invitation.shift_vacancy
+    shift = vacancy.shift
+    body = "#{shift.organization.name} · #{shift.starts_at.strftime('%a, %b %-d')} at #{shift_time_range(shift)}"
+    body += " — you declined, but you can still claim it while it's open." if invitation.can_claim? && invitation.declined?
+    body += " — this shift is no longer open." unless invitation.can_claim?
+    actions =
+      if invitation.can_claim?
+        [ { text: "Claim shift", path: claim_shift_path(invitation.token), variant: invitation.declined? ? "outline" : "primary" },
+          (invitation.declined? ? nil : { text: "Decline", path: decline_claim_shift_path(invitation.token), method: :post }) ].compact
+      else
+        []
+      end
+  %>
+  <%= render "shared/alert_panel",
+        eyebrow: "You're invited to cover a shift",
+        headline: shift.role_label,
+        body: body,
+        actions: actions %>
+<% end %>

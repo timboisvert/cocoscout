@@ -36,6 +36,7 @@ object AppShell {
     private val json = Json { ignoreUnknownKeys = true }
     private const val PREFS = "app_shell"
     private const val STATE_KEY = "state"
+    private const val NAV_KEY = "nav"
 
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
@@ -44,9 +45,22 @@ object AppShell {
     /** The V1.1 menu (NativeAppHelper#native_nav), once a page has sent one. */
     val nav: StateFlow<com.cocoscout.app.bridge.NavData?> = _nav.asStateFlow()
 
-    /** Every page sends it; the menu sheet and the toolbar's two icons follow it. */
+    /**
+     * Every page sends it; the menu sheet and the toolbar's two icons follow
+     * it. Cached for next launch without the counts and the Door (they come
+     * and go), as the menu is cached without its badges.
+     */
     fun update(newNav: com.cocoscout.app.bridge.NavData?) {
-        if (newNav != null) _nav.value = newNav
+        if (newNav == null) return
+        _nav.value = newNav
+        val cached = newNav.copy(
+            sections = newNav.sections.map { section -> section.copy(items = section.items.map { it.copy(badge = null) }) },
+            icons = newNav.icons.copy(messages = newNav.icons.messages.copy(count = 0), notifications = newNav.icons.notifications.copy(count = 0)),
+            door = null
+        )
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(NAV_KEY, json.encodeToString(com.cocoscout.app.bridge.NavData.serializer(), cached))
+            .apply()
     }
 
     private var activity: MainActivity? = null
@@ -58,11 +72,22 @@ object AppShell {
     private var pageShown = false
     private lateinit var appContext: Context
 
-    /** Starts with last time's menu, so the button is there right away for someone still signed in. */
+    /**
+     * Starts with last time's menu, so the button is there right away for
+     * someone still signed in, and last time's V1.1 menu, so the first tap
+     * draws it. It used to start without one, so a tap before the first
+     * page's message flashed the V1 sheet (Tim, 2026-11-02). The page's own
+     * message corrects the picture within a second.
+     */
     fun start(context: Context) {
         appContext = context.applicationContext
-        val saved = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(STATE_KEY, null)
-        saved?.let { runCatching { json.decodeFromString(State.serializer(), it) }.getOrNull() }?.let { _state.value = it }
+        val prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        prefs.getString(STATE_KEY, null)?.let { runCatching { json.decodeFromString(State.serializer(), it) }.getOrNull() }?.let { _state.value = it }
+        if (_state.value.signedIn) {
+            prefs.getString(NAV_KEY, null)
+                ?.let { runCatching { json.decodeFromString(com.cocoscout.app.bridge.NavData.serializer(), it) }.getOrNull() }
+                ?.let { _nav.value = it }
+        }
         shownSignedIn = _state.value.signedIn
     }
 
@@ -104,9 +129,14 @@ object AppShell {
         if (justSignedIn) startOver(pageAfterSignIn(page))
         // Without badges or the Door (it comes and goes with the shows).
         val cached = State(menu.filter { it.id != "door" }.map { it.copy(badge = null) }, person)
-        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+        val edit = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(STATE_KEY, json.encodeToString(State.serializer(), cached))
-            .apply()
+        // Signed out: the next person's first tap must never see this one's menu.
+        if (!signedIn) {
+            _nav.value = null
+            edit.remove(NAV_KEY)
+        }
+        edit.apply()
     }
 
     /** A page on top of whatever's showing (a link back from Stripe, a tapped notification). */

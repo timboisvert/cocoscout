@@ -248,7 +248,7 @@ RSpec.describe "Manage::PeoplePicker for a shift", type: :request do
     expect(row(doc, free)).to be_present
     doc = search(q: "fran")
     expect(doc.css("[data-people-picker-row]").size).to eq(1)
-    expect(search(q: "nobody").text).to include("No one is qualified for this role yet.")
+    expect(search(q: "nobody").text).to include("No one qualified for Tech is named that.")
   end
 end
 

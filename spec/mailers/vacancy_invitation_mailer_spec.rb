@@ -34,6 +34,20 @@ RSpec.describe VacancyInvitationMailer, type: :mailer do
     expect(notification.body).to be_present
   end
 
+  # The vacancy page stores the manager's edited draft on each invitation; the
+  # email used to ignore it and send the stock template (only the subject was
+  # honoured). The page can't know the claim link or the recipient, so those
+  # tokens are filled in at send time.
+  it "sends the manager's edited words, with the claim link and the invitee's name filled in" do
+    invitation.update!(email_body: "<p>Hi {{recipient_name}}, these are the manager's own words. {{claim_url}}</p>")
+
+    mail = described_class.invitation_email(invitation).deliver_now
+
+    html = (mail.html_part || mail).body.decoded
+    expect(html).to include("these are the manager's own words", "/claim/#{invitation.token}", invitee.name.split.first)
+    expect(Notification.order(:id).last.body).to include("these are the manager's own words")
+  end
+
   it "tells nobody but the invitee (no bystander gets a copy)" do
     described_class.invitation_email(invitation).deliver_now
 

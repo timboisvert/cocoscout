@@ -525,7 +525,7 @@
       <% end %>
 
       <%# Single save bar — submits the field-tab form (Basics → Access & age). %>
-      <div class="sticky bottom-0 mt-4 flex items-center justify-between gap-3 bg-white/95 backdrop-blur border border-gray-200 rounded px-4 py-3 shadow-sm">
+      <div class="sticky bottom-0 mt-4 flex items-center justify-between gap-3 bg-white/95 backdrop-blur border border-gray-200 rounded pl-4 <%= turbo_native_app? ? "pr-[96px]" : "pr-4" %> py-3 shadow-sm">
         <span class="text-xs text-gray-500">Saves Basics, Schedule, Sign-ups, Location, and Access &amp; age together. Socials &amp; owners update on their own.</span>
         <button type="submit" form="mic-edit-form"
                 class="cursor-pointer px-5 py-2 bg-pink-500 hover:bg-pink-600 active:bg-pink-700 text-white font-bold text-sm rounded transition-colors duration-100">

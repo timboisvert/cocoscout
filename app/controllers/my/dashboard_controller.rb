@@ -345,6 +345,8 @@ module My
           .where("shifts.starts_at >= ? AND shifts.starts_at <= ?", cal_start, cal_end)
           .includes(shift: [ :house_role, :additional_roles, :organization ])
           .each do |a|
+            next unless a.active?
+
             shift = a.shift
             next unless finalized_weeks.include?([ shift.organization_id, shift.starts_at.to_date.beginning_of_week ])
 
@@ -405,6 +407,13 @@ module My
         .where(person_id: people_ids)
         .includes(role_vacancy: [ :role, { show: :production } ])
         .order("shows.date_and_time ASC")
+
+      # Shifts they've been asked to cover, still open.
+      @pending_shift_invitations = ShiftVacancyInvitation.unresolved.joins(shift_vacancy: :shift)
+        .where(person_id: people_ids)
+        .includes(shift_vacancy: { shift: [ :house_role, :organization ] })
+        .order("shifts.starts_at ASC")
+        .to_a
 
       # Contracts the org has signed and sent, waiting on this person's signature.
       @contracts_awaiting_signature = Contract.awaiting_signature_of(people_ids)

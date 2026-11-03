@@ -48,6 +48,10 @@ fun MenuOverlay() {
     // V1.1: no badge on Coco; the toolbar's Messages and Notifications carry the counts.
     MenuButton(badge = if (nav != null) null else AppShell.badgeText(state.badgeTotal)) { showMenu = true }
 
+    // Always the V1.1 sheet: without a nav yet (only the first launch after
+    // upgrading from V1, before the first page's message) the tap waits and
+    // the sheet draws when one lands, instead of flashing the V1 MenuSheet
+    // (kept for V1 installs, which never get a nav).
     val currentNav = nav
     if (showMenu && currentNav != null) {
         NavMenuSheet(
@@ -57,19 +61,6 @@ fun MenuOverlay() {
             onOpen = { path ->
                 showMenu = false
                 AppShell.openFromMenu(path)
-            },
-            onSignOut = {
-                showMenu = false
-                AppShell.signOut()
-            }
-        )
-    } else if (showMenu) {
-        MenuSheet(
-            state = state,
-            onDismiss = { showMenu = false },
-            onOpen = { item ->
-                showMenu = false
-                AppShell.replaceScreen(item.path)
             },
             onSignOut = {
                 showMenu = false

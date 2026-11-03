@@ -73,7 +73,9 @@ class SchedulingRuleApplier
     return false if shift.shift_assignments.reload.any? { |a| a.person_id == person.id }
 
     next_position = (shift.shift_assignments.map(&:position).max || 0) + 1
-    shift.shift_assignments.create!(person: person, position: next_position)
+    assignment = shift.shift_assignments.create!(person: person, position: next_position)
+    # Applied onto a shift someone couldn't make: that covers it.
+    ShiftVacancy.fill_from_assignment!(assignment)
     true
   end
 end
