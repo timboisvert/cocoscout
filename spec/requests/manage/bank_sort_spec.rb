@@ -29,7 +29,7 @@ RSpec.describe "Manage::BankSort", type: :request do
 
     # Part 1 opens on the biggest payee.
     get manage_money_bank_sort_path
-    expect(response.body).to include("Sorting · payee 1 of 5", "Part 1 of 2", "0 of 14 sorted", "0 rules made", "Facebook", "Card purchase", "3 · money out", "FACEBK",
+    expect(response.body).to include("Sorting · payee 1 of 5", "Part 1 of 2", "0 of 14 sorted", "A few of the lines", "0 rules made", "Facebook", "Card purchase", "3 · money out", "FACEBK",
                                      "Record it, every time", "Ignore it, every time", "It varies, no rule", "Save the rule, 3 lines, and go on", "Skip, ask me later", "Stop for now")
     expect(BankSortPass.find_by!(organization: org, user: owner).total).to eq(14)
 

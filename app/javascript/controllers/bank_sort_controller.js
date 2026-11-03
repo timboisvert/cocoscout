@@ -11,7 +11,15 @@ import { Controller } from "@hotwired/stimulus"
 // the wording for each answer; "{lines}" in it is the count the rule
 // will run over: the payee's open lines plus the look-alikes ticked).
 export default class extends Controller {
-    static targets = ["answer", "chip", "picker", "recordFields", "ignoreFields", "ruleFields", "submit"]
+    static targets = ["answer", "chip", "picker", "recordFields", "ignoreFields", "ruleFields", "submit", "moreLine", "showAll", "linesTitle"]
+
+    // Part 1: every line the payee has, in place of the three shown, and back.
+    showAll() {
+        const open = this.moreLineTargets[0]?.classList.contains("hidden")
+        this.moreLineTargets.forEach(li => li.classList.toggle("hidden", !open))
+        this.showAllTarget.textContent = open ? this.showAllTarget.dataset.few : this.showAllTarget.dataset.all
+        if (this.hasLinesTitleTarget) this.linesTitleTarget.textContent = open ? this.linesTitleTarget.dataset.all : this.linesTitleTarget.dataset.few
+    }
 
     // Part 1: the radio chosen. "It varies" makes no rule, so nothing about one shows.
     choose(event) {

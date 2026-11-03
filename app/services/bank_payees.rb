@@ -53,7 +53,6 @@ class BankPayees
     # The same amount most of the time: a wage, a subscription.
     def steady? = lines.size >= 4 && lines.map(&:amount_cents).tally.values.max >= lines.size * 0.6
     def per_week = (count / [ ((to - from).to_i + 1) / 7.0, 1 ].max).round(1)
-    def samples = lines.sort_by(&:on).reverse.first(3)
     # Lines the matcher found something on the books for: a rule leaves them for the person.
     def suggested = lines.select(&:suggested?)
     def open = lines.select(&:open?)

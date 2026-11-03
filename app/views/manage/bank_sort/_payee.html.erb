@@ -68,10 +68,16 @@
         </div>
       <% end %>
       <div>
-        <div class="text-[11px] font-medium uppercase tracking-wide text-gray-500 mb-1">A few of the lines</div>
-        <ul class="divide-y divide-gray-100 rounded-lg border border-gray-200 text-xs">
-          <% group.samples.each do |l| %>
-            <li class="px-3 py-2 flex gap-3"><span class="w-20 flex-none text-gray-500 tabular-nums"><%= l.on.strftime("%b %-d, %Y") %></span><span class="flex-1 min-w-0 truncate text-gray-700" title="<%= l.description %>"><%= l.description %></span><span class="flex-none text-right tabular-nums font-semibold <%= l.deposit? ? 'text-green-700' : 'text-gray-900' %>"><%= l.deposit? ? "+" : "−" %><%= money.call(l.amount_cents.abs) %></span></li>
+        <% all_lines = group.lines.sort_by(&:on).reverse %>
+        <div class="flex items-baseline justify-between gap-3 mb-1">
+          <span class="text-[11px] font-medium uppercase tracking-wide text-gray-500" data-bank-sort-target="linesTitle" data-few="A few of the lines" data-all="All <%= pluralize(all_lines.size, 'line') %>">A few of the lines</span>
+          <% if all_lines.size > 3 %>
+            <button type="button" class="text-xs text-pink-700 hover:text-pink-900 underline-offset-2 hover:underline cursor-pointer" data-action="click->bank-sort#showAll" data-bank-sort-target="showAll" data-all="Show all <%= all_lines.size %>" data-few="Show fewer">Show all <%= all_lines.size %></button>
+          <% end %>
+        </div>
+        <ul class="divide-y divide-gray-100 rounded-lg border border-gray-200 text-xs max-h-[32rem] overflow-y-auto">
+          <% all_lines.each_with_index do |l, i| %>
+            <li<% if i >= 3 %> class="hidden" data-bank-sort-target="moreLine"<% end %>><div class="px-3 py-2 flex gap-3"><span class="w-20 flex-none text-gray-500 tabular-nums"><%= l.on.strftime("%b %-d, %Y") %></span><span class="flex-1 min-w-0 truncate text-gray-700" title="<%= l.description %>"><%= l.description %></span><span class="flex-none text-right tabular-nums font-semibold <%= l.deposit? ? 'text-green-700' : 'text-gray-900' %>"><%= l.deposit? ? "+" : "−" %><%= money.call(l.amount_cents.abs) %></span></div></li>
           <% end %>
         </ul>
         <% if group.suggested.any? %>
