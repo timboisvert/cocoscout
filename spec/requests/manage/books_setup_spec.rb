@@ -44,7 +44,7 @@ RSpec.describe "Books categories setup", type: :request do
     sign_in(owner)
     offered = BooksCategorySetup.new(org, profile: { "kind" => "venue", "bar" => "1" }).categories.select(&:recommended).map(&:id) - [ "spending:travel" ]
     patch manage_money_books_setup_path, params: { profile: { kind: "venue", bar: "1", nonprofit: "0" }, offered: offered,
-                                                   custom: { expense: [ "Costume shop", "" ], income: [ "Raffle" ] } }
+                                                   custom: { expense: [ { name: "Costume shop", description: "Fabric, thread, the sewing machine" }, { name: "", description: "" } ], income: [ { name: "Raffle" } ] } }
     expect(response).to redirect_to(manage_money_books_path)
 
     org.reload
@@ -61,6 +61,12 @@ RSpec.describe "Books categories setup", type: :request do
     expect(spending.last.first).to eq("Other")
     expect(MoneyCategories.income_options(org).map(&:first)).to include("Raffle", "Bar and concessions")
     expect(MoneyCategories.income_options(org).map(&:first)).not_to include("Grant")
+    shop = org.ledger_accounts.find_by!(name: "Costume shop")
+    expect(shop.description).to eq("Fabric, thread, the sewing machine")
+    expect(MoneyCategories.spending_choices(org).find { |c| c.key == "account_#{shop.id}" }.description).to eq("Fabric, thread, the sewing machine")
+    # Alphabetical, the organization's own among them, Other last.
+    labels = spending.map(&:first)
+    expect(labels[0...-1]).to eq(labels[0...-1].sort_by(&:downcase))
     # A row already in a hidden category keeps its label.
     expect(MoneyCategories.label_for("travel", :spending, organization: org)).to eq("Travel")
 

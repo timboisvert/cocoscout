@@ -36,11 +36,9 @@ export default class extends Controller {
         this.fill(form, "money_record[counterparty]", p.counterparty || "")
         this.fill(form, "bank_line", p.line)
         this.fill(form, "money_record[production_id]", "")
-        const category = form.querySelector('[name="money_record[category_key]"]')
-        if (category) {
-            const fits = p.category && Array.from(category.options).some(o => o.value === p.category)
-            category.value = fits ? p.category : ""
-        }
+        const categoryInput = form.querySelector('[name="money_record[category_key]"]')
+        const category = categoryInput && this.application.getControllerForElementAndIdentifier(categoryInput.closest('[data-controller~="category-picker"]'), "category-picker")
+        if (category) category.set(p.category || "")
         const via = form.querySelector('[name="money_record[via]"][value="bank"]')
         if (via) via.checked = true
         const amount = form.querySelector('[name="money_record[amount]"]')

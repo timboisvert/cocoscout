@@ -52,14 +52,15 @@
 
         <div class="space-y-4" data-bank-rule-target="recordFields">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <label class="<%= label %>" data-bank-rule-target="categoryOut">
+            <%# One picker per direction, the same name; the one not in use is disabled and sends nothing. %>
+            <div class="<%= label %>">
               <span>Category</span>
-              <%= select_tag "bank_rule[category_key]", options_for_select(MoneyCategories.spending_options(org)), prompt: "Choose one", class: input, id: "bank-rule-category-out" %>
-            </label>
-            <label class="<%= label %> hidden" data-bank-rule-target="categoryIn">
+              <%= render "shared/category_picker", name: "bank_rule[category_key]", kind: :spending, organization: org, id: "bank-rule-category-out", data: { bank_rule_target: "categoryOut" } %>
+            </div>
+            <div class="<%= label %> hidden">
               <span>Kind</span>
-              <%= select_tag "bank_rule[category_key]", options_for_select(MoneyCategories.income_options(org)), prompt: "Choose one", class: input, id: "bank-rule-category-in", disabled: true %>
-            </label>
+              <%= render "shared/category_picker", name: "bank_rule[category_key]", kind: :income, organization: org, id: "bank-rule-category-in", disabled: true, data: { bank_rule_target: "categoryIn" } %>
+            </div>
             <label class="<%= label %>">
               <span data-bank-rule-target="counterpartyLabel">Paid to</span>
               <input type="text" name="bank_rule[counterparty]" placeholder="Restaurant Depot" class="<%= input %>" data-bank-rule-target="counterparty">

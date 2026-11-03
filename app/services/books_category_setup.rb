@@ -84,8 +84,9 @@ class BooksCategorySetup
   def recommendations = categories.to_h { |c| [ c.id, c.recommended ] }
 
   # Save the answers, what's offered, the organization's own categories,
-  # and the acknowledgment. offered: the ids said yes to; custom: names of
-  # new categories by kind ({ "income" => [...], "expense" => [...] }).
+  # and the acknowledgment. offered: the ids said yes to; custom: new
+  # categories by kind ({ "income" => [ { "name" => ..., "description" => ... } ], "expense" => [...] });
+  # a bare name does too.
   def save!(by:, offered:, custom: {})
     offered = Array(offered).map(&:to_s)
     hidden = categories.reject { |c| c.always || offered.include?(c.id) }.map(&:id)
@@ -96,10 +97,12 @@ class BooksCategorySetup
       ChartOfAccounts.ensure!(organization)
       custom.to_h.each do |type, names|
         type = type.to_s == "income" ? "income" : "expense"
-        Array(names).map { |n| n.to_s.strip.squeeze(" ") }.compact_blank.uniq.each do |name|
+        Array(names).map { |n| n.respond_to?(:to_h) ? n.to_h.stringify_keys : { "name" => n } }
+             .map { |n| [ n["name"].to_s.strip.squeeze(" "), n["description"].to_s.strip.presence ] }
+             .reject { |name, _| name.blank? }.uniq(&:first).each do |name, description|
           next if organization.ledger_accounts.exists?(name: name, account_type: type)
 
-          organization.ledger_accounts.create!(name: name, account_type: type, system: false, active: true, code: next_custom_code(type))
+          organization.ledger_accounts.create!(name: name, description: description, account_type: type, system: false, active: true, code: next_custom_code(type))
         end
       end
     end

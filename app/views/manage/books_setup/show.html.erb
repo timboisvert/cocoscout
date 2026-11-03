@@ -86,14 +86,17 @@
               <% custom.each do |account| %>
                 <li class="px-5 py-2.5 flex items-center gap-3">
                   <input type="checkbox" checked disabled class="<%= check %> opacity-60">
-                  <span class="flex-1 min-w-0 text-sm text-gray-900"><%= account.name %> <span class="text-xs text-pink-600">yours</span></span>
+                  <span class="flex-1 min-w-0 text-sm text-gray-900"><%= account.name %> <span class="text-xs text-pink-600">yours</span><% if account.description.present? %><span class="text-gray-500"> · <%= account.description %></span><% end %></span>
                 </li>
               <% end %>
             </ul>
             <div class="px-5 py-3 border-t border-gray-100 bg-gray-50" data-books-setup-target="custom" data-type="<%= type %>">
               <div class="text-xs font-medium text-gray-700 mb-1.5">Add your own</div>
               <div class="space-y-2" data-books-setup-target="customRows">
-                <input type="text" name="custom[<%= type %>][]" placeholder="<%= type == 'income' ? 'e.g. Membership dues, Raffle' : 'e.g. Costume shop, Props storage' %>" class="<%= input %>">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input type="text" name="custom[<%= type %>][][name]" placeholder="<%= type == 'income' ? 'A name, e.g. Raffle' : 'A name, e.g. Costume shop' %>" aria-label="Name" class="<%= input %>">
+                  <input type="text" name="custom[<%= type %>][][description]" placeholder="What goes in it" aria-label="What goes in it" class="<%= input %>">
+                </div>
               </div>
               <div class="mt-2"><%= render "shared/button", text: "Another", variant: "secondary", size: "small", type: :button, data: { action: "click->books-setup#another" } %></div>
             </div>

@@ -43,10 +43,9 @@ export default class extends Controller {
 
     another(event) {
         const rows = event.target.closest("[data-books-setup-target='custom']").querySelector("[data-books-setup-target='customRows']")
-        const last = rows.querySelector("input:last-of-type")
-        const input = last.cloneNode()
-        input.value = ""
-        rows.appendChild(input)
-        input.focus()
+        const row = rows.lastElementChild.cloneNode(true)
+        row.querySelectorAll("input").forEach(input => { input.value = "" })
+        rows.appendChild(row)
+        row.querySelector("input").focus()
     }
 }

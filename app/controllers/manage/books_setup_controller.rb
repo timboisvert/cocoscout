@@ -31,7 +31,7 @@ module Manage
     private
 
     def custom_params
-      params.fetch(:custom, {}).permit(income: [], expense: []).to_h
+      params.fetch(:custom, {}).permit(income: %i[name description], expense: %i[name description]).to_h
     end
 
     def require_change!

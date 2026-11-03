@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 // Books → Bank rules: the rule modal, filled from a line's Rule link (its
 // words and direction) or a rule's Edit (everything, and the form then
 // changes that rule), with a live count of the lines waiting it fits.
-// Direction decides which category list shows (income or spending);
+// Direction decides which category picker shows (income or spending);
 // Ignore hides the record fields. Sits on the page wrapper beside
 // bank-record. The modal's own modal controller closes it.
 //
@@ -48,8 +48,7 @@ export default class extends Controller {
         this.setWhere(p.production, p.show)
         this.onImportTarget.checked = p.onImport === undefined || p.onImport === null || p.onImport === true || p.onImport === "true"
         this.refresh()
-        const category = this.activeCategory()
-        if (category) category.value = p.category && Array.from(category.options).some(o => o.value === p.category) ? p.category : ""
+        this.activeCategory()?.set(p.category || "")
 
         if (this.hasRulesModalTarget) this.rulesModalTarget.classList.add("hidden")
         this.modalTarget.classList.remove("hidden")
@@ -82,10 +81,10 @@ export default class extends Controller {
         const ignore = this.checked("bank_rule[action]") === "ignore"
         this.recordFieldsTarget.classList.toggle("hidden", ignore)
         const income = direction === "in"
-        this.categoryInTarget.classList.toggle("hidden", !income)
-        this.categoryOutTarget.classList.toggle("hidden", income)
-        this.categoryInTarget.querySelector("select").disabled = ignore || !income
-        this.categoryOutTarget.querySelector("select").disabled = ignore || income
+        this.categoryInTarget.parentElement.classList.toggle("hidden", !income)
+        this.categoryOutTarget.parentElement.classList.toggle("hidden", income)
+        this.picker(this.categoryInTarget)?.disable(ignore || !income)
+        this.picker(this.categoryOutTarget)?.disable(ignore || income)
         this.counterpartyLabelTarget.textContent = income ? "From" : "Paid to"
         if (!ignore && direction === "any") this.check("bank_rule[direction]", "out")
         this.preview()
@@ -118,9 +117,14 @@ export default class extends Controller {
         }
     }
 
+    // The category picker (shared/category_picker) for the direction chosen.
     activeCategory() {
         const income = this.checked("bank_rule[direction]") === "in"
-        return (income ? this.categoryInTarget : this.categoryOutTarget).querySelector("select")
+        return this.picker(income ? this.categoryInTarget : this.categoryOutTarget)
+    }
+
+    picker(element) {
+        return this.application.getControllerForElementAndIdentifier(element, "category-picker")
     }
 
     check(name, value) {

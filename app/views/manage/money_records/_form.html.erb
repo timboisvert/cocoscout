@@ -74,7 +74,8 @@
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <label class="<%= label %>">
           <span><%= kind == "in" ? "Kind" : "Category" %></span>
-          <%= f.select :category_key, (kind == "in" ? MoneyCategories.income_options(record.organization) : MoneyCategories.spending_options(record.organization)), { prompt: "Choose one" }, class: input %>
+          <%= render "shared/category_picker", name: "money_record[category_key]", kind: (kind == "in" ? :income : :spending), organization: record.organization,
+                value: record.category_key, id: "money_record_category_key_#{kind}" %>
         </label>
         <label class="<%= label %>">
           <span><%= kind == "in" ? "From" : "Paid to" %></span>

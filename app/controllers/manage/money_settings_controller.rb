@@ -45,8 +45,8 @@ module Manage
     def create_category
       type = params[:kind] == "income" ? "income" : "expense"
       name = params[:name].to_s.strip
-      account = Current.organization.ledger_accounts.new(name: name, account_type: type, system: false, active: true,
-                                                         code: next_custom_code(type))
+      account = Current.organization.ledger_accounts.new(name: name, description: params[:description].to_s.strip.presence,
+                                                         account_type: type, system: false, active: true, code: next_custom_code(type))
       if name.present? && account.save
         redirect_to section_path("books"), notice: "Added #{account.name}."
       else

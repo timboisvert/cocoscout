@@ -22,6 +22,10 @@ RSpec.describe "Manage::MoneyRecords", type: :request do
       get page
       expect(response.body).to include('id="record-money-modal"', 'data-modal-id="record-money-modal"', "Moved between your accounts", "Holiday Revue")
     end
+    # The category is picked from a sheet of our own: each name with what goes in it, alphabetical.
+    expect(response.body).to include("What is it for?", "What kind of money is it?", 'name="money_record[category_key]"', "Beer, wine, liquor, mixers, cups: what you buy to sell", "Catering, the green room, a cast party")
+    expect(response.body).not_to include('<select name="money_record[category_key]"', 'id="money_record_category_key"')
+    expect(response.body.index('data-key="bar_purchases"')).to be < response.body.index('data-key="food"')
     get manage_money_books_path
     expect(response.body).not_to include("record-money-modal", "Download this period")
     get manage_money_statements_path

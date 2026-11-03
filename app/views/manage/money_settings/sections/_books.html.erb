@@ -46,7 +46,7 @@
         <% end %>
         <% @custom_income.each do |account| %>
           <li class="flex items-center justify-between gap-2">
-            <span><%= account.name %> <span class="text-xs text-pink-600">yours</span></span>
+            <span><%= account.name %> <span class="text-xs text-pink-600">yours</span><% if account.description.present? %> <span class="text-gray-500">· <%= account.description %></span><% end %></span>
             <%= render "shared/button", text: "Remove", variant: "secondary", size: "small", type: :button,
                   data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-archive-category-#{account.id}" } %>
           </li>
@@ -61,7 +61,7 @@
         <% end %>
         <% @custom_spending.each do |account| %>
           <li class="flex items-center justify-between gap-2">
-            <span><%= account.name %> <span class="text-xs text-pink-600">yours</span></span>
+            <span><%= account.name %> <span class="text-xs text-pink-600">yours</span><% if account.description.present? %> <span class="text-gray-500">· <%= account.description %></span><% end %></span>
             <%= render "shared/button", text: "Remove", variant: "secondary", size: "small", type: :button,
                   data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-archive-category-#{account.id}" } %>
           </li>
@@ -88,7 +88,11 @@
     <div class="flex flex-wrap items-end gap-3">
       <div class="flex-1 min-w-[12rem]">
         <label class="block text-xs font-medium text-gray-600 mb-1">Name</label>
-        <input type="text" name="name" placeholder="e.g. Membership dues, Costume shop" class="<%= input %>">
+        <input type="text" name="name" placeholder="e.g. Raffle, Costume shop" class="<%= input %>">
+      </div>
+      <div class="flex-1 min-w-[14rem]">
+        <label class="block text-xs font-medium text-gray-600 mb-1">What goes in it <span class="font-normal text-gray-400">(optional)</span></label>
+        <input type="text" name="description" placeholder="Shown under the name when picking" class="<%= input %>">
       </div>
       <div class="min-w-[10rem]">
         <label class="block text-xs font-medium text-gray-600 mb-1">It's for</label>
