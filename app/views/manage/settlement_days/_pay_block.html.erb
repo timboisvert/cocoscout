@@ -97,7 +97,6 @@
           <div class="flex items-center justify-between gap-3 py-2 text-sm">
             <span class="min-w-0">
               <span class="text-gray-900"><%= contractor&.name || payment.display_name %></span>
-              <% if contractor&.person %><span class="ml-1 text-xs text-gray-500">· paid to <%= contractor.person.name %></span><% end %>
               <span class="block text-xs text-gray-500"><%= payment.display_name %><%= payment.due_date ? ", due #{payment.due_date.strftime('%b %-d')}" : "" %></span>
             </span>
             <span class="flex items-center gap-2 shrink-0">
