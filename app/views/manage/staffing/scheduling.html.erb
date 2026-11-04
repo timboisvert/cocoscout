@@ -44,17 +44,18 @@
 
   <div class="border-t border-gray-200 pt-4 mt-2">
 
-  <%# === Desktop: the week or one day, with Day / Week to switch, and Apply
-      regulars. A phone picks a day instead (the strip below). === %>
+  <%# === Desktop: seven days or one (Home's 7 days / 3 days control), and
+      Apply regulars. A phone picks a day instead (the strip below). === %>
+  <% one_day = @scheduling_days == 1 %>
   <div class="<%= 'max-sm:hidden' unless @regulars_enabled && @regulars_matches.any? %> flex items-center justify-between mb-3 flex-wrap gap-2">
     <div class="flex items-center gap-3 flex-wrap">
-      <% if @view == "day" %>
+      <% if one_day %>
         <%= render "shared/week_picker", pick: :day, label: @selected_day.strftime("%A, %b %-d, %Y"), months: @calendar_months,
-              prev_path: manage_staffing_scheduling_path(view: "day", day: (@selected_day - 1).iso8601),
-              next_path: manage_staffing_scheduling_path(view: "day", day: (@selected_day + 1).iso8601),
-              today_path: (@selected_day == Date.current ? nil : manage_staffing_scheduling_path(view: "day", day: Date.current.iso8601)),
+              prev_path: manage_staffing_scheduling_path(days: 1, day: (@selected_day - 1).iso8601),
+              next_path: manage_staffing_scheduling_path(days: 1, day: (@selected_day + 1).iso8601),
+              today_path: (@selected_day == Date.current ? nil : manage_staffing_scheduling_path(days: 1, day: Date.current.iso8601)),
               today_text: "Today",
-              day_path: ->(d) { manage_staffing_scheduling_path(view: "day", day: d.iso8601) },
+              day_path: ->(d) { manage_staffing_scheduling_path(days: 1, day: d.iso8601) },
               selected_day: @selected_day, show_dates: @show_dates %>
       <% else %>
         <%
@@ -71,13 +72,11 @@
               week_path: ->(monday) { manage_staffing_scheduling_path(week_start: monday.to_s) },
               selected_week: @week_start, week_statuses: @week_statuses %>
       <% end %>
-      <%# Day lands on today when it's in this week, else the week's first busy day. %>
-      <div class="hidden sm:flex items-center gap-1" data-scheduling-view-toggle>
-        <%= render "shared/button", text: "Day", variant: (@view == "day" ? "primary" : "secondary"), size: "small", type: :link,
-              path: manage_staffing_scheduling_path(view: "day", day: @selected_day.iso8601), title: "One day at a time" %>
-        <%= render "shared/button", text: "Week", variant: (@view == "week" ? "primary" : "secondary"), size: "small", type: :link,
-              path: manage_staffing_scheduling_path(view: "week", week_start: @week_start.to_s), title: "The whole week" %>
-      </div>
+      <%# 1 day lands on today when it's in this week, else the week's first busy day. %>
+      <span class="hidden sm:inline-flex rounded-md border border-gray-300 overflow-hidden bg-white" role="group" aria-label="Days shown" data-days-toggle>
+        <%= link_to "7 days", manage_staffing_scheduling_path(days: 7, week_start: @week_start.to_s), class: "px-2.5 py-1 text-xs font-medium #{one_day ? 'text-gray-700 hover:bg-gray-50' : 'bg-pink-500 text-white'}" %>
+        <%= link_to "1 day", manage_staffing_scheduling_path(days: 1, day: @selected_day.iso8601), class: "px-2.5 py-1 text-xs font-medium #{one_day ? 'bg-pink-500 text-white' : 'text-gray-700 hover:bg-gray-50'}" %>
+      </span>
     </div>
     <% if @regulars_enabled && @regulars_matches.any? %>
       <%= render "shared/button", text: "Apply regulars (#{@regulars_matches.size})",
@@ -93,7 +92,7 @@
           actions: (if @house_role_count.zero? then [ { text: "Set up your staffing roles first", path: manage_staffing_house_roles_path } ]
                     else [ { text: "Add your staff", path: manage_staffing_staff_path } ] end) %>
   <% else %>
-    <% if @view == "day" %>
+    <% if one_day %>
       <%= render "manage/staffing/desktop_day" %>
     <% elsif @house_role_count.positive? || @shifts_by_day.any? %>
       <%= render "manage/staffing/week_grid" %>
