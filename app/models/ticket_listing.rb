@@ -289,6 +289,10 @@ class TicketListing < ApplicationRecord
   # The chain: this date, then its production, then the room it's in
   # (RoomTicketingSetting). General admission unless something says seats.
 
+  # A batch reader that already has the room's setting hands it over
+  # (Ticketing::ListingStats.preload_seating); nil means the room has none.
+  attr_writer :room_ticketing_setting
+
   def room_ticketing_setting
     return @room_ticketing_setting if defined?(@room_ticketing_setting)
 

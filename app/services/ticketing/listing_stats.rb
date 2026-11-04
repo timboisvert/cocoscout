@@ -40,6 +40,7 @@ module Ticketing
       return {} if listings.empty?
 
       ids = listings.map(&:id)
+      preload_seating(listings)
       tickets = Ticket.joins(:ticket_order).where(ticket_listing_id: ids)
                       .where(ticket_orders: { status: TicketOrder::WAS_PAID })
                       .select("tickets.*, ticket_orders.channel AS order_channel, ticket_orders.paid_at AS order_paid_at, " \
@@ -68,6 +69,17 @@ module Ticketing
                                    moved_out_cents: moved_out.fetch(listing.id, 0), items: items.fetch(listing.id, []), item_tax: item_tax,
                                    counts: counts[listing.id]) ]
       end
+    end
+
+    # Whether a date sells by the seat walks its production's ticketing, its
+    # show, the room and the room's setting (advanced ticketing §1): read
+    # them for every listing at once, so a week of shows stays a handful of
+    # queries.
+    def self.preload_seating(listings)
+      ActiveRecord::Associations::Preloader.new(records: listings, associations: [ { production: :production_ticketing }, { show: :location_space } ]).call
+      room_ids = listings.filter_map { |l| l.show.location_space_id }.uniq
+      settings = room_ids.any? ? RoomTicketingSetting.where(location_space_id: room_ids).index_by(&:location_space_id) : {}
+      listings.each { |l| l.room_ticketing_setting = settings[l.show.location_space_id] }
     end
 
     # One show's numbers (for many at once, use .for).

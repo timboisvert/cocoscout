@@ -17,7 +17,7 @@ module Ticketing
 
     # The seat counts for many listings at once (ListingStats.for): what's
     # sold and held, by ticket type and by bundle, and what other sites sold.
-    Counts = Data.define(:sold, :sold_in_bundles, :held, :held_in_bundles, :outside)
+    Counts = Data.define(:sold, :sold_in_bundles, :held, :held_in_bundles, :outside, :blocked)
 
     # excluding: tickets that are giving up their seats in the same breath
     # (a move to another ticket type on the same date), so they don't count
@@ -51,9 +51,11 @@ module Ticketing
       held_by_tier = by_listing.call(held.group(:ticket_listing_id, :ticket_tier_id).count)
       held_by_bundle = by_listing.call(held.where.not(bundle_tier_id: nil).group(:ticket_listing_id, :bundle_tier_id).count)
       outside = by_listing.call(TicketOutsideSale.where(ticket_listing_id: ids).group(:ticket_listing_id, :ticket_tier_id).sum(:tickets_sold))
+      # A group's block (TicketQuantityHold), by type; nil is the date as a whole.
+      blocked = by_listing.call(TicketQuantityHold.live.where(ticket_listing_id: ids).group(:ticket_listing_id, :ticket_tier_id).sum(:quantity))
       ids.to_h do |id|
         [ id, Counts.new(sold: sold_by_tier[id], sold_in_bundles: sold_by_bundle[id], held: held_by_tier[id],
-                         held_in_bundles: held_by_bundle[id], outside: outside[id]) ]
+                         held_in_bundles: held_by_bundle[id], outside: outside[id], blocked: blocked[id]) ]
       end
     end
 
@@ -142,6 +144,8 @@ module Ticketing
     # as a whole counts against the date only.
     def blocked(tier: nil)
       tier = tier.base_tier if tier&.bundle?
+      return (tier ? @counts.blocked[tier.id].to_i : @counts.blocked.values.sum) if @counts
+
       rows = TicketQuantityHold.live.where(ticket_listing_id: @listing.id)
       rows = rows.where(ticket_tier_id: tier.id) if tier
       rows.sum(:quantity)
