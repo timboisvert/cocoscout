@@ -58,6 +58,12 @@ class SquareSync
         next unless (from..to).cover?(date)
 
         totals = days[date]
+        # A refund is an order of its own at Square: no lines, a return.
+        if order["line_items"].blank? && order["returns"].present?
+          totals.refunds += money(order.dig("return_amounts", "total_money"))
+          next
+        end
+
         totals.orders += 1
         orders_seen += 1
         Array(order["line_items"]).each do |line|
@@ -77,7 +83,9 @@ class SquareSync
 
       (from..to).each do |date|
         totals = days[date]
-        day = @integration.register_days.find_or_initialize_by(external_location_id: loc["id"], business_date: date)
+        # Not through the association: a has_many autosaves what it built
+        # when the integration saves, and a quiet day must leave no row.
+        day = RegisterDay.find_or_initialize_by(integration: @integration, external_location_id: loc["id"], business_date: date)
         day.assign_attributes(organization: @organization, location_id: @integration.our_location_id(loc["id"]),
                               sales_by_category: totals.sales.transform_values(&:to_i), gross_cents: totals.sales.values.sum,
                               tips_cents: totals.tips, tax_cents: totals.tax, refunds_cents: totals.refunds, fees_cents: totals.fees,

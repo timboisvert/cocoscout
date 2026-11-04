@@ -68,10 +68,22 @@ class Integration < ApplicationRecord
 
   def skipped_location?(external_id) = location_map[external_id] == SKIP
 
-  # The money-in category an external category maps to; new ones are
-  # "other" until someone says.
+  # A register's category names that speak for themselves, so Bar is Bar
+  # before anyone maps it.
+  NAMED_CATEGORIES = {
+    "bar" => "bar", "drinks" => "bar", "beverages" => "bar", "beer" => "bar", "wine" => "bar", "cocktails" => "bar", "liquor" => "bar",
+    "food" => "food", "snacks" => "food", "candy" => "food", "kitchen" => "food",
+    "merch" => "merchandise", "merchandise" => "merchandise", "apparel" => "merchandise"
+  }.freeze
+
+  # The money-in category an external category maps to: what someone chose,
+  # else what its name says, else "other" until someone says.
   def our_category(external_id)
-    REGISTER_CATEGORIES.key?(category_map[external_id].to_s) ? category_map[external_id].to_s : "other"
+    chosen = category_map[external_id].to_s
+    return chosen if REGISTER_CATEGORIES.key?(chosen)
+
+    name = external_categories.find { |c| c["id"] == external_id }&.dig("name").to_s.downcase.strip
+    NAMED_CATEGORIES.fetch(name, "other")
   end
 
   def connect!(tokens:, by:, merchant_name: nil)
