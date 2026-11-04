@@ -157,7 +157,9 @@
 %>
 <div class="sticky bottom-0 z-20 mt-6 -mx-4 sm:mx-0 border-t sm:border border-gray-200 bg-white/95 backdrop-blur sm:rounded-xl shadow-[0_-8px_24px_rgba(17,24,39,0.08)] px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-3">
   <div class="min-w-0 flex items-center gap-4">
-    <svg class="w-12 h-12 shrink-0 -rotate-90" viewBox="0 0 48 48" role="img" aria-label="<%= day.checked_count %> of <%= checks.size %> pieces confirmed">
+    <svg class="w-12 h-12 shrink-0" viewBox="0 0 48 48" role="img" aria-label="<%= day.checked_count %> of <%= checks.size %> pieces confirmed">
+      <%# The segments start at twelve o'clock and run clockwise (an SVG circle starts at three; the group turns it back a quarter). %>
+      <g transform="rotate(-90 24 24)">
       <% checks.each_with_index do |check, i| %>
         <a href="#<%= check.key %>">
           <title><%= check.name %><%= check.ok? ? ", confirmed" : (check.held? ? ": #{check.hold_reason}" : ", not confirmed yet") %></title>
@@ -166,7 +168,8 @@
                   stroke-dasharray="<%= ring_seg.round(2) %> <%= (ring_c - ring_seg).round(2) %>" stroke-dashoffset="<%= (-(i * (ring_seg + ring_gap)) - ring_gap / 2).round(2) %>" />
         </a>
       <% end %>
-      <g class="rotate-90 origin-center">
+      </g>
+      <g>
         <% if day.all_checked? %>
           <path d="M16.5 24.5l5 5L32 18.5" fill="none" class="stroke-pink-500" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
         <% else %>
