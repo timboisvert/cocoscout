@@ -66,6 +66,77 @@ RSpec.describe "Settle up", type: :request do
     expect(response.body).not_to include("No earlier day")
   end
 
+  it "types the ticket money for a show CocoScout doesn't sell: tickets, a flat fee or no revenue, and a note, with no link to the old page" do
+    back = manage_money_settle_up_day_path(date.iso8601)
+    get back
+    expect(response.body).to include(%(data-modal-id="tickets-#{show.id}"), %(data-modal-id="notes-#{show.id}"), "nothing entered yet", "This show had no revenue")
+    expect(CGI.unescapeHTML(response.body)).not_to include("This show's page")
+
+    patch manage_update_money_show_financials_path(show), params: { return_to: back, revenue_choice: "ticket_sales",
+      show_financials: { flat_fee: "", ticket_sales_lines_attributes: { "0" => { ticket_source_id: "", tickets_sold: "30", amount: "450" } } } }
+    expect(response).to redirect_to(back)
+    fin = show.reload.show_financials
+    expect([ fin.ticket_count, fin.ticket_revenue.to_f, fin.data_confirmed ]).to eq([ 30, 450.0, false ])
+    get back
+    expect(response.body).to include("30 · $450.00")
+
+    patch manage_update_money_show_financials_path(show), params: { return_to: back, revenue_choice: "flat_fee", show_financials: { flat_fee: "500" } }
+    expect(fin.reload).to be_flat_fee
+    get back
+    expect(response.body).to include("A flat fee instead of tickets", "$500.00")
+
+    # A note changes no money, so the mark stays lit.
+    patch manage_check_show_money_settle_up_day_path(date.iso8601, show_id: show.id), params: { checked: "1" }
+    patch manage_update_money_show_financials_path(show), params: { return_to: back, show_financials: { notes: "Rained out early" } }
+    expect([ fin.reload.notes, fin.data_confirmed ]).to eq([ "Rained out early", true ])
+    get back
+    expect(response.body).to include("Rained out early")
+
+    # No revenue: nothing counted, nobody paid, still confirmed with the day, and chosen back the same way.
+    patch manage_update_money_show_financials_path(show), params: { return_to: back, revenue_choice: "none", show_financials: { flat_fee: "500" } }
+    expect([ fin.reload.non_revenue_override, fin.data_confirmed ]).to eq([ true, false ])
+    expect(SettleUp.day(org, date).shows.first.in_cents).to eq(0)
+    get back
+    expect(response.body).to include("this show had no revenue", "No revenue, not confirmed", "Nobody is paid from a show with no revenue")
+    patch manage_check_show_money_settle_up_day_path(date.iso8601, show_id: show.id), params: { checked: "1" }
+    expect(fin.reload.data_confirmed).to be(true)
+    patch manage_update_money_show_financials_path(show), params: { return_to: back, revenue_choice: "flat_fee", show_financials: { flat_fee: "500" } }
+    expect([ fin.reload.non_revenue_override, fin.flat_fee.to_f ]).to eq([ false, 500.0 ])
+  end
+
+  it "keeps a show's financials page as a read-only record of its day's card and what was left" do
+    fin = show.show_financials || show.create_show_financials!
+    fin.update!(ticket_count: 30, ticket_revenue: 450, data_confirmed: true)
+    fin.expense_items.create!(category: ExpenseItem::CATEGORIES.first, description: "Pizza", amount: 50)
+
+    org.update!(settle_up_starts_on: date)
+    get manage_money_show_financials_path(show)
+    expect(response).to have_http_status(:ok)
+    body = CGI.unescapeHTML(response.body)
+    expect(body).to include("Settles with #{date.strftime('%A, %B %-d')}", "Settle up, #{date.strftime('%b %-d')}", "30 · $450.00", "What was left", "Came in", "$400.00")
+    expect(body).not_to include("Enter Financial Data", "Mark as Non-Revenue", %(data-modal-id="tickets-#{show.id}"), "Confirm</span>")
+    # A needs-financials row and the payout page send people to the day, the card open.
+    expect(SettleUp.money_entry_path(org, show)).to eq(manage_money_settle_up_day_path(date.iso8601, open: show.id, anchor: "show-#{show.id}"))
+
+    # From before the start date: the record says how to bring it in.
+    org.update!(settle_up_starts_on: date + 30)
+    get manage_money_show_financials_path(show)
+    expect(CGI.unescapeHTML(response.body)).to include("From before Settle up started", "Change the start date")
+    expect(SettleUp.money_entry_path(org, show)).to eq(manage_money_show_financials_path(show))
+  end
+
+  it "brings days already confirmed in settled when the start date moves earlier, and leaves unfinished ones to settle" do
+    other = create(:show, production: production, date_and_time: 5.days.ago.change(hour: 20))
+    (show.show_financials || show.create_show_financials!).update!(ticket_count: 10, ticket_revenue: 100, data_confirmed: true)
+    (other.show_financials || other.create_show_financials!).update!(ticket_count: 5, ticket_revenue: 50, data_confirmed: false)
+    org.update!(settle_up_starts_on: Date.current)
+
+    patch manage_money_settings_settle_up_path, params: { settlement_day_mode: "smart", settlement_day_starts_at: "5", settle_up_starts_on: 10.days.ago.to_date.iso8601 }
+    expect(flash[:notice]).to include("1 day already confirmed came in settled; 1 is waiting to settle")
+    expect(SettlementDay.find_by(organization: org, date: date)).to be_settled
+    expect(SettlementDay.find_by(organization: org, date: SettlementDay.day_for(org, other.date_and_time))).to be_nil
+  end
+
   it "opens a show's expenses and other revenue in their own modals, and saves each back onto the day" do
     get manage_money_settle_up_day_path(date.iso8601)
     expect(response.body).to include(%(data-modal-id="expenses-#{show.id}")).and include(%(data-modal-id="other-revenue-#{show.id}"))

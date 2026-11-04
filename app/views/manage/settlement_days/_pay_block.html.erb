@@ -35,8 +35,12 @@
 %>
 <% if pay.none? %>
   <div class="px-5 py-2 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
-    <span>No performers are paid for <%= production.name %>; its shows settle without a payout.</span>
-    <% if editable %>
+    <% if piece.non_revenue? %>
+      <span>Nobody is paid from a show with no revenue.</span>
+    <% else %>
+      <span>No performers are paid for <%= production.name %>; its shows settle without a payout.</span>
+    <% end %>
+    <% if editable && !piece.non_revenue? %>
       <%= form_with url: manage_choose_calculation_money_settle_up_day_path(day.param, show_id: show.id), method: :patch, data: { turbo_action: "replace" } do %>
         <%= render "shared/button", text: "Set up a payout", variant: "ghost", size: "xs", type: :submit, name: "choice", value: "pay_after_all" %>
       <% end %>

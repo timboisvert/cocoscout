@@ -1782,7 +1782,6 @@ Rails.application.routes.draw do
 
     # Show financials - the main financial data view for a show
     get "money/shows/:id/financials", to: "show_financials#show", as: "money_show_financials"
-    get "money/shows/:id/financials/edit", to: "show_financials#edit", as: "edit_money_show_financials"
     patch "money/shows/:id/financials", to: "show_financials#update", as: "update_money_show_financials"
     post "money/shows/:id/financials/mark_non_revenue", to: "show_financials#mark_non_revenue", as: "mark_non_revenue_money_show_financials"
     post "money/shows/:id/financials/unmark_non_revenue", to: "show_financials#unmark_non_revenue", as: "unmark_non_revenue_money_show_financials"

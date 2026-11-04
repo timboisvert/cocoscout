@@ -15,6 +15,9 @@ RSpec.describe "Ticket sources and per-source sales", type: :request do
     create(:show, production: production, date_and_time: Time.zone.local(2026, 9, 18, 20), duration_minutes: 120)
   end
 
+  # Where a show's ticket money is typed: its day on Settle up.
+  let(:day_path) { manage_money_settle_up_day_path(SettlementDay.day_for(org, show.date_and_time).iso8601) }
+
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
   describe "Money settings" do
@@ -86,12 +89,12 @@ RSpec.describe "Ticket sources and per-source sales", type: :request do
     let!(:eventbrite) { org.ticket_sources.create!(name: "Eventbrite", position: 1) }
     let!(:door) { org.ticket_sources.create!(name: "At the door", position: 2) }
 
-    it "offers a line per source on the worksheet" do
-      # The worksheet is a modal on the financials page, not a page of its own.
-      get manage_money_show_financials_path(show)
+    it "offers a line per source in the day's tickets modal" do
+      # The ticket money is typed on the show's day in Settle up (the worksheet is gone).
+      get day_path
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Ticket sales")
+      expect(response.body).to include(%(id="tickets-#{show.id}"))
       expect(response.body).to include("show_financials[ticket_sales_lines_attributes]")
       expect(response.body).to include("Eventbrite").and include("At the door")
     end
@@ -126,12 +129,12 @@ RSpec.describe "Ticket sources and per-source sales", type: :request do
       expect(show.reload.show_financials.ticket_sales_lines).to be_empty
     end
 
-    # The worksheet is a grid: a row per source, no picker, no "add a line".
+    # The modal is a grid: a row per source, no picker, no "add a line".
     it "lays out a row for every source, each already naming its source" do
-      get manage_money_show_financials_path(show)
+      get day_path
 
       body = response.body
-      expect(body).to include("Sold through").and include("Total")
+      expect(body).to include("Sold through")
       expect(body).not_to include("Add a line")
       field = ->(i) { body[/<input[^>]*name="show_financials\[ticket_sales_lines_attributes\]\[#{i}\]\[ticket_source_id\]"[^>]*>/] }
       expect(field.call(0)).to include(%(value="#{eventbrite.id}"))
@@ -185,14 +188,15 @@ RSpec.describe "Ticket sources and per-source sales", type: :request do
       expect(financials.ticket_revenue).to eq(400)
     end
 
-    it "shows the breakdown back on the financials page" do
+    it "shows the breakdown back on the show's record" do
       financials = show.create_show_financials!(revenue_type: "ticket_sales", data_confirmed: true)
       financials.ticket_sales_lines.create!(ticket_source: eventbrite, tickets_sold: 40, amount: 400)
 
       get manage_money_show_financials_path(show)
 
       expect(response.body).to include("Eventbrite")
-      expect(response.body).to include("40 tickets")
+      expect(response.body).to include("40 · $400.00")
+      expect(response.body).not_to include("show_financials[ticket_sales_lines_attributes]")
     end
   end
 
@@ -216,9 +220,9 @@ RSpec.describe "Ticket sources and per-source sales", type: :request do
     it "carries an older row's figures into its first line untouched" do
       show.create_show_financials!(revenue_type: "ticket_sales", ticket_count: 33, ticket_revenue: 330)
 
-      get manage_money_show_financials_path(show)
+      get day_path
 
-      # The worksheet seeds a line from whatever was already there, so saving it
+      # The modal seeds a line from whatever was already there, so saving it
       # migrates the row and changes no number.
       expect(response.body).to include('value="33"')
       expect(response.body).to include('value="330.00"')
@@ -266,12 +270,10 @@ RSpec.describe "Ticket sources and per-source sales", type: :request do
       financials.ticket_sales_lines.create!(ticket_source: built_in, tickets_sold: 12, amount: 240)
     end
 
-    it "shows on the worksheet as a fixed row that counts in the total" do
-      get manage_money_show_financials_path(show)
-      expect(response.body).to include("CocoScout Tickets").and include("from ticket sales")
-      expect(response.body).to include(%(data-fixed-tickets="12"))
+    it "shows on the day as its own line, never one to type over" do
+      get day_path
+      expect(response.body).to include("Sold through CocoScout", "12 · $240.00")
       expect(response.body).not_to match(/ticket_sales_lines_attributes\]\[\d+\]\[ticket_source_id\]"[^>]*value="#{built_in.id}"/)
-      expect(response.body).to include("12 tickets · $240.00")
     end
 
     it "survives a save of the rest of the worksheet" do

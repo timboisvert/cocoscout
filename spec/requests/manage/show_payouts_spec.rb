@@ -35,12 +35,11 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
   describe "financials not marked complete" do
     before { financials.update!(data_confirmed: false) }
 
-    it "says so and opens the worksheet right here, which comes back here on save" do
+    it "says so and points at where the money is confirmed, now that the worksheet is gone" do
       get manage_money_show_payout_path(show)
 
-      expect(response.body).to include("Not marked complete yet", "Open the worksheet", 'id="financialWorksheet"')
-      expect(response.body).to include("The data entered is complete and ready for payout")
-      expect(response.body).to match(/name="return_to"[^>]*value="#{Regexp.escape(manage_money_show_payout_path(show))}"/)
+      expect(response.body).to include("Not confirmed yet", "The show's money".gsub("'", "&#39;"), manage_money_show_financials_path(show))
+      expect(response.body).not_to include("Open the worksheet", 'id="financialWorksheet"')
 
       patch manage_update_money_show_financials_path(show),
             params: { return_to: manage_money_show_payout_path(show), show_financials: { data_confirmed: "1" } }
@@ -48,7 +47,7 @@ RSpec.describe "Manage::ShowPayouts", type: :request do
       expect(financials.reload.data_confirmed).to be(true)
 
       get manage_money_show_payout_path(show)
-      expect(response.body).not_to include("Not marked complete yet")
+      expect(response.body).not_to include("Not confirmed yet")
     end
 
     it "sends any other return address to the financials page" do

@@ -21,7 +21,10 @@ class SettleUp
     def tickets_count = ticket_lines.sum { |l| l[:count] }
     def tickets_cents = ticket_lines.sum { |l| l[:cents] }
     def in_cents = tickets_cents + products_cents + other_revenue_cents + flat_fee_cents
-    def state = confirmed? ? :ok : (financials&.has_data? ? :wait : :miss)
+    # A show marked as having no revenue: nothing to count, nobody paid
+    # from it, still confirmed like any other.
+    def non_revenue? = financials&.non_revenue_override? == true
+    def state = confirmed? ? :ok : (financials&.has_data? || non_revenue? ? :wait : :miss)
     # Who gets paid from this show (Pay), worked out when first asked.
     def pay = pay_cell.value
     # Why the show can't be confirmed yet, if it can't: the pay side has a
@@ -337,6 +340,12 @@ class SettleUp
     other += (financials.other_revenue.to_f * 100).round if financials && financials.normalized_other_revenue_details.empty?
     expenses = financials ? (financials.calculated_expenses * 100).round : 0
     fee = financials&.flat_fee? ? (financials.flat_fee.to_f * 100).round : 0
+    # No revenue means none: whatever was typed before stays on the record
+    # but counts for nothing while the show says so.
+    if financials&.non_revenue_override?
+      lines = []
+      fee = 0
+    end
     ShowPiece.new(show: show, financials: financials, listing: listing, ticket_lines: lines, outside_sources: outside,
                   products_cents: products, other_revenue_cents: other, expenses_cents: expenses, flat_fee_cents: fee,
                   pay_cell: Cell.new { pay_for(organization, show) })
@@ -356,6 +365,8 @@ class SettleUp
       return Pay.new(**blank, kind: :contract, show: show, show_payout: nil, scheme: nil, payments: payments)
     end
     return Pay.new(**blank, kind: :none, show: show, show_payout: nil, scheme: nil) unless production.pays_performers?
+    # A show with no revenue pays nobody (Tim, 2026-11-04).
+    return Pay.new(**blank, kind: :none, show: show, show_payout: nil, scheme: nil) if show.show_financials&.non_revenue_override?
 
     show_payout = show.show_payout
     show_payout = nil unless show_payout&.persisted?
@@ -456,6 +467,16 @@ class SettleUp
     return false unless starts && show.date_and_time
 
     SettlementDay.day_for(organization, show.date_and_time) >= starts
+  end
+
+  # Where a show's money is entered: its day on Settle up, the card open.
+  # A show from before the start date has only its record, which says how
+  # to bring it into Settle up (Tim, 2026-11-04: no going backwards).
+  def self.money_entry_path(organization, show)
+    routes = Rails.application.routes.url_helpers
+    return routes.manage_money_show_financials_path(show) unless in_settle_up?(organization, show)
+
+    routes.manage_money_settle_up_day_path(SettlementDay.day_for(organization, show.date_and_time).iso8601, open: show.id, anchor: "show-#{show.id}")
   end
 
   # The day a show settles on, and whether it has: [date, settled?].

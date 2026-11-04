@@ -6,22 +6,20 @@ module Manage
     before_action :set_production
     before_action :set_show_financials
 
+    # The show's money as a record to read (Tim, 2026-11-04): the card its
+    # day shows on Settle up, and what was left after everything. Nothing is
+    # entered here; that happens on the day.
     def show
-      @show_payout = @show.show_payout || @show.build_show_payout
+      @show_payout = @show.show_payout
+      @date = SettlementDay.day_for(Current.organization, @show.date_and_time)
+      @day = SettleUp.day(Current.organization, @date)
+      @piece = @day.shows.find { |piece| piece.show.id == @show.id } || SettleUp.show_piece(Current.organization, @show)
+      @in_settle_up = SettleUp.in_settle_up?(Current.organization, @show)
 
       # Load production expense allocations for this show
       @production_expense_allocations = @show.production_expense_allocations
                                              .includes(:production_expense)
                                              .order("production_expenses.name")
-    end
-
-    # The worksheet as a page (V1.1 plan §6): where the payout page sends
-    # someone to enter financials, and what a phone gets. A Turbo Frame still
-    # gets it bare. The app gets its own layout like any page.
-    def edit
-      respond_to do |format|
-        format.html { request.headers["Turbo-Frame"].present? ? render(layout: false) : render }
-      end
     end
 
     def update
@@ -32,7 +30,19 @@ module Manage
       # 2026-11-04): the money changed, so it's confirmed again on purpose,
       # and its payout is worked out again then. The worksheet's own
       # checkbox still says what it says.
-      attrs[:data_confirmed] = false if params[:return_to].to_s.start_with?("/manage/money/settle-up/") && !attrs.key?(:data_confirmed)
+      # The day's tickets modal says which kind of money the show took:
+      # tickets, a flat fee, or none. None keeps what was typed and counts it
+      # for nothing (SettleUp.show_piece), so a slip is undone by choosing again.
+      if params[:revenue_choice].present?
+        none = params[:revenue_choice] == "none"
+        attrs[:revenue_type] = params[:revenue_choice] == "flat_fee" ? "flat_fee" : "ticket_sales"
+        attrs[:non_revenue_override] = none
+        attrs = attrs.except(:ticket_sales_lines_attributes, :flat_fee, :contractor_collected) if none
+      end
+      from_day = params[:return_to].to_s.start_with?("/manage/money/settle-up/")
+      # A note alone changes no money, so it leaves the mark as it is.
+      money_edit = (attrs.keys.map(&:to_s) - %w[notes]).any?
+      attrs[:data_confirmed] = false if from_day && money_edit && !attrs.key?(:data_confirmed)
       if @show_financials.update(attrs)
         # Push the new numbers at this show's contract settlement. The service
         # decides whether there is one — asking @production.contract here got
@@ -47,13 +57,13 @@ module Manage
           manage_money_show_financials_path(@show)
         end
         respond_to do |format|
-          format.html { redirect_to back, notice: "Financial data saved successfully." }
-          format.turbo_stream { redirect_to back, notice: "Financial data saved successfully." }
+          format.html { redirect_to back, notice: "Saved." }
+          format.turbo_stream { redirect_to back, notice: "Saved." }
         end
       elsif params[:return_to].to_s.start_with?("/manage/money/settle-up/")
         redirect_to params[:return_to], alert: "That did not save: #{@show_financials.errors.full_messages.to_sentence}"
       else
-        render :edit, status: :unprocessable_content
+        redirect_to SettleUp.money_entry_path(Current.organization, @show), alert: "That did not save: #{@show_financials.errors.full_messages.to_sentence}"
       end
     end
 

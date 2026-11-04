@@ -141,10 +141,10 @@ RSpec.describe "Manage ticket listings", type: :request do
       # Only the rows a site has are drawn; the rest come from the template on Add.
       expect(response.body.scan(/name="sales\[#{eventbrite.id}\]\[\d+\]\[tickets\]"/).size).to eq(1)
 
-      # The worksheet shows those rows but doesn't let anyone type over them,
-      # and links back to the ticketing page where they're changed.
+      # The show's record shows those rows but doesn't let anyone type over
+      # them; they're changed on the ticketing page or the show's day.
       get manage_money_show_financials_path(friday)
-      expect(response.body).to match(%r{<a [^>]*href="#{manage_ticket_listing_path(listing)}"[^>]*>imported from the ticketing page</a>})
+      expect(response.body).to include("Outside tickets")
       expect(response.body).not_to match(/ticket_sales_lines_attributes\]\[\d+\]\[ticket_source_id\]"[^>]*value="#{eventbrite.id}"/)
     end
 

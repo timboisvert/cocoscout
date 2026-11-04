@@ -3,7 +3,7 @@
   money = ->(cents) { cents.negative? ? "−#{number_to_currency(-cents / 100.0)}" : number_to_currency(cents / 100.0) }
   show = piece.show
   fin = piece.financials
-  state_words = { ok: "Confirmed", wait: "Automatically pulled in, not confirmed", miss: "Nothing entered" }.fetch(piece.state)
+  state_words = { ok: "Confirmed", wait: (piece.non_revenue? ? "No revenue, not confirmed" : "Automatically pulled in, not confirmed"), miss: "Nothing entered" }.fetch(piece.state)
   state_tone = { ok: "text-green-700", wait: "text-amber-700", miss: "text-red-700" }.fetch(piece.state)
   outside_lines = piece.ticket_lines.reject { |l| l[:built_in] }
   online_lines = piece.ticket_lines.select { |l| l[:built_in] }
@@ -13,6 +13,12 @@
   pink = "text-pink-600 hover:text-pink-700"
   # The number opens that thing's own worksheet, a modal (Tim, 2026-11-03).
   opens = ->(modal_id, text) { %(<a href="##{modal_id}" class="#{pink}" data-controller="modal" data-action="click->modal#open" data-modal-id="#{modal_id}">#{text}</a>).html_safe }
+  # A show CocoScout doesn't sell has its ticket money typed here: tickets,
+  # a flat fee, or no revenue (Tim, 2026-11-04).
+  typed_tickets = editable && piece.listing.nil?
+  tickets_id = "tickets-#{show.id}"
+  typed = ->(text) { typed_tickets ? opens.call(tickets_id, text) : text }
+  notes = fin&.notes.to_s.strip
 %>
 <section class="bg-white border border-gray-200 rounded-xl overflow-hidden" id="show-<%= show.id %>">
   <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-gray-200">
@@ -28,8 +34,12 @@
   <div class="px-5 py-3 grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-2">
     <div>
       <div class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Tickets</div>
-      <% if piece.ticket_lines.empty? %>
-        <%= line.call("Tickets", (fin&.flat_fee? ? "a flat fee, not tickets" : "nothing entered yet"), "—") %>
+      <% if piece.non_revenue? %>
+        <%= line.call("Tickets", "this show had no revenue", typed.call(typed_tickets ? "Change" : "—")) %>
+      <% elsif fin&.flat_fee? %>
+        <%= line.call("A flat fee instead of tickets", nil, typed.call(money.call(piece.flat_fee_cents))) %>
+      <% elsif piece.ticket_lines.empty? %>
+        <%= line.call("Tickets", "nothing entered yet", typed.call(typed_tickets ? "Enter" : "—")) %>
       <% end %>
       <% online_lines.each do |l| %>
         <%= line.call("Sold through CocoScout", "from Ticketing", (piece.listing ? link_to("#{l[:count]} · #{money.call(l[:cents])}", manage_ticket_listing_path(piece.listing), class: pink) : "#{l[:count]} · #{money.call(l[:cents])}")) %>
@@ -39,8 +49,11 @@
               (editable ? opens.call("outside-#{show.id}", "#{outside_lines.sum { |l| l[:count] }} · #{money.call(outside_lines.sum { |l| l[:cents] })}") : "#{outside_lines.sum { |l| l[:count] }} · #{money.call(outside_lines.sum { |l| l[:cents] })}")) %>
       <% else %>
         <% outside_lines.each do |l| %>
-          <%= line.call(l[:label], nil, "#{l[:count]} · #{money.call(l[:cents])}") %>
+          <%= line.call(l[:label], nil, typed.call("#{l[:count]} · #{money.call(l[:cents])}")) %>
         <% end %>
+      <% end %>
+      <% if fin && fin.contractor_collected.to_f.positive? && !piece.non_revenue? %>
+        <%= line.call("Collected by the contractor", "already in the tickets", typed.call(number_to_currency(fin.contractor_collected))) %>
       <% end %>
       <% if piece.listing %>
         <% sold = Ticket.where(ticket_order_id: piece.listing.ticket_orders.select(:id), status: Ticket::SOLD_STATUSES) %>
@@ -54,15 +67,18 @@
             (editable ? opens.call("other-revenue-#{show.id}", money.call(piece.other_revenue_cents)) : money.call(piece.other_revenue_cents))) %>
       <%= line.call("Expenses", (fin && fin.expense_items.any? ? pluralize(fin.expense_items.size, "item") : nil),
             (editable ? opens.call("expenses-#{show.id}", money.call(piece.expenses_cents)) : money.call(piece.expenses_cents))) %>
-      <% if fin&.flat_fee? %>
-        <%= line.call("Flat fee instead of tickets", nil, money.call(piece.flat_fee_cents)) %>
+      <% if editable || notes.present? %>
+        <%= line.call("Notes", (notes.present? ? truncate(notes, length: 70) : nil), (editable ? opens.call("notes-#{show.id}", notes.present? ? "Change" : "Add") : "")) %>
       <% end %>
-      <div class="pt-1 text-sm"><%= link_to "This show's page", manage_money_show_financials_path(show), class: pink %></div>
     </div>
   </div>
   <%= render "manage/settlement_days/pay_block", piece: piece, day: day, editable: editable, return_to: return_to, open: (defined?(open_show_id) && open_show_id.to_s == show.id.to_s), open_modal_id: (defined?(open_modal_id) ? open_modal_id.to_s : "") %>
 </section>
+<% if typed_tickets %>
+  <%= render "manage/settlement_days/tickets_modal", id: tickets_id, show: show, financials: fin, return_to: return_to %>
+<% end %>
 <% if editable %>
+  <%= render "manage/settlement_days/notes_modal", id: "notes-#{show.id}", show: show, financials: fin, return_to: return_to %>
   <%= render "manage/settlement_days/other_revenue_modal", id: "other-revenue-#{show.id}", show: show, financials: fin, return_to: return_to %>
   <%= render "manage/settlement_days/expenses_modal", id: "expenses-#{show.id}", show: show, financials: fin, return_to: return_to %>
 <% end %>

@@ -127,8 +127,18 @@ module Manage
       rescue Date::Error
         Current.organization.settle_up_starts_on
       end
+      previous = Current.organization.settle_up_starts_on
       Current.organization.update!(settlement_day_mode: mode, settlement_day_starts_at: hour, settle_up_starts_on: starts_on)
-      redirect_to section_path("settle_up"), notice: "Settle up settings saved."
+      notice = "Settle up settings saved."
+      # Moved earlier, to change an older day (Tim, 2026-11-04: no going
+      # backwards to the old pages): the days that just came in and were
+      # already confirmed count as settled, so only unfinished ones wait.
+      if previous && starts_on && starts_on < previous
+        settled = SettleUpStart.convert!(Current.organization, starts_on: starts_on, before: previous)
+        waiting = SettleUp.to_settle(Current.organization).count { |day| day.date < previous }
+        notice = "Settle up now starts #{starts_on.strftime('%B %-d, %Y')}. #{settled} #{'day'.pluralize(settled)} already confirmed came in settled#{waiting.positive? ? "; #{waiting} #{waiting == 1 ? 'is' : 'are'} waiting to settle" : ''}. Reopen a settled day to change it."
+      end
+      redirect_to section_path("settle_up"), notice: notice
     end
 
     # Tips go to whoever was working (plan §9.14): the switch, and a share per

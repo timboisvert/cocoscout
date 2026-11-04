@@ -19,10 +19,16 @@ class SettleUpStart
     Organization.where(settle_up_starts_on: nil).find_each { |org| convert!(org, starts_on: starts_on) }
   end
 
-  def self.convert!(organization, starts_on: Date.current.beginning_of_month)
+  # before: when the start date is moved earlier later on (Money settings),
+  # only the days that just came in are looked at: a day from the old start
+  # on that someone confirmed but hasn't settled is theirs to settle. A day
+  # that already has a record (opened, reopened) is left as it is.
+  def self.convert!(organization, starts_on: Date.current.beginning_of_month, before: nil)
     organization.update_columns(settle_up_starts_on: starts_on)
     settled = 0
     SettleUp.to_settle(organization).each do |day|
+      next if before && day.date >= before
+      next if day.record
       next unless day.shows.any? && day.shows.all?(&:confirmed?) && !day.door_cash.any? && day.registers.empty?
 
       SettlementDay.create!(organization: organization, date: day.date, status: "settled", settled_at: Time.current, notes: NOTE)

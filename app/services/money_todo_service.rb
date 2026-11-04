@@ -96,12 +96,15 @@ class MoneyTodoService
     shows = shows_awaiting_financials(productions, as_of: as_of)
     courses = courses_awaiting_financials(productions, as_of: as_of)
 
-    show_rows = shows.includes(:production).order(date_and_time: :desc).limit(limit).map do |show|
+    listed = shows.includes(:production).order(date_and_time: :desc).limit(limit).to_a
+    # One look-up for the organizations, so a row's link (its day on Settle up) costs no query.
+    organizations = Organization.where(id: listed.filter_map { |show| show.production&.organization_id }.uniq).index_by(&:id)
+    show_rows = listed.map do |show|
       { at: show.date_and_time,
         title: "#{show.date_and_time.strftime('%b %-d, %Y')} · #{show.display_name}",
         subtitle: show.production&.name,
         badge: { text: "Needs financials", color: "amber" },
-        href: Rails.application.routes.url_helpers.manage_money_show_financials_path(show) }
+        href: SettleUp.money_entry_path(organizations[show.production.organization_id], show) }
     end
 
     offerings = courses.includes(:production).to_a
