@@ -37,7 +37,7 @@ RSpec.describe TipSplit do
     expect(rows["Miles"].on_orders).to eq(32)
     expect(rows["Miles"].span_words).to eq("6 pm to 10 pm")
     expect(rows["Miles"].how).to eq("From 32 orders while on.")
-    expect(split.pool.cents).to eq(0)
+    expect(split.stretches).to be_empty
     expect(split.rows.sum(&:cents)).to eq(24_000)
   end
 
@@ -51,25 +51,34 @@ RSpec.describe TipSplit do
     expect(rows["Miles"].house_role).to eq(bartender)
   end
 
-  it "pools what rang up with nobody on, splits it evenly, and says so" do
+  it "makes a stretch of what rang up with nobody on, which the house keeps until the manager says who gets it" do
     # Nobody on 6 to 7 ($40 from 8 orders); Miles and Camille both on the rest.
-    split = described_class.new(rule: rule, tips_cents: 24_000, tips_by_time: tips(18, 24), workers: [ span(miles, 19, 24, bartender), span(camille, 19, 24, bartender) ], shares: [])
-    expect(split.pool).to eq(TipSplit::Pool.new(cents: 4_000, orders: 8))
+    workers = [ span(miles, 19, 24, bartender), span(camille, 19, 24, bartender) ]
+    key = SquareSync.quarter_key(night + 18.hours)
+    split = described_class.new(rule: rule, tips_cents: 24_000, tips_by_time: tips(18, 24), workers: workers, shares: [])
+    expect(split.stretches.map { |s| [ s.key, s.words, s.cents, s.orders, s.choice ] }).to eq([ [ key, "6 pm to 7 pm", 4_000, 8, nil ] ])
+    expect(split.unresolved.size).to eq(1)
+    expect(split.house_cents).to eq(4_000)
+    expect(split.rows.sum(&:cents)).to eq(20_000)
+
+    # Split between everyone listed.
+    split = described_class.new(rule: rule, tips_cents: 24_000, tips_by_time: tips(18, 24), workers: workers, shares: [], choices: { key => "split" })
     rows = split.rows.index_by { |r| r.person.name }
+    expect(split.house_cents).to eq(0)
     expect(rows["Miles"].cents).to eq(12_000)
     expect(rows["Miles"].pool_cents).to eq(2_000)
-    expect(rows["Miles"].how).to eq("From 40 orders while on, plus $20.00 from the pool.")
-  end
+    expect(rows["Miles"].how).to eq("From 40 orders while on, plus $20.00 split from when nobody was on.")
 
-  it "keeps a typed share as typed and works the rest out around it" do
-    record = SettlementDay.create!(organization: org, date: night.to_date)
-    typed = record.tip_shares.create!(person: camille, amount_cents: 5_000, source: "typed", method: "payout", house_role: bartender)
-    split = described_class.new(rule: rule, tips_cents: 24_000, tips_by_time: tips(18, 24), workers: [ span(miles, 18, 24, bartender), span(camille, 18, 24, bartender) ], shares: [ typed ])
+    # One person gets it.
+    split = described_class.new(rule: rule, tips_cents: 24_000, tips_by_time: tips(18, 24), workers: workers, shares: [], choices: { key => camille.id.to_s })
     rows = split.rows.index_by { |r| r.person.name }
-    expect(rows["Camille"].cents).to eq(5_000)
-    expect(rows["Camille"]).to be_typed
-    expect(rows["Miles"].cents).to eq(19_000)
-    expect(rows["Miles"].how).to eq("From 48 orders while on.")
+    expect(rows["Camille"].cents).to eq(14_000)
+    expect(rows["Camille"].how).to eq("From 40 orders while on, plus $40.00 from when nobody was on.")
+    expect(rows["Miles"].cents).to eq(10_000)
+
+    # Two quiet stretches with someone on in between are two questions; one evening with nobody on is one.
+    split = described_class.new(rule: rule, tips_cents: 24_000, tips_by_time: tips(18, 24), workers: [ span(miles, 19, 20, bartender) ], shares: [])
+    expect(split.stretches.map(&:words)).to eq([ "6 pm to 7 pm", "8 pm to 12 am" ])
   end
 
   it "does not apply when the rule is off, when the register has no times, or when nobody who shares was on" do

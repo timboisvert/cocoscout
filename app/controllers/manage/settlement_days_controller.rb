@@ -49,20 +49,33 @@ module Manage
       redirect_to manage_money_settle_up_day_path(@date), notice: "Door cash saved."
     end
 
+    # "Looks right" on the register card covers the tips on it too (Tim,
+    # 2026-11-03: tips from Square belong in the Square card). Checking
+    # writes the split as it stands, so settling pays the rows; it waits
+    # while a stretch with nobody on the bar has no answer yet.
     def check_register
       record = SettlementDay.find_or_initialize_by(organization: Current.organization, date: @date)
-      record.register_checked_at = params[:checked] == "1" ? Time.current : nil
+      checking = params[:checked] == "1"
+      if checking
+        tips = SettleUp.day(Current.organization, @date).tips
+        if tips.unresolved.any?
+          return redirect_to manage_money_settle_up_day_path(@date), alert: "Say who gets the tips rung up with nobody on the bar first: Change the split on the register."
+        end
+      end
+      record.register_checked_at = checking ? Time.current : nil
+      record.tips_checked_at = record.register_checked_at
       record.save!
-      redirect_to manage_money_settle_up_day_path(@date), notice: (params[:checked] == "1" ? "Register checked." : "Register unchecked.")
+      write_tip_shares(record) if checking
+      redirect_to manage_money_settle_up_day_path(@date), notice: (checking ? "Register checked." : "Register unchecked.")
     end
 
     # The day's tips: how they're split, each person's share and how it's
-    # paid, and whether someone has checked the section.
+    # paid, and who gets each stretch with nobody on the bar.
     def tips
       record = SettlementDay.find_or_initialize_by(organization: Current.organization, date: @date)
       by_rule = params[:mode] == "rule"
       record.tips_split = by_rule ? "rule" : (params[:split].presence_in(%w[even hours typed]) || "even")
-      record.tips_checked_at = params[:checked] == "1" ? Time.current : nil
+      record.tips_unstaffed = unstaffed_choices(record) if params[:unstaffed].present?
       record.save!
       given = params.fetch(:shares, {}).to_unsafe_h
       people = Person.where(id: given.keys.map(&:to_i)).index_by(&:id)
@@ -87,7 +100,7 @@ module Manage
         end
       end
       add_person_to_tips(record, params[:new_share]) if params.dig(:new_share, :person_id).present?
-      write_computed_shares(record) if by_rule || record.tip_shares.where.not(worked_from: nil).exists?
+      write_tip_shares(record) if by_rule || record.tip_shares.where.not(worked_from: nil).exists?
       redirect_to manage_money_settle_up_day_path(@date), notice: "Tips saved."
     end
 
@@ -155,11 +168,35 @@ module Manage
       share.save!
     end
 
-    # The split worked out again from the shares as they now stand, written
-    # back so settling the day sends each share where it goes.
-    def write_computed_shares(record)
+    # unstaffed[<stretch key>] = house | split | <person id>: the answer for
+    # each stretch with nobody on, kept with the day; the rest of the day's
+    # answers stay as they were.
+    def unstaffed_choices(record)
+      given = params[:unstaffed].to_unsafe_h.filter_map do |key, choice|
+        choice = choice.to_s
+        next unless key.to_s.match?(/\A(untimed|\d{4}-\d{2}-\d{2}T[\d:]+Z)\z/)
+        next unless choice.in?(%w[house split]) || choice.match?(/\A\d+\z/)
+
+        [ key.to_s, choice ]
+      end
+      record.tips_unstaffed.merge(given.to_h)
+    end
+
+    # The split as it now stands, written back so settling the day pays the
+    # rows and nothing else. By the rule: the rows, and anyone the rule
+    # leaves out goes. By hand, with nothing saved yet: the suggestion shown.
+    def write_tip_shares(record)
       tips = SettleUp.day(Current.organization, @date).tips
-      return unless tips.by_rule?
+      unless tips.by_rule?
+        return if record.tip_shares.exists?
+
+        tips.hand_rows.each do |row|
+          next unless row[:cents].positive?
+
+          record.tip_shares.create!(person: row[:worker].person, amount_cents: row[:cents], method: row[:method], source: "computed")
+        end
+        return
+      end
 
       tips.rows.each do |row|
         next if row.locked?

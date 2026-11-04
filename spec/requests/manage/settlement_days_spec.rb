@@ -160,7 +160,7 @@ RSpec.describe "Manage::SettlementDays with a register", type: :request do
 
   it "lists a day with only register money, shows it on the worksheet, and settles it onto the books with the tips on the run" do
     get manage_money_settle_up_path
-    expect(response.body).to include(manage_money_settle_up_day_path(date.iso8601), "Bar, Lincoln Lodge", "Tips")
+    expect(response.body).to include(manage_money_settle_up_day_path(date.iso8601), "Bar, Lincoln Lodge")
 
     get manage_money_settle_up_day_path(date.iso8601)
     expect(response.body).to include("Bar, Lincoln Lodge", "$100.00", "$20.00", "Sales tax collected", "Tips, $15.00", "Pat Bartender", "On its way to your bank")
@@ -276,6 +276,48 @@ RSpec.describe "Manage::SettlementDays tips by the clock", type: :request do
       expect(response.body).to include(%(name="shares[#{miles.id}][from]" value="18:00"), %(name="shares[#{miles.id}][to]" value="22:00"))
     end
 
+    it "asks who gets a stretch with nobody on the bar, by stretch, and won't check the register until it's answered" do
+      # Miles on from 7, not 6: nobody on the bar 6 to 7, $40 from 8 orders.
+      org.shifts.find_by!(starts_at: at(18)).update!(starts_at: at(19))
+      key = SquareSync.quarter_key(night.change(hour: 18))
+
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body).to include("Nobody on the bar 6 pm to 7 pm: $40.00 from 8 orders. Say who gets it under Change the split.")
+      expect(response.body).to include(%(name="unstaffed[#{key}]"), "The house keeps it", "Split between everyone listed")
+      expect(response.body).not_to include("from the pool")
+      # The tips are in the Square card, with one Looks right for both.
+      expect(response.body).not_to include("Tips, $240.00 Not checked yet")
+      expect(response.body).to include("Tips <span class=\"text-xs text-gray-500\">who gets them, below</span>")
+
+      patch manage_check_register_money_settle_up_day_path(date.iso8601), params: { checked: "1" }
+      expect(flash[:alert]).to include("Say who gets the tips rung up with nobody on the bar first")
+      expect(SettlementDay.find_by(organization: org, date: date)&.register_checked_at).to be_nil
+
+      # The house keeps it: the rows add up to $200, and settling books $40 as the house's.
+      patch manage_tips_money_settle_up_day_path(date.iso8601), params: { mode: "rule", unstaffed: { key => "house" } }
+      record = SettlementDay.find_by!(organization: org, date: date)
+      expect(record.tips_unstaffed).to eq({ key => "house" })
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body).to include("Nobody on the bar 6 pm to 7 pm: $40.00 from 8 orders, the house keeps it.", "The house keeps $40.00.")
+      expect(record.tip_shares.sum(:amount_cents)).to eq(20_000)
+
+      # Or Miles gets it, whole.
+      patch manage_tips_money_settle_up_day_path(date.iso8601), params: { mode: "rule", unstaffed: { key => miles.id.to_s } }
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body).to include("to Miles.", "plus $40.00 from when nobody was on.")
+      # Miles's $80 while on plus the $40: $120, level with Camille's $120.
+      expect(record.tip_shares.find_by(person: miles).amount_cents).to eq(12_000)
+
+      # Back to the house, checked and settled: $200 owed, $40 the house's income.
+      patch manage_tips_money_settle_up_day_path(date.iso8601), params: { mode: "rule", unstaffed: { key => "house" } }
+      patch manage_check_register_money_settle_up_day_path(date.iso8601), params: { checked: "1" }
+      expect(record.reload.register_checked_at).to be_present
+      post manage_settle_money_settle_up_day_path(date.iso8601)
+      expect(record.reload).to be_settled
+      expect(ChartOfAccounts.account(org, :tips_owed).natural_balance_cents).to eq(20_000)
+      expect(ChartOfAccounts.account(org, :other_income).natural_balance_cents).to eq(4_000)
+    end
+
     it "saves the split, adds a bar back with a span, keeps a typed share, and sends the shares to the run on settle" do
       # Saved as worked out: $120 each.
       patch manage_tips_money_settle_up_day_path(date.iso8601), params: { mode: "rule", checked: "0",
@@ -301,7 +343,6 @@ RSpec.describe "Manage::SettlementDays tips by the clock", type: :request do
         shares: { camille.id => { amount: "100.00", shown: record.tip_shares.find_by(person: camille).amount_cents.then { |c| format("%.2f", c / 100.0) }, method: "payout" } } }
       expect(record.tip_shares.find_by(person: camille)).to have_attributes(amount_cents: 10_000, source: "typed")
       expect(record.tip_shares.sum(:amount_cents)).to eq(24_000)
-      expect(record.reload.tips_checked_at).to be_present
       get manage_money_settle_up_day_path(date.iso8601)
       expect(response.body).to include("Typed in.", "Work it all out again")
 
@@ -314,7 +355,9 @@ RSpec.describe "Manage::SettlementDays tips by the clock", type: :request do
         shares: { miles.id => { amount: "0", shown: "0", method: "payout", from: "18:00", to: "20:00", span_shown: "18:00-22:00", house_role_id: bartender.id } } }
       expect(record.tip_shares.find_by(person: miles)).to have_attributes(worked_to: night.change(hour: 20), amount_cents: 8_000, source: "computed")
 
+      # The register's Looks right covers the tips (they are in the Square card).
       patch manage_check_register_money_settle_up_day_path(date.iso8601), params: { checked: "1" }
+      expect(record.reload.tips_checked_at).to be_present
       post manage_settle_money_settle_up_day_path(date.iso8601)
       expect(record.reload).to be_settled
       expect(ChartOfAccounts.account(org, :tips_owed).natural_balance_cents).to eq(24_000)

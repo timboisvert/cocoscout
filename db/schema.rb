@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_03_210000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_04_010000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3022,6 +3022,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_210000) do
     t.datetime "register_checked_at"
     t.string "tips_split"
     t.datetime "tips_checked_at"
+    t.jsonb "tips_unstaffed", default: {}, null: false
     t.index ["organization_id", "date"], name: "index_settlement_days_on_organization_id_and_date", unique: true
     t.index ["organization_id"], name: "index_settlement_days_on_organization_id"
     t.index ["reopened_by_id"], name: "index_settlement_days_on_reopened_by_id"

@@ -15,7 +15,7 @@
       (day.door_cash.counted? && !day.door_cash.over_short_cents.zero? ? "text-red-700" : "text-gray-900") ]
   ].compact
   what = [ (day.shows.empty? ? nil : (day.shows.size == 1 ? "one show" : "#{day.shows.size} shows")), (day.door_cash.any? ? "door cash" : nil),
-           (day.registers.any? ? "the register" : nil), (day.tips.any? ? "tips" : nil) ].compact
+           (day.registers.any? ? (day.tips.any? ? "the register and its tips" : "the register") : nil) ].compact
   settle_cid = "confirm-settle-day"
 %>
 <div class="w-full mb-10">
@@ -136,9 +136,6 @@
       <% if day.registers.any? %>
         <%= render "manage/settlement_days/register", day: day, registers: day.registers, can_change: can_change %>
       <% end %>
-      <% if day.tips.any? %>
-        <%= render "manage/settlement_days/tips", day: day, tips: day.tips, can_change: can_change %>
-      <% end %>
 
     </div>
 
@@ -149,7 +146,7 @@
         <div class="min-w-0 text-sm">
           <% if day.all_checked? %>
             <div class="font-semibold text-gray-900">Every piece is checked<%= day.ended? ? "" : ", and the day is still going" %></div>
-            <div class="text-xs text-gray-500">Settling puts <%= @date.strftime("%b %-d") %> on the books<%= day.tips.any? ? " and each tip share on its payout run" : "" %>. You can reopen it later; the books keep both versions.</div>
+            <div class="text-xs text-gray-500">Settling puts <%= @date.strftime("%b %-d") %> on the books<%= day.tips.any? ? ", and the tip shares wait on Pay People" : "" %>. You can reopen it later; the books keep both versions.</div>
           <% else %>
             <div class="font-semibold text-gray-900"><%= day.checked_count %> of <%= day.pieces.size %> checked</div>
             <div class="text-xs text-gray-500 truncate">Still to check: <%= left.to_sentence %>. The day can be settled once every piece is.</div>

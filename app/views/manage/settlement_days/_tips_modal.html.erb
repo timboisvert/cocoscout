@@ -2,8 +2,9 @@
     in one modal (plan §9.14). With the rule on: a row per person with the
     span they worked, their share and how it goes; change a span and the
     others are worked out again; type a share and it stays; add a person
-    and the span they worked; take someone off; or hand it all back to the
-    clock. By hand: evenly, by hours or as typed, and each share.
+    and the span they worked; take someone off; say who gets each stretch
+    with nobody on the bar; or hand it all back to the clock. By hand:
+    evenly, by hours or as typed, and each share.
     Locals: id, day, tips, hand_rows, roles_by_id %>
 <%
   money = ->(cents) { number_to_currency(cents / 100.0) }
@@ -39,7 +40,6 @@
       </button>
     </div>
     <%= form_with url: manage_tips_money_settle_up_day_path(day.param), method: :patch, class: "flex flex-col min-h-0 flex-1", data: { turbo: false } do %>
-      <%= hidden_field_tag :checked, (tips.checked? ? "1" : "0"), id: nil %>
       <div class="px-5 sm:px-6 py-4 overflow-y-auto space-y-4">
         <% if by_rule %>
           <%= hidden_field_tag :mode, "rule", id: nil %>
@@ -81,14 +81,23 @@
               </div>
             <% end %>
           </div>
-          <% if tips.pool.cents.positive? %>
-            <p class="text-xs text-gray-500">
-              <% if tips.pool.orders.positive? %>
-                <%= money.call(tips.pool.cents) %> from <%= pluralize(tips.pool.orders, "order") %> with nobody on the clock, split evenly.
-              <% else %>
-                <%= money.call(tips.pool.cents) %> the register counted without a time, split evenly.
+          <% if tips.stretches.any? %>
+            <% takers = tips.rows.reject { |r| r.typed? || r.locked? } %>
+            <div class="border border-amber-200 bg-amber-50/60 rounded-lg px-4 py-3 space-y-2">
+              <div class="text-[11px] font-medium uppercase tracking-wide text-amber-800">Nobody on the bar</div>
+              <p class="text-xs text-gray-600">Tips rang up while nobody who shares was on the clock. Say who gets each stretch; the house keeps it until you do.</p>
+              <% tips.stretches.each do |stretch| %>
+                <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
+                  <span class="text-gray-900"><%= stretch.words.sub(/\A./, &:upcase) %> <span class="text-xs text-gray-500">· <%= money.call(stretch.cents) %><%= stretch.orders.positive? ? " from #{pluralize(stretch.orders, 'order')}" : "" %></span></span>
+                  <select name="unstaffed[<%= stretch.key %>]" class="<%= plain %> w-auto" aria-label="Who gets <%= stretch.words %>">
+                    <option value="" <%= "selected" unless stretch.resolved? %>>Who gets it?</option>
+                    <option value="house" <%= "selected" if stretch.house? %>>The house keeps it</option>
+                    <% if takers.size > 1 %><option value="split" <%= "selected" if stretch.split? %>>Split between everyone listed</option><% end %>
+                    <% takers.each do |row| %><option value="<%= row.person.id %>" <%= "selected" if stretch.person_id == row.person.id %>><%= row.person.name %></option><% end %>
+                  </select>
+                </div>
               <% end %>
-            </p>
+            </div>
           <% end %>
         <% else %>
           <% workers = hand_rows.map { |r| r[:worker] } %>

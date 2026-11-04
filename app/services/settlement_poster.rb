@@ -20,7 +20,7 @@ class SettlementPoster
   def self.post!(record)
     organization = record.organization
     day = SettleUp.day(organization, record.date)
-    lines = door_cash_lines(day) + register_lines(day) + tip_lines(record)
+    lines = door_cash_lines(day) + register_lines(day) + tip_lines(day, record)
     LedgerPosting.post!(organization: organization, source: record, kind: "settlement", entry_date: record.date, cash_date: record.date,
                         memo: "Settled #{record.date.strftime('%b %-d, %Y')}", lines: lines)
   rescue StandardError => e
@@ -78,12 +78,16 @@ class SettlementPoster
     end
   end
 
-  # Tips handed over in cash at close came out of the door cash box.
-  def self.tip_lines(record)
+  # Tips handed over in cash at close came out of the door cash box; tips
+  # nobody was given (a stretch the house keeps, by the manager's say) are
+  # the house's income, not owed to anyone.
+  def self.tip_lines(day, record)
+    lines = []
     cash = record.cash_tips_cents
-    return [] unless cash.positive?
-
-    [ { account: :tips_owed, amount_cents: cash, memo: "Tips paid in cash at close" }, { account: :door_cash, amount_cents: -cash } ]
+    lines.concat([ { account: :tips_owed, amount_cents: cash, memo: "Tips paid in cash at close" }, { account: :door_cash, amount_cents: -cash } ]) if cash.positive?
+    house = day.tips.cents - record.tip_shares.sum(&:amount_cents)
+    lines.concat([ { account: :tips_owed, amount_cents: house, memo: "Tips kept by the house" }, { account: :other_income, amount_cents: -house, memo: "Tips kept by the house" } ]) if house.positive?
+    lines
   end
 
   # Reopening takes back a share that Pay People already put on a run, while

@@ -55,7 +55,30 @@ class SettleUp
     end
     def by_rule? = calculator.applies?
     def rows = calculator.rows
-    def pool = calculator.pool
+    # The stretches of time with nobody on the bar, each a question for the
+    # manager; the day's register can't be checked while one is unanswered.
+    def stretches = by_rule? ? calculator.stretches : []
+    def unresolved = by_rule? ? calculator.unresolved : []
+    # What stays with the house: by the rule, the stretches it keeps; by
+    # hand, whatever the shares don't add up to.
+    def house_cents = by_rule? ? calculator.house_cents : [ unassigned_cents, 0 ].max
+    def given_cents = cents - house_cents
+
+    # The by-hand rows: each sharer with the saved share, else the
+    # suggestion for the chosen split (evenly, by hours, or nothing yet).
+    def hand_rows
+      workers = sharers
+      total_hours = workers.sum(&:hours)
+      workers.map do |worker|
+        share = share_for(worker.person)
+        suggested = case split
+        when "hours" then total_hours.positive? ? (cents * worker.hours / total_hours).round : 0
+        when "typed" then 0
+        else workers.any? ? (cents / workers.size.to_f).round : 0
+        end
+        { worker: worker, share: share, cents: (share ? share.amount_cents : suggested), method: (share&.method || (worker.staff_member ? "payout" : "cash")) }
+      end
+    end
   end
 
   Day = Data.define(:organization, :date, :record, :shows, :door_cash, :registers, :tips) do
@@ -67,8 +90,7 @@ class SettleUp
     def pieces
       shows.map { |s| [ s.show.display_name, s.state ] } +
         (door_cash.any? ? [ [ "Door cash", door_cash.state ] ] : []) +
-        (registers.any? ? [ [ register_label, registers_state ] ] : []) +
-        (tips.any? ? [ [ "Tips", tips.state ] ] : [])
+        (registers.any? ? [ [ register_label, registers_state ] ] : [])
     end
     def checked_count = pieces.count { |_, state| state == :ok }
     def all_checked? = pieces.any? && pieces.all? { |_, state| state == :ok }
@@ -197,7 +219,7 @@ class SettleUp
     workers = cents.positive? ? workers(organization, date, shares) : []
     rule = organization.tip_rule
     Tips.new(cents: cents, record: record, shares: shares, workers: workers, rule: rule, by_time: by_time.to_h,
-             calculator: TipSplit.new(rule: rule, tips_cents: cents, tips_by_time: by_time.to_h, workers: workers, shares: shares))
+             calculator: TipSplit.new(rule: rule, tips_cents: cents, tips_by_time: by_time.to_h, workers: workers, shares: shares, choices: record&.tips_unstaffed || {}))
   end
 
   # Who worked the day, and when: a saved share's span when someone set it,
