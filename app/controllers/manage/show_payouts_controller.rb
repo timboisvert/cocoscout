@@ -348,7 +348,7 @@ module Manage
 
       respond_to do |format|
         format.html do
-          redirect_to manage_money_show_payout_path(@show),
+          redirect_to back_to_path,
                       notice: "#{first_item&.payee_name} marked as paid#{method ? " via #{first_item&.payment_method_label}" : ""}."
         end
         format.any { head :ok }
@@ -358,8 +358,15 @@ module Manage
     def unmark_line_item_paid
       line_item = @show_payout.line_items.find(params[:line_item_id])
       line_item.unmark_as_already_paid!
-      redirect_to manage_money_show_payout_path(@show),
+      redirect_to back_to_path,
                   notice: "#{line_item.payee_name} no longer marked as paid."
+    end
+
+    # The day's Settle up page records a line paid another way from its own
+    # card (Tim, 2026-11-04) and comes back to itself; anything else lands
+    # back on this page.
+    def back_to_path
+      params[:return_to].to_s.start_with?("/manage/money/settle-up/") ? params[:return_to] : manage_money_show_payout_path(@show)
     end
 
     def mark_all_offline

@@ -40,11 +40,14 @@
           body: "Settle up starts on #{Current.organization.settle_up_starts_on.strftime('%B %-d, %Y')}. Days before it stay as they were: their money is on the books from each show's Financials, and nothing here needs doing.",
           actions: (module_change?(:settle_up) ? [ { text: "Change the start date", variant: "secondary", path: manage_money_settings_section_path(section: "settle_up") } ] : []) %>
   <% elsif day.settled? %>
+    <% open_run = PayoutBatch.current_open_draft(Current.organization) %>
+    <% on_run = day.shows.sum { |s| s.pay.performers? ? s.pay.rows.count { |r| r.stage.in?(%i[in_draft in_flight]) } : s.pay.payments.count { |p| p.payout_stage.present? } } %>
     <%= render "shared/alert_panel",
           eyebrow: "Settled",
           headline: "#{@date.strftime('%A, %B %-d')} is settled",
-          body: "Settled #{record.settled_at.strftime('%b %-d at %-l:%M %P')}#{record.settled_by ? " by #{record.settled_by.default_person&.name || record.settled_by.email_address}" : ''}.#{record.reopen_reason.present? ? " Reopened once: #{record.reopen_reason}" : ''} To change anything, reopen it; the books keep both versions.",
-          actions: (can_change ? [ { text: "Reopen this day", variant: "secondary", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "reopen-day" } } ] : []) %>
+          body: "Settled #{record.settled_at.strftime('%b %-d at %-l:%M %P')}#{record.settled_by ? " by #{record.settled_by.default_person&.name || record.settled_by.email_address}" : ''}.#{on_run.positive? ? " #{pluralize(on_run, 'payout')} from this day #{on_run == 1 ? 'is' : 'are'} on the payout run." : ''}#{record.reopen_reason.present? ? " Reopened once: #{record.reopen_reason}" : ''} To change anything, reopen it; the books keep both versions.",
+          actions: [ (can_change ? { text: "Reopen this day", variant: "secondary", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "reopen-day" } } : nil),
+                     (open_run && on_run.positive? ? { text: "The payout run", variant: "primary", path: manage_payout_batch_path(open_run) } : nil) ].compact %>
   <% elsif record&.reopened_at %>
     <%= render "shared/alert_panel", tone: :amber,
           eyebrow: "Reopened",
@@ -57,7 +60,7 @@
       <h1 class="text-2xl font-bold text-gray-900 coustard-regular"><%= @date.strftime("%A, %B %-d") %></h1>
       <p class="text-sm text-gray-600 mt-1">
         <% if day.any? %>
-          <%= what.join(", ").capitalize %>. Check each piece; the day is settled when they all are.
+          <%= what.join(", ").capitalize %>. Confirm each piece; settling the day puts it on the books and its payouts on the run.
         <% else %>
           Nothing with money in it happened this day.
         <% end %>
@@ -90,7 +93,7 @@
 
     <div class="space-y-4">
       <% day.shows.each do |piece| %>
-        <%= render "manage/settlement_days/show_piece", piece: piece, day: day, can_change: can_change %>
+        <%= render "manage/settlement_days/show_piece", piece: piece, day: day, can_change: can_change, open_show_id: @open_show_id %>
       <% end %>
 
       <% if day.door_cash.any? %>
@@ -140,24 +143,59 @@
     </div>
 
     <% if !day.settled? && !day.before_start? %>
-      <%# Pinned to the bottom (Tim, 2026-11-03): how many pieces are checked, what is left, and the one button, which waits until every piece is. %>
-      <% left = day.pieces.reject { |_, state| state == :ok }.map(&:first) %>
-      <div class="sticky bottom-0 z-20 mt-6 -mx-4 sm:mx-0 border-t sm:border border-gray-200 bg-white/95 backdrop-blur sm:rounded-xl shadow-[0_-8px_24px_rgba(17,24,39,0.08)] px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-3">
-        <div class="min-w-0 text-sm">
-          <% if day.all_checked? %>
-            <div class="font-semibold text-gray-900">Every piece is checked<%= day.ended? ? "" : ", and the day is still going" %></div>
-            <div class="text-xs text-gray-500">Settling puts <%= @date.strftime("%b %-d") %> on the books<%= day.tips.any? ? ", and the tip shares wait on Pay People" : "" %>. You can reopen it later; the books keep both versions.</div>
-          <% else %>
-            <div class="font-semibold text-gray-900"><%= day.checked_count %> of <%= day.pieces.size %> checked</div>
-            <div class="text-xs text-gray-500 truncate">Still to check: <%= left.to_sentence %>. The day can be settled once every piece is.</div>
-          <% end %>
+<%# Pinned to the bottom (Tim, 2026-11-03/04): one ring, a segment per piece, lit once confirmed, amber while a question holds it, grey until then; what is left; and the one button, which waits until every piece is confirmed. The box keeps its shape whatever the day holds. %>
+<%
+  checks = day.checks
+  left = checks.reject(&:ok?)
+  held = left.select(&:held?)
+  to_run_words = day.to_run_count.positive? ? " and #{money.call(day.to_run_cents)} for #{pluralize(day.to_run_count, 'person')} on the payout run" : ""
+  # The ring: radius 20 in a 48-box, its circumference cut into one arc per piece with a small gap between.
+  ring_r = 20.0
+  ring_c = 2 * Math::PI * ring_r
+  ring_gap = checks.size > 1 ? 3.0 : 0.0
+  ring_seg = ring_c / checks.size - ring_gap
+%>
+<div class="sticky bottom-0 z-20 mt-6 -mx-4 sm:mx-0 border-t sm:border border-gray-200 bg-white/95 backdrop-blur sm:rounded-xl shadow-[0_-8px_24px_rgba(17,24,39,0.08)] px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-3">
+  <div class="min-w-0 flex items-center gap-4">
+    <svg class="w-12 h-12 shrink-0 -rotate-90" viewBox="0 0 48 48" role="img" aria-label="<%= day.checked_count %> of <%= checks.size %> pieces confirmed">
+      <% checks.each_with_index do |check, i| %>
+        <a href="#<%= check.key %>">
+          <title><%= check.name %><%= check.ok? ? ", confirmed" : (check.held? ? ": #{check.hold_reason}" : ", not confirmed yet") %></title>
+          <circle cx="24" cy="24" r="<%= ring_r %>" fill="none" stroke-width="5" stroke-linecap="<%= checks.size > 1 ? 'butt' : 'round' %>"
+                  class="<%= check.ok? ? 'stroke-pink-500' : (check.held? ? 'stroke-amber-400' : 'stroke-gray-200 hover:stroke-gray-300') %>"
+                  stroke-dasharray="<%= ring_seg.round(2) %> <%= (ring_c - ring_seg).round(2) %>" stroke-dashoffset="<%= (-(i * (ring_seg + ring_gap)) - ring_gap / 2).round(2) %>" />
+        </a>
+      <% end %>
+      <g class="rotate-90 origin-center">
+        <% if day.all_checked? %>
+          <path d="M16.5 24.5l5 5L32 18.5" fill="none" class="stroke-pink-500" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+        <% else %>
+          <text x="24" y="25" text-anchor="middle" dominant-baseline="middle" class="fill-gray-700" font-size="12" font-weight="600"><%= day.checked_count %>/<%= checks.size %></text>
+        <% end %>
+      </g>
+    </svg>
+    <div class="min-w-0 text-sm">
+            <% if day.all_checked? %>
+              <div class="font-semibold text-gray-900">Every piece is confirmed<%= day.ended? ? "" : ", and the day is still going" %></div>
+              <div class="text-xs text-gray-500">Settling puts <%= @date.strftime("%b %-d") %> on the books<%= to_run_words %><%= day.tips.any? ? "; the tip shares wait on Pay People" : "" %>. You can reopen it later; the books keep both versions.</div>
+            <% else %>
+              <div class="font-semibold text-gray-900"><%= day.checked_count %> of <%= checks.size %> confirmed</div>
+              <div class="text-xs text-gray-500">
+                <% if held.any? %>
+                  <%= held.map { |c| "#{c.name}: #{c.hold_reason.downcase}" }.to_sentence %>.
+                <% else %>
+                  Still to confirm: <%= left.map(&:name).to_sentence %>.
+                <% end %>
+              </div>
+            <% end %>
+          </div>
         </div>
         <% if can_change %>
           <% if day.all_checked? && day.ended? %>
-            <%= render "shared/button", text: "Mark the day settled", variant: "primary", size: "medium", type: :button,
+            <%= render "shared/button", text: "Settle the day", variant: "primary", size: "medium", type: :button,
                   data: { controller: "modal", action: "click->modal#open", modal_id: settle_cid } %>
           <% else %>
-            <span class="inline-flex items-center justify-center px-4 py-2 rounded text-sm font-medium bg-gray-200 text-gray-500 cursor-not-allowed" aria-disabled="true" title="<%= day.ended? ? 'Check every piece first' : 'The day is still going' %>">Mark the day settled</span>
+            <span class="inline-flex items-center justify-center px-4 py-2 rounded text-sm font-medium bg-gray-200 text-gray-500 cursor-not-allowed" aria-disabled="true" title="<%= day.ended? ? 'Confirm every piece first' : 'The day is still going' %>">Settle the day</span>
           <% end %>
         <% end %>
       </div>
@@ -170,8 +208,8 @@
 <% if can_change && !day.settled? %>
   <%= render "shared/confirm_modal", id: settle_cid,
         title: "Settle #{@date.strftime('%A, %b %-d')}?",
-        message: "Every piece is checked. This closes the day: its numbers are final for the books, the payout run and each production's settlement. You can reopen it later with a reason.",
-        confirm_text: "Mark the day settled",
+        message: "Every piece is confirmed. This closes the day: its numbers go on the books#{day.to_run_count.positive? ? ", and #{money.call(day.to_run_cents)} for #{pluralize(day.to_run_count, 'person')} goes on the open payout run, which you fund when it's ready" : ''}. You can reopen it later with a reason.",
+        confirm_text: "Settle the day",
         url: manage_settle_money_settle_up_day_path(day.param), method: :post %>
 <% end %>
 

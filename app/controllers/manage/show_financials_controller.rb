@@ -27,7 +27,13 @@ module Manage
     def update
       handle_cleared_sections
 
-      if @show_financials.update(show_financials_params)
+      attrs = show_financials_params
+      # A hand edit from the day's page darkens the show's confirm mark (Tim,
+      # 2026-11-04): the money changed, so it's confirmed again on purpose,
+      # and its payout is worked out again then. The worksheet's own
+      # checkbox still says what it says.
+      attrs[:data_confirmed] = false if params[:return_to].to_s.start_with?("/manage/money/settle-up/") && !attrs.key?(:data_confirmed)
+      if @show_financials.update(attrs)
         # Push the new numbers at this show's contract settlement. The service
         # decides whether there is one — asking @production.contract here got
         # the newest of a production's contracts rather than the one that booked

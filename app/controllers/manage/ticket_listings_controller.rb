@@ -107,8 +107,11 @@ module Manage
       end
       TicketOutsideSales.record!(@listing, rows)
       total = @listing.inventory.outside_sold
-      # The day's worksheet (Settle up) opens the same modal and comes back to itself.
-      back = params[:return_to].to_s.start_with?("/manage/money/settle-up/") ? params[:return_to] : manage_ticket_listing_path(@listing)
+      # The day's worksheet (Settle up) opens the same modal and comes back to
+      # itself; the show's money changed, so its confirm mark goes dark again.
+      from_day = params[:return_to].to_s.start_with?("/manage/money/settle-up/")
+      @listing.show.show_financials&.update!(data_confirmed: false) if from_day && @listing.show.show_financials&.data_confirmed?
+      back = from_day ? params[:return_to] : manage_ticket_listing_path(@listing)
       redirect_to back,
                   notice: total.positive? ? "#{helpers.pluralize(total, 'ticket')} sold elsewhere, off this show's seats." : "No tickets sold elsewhere."
     rescue ActiveRecord::RecordInvalid => e

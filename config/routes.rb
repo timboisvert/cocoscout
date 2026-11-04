@@ -1681,6 +1681,10 @@ Rails.application.routes.draw do
     patch "money/settle-up/:date/shows/:show_id/check", to: "settlement_days#check_show", as: "check_show_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     patch "money/settle-up/:date/register/check", to: "settlement_days#check_register", as: "check_register_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     patch "money/settle-up/:date/tips", to: "settlement_days#tips", as: "tips_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    # Paying people from the day (Tim, 2026-11-04): a show's calculation, and each line's choice.
+    patch "money/settle-up/:date/shows/:show_id/calculation", to: "settlement_days#choose_calculation", as: "choose_calculation_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    patch "money/settle-up/:date/shows/:show_id/calculate", to: "settlement_days#calculate_show", as: "calculate_show_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    patch "money/settle-up/:date/shows/:show_id/lines/:line_id", to: "settlement_days#pay_line", as: "pay_line_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     post "money/refresh", to: "money#refresh", as: "refresh_money"
     # Money settings — org-level config. Fixed sub-paths before the :section catch-all.
     get    "money/settings", to: "money_settings#show", as: "money_settings"

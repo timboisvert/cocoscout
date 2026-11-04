@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_04_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_04_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2625,6 +2625,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_04_120000) do
     t.string "genre"
     t.string "casting_mode", default: "role_based", null: false
     t.boolean "pays_performers", default: true, null: false
+    t.string "payout_calculation_mode", default: "production", null: false
     t.string "tickets_mode", default: "unset", null: false
     t.string "tickets_url"
     t.index ["agreement_template_id"], name: "index_productions_on_agreement_template_id"
@@ -3290,6 +3291,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_04_120000) do
     t.decimal "advance_deduction", precision: 10, scale: 2, default: "0.0"
     t.boolean "paid_independently", default: false
     t.boolean "is_individual_allocation", default: false, null: false
+    t.string "pay_choice", default: "run", null: false
     t.index ["manually_paid_by_id"], name: "index_show_payout_line_items_on_manually_paid_by_id"
     t.index ["payee_type", "payee_id"], name: "index_show_payout_line_items_on_payee"
     t.index ["payment_method"], name: "index_show_payout_line_items_on_payment_method"

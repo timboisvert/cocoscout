@@ -3,7 +3,7 @@
   money = ->(cents) { cents.negative? ? "−#{number_to_currency(-cents / 100.0)}" : number_to_currency(cents / 100.0) }
   show = piece.show
   fin = piece.financials
-  state_words = { ok: "Checked", wait: "Came in, not checked", miss: "Nothing entered" }.fetch(piece.state)
+  state_words = { ok: "Confirmed", wait: "Came in, not confirmed", miss: "Nothing entered" }.fetch(piece.state)
   state_tone = { ok: "text-green-700", wait: "text-amber-700", miss: "text-red-700" }.fetch(piece.state)
   outside_lines = piece.ticket_lines.reject { |l| l[:built_in] }
   online_lines = piece.ticket_lines.select { |l| l[:built_in] }
@@ -21,14 +21,8 @@
       <span class="ml-2 text-xs font-medium <%= state_tone %>"><%= state_words %></span>
     </h2>
     <% if can_change && !day.settled? %>
-      <%= form_with url: manage_check_show_money_settle_up_day_path(day.param, show_id: show.id), method: :patch, data: { controller: "auto-submit", turbo_action: "replace" } do %>
-        <%= hidden_field_tag :checked, "0", id: nil %>
-        <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
-          <input type="checkbox" name="checked" value="1" <%= "checked" if piece.confirmed? %> data-action="change->auto-submit#submit"
-                 class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
-          Looks right
-        </label>
-      <% end %>
+      <%= render "manage/settlement_days/confirm_mark", url: manage_check_show_money_settle_up_day_path(day.param, show_id: show.id),
+            checked: piece.confirmed?, at: (piece.confirmed? ? fin&.updated_at : nil), hold_reason: piece.hold_reason %>
     <% end %>
   </div>
   <div class="px-5 py-3 grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-2">
@@ -66,9 +60,7 @@
       <div class="pt-1 text-sm"><%= link_to "This show's page", manage_money_show_financials_path(show), class: pink %></div>
     </div>
   </div>
-  <% if piece.confirmed? && fin.updated_at %>
-    <div class="px-5 py-2 border-t border-gray-100 text-xs text-gray-500">Checked <%= fin.updated_at.strftime("%b %-d at %-l:%M %P") %>.</div>
-  <% end %>
+  <%= render "manage/settlement_days/pay_block", piece: piece, day: day, editable: editable, return_to: return_to, open: (defined?(open_show_id) && open_show_id.to_s == show.id.to_s) %>
 </section>
 <% if editable %>
   <%= render "manage/settlement_days/other_revenue_modal", id: "other-revenue-#{show.id}", show: show, financials: fin, return_to: return_to %>

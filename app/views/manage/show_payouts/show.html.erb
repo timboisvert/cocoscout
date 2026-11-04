@@ -832,7 +832,15 @@
             []
           end
         %>
-        <% if run_candidates.any? %>
+        <% settles_on_day = SettleUp.in_settle_up?(Current.organization, @show) %>
+        <% if run_candidates.any? && settles_on_day %>
+          <%# Paid from the day (Tim, 2026-11-04): the lines ride the run when the day settles. %>
+          <% day_date, day_settled = SettleUp.day_state_for(Current.organization, @show) %>
+          <div class="mb-4 rounded-lg border border-pink-200 bg-pink-50 px-4 py-3 text-sm text-gray-700">
+            <%= day_settled ? "This show's day is settled; what's still unpaid here was held or paid another way." : "These payouts go on the payout run when #{day_date.strftime('%A, %b %-d')} is settled." %>
+            <%= link_to "Settle up #{day_date.strftime('%b %-d')}", manage_money_settle_up_day_path(day_date.iso8601), class: "font-medium text-pink-600 hover:text-pink-700" %>
+          </div>
+        <% elsif run_candidates.any? %>
           <div class="mb-4">
               <%
                 run_ready = run_candidates.select { |li| li.payee.can_receive_payouts? }

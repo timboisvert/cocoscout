@@ -1,0 +1,222 @@
+<%# "Who gets paid" under a show's money on the day's page (Tim,
+    2026-11-04): one line that says where it stands (worked out or not, for
+    how much and how many people, what's held or paid another way), the
+    Calculate step when the numbers haven't been worked out or moved since,
+    and the people behind a click. Each line has a choice (on the run when
+    the day settles, held for now, or paid another way). A contract show
+    settles on the contract's share for the night; a production that pays
+    nobody says so. Settling the day puts the "on the run" lines on the open
+    payout run; nothing rides it before.
+    Locals: piece, day, editable, return_to, open (whether the people start shown) %>
+<%
+  money = ->(cents) { cents.negative? ? "−#{number_to_currency(-cents / 100.0)}" : number_to_currency(cents / 100.0) }
+  show = piece.show
+  pay = piece.pay
+  production = show.production
+  pink = "text-pink-600 hover:text-pink-700"
+  back_open = manage_money_settle_up_day_path(day.param, open: show.id)
+  stage_chip = {
+    preview: "border-gray-200 text-gray-500 bg-white",
+    run: "border-pink-200 text-pink-700 bg-pink-50",
+    hold: "border-amber-200 text-amber-700 bg-amber-50",
+    paid: "border-gray-200 text-gray-600 bg-gray-50",
+    in_draft: "border-blue-200 text-blue-700 bg-blue-50",
+    in_flight: "border-blue-200 text-blue-700 bg-blue-50"
+  }
+  chooser_id = "calculation-#{show.id}"
+  select_classes = "block w-full pl-3 pr-8 py-1.5 bg-white border border-gray-300 rounded-lg shadow-sm text-xs focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  people = ->(n) { "#{n} #{'person'.pluralize(n)}" }
+  chevron = ->(open_now) { %(<svg class="w-4 h-4 text-gray-400 shrink-0 transition-transform #{open_now ? 'rotate-180' : ''}" data-disclosure-target="icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>).html_safe }
+%>
+<% if pay.none? %>
+  <div class="px-5 py-2 border-t border-gray-100 text-xs text-gray-500">Nobody is paid from <%= production.name %>'s shows<%= editable ? "; the production's Pay tab turns performer pay on" : "" %>.</div>
+<% elsif pay.contract? %>
+  <%
+    contract = pay.payments.first&.contract || show.space_rental&.contract || production.contract
+    stages = pay.payments.map do |payment|
+      contractor = payment.contract&.contractor
+      if payment.status_paid? then [ :paid, "Paid#{payment.paid_date ? " #{payment.paid_date.strftime('%b %-d')}" : ''}#{payment.offline_payment_method_label ? " · #{payment.offline_payment_method_label}" : ''}" ]
+      elsif payment.payout_stage == :in_draft then [ :in_draft, "On the open payout run, a draft" ]
+      elsif payment.payout_stage == :in_flight then [ :in_flight, "On its way" ]
+      elsif payment.settles_after_show? then [ :preview, "Settles after the show" ]
+      elsif payment.amount_tbd? && payment.amount.to_f.zero? then [ :preview, "Waiting on ticket sales" ]
+      elsif contractor && contractor.person.nil? then [ :hold, "Link a person to #{contractor.name} first" ]
+      elsif payment.status_pending? then [ :run, "On the run when the day settles" ]
+      else [ :paid, payment.status.to_s.humanize ]
+      end
+    end
+    payee_names = pay.payments.filter_map { |p| p.contract&.contractor&.person&.name || p.contract&.contractor&.name }.uniq
+  %>
+  <div class="border-t border-gray-200" id="pay-<%= show.id %>" data-controller="disclosure">
+    <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+      <button type="button" class="min-w-0 flex items-center gap-2 text-left" data-action="click->disclosure#toggle" aria-controls="pay-people-<%= show.id %>">
+        <%= chevron.call(open) %>
+        <span class="min-w-0">
+          <span class="text-sm font-semibold text-gray-900">Who gets paid</span>
+          <span class="text-sm text-gray-700"><%= pay.payments.any? ? "#{money.call(pay.total_cents)} by contract#{payee_names.any? ? " to #{payee_names.to_sentence}" : ''}" : "by contract" %></span>
+          <span class="block text-xs text-gray-500">
+            <% if pay.payments.empty? %>
+              The contract's share of this show isn't worked out yet; it's set on the contract.
+            <% else %>
+              <%= stages.map(&:last).uniq.to_sentence %>.
+            <% end %>
+          </span>
+        </span>
+      </button>
+      <% if contract %><%= link_to "The contract", manage_contract_path(contract), class: "text-sm #{pink} shrink-0" %><% end %>
+    </div>
+    <div id="pay-people-<%= show.id %>" class="px-5 pb-3 <%= open ? '' : 'hidden' %>" data-disclosure-target="content">
+      <div class="divide-y divide-gray-100 border-t border-gray-100">
+        <% pay.payments.each_with_index do |payment, i| %>
+          <% contractor = payment.contract&.contractor %>
+          <% stage, words = stages[i] %>
+          <div class="flex items-baseline justify-between gap-3 py-1.5 text-sm">
+            <span class="min-w-0">
+              <span class="text-gray-900"><%= contractor&.name || payment.display_name %></span>
+              <% if contractor&.person %><span class="ml-1 text-xs text-gray-500">· paid to <%= contractor.person.name %></span><% end %>
+              <span class="block text-xs text-gray-500"><%= payment.display_name %><%= payment.due_date ? ", due #{payment.due_date.strftime('%b %-d')}" : "" %></span>
+            </span>
+            <span class="flex flex-col items-end gap-1 shrink-0">
+              <span class="tabular-nums text-gray-900 whitespace-nowrap"><%= number_to_currency(payment.amount) %></span>
+              <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap <%= stage_chip[stage] %>"><%= words %></span>
+            </span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% else %>
+  <%
+    counts = pay.count_by_stage
+    saved_words = [ (counts[:run].to_i.positive? ? "#{people.call(counts[:run])} on the run when the day settles" : nil),
+                    (counts[:hold].to_i.positive? ? "#{counts[:hold]} held" : nil),
+                    (counts[:paid].to_i.positive? ? "#{counts[:paid]} paid" : nil),
+                    ((counts[:in_draft].to_i + counts[:in_flight].to_i).positive? ? "#{counts[:in_draft].to_i + counts[:in_flight].to_i} on a payout run" : nil) ].compact
+    worked_out_at = pay.show_payout&.calculated_at
+    headline, detail = case pay.calc
+    when :none then [ nil, nil ]
+    when :no_cast then [ "nobody to pay", "No performers are cast on this show." ]
+    when :needs_numbers then [ "not worked out yet", "Enter the tickets or a flat fee, and it can be worked out." ]
+    when :uncalculated then [ "not worked out yet", "From the numbers as they stand, #{money.call(pay.preview_cents)} to #{people.call(pay.preview_count)}." ]
+    when :stale then [ "#{money.call(pay.total_cents)} to #{people.call(pay.rows.size)}", "The numbers changed since this was worked out#{worked_out_at ? " #{worked_out_at.strftime('%b %-d at %-l:%M %P')}" : ''}; as they stand now, #{money.call(pay.preview_cents)} to #{people.call(pay.preview_count)}." ]
+    when :locked then [ "#{money.call(pay.total_cents)} to #{people.call(pay.rows.size)}", "The numbers changed since this was worked out, but lines are already paid or on a run, so it stays. #{saved_words.to_sentence.upcase_first}." ]
+    else [ "#{money.call(pay.total_cents)} to #{people.call(pay.rows.size)}", "#{saved_words.to_sentence.upcase_first}." ]
+    end
+  %>
+  <div class="border-t border-gray-200" id="pay-<%= show.id %>" data-controller="disclosure">
+    <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+      <button type="button" class="min-w-0 flex items-center gap-2 text-left" data-action="click->disclosure#toggle" aria-controls="pay-people-<%= show.id %>">
+        <%= chevron.call(open) %>
+        <span class="min-w-0">
+          <span class="text-sm font-semibold text-gray-900">Who gets paid</span>
+          <% if headline %><span class="text-sm text-gray-700"><%= headline %></span><% end %>
+          <% if pay.scheme %><span class="ml-1 text-xs text-gray-500"><%= pay.scheme.name %><%= production.asks_calculation_each_show? ? ", chosen for this show" : "" %></span><% end %>
+          <span class="block text-xs <%= pay.calc.in?(%i[uncalculated stale needs_numbers]) ? 'text-amber-700' : 'text-gray-500' %>">
+            <% if pay.scheme.nil? %>
+              <% if production.asks_calculation_each_show? %>
+                <%= production.name %> asks which calculation each show uses; choose one for <%= show.display_name %>, and the show can be confirmed.
+              <% else %>
+                <%= production.name %> has no payout calculation yet, so nobody is paid from this show until you say how.
+              <% end %>
+            <% elsif pay.held? && !pay.can_calculate? && pay.calc != :needs_numbers %>
+              <%= pay.hold_reason %>.
+            <% else %>
+              <%= detail %>
+            <% end %>
+          </span>
+        </span>
+      </button>
+      <% if editable %>
+        <div class="flex items-center gap-2 shrink-0">
+          <% if pay.scheme.nil? %>
+            <%= render "shared/button", text: "Say how it's paid", variant: "primary", size: "small", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: chooser_id } %>
+          <% elsif pay.hold_reason&.start_with?("Enter how many acts") %>
+            <%= link_to manage_money_show_payout_path(show, enter_acts: 1, return_to: return_to) do %>
+              <%= render "shared/button", text: "Enter the act counts", variant: "primary", size: "small", type: :button %>
+            <% end %>
+          <% elsif pay.can_calculate? %>
+            <%= form_with url: manage_calculate_show_money_settle_up_day_path(day.param, show_id: show.id), method: :patch, data: { turbo_action: "replace" } do %>
+              <%= render "shared/button", text: (pay.calc == :stale ? "Recalculate" : "Calculate"), variant: "primary", size: "small", type: :submit %>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+    <div id="pay-people-<%= show.id %>" class="px-5 pb-3 <%= open ? '' : 'hidden' %>" data-disclosure-target="content">
+      <% rows = pay.rows.any? ? pay.rows : [] %>
+      <% if rows.empty? %>
+        <p class="text-sm text-gray-600 border-t border-gray-100 pt-2">
+          <% if pay.calc == :no_cast %>No performers are cast on this show, so there's no one to pay.
+          <% elsif pay.calc == :uncalculated %>Calculate, and each person's share is here with its choice.
+          <% else %>Nothing to show yet.<% end %>
+        </p>
+      <% else %>
+        <div class="divide-y divide-gray-100 border-t border-gray-100">
+          <% rows.each do |row| %>
+            <% line = row.line %>
+            <% choosable = editable && line && row.stage.in?(%i[run hold]) %>
+            <div class="flex items-center justify-between gap-3 py-1.5 text-sm">
+              <span class="min-w-0 flex items-center gap-2.5">
+                <% headshot = row.payee.respond_to?(:safe_headshot_variant) ? row.payee.safe_headshot_variant(:thumb) : nil %>
+                <% if headshot %>
+                  <%= image_tag headshot, alt: row.name, class: "w-7 h-7 rounded-lg object-cover shrink-0" %>
+                <% else %>
+                  <span class="w-7 h-7 rounded-lg bg-gray-200 text-gray-600 text-[10px] font-bold inline-flex items-center justify-center shrink-0"><%= row.name.to_s.split.first(2).map { |w| w[0] }.join.upcase %></span>
+                <% end %>
+                <span class="min-w-0">
+                  <span class="text-gray-900"><%= row.name %></span>
+                  <% if line&.is_guest? %><span class="ml-1 text-xs text-gray-500">· guest</span><% end %>
+                  <% if line && line.advance_deduction.to_f.positive? %><span class="block text-xs text-gray-500"><%= number_to_currency(line.advance_deduction) %> advance comes off</span><% end %>
+                </span>
+              </span>
+              <span class="flex items-center gap-2 shrink-0">
+                <span class="tabular-nums text-gray-900 whitespace-nowrap"><%= money.call(row.cents) %></span>
+                <% if choosable %>
+                  <%= form_with url: manage_pay_line_money_settle_up_day_path(day.param, show_id: show.id, line_id: line.id), method: :patch,
+                        data: { controller: "auto-submit", turbo_action: "replace" }, class: "w-56" do %>
+                    <select name="pay_choice" data-action="change->auto-submit#submit" class="<%= select_classes %>" aria-label="How <%= row.name %> is paid">
+                      <option value="run" <%= "selected" if row.stage == :run %>>On the run when the day settles</option>
+                      <option value="hold" <%= "selected" if row.stage == :hold %>>Hold, not yet</option>
+                    </select>
+                  <% end %>
+                  <% if line.payee.nil? || !line.payee.respond_to?(:can_receive_payouts?) || line.payee.is_a?(Group) %>
+                    <span class="text-[11px] text-gray-500">can't ride a run</span>
+                  <% end %>
+                  <a href="#another-way-<%= line.id %>" class="text-xs <%= pink %> whitespace-nowrap" data-controller="modal" data-action="click->modal#open" data-modal-id="another-way-<%= line.id %>">Paid another way</a>
+                <% elsif row.note %>
+                  <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap <%= stage_chip[row.stage] %>"><%= row.note %></span>
+                  <% if editable && line&.manually_paid? && !line.in_payout_run? %>
+                    <%= form_with url: manage_unmark_line_item_paid_money_show_payout_path(show, line_item_id: line.id), method: :delete, data: { turbo_action: "replace" } do %>
+                      <%= hidden_field_tag :return_to, back_open, id: nil %>
+                      <%= render "shared/button", text: "Undo", variant: "ghost", size: "xs", type: :submit %>
+                    <% end %>
+                  <% end %>
+                <% end %>
+              </span>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+      <div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
+        <span>
+          <% if pay.to_run_count.positive? %>
+            <%= money.call(pay.to_run_cents) %> for <%= people.call(pay.to_run_count) %> goes on the payout run when the day settles. Someone with no bank yet still goes on; the run waits on them.
+          <% end %>
+        </span>
+        <% if editable && pay.scheme && pay.calc != :no_cast %>
+          <%= link_to "Change who's paid or how it's split", manage_money_show_payout_path(show, return_to: back_open), class: pink %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  <% if editable && pay.scheme.nil? && pay.held? %>
+    <%= render "manage/settlement_days/calculation_modal", id: chooser_id, show: show, day: day, return_to: return_to %>
+  <% end %>
+  <% if editable %>
+    <% pay.rows.each do |row| %>
+      <% next unless row.line && row.stage.in?(%i[run hold]) %>
+      <%= render "manage/settlement_days/another_way_modal", line: row.line, show: show, return_to: back_open %>
+    <% end %>
+  <% end %>
+<% end %>

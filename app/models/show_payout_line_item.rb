@@ -39,6 +39,17 @@ class ShowPayoutLineItem < ApplicationRecord
   validates :payee_id, uniqueness: { scope: [ :show_payout_id, :payee_type, :is_individual_allocation ] }, if: -> { payee_id.present? }
   validates :payment_method, inclusion: { in: PAYMENT_METHODS }, allow_nil: true
   validates :payout_status, inclusion: { in: PAYOUT_STATUSES }, allow_nil: true
+
+  # The manager's choice for this line on the day's Settle up page (Tim,
+  # 2026-11-04): on the payout run when the day settles, or held back for
+  # now. A line paid another way is manually_paid, whatever its choice.
+  PAY_CHOICES = %w[run hold].freeze
+  validates :pay_choice, inclusion: { in: PAY_CHOICES }
+
+  def held? = pay_choice == "hold"
+
+  # Rides the run when its day settles: chosen to, unpaid, not on one yet.
+  def rides_on_settle? = pay_choice == "run" && !paid? && !in_payout_run? && amount.to_f.positive?
   # Guests must have a name
   validates :guest_name, presence: true, if: :is_guest?
   # Non-guests must have a payee
