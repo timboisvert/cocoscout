@@ -164,7 +164,7 @@ RSpec.describe "Manage::SettlementDays with a register", type: :request do
     expect(response.body).to include(manage_money_settle_up_day_path(date.iso8601), "Bar, Lincoln Lodge")
 
     get manage_money_settle_up_day_path(date.iso8601)
-    expect(response.body).to include("Bar, Lincoln Lodge", "$100.00", "$20.00", "Sales tax collected", "Tips, $15.00", "Pat Bartender", "On its way to your bank")
+    expect(response.body).to include("Bar, Lincoln Lodge", "$100.00", "$20.00", "Sales tax collected", "Tips, $15.00", "Pat Bartender", "To your bank from Square", "Pulled in automatically from Square, which sends the money straight to your bank, not through CocoScout.", "Manage Square integration")
 
     patch manage_check_register_money_settle_up_day_path(date.iso8601), params: { checked: "1" }
     patch manage_tips_money_settle_up_day_path(date.iso8601), params: { split: "even", checked: "1", shares: { bartender.id => { amount: "15.00", method: "payout" } } }
