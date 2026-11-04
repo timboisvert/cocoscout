@@ -13,6 +13,8 @@ class TicketSalesLine < ApplicationRecord
   validates :tickets_sold, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   validates :amount, numericality: { greater_than_or_equal_to: 0 }
 
+  normalizes :ticket_type, with: ->(name) { name.to_s.squish.presence }
+
   scope :ordered, -> { order(:position, :id) }
 
   # One write path for the rollup, so the cached columns can never drift from

@@ -13,11 +13,21 @@
   pink = "text-pink-600 hover:text-pink-700"
   # The number opens that thing's own worksheet, a modal (Tim, 2026-11-03).
   opens = ->(modal_id, text) { %(<a href="##{modal_id}" class="#{pink}" data-controller="modal" data-action="click->modal#open" data-modal-id="#{modal_id}">#{text}</a>).html_safe }
-  # A show CocoScout doesn't sell has its ticket money typed here: tickets,
-  # a flat fee, or no revenue (Tim, 2026-11-04).
+  # Tickets sold on other sites open one modal for every show, a line per
+  # site and ticket type; on a settled day it opens to read (Tim,
+  # 2026-11-04). A show CocoScout doesn't sell also says there what it
+  # took: tickets, a flat fee, or no revenue.
   typed_tickets = editable && piece.listing.nil?
   tickets_id = "tickets-#{show.id}"
-  typed = ->(text) { typed_tickets ? opens.call(tickets_id, text) : text }
+  has_modal = piece.listing.nil? || piece.outside_sources.any? || outside_lines.any?
+  typed = ->(text) { has_modal ? opens.call(tickets_id, text) : text }
+  # One line per site: what it sold, by type, then the money.
+  by_site = outside_lines.group_by { |l| l[:label] }.map do |label, group|
+    count = group.sum { |l| l[:count] }
+    types = group.flat_map { |l| l[:types] || [] }.group_by(&:first).map { |name, pairs| [ name, pairs.sum(&:last) ] }.select { |_, n| n.positive? }
+    sold = types.any? && types.sum(&:last) == count ? types.map { |name, n| "#{n} #{name}" }.join(", ") : count.to_s
+    { label: label, text: "#{sold} · #{money.call(group.sum { |l| l[:cents] })}" }
+  end
   notes = fin&.notes.to_s.strip
 %>
 <section class="bg-white border border-gray-200 rounded-xl overflow-hidden" id="show-<%= show.id %>">
@@ -35,22 +45,20 @@
     <div>
       <div class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Tickets</div>
       <% if piece.non_revenue? %>
-        <%= line.call("Tickets", "this show had no revenue", typed.call(typed_tickets ? "Change" : "—")) %>
+        <%= line.call("Tickets", "this show had no revenue", (typed_tickets ? typed.call("Change") : "—")) %>
       <% elsif fin&.flat_fee? %>
-        <%= line.call("A flat fee instead of tickets", nil, typed.call(money.call(piece.flat_fee_cents))) %>
+        <%= line.call("A flat fee instead of tickets", nil, (piece.listing ? money.call(piece.flat_fee_cents) : typed.call(money.call(piece.flat_fee_cents)))) %>
       <% elsif piece.ticket_lines.empty? %>
-        <%= line.call("Tickets", "nothing entered yet", typed.call(typed_tickets ? "Enter" : "—")) %>
+        <%= line.call("Tickets", "nothing entered yet", (typed_tickets ? typed.call("Enter") : "—")) %>
       <% end %>
       <% online_lines.each do |l| %>
         <%= line.call("Sold through CocoScout", "from Ticketing", (piece.listing ? link_to("#{l[:count]} · #{money.call(l[:cents])}", manage_ticket_listing_path(piece.listing), class: pink) : "#{l[:count]} · #{money.call(l[:cents])}")) %>
       <% end %>
-      <% if piece.listing && piece.outside_sources.any? %>
-        <%= line.call("Outside tickets", outside_lines.map { |l| "#{l[:label]} #{l[:count]}" }.join(", ").presence || piece.outside_sources.map(&:name).join(", "),
-              (editable ? opens.call("outside-#{show.id}", "#{outside_lines.sum { |l| l[:count] }} · #{money.call(outside_lines.sum { |l| l[:cents] })}") : "#{outside_lines.sum { |l| l[:count] }} · #{money.call(outside_lines.sum { |l| l[:cents] })}")) %>
-      <% else %>
-        <% outside_lines.each do |l| %>
-          <%= line.call(l[:label], nil, typed.call("#{l[:count]} · #{money.call(l[:cents])}")) %>
-        <% end %>
+      <% by_site.each do |site| %>
+        <%= line.call(site[:label], nil, typed.call(ERB::Util.html_escape(site[:text]))) %>
+      <% end %>
+      <% if piece.listing && piece.outside_sources.any? && by_site.empty? && editable %>
+        <%= line.call("Sold on other sites", "nothing entered", typed.call("Enter")) %>
       <% end %>
       <% if fin && fin.contractor_collected.to_f.positive? && !piece.non_revenue? %>
         <%= line.call("Collected by the contractor", "already in the tickets", typed.call(number_to_currency(fin.contractor_collected))) %>
@@ -74,16 +82,12 @@
   </div>
   <%= render "manage/settlement_days/pay_block", piece: piece, day: day, editable: editable, return_to: return_to, open: (defined?(open_show_id) && open_show_id.to_s == show.id.to_s), open_modal_id: (defined?(open_modal_id) ? open_modal_id.to_s : "") %>
 </section>
-<% if typed_tickets %>
-  <%= render "manage/settlement_days/tickets_modal", id: tickets_id, show: show, financials: fin, return_to: return_to %>
+<% if has_modal %>
+  <%= render "manage/settlement_days/outside_tickets_modal", id: tickets_id, piece: piece, editable: editable, return_to: return_to, settled: day.settled? %>
 <% end %>
 <% if editable %>
   <%= render "manage/settlement_days/notes_modal", id: "notes-#{show.id}", show: show, financials: fin, return_to: return_to %>
   <%= render "manage/settlement_days/other_revenue_modal", id: "other-revenue-#{show.id}", show: show, financials: fin, return_to: return_to %>
   <%= render "manage/settlement_days/expenses_modal", id: "expenses-#{show.id}", show: show, financials: fin, return_to: return_to %>
 <% end %>
-<% if piece.listing && piece.outside_sources.any? && editable %>
-  <%= render "manage/ticket_listings/outside_sales_modal", id: "outside-#{show.id}", listing: piece.listing,
-        sources: piece.outside_sources, rows: piece.listing.ticket_outside_sales.index_by { |row| [ row.ticket_source_id, row.ticket_tier_id ] },
-        return_to: manage_money_settle_up_day_path(day.param) %>
-<% end %>
+

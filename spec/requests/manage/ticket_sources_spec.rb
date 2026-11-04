@@ -195,7 +195,7 @@ RSpec.describe "Ticket sources and per-source sales", type: :request do
       get manage_money_show_financials_path(show)
 
       expect(response.body).to include("Eventbrite")
-      expect(response.body).to include("40 · $400.00")
+      expect(response.body).to include("40 General Admission · $400.00")
       expect(response.body).not_to include("show_financials[ticket_sales_lines_attributes]")
     end
   end

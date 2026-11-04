@@ -133,7 +133,7 @@ module Manage
         other_revenue_details: [ :description, :amount, :_destroy ],
         expense_details: [ :category, :description, :amount ],
         expense_items_attributes: [ :id, :category, :description, :amount, :position, :receipt, :_destroy ],
-        ticket_sales_lines_attributes: [ :id, :ticket_source_id, :tickets_sold, :amount, :position, :_destroy ]
+        ticket_sales_lines_attributes: [ :id, :ticket_source_id, :ticket_type, :tickets_sold, :amount, :position, :_destroy ]
       )
 
       # A blank box is a zero (30 comps, no money, is a real row). A saved

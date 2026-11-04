@@ -78,7 +78,19 @@ RSpec.describe "Settle up", type: :request do
     fin = show.reload.show_financials
     expect([ fin.ticket_count, fin.ticket_revenue.to_f, fin.data_confirmed ]).to eq([ 30, 450.0, false ])
     get back
-    expect(response.body).to include("30 · $450.00")
+    # A ticket with no type of its own reads as the plain one.
+    expect(response.body).to include("30 General Admission · $450.00", "Outside tickets", "Ticket type")
+
+    # Another type for the same show: every line names its type, on the card and in the modal.
+    tailor = org.ticket_sources.create!(name: "Ticket Tailor")
+    patch manage_update_money_show_financials_path(show), params: { return_to: back, revenue_choice: "ticket_sales",
+      show_financials: { ticket_sales_lines_attributes: { "0" => { ticket_source_id: tailor.id, ticket_type: " VIP ", tickets_sold: "2", amount: "80" },
+                                                           "1" => { ticket_source_id: tailor.id, ticket_type: "General Admission", tickets_sold: "5", amount: "100" } } } }
+    expect(fin.reload.ticket_sales_lines.where(ticket_source: tailor).pluck(:ticket_type, :tickets_sold)).to contain_exactly([ "VIP", 2 ], [ "General Admission", 5 ])
+    get back
+    expect(response.body).to include("2 VIP, 5 General Admission · $180.00")
+    expect(response.body.scan(/name="show_financials\[ticket_sales_lines_attributes\]\[\d+\]\[ticket_type\]"[^>]*value="VIP"/).size).to eq(1)
+    fin.ticket_sales_lines.where(ticket_source: tailor).each(&:destroy!)
 
     patch manage_update_money_show_financials_path(show), params: { return_to: back, revenue_choice: "flat_fee", show_financials: { flat_fee: "500" } }
     expect(fin.reload).to be_flat_fee
@@ -104,6 +116,46 @@ RSpec.describe "Settle up", type: :request do
     expect([ fin.reload.non_revenue_override, fin.flat_fee.to_f ]).to eq([ false, 500.0 ])
   end
 
+  it "opens the same outside tickets modal on a settled day, to read and not to change" do
+    tailor = org.ticket_sources.create!(name: "Ticket Tailor")
+    org.ticket_sources.create!(name: "Hot Tix")
+    fin = show.show_financials || show.create_show_financials!
+    fin.ticket_sales_lines.create!(ticket_source: tailor, tickets_sold: 9, amount: 150)
+    back = manage_money_settle_up_day_path(date.iso8601)
+
+    get back
+    expect(response.body).to include("9 General Admission · $150.00", %(data-modal-id="tickets-#{show.id}"), "show_financials[ticket_sales_lines_attributes]", "Hot Tix")
+
+    patch manage_check_show_money_settle_up_day_path(date.iso8601, show_id: show.id), params: { checked: "1" }
+    post manage_settle_money_settle_up_day_path(date.iso8601)
+    expect(SettlementDay.find_by!(organization: org, date: date)).to be_settled
+
+    get back
+    body = CGI.unescapeHTML(response.body)
+    expect(body).to include("9 General Admission · $150.00", %(data-modal-id="tickets-#{show.id}"), "The day is settled. Reopen it to change these.")
+    # Only what sold is listed, as plain numbers.
+    expect(body).not_to include("show_financials[ticket_sales_lines_attributes]", "Edit ticket sources")
+  end
+
+  it "uses that modal for a show sold through CocoScout too, a line per site and ticket type of its own" do
+    tailor = org.ticket_sources.create!(name: "Ticket Tailor")
+    listing = TicketListing.create!(show: show)
+    general = listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 60)
+    vip = listing.ticket_tiers.create!(name: "VIP", price_cents: 4_000, quantity: 10)
+    back = manage_money_settle_up_day_path(date.iso8601)
+
+    get back
+    expect(response.body).to include("Sold on other sites", "Outside tickets", %(action="#{manage_ticket_listing_outside_sales_path(listing)}"),
+                                     %(name="sales[#{tailor.id}][#{general.id}][tickets]"), %(name="sales[#{tailor.id}][#{vip.id}][amount]"))
+    expect(response.body).not_to include("revenue_choice", "Sold elsewhere")
+
+    patch manage_ticket_listing_outside_sales_path(listing), params: { return_to: back,
+      sales: { tailor.id.to_s => { general.id.to_s => { tickets: "4", amount: "80" }, vip.id.to_s => { tickets: "1", amount: "40" } } } }
+    expect(response).to redirect_to(back)
+    get back
+    expect(response.body).to include("4 General, 1 VIP · $120.00")
+  end
+
   it "keeps a show's financials page as a read-only record of its day's card and what was left" do
     fin = show.show_financials || show.create_show_financials!
     fin.update!(ticket_count: 30, ticket_revenue: 450, data_confirmed: true)
@@ -114,7 +166,9 @@ RSpec.describe "Settle up", type: :request do
     expect(response).to have_http_status(:ok)
     body = CGI.unescapeHTML(response.body)
     expect(body).to include("Settles with #{date.strftime('%A, %B %-d')}", "Settle up, #{date.strftime('%b %-d')}", "30 · $450.00", "What was left", "Came in", "$400.00")
-    expect(body).not_to include("Enter Financial Data", "Mark as Non-Revenue", %(data-modal-id="tickets-#{show.id}"), "Confirm</span>")
+    # The ticket numbers open the same modal as on the day, to read: nothing to type or save.
+    expect(body).to include(%(data-modal-id="tickets-#{show.id}"), "Outside tickets")
+    expect(body).not_to include("Enter Financial Data", "Mark as Non-Revenue", "show_financials[ticket_sales_lines_attributes]", "Confirm</span>")
     # A needs-financials row and the payout page send people to the day, the card open.
     expect(SettleUp.money_entry_path(org, show)).to eq(manage_money_settle_up_day_path(date.iso8601, open: show.id, anchor: "show-#{show.id}"))
 

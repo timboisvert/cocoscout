@@ -323,16 +323,41 @@ class SettleUp
     end
   end
 
+  # What a ticket with no type of its own is called: a show CocoScout
+  # doesn't sell has no ticket types here until someone names one.
+  PLAIN_TICKET = "General Admission"
+
+  # The ticket types a show CocoScout doesn't sell has numbers for, the
+  # plain one first while any line has no type (or there are no lines).
+  def self.typed_ticket_types(financials)
+    lines = (financials&.ticket_sales_lines || []).reject { |line| line.ticket_source&.built_in? }
+    named = lines.filter_map { |line| line.ticket_type.presence }.uniq
+    plain = named.empty? || lines.any? { |line| line.ticket_type.blank? }
+    ((plain ? [ PLAIN_TICKET ] : []) + named).uniq
+  end
+
   def self.show_piece(organization, show)
     financials = show.show_financials
     listing = show.ticket_listing
     sources = organization.ticket_sources.index_by(&:id)
+    # What each other site sold, by ticket type: a show sold here keeps
+    # that per type (ticket_outside_sales); a show CocoScout doesn't sell
+    # keeps the type on the line itself.
+    by_type = Hash.new { |h, k| h[k] = [] }
+    listing&.ticket_outside_sales&.includes(:ticket_tier)&.sort_by { |row| [ row.ticket_tier.position.to_i, row.ticket_tier_id ] }&.each do |row|
+      by_type[row.ticket_source_id] << [ row.ticket_tier.name, row.tickets_sold.to_i ]
+    end
     lines = (financials&.ticket_sales_lines || []).map do |line|
       source = sources[line.ticket_source_id]
-      { label: source&.name || "Tickets", built_in: source&.built_in? == true, count: line.tickets_sold.to_i, cents: (line.amount.to_f * 100).round }
+      built_in = source&.built_in? == true
+      types = if built_in then []
+      elsif listing then by_type[line.ticket_source_id]
+      else [ [ line.ticket_type.presence || PLAIN_TICKET, line.tickets_sold.to_i ] ]
+      end
+      { label: source&.name || "Tickets", built_in: built_in, count: line.tickets_sold.to_i, cents: (line.amount.to_f * 100).round, types: types }
     end
     if lines.empty? && financials&.ticket_revenue.to_f.positive?
-      lines << { label: "Tickets", built_in: false, count: financials.ticket_count.to_i, cents: (financials.ticket_revenue.to_f * 100).round }
+      lines << { label: "Tickets", built_in: false, count: financials.ticket_count.to_i, cents: (financials.ticket_revenue.to_f * 100).round, types: [] }
     end
     outside = listing ? sources.values.select { |s| !s.built_in? && s.archived_at.nil? } : []
     products = financials ? financials.normalized_other_revenue_details.select { |i| i.is_a?(Hash) && i["description"] == TicketSalesSync::PRODUCTS_LABEL }.sum { |i| (i["amount"].to_f * 100).round } : 0

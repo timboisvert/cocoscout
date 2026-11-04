@@ -1,0 +1,211 @@
+<%# Tickets sold on other sites, for any show on the day's worksheet: one
+    table, a line per site and ticket type (Tim, 2026-11-04: one modal for
+    every show, whoever sells it, settled or not).
+    - A show sold through CocoScout: its own ticket types; saves through the
+      ticketing page's Sold elsewhere (each type's seats shrink by its count).
+    - A show CocoScout doesn't sell: the types its lines name, the plain one
+      to start (SettleUp::PLAIN_TICKET), and a row to add another. It also
+      says what kind of money the show took: tickets, a flat fee, or none.
+    - editable false (a settled day, the show's record): the same table as
+      plain numbers, nothing to save.
+    Locals: id, piece (SettleUp::ShowPiece), editable, return_to, settled %>
+<%
+  input = "block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors"
+  radio = "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500"
+  show = piece.show
+  listing = piece.listing
+  financials = piece.financials
+  organization = show.production.organization
+  sources = organization.ticket_sources.hand_made.active.ordered.to_a
+  groups = []
+  index = -1
+  if listing
+    saved = listing.ticket_outside_sales.index_by { |row| [ row.ticket_source_id, row.ticket_tier_id ] }
+    listing.ticket_tiers.active.reject(&:bundle?).then do |tiers|
+      sources.each do |source|
+        groups << { name: source.name, rows: tiers.map do |tier|
+          row = saved[[ source.id, tier.id ]]
+          { type: tier.name, tickets: row&.tickets_sold.to_i, amount: row ? row.amount_cents / 100.0 : 0, hidden: {},
+            tickets_name: "sales[#{source.id}][#{tier.id}][tickets]", amount_name: "sales[#{source.id}][#{tier.id}][amount]" }
+        end }
+      end
+    end
+  else
+    types = SettleUp.typed_ticket_types(financials)
+    existing = (financials&.ticket_sales_lines || []).reject { |line| line.ticket_source&.built_in? }
+    cells = existing.group_by { |line| [ line.ticket_source_id, line.ticket_type.presence || types.first ] }
+    row_for = lambda do |source_id, type, line|
+      index += 1
+      field = "show_financials[ticket_sales_lines_attributes][#{index}]"
+      { type: type, tickets: line&.tickets_sold.to_i, amount: line&.amount.to_f,
+        hidden: { "#{field}[id]" => line&.id, "#{field}[ticket_source_id]" => source_id, "#{field}[ticket_type]" => type }.reject { |name, value| name.end_with?("[id]") && value.nil? },
+        tickets_name: "#{field}[tickets_sold]", amount_name: "#{field}[amount]" }
+    end
+    (sources + existing.filter_map(&:ticket_source)).uniq.each do |source|
+      groups << { name: source.name, rows: types.flat_map { |type| (cells.delete([ source.id, type ]) || [ nil ]).map { |line| row_for.call(source.id, type, line) } } }
+    end
+    # Lines typed before the organization named its sites.
+    loose = cells.select { |(source_id, _), _| source_id.nil? }
+    if loose.any?
+      groups << { name: (sources.any? ? "Other" : "Tickets"), rows: loose.flat_map { |(_, type), lines| lines.map { |line| row_for.call(nil, type, line) } } }
+    elsif groups.empty?
+      seed = row_for.call(nil, types.first, nil)
+      groups << { name: "Tickets", rows: [ seed.merge(tickets: financials&.ticket_count.to_i, amount: financials&.ticket_revenue.to_f) ] }
+    end
+    choice = if financials&.non_revenue_override? then "none"
+    elsif financials&.flat_fee? then "flat_fee"
+    else "ticket_sales"
+    end
+    production = show.production
+    contract = show.space_rental&.contract || production.contract
+    collects = production.type_third_party? && contract&.revenue_share?
+  end
+  unless editable
+    groups = groups.filter_map { |group| rows = group[:rows].select { |row| row[:tickets].positive? || row[:amount].positive? }; group.merge(rows: rows) if rows.any? }
+  end
+  columns = "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_5.5rem_8rem]"
+  pill = "inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 has-[:checked]:text-pink-700 has-[:checked]:font-medium"
+%>
+<div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end justify-center sm:items-center sm:p-4"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[85vh]" data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-5 sm:px-6 py-4 flex-shrink-0">
+      <h3 class="text-lg font-semibold text-white">Outside tickets</h3>
+      <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" aria-label="Close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <%
+      table = capture do
+    %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+        <div class="hidden sm:grid <%= columns %> gap-3 px-4 py-2 bg-gray-50 border-b border-gray-200 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+          <span>Sold through</span><span>Ticket type</span><span class="text-right">Tickets</span><span class="text-right">Amount</span>
+        </div>
+        <% if groups.empty? %>
+          <p class="px-4 py-3 text-sm text-gray-500"><%= sources.empty? && editable ? "Name the places you sell tickets and each gets its lines here." : "Nothing sold on other sites." %></p>
+        <% end %>
+        <% groups.each do |group| %>
+          <div class="border-b border-gray-200 last:border-b-0 divide-y divide-gray-100">
+            <% group[:rows].each_with_index do |row, position| %>
+              <div class="grid grid-cols-2 <%= columns %> items-center gap-x-3 gap-y-1.5 px-4 py-2">
+                <% row[:hidden].each { |name, value| concat hidden_field_tag(name, value, id: nil) } if editable %>
+                <%# On a phone every line says its site; from sm up, only a site's first line does. %>
+                <div class="col-span-2 flex items-baseline gap-2 min-w-0 sm:contents">
+                  <span class="min-w-0 truncate text-sm font-medium text-gray-900 <%= 'sm:invisible' if position.positive? %>"><%= group[:name] %></span>
+                  <span class="min-w-0 truncate text-sm text-gray-700"><%= row[:type] %></span>
+                </div>
+                <% if editable %>
+                  <%= number_field_tag row[:tickets_name], (row[:tickets].positive? ? row[:tickets] : nil), id: nil, min: 0, inputmode: "numeric", placeholder: "0",
+                        "aria-label": "#{group[:name]} #{row[:type]} tickets", class: "#{input} tabular-nums text-right" %>
+                  <div class="relative">
+                    <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-gray-500">$</span>
+                    <%= number_field_tag row[:amount_name], (row[:amount].positive? ? format("%.2f", row[:amount]) : nil), id: nil, min: 0, step: "0.01", inputmode: "decimal", placeholder: "0.00",
+                          "aria-label": "#{group[:name]} #{row[:type]} amount", class: "#{input} pl-7 tabular-nums text-right" %>
+                  </div>
+                <% else %>
+                  <span class="text-sm tabular-nums text-gray-900 sm:text-right"><%= row[:tickets] %><span class="sm:hidden text-gray-500"> <%= "ticket".pluralize(row[:tickets]) %></span></span>
+                  <span class="text-sm tabular-nums text-gray-900 text-right"><%= number_to_currency(row[:amount]) %></span>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+        <% if editable && !listing %>
+          <%# One more line, for a type this show hasn't had yet: once saved, every site gets a line for it. %>
+          <% index += 1 %>
+          <% field = "show_financials[ticket_sales_lines_attributes][#{index}]" %>
+          <div class="grid grid-cols-2 <%= columns %> items-center gap-x-3 gap-y-1.5 px-4 py-2 bg-gray-50/60 border-t border-dashed border-gray-300">
+            <% if sources.any? %>
+              <%= select_tag "#{field}[ticket_source_id]", options_from_collection_for_select(sources, :id, :name), id: nil, "aria-label": "Sold through", class: "#{input} min-w-0" %>
+            <% else %>
+              <span class="text-sm text-gray-500">Another type</span>
+            <% end %>
+            <%= text_field_tag "#{field}[ticket_type]", nil, id: nil, placeholder: "Another type", "aria-label": "Another ticket type", class: "#{input} min-w-0" %>
+            <%= number_field_tag "#{field}[tickets_sold]", nil, id: nil, min: 0, inputmode: "numeric", placeholder: "0", "aria-label": "Tickets of the new type", class: "#{input} tabular-nums text-right" %>
+            <div class="relative">
+              <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-gray-500">$</span>
+              <%= number_field_tag "#{field}[amount]", nil, id: nil, min: 0, step: "0.01", inputmode: "decimal", placeholder: "0.00", "aria-label": "Amount for the new type", class: "#{input} pl-7 tabular-nums text-right" %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+    <%
+      intro = capture do
+    %>
+      <p class="text-sm text-gray-600">
+        <span class="font-medium text-gray-900"><%= show.display_name %></span>, <%= show.date_and_time.strftime("%a, %b %-d") %>.
+        Tickets sold on other sites, a line for each site and ticket type.<% if listing && editable %> Each type has that many fewer seats in CocoScout.<% end %>
+      </p>
+    <% end %>
+    <% if !editable %>
+      <div class="px-5 sm:px-6 py-5 space-y-4 overflow-y-auto min-h-0">
+        <%= intro %>
+        <% if !listing && choice == "none" %>
+          <p class="text-sm text-gray-700">This show had no revenue.</p>
+        <% elsif !listing && choice == "flat_fee" %>
+          <p class="text-sm text-gray-700">A flat fee instead of tickets: <span class="tabular-nums font-medium text-gray-900"><%= number_to_currency(financials.flat_fee.to_f) %></span></p>
+        <% else %>
+          <%= table %>
+          <% if !listing && collects && financials&.contractor_collected.to_f.positive? %>
+            <p class="text-sm text-gray-700">Collected by <%= contract.contractor_name %> themselves: <span class="tabular-nums font-medium text-gray-900"><%= number_to_currency(financials.contractor_collected) %></span></p>
+          <% end %>
+        <% end %>
+        <% if settled %><p class="text-xs text-gray-500">The day is settled. Reopen it to change these.</p><% end %>
+      </div>
+      <div class="px-5 sm:px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end flex-shrink-0">
+        <%= render "shared/button", text: "Close", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+      </div>
+    <% else %>
+      <%= form_with url: (listing ? manage_ticket_listing_outside_sales_path(listing) : manage_update_money_show_financials_path(show)), method: :patch,
+            class: "flex flex-col min-h-0 flex-1", data: (listing ? { turbo: false } : { turbo_action: "replace" }) do %>
+        <%= hidden_field_tag :return_to, return_to, id: nil %>
+        <div class="group/rev px-5 sm:px-6 py-5 space-y-4 overflow-y-auto min-h-0">
+          <%= intro %>
+          <% if listing %>
+            <%= table %>
+          <% else %>
+            <%# What kind of money the show took; the choice shows its own fields. %>
+            <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="What this show took">
+              <label class="<%= pill %>"><%= radio_button_tag :revenue_choice, "ticket_sales", choice == "ticket_sales", id: nil, class: "#{radio} rev-tickets" %> Tickets</label>
+              <label class="<%= pill %>"><%= radio_button_tag :revenue_choice, "flat_fee", choice == "flat_fee", id: nil, class: "#{radio} rev-fee" %> A flat fee instead</label>
+              <label class="<%= pill %>"><%= radio_button_tag :revenue_choice, "none", choice == "none", id: nil, class: "#{radio} rev-none" %> This show had no revenue</label>
+            </div>
+            <div class="hidden group-has-[.rev-tickets:checked]/rev:block space-y-4">
+              <%= table %>
+              <% if collects %>
+                <label class="block text-sm">
+                  <span class="font-medium text-gray-700">Collected by <%= contract.contractor_name %> themselves</span>
+                  <span class="block text-xs text-gray-500 mb-1">Money they took at the door on their own. It's already in the amounts above; this says how much of it they're holding.</span>
+                  <span class="relative block w-40">
+                    <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-gray-500">$</span>
+                    <%= number_field_tag "show_financials[contractor_collected]", (financials&.contractor_collected.to_f.positive? ? format("%.2f", financials.contractor_collected.to_f) : nil), id: nil, min: 0, step: "0.01", placeholder: "0.00", class: "#{input} pl-7 tabular-nums" %>
+                  </span>
+                </label>
+              <% end %>
+            </div>
+            <div class="hidden group-has-[.rev-fee:checked]/rev:block">
+              <label class="block text-sm">
+                <span class="font-medium text-gray-700">The flat fee</span>
+                <span class="block text-xs text-gray-500 mb-1">The set amount you were paid for this show.</span>
+                <span class="relative block w-40">
+                  <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-gray-500">$</span>
+                  <%= number_field_tag "show_financials[flat_fee]", (financials&.flat_fee.to_f.positive? ? format("%.2f", financials.flat_fee.to_f) : nil), id: nil, min: 0, step: "0.01", placeholder: "0.00", class: "#{input} pl-7 tabular-nums" %>
+                </span>
+              </label>
+            </div>
+            <p class="hidden group-has-[.rev-none:checked]/rev:block text-sm text-gray-600">Nothing is counted for it and nobody is paid from it. It still gets confirmed with the day, and you can choose again here until the day settles.</p>
+          <% end %>
+        </div>
+        <div class="px-5 sm:px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
+          <%= link_to "Edit ticket sources", manage_money_settings_section_path(section: "ticket_sources"), class: "text-sm text-pink-600 hover:text-pink-700" %>
+          <div class="flex items-center gap-2">
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+            <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>
