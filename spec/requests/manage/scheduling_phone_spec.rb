@@ -96,12 +96,15 @@ RSpec.describe "Scheduling on a phone", type: :request do
     expect(frame.at_css("#scheduling-jump-strip [aria-current='date']")["data-strip-day"]).to eq(tuesday.iso8601)
   end
 
-  it "keeps the by-role and by-person timelines on desktop, a day at a time" do
+  it "keeps the by-role and by-person timelines on desktop, a day at a time (Day view)" do
     doc = page
-    timeline = doc.at_css("#day-timeline-#{friday.iso8601}")
-    expect(timeline.css("[data-day-view-target='toggle']").map(&:text).map(&:strip)).to eq([ "By role", "By person" ])
-    expect(doc.at_css("[data-modal-id='day-timeline-#{friday.iso8601}']")).to be_present
+    expect(doc.at_css("[data-day-view-link='#{friday.iso8601}']")["href"]).to eq(manage_staffing_scheduling_path(view: "day", day: friday.iso8601))
+    expect(doc.at_css("#day-timeline-#{friday.iso8601}")).to be_nil
     expect(response.body).not_to include("Swipe to see all")
+
+    get manage_staffing_scheduling_path(view: "day", day: friday.iso8601)
+    day = Nokogiri::HTML(response.body).at_css("[data-desktop-day='#{friday.iso8601}']")
+    expect(day.css("[data-day-view-target='toggle']").map(&:text).map(&:strip)).to eq([ "By role", "By person" ])
   end
 
   it "assigns through the shared People Picker, with the Everyone / Can work / Free filters" do
