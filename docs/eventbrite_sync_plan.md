@@ -13,9 +13,20 @@ Research behind this: Eventbrite's API is self-serve and can create, picture, ti
 | Production | The production's ticketing → Sales | Follow ticketing settings, always list, or never list this production's shows. The production's Eventbrite image. |
 | Show | The show's Tickets tab | Follow the production, list this show, or don't list this show. The show's own Eventbrite image, if it has one. |
 
+**Only when connected.** The Eventbrite section in ticketing settings, on the production's ticketing Sales section and on the show's Tickets tab appears only while the organization has Eventbrite connected. An organization that has not connected it sees nothing about Eventbrite anywhere in ticketing; the one place it is mentioned is Organization settings → Integrations.
+
 The nearest answer wins: the show's choice, else the production's, else ticketing settings. So a production that is off can still list one show, and a production that is on can leave one show out.
 
 Stored as: `Integration` with provider `eventbrite` (tokens encrypted, as Square), the organization-wide switch and last-seats number in its `settings`, and a nullable `eventbrite` choice on `production_ticketings` and `ticket_listings` (empty means "follow the level above").
+
+## 1a. Whose relationship it is
+
+It is OAuth, the same shape as Square. Nobody pastes a key or a password into CocoScout.
+
+- **CocoScout and Eventbrite, once.** CocoScout registers as one application with Eventbrite and holds one key and secret for all of CocoScout. That is the step in §7.
+- **Each organization and Eventbrite.** A manager clicks Connect Eventbrite, signs in on Eventbrite's own site, and approves CocoScout. Eventbrite then gives CocoScout a token for that organization's account only, which we store encrypted. Disconnecting here, or removing CocoScout on Eventbrite's side, ends it.
+- **The account stays the organization's.** The events live in its Eventbrite account, its buyers pay Eventbrite, and Eventbrite pays the organization. CocoScout acts for it and never touches that money.
+- **If Eventbrite pulled CocoScout's key,** every organization's connection would stop at once. Their Eventbrite accounts and events would be untouched.
 
 ## 2. What gets sent
 
@@ -71,7 +82,7 @@ Each step ships with request specs against a stubbed Eventbrite. Before it is sw
 
 ## 7. Only Tim can do
 
-1. **Create the API key** on the Eventbrite account's API keys page. It asks for an application name and a redirect address: `https://cocoscout.com/integrations/eventbrite/callback`. The key and secret go in 1Password and the server's environment, never the repo.
+1. **Create CocoScout's API key** on an Eventbrite account's API keys page. Use an account that is CocoScout's own (a cocoscout.com address), not Stars & Garters', so the application is not tied to one customer's account. It asks for an application name and a redirect address: `https://cocoscout.com/integrations/eventbrite/callback`. The key and secret go in 1Password and the server's environment, never the repo.
 2. **Decide on the competing-products clause.**
 
 ## 8. To confirm while building
