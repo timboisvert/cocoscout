@@ -79,18 +79,23 @@ class TipSplit
     @pool
   end
 
-  private
-
   def timed_cents = @tips_by_time.values.sum { |q| q["cents"].to_i }
 
-  # The people in the rows: anyone on in a role that shares, plus anyone
-  # already given a share (typed, or added by hand with a span).
+  # The people in the rows: anyone on in a role that shares, or given a
+  # share in one (added by hand with a span). A share in no role, or in a
+  # role the rule leaves out, counts for nothing: the rule in settings is
+  # what the page follows (Tim, 2026-11-03), and such a share is dropped
+  # on the next save.
   def sharers
-    @sharers ||= @workers.select do |worker|
-      share = @shares[worker.person.id]
-      share.present? || worker.spans.any? { |span| @rule.shares?(span.house_role_id) }
-    end
+    @sharers ||= @workers.select { |worker| sharer?(worker) }
   end
+
+  def sharer?(worker)
+    share = @shares[worker.person.id]
+    (share.present? && @rule.shares?(share.house_role_id)) || worker.spans.any? { |span| @rule.shares?(span.house_role_id) }
+  end
+
+  private
 
   def compute
     tally = Hash.new { |h, k| h[k] = { on_cents: 0.0, on_orders: 0, cut_cents: 0.0, pool_cents: 0.0, percent: 0.0 } }
@@ -166,8 +171,13 @@ class TipSplit
     end
   end
 
-  # A typed share stays as typed; one already on a payout run can't move.
-  def frozen?(share) = share.present? && (share.source == "typed" || share.payout_contribution_id.present?)
+  # A typed share stays as typed, if it was typed for a role that shares;
+  # one already on a payout run can't move whatever it is.
+  def frozen?(share)
+    return false if share.nil?
+
+    share.payout_contribution_id.present? || (share.source == "typed" && @rule.shares?(share.house_role_id))
+  end
 
   # Whole cents that add up to the total, the leftovers to the biggest remainders.
   def largest_remainder(floats, total)

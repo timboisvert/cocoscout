@@ -77,7 +77,11 @@ module Manage
         if by_rule
           save_rule_share(share, attrs, cents)
         elsif cents.positive?
-          share.update!(amount_cents: cents, method: attrs["method"].presence_in(TipShare::METHODS) || "payout", source: "typed")
+          # Only a split the manager chose to type is "typed"; an even or
+          # by-hours split the page suggested is the page's own, so a rule
+          # turned on later works it out again instead of keeping it.
+          share.update!(amount_cents: cents, method: attrs["method"].presence_in(TipShare::METHODS) || "payout",
+                        source: record.tips_split == "typed" ? "typed" : "computed")
         elsif share.persisted?
           share.destroy!
         end
@@ -122,7 +126,7 @@ module Manage
 
       share.source = "computed" if share.new_record?
       share.method = attrs["method"].presence_in(TipShare::METHODS) || share.method || "payout"
-      share.house_role_id = attrs["house_role_id"].presence
+      share.house_role_id = attrs["house_role_id"].presence || share.house_role_id
       from, to = span_from(attrs["from"], attrs["to"])
       span_words = [ attrs["from"], attrs["to"] ].join("-")
       if from && to && (attrs["span_shown"].blank? || span_words != attrs["span_shown"])
@@ -164,6 +168,9 @@ module Manage
         share.assign_attributes(amount_cents: row.cents, source: row.source, method: row.method, house_role_id: row.house_role&.id)
         share.save!
       end
+      # A share for anyone the rule leaves out (an older even split, a role
+      # taken out of the rule since) goes: settling pays the rows, nothing else.
+      record.tip_shares.where(payout_contribution_id: nil).where.not(person_id: tips.rows.map { |r| r.person.id }).destroy_all
     end
 
     # "18:00" and "01:30" on the day's own clock: anything before the day

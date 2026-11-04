@@ -63,7 +63,7 @@ RSpec.describe TipSplit do
 
   it "keeps a typed share as typed and works the rest out around it" do
     record = SettlementDay.create!(organization: org, date: night.to_date)
-    typed = record.tip_shares.create!(person: camille, amount_cents: 5_000, source: "typed", method: "payout")
+    typed = record.tip_shares.create!(person: camille, amount_cents: 5_000, source: "typed", method: "payout", house_role: bartender)
     split = described_class.new(rule: rule, tips_cents: 24_000, tips_by_time: tips(18, 24), workers: [ span(miles, 18, 24, bartender), span(camille, 18, 24, bartender) ], shares: [ typed ])
     rows = split.rows.index_by { |r| r.person.name }
     expect(rows["Camille"].cents).to eq(5_000)

@@ -252,6 +252,20 @@ RSpec.describe "Manage::SettlementDays tips by the clock", type: :request do
   context "with the rule on" do
     before { org.create_tip_rule!(enabled: true, role_shares: { bartender.id.to_s => { "kind" => "equal" }, bar_back.id.to_s => { "kind" => "percent", "percent" => 15 } }) }
 
+    it "ignores an even split saved before the rule, lists only the sharing roles, and drops the stray shares on save" do
+      # The by-hand page confirmed an even three-way split while the rule
+      # was off: $80 each for Miles, Pat on the door and Camille, no roles.
+      record = SettlementDay.create!(organization: org, date: date, tips_split: "even")
+      [ miles, pat, camille ].each { |p| record.tip_shares.create!(person: p, amount_cents: 8_000, method: "payout", source: "typed") }
+
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body).not_to include(%(name="shares[#{pat.id}]), "Typed in")
+      expect(response.body).to include(%(name="shares[#{miles.id}][amount]" inputmode="decimal" value="120.00"))
+
+      patch manage_tips_money_settle_up_day_path(date.iso8601), params: { mode: "rule", checked: "1" }
+      expect(record.tip_shares.reload.map { |sh| [ sh.person.name, sh.amount_cents, sh.source ] }).to contain_exactly([ "Miles", 12_000, "computed" ], [ "Camille", 12_000, "computed" ])
+    end
+
     it "opens already split by the clock, with each span and how, and leaves the door out" do
       get manage_money_settle_up_day_path(date.iso8601)
       expect(response).to have_http_status(:ok)
