@@ -61,6 +61,15 @@ module Manage
           h[member.id] = hours if hours.positive?
         end
         @inactive_with_approved_hours = @hidden_staff_members.select { |m| m.inactive? && @hidden_hours_by_member_id[m.id] }
+        # Tips from settled days (Settle up, plan §9.14), waiting here the way
+        # approved hours do: each share is pulled onto the grid as a day on the
+        # person's tips worksheet, and goes onto the run with everything else.
+        @tips_waiting_by_person = TipShare.waiting_for(Current.organization).group_by(&:person_id)
+        @members_with_tips_waiting = @staff_members.filter_map do |member|
+          shares = @tips_waiting_by_person[member.person_id]
+          [ member, shares ] if shares.present?
+        end
+        @tips_waiting_cents = @members_with_tips_waiting.sum { |_, shares| shares.select(&:payout?).sum(&:amount_cents) }
         @draft = PayDraft.read(Current.organization)
       end
 
@@ -137,7 +146,8 @@ module Manage
             tips_worksheet: parse_worksheet(row[:tips_sheet]),
             cash_tips_worksheet: parse_worksheet(row[:cash_tips_sheet]),
             notes: row[:notes].to_s.strip.presence,
-            time_entry_ids: Array(row[:time_entry_ids])
+            time_entry_ids: Array(row[:time_entry_ids]),
+            tip_share_ids: Array(row[:tip_share_ids])
           }
           worked = StaffPayRunService.worked_cents(
             organization: Current.organization, member: member,

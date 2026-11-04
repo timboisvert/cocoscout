@@ -17,6 +17,14 @@ class TipShare < ApplicationRecord
   validates :method, inclusion: { in: METHODS }
   validates :source, inclusion: { in: SOURCES }
 
+  # Shares from settled days that nobody has pulled onto a payout run yet:
+  # what Pay People offers, the way it offers approved hours.
+  def self.waiting_for(organization)
+    joins(:settlement_day).where(settlement_days: { organization_id: organization.id, status: "settled" }, payout_contribution_id: nil)
+                          .where("amount_cents > 0").includes(:settlement_day, :person).order("settlement_days.date")
+  end
+
   def payout? = method == "payout"
   def cash? = method == "cash"
+  def day_label = settlement_day.date.strftime("%b %-d")
 end

@@ -1,0 +1,161 @@
+<%# Change the split: everything about the day's tips that can be changed,
+    in one modal (plan §9.14). With the rule on: a row per person with the
+    span they worked, their share and how it goes; change a span and the
+    others are worked out again; type a share and it stays; add a person
+    and the span they worked; take someone off; or hand it all back to the
+    clock. By hand: evenly, by hours or as typed, and each share.
+    Locals: id, day, tips, hand_rows, roles_by_id %>
+<%
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  by_rule = tips.by_rule?
+  rule = tips.rule
+  input = "block w-full pl-7 pr-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 disabled:bg-gray-50"
+  plain = "block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 disabled:bg-gray-50"
+  clock = "block w-full px-2 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 disabled:bg-gray-50"
+  method_select = lambda do |name, chosen, staff_member, disabled|
+    options = [ [ "Next pay", "payout", staff_member.nil? ], [ "Cash at close", "cash", false ] ]
+    content_tag(:select, name: name, disabled: disabled, class: "#{plain} w-auto") do
+      options.map { |label, value, off| content_tag(:option, label, value: value, selected: chosen == value, disabled: off) }.join.html_safe
+    end
+  end
+  # Adding a person makes sense whenever the rule could read the clock.
+  can_add = rule&.enabled? && tips.by_time.any?
+  sharing_roles = rule ? rule.sharing_role_ids.filter_map { |rid| roles_by_id[rid] } : []
+  listed = (by_rule ? tips.rows.map { |r| r.person.id } : hand_rows.map { |r| r[:worker].person.id }).to_set
+  addable = []
+  if can_add
+    members = Current.organization.organization_staff_members.active.includes(:person, :staff_role_qualifications)
+    qualified = members.select { |m| (m.staff_role_qualifications.map(&:house_role_id) & rule.sharing_role_ids).any? }
+    addable = (qualified.presence || members).map(&:person).reject { |p| listed.include?(p.id) }.sort_by(&:name)
+  end
+%>
+<div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end justify-center sm:items-center sm:p-4"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[85vh]" data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-5 sm:px-6 py-4 flex-shrink-0">
+      <h3 class="text-lg font-semibold text-white">Tips, <%= money.call(tips.cents) %></h3>
+      <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" aria-label="Close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <%= form_with url: manage_tips_money_settle_up_day_path(day.param), method: :patch, class: "flex flex-col min-h-0 flex-1", data: { turbo: false } do %>
+      <%= hidden_field_tag :checked, (tips.checked? ? "1" : "0"), id: nil %>
+      <div class="px-5 sm:px-6 py-4 overflow-y-auto space-y-4">
+        <% if by_rule %>
+          <%= hidden_field_tag :mode, "rule", id: nil %>
+          <p class="text-sm text-gray-600">Worked out from who was on when each sale rang up: <%= rule.summary(roles_by_id) %>. Change a span and the shares are worked out again; type a share and it stays as typed. <%= link_to "Change the rule", manage_money_settings_section_path(section: "tips"), class: "text-pink-600 hover:text-pink-700" %>.</p>
+          <div class="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
+            <% tips.rows.each do |row| %>
+              <% pid = row.person.id %>
+              <% locked = row.locked? %>
+              <% from_text = row.worked_from&.in_time_zone&.strftime("%H:%M") %>
+              <% to_text = row.worked_to&.in_time_zone&.strftime("%H:%M") %>
+              <div class="px-4 py-3 text-sm space-y-2">
+                <div class="flex items-baseline justify-between gap-3">
+                  <span class="min-w-0">
+                    <span class="font-medium text-gray-900"><%= row.person.name %></span>
+                    <% if row.house_role %><span class="ml-1 text-xs text-gray-500"><%= row.house_role.name %></span><% end %>
+                    <% unless row.staff_member %> <span class="text-xs text-amber-700">not on Staffing, cash only</span><% end %>
+                    <span class="block text-xs text-gray-500"><%= row.how %><%= " On a payout run already, so it stands." if locked %></span>
+                  </span>
+                  <% unless locked %>
+                    <label class="inline-flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer whitespace-nowrap" title="Take this person off the split when you save">
+                      <input type="checkbox" name="shares[<%= pid %>][remove]" value="1" class="h-3.5 w-3.5 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">Take off
+                    </label>
+                  <% end %>
+                </div>
+                <%= hidden_field_tag "shares[#{pid}][house_role_id]", row.house_role&.id, id: nil %>
+                <%= hidden_field_tag "shares[#{pid}][shown]", format("%.2f", row.cents / 100.0), id: nil %>
+                <%= hidden_field_tag "shares[#{pid}][span_shown]", [ from_text, to_text ].join("-"), id: nil %>
+                <div class="flex flex-wrap items-center gap-3">
+                  <span class="flex items-center gap-1.5">
+                    <span class="text-xs text-gray-500">Worked</span>
+                    <input type="time" name="shares[<%= pid %>][from]" value="<%= from_text %>" <%= "disabled" if locked %> class="<%= clock %> w-auto" aria-label="From">
+                    <span class="text-xs text-gray-500">to</span>
+                    <input type="time" name="shares[<%= pid %>][to]" value="<%= to_text %>" <%= "disabled" if locked %> class="<%= clock %> w-auto" aria-label="To">
+                  </span>
+                  <span class="relative w-28"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                    <input type="text" name="shares[<%= pid %>][amount]" inputmode="decimal" value="<%= format('%.2f', row.cents / 100.0) %>" <%= "disabled" if locked %> class="<%= input %>" aria-label="Share"></span>
+                  <%= method_select.call("shares[#{pid}][method]", row.method, row.staff_member, locked) %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+          <% if tips.pool.cents.positive? %>
+            <p class="text-xs text-gray-500">
+              <% if tips.pool.orders.positive? %>
+                <%= money.call(tips.pool.cents) %> from <%= pluralize(tips.pool.orders, "order") %> with nobody on the clock, split evenly.
+              <% else %>
+                <%= money.call(tips.pool.cents) %> the register counted without a time, split evenly.
+              <% end %>
+            </p>
+          <% end %>
+        <% else %>
+          <% workers = hand_rows.map { |r| r[:worker] } %>
+          <% if workers.empty? && !can_add %>
+            <p class="text-sm text-gray-600">Nobody is on Staffing's schedule or hours for this day, so there is no one to split <%= money.call(tips.cents) %> between. Add their shift or hours in Staffing and come back.</p>
+          <% else %>
+            <% if workers.any? %>
+              <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+                <span class="text-gray-700">Split</span>
+                <% { "even" => "Evenly", "hours" => "By hours worked", "typed" => "As typed" }.each do |key, label| %>
+                  <label class="inline-flex items-center gap-2 text-gray-700">
+                    <input type="radio" name="split" value="<%= key %>" <%= "checked" if tips.split == key %> onchange="this.form.requestSubmit()" class="h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+                    <%= label %>
+                  </label>
+                <% end %>
+              </div>
+              <div class="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
+                <% hand_rows.each do |row| %>
+                  <% worker = row[:worker] %>
+                  <% locked = row[:share]&.payout_contribution_id.present? %>
+                  <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-2 text-sm">
+                    <span class="min-w-0 flex-1">
+                      <span class="text-gray-900"><%= worker.person.name %></span>
+                      <% if worker.hours.positive? %><span class="ml-1 text-xs text-gray-500"><%= worker.hours %> h</span><% end %>
+                      <% unless worker.staff_member %> <span class="text-xs text-amber-700">not on Staffing, cash only</span><% end %>
+                    </span>
+                    <span class="relative w-28"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                      <input type="text" name="shares[<%= worker.person.id %>][amount]" inputmode="decimal" value="<%= format('%.2f', row[:cents] / 100.0) %>" <%= "disabled" if locked %> class="<%= input %>" aria-label="Share"></span>
+                    <%= method_select.call("shares[#{worker.person.id}][method]", row[:method], worker.staff_member, locked) %>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          <% end %>
+        <% end %>
+
+        <% if can_add && addable.any? %>
+          <div class="border border-dashed border-gray-300 rounded-lg px-4 py-3 space-y-2">
+            <div class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Add a person who worked</div>
+            <div class="flex flex-wrap items-center gap-3 text-sm">
+              <select name="new_share[person_id]" class="<%= plain %> w-auto min-w-[12rem]" aria-label="Who">
+                <option value="">Who worked?</option>
+                <% addable.each do |person| %><option value="<%= person.id %>"><%= person.name %></option><% end %>
+              </select>
+              <span class="text-xs text-gray-500">as</span>
+              <select name="new_share[house_role_id]" class="<%= plain %> w-auto" aria-label="Role">
+                <% sharing_roles.each do |role| %><option value="<%= role.id %>"><%= role.name %></option><% end %>
+              </select>
+              <span class="text-xs text-gray-500">from</span>
+              <input type="time" name="new_share[from]" value="18:00" class="<%= clock %> w-auto" aria-label="From">
+              <span class="text-xs text-gray-500">to</span>
+              <input type="time" name="new_share[to]" value="23:00" class="<%= clock %> w-auto" aria-label="To">
+            </div>
+          </div>
+        <% end %>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-3 px-5 sm:px-6 py-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+        <span>
+          <% if by_rule && tips.rows.any?(&:typed?) %>
+            <%= render "shared/button", text: "Work it all out again", variant: "ghost", size: "small", type: :submit, name: "recompute", value: "1" %>
+          <% end %>
+        </span>
+        <span class="flex items-center gap-2">
+          <%= render "shared/button", text: "Cancel", variant: "secondary", size: "small", type: :button, data: { action: "click->modal#close" } %>
+          <%= render "shared/button", text: "Save the split", variant: "primary", size: "small", type: :submit %>
+        </span>
+      </div>
+    <% end %>
+  </div>
+</div>

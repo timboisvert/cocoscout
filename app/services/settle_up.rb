@@ -45,6 +45,13 @@ class SettleUp
     def assigned_cents = shares.sum(&:amount_cents)
     def unassigned_cents = cents - assigned_cents
     def share_for(person) = shares.find { |sh| sh.person_id == person.id }
+    # With the rule on, only people in a role that shares are listed anywhere
+    # (Tim, 2026-11-03: not the door, not the booth), plus anyone given a share.
+    def sharers
+      return workers unless rule&.enabled?
+
+      workers.select { |w| share_for(w.person) || w.spans.any? { |sp| rule.shares?(sp.house_role_id) } }
+    end
     def by_rule? = calculator.applies?
     def rows = calculator.rows
     def pool = calculator.pool

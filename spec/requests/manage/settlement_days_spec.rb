@@ -178,15 +178,16 @@ RSpec.describe "Manage::SettlementDays with a register", type: :request do
     expect(ChartOfAccounts.account(org, :tips_owed).natural_balance_cents).to eq(1_500)
     expect(ChartOfAccounts.account(org, :ticketing_fees).natural_balance_cents).to eq(330)
     expect(ChartOfAccounts.account(org, :bank).natural_balance_cents).to eq(12_000 + 1_000 + 1_500 - 600 - 330)
+    # The share waits on Pay People with the approved hours; nothing goes on
+    # the run until the week's pay is put there together (Tim, 2026-11-03).
     share = record.tip_shares.first
-    expect(share.payout_contribution).to be_present
-    expect(share.payout_contribution.payout_batch).to be_open
-    expect(share.payout_contribution.amount_cents).to eq(1_500)
+    expect(share.payout_contribution).to be_nil
+    expect(TipShare.waiting_for(org)).to eq([ share ])
+    expect(PayoutContribution.where(payee: bartender).count).to eq(0)
 
     post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "Wrong split" }
     expect(ChartOfAccounts.account(org, :bank).natural_balance_cents).to eq(0)
-    expect(share.reload.payout_contribution).to be_nil
-    expect(PayoutContribution.where(payee: bartender).count).to eq(0)
+    expect(TipShare.waiting_for(org)).to be_empty
   end
 end
 
@@ -254,8 +255,8 @@ RSpec.describe "Manage::SettlementDays tips by the clock", type: :request do
     it "opens already split by the clock, with each span and how, and leaves the door out" do
       get manage_money_settle_up_day_path(date.iso8601)
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Tips go to the people on the bar when the sale rang up: Bartender keeps what rang up while on; Bar back 15% off the top")
-      expect(response.body).to include("Miles", "Camille", "From 32 orders while on.", "Add a person", "Change the rule")
+      expect(response.body).to include("Worked out from who was on when each sale rang up: Bartender keeps what rang up while on; Bar back 15% off the top")
+      expect(response.body).to include("Miles", "Camille", "From 32 orders while on.", "Change the split", "Add a person who worked", "Change the rule", "6 pm to 10 pm")
       expect(response.body).not_to include(%(name="shares[#{pat.id}][amount]"))
       expect(response.body).to include(%(name="shares[#{miles.id}][amount]" inputmode="decimal" value="120.00"))
       expect(response.body).to include(%(name="shares[#{miles.id}][from]" value="18:00"), %(name="shares[#{miles.id}][to]" value="22:00"))
@@ -303,7 +304,27 @@ RSpec.describe "Manage::SettlementDays tips by the clock", type: :request do
       post manage_settle_money_settle_up_day_path(date.iso8601)
       expect(record.reload).to be_settled
       expect(ChartOfAccounts.account(org, :tips_owed).natural_balance_cents).to eq(24_000)
-      expect(PayoutContribution.where(payee: [ miles, camille, jo ], label: "Tips").sum(:amount_cents)).to eq(24_000)
+      # Settling puts nothing on the run: the shares wait on Pay People.
+      expect(PayoutContribution.where(payee: [ miles, camille, jo ]).count).to eq(0)
+      expect(TipShare.waiting_for(org).sum(:amount_cents)).to eq(24_000)
+
+      # Pay People offers them like approved hours, and ties each share to the
+      # run's Tips line when the week's pay goes on.
+      get manage_staffing_pay_path
+      expect(response.body).to include("3 people", "tips waiting from Settle up — $240.00 to pay through us", "Pull in tips")
+      miles_share = record.tip_shares.find_by!(person: miles)
+      member = org.organization_staff_members.find_by!(person: miles)
+      expect(response.body).to include(%(data-tips-waiting="#{ERB::Util.html_escape([ { id: miles_share.id, date: date.strftime("%b %-d"), amount: format("%.2f", miles_share.amount_cents / 100.0), method: "payout" } ].to_json)}"))
+
+      post manage_create_staffing_pay_path, params: { payday: Date.current.iso8601, lines: { member.id => { tips: format("%.2f", miles_share.amount_cents / 100.0), tips_sheet: [ "#{date.strftime("%b %-d")}|#{format("%.2f", miles_share.amount_cents / 100.0)}" ], tip_share_ids: [ miles_share.id ] } } }
+      expect(response).to have_http_status(:redirect)
+      expect(miles_share.reload.payout_contribution).to have_attributes(label: "Tips", amount_cents: miles_share.amount_cents)
+      expect(miles_share.payout_contribution.payout_batch).to be_open
+      expect(TipShare.waiting_for(org).map(&:person)).to contain_exactly(camille, jo)
+
+      # Reopening the day takes Miles's share back off the draft run.
+      post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "Wrong split" }
+      expect(miles_share.reload.payout_contribution).to be_nil
     end
   end
 end

@@ -84,16 +84,17 @@ class StaffPayRunService
         item = batch.items.find_by(payee: payee) ||
                batch.items.create!(payee: payee, amount_cents: payable_total, status: "pending")
 
-        parts.each do |part|
-          add_contribution!(batch, item, payee, label: part[:label], amount_cents: part[:amount],
-                            description: line[:notes], excluded_from_payout: part[:excluded],
-                            worksheet: part[:worksheet], details: part[:details])
+        contributions = parts.to_h do |part|
+          [ part[:label], add_contribution!(batch, item, payee, label: part[:label], amount_cents: part[:amount],
+                                            description: line[:notes], excluded_from_payout: part[:excluded],
+                                            worksheet: part[:worksheet], details: part[:details]) ]
         end
         # The same item may already carry this person's show pay — settle both
         # kinds together (staff as entered, performer netted).
         item.settle_amount!
 
         tie_time_entries!(organization, payee, line[:time_entry_ids], batch)
+        tie_tip_shares!(organization, payee, line[:tip_share_ids], contributions)
         added += 1
       end
 
@@ -157,6 +158,18 @@ class StaffPayRunService
       )
     end
     contribution
+  end
+
+  # The tip shares pulled in from settled days (Settle up) ride the Tips
+  # line, cash ones the recorded cash-tips line, and leave the waiting pool.
+  def self.tie_tip_shares!(organization, payee, ids, contributions)
+    ids = Array(ids).map(&:to_i).reject(&:zero?)
+    return if ids.empty?
+
+    TipShare.waiting_for(organization).where(person: payee, id: ids).each do |share|
+      contribution = contributions[share.payout? ? "Tips" : "Cash tips (recorded)"]
+      share.update!(payout_contribution: contribution) if contribution
+    end
   end
 
   # Attach the pulled-in worked-time entries to this batch so they leave the
