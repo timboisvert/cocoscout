@@ -3,7 +3,7 @@
   money = ->(cents) { cents.negative? ? "−#{number_to_currency(-cents / 100.0)}" : number_to_currency(cents / 100.0) }
   show = piece.show
   fin = piece.financials
-  state_words = { ok: "Confirmed", wait: "Came in, not confirmed", miss: "Nothing entered" }.fetch(piece.state)
+  state_words = { ok: "Confirmed", wait: "Automatically pulled in, not confirmed", miss: "Nothing entered" }.fetch(piece.state)
   state_tone = { ok: "text-green-700", wait: "text-amber-700", miss: "text-red-700" }.fetch(piece.state)
   outside_lines = piece.ticket_lines.reject { |l| l[:built_in] }
   online_lines = piece.ticket_lines.select { |l| l[:built_in] }

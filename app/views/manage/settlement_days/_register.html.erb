@@ -5,7 +5,7 @@
     Locals: day, registers, can_change %>
 <%
   money = ->(cents) { cents.negative? ? "−#{number_to_currency(-cents / 100.0)}" : number_to_currency(cents / 100.0) }
-  state_words = { ok: "Confirmed", wait: "Came in, not confirmed" }.fetch(day.registers_state)
+  state_words = { ok: "Confirmed", wait: "Automatically pulled in, not confirmed" }.fetch(day.registers_state)
   tone = { ok: "text-green-700", wait: "text-amber-700" }.fetch(day.registers_state)
   provider = registers.first.integration.provider.capitalize
 %>
