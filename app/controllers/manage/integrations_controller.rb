@@ -19,7 +19,9 @@ module Manage
     # "Connect with Square": off to Square's sign-in; the state ties the
     # answer back to this organization and this session.
     def connect
-      return redirect_to manage_organization_square_path(@organization), alert: "Square is not set up on this server yet." unless SquareApi.configured?
+      if (problem = SquareApi.setup_problem)
+        return redirect_to manage_organization_square_path(@organization), alert: problem
+      end
 
       state = SecureRandom.hex(16)
       session[:square_oauth] = { "state" => state, "organization_id" => @organization.id }
