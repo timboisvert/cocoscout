@@ -96,7 +96,7 @@
               <div>
                 <p class="text-sm font-semibold text-amber-900 mb-1">This is a separate account</p>
                 <p class="text-xs text-amber-800">
-                  Each organization is billed on its own. Any Pro subscription ($20/month or $200/year) applies to <strong>this organization only</strong> — a new organization starts fresh on its own plan and doesn't share billing, productions, or team with your other organizations.
+                  Each organization is billed on its own. Any Pro subscription ($<%= SubscriptionPlan.monthly_dollars %>/month or $<%= SubscriptionPlan.annual_dollars %>/year) applies to <strong>this organization only</strong> — a new organization starts fresh on its own plan and doesn't share billing, productions, or team with your other organizations.
                 </p>
               </div>
             </div>
@@ -141,7 +141,7 @@
                   <span class="block text-xs text-slate-500">One production, up to <%= Organization::FREE_MONTHLY_EVENT_LIMIT %> events per month. Casting, availability, sign-ups, messaging, contacts, documents, and courses.</span>
                 </label>
                 <label for="plan_pro" class="block p-3 border border-slate-300 rounded-lg cursor-pointer hover:border-pink-400 peer-checked/pro:border-pink-500 peer-checked/pro:ring-1 peer-checked/pro:ring-pink-500 peer-checked/pro:bg-pink-50/50">
-                  <span class="block text-sm font-semibold text-slate-900">Pro — $20/mo or $200/yr</span>
+                  <span class="block text-sm font-semibold text-slate-900">Pro — $<%= SubscriptionPlan.monthly_dollars %>/mo or $<%= SubscriptionPlan.annual_dollars %>/yr</span>
                   <span class="block text-xs text-slate-500">Everything in Producer, unlimited productions and events, plus Money, Staffing, Auditions, Casting Tables, and Reports.</span>
                 </label>
 
@@ -151,11 +151,11 @@
                   <div class="grid grid-cols-2 gap-2">
                     <label class="flex items-center justify-center px-3 py-2 border border-slate-300 rounded-lg cursor-pointer text-xs text-slate-700 hover:border-pink-400 has-[:checked]:border-pink-500 has-[:checked]:ring-1 has-[:checked]:ring-pink-500 has-[:checked]:bg-pink-50/50">
                       <%= radio_button_tag "interval", "year", true, class: "sr-only" %>
-                      Annual ($200/yr)
+                      Annual ($<%= SubscriptionPlan.annual_dollars %>/yr)
                     </label>
                     <label class="flex items-center justify-center px-3 py-2 border border-slate-300 rounded-lg cursor-pointer text-xs text-slate-700 hover:border-pink-400 has-[:checked]:border-pink-500 has-[:checked]:ring-1 has-[:checked]:ring-pink-500 has-[:checked]:bg-pink-50/50">
                       <%= radio_button_tag "interval", "month", false, class: "sr-only" %>
-                      Monthly ($20/mo)
+                      Monthly ($<%= SubscriptionPlan.monthly_dollars %>/mo)
                     </label>
                   </div>
                   <p class="mt-1.5 text-xs text-slate-500">Choosing Pro takes you to secure checkout after your organization is created. Change plans anytime.</p>

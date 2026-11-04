@@ -44,21 +44,41 @@
 
   <div class="border-t border-gray-200 pt-4 mt-2">
 
-  <%# === The week (desktop) and Apply regulars. A phone picks a day instead. === %>
+  <%# === Desktop: the week or one day, with Day / Week to switch, and Apply
+      regulars. A phone picks a day instead (the strip below). === %>
   <div class="<%= 'max-sm:hidden' unless @regulars_enabled && @regulars_matches.any? %> flex items-center justify-between mb-3 flex-wrap gap-2">
-    <%
-      week_label = if @week_start.year == @week_end.year && @week_start.month == @week_end.month
-        "#{@week_start.strftime('%b %-d')} – #{@week_end.strftime('%-d, %Y')}"
-      else
-        "#{@week_start.strftime('%b %-d')} – #{@week_end.strftime('%b %-d, %Y')}"
-      end
-    %>
-    <%= render "shared/week_picker", label: week_label, months: @calendar_months,
-          prev_path: manage_staffing_scheduling_path(week_start: (@week_start - 7.days).to_s),
-          next_path: manage_staffing_scheduling_path(week_start: (@week_start + 7.days).to_s),
-          today_path: (@week_start == Date.current.beginning_of_week ? nil : manage_staffing_scheduling_path),
-          week_path: ->(monday) { manage_staffing_scheduling_path(week_start: monday.to_s) },
-          selected_week: @week_start, week_statuses: @week_statuses %>
+    <div class="flex items-center gap-3 flex-wrap">
+      <% if @view == "day" %>
+        <%= render "shared/week_picker", pick: :day, label: @selected_day.strftime("%A, %b %-d, %Y"), months: @calendar_months,
+              prev_path: manage_staffing_scheduling_path(view: "day", day: (@selected_day - 1).iso8601),
+              next_path: manage_staffing_scheduling_path(view: "day", day: (@selected_day + 1).iso8601),
+              today_path: (@selected_day == Date.current ? nil : manage_staffing_scheduling_path(view: "day", day: Date.current.iso8601)),
+              today_text: "Today",
+              day_path: ->(d) { manage_staffing_scheduling_path(view: "day", day: d.iso8601) },
+              selected_day: @selected_day, show_dates: @show_dates %>
+      <% else %>
+        <%
+          week_label = if @week_start.year == @week_end.year && @week_start.month == @week_end.month
+            "#{@week_start.strftime('%b %-d')} – #{@week_end.strftime('%-d, %Y')}"
+          else
+            "#{@week_start.strftime('%b %-d')} – #{@week_end.strftime('%b %-d, %Y')}"
+          end
+        %>
+        <%= render "shared/week_picker", label: week_label, months: @calendar_months,
+              prev_path: manage_staffing_scheduling_path(week_start: (@week_start - 7.days).to_s),
+              next_path: manage_staffing_scheduling_path(week_start: (@week_start + 7.days).to_s),
+              today_path: (@week_start == Date.current.beginning_of_week ? nil : manage_staffing_scheduling_path),
+              week_path: ->(monday) { manage_staffing_scheduling_path(week_start: monday.to_s) },
+              selected_week: @week_start, week_statuses: @week_statuses %>
+      <% end %>
+      <%# Day lands on today when it's in this week, else the week's first busy day. %>
+      <div class="hidden sm:flex items-center gap-1" data-scheduling-view-toggle>
+        <%= render "shared/button", text: "Day", variant: (@view == "day" ? "primary" : "secondary"), size: "small", type: :link,
+              path: manage_staffing_scheduling_path(view: "day", day: @selected_day.iso8601), title: "One day at a time" %>
+        <%= render "shared/button", text: "Week", variant: (@view == "week" ? "primary" : "secondary"), size: "small", type: :link,
+              path: manage_staffing_scheduling_path(view: "week", week_start: @week_start.to_s), title: "The whole week" %>
+      </div>
+    </div>
     <% if @regulars_enabled && @regulars_matches.any? %>
       <%= render "shared/button", text: "Apply regulars (#{@regulars_matches.size})",
             variant: "outline-pink", size: "small", icon: "star", type: :button,
@@ -73,7 +93,11 @@
           actions: (if @house_role_count.zero? then [ { text: "Set up your staffing roles first", path: manage_staffing_house_roles_path } ]
                     else [ { text: "Add your staff", path: manage_staffing_staff_path } ] end) %>
   <% else %>
-    <%= render "manage/staffing/week_grid" if @house_role_count.positive? || @shifts_by_day.any? %>
+    <% if @view == "day" %>
+      <%= render "manage/staffing/desktop_day" %>
+    <% elsif @house_role_count.positive? || @shifts_by_day.any? %>
+      <%= render "manage/staffing/week_grid" %>
+    <% end %>
     <%= render "manage/staffing/phone_day" %>
   <% end %>
 
@@ -108,50 +132,7 @@
     </div>
   <% end %>
 
-  <%# === Assign: the shared People Picker (V1.1 plan §5), listing everyone
-      qualified for the shift's role, free for all of it first, with the
-      Everyone / Can work / Available the whole shift filters. A pick that
-      collides (another shift, a show that night, hours they said they can't
-      work) goes through the conflict modal below first. %>
-  <%= render "shared/people_picker", id: "shift-picker", title: "Assign", scope: "staff",
-        filters: [ [ "Everyone", "all" ], [ "Can work", "can_work" ], [ "Available the whole shift", "free" ] ], filter_param: "fit",
-        placeholder: "Search by name", pick_action: "people-picker:pick->shift-assign#picked" %>
-  <%# JS rewrites this form's action; pass the session CSRF token — the default per-form token is minted for "#" and gets rejected. %>
-  <%= form_with url: "#", method: :post, local: true,
-                authenticity_token: form_authenticity_token,
-                class: "hidden",
-                data: { "shift-assign-target": "form" } do %>
-    <input type="hidden" name="person_id" data-shift-assign-target="personIdInput">
-  <% end %>
-
-  <%# === Scheduling-conflict modal (shown when assigning would double-book) === %>
-  <div data-shift-assign-target="collisionModal"
-       class="hidden fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm overflow-y-auto"
-       data-action="click->shift-assign#collisionBackdropClose keydown.esc@window->shift-assign#cancelCollision">
-    <div class="flex min-h-full items-start justify-center p-4 py-12">
-      <div class="relative w-full max-w-md bg-white rounded-xl shadow-2xl"
-           data-action="click->shift-assign#stopPropagation">
-        <div class="flex items-center justify-between px-5 py-4 bg-pink-500 rounded-t-xl">
-          <h3 class="text-lg font-semibold text-white">Scheduling conflict</h3>
-          <button type="button" data-action="click->shift-assign#cancelCollision" class="text-white/70 hover:text-white cursor-pointer">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
-        </div>
-
-        <div class="px-5 py-4" data-shift-assign-target="collisionBody">
-          <%# populated by JS %>
-        </div>
-
-        <div class="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-200">
-          <button type="button" data-action="click->shift-assign#cancelCollision" class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">Cancel</button>
-          <button type="button" data-action="click->shift-assign#confirmCollision"
-                  class="px-4 py-2 text-sm font-medium rounded bg-pink-500 hover:bg-pink-600 text-white cursor-pointer transition-colors">
-            Assign anyway
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
+  <%= render "manage/staffing/assign_picker" %>
 
   <%# === Edit time modal === %>
   <div data-shift-edit-target="modal"

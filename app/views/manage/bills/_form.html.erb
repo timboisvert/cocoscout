@@ -21,7 +21,7 @@
       <label class="<%= label %>"><span>Due</span><%= f.date_field :due_on, class: input %></label>
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <label class="<%= label %>"><span>Category</span><%= f.select :category_key, MoneyCategories.spending_options(bill.organization), { prompt: "Choose one" }, class: input %></label>
+      <label class="<%= label %>"><span>Category</span><%= render "shared/category_picker", name: "bill[category_key]", kind: :spending, organization: bill.organization, value: bill.category_key, id: "bill_category_key" %></label>
       <label class="<%= label %>"><span>What for</span><%= f.text_field :memo, placeholder: "Set lumber", class: input %></label>
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

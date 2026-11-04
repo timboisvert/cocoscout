@@ -1,0 +1,113 @@
+<%# Books starts here (Tim, 2026-11-02): what kind of organization this is,
+    a few yes-or-no questions, and the categories those answers recommend,
+    each to keep or not, plus the organization's own. books_setup_controller.js
+    keeps the recommendations in step with the answers. The same page
+    changes it all later, from Money settings → Books. %>
+<%
+  org = Current.organization
+  first_time = org.books_categories_set_up_at.nil?
+  input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  check = "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+  radio = "mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500"
+  custom_in = @custom.select { |a| a.account_type == "income" }
+  custom_out = @custom.reject { |a| a.account_type == "income" }
+  content_for :title, (first_time ? "Set up your categories" : "Your categories")
+%>
+<div class="w-full mb-10" data-controller="books-setup">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: books_breadcrumbs, text: (first_time ? "Set up your categories" : "Your categories") } %>
+
+  <div class="max-w-3xl text-sm text-gray-600 space-y-2 mb-6">
+    <% if first_time %>
+      <p>Before the books, the categories: what money in is called, and what money out is for. Every ticket, class, bill, bank line and receipt gets sorted into one, so the list should fit the way you run things.</p>
+      <p>Say what kind of organization this is and we'll recommend a list. Keep what fits, drop what doesn't, add your own, and you're in. You can change all of it later on Money settings → Books.</p>
+    <% else %>
+      <p>The categories money in and out is sorted into. Change the answers and the recommendations follow; keep what fits, drop what doesn't, add your own. A category you drop stays on whatever is already in it.</p>
+    <% end %>
+  </div>
+
+  <%= form_with url: manage_money_books_setup_path, method: :patch, data: { turbo: false } do %>
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+      <section class="lg:col-span-2 rounded-xl border border-gray-200 bg-white overflow-hidden lg:sticky lg:top-4">
+        <%= render "shared/section_heading", padding: "px-5 py-3", title: "About your organization" %>
+        <div class="px-5 py-4 space-y-5">
+          <fieldset>
+            <legend class="text-sm font-medium text-gray-900">What is it?</legend>
+            <div class="mt-2 space-y-2">
+              <% BooksCategorySetup::KINDS.each do |key, kind| %>
+                <label class="flex items-start gap-3 cursor-pointer rounded-lg border border-gray-200 px-3 py-2 has-[:checked]:border-pink-400 has-[:checked]:bg-pink-50">
+                  <input type="radio" name="profile[kind]" value="<%= key %>" required class="<%= radio %>" <%= "checked" if @setup.profile["kind"] == key %>
+                         data-books-setup-target="answer" data-flags="<%= kind[:flags].join(' ') %>" data-action="change->books-setup#recommend">
+                  <span class="text-sm"><span class="font-medium text-gray-900"><%= kind[:label] %></span><span class="block text-gray-500"><%= kind[:description] %></span></span>
+                </label>
+              <% end %>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend class="text-sm font-medium text-gray-900">Which of these are true?</legend>
+            <div class="mt-2 divide-y divide-gray-100">
+              <% BooksCategorySetup::QUESTIONS.each do |key, label, description| %>
+                <label class="flex items-center justify-between gap-3 py-2.5 cursor-pointer">
+                  <span class="text-sm"><span class="text-gray-900"><%= label %></span><span class="block text-xs text-gray-500"><%= description %></span></span>
+                  <%= render "shared/toggle_switch", name: "profile[#{key}]", checked: @setup.profile[key] == true, hidden_false: true, aria_label: label,
+                        data: { books_setup_target: "answer", flags: key, action: "change->books-setup#recommend" } %>
+                </label>
+              <% end %>
+            </div>
+          </fieldset>
+        </div>
+      </section>
+
+      <div class="lg:col-span-3 space-y-6">
+        <% [ [ "Money in", "What money coming in is called", @setup.income, custom_in, "income" ], [ "Money out", "What money going out is for", @setup.spending, custom_out, "expense" ] ].each do |title, blurb, categories, custom, type| %>
+          <section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+            <%= render "shared/section_heading", padding: "px-5 py-3", title: title do %>
+              <span class="text-xs text-gray-500"><%= blurb %></span>
+            <% end %>
+            <ul class="divide-y divide-gray-100">
+              <% categories.each do |c| %>
+                <li class="px-5 py-2.5 flex items-center gap-3">
+                  <% if c.always %>
+                    <input type="checkbox" checked disabled class="<%= check %> opacity-60">
+                    <input type="hidden" name="offered[]" value="<%= c.id %>">
+                  <% else %>
+                    <input type="checkbox" name="offered[]" value="<%= c.id %>" <%= "checked" if c.checked %> class="<%= check %>" id="offered-<%= c.id.tr(':', '-') %>"
+                           data-books-setup-target="category" data-for="<%= c.for.join(' ') %>" data-recommended="<%= c.recommended %>" data-action="change->books-setup#touch">
+                  <% end %>
+                  <label for="offered-<%= c.id.tr(':', '-') %>" class="flex-1 min-w-0 text-sm cursor-pointer">
+                    <span class="text-gray-900"><%= c.label %></span>
+                    <% if c.description %><span class="text-gray-500"> · <%= c.description %></span><% end %>
+                  </label>
+                  <% unless c.always %>
+                    <span class="<%= 'hidden' unless c.recommended %> flex-none inline-flex rounded-md bg-pink-50 px-2 py-0.5 text-[11px] font-medium text-pink-700" data-books-setup-target="badge" data-for="<%= c.id %>">Recommended</span>
+                  <% end %>
+                </li>
+              <% end %>
+              <% custom.each do |account| %>
+                <li class="px-5 py-2.5 flex items-center gap-3">
+                  <input type="checkbox" checked disabled class="<%= check %> opacity-60">
+                  <span class="flex-1 min-w-0 text-sm text-gray-900"><%= account.name %> <span class="text-xs text-pink-600">yours</span><% if account.description.present? %><span class="text-gray-500"> · <%= account.description %></span><% end %></span>
+                </li>
+              <% end %>
+            </ul>
+            <div class="px-5 py-3 border-t border-gray-100 bg-gray-50" data-books-setup-target="custom" data-type="<%= type %>">
+              <div class="text-xs font-medium text-gray-700 mb-1.5">Add your own</div>
+              <div class="space-y-2" data-books-setup-target="customRows">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input type="text" name="custom[<%= type %>][][name]" placeholder="<%= type == 'income' ? 'A name, e.g. Raffle' : 'A name, e.g. Costume shop' %>" aria-label="Name" class="<%= input %>">
+                  <input type="text" name="custom[<%= type %>][][description]" placeholder="What goes in it" aria-label="What goes in it" class="<%= input %>">
+                </div>
+              </div>
+              <div class="mt-2"><%= render "shared/button", text: "Another", variant: "secondary", size: "small", type: :button, data: { action: "click->books-setup#another" } %></div>
+            </div>
+          </section>
+        <% end %>
+
+        <div class="rounded-xl border border-gray-200 bg-white px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <p class="text-sm text-gray-600"><% if first_time %>Nothing is final: a category can be dropped or brought back any time, and what's in it stays.<% else %>A category you drop stays on whatever is already in it.<% end %></p>
+          <%= render "shared/button", text: (first_time ? "These are my categories" : "Save"), variant: "primary", size: "medium", type: :submit %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

@@ -30,6 +30,68 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
 
   before { sign_in(owner) }
 
+  # Desktop shows the week or one day (Tim, 2026-11-04): Day / Week to switch,
+  # the choice kept on this browser, Day landing on today when it's in the
+  # week. A phone is a day regardless.
+  describe "Day and Week on desktop" do
+    let(:role) { create(:house_role, organization: org, name: "Bar") }
+    let!(:shift) do
+      create(:shift, organization: org, house_role: role, source: early_show,
+                     starts_at: early_show.date_and_time - 1.hour, ends_at: early_show.ends_at)
+    end
+    let(:staffer) { create(:person, name: "Dana Morris").tap { |p| staff!(p, role) } }
+
+    def doc
+      expect(response).to have_http_status(:ok)
+      Nokogiri::HTML(response.body)
+    end
+
+    it "shows the week by default, with Day landing on today" do
+      get manage_staffing_scheduling_path(week_start: week_start.to_s)
+      page = doc
+      expect(page.at_css("[data-week-grid]")).to be_present
+      expect(page.at_css("[data-desktop-day]")).to be_nil
+      toggle = page.at_css("[data-scheduling-view-toggle]")
+      expect(toggle.css("a").map(&:text).map(&:strip)).to eq([ "Day", "Week" ])
+      expect(toggle.at_css("a[href*='view=day']")["href"]).to eq(manage_staffing_scheduling_path(view: "day", day: Date.current.iso8601))
+      expect(page.at_css("[data-day-view-link='#{show_day.iso8601}']")["href"]).to eq(manage_staffing_scheduling_path(view: "day", day: show_day.iso8601))
+    end
+
+    it "shows one day at full width, by role or by person, with its shows, and walks day by day" do
+      create(:shift_assignment, shift: shift, person: staffer)
+      get manage_staffing_scheduling_path(view: "day", day: show_day.iso8601)
+      page = doc
+      day = page.at_css("[data-desktop-day='#{show_day.iso8601}']")
+      expect(day).to be_present
+      expect(page.at_css("[data-week-grid]")).to be_nil
+      expect(day.at_css("[data-day-staffed]").text).to include("1 of 1 staffed")
+      expect(day.css("[data-day-view-target='toggle']").map(&:text).map(&:strip)).to eq([ "By role", "By person" ])
+      expect(day.at_css("[data-day-view-target='ganttPeople']").text).to include("Dana Morris")
+      expect(day.at_css("[data-shows-this-day]").text).to include(early_show.production.name)
+      expect(page.at_css("[data-week-picker] a[title='Earlier']")["href"]).to eq(manage_staffing_scheduling_path(view: "day", day: (show_day - 1).iso8601))
+      expect(page.at_css("[data-week-picker] a[title='Later']")["href"]).to eq(manage_staffing_scheduling_path(view: "day", day: (show_day + 1).iso8601))
+      # The week's status bar stays: Publish is the week's.
+      expect(page.at_css("[data-status-bar] [data-status='draft']")).to be_present
+      # The phone's day is still there for a phone.
+      expect(page.at_css("[data-phone-day]")["data-phone-day"]).to eq(show_day.iso8601)
+    end
+
+    it "remembers the choice on this browser" do
+      get manage_staffing_scheduling_path(view: "day", day: show_day.iso8601)
+      get manage_staffing_scheduling_path
+      expect(doc.at_css("[data-desktop-day]")).to be_present
+      get manage_staffing_scheduling_path(view: "week")
+      get manage_staffing_scheduling_path
+      expect(doc.at_css("[data-week-grid]")).to be_present
+    end
+
+    it "says so when the day has nothing on it, and still offers a shift" do
+      get manage_staffing_scheduling_path(view: "day", day: (show_day + 2).iso8601)
+      day = doc.at_css("[data-desktop-day]")
+      expect(day.text).to include("Nothing scheduled this day.", "+ Add a shift")
+    end
+  end
+
   # Every face on this page costs three queries to resolve unless the headshot
   # chain is preloaded — and the same person is drawn several times over. The
   # absolute count isn't the point; that it stops growing with the roster is.
@@ -314,13 +376,13 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
       expect(bar.at_css("[data-status='slots']").text).to include("0 of 1 slots staffed")
     end
 
-    it "lists this week's can't-make-its with the reason and Find someone, and later ones by their day" do
+    it "lists this week's can't-make-its with the reason and Find cover, and later ones by their day" do
       staff!(gus, bartender)
       at = ->(d) { [ d.in_time_zone.change(hour: 18), d.in_time_zone.change(hour: 22) ] }
       soon = create(:shift, organization: org, house_role: bartender, starts_at: at.(week_start + 8)[0], ends_at: at.(week_start + 8)[1])
-      soon.shift_assignments.create!(person: gus).decline!(reason: "Family thing")
+      soon_row = soon.shift_assignments.create!(person: gus).tap { |a| a.decline!(reason: "Family thing") }
       later = create(:shift, organization: org, house_role: bartender, starts_at: at.(week_start + 16)[0], ends_at: at.(week_start + 16)[1])
-      later.shift_assignments.create!(person: gus).decline!
+      later_row = later.shift_assignments.create!(person: gus).tap(&:decline!)
 
       get manage_staffing_scheduling_path(week_start: (week_start + 7).to_s)
       page = Nokogiri::HTML(response.body)
@@ -328,9 +390,10 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
       sheet = page.at_css("#scheduling-declined")
       row = sheet.at_css("[data-declined-row]")
       expect(row.text).to include("Gus Lee", "Bartender", "Family thing")
-      expect(row.at_css("button[data-action='click->modal#close click->shift-assign#open']")["data-shift-id"]).to eq(soon.id.to_s)
+      # Finding cover is the vacancy page's job (the performer flow, for staff).
+      expect(row.at_css("a[href='#{manage_staffing_vacancy_path(soon_row.active_vacancy)}']").text).to include("Find cover")
       expect(sheet.text).to include("And 1 in other weeks")
-      expect(sheet.at_css("a[href='#{manage_staffing_scheduling_path(day: (week_start + 16).iso8601)}']")).to be_present
+      expect(sheet.at_css("a[href='#{manage_staffing_vacancy_path(later_row.active_vacancy)}']").text).to include("Find cover")
     end
 
     it "opens a two-month calendar whose week rows go to that week, each dotted by its status" do

@@ -1,0 +1,118 @@
+<% content_for :title, "Rules" %>
+<%# Books → Bank → Rules (Tim, 2026-11-03, a page of its own): why rules,
+    the state of things, the way into sorting, the payees without a rule
+    (BankPayees groups), and the rules there are. A rule is made or
+    changed on its own page; the file buttons carry a set between
+    organizations (BankRulesFile). %>
+<%
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  links = @can_change ? [
+    { text: "Import rules", variant: "secondary", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "bank-rules-import-modal" } },
+    { text: "Export rules", variant: "secondary", path: manage_export_money_bank_rules_path },
+    { text: "New rule", path: manage_new_money_bank_rule_path }
+  ] : []
+  first_ten = @payees.first(10).sum(&:count)
+%>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: books_breadcrumbs + [ [ "Bank", manage_money_bank_path ] ], text: "Rules", links: links } %>
+
+  <div class="max-w-3xl text-sm text-gray-600 space-y-2 mb-6">
+    <p>Rules are what make the bank easy. Each one reads the bank's description: a line with the phrase in it, going the way the rule says, is recorded as the category and payee you chose, or ignored. Once the payees you see every month have a rule, a new statement mostly sorts itself, and what's left to look at by hand is the odd thing.</p>
+    <p>You don't have to write them from scratch. We group your lines by who the bank says they're from or to, and ask you what each one is.</p>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+    <div class="rounded-xl border border-gray-200 bg-white px-5 py-4"><span class="block text-[11px] font-medium uppercase tracking-wide text-gray-500">Lines waiting</span><span class="block mt-0.5 text-2xl font-bold tabular-nums text-gray-900"><%= number_with_delimiter(@summary.open_count) %></span><span class="block mt-0.5 text-xs text-gray-600"><% if @summary.open_count.zero? %>Every line is dealt with<% elsif (fit = @rule_catches.values.sum).positive? %><%= pluralize(fit, "line") %> fit a rule you have; apply it below<% else %>None fit a rule you have<% end %></span></div>
+    <div class="rounded-xl border px-5 py-4 <%= @payees.any? ? 'border-pink-200 bg-pink-50' : 'border-gray-200 bg-white' %>"><span class="block text-[11px] font-medium uppercase tracking-wide text-gray-500">Payees without a rule</span><span class="block mt-0.5 text-2xl font-bold tabular-nums text-gray-900"><%= @payees.size %></span><span class="block mt-0.5 text-xs text-gray-600"><% if @payees.any? %>Seen more than once · <%= pluralize(@covered, "line") %> waiting<% else %>Every payee you see more than once has one<% end %></span></div>
+    <div class="rounded-xl border border-gray-200 bg-white px-5 py-4"><span class="block text-[11px] font-medium uppercase tracking-wide text-gray-500">Your rules</span><span class="block mt-0.5 text-2xl font-bold tabular-nums text-gray-900"><%= @rules.size %></span><span class="block mt-0.5 text-xs text-gray-600"><%= pluralize(@rules.sum(&:applied_count), "line") %> dealt with so far</span></div>
+  </div>
+
+  <% if @can_change && @summary.open_count.positive? %>
+    <div class="rounded-xl border border-gray-200 bg-white overflow-hidden mb-6">
+      <%= render "shared/section_heading", padding: "px-5 py-3", title: "Sort what's waiting" %>
+      <div class="px-5 py-4 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+        <div class="text-sm text-gray-600 max-w-2xl space-y-2">
+          <p><b class="text-gray-900">Part 1, the payees you see often:</b> one a screen, most lines first. What the bank calls them, how often, what it added up to, a few of the lines. You say what it is; we write the rule, run it over everything waiting, and show the next one.</p>
+          <p><b class="text-gray-900">Part 2, the rest:</b> one line at a time, the answers you use most a tap away. Each answer records that line, and becomes a rule if you say so.</p>
+          <p class="text-xs text-gray-500">Stop any time; everything you've answered is already done. Skip one and it comes back at the end.</p>
+        </div>
+        <div class="flex flex-col items-start lg:items-end gap-2 flex-none">
+          <%= render "shared/button", text: "Start sorting, #{pluralize(@summary.open_count, 'line')}", variant: "primary", size: "medium", path: manage_money_bank_sort_path %>
+          <span class="text-xs text-gray-500"><% if @payees.any? %><%= pluralize(@payees.size, "payee") %> cover <%= @covered %> lines<%= " · the first #{[ @payees.size, 10 ].min} cover #{first_ten}" if @payees.size > 1 %><% else %>One line at a time<% end %></span>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @payees.any? %>
+    <div class="rounded-xl border border-gray-200 bg-white overflow-hidden mb-6">
+      <%= render "shared/section_heading", padding: "px-5 py-3", title: "Payees without a rule" do %>
+        <span class="text-xs text-gray-500">Most lines first</span>
+      <% end %>
+      <ul class="divide-y divide-gray-100 text-sm">
+        <% @payees.each do |g| %>
+          <li class="px-5 py-2.5 flex flex-wrap lg:flex-nowrap items-center gap-x-4 gap-y-1">
+            <span class="w-52 flex-none min-w-0"><span class="font-medium text-gray-900 truncate block"><%= g.name %></span><span class="block text-xs text-gray-500"><%= g.kind_label %></span></span>
+            <span class="flex-1 min-w-[10rem] text-xs text-gray-500 truncate" title="<%= g.spellings.map(&:first).join(' · ') %>"><%= g.spellings.map(&:first).first(3).join(" · ") %></span>
+            <span class="w-20 flex-none text-right tabular-nums text-gray-600"><%= g.count %> <%= g.direction == "any" ? "either" : g.direction %></span>
+            <span class="w-28 flex-none text-right tabular-nums font-semibold <%= g.direction == 'in' ? 'text-green-700' : 'text-gray-900' %>"><%= g.direction == "in" ? "+" : (g.direction == "out" ? "−" : "") %><%= money.call(g.total_cents) %></span>
+            <span class="w-28 flex-none text-right">
+              <% if @can_change && g.rule? %>
+                <%= render "shared/button", text: "Make a rule", variant: "primary", size: "small", path: manage_new_money_bank_rule_path(contains: g.phrases.join(", "), direction: g.direction, counterparty: (BankPayees::KIND_NAMES.key?(g.kind) ? nil : g.name)) %>
+              <% elsif !g.rule? %>
+                <span class="text-xs text-gray-500">Record each one</span>
+              <% end %>
+            </span>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+    <%= render "shared/section_heading", padding: "px-5 py-3", title: "Your rules" do %>
+      <span class="text-xs text-gray-500"><%= @rules.empty? ? "None yet" : "#{@rules.size} · run on every statement brought in" %></span>
+    <% end %>
+    <% if @rules.empty? %>
+      <p class="px-5 py-5 text-sm text-gray-500">No rules yet. Start sorting above, make one from a payee, or write one with New rule.</p>
+    <% else %>
+      <ul class="divide-y divide-gray-100 text-sm">
+        <% @rules.each do |rule| %>
+          <% catching = @rule_catches.fetch(rule.id, 0) %>
+          <li class="px-5 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span class="flex-1 min-w-[12rem]">
+              <span class="font-medium text-gray-900">Has <%= rule.phrases.map { |p| "“#{p}”" }.join(" or ") %></span>
+              <span class="text-gray-500">· <%= rule.direction_label %></span>
+              <span class="block text-gray-600"><%= rule.does %><% unless rule.on_import %> · only when applied by hand<% end %></span>
+            </span>
+            <span class="text-xs text-gray-500 tabular-nums"><%= catching.zero? ? "None waiting" : "Catches #{pluralize(catching, 'line')} waiting" %> · <%= rule.applied_count.zero? ? "not used yet" : "#{pluralize(rule.applied_count, 'line')} so far" %></span>
+            <% if @can_change %>
+              <span class="flex items-center gap-2">
+                <% if catching.positive? %>
+                  <%= render "shared/button", text: "Apply", variant: "primary", size: "small", path: manage_apply_money_bank_rules_path(id: rule.id), method: :post, form: { data: { turbo: false } } %>
+                <% end %>
+                <%= render "shared/button", text: "Edit", variant: "secondary", size: "small", path: manage_edit_money_bank_rule_path(rule) %>
+                <%= render "shared/button", text: "Remove", variant: "secondary", size: "small", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "remove-rule-#{rule.id}" } %>
+              </span>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+      <% if @can_change && @rule_catches.values.sum.positive? %>
+        <div class="px-5 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+          <%= render "shared/button", text: "Apply every rule to the #{pluralize(@rule_catches.values.sum, 'line')} waiting", variant: "primary", size: "medium", path: manage_apply_money_bank_rules_path, method: :post, form: { data: { turbo: false } } %>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+
+  <% if @can_change %>
+    <%= render "manage/bank_rules/import_modal" %>
+    <% @rules.each do |rule| %>
+      <%= render "shared/confirm_modal", id: "remove-rule-#{rule.id}", title: "Remove this rule?",
+            message: "“#{rule.contains}” · #{rule.does}. What it already did stays as it is.",
+            confirm_text: "Remove", url: manage_money_bank_rule_path(rule), method: :delete, form_data: { turbo: false } %>
+    <% end %>
+  <% end %>
+</div>

@@ -1357,9 +1357,32 @@ class Contract < ApplicationRecord
   # back to the contract's own payments by direction.
   #
   # Returns { money_in:, money_out: } in dollars.
-  def money_summary
+  # range: only the money that belongs to that period (the Money hub's This
+  # month, Last quarter...): shows dated in it, and for flat deals payments
+  # for a date in it that has come (payments_amount_sum). nil is the whole
+  # contract.
+  def money_summary(range = nil)
+    if revenue_share? || ticket_revenue_minus_fee?
+      # The ticket settlement is counted from the shows; everything else the
+      # deal charges (a rehearsal night at its own rate, Booth Tech, a
+      # deposit, an extra added by hand) is counted from its payments.
+      settled = settlement_money(range)
+      { money_in: (settled[:money_in] + other_payments_amount_sum("incoming", range)).round(2),
+        money_out: (settled[:money_out] + other_payments_amount_sum("outgoing", range)).round(2) }
+    else
+      # Flat deals: the contract's own payments are the money, by direction.
+      {
+        money_in: payments_amount_sum("incoming", range),
+        money_out: payments_amount_sum("outgoing", range)
+      }
+    end
+  end
+
+  # The ticket settlement's money for the period: what the shows made and
+  # what the deal hands back or keeps.
+  def settlement_money(range)
     if revenue_share?
-      summary = revenue_share_summary
+      summary = range ? build_revenue_share_summary(money_shows_in(range)) : revenue_share_summary
       return { money_in: 0.0, money_out: 0.0 } unless summary
 
       if who_sells_tickets == "org"
@@ -1367,8 +1390,8 @@ class Contract < ApplicationRecord
       else
         { money_in: summary[:our_share], money_out: 0.0 }
       end
-    elsif ticket_revenue_minus_fee?
-      summary = flat_fee_revenue_summary
+    else
+      summary = range ? build_flat_fee_revenue_summary(money_shows_in(range)) : flat_fee_revenue_summary
       return { money_in: 0.0, money_out: 0.0 } unless summary
 
       # We sell, keep a fee, hand back the rest: full revenue in, their remainder
@@ -1376,24 +1399,51 @@ class Contract < ApplicationRecord
       # which reaches us as its own payment — so it's money in as well.
       { money_in: summary[:confirmed_revenue] + summary[:shortfall].to_f,
         money_out: summary[:contractor_share] }
-    else
-      # Flat deals: the contract's own payments are the money, by direction.
-      {
-        money_in: payments_amount_sum("incoming"),
-        money_out: payments_amount_sum("outgoing")
-      }
     end
+  end
+
+  # A payment that is (or will be) the ticket settlement for a night, a week
+  # or the run: the TBD or share-named ones, and any tied to one of the deal's
+  # shows that isn't a service charge or a deduction (the same rule
+  # find_payment_for_show answers by). Everything else is charged on its own.
+  def settlement_payment?(payment)
+    return true if payment.amount_tbd? || payment.auto_shortfall?
+    return true if payment.description.to_s.start_with?("Ticket revenue") || payment.description.to_s.match?(/revenue share/i)
+    return false if payment.show_id.blank? || payment.settlement_method == "payout_deduction" || service_charge?(payment)
+
+    !separately_rated_event_types.include?(payment.show&.event_type)
   end
 
   # Sum of this contract's payments in one direction, using the in-memory
   # records when the association is already (pre)loaded.
   # Cancelled payments are history, not money — they never count.
-  def payments_amount_sum(direction)
-    if contract_payments.loaded?
-      contract_payments.select { |p| p.direction == direction && !p.status_cancelled? }.sum { |p| p.amount.to_f }
-    else
-      contract_payments.where(direction: direction).where.not(status: "cancelled").sum(:amount).to_f
+  def payments_amount_sum(direction, range = nil)
+    sum_payments(live_payments, direction, range)
+  end
+
+  # The same, for the payments that aren't the ticket settlement.
+  def other_payments_amount_sum(direction, range = nil)
+    sum_payments(live_payments.reject { |p| settlement_payment?(p) }, direction, range)
+  end
+
+  def live_payments
+    payments = contract_payments.loaded? ? contract_payments.to_a : contract_payments.where.not(status: "cancelled").includes(:show).to_a
+    payments.reject(&:status_cancelled?)
+  end
+
+  def sum_payments(payments, direction, range)
+    payments = payments.select { |p| p.direction == direction }
+    # A period counts a payment on the date it's for (its due date: "Rehearsal
+    # — Oct 7" is due Oct 7), the way Books counts money when earned, and
+    # only once that date has come or it's paid: like a show, money for a date
+    # still ahead isn't this period's yet (Tim, 2026-11-02).
+    if range
+      payments = payments.select do |p|
+        day = p.due_date || p.paid_date
+        day && range.cover?(day.in_time_zone) && (p.status_paid? || day <= Date.current)
+      end
     end
+    payments.sum { |p| p.amount.to_f }
   end
 
   # What this contract has made us vs cost us, for display. A revenue-share
@@ -1564,6 +1614,10 @@ class Contract < ApplicationRecord
     @preloaded_money_shows ||= deal_shows_scope(contract_shows.where(canceled: false)).includes(show_financials: :expense_items).to_a
   end
 
+  def money_shows_in(range)
+    money_shows.select { |show| range.cover?(show.date_and_time) }
+  end
+
   # Preload everything money_summary/money_display need for a list of contracts
   # in a fixed number of queries: payments, rentals, sibling-contract counts,
   # and each contract's owned shows with financials.
@@ -1573,7 +1627,7 @@ class Contract < ApplicationRecord
 
     ActiveRecord::Associations::Preloader.new(
       records: contracts,
-      associations: [ { contract_payments: { payout_contribution: :payout_batch } },
+      associations: [ { contract_payments: [ :show, { payout_contribution: :payout_batch } ] },
                       :space_rentals, { production: :contracts } ]
     ).call
 
@@ -1612,18 +1666,31 @@ class Contract < ApplicationRecord
   # Returns { confirmed_revenue: X, tbd_count: N, contractor_share: Y }
   def revenue_share_summary
     return @revenue_share_summary if defined?(@revenue_share_summary)
-    return @revenue_share_summary = nil unless revenue_share?
 
-    all_shows = money_shows
+    @revenue_share_summary = build_revenue_share_summary(money_shows)
+  end
+
+  def build_revenue_share_summary(all_shows)
+    return nil unless revenue_share?
+
     confirmed_shows = all_shows.select { |s| s.show_financials&.has_data? }
     pending_shows = all_shows - confirmed_shows
 
     confirmed_revenue = confirmed_shows.sum { |s| settled_revenue(s.show_financials) }
-    # Show by show: a date can have its own share (Review the dates).
-    our_share_amount = confirmed_shows.sum { |s| settled_revenue(s.show_financials) * our_share_for(s) / 100.0 }.round(2)
-    contractor_share_amount = (confirmed_revenue - our_share_amount).round(2)
+    # Rounded the way the money is paid: once per settlement (a night, a week,
+    # the run), with the other side as the remainder, so Financials never sits
+    # a cent off the payments (a 50% share of $161.25 is paid as $80.63;
+    # 2026-11-02). A date can have its own share (Review the dates).
+    settled = settlement_show_groups(confirmed_shows).sum { |group| settled_share_amount(group) }.round(2)
+    if draft_payment_config["who_sells_tickets"] == "contractor"
+      our_share_amount = settled
+      contractor_share_amount = (confirmed_revenue - settled).round(2)
+    else
+      contractor_share_amount = settled
+      our_share_amount = (confirmed_revenue - settled).round(2)
+    end
 
-    @revenue_share_summary = {
+    {
       confirmed_revenue: confirmed_revenue,
       confirmed_count: confirmed_shows.count,
       pending_count: pending_shows.count,
@@ -1636,9 +1703,13 @@ class Contract < ApplicationRecord
   # Returns financial summary for ticket_revenue_minus_fee contracts
   def flat_fee_revenue_summary
     return @flat_fee_revenue_summary if defined?(@flat_fee_revenue_summary)
-    return @flat_fee_revenue_summary = nil unless ticket_revenue_minus_fee?
 
-    all_shows = money_shows
+    @flat_fee_revenue_summary = build_flat_fee_revenue_summary(money_shows)
+  end
+
+  def build_flat_fee_revenue_summary(all_shows)
+    return nil unless ticket_revenue_minus_fee?
+
     confirmed_shows = all_shows.select { |s| s.show_financials&.has_data? }
     pending_shows = all_shows - confirmed_shows
 
@@ -1660,7 +1731,7 @@ class Contract < ApplicationRecord
       remainder.positive? ? contractor_amount += remainder : shortfall_amount -= remainder
     end
 
-    @flat_fee_revenue_summary = {
+    {
       confirmed_revenue: confirmed_revenue,
       confirmed_count: confirmed_shows.count,
       pending_count: pending_shows.count,
@@ -1806,11 +1877,15 @@ class Contract < ApplicationRecord
       # Positional pairing (kept as a fallback for deals whose due dates sit
       # off the event dates) drifts as soon as any settled payment drops out
       # of settlement_payments, linking a show to its neighbor's payment.
+      # A payment already tied to another show is that show's, never this
+      # one's by position (removing Sep 3's settlement handed its ticket money
+      # to Jan 1's; FUNHAÜS, 2026-11-02).
       revenue_payments.detect { |p| p.due_date == show.date_and_time.to_date } ||
         begin
           all_shows = deal_shows_scope(linkable_shows).order(:date_and_time).to_a
           show_index = all_shows.index { |s| s.id == show.id }
-          show_index ? revenue_payments.to_a[show_index] : nil
+          candidate = show_index ? revenue_payments.to_a[show_index] : nil
+          candidate if candidate && (candidate.show_id.nil? || candidate.show_id == show.id)
         end
     when "weekly"
       show_week_start = show.date_and_time.to_date.beginning_of_week

@@ -4,11 +4,19 @@
 # kinds and spending categories, each with the account it posts to. An
 # organization's own categories (Money settings → Books) are non-system
 # LedgerAccounts and show up in the same lists under the key "account_<id>".
+# The built-in ones an organization said no to when it set Books up
+# (BooksCategorySetup, money_categories_hidden) stay out of the options,
+# but a row already in one keeps its label and its account.
+#
+# The lists come out alphabetical by label, Other last (Tim, 2026-11-02).
 #
 #   MoneyCategories.spending_options(organization)   # [[label, key], ...]
+#   MoneyCategories.spending_choices(organization)   # [Choice(key, label, description), ...]
 #   MoneyCategories.account_for("venue")             # => :venue
 #   MoneyCategories.label_for("talent")              # => "Performer pay"
 class MoneyCategories
+  Choice = Struct.new(:key, :label, :description, :custom, keyword_init: true)
+
   class << self
     def income
       @income ||= config.fetch("income")
@@ -63,11 +71,27 @@ class MoneyCategories
     end
 
     def spending_options(organization = nil)
-      options_for(spending, organization, "expense")
+      spending_choices(organization).map { |c| [ c.label, c.key ] }
     end
 
     def income_options(organization = nil)
-      options_for(income, organization, "income")
+      income_choices(organization).map { |c| [ c.label, c.key ] }
+    end
+
+    # The categories to pick from, with what each is for: the built-in ones
+    # the organization offers and its own, alphabetical, Other last.
+    def spending_choices(organization = nil)
+      choices_for(spending, organization, "expense")
+    end
+
+    def income_choices(organization = nil)
+      choices_for(income, organization, "income")
+    end
+
+    def description_for(key, kind = :spending, organization: nil)
+      return custom_account(key, organization)&.description if key.to_s.start_with?("account_")
+
+      entry(key, kind)&.fetch("description", nil)
     end
 
     # Backwards-compatible name used by Show Financials.
@@ -79,14 +103,20 @@ class MoneyCategories
 
     private
 
-    def options_for(list, organization, account_type)
-      system = list.map { |key, data| [ data["label"], key ] }
-      return system if organization.nil?
-
-      custom = organization.ledger_accounts.active.where(system: false, account_type: account_type).order(:name)
-                           .map { |a| [ a.name, "account_#{a.id}" ] }
-      # Other stays last.
-      system[0...-1] + custom + system[-1..]
+    def choices_for(list, organization, account_type)
+      system = list.map { |key, data| Choice.new(key: key, label: data["label"], description: data["description"], custom: false) }
+      custom = []
+      if organization
+        hidden = organization.money_categories_hidden
+        if hidden.any?
+          kind = account_type == "income" ? "income" : "spending"
+          system = system.reject { |c| c.key != "other" && hidden.include?("#{kind}:#{c.key}") }
+        end
+        custom = organization.ledger_accounts.active.where(system: false, account_type: account_type)
+                             .map { |a| Choice.new(key: "account_#{a.id}", label: a.name, description: a.description.presence, custom: true) }
+      end
+      other, rest = system.partition { |c| c.key == "other" }
+      (rest + custom).sort_by { |c| c.label.downcase } + other
     end
 
     def custom_account(key, organization)

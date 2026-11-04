@@ -8,7 +8,11 @@
   outside_lines = piece.ticket_lines.reject { |l| l[:built_in] }
   online_lines = piece.ticket_lines.select { |l| l[:built_in] }
   line = ->(label, note, value) { "<div class='flex items-baseline justify-between gap-3 py-1.5 text-sm'><span class='text-gray-700'>#{ERB::Util.html_escape(label)}#{note.present? ? " <span class='text-xs text-gray-500'>#{ERB::Util.html_escape(note)}</span>" : ''}</span><span class='tabular-nums text-gray-900'>#{value}</span></div>".html_safe }
-  worksheet_path = manage_edit_money_show_financials_path(show, return_to: manage_money_settle_up_day_path(day.param))
+  editable = can_change && !day.settled?
+  return_to = manage_money_settle_up_day_path(day.param)
+  pink = "text-pink-600 hover:text-pink-700"
+  # The number opens that thing's own worksheet, a modal (Tim, 2026-11-03).
+  opens = ->(modal_id, text) { %(<a href="##{modal_id}" class="#{pink}" data-controller="modal" data-action="click->modal#open" data-modal-id="#{modal_id}">#{text}</a>).html_safe }
 %>
 <section class="bg-white border border-gray-200 rounded-xl overflow-hidden" id="show-<%= show.id %>">
   <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-gray-200">
@@ -17,7 +21,7 @@
       <span class="ml-2 text-xs font-medium <%= state_tone %>"><%= state_words %></span>
     </h2>
     <% if can_change && !day.settled? %>
-      <%= form_with url: manage_check_show_money_settle_up_day_path(day.param, show_id: show.id), method: :patch, data: { controller: "auto-submit" } do %>
+      <%= form_with url: manage_check_show_money_settle_up_day_path(day.param, show_id: show.id), method: :patch, data: { controller: "auto-submit", turbo_action: "replace" } do %>
         <%= hidden_field_tag :checked, "0", id: nil %>
         <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
           <input type="checkbox" name="checked" value="1" <%= "checked" if piece.confirmed? %> data-action="change->auto-submit#submit"
@@ -34,12 +38,11 @@
         <%= line.call("Tickets", (fin&.flat_fee? ? "a flat fee, not tickets" : "nothing entered yet"), "—") %>
       <% end %>
       <% online_lines.each do |l| %>
-        <%= line.call("Sold through CocoScout", "from Ticketing", "#{l[:count]} · #{money.call(l[:cents])}") %>
+        <%= line.call("Sold through CocoScout", "from Ticketing", (piece.listing ? link_to("#{l[:count]} · #{money.call(l[:cents])}", manage_ticket_listing_path(piece.listing), class: pink) : "#{l[:count]} · #{money.call(l[:cents])}")) %>
       <% end %>
       <% if piece.listing && piece.outside_sources.any? %>
         <%= line.call("Outside tickets", outside_lines.map { |l| "#{l[:label]} #{l[:count]}" }.join(", ").presence || piece.outside_sources.map(&:name).join(", "),
-              "#{outside_lines.sum { |l| l[:count] }} · #{money.call(outside_lines.sum { |l| l[:cents] })}" +
-              (can_change && !day.settled? ? " <a href='##{'outside-' + show.id.to_s}' class='ml-2 text-pink-600 hover:text-pink-700' data-controller='modal' data-action='click->modal#open' data-modal-id='outside-#{show.id}'>Worksheet</a>" : "")) %>
+              (editable ? opens.call("outside-#{show.id}", "#{outside_lines.sum { |l| l[:count] }} · #{money.call(outside_lines.sum { |l| l[:cents] })}") : "#{outside_lines.sum { |l| l[:count] }} · #{money.call(outside_lines.sum { |l| l[:cents] })}")) %>
       <% else %>
         <% outside_lines.each do |l| %>
           <%= line.call(l[:label], nil, "#{l[:count]} · #{money.call(l[:cents])}") %>
@@ -52,28 +55,26 @@
     </div>
     <div>
       <div class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Everything else for this show</div>
-      <%= line.call("Products at the door", nil, money.call(piece.products_cents)) %>
-      <%= line.call("Other revenue", (fin&.normalized_other_revenue_details&.reject { |i| i.is_a?(Hash) && i["description"] == TicketSalesSync::PRODUCTS_LABEL }&.filter_map { |i| i.is_a?(Hash) ? i["description"] : nil }&.join(", ")), money.call(piece.other_revenue_cents)) %>
-      <%= line.call("Expenses", (fin && fin.expense_items.any? ? pluralize(fin.expense_items.size, "item") : nil), money.call(piece.expenses_cents)) %>
+      <%= line.call("Products at the door", (piece.listing ? "from Ticketing" : nil), (piece.listing ? link_to(money.call(piece.products_cents), manage_ticket_listing_path(piece.listing), class: pink) : money.call(piece.products_cents))) %>
+      <%= line.call("Other revenue", (fin&.normalized_other_revenue_details&.reject { |i| i.is_a?(Hash) && i["description"] == TicketSalesSync::PRODUCTS_LABEL }&.filter_map { |i| i.is_a?(Hash) ? i["description"] : nil }&.join(", ")),
+            (editable ? opens.call("other-revenue-#{show.id}", money.call(piece.other_revenue_cents)) : money.call(piece.other_revenue_cents))) %>
+      <%= line.call("Expenses", (fin && fin.expense_items.any? ? pluralize(fin.expense_items.size, "item") : nil),
+            (editable ? opens.call("expenses-#{show.id}", money.call(piece.expenses_cents)) : money.call(piece.expenses_cents))) %>
       <% if fin&.flat_fee? %>
         <%= line.call("Flat fee instead of tickets", nil, money.call(piece.flat_fee_cents)) %>
       <% end %>
-      <% if can_change && !day.settled? %>
-        <div class="pt-1 text-sm">
-          <%= link_to "Open the worksheet", worksheet_path, class: "text-pink-600 hover:text-pink-700" %>
-          <span class="text-gray-400">·</span>
-          <%= link_to "This show's page", manage_money_show_financials_path(show), class: "text-pink-600 hover:text-pink-700" %>
-        </div>
-      <% else %>
-        <div class="pt-1 text-sm"><%= link_to "This show's page", manage_money_show_financials_path(show), class: "text-pink-600 hover:text-pink-700" %></div>
-      <% end %>
+      <div class="pt-1 text-sm"><%= link_to "This show's page", manage_money_show_financials_path(show), class: pink %></div>
     </div>
   </div>
   <% if piece.confirmed? && fin.updated_at %>
-    <div class="px-5 py-2 border-t border-gray-100 text-xs text-gray-500">Checked <%= fin.updated_at.strftime("%b %-d at %-l:%M %p").downcase %>.</div>
+    <div class="px-5 py-2 border-t border-gray-100 text-xs text-gray-500">Checked <%= fin.updated_at.strftime("%b %-d at %-l:%M %P") %>.</div>
   <% end %>
 </section>
-<% if piece.listing && piece.outside_sources.any? && can_change && !day.settled? %>
+<% if editable %>
+  <%= render "manage/settlement_days/other_revenue_modal", id: "other-revenue-#{show.id}", show: show, financials: fin, return_to: return_to %>
+  <%= render "manage/settlement_days/expenses_modal", id: "expenses-#{show.id}", show: show, financials: fin, return_to: return_to %>
+<% end %>
+<% if piece.listing && piece.outside_sources.any? && editable %>
   <%= render "manage/ticket_listings/outside_sales_modal", id: "outside-#{show.id}", listing: piece.listing,
         sources: piece.outside_sources, rows: piece.listing.ticket_outside_sales.index_by { |row| [ row.ticket_source_id, row.ticket_tier_id ] },
         return_to: manage_money_settle_up_day_path(day.param) %>

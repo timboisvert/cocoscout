@@ -11,6 +11,7 @@ class Organization < ApplicationRecord
 
   belongs_to :owner, class_name: "User"
   belongs_to :books_locked_by, class_name: "User", optional: true
+  belongs_to :books_categories_set_up_by, class_name: "User", optional: true
   # CocoScout's bills to it, and its monthly statements. CocoScout's own
   # records of money it earned keep their amounts if the org is ever deleted.
   has_many :billing_invoices, dependent: :destroy
@@ -69,7 +70,10 @@ class Organization < ApplicationRecord
   has_many :invoices, dependent: :destroy
   has_many :bank_statement_imports, dependent: :destroy
   has_many :bank_statement_lines, dependent: :destroy
+  has_many :bank_rules, dependent: :destroy
+  has_many :bank_rule_dismissals, dependent: :destroy
   has_many :register_days, dependent: :destroy
+  has_one :tip_rule, dependent: :destroy
   has_many :ledger_accounts, dependent: :delete_all
   # Ticketing. Orders go before listings (a listing with orders refuses to be
   # destroyed on its own), and tax lines before the rates they name.
@@ -348,8 +352,28 @@ class Organization < ApplicationRecord
   def on_paid_plan?
     return true if comped_indefinitely?
     return true if comped_until.present? && comped_until.future?
+    return true if pro_on_monthly_bill?
 
     subscription_status.in?(%w[active trialing past_due])
+  end
+
+  # Pro paid month by month on the one monthly bill, beside the usage (Tim,
+  # 2026-11-01), rather than on a Stripe subscription of its own.
+  def pro_on_monthly_bill?(at = Time.current)
+    pro_monthly_from.present? && pro_monthly_from <= at && (pro_monthly_until.nil? || pro_monthly_until > at)
+  end
+
+  # Start Pro on the monthly bill: the month's bill carries the plan from
+  # today, and the subscription that sends that bill is made if it isn't
+  # there yet.
+  def start_pro_on_monthly_bill!(at: Time.current)
+    update!(pro_monthly_from: at, pro_monthly_until: nil)
+    StaffMeterService.ensure_staffing_subscription!(self)
+  end
+
+  # Cancel it: Pro lasts to the end of the month, which the last bill carries.
+  def cancel_pro_on_monthly_bill!(at: Time.current)
+    update!(pro_monthly_until: at.end_of_month)
   end
 
   # True when the org's Pro access comes from a comp rather than a paid Stripe subscription.
@@ -357,12 +381,26 @@ class Organization < ApplicationRecord
     comped_indefinitely? || (comped_until.present? && comped_until.future?)
   end
 
-  # Whether the monthly usage charges ($3 per performer paid, $5 per staff
-  # member scheduled) are billed. Usage rides Pro, so a free or lapsed org is
+  # Whether the monthly usage charges ($5 per staff member and $3 per
+  # everyone else paid, bank debits and withdrawals beyond the free ones) are
+  # billed. Usage rides Pro, so a free or lapsed org is
   # never metered, and a superadmin can comp usage on its own: an org can be
   # comped on the plan and still pay for usage, or the other way round.
   def bills_usage?
     on_paid_plan? && !comped_usage?
+  end
+
+  # Whether a month's usage is billed: Pro at some point in that month and
+  # usage not comped. A comp that ended on December 31 still bills
+  # December's usage on the January 1 bill.
+  def bills_usage_in?(month)
+    return false if comped_usage?
+
+    first = month.to_date.beginning_of_month.in_time_zone
+    last = first.end_of_month
+    comped_indefinitely? || (comped_until.present? && comped_until >= first) ||
+      (pro_monthly_from.present? && pro_monthly_from <= last && (pro_monthly_until.nil? || pro_monthly_until >= first)) ||
+      subscription_status.in?(%w[active trialing past_due]) || (subscription_canceled_at.present? && subscription_canceled_at >= first)
   end
 
   # Whether a given feature (symbol from PAID_FEATURES, or any free feature) is

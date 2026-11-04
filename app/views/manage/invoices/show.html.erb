@@ -23,7 +23,7 @@
         <% if @invoice.void? %>Cancelled: nothing stands on the books.<% else %>
           <%= money.call(@invoice.total_cents) %> of <b><%= @invoice.category_label %></b><%= @invoice.production ? " for #{@invoice.production.name}" : "" %>, dated <%= @invoice.issued_on.strftime("%b %-d") %>. <% if @invoice.unpaid_cents.positive? %><%= money.call(@invoice.unpaid_cents) %> sits in <b>Money owed to you</b> until it is paid.<% end %> If you count money when it moved, it shows up on the day it arrives instead.
         <% end %>
-        <%= link_to "See the entries", manage_money_books_path(tab: "entries", kind: "invoice"), class: "ml-1 text-pink-600 hover:text-pink-700" %>
+        <%= link_to "See the entries", manage_money_books_section_path(section: "entries", kind: "invoice"), class: "ml-1 text-pink-600 hover:text-pink-700" %>
       </section>
     </div>
 

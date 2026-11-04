@@ -41,7 +41,7 @@
             <label class="<%= label %>"><span>Production</span><%= f.select :production_id, @productions.map { |pr| [ pr.name, pr.id ] }, { include_blank: "Nothing in particular" }, class: input, data: { record_money_target: "production", action: "change->record-money#filterShows" } %></label>
             <label class="<%= label %>"><span>A particular date <span class="font-normal text-gray-500">(optional)</span></span>
               <%= f.select :show_id, options_for_select([ [ "The whole production", "" ] ] + @shows.map { |s| [ "#{s.date_and_time.strftime('%b %-d, %Y')}#{" · #{s.secondary_name}" if s.secondary_name.present?}", s.id, { data: { production: s.production_id } } ] }, @invoice.show_id), {}, class: input, data: { record_money_target: "show" } %></label>
-            <label class="<%= label %>"><span>Kind of income</span><%= f.select :category_key, MoneyCategories.income_options(Current.organization), {}, class: input %></label>
+            <label class="<%= label %>"><span>Kind of income</span><%= render "shared/category_picker", name: "invoice[category_key]", kind: :income, organization: Current.organization, value: @invoice.category_key, id: "invoice_category_key" %></label>
           </div>
 
           <div class="rounded-lg border border-gray-200 overflow-hidden">

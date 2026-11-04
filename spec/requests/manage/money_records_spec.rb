@@ -14,9 +14,34 @@ RSpec.describe "Manage::MoneyRecords", type: :request do
 
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
-  it "opens the sheet with its three tabs, from Books" do
+  # Record money opens as a modal on the Books section you're on, and saving
+  # comes back there (Tim, 2026-11-02). The landing page is for looking and
+  # going on to a section: no Record money, no download (Tim, 2026-11-02).
+  it "opens Record money as a modal on any Books section, and comes back after saving" do
+    %w[accounts entries shows checks].map { |s| manage_money_books_section_path(section: s) }.each do |page|
+      get page
+      expect(response.body).to include('id="record-money-modal"', 'data-modal-id="record-money-modal"', "Moved between your accounts", "Holiday Revue")
+    end
+    # The category is picked from a sheet of our own: each name with what goes in it, alphabetical.
+    expect(response.body).to include("What is it for?", "What kind of money is it?", 'name="money_record[category_key]"', "Beer, wine, liquor, mixers, cups: what you buy to sell", "Catering, the green room, a cast party")
+    expect(response.body).not_to include('<select name="money_record[category_key]"', 'id="money_record_category_key"')
+    expect(response.body.index('data-key="bar_purchases"')).to be < response.body.index('data-key="food"')
     get manage_money_books_path
-    expect(response.body).to include(manage_new_money_record_path)
+    expect(response.body).not_to include("record-money-modal", "Download this period")
+    get manage_money_statements_path
+    expect(response.body).to include("Every line (CSV)", manage_money_books_download_path(period: "this_month"))
+
+    post manage_money_records_path, params: { return_to: "/manage/money/books/entries",
+                                              money_record: { kind: "out", on: "2026-10-27", amount: "40.00", category_key: "supplies", via: "bank" } }
+    expect(response).to redirect_to("/manage/money/books/entries")
+    expect(flash[:notice]).to include("Recorded")
+
+    post manage_money_records_path, params: { return_to: "https://example.org/manage/money/books",
+                                              money_record: { kind: "out", on: "2026-10-27", amount: "40.00", category_key: "supplies", via: "bank" } }
+    expect(response).to redirect_to(manage_money_record_path(org.money_records.order(:id).last))
+  end
+
+  it "opens the sheet with its three tabs, as its own page too" do
     get manage_new_money_record_path
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Money out", "Money in", "Moved between your accounts", "Holiday Revue")
@@ -35,7 +60,7 @@ RSpec.describe "Manage::MoneyRecords", type: :request do
     get manage_money_record_path(record)
     expect(response.body).to include("$900.00", "Sponsorship", "Logan Square Chamber", "Holiday Revue, the whole production", "Recorded by hand")
 
-    get manage_money_books_path(tab: "entries")
+    get manage_money_books_section_path(section: "entries")
     expect(response.body).to include("Recorded by hand", "Sponsorship · Logan Square Chamber", manage_money_record_path(record))
   end
 
@@ -61,7 +86,7 @@ RSpec.describe "Manage::MoneyRecords", type: :request do
     expect(response.body).to include("receipt-4471.pdf", "An earlier entry was reversed, not edited.")
 
     delete manage_money_record_path(record)
-    expect(response).to redirect_to(manage_money_books_path(tab: "entries"))
+    expect(response).to redirect_to(manage_money_books_section_path(section: "entries"))
     expect(org.money_records.find_by(id: record.id)).to be_nil
     expect(ChartOfAccounts.account(org, :production_costs).natural_balance_cents).to eq(0)
     expect(ChartOfAccounts.account(org, :credit_card).natural_balance_cents).to eq(0)

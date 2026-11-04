@@ -16,11 +16,17 @@
 <% else %>
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
-  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Money", manage_money_index_path ], [ "Books", manage_money_books_path ] ], text: "Statements", links: [
-    { text: "Print", path: path.call(print: "1"), data: { turbo: false } },
-    { text: "PDF", path: path.call(format: :pdf), data: { turbo: false } },
-    { text: "CSV", path: path.call(format: :csv), data: { turbo: false } }
-  ] } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: books_breadcrumbs,
+    text: "Statements",
+    links: [
+      { text: "Print", path: path.call(print: "1"), data: { turbo: false } },
+      { text: "PDF", path: path.call(format: :pdf), data: { turbo: false } },
+      { text: "CSV", path: path.call(format: :csv), data: { turbo: false } },
+      ({ text: "Every line (CSV)", path: manage_money_books_download_path({ period: @period, basis: base[:basis] }.compact), data: { turbo: false } } if @kind != "balance")
+    ].compact
+  } %>
+<div>
 
   <div class="mb-4">
     <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
@@ -107,5 +113,6 @@
     </div>
     <%= render "shared/confirm_modal", id: "unlock-books", title: "Unlock the books?", message: "Anyone with Books access can date entries inside the closed months again until you lock them back.", confirm_text: "Unlock", url: manage_money_statements_unlock_path, method: :post %>
   <% end %>
+</div>
 </div>
 <% end %>

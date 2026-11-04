@@ -27,6 +27,7 @@ class BooksPoster
     when OrgCashEntry then post_cash!(row)
     when PayoutLedgerEntry then post_owed!(row)
     end
+    restate_contract_payment(row)
   rescue StandardError => e
     raise if Rails.env.test?
 
@@ -35,10 +36,33 @@ class BooksPoster
 
   def self.remove!(row)
     LedgerPosting.unpost!(source: row, kind: kind_for(row))
+    restate_contract_payment(row)
   rescue StandardError => e
     raise if Rails.env.test?
 
     Rails.logger.error("[BooksPoster] remove #{row.class.name} #{row.id}: #{e.class}: #{e.message}")
+  end
+
+  # When the money was earned. Contract money belongs to the date it's for
+  # (its due date: "Rehearsal — Oct 7" is due Oct 7), not the day it moved;
+  # everything else was earned when it happened (Tim, 2026-11-02).
+  def self.earned_on(entry)
+    contract_payment_for(entry)&.due_date || entry.occurred_at.to_date
+  end
+
+  # The contract payment behind a ledger row: directly (collected online), or
+  # through the payout contribution that put a contract share on a run.
+  def self.contract_payment_for(entry)
+    source = entry.source
+    source = source.source if source.is_a?(PayoutContribution)
+    source if source.is_a?(ContractPayment)
+  end
+
+  # Contract money owed on its own (BooksOutsidePoster) is covered by the
+  # ledger row once it reaches one, and owed again if the row goes away.
+  def self.restate_contract_payment(row)
+    payment = contract_payment_for(row)
+    BooksOutsidePoster.post_contract_payment!(payment.reload) if payment && !payment.destroyed?
   end
 
   def self.kind_for(row)
@@ -55,7 +79,7 @@ class BooksPoster
     return if lines.nil?
 
     LedgerPosting.post!(organization: entry.organization, source: entry, kind: "cash",
-                        entry_date: entry.occurred_at.to_date, cash_date: entry.occurred_at.to_date,
+                        entry_date: earned_on(entry), cash_date: entry.occurred_at.to_date,
                         memo: entry.description.presence || entry.entry_type.humanize, lines: lines)
   end
 
@@ -152,7 +176,7 @@ class BooksPoster
     return LedgerPosting.unpost!(source: entry, kind: "owed") if lines.nil?
 
     LedgerPosting.post!(organization: entry.organization, source: entry, kind: "owed",
-                        entry_date: entry.occurred_at.to_date, cash_date: entry.occurred_at.to_date,
+                        entry_date: earned_on(entry), cash_date: entry.occurred_at.to_date,
                         memo: entry.description.presence || entry.entry_type.humanize, lines: lines)
   end
 

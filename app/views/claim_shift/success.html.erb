@@ -1,0 +1,20 @@
+<% content_for :title, "Shift claimed" %>
+<div class="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md mx-auto">
+    <div class="flex items-center justify-center mb-6">
+      <div class="flex items-center justify-center h-16 w-16 rounded-full bg-green-100">
+        <svg class="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+      </div>
+    </div>
+    <div class="text-center mb-8">
+      <h1 class="text-2xl font-bold text-gray-900 mb-2">You're on it</h1>
+      <p class="text-gray-600">You're covering <strong><%= @shift.role_label %></strong> for <%= @organization.name %>.</p>
+    </div>
+    <div class="bg-white shadow rounded-lg p-4 mb-6">
+      <p class="text-sm font-medium text-gray-900"><%= @shift.starts_at.strftime("%A, %B %-d") %> · <%= shift_time_range(@shift) %></p>
+      <% location_name = @shift.house_role.location&.name || @shift.source.try(:location).try(:name) %>
+      <% if location_name.present? && location_name != @shift.organization.name %><p class="text-xs text-gray-500 mt-1"><%= location_name %></p><% end %>
+    </div>
+    <p class="text-center text-sm text-gray-600">It's on <%= link_to "My Shifts", my_shifts_path, class: "text-pink-600 underline" %> with the rest of your schedule.</p>
+  </div>
+</div>

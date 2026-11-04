@@ -72,6 +72,23 @@ RSpec.describe RoleVacancyInvitation, type: :model do
         expect(described_class.claimed).not_to include(pending_invitation)
       end
     end
+
+    # The My Calendar / My Shows "Claim role" alerts read this. Sending
+    # invitations moves the vacancy to finding_replacement at once, so a scope
+    # that only matched "open" never showed an invitee anything.
+    describe ".unresolved" do
+      it "keeps an unclaimed invitation while its vacancy is open or finding a replacement" do
+        expect(described_class.unresolved).to include(pending_invitation)
+        pending_invitation.role_vacancy.update!(status: "finding_replacement")
+        expect(described_class.unresolved).to include(pending_invitation)
+        expect(described_class.unresolved).not_to include(claimed_invitation)
+      end
+
+      it "drops it once the vacancy is filled or closed" do
+        pending_invitation.role_vacancy.update!(status: "filled")
+        expect(described_class.unresolved).not_to include(pending_invitation)
+      end
+    end
   end
 
   describe "#claimed?" do

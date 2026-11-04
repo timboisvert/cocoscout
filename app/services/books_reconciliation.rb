@@ -31,10 +31,13 @@ class BooksReconciliation
     productions = organization.productions.active.order(:name).to_a
     return [] if productions.empty?
 
-    hub_period = { "this_month" => :this_month, "last_month" => :last_month, "this_quarter" => :this_quarter,
-                   "this_year" => :this_year, "last_year" => :last_year, "all_time" => :all_time }.fetch(period_key.to_s, :this_month)
-    hub = FinancialSummaryService.summaries_by_production(productions, hub_period)[:by_production]
-    books = BooksReport.new(organization).overview(range: BooksReport.period_range(period_key)).productions.index_by { |r| r.production&.id }
+    # Compared through today: a show still ahead this month has presales
+    # Financials already count, which the books hold as tickets sold for
+    # upcoming shows until the day after the show (2026-11-02).
+    range = BooksReport.period_range(period_key)
+    range = range.begin..[ range.end, Time.current.end_of_day ].min if range && range.end > Time.current
+    hub = FinancialSummaryService.summaries_by_production_in(productions, range)[:by_production]
+    books = BooksReport.new(organization).overview(range: range).productions.index_by { |r| r.production&.id }
     productions.filter_map do |production|
       h = hub[production.id]
       b = books[production.id]
@@ -50,7 +53,7 @@ class BooksReconciliation
   end
 
   def self.check(organization)
-    [ balance_check(organization), owed_check(organization), tax_check(organization), bills_check(organization) ].compact
+    [ balance_check(organization), owed_check(organization), tax_check(organization), bills_check(organization), contractors_check(organization) ].compact
   end
 
   # Money you owe is the unpaid part of every open bill (Books V1.3). Money
@@ -59,6 +62,19 @@ class BooksReconciliation
     books = ChartOfAccounts.account(organization, :you_owe).natural_balance_cents
     expected = Bill.open.where(organization: organization).sum("amount_cents - paid_cents")
     Mismatch.new(account: "you_owe", books_cents: books, expected_cents: expected) unless books == expected
+  end
+
+  # Owed to contractors is every contract payment to them whose date has
+  # come and that isn't paid or on a run yet (BooksOutsidePoster).
+  def self.contractors_check(organization)
+    books = ChartOfAccounts.account(organization, :owed_to_contractors).natural_balance_cents
+    pending = ContractPayment.joins(:contract).where(contracts: { organization_id: organization.id })
+                             .status_pending.direction_outgoing.where(amount_tbd: false).where("amount > 0")
+                             .where("due_date <= ?", Date.current)
+    pending = pending.to_a
+    on_rail = BooksOutsidePoster.on_the_rail_ids(pending)
+    expected = pending.reject { |payment| on_rail.include?(payment.id) }.sum(&:amount_cents)
+    Mismatch.new(account: "owed_to_contractors", books_cents: books, expected_cents: expected) unless books == expected
   end
 
   def self.balance_check(organization)

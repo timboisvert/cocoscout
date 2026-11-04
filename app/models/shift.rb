@@ -18,6 +18,7 @@ class Shift < ApplicationRecord
   has_many :additional_roles, -> { distinct }, through: :shift_additional_roles, source: :house_role
 
   has_many :shift_assignments, dependent: :destroy
+  has_many :shift_vacancies, dependent: :destroy
   has_many :assigned_people, through: :shift_assignments, source: :person
 
   # Extra shows this shift covers beyond its own `source` — only populated when

@@ -52,7 +52,10 @@ RSpec.describe ShiftDeclinedNotificationJob, type: :job do
     expect(body).to include("Bartender")
     expect(body).to include("Family thing")
     expect(body).to include("View that day in Staffing Scheduling")
-    expect(notification.path).to include("week_start=#{shift.starts_at.to_date.beginning_of_week.iso8601}")
+    # Its first link is the page where they find cover; the day in
+    # Scheduling is the second.
+    expect(notification.path).to include("/manage/staffing/vacancies/#{assignment.active_vacancy.id}")
+    expect(body).to include("day=#{shift.starts_at.to_date.iso8601}")
     expect(Message.count).to eq(0)
   end
 

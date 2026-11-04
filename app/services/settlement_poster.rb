@@ -10,18 +10,19 @@
 # to income by category, the register's fees to card fees, sales tax to tax
 # to pay, refunds against income, tips to Tips owed to staff, and the net
 # to Bank (there is no bank matching yet to clear it through; a matched
-# deposit later just confirms the line). Each person's tip share goes to
-# the open payout run, or comes out of door cash when it was handed over.
+# deposit later just confirms the line). Each person's tip share then waits
+# on Pay People with the approved hours (Tim, 2026-11-03: nothing goes on
+# the run until the week's pay is put there together), or came out of door
+# cash when it was handed over at close.
 class SettlementPoster
   CATEGORY_ACCOUNTS = { "bar" => :bar_income, "food" => :bar_income, "merchandise" => :merchandise_income, "other" => :other_income }.freeze
 
   def self.post!(record)
     organization = record.organization
     day = SettleUp.day(organization, record.date)
-    lines = door_cash_lines(day) + register_lines(day) + tip_lines(record)
+    lines = door_cash_lines(day) + register_lines(day) + tip_lines(day, record)
     LedgerPosting.post!(organization: organization, source: record, kind: "settlement", entry_date: record.date, cash_date: record.date,
                         memo: "Settled #{record.date.strftime('%b %-d, %Y')}", lines: lines)
-    pay_tips!(record)
   rescue StandardError => e
     raise if Rails.env.test?
 
@@ -77,35 +78,21 @@ class SettlementPoster
     end
   end
 
-  # Tips handed over in cash at close came out of the door cash box.
-  def self.tip_lines(record)
+  # Tips handed over in cash at close came out of the door cash box; tips
+  # nobody was given (a stretch the house keeps, by the manager's say) are
+  # the house's income, not owed to anyone.
+  def self.tip_lines(day, record)
+    lines = []
     cash = record.cash_tips_cents
-    return [] unless cash.positive?
-
-    [ { account: :tips_owed, amount_cents: cash, memo: "Tips paid in cash at close" }, { account: :door_cash, amount_cents: -cash } ]
+    lines.concat([ { account: :tips_owed, amount_cents: cash, memo: "Tips paid in cash at close" }, { account: :door_cash, amount_cents: -cash } ]) if cash.positive?
+    house = day.tips.cents - record.tip_shares.sum(&:amount_cents)
+    lines.concat([ { account: :tips_owed, amount_cents: house, memo: "Tips kept by the house" }, { account: :other_income, amount_cents: -house, memo: "Tips kept by the house" } ]) if house.positive?
+    lines
   end
 
-  # Each payout share rides the one open payout run as a staff tips line.
-  def self.pay_tips!(record)
-    shares = record.tip_shares.includes(:person).select { |sh| sh.payout? && sh.amount_cents.positive? && sh.payout_contribution_id.nil? }
-    return if shares.empty?
-
-    members = record.organization.organization_staff_members.where(person_id: shares.map(&:person_id)).index_by(&:person_id)
-    lines = shares.filter_map do |share|
-      member = members[share.person_id]
-      member && { staff_member: member, tips_cents: share.amount_cents, notes: "Tips, #{record.date.strftime('%b %-d')}" }
-    end
-    return if lines.empty?
-
-    result = StaffPayRunService.add_lines!(organization: record.organization, created_by: record.settled_by, lines: lines)
-    shares.each do |share|
-      contribution = PayoutContribution.where(payout_batch: result.batch, payee: share.person, label: "Tips").order(:id).last
-      share.update!(payout_contribution: contribution) if contribution
-    end
-  end
-
-  # Reopening takes the shares back off the run while it's still a draft;
-  # once a run is funded the money has moved and the share stands.
+  # Reopening takes back a share that Pay People already put on a run, while
+  # that run is still a draft; once a run is funded the money has moved and
+  # the share stands. Shares still waiting on Pay People just stop waiting.
   def self.unpay_tips!(record)
     record.tip_shares.where.not(payout_contribution_id: nil).includes(payout_contribution: %i[payout_batch payout_batch_item]).each do |share|
       contribution = share.payout_contribution

@@ -17,7 +17,7 @@
     title         the sheet's header; the opener may pass another
     pick_action   the page's listener, e.g. "people-picker:pick->roster#picked"
     scope         "people" (default), "users" or "members"
-    production_id, show_id, talent_pool_id, exclude, outside, invite,
+    production_id, show_id, shift_id, talent_pool_id, exclude, outside, invite,
     invite_name, guest, list, role_id, in_show, invited, exclude_label
                   as Manage::PeoplePickerController#search reads them
     multi         true keeps the sheet open after a pick, marking the row
@@ -34,6 +34,7 @@
     scope: local_assigns[:scope],
     production_id: local_assigns[:production_id],
     show_id: local_assigns[:show_id],
+    shift_id: local_assigns[:shift_id],
     talent_pool_id: local_assigns[:talent_pool_id],
     exclude: local_assigns[:exclude],
     outside: (local_assigns[:outside] ? "1" : nil),

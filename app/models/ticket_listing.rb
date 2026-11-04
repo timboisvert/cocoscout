@@ -28,6 +28,9 @@ class TicketListing < ApplicationRecord
   validates :seating_mode, inclusion: { in: RoomTicketingSetting::SEATING_MODES }, allow_nil: true
   has_many :seat_holds, class_name: "TicketSeatHold", dependent: :destroy
 
+  # This date's own words, when they differ from the production's and its ticketing's.
+  has_rich_text :description
+
   has_many :ticket_tiers, -> { order(:position, :id) }, dependent: :destroy, inverse_of: :ticket_listing
   has_many :ticket_orders, dependent: :restrict_with_error
   has_many :tickets

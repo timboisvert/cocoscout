@@ -185,10 +185,12 @@
     </div>    </div>
   </div>
 
-  <!-- Coco Link -->
-  <div class="w-16 pt-5 md:pt-0 fixed bottom-0 right-0 md:flex md:items-end md:justify-end">
-    <%= link_to my_dashboard_path do %>
-      <%= render "shared/cocoscout_logo", size: :small, class: "mr-5" %>
-    <% end %>
-  </div>
+  <%# The Coco link sits where the app's own Coco button is; the app has the menu. %>
+  <% unless turbo_native_app? %>
+    <div class="w-16 pt-5 md:pt-0 fixed bottom-0 right-0 md:flex md:items-end md:justify-end">
+      <%= link_to my_dashboard_path do %>
+        <%= render "shared/cocoscout_logo", size: :small, class: "mr-5" %>
+      <% end %>
+    </div>
+  <% end %>
 </div>

@@ -1,0 +1,6 @@
+<%# Every suggestion confirmed at once; gone when none is left. Swapped with each row. %>
+<span id="bank-yes-to-all">
+  <% if module_change?(:books) && summary.suggested_count.positive? %>
+    <%= render "shared/button", text: "Yes to all #{pluralize(summary.suggested_count, 'suggestion')}", variant: "secondary", size: "small", path: manage_match_all_money_bank_lines_path(local_assigns.fetch(:filters, {})), method: :post, form: { data: { turbo: false } } %>
+  <% end %>
+</span>

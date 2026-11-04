@@ -45,6 +45,11 @@ class LedgerPosting
         nil
       elsif existing && same?(existing, normalized, entry_date, cash_date)
         existing
+      elsif existing && same_money?(existing, normalized) &&
+            (BooksLock.locked?(organization, existing.entry_date) || BooksLock.locked?(organization, existing.cash_date))
+        # The same money, only its dates or tags would change, but the entry
+        # sits in a closed month, and a closed month never shifts: it stays.
+        existing
       else
         reverse!(existing) if existing
         write!(organization, source: source_attributes(source), kind: kind, entry_date: entry_date,
@@ -59,9 +64,18 @@ class LedgerPosting
     entry && reverse!(entry)
   end
 
-  # Post the exact opposite of an entry, dated today (a correction lands when
-  # it's made, so a closed month never shifts), and mark the original reversed.
+  # Post the exact opposite of an entry on the entry's own dates, and mark
+  # the original reversed. A restatement or a withdrawal corrects what was
+  # recorded for that period, so it lands there; money that went back later
+  # (a refund, a dispute, a returned transfer) is its own entry, never a
+  # reversal (2026-11-02). Inside a closed month it lands on the first open
+  # day instead, and says so.
   def self.reverse!(entry, memo: nil)
+    organization = entry.organization
+    memo ||= "Reverses: #{entry.memo || entry.kind}"
+    if BooksLock.locked?(organization, entry.entry_date) || BooksLock.locked?(organization, entry.cash_date)
+      memo = "#{memo} (books closed through #{BooksLock.label(organization)}; posted on the first open day)"
+    end
     JournalEntry.transaction do
       entry.update!(reversed_at: Time.current)
       opposite = entry.journal_lines.map do |line|
@@ -69,9 +83,10 @@ class LedgerPosting
             .slice(:ledger_account_id, :production_id, :show_id, :payee_type, :payee_id, :fund_id, :memo)
             .merge(amount_cents: -line.amount_cents)
       end
-      write!(entry.organization, source: { source_type: entry.source_type, source_id: entry.source_id }, kind: entry.kind,
-                                 entry_date: Date.current, cash_date: entry.cash_date && Date.current,
-                                 memo: memo || "Reverses: #{entry.memo || entry.kind}",
+      write!(organization, source: { source_type: entry.source_type, source_id: entry.source_id }, kind: entry.kind,
+                           entry_date: BooksLock.posting_date(organization, entry.entry_date),
+                           cash_date: BooksLock.posting_date(organization, entry.cash_date),
+                           memo: memo,
                                  lines: opposite, reversal_of: entry)
     end
   end
@@ -128,6 +143,12 @@ class LedgerPosting
         memo: line[:memo]
       }
     end
+  end
+
+  # The same accounts and amounts, whatever the dates and tags.
+  def self.same_money?(entry, normalized)
+    money = ->(rows) { rows.map { |r| [ r[:ledger_account_id], r[:amount_cents] ] }.sort }
+    money.call(entry.journal_lines.map { |l| l.attributes.symbolize_keys }) == money.call(normalized)
   end
 
   def self.same?(entry, normalized, entry_date, cash_date)

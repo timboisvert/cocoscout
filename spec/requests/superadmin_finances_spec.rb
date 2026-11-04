@@ -26,8 +26,38 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
                                      held_for_orgs_cents: 130_985, cocoscout_cents: -30_985, imported_net_cents: 100_000, difference_cents: 0)
       CocoScoutLedgerEntry.create!(entry_type: "funding_cost", amount_cents: -50_000, occurred_at: Time.current)
       get finances_path
-      expect(response.body).to include("CocoScout is short", "$309.85", "Held for organizations", "Spent more than earned", "$500.00 spent against $0.00 earned")
+      expect(response.body).to include("CocoScout is short", "What to do about it", "short until we add money or earn more", "Add $500.00 from our bank",
+                                       "$1,309.85 of it held for organizations",
+                                       "Spent more than earned", "$500.00 spent against $0.00 earned")
       expect(response.body).not_to include("-$309.85", "-$500.00", "theater")
+    end
+
+    it "says what's ours to withdraw, what's owed to us, and where each stream's profit comes from" do
+      PlatformReconciliation.create!(checked_at: Time.current, checked_on: Date.current, stripe_balance_cents: 500_000, held_for_orgs_cents: 480_000,
+                                     cocoscout_cents: 20_000, imported_net_cents: 500_000, difference_cents: 0,
+                                     details: { "stripe_available_cents" => 12_000, "stripe_pending_cents" => 488_000 })
+      CocoScoutLedgerEntry.create!(entry_type: "ticket_fee", amount_cents: 15_000, occurred_at: Time.current, organization: organization)
+      CocoScoutLedgerEntry.create!(entry_type: "ticket_processing", amount_cents: 9_000, occurred_at: Time.current, organization: organization)
+      CocoScoutLedgerEntry.create!(entry_type: "processing_cost", amount_cents: -8_000, occurred_at: Time.current, source_type: "TicketOrder", source_id: 1)
+      CocoScoutLedgerEntry.create!(entry_type: "stripe_fee", amount_cents: -6_000, occurred_at: Time.current,
+                                   description: "Connect (2026-10-01 - 2026-10-31): Active Accounts")
+      CocoScoutLedgerEntry.create!(entry_type: "payout_to_bank", amount_cents: -5_000, occurred_at: 2.days.ago)
+      late = BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_late", kind: "usage", status: "open", amount_due_cents: 4_200,
+                                    amount_remaining_cents: 4_200, finalized_at: 10.days.ago, created_at: 10.days.ago, period_start: 40.days.ago)
+      BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_paid", kind: "pro", status: "paid", amount_due_cents: 2_000,
+                             amount_paid_cents: 2_000, finalized_at: 1.hour.ago, paid_at: 1.hour.ago)
+
+      get finances_path
+      body = response.body
+      # Profit $120 (the paid Pro bill counts), $50 already at the bank: $70 ours; Stripe has $120 available.
+      expect(body).to include("Ready to withdraw", "Profit since we started", "$120.00", "already gone to our bank", "Ours, still in Stripe")
+      expect(body).to include("$70.00 ready to withdraw, $0.00 still arriving", "Pro bills paid")
+      # The late bill is earned, just not collected: $162 profit, $42 of it still to collect.
+      expect(body).to include("$162.00", "Less bills sent, not collected yet", "Since we started")
+      expect(body).to include("Owed to us", "Late", late.title, "$42.00", "Bills not yet paid")
+      expect(body).to include("Tickets", "50¢ ticket fees (300 tickets)", "$150.00", "card processing on tickets", "less $80.00", "We kept", "$160.00")
+      expect(body).to include("Running CocoScout", "Stripe: Connect: Active Accounts", "Cost us", "$60.00")
+      expect(body).to include("Month by month", "Bills sent in this period", "Pro plan", "Paid")
     end
 
     it "shows CocoScout's own money, apart from the organizations'" do
@@ -39,11 +69,138 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
 
       get finances_path
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("What we earned", "Ticket fees (50¢ a ticket)", "$1.00", "Who paid us", organization.name)
+      expect(response.body).to include("Tickets", "50¢ ticket fees (2 tickets)", "$1.00", "Who paid us", organization.name)
 
       get finances_path(period: "this_month", format: :csv)
       expect(response.media_type).to eq("text/csv")
       expect(response.body).to include("Ticket fees (50¢ a ticket)", organization.name, "1.00")
+    end
+
+    it "lists every bill that charged too much, when it can be refunded, and refunds it from the page" do
+      allow(UsageRules).to receive(:staff).and_return({})
+      allow(UsageRules).to receive(:performers).and_return(organization.id => (1..53).index_with { Time.current })
+      organization.update!(stripe_customer_id: "cus_sg")
+      month = { period_start: Time.zone.local(2026, 10, 1), period_end: Time.zone.local(2026, 11, 1) }
+      BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_a", number: "SG-0003", kind: "usage", status: "paid",
+                             amount_due_cents: 15_900, amount_paid_cents: 15_900, paid_at: Time.current, **month)
+      paid_twice = BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_b", number: "SG-0004", kind: "usage", status: "paid",
+                                          amount_due_cents: 15_900, amount_paid_cents: 15_900, paid_at: Time.current, **month)
+      landing = BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_c", number: "SG-0005", kind: "usage", status: "open",
+                                       amount_due_cents: 15_900, amount_remaining_cents: 15_900, payment_status: "processing",
+                                       payment_method_type: "us_bank_account", payment_started_at: Time.zone.local(2026, 10, 31, 20), **month)
+
+      get finances_path
+      expect(response.body).to include("Charged too much (2)", "SG-0004", "SG-0005", "A second bill for October", "Paid, so it can be given back now",
+                                       "Its payment is still landing, about Nov 5", "Give back after Nov 5", "Credit next bill", "Plus what we owe back", "$159.00 owed back")
+      expect(response.body).not_to include("Refund all", "Credit all")
+
+      allow(Stripe::Invoice).to receive(:retrieve).and_return(Stripe::Invoice.construct_from(id: "in_b", post_payment_credit_notes_amount: 0))
+      allow(Stripe::Customer).to receive(:list_balance_transactions).and_return(double(auto_paging_each: []))
+      expect(Stripe::CreditNote).to receive(:create).with(hash_including(invoice: "in_b", refund_amount: 15_900), anything)
+                                                    .and_return(Stripe::CreditNote.construct_from(id: "cn_1"))
+      post finances_give_back_path(paid_twice), params: { how: "refund" }
+      expect(flash[:notice]).to include("Refunded $159.00", organization.name, "SG-0004")
+      expect(paid_twice.reload.credit_notes_cents).to eq(15_900)
+
+      post finances_give_back_path(landing)
+      expect(flash[:alert]).to include("be given back yet", "still landing (about Nov 5)")
+    end
+
+    it "refunds every bill that can go now with one button" do
+      allow(UsageRules).to receive(:staff).and_return({})
+      allow(UsageRules).to receive(:performers).and_return(organization.id => (1..53).index_with { Time.current })
+      organization.update!(stripe_customer_id: "cus_sg")
+      month = { period_start: Time.zone.local(2026, 10, 1), period_end: Time.zone.local(2026, 11, 1), paid_at: Time.current }
+      bills = %w[3 4 5].map do |n|
+        BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_#{n}", number: "SG-000#{n}", kind: "usage", status: "paid",
+                               amount_due_cents: 15_900, amount_paid_cents: 15_900, **month)
+      end
+      get finances_path
+      expect(response.body).to include("Credit all 2 ($318.00)", "Refund all 2")
+      expect { post finances_give_back_all_path, params: { how: "refund" } }.to have_enqueued_job(UsageGiveBackJob).exactly(2).times
+      expect(UsageGiveBackJob).to have_been_enqueued.with(bills[1].id, "refund")
+      expect(flash[:notice]).to include("Refunding 2 bills ($318.00)")
+
+      expect { post finances_give_back_all_path, params: { how: "credit" } }.to have_enqueued_job(UsageGiveBackJob).with(bills[2].id, "credit")
+      expect(flash[:notice]).to include("Crediting 2 bills ($318.00)")
+    end
+
+    it "credits a bill that charged too much on the organization's next bills" do
+      allow(UsageRules).to receive(:staff).and_return({})
+      allow(UsageRules).to receive(:performers).and_return(organization.id => (1..53).index_with { Time.current })
+      organization.update!(stripe_customer_id: "cus_sg")
+      month = { period_start: Time.zone.local(2026, 9, 1), period_end: Time.zone.local(2026, 10, 1) }
+      september = BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_sep", number: "SG-0002", kind: "usage", status: "paid",
+                                         amount_due_cents: 20_100, amount_paid_cents: 20_100, paid_at: Time.current, **month)
+      allow(Stripe::Invoice).to receive(:retrieve).and_return(Stripe::Invoice.construct_from(id: "in_sep", post_payment_credit_notes_amount: 0))
+      allow(Stripe::Customer).to receive(:list_balance_transactions).and_return(double(auto_paging_each: []))
+      expect(Stripe::CreditNote).to receive(:create).with(hash_including(invoice: "in_sep", credit_amount: 4_200), anything)
+                                                    .and_return(Stripe::CreditNote.construct_from(id: "cn_c"))
+      post finances_give_back_path(september), params: { how: "credit" }
+      expect(flash[:notice]).to include("Credited $42.00", "next bills", "SG-0002")
+      expect(september.reload.credit_notes_cents).to eq(4_200)
+      # Credit we've given and no bill has used yet stays out of what's ours to withdraw.
+      expect(CocoScoutMoneyNow.new(check: nil).unused_credit_cents).to eq(4_200)
+    end
+
+    it "explains being short: what's coming in, what's left, and how to close it" do
+      PlatformReconciliation.create!(checked_at: Time.current, checked_on: Date.current, stripe_balance_cents: 232_106, held_for_orgs_cents: 249_947,
+                                     cocoscout_cents: -17_841, imported_net_cents: 232_106, difference_cents: 0, details: { "stripe_available_cents" => 114_187 })
+      CocoScoutLedgerEntry.create!(entry_type: "payout_to_bank", amount_cents: -17_841, occurred_at: 1.month.ago)
+      # 100 tickets in the last 90 days left us $49 after Stripe's processing.
+      CocoScoutLedgerEntry.create!(entry_type: "ticket_fee", amount_cents: 5_000, occurred_at: 1.week.ago, organization: organization)
+      CocoScoutLedgerEntry.create!(entry_type: "processing_cost", amount_cents: -100, occurred_at: 1.week.ago, source_type: "TicketOrder", source_id: 1)
+      CocoScoutLedgerEntry.create!(entry_type: "payout_to_bank", amount_cents: -4_900, occurred_at: 1.week.ago)
+      BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_oct", number: "SG-0003", kind: "usage", status: "open",
+                             amount_due_cents: 15_900, amount_remaining_cents: 15_900, payment_status: "processing", payment_method_type: "us_bank_account",
+                             payment_started_at: Time.zone.local(2026, 10, 31, 20), finalized_at: Time.zone.local(2026, 10, 31, 19),
+                             period_start: Time.zone.local(2026, 10, 1), period_end: Time.zone.local(2026, 11, 1))
+      get finances_path
+      body = response.body
+      expect(body).to include("CocoScout is short $178.41", "Coming in", "October 2026 usage · lands about Thu Nov 5", "$159.00",
+                              "still $19.41 short", "Add $20.00 from our bank", "To be even today", "add $179.00",
+                              "About 40 more tickets", "Or leave it", "Nothing until the $178.41")
+    end
+
+    it "adds money from CocoScout's bank to Stripe" do
+      expect(Stripe::Topup).to receive(:create).with(hash_including(amount: 2_000, currency: "usd"), hash_including(:idempotency_key))
+                                               .and_return(Stripe::Topup.construct_from(id: "tu_1", expected_availability_date: Time.zone.local(2026, 11, 9).to_i))
+      expect { post finances_add_funds_path, params: { amount: "$20.00" } }.to have_enqueued_job(PlatformCheckNowJob)
+      expect(flash[:notice]).to include("Adding $20.00 from CocoScout's bank", "Nov 9")
+
+      post finances_add_funds_path, params: { amount: "0.50" }
+      expect(flash[:alert]).to include("Add between $1")
+    end
+
+    it "steers a refund to a credit, unless the organization has no bills coming" do
+      allow(UsageRules).to receive(:staff).and_return({})
+      allow(UsageRules).to receive(:performers).and_return(organization.id => (1..53).index_with { Time.current })
+      month = { period_start: Time.zone.local(2026, 10, 1), period_end: Time.zone.local(2026, 11, 1), paid_at: Time.current }
+      %w[3 4].each do |n|
+        BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_#{n}", number: "SG-000#{n}", kind: "usage", status: "paid",
+                               amount_due_cents: 15_900, amount_paid_cents: 15_900, **month)
+      end
+      organization.update!(subscription_status: "active", stripe_customer_id: "cus_sg", comped_usage: false)
+      get finances_path
+      expect(response.body).to include("A credit is better here", "They still get every dollar back", "Credit next bill instead", "Refund anyway")
+
+      organization.update!(subscription_status: "canceled")
+      get finances_path
+      expect(response.body).to include("A refund is the way to give this back", "has no bills coming from us")
+      expect(response.body).not_to include("Credit next bill instead")
+    end
+
+    it "shows one month's money in full when its row opens" do
+      CocoScoutLedgerEntry.create!(entry_type: "ticket_fee", amount_cents: 14_350, occurred_at: Time.zone.local(2026, 10, 15), organization: organization)
+      CocoScoutLedgerEntry.create!(entry_type: "stripe_fee", amount_cents: -13_000, occurred_at: Time.zone.local(2026, 10, 31, 12),
+                                   description: "Connect (2026-10-01 - 2026-10-31): Active Account Billing")
+      get finances_month_path(month: "2026-10")
+      expect(response.body).to include("month-detail-2026-10", "Where it came from and where it went", "50¢ ticket fees (287 tickets)", "$143.50",
+                                       "Stripe: Connect: Active Account Billing", "less $130.00", "Who paid us in October")
+      get finances_month_path(month: "2026-13")
+      expect(response).to have_http_status(:not_found)
+      get finances_path(period: "2026-10")
+      expect(response.body).to include("October 2026", "50¢ ticket fees (287 tickets)")
     end
 
     it "lists each organization's money, and one organization's in full" do

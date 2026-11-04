@@ -26,6 +26,7 @@ module NotificationGroups
     Group.new("contracts", "Contracts", "Requests and reminders to sign, signed and countersigned, and ones that stall or expire.", :yours, true, :always, true, true, [], "Contracts"),
     Group.new("shifts", "Shifts and hours", "Shifts assigned, hours approved, onboarding steps.", :yours, false, :person, true, true, [], "Shifts"),
     Group.new("courses", "Courses", "Registrations, cancellations and session reminders.", :yours, false, :person, true, true, [], "Courses"),
+    Group.new("books", "Books and bank", "A bank statement read and matched to the books.", :yours, true, :person, true, true, [], "Books"),
     Group.new("ticketing_sales", "Sales as they happen", "Each online sale, door sale, comp and pass.", :ticketing, true, :plan, false, true, [], "Ticketing"),
     Group.new("ticketing_reports", "Reports", "Daily summary, show day, after the show.", :ticketing, false, :plan, false, true, [], "Ticketing"),
     Group.new("ticketing_milestones", "Milestones", "Sales opened, almost sold out, sold out.", :ticketing, true, :plan, false, true, [], "Ticketing"),
@@ -52,7 +53,8 @@ module NotificationGroups
     "course_registration_confirmed" => "courses", "course_registration_producer_notification" => "courses",
     "course_cancelled_registrant" => "courses",
     # Shifts and hours
-    "shift_declined_manager" => "shifts",
+    "shift_declined_manager" => "shifts", "shift_vacancy_invitation" => "shifts",
+    "shift_vacancy_filled" => "shifts", "shift_vacancy_reclaimed" => "shifts",
     "shift_canceled" => "shifts", "shift_moved" => "shifts",
     # Pay and Contracts, from senders that still go through messages
     "staff_1099_ready" => "pay", "contract_person_added" => "contracts",

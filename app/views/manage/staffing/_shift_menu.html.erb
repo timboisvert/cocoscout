@@ -59,6 +59,9 @@
               <span class="block text-sm text-gray-900 truncate"><%= a.person.name %></span>
               <% if a.declined? %>
                 <span class="block text-xs text-red-700">Can't make it<% if a.decline_reason.present? %>: “<%= a.decline_reason %>”<% end %></span>
+                <% if (vacancy = a.active_vacancy) %>
+                  <%= link_to "Find cover", manage_staffing_vacancy_path(vacancy), class: "block text-xs text-pink-600 hover:text-pink-700 underline" %>
+                <% end %>
               <% end %>
             </span>
             <button type="button" class="text-xs text-gray-500 hover:text-pink-600 underline cursor-pointer bg-transparent border-0 p-1 flex-shrink-0"

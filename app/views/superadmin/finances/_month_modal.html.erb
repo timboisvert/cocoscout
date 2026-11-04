@@ -1,0 +1,30 @@
+<%# One month from the month-by-month table: its totals now, the detail loaded when it opens. locals: month (Date), row (CocoScoutFinances.monthly row) %>
+<% key = month.strftime("%Y-%m") %>
+<div id="month-<%= key %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-2xl sm:mx-4 overflow-hidden max-h-[90vh] flex flex-col" data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white"><%= month.strftime("%B %Y") %><%= " so far" if row[:partial] %></h3>
+      <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+    </div>
+    <div class="px-6 py-5 overflow-y-auto">
+      <div class="grid grid-cols-3 gap-3 text-sm">
+        <div class="rounded-lg border border-gray-200 p-3"><div class="text-gray-600">Earned</div><div class="text-lg font-bold tabular-nums text-gray-900"><%= usd(row[:earned_cents]) %></div></div>
+        <div class="rounded-lg border border-gray-200 p-3"><div class="text-gray-600">Spent</div><div class="text-lg font-bold tabular-nums text-gray-900"><%= usd(row[:spent_cents]) %></div></div>
+        <div class="rounded-lg border <%= row[:kept_cents].negative? ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50' %> p-3">
+          <div class="text-gray-600"><%= row[:kept_cents].negative? ? "Lost" : "Profit" %></div>
+          <div class="text-lg font-bold tabular-nums text-gray-900"><%= usd(row[:kept_cents].abs) %></div>
+        </div>
+      </div>
+      <%= turbo_frame_tag "month-detail-#{key}", src: finances_month_path(month: key), loading: :lazy do %>
+        <p class="mt-4 text-sm text-gray-500">Loading <%= month.strftime("%B") %>…</p>
+      <% end %>
+    </div>
+    <div class="px-4 sm:px-6 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] sm:py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center gap-2">
+      <%= link_to "Open #{month.strftime('%B')} as the page's period", finances_path(period: key), class: "text-sm text-pink-600 hover:underline", data: { turbo_frame: "_top" } %>
+      <%= render "shared/button", text: "Close", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+    </div>
+  </div>
+</div>

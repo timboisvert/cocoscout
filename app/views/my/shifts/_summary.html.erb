@@ -3,7 +3,8 @@
     hours waiting for approval, then approved hours not sent yet. Money on its
     way is the Getting paid card's, so nothing here says "owed" while it's in
     transit. Uses @shift_pay, @upcoming_count, @pending_hours, @approved_hours. %>
-<% next_shift = @rows.first %>
+<%# The next shift they're on: a row that reads "X has it now" is not theirs. %>
+<% next_shift = @rows.find { |r| r[:assignment]&.active? } %>
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
   <div class="rounded-xl border border-pink-200 bg-pink-50 p-4">
     <div class="text-xs font-medium text-pink-600 uppercase tracking-wide">Still to be paid</div>

@@ -55,11 +55,65 @@ RSpec.describe SquareSync do
     expect(day.gross_cents).to eq(3_900)
     expect(day.tax_cents).to eq(370)
     expect(day.tips_cents).to eq(800)
+    # By quarter hour too, for the tip split (§9.14): the 9:10 round and the 12:15 one.
+    expect(day.tips_by_time).to eq({ SquareSync.quarter_key(Time.zone.local(2026, 10, 30, 21, 0)) => { "cents" => 300, "orders" => 1 },
+                                     SquareSync.quarter_key(Time.zone.local(2026, 10, 31, 0, 15)) => { "cents" => 500, "orders" => 1 } })
     expect(day.refunds_cents).to eq(100)
     expect(day.fees_cents).to eq(150)
     expect(day.net_cents).to eq(3_900 + 370 + 800 - 100 - 150)
     expect(integration.reload.last_synced_at).to be_present
     expect(integration.external_categories.map { |c| c["name"] }).to eq([ "Beer", "T-shirts" ])
+  end
+
+  it "leaves no row for a day Square has nothing on, even though the integration saves at the end" do
+    allow(api).to receive_messages(orders: [], payments: [])
+
+    pull = described_class.pull!(integration, from: Date.new(2026, 10, 26), to: Date.new(2026, 11, 1), trigger: "manual")
+
+    expect(pull).to be_done
+    expect(integration.reload.last_synced_at).to be_present
+    expect(RegisterDay.where(integration: integration)).to be_empty
+  end
+
+  it "reads a refund, which Square returns as an order of its own, as a refund and not an order" do
+    friday = Date.new(2026, 10, 30)
+    allow(api).to receive(:orders).and_return([
+      { "closed_at" => Time.zone.local(2026, 10, 30, 21, 10).iso8601, "total_tax_money" => { "amount" => 72 },
+        "line_items" => [ { "catalog_object_id" => "V_BEER", "gross_sales_money" => { "amount" => 700 } } ] },
+      { "closed_at" => Time.zone.local(2026, 10, 30, 21, 40).iso8601, "returns" => [ { "uid" => "r1" } ],
+        "return_amounts" => { "total_money" => { "amount" => 300 } }, "refunds" => [ { "status" => "APPROVED" } ] }
+    ])
+    allow(api).to receive(:payments).and_return([])
+
+    pull = described_class.pull!(integration, from: friday, to: friday, trigger: "manual")
+
+    expect(pull.orders_count).to eq(1)
+    day = integration.register_days.find_by!(business_date: friday)
+    expect(day.orders_count).to eq(1)
+    expect(day.gross_cents).to eq(700)
+    expect(day.refunds_cents).to eq(300)
+  end
+
+  it "maps a register category by its name before anyone chooses: Bar is bar, Merch is merchandise" do
+    integration.update!(settings: integration.settings.merge("category_map" => {}))
+    allow(api).to receive(:catalog).and_return([
+      { "type" => "ITEM", "id" => "I_BEER", "item_data" => { "name" => "Beer", "reporting_category" => { "id" => "C_BAR" }, "variations" => [ { "id" => "V_BEER" } ] } },
+      { "type" => "ITEM", "id" => "I_TEE", "item_data" => { "name" => "T-shirt", "reporting_category" => { "id" => "C_MERCH" }, "variations" => [ { "id" => "V_TEE" } ] } },
+      { "type" => "CATEGORY", "id" => "C_BAR", "category_data" => { "name" => "Bar" } },
+      { "type" => "CATEGORY", "id" => "C_MERCH", "category_data" => { "name" => "Merch" } }
+    ])
+    allow(api).to receive(:orders).and_return([
+      { "closed_at" => Time.zone.local(2026, 10, 30, 21, 10).iso8601,
+        "line_items" => [ { "catalog_object_id" => "V_BEER", "gross_sales_money" => { "amount" => 700 } }, { "catalog_object_id" => "V_TEE", "gross_sales_money" => { "amount" => 2_500 } } ] }
+    ])
+    allow(api).to receive(:payments).and_return([])
+
+    described_class.pull!(integration, from: Date.new(2026, 10, 30), to: Date.new(2026, 10, 30), trigger: "manual")
+
+    day = integration.register_days.find_by!(business_date: Date.new(2026, 10, 30))
+    expect(day.sales_by_category).to eq({ "bar" => 700, "merchandise" => 2_500 })
+    expect(integration.reload.our_category("C_BAR")).to eq("bar")
+    expect(integration.our_category("C_MERCH")).to eq("merchandise")
   end
 
   it "logs a pull that did not finish and marks the integration" do

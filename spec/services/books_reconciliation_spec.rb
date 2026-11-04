@@ -34,6 +34,23 @@ RSpec.describe BooksReconciliation do
     expect(described_class.check(org)).to eq([])
   end
 
+  # A show still ahead has presales Financials count that the books hold as
+  # tickets sold for upcoming shows: compared through today, they agree.
+  it "compares Financials with Books through today" do
+    travel_to(Time.zone.local(2026, 11, 15, 12)) do
+      production = listing.production
+      listing.show.update!(date_and_time: 3.days.from_now)
+      sold(2)
+      expect(described_class.financials_vs_books(org, period_key: "this_month")).to be_empty
+
+      past = create(:show, production: production, date_and_time: 2.days.ago)
+      ShowFinancials.create!(show: past, revenue_type: "ticket_sales", ticket_revenue: 999, ticket_count: 9)
+      LedgerPosting.unpost!(source: past.show_financials, kind: "outside_tickets")
+      row = described_class.financials_vs_books(org, period_key: "this_month").sole
+      expect([ row.production, row.financials_in_cents, row.books_in_cents ]).to eq([ production, 99_900, 0 ])
+    end
+  end
+
   it "notices a sale that never reached the books" do
     order = sold(1)
     LedgerPosting.unpost!(source: order, kind: "sale")

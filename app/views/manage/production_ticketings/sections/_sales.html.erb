@@ -48,7 +48,9 @@
     </div>
     <div>
       <label for="production_ticketing_description" class="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
-      <%= f.text_area :description, rows: 5, placeholder: production.description.to_s.truncate(200), class: input_class %>
+      <div data-controller="no-attachments">
+        <%= f.rich_text_area :description, placeholder: production.description.to_plain_text.squish.truncate(200), class: "w-full min-h-[150px]" %>
+      </div>
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>

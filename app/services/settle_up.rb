@@ -27,19 +27,58 @@ class SettleUp
   end
 
   # Someone who worked the day, for splitting tips: from Staffing's shifts
-  # and hours. hours is what they logged, else what they were scheduled.
-  Worker = Data.define(:person, :hours, :staff_member)
+  # and hours, each span in the role it was worked (TipSplit::Span). hours is
+  # what they logged, else what they were scheduled.
+  Worker = Data.define(:person, :staff_member, :spans) do
+    def hours = spans.sum(&:hours).round(2)
+  end
 
   # The day's tips (plan §9.3): the register's total, how it's split, each
   # share, and who was there. Nothing is split until someone checks it.
-  Tips = Data.define(:cents, :record, :shares, :workers) do
+  # With the organization's tip rule on and the clock to read (§9.14), the
+  # split is worked out from who was on: rows, pool.
+  Tips = Data.define(:cents, :record, :shares, :workers, :rule, :by_time, :calculator) do
     def any? = cents.positive?
     def checked? = record&.tips_checked? == true
     def state = checked? ? :ok : :wait
-    def split = record&.tips_split.presence || "even"
+    def split = record&.tips_split.presence_in(%w[even hours typed]) || "even"
     def assigned_cents = shares.sum(&:amount_cents)
     def unassigned_cents = cents - assigned_cents
     def share_for(person) = shares.find { |sh| sh.person_id == person.id }
+    # With the rule on, only people in a role that shares are listed anywhere
+    # (Tim, 2026-11-03: not the door, not the booth). A saved share in any
+    # other role, or in none, doesn't put someone on the list.
+    def sharers
+      return workers unless rule&.enabled?
+
+      calculator.sharers
+    end
+    def by_rule? = calculator.applies?
+    def rows = calculator.rows
+    # The stretches of time with nobody on the bar, each a question for the
+    # manager; the day's register can't be checked while one is unanswered.
+    def stretches = by_rule? ? calculator.stretches : []
+    def unresolved = by_rule? ? calculator.unresolved : []
+    # What stays with the house: by the rule, the stretches it keeps; by
+    # hand, whatever the shares don't add up to.
+    def house_cents = by_rule? ? calculator.house_cents : [ unassigned_cents, 0 ].max
+    def given_cents = cents - house_cents
+
+    # The by-hand rows: each sharer with the saved share, else the
+    # suggestion for the chosen split (evenly, by hours, or nothing yet).
+    def hand_rows
+      workers = sharers
+      total_hours = workers.sum(&:hours)
+      workers.map do |worker|
+        share = share_for(worker.person)
+        suggested = case split
+        when "hours" then total_hours.positive? ? (cents * worker.hours / total_hours).round : 0
+        when "typed" then 0
+        else workers.any? ? (cents / workers.size.to_f).round : 0
+        end
+        { worker: worker, share: share, cents: (share ? share.amount_cents : suggested), method: (share&.method || (worker.staff_member ? "payout" : "cash")) }
+      end
+    end
   end
 
   Day = Data.define(:organization, :date, :record, :shows, :door_cash, :registers, :tips) do
@@ -51,8 +90,7 @@ class SettleUp
     def pieces
       shows.map { |s| [ s.show.display_name, s.state ] } +
         (door_cash.any? ? [ [ "Door cash", door_cash.state ] ] : []) +
-        (registers.any? ? [ [ register_label, registers_state ] ] : []) +
-        (tips.any? ? [ [ "Tips", tips.state ] ] : [])
+        (registers.any? ? [ [ register_label, registers_state ] ] : [])
     end
     def checked_count = pieces.count { |_, state| state == :ok }
     def all_checked? = pieces.any? && pieces.all? { |_, state| state == :ok }
@@ -77,7 +115,34 @@ class SettleUp
     by_date = shows.group_by { |s| SettlementDay.day_for(organization, s.date_and_time) }.select { |d, _| range.cover?(d) }
     register_dates = register_days(organization).where(business_date: range).distinct.pluck(:business_date)
     dates = (by_date.keys + records.keys + register_dates).uniq.sort.reverse
-    dates.map { |date| build(organization, date, by_date.fetch(date, []), records[date]) }
+    registers = registers_by_date(organization, dates)
+    cash = door_cash_by_listing(shows)
+    dates.map { |date| build(organization, date, by_date.fetch(date, []), records[date], registers: registers.fetch(date, []), cash: cash) }
+  end
+
+  # Just the dates in the span that had money in them, for a calendar's dots.
+  def self.dates(organization, range)
+    shows = revenue_shows(organization).where(date_and_time: range.begin.in_time_zone.beginning_of_day..(range.end.in_time_zone.end_of_day + 1.day)).pluck(:date_and_time)
+    dates = shows.map { |t| SettlementDay.day_for(organization, t) }.select { |d| range.cover?(d) }
+    dates += SettlementDay.where(organization: organization, date: range).pluck(:date)
+    dates += register_days(organization).where(business_date: range).distinct.pluck(:business_date)
+    dates.to_set
+  end
+
+  # Where each day with money in it stands, for the calendar's dots (Tim,
+  # 2026-11-03: not that a day had money, but whether it's done): settled,
+  # to settle (over and open), or waiting (not over yet, or history from
+  # before the Settle up start date).
+  def self.date_states(organization, range)
+    settled = SettlementDay.where(organization: organization, date: range).settled.pluck(:date).to_set
+    starts = organization.settle_up_starts_on
+    dates(organization, range).to_h do |date|
+      state = if settled.include?(date) then :settled
+      elsif (starts && date < starts) || !SettlementDay.ended?(organization, date) then :waiting
+      else :to_settle
+      end
+      [ date, state ]
+    end
   end
 
   # Days that are over, had money in them, and nobody has settled, from the
@@ -91,9 +156,29 @@ class SettleUp
     settled = SettlementDay.where(organization: organization).settled.pluck(:date).to_set
     by_date = shows.group_by { |s| SettlementDay.day_for(organization, s.date_and_time) }
     register_days(organization).where("business_date <= ?", as_of.to_date).distinct.pluck(:business_date).each { |d| by_date[d] ||= [] }
-    by_date.reject { |date, _| settled.include?(date) || (starts && date < starts) || !SettlementDay.ended?(organization, date, now: as_of) }
-           .sort_by { |date, _| date }
-           .map { |date, day_shows| build(organization, date, day_shows, nil) }
+    open = by_date.reject { |date, _| settled.include?(date) || (starts && date < starts) || !SettlementDay.ended?(organization, date, now: as_of) }
+                  .sort_by { |date, _| date }
+    registers = registers_by_date(organization, open.map(&:first))
+    cash = door_cash_by_listing(open.flat_map(&:last))
+    open.map { |date, day_shows| build(organization, date, day_shows, nil, registers: registers.fetch(date, []), cash: cash) }
+  end
+
+  # The register days for many dates at once, by date (the Settle up list
+  # was asking for each day's on its own, 2026-11-02).
+  def self.registers_by_date(organization, dates)
+    return {} if dates.empty?
+
+    register_days(organization).where(business_date: dates).includes(:integration, :location).order(:external_location_id).to_a.group_by(&:business_date)
+  end
+
+  # Cash at the door by listing, for many days at once: [taken, refunded, orders].
+  def self.door_cash_by_listing(shows)
+    ids = shows.filter_map { |s| s.ticket_listing&.id }
+    return {} if ids.empty?
+
+    TicketOrder.where(ticket_listing_id: ids, money_path: "cash", status: TicketOrder::WAS_PAID).group(:ticket_listing_id)
+               .pluck(:ticket_listing_id, Arel.sql("COALESCE(SUM(total_cents), 0)"), Arel.sql("COALESCE(SUM(refunded_cents), 0)"), Arel.sql("COUNT(*)"))
+               .to_h { |id, taken, refunded, count| [ id, [ taken.to_i, refunded.to_i, count.to_i ] ] }
   end
 
   # Register days from connected integrations, with something in them.
@@ -116,38 +201,55 @@ class SettleUp
         .order(:date_and_time)
   end
 
-  def self.build(organization, date, shows, record)
+  # registers and cash: read for many days at once by days / to_settle.
+  def self.build(organization, date, shows, record, registers: nil, cash: nil)
     pieces = shows.sort_by(&:date_and_time).map { |show| show_piece(organization, show) }
-    registers = register_days(organization).on(date).includes(:integration, :location).order(:external_location_id).to_a
-    Day.new(organization: organization, date: date, record: record, shows: pieces, door_cash: door_cash(organization, date, shows, record),
+    registers ||= register_days(organization).on(date).includes(:integration, :location).order(:external_location_id).to_a
+    Day.new(organization: organization, date: date, record: record, shows: pieces, door_cash: door_cash(organization, date, shows, record, cash: cash),
             registers: registers, tips: tips(organization, date, registers, record))
   end
 
   def self.tips(organization, date, registers, record)
-    cents = registers.select { |r| r.integration.brings?("tips") }.sum(&:tips_cents)
+    with_tips = registers.select { |r| r.integration.brings?("tips") }
+    cents = with_tips.sum(&:tips_cents)
     shares = record ? record.tip_shares.includes(:person).to_a : []
-    Tips.new(cents: cents, record: record, shares: shares, workers: (cents.positive? ? workers(organization, date, shares) : []))
+    by_time = with_tips.each_with_object(Hash.new { |h, k| h[k] = { "cents" => 0, "orders" => 0 } }) do |register, merged|
+      register.tips_by_time.each { |key, q| merged[key]["cents"] += q["cents"].to_i; merged[key]["orders"] += q["orders"].to_i }
+    end
+    workers = cents.positive? ? workers(organization, date, shares) : []
+    rule = organization.tip_rule
+    Tips.new(cents: cents, record: record, shares: shares, workers: workers, rule: rule, by_time: by_time.to_h,
+             calculator: TipSplit.new(rule: rule, tips_cents: cents, tips_by_time: by_time.to_h, workers: workers, shares: shares, choices: record&.tips_unstaffed || {}))
   end
 
-  # Who worked the day: Staffing's shift assignments and logged hours in the
-  # day's window, plus anyone already given a share.
+  # Who worked the day, and when: a saved share's span when someone set it,
+  # else Staffing's logged hours in the day's window, else the scheduled
+  # shift; plus anyone already given a share. Each span knows its role.
   def self.workers(organization, date, shares)
     window = SettlementDay.window(organization, date)
-    hours = Hash.new(0.0)
     people = {}
-    organization.staff_time_entries.where(started_at: window).includes(:person).each do |entry|
+    logged = Hash.new { |h, k| h[k] = [] }
+    scheduled = Hash.new { |h, k| h[k] = [] }
+    organization.staff_time_entries.where(started_at: window).includes(:person, shift_assignment: :shift).each do |entry|
       people[entry.person_id] = entry.person
-      hours[entry.person_id] += entry.hours.to_f
+      logged[entry.person_id] << TipSplit::Span.new(from: entry.started_at, to: entry.ended_at, house_role_id: entry.house_role_id || entry.shift_assignment&.shift&.house_role_id)
     end
     organization.shifts.where(starts_at: window).includes(shift_assignments: :person).each do |shift|
       shift.shift_assignments.select(&:active?).each do |assignment|
         people[assignment.person_id] ||= assignment.person
-        hours[assignment.person_id] += shift.scheduled_hours unless hours.key?(assignment.person_id)
+        scheduled[assignment.person_id] << TipSplit::Span.new(from: shift.starts_at, to: shift.ends_at, house_role_id: shift.house_role_id)
       end
     end
-    shares.each { |sh| people[sh.person_id] ||= sh.person }
+    set_by_hand = {}
+    shares.each do |sh|
+      people[sh.person_id] ||= sh.person
+      set_by_hand[sh.person_id] = [ TipSplit::Span.new(from: sh.worked_from, to: sh.worked_to, house_role_id: sh.house_role_id) ] if sh.worked_from && sh.worked_to
+    end
     members = organization.organization_staff_members.where(person_id: people.keys).index_by(&:person_id)
-    people.values.sort_by(&:name).map { |person| Worker.new(person: person, hours: hours[person.id].round(2), staff_member: members[person.id]) }
+    people.values.sort_by(&:name).map do |person|
+      spans = set_by_hand[person.id] || (logged[person.id].presence || scheduled[person.id]).sort_by(&:from)
+      Worker.new(person: person, staff_member: members[person.id], spans: spans)
+    end
   end
 
   def self.show_piece(organization, show)
@@ -173,8 +275,13 @@ class SettleUp
 
   # Cash taken at the door for the day's shows (tickets and products paid
   # in cash), which should be in the box at close.
-  def self.door_cash(organization, date, shows, record)
+  def self.door_cash(organization, date, shows, record, cash: nil)
     listing_ids = shows.filter_map { |s| s.ticket_listing&.id }
+    if cash
+      rows = listing_ids.map { |id| cash.fetch(id, [ 0, 0, 0 ]) }
+      return DoorCash.new(expected_cents: rows.sum { |taken, refunded, _| taken - refunded }, cash_orders_count: rows.sum(&:last), record: record)
+    end
+
     orders = listing_ids.any? ? TicketOrder.where(ticket_listing_id: listing_ids, money_path: "cash", status: TicketOrder::WAS_PAID) : TicketOrder.none
     DoorCash.new(expected_cents: orders.sum(:total_cents) - orders.sum(:refunded_cents), cash_orders_count: orders.count, record: record)
   end

@@ -236,6 +236,9 @@
               <% end %>
             </h2>
             <p class="text-xs text-gray-600 mt-1">We debit your bank via ACH, then pay each payee to their connected bank.</p>
+            <% if fund_debit_cents.positive? && (note = bank_debit_note(Current.organization)) %>
+              <p class="text-xs text-gray-600 mt-1"><%= note %></p>
+            <% end %>
             <% if held_cents.positive? %>
               <p class="text-xs text-gray-600 mt-1">CocoScout already holds <%= number_to_currency(held_cents / 100.0) %> of this run (course sales &amp; collected contract money) — your bank is debited only <%= number_to_currency(fund_debit_cents / 100.0) %>.</p>
             <% end %>
@@ -267,6 +270,7 @@
                   else
                     "We'll debit #{number_to_currency(@batch.total_cents / 100.0)} from your bank."
                   end
+                  fund_message = [ fund_message, bank_debit_note(Current.organization) ].compact.join(" ") if fund_debit_cents.positive?
                 %>
                 <%= render "shared/confirm_modal", id: fund_pay_cid,
                       title: "Fund and pay this payout run?",

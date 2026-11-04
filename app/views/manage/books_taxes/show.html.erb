@@ -8,7 +8,12 @@
 %>
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
-  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Money", manage_money_index_path ], [ "Books", manage_money_books_path ] ], text: "Taxes", links: [ { text: "CSV", path: manage_money_taxes_path(base.merge(format: :csv)), data: { turbo: false } } ] } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: books_breadcrumbs,
+    text: "Taxes",
+    links: [ { text: "CSV", path: manage_money_taxes_path(base.merge(format: :csv)), data: { turbo: false } } ]
+  } %>
+<div>
   <p class="max-w-3xl text-sm text-gray-600 mb-4">One year, summarized the way the forms ask. Nothing is filed from here; this is what you or your accountant copy from.</p>
 
   <div class="mb-5">
@@ -66,4 +71,5 @@
       </ul>
     </section>
   </div>
+</div>
 </div>

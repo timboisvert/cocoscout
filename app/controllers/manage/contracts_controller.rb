@@ -405,7 +405,7 @@ module Manage
       return redirect_to(manage_contract_path(@contract), alert: "This contract has no production yet.") unless @contract.production
 
       @production_name = @contract.production.name
-      @description = @contract.production.description.to_s
+      @description = @contract.production.description
     end
 
     def apply_amend_basics
@@ -413,7 +413,7 @@ module Manage
       return redirect_to(manage_contract_path(@contract), alert: "This contract has no production yet.") unless production
 
       @production_name = params[:production_name].to_s.strip
-      @description = params[:description].to_s.strip
+      @description = params[:description].to_s
 
       if @production_name.blank?
         @error = "Give the production a name."
@@ -422,7 +422,14 @@ module Manage
 
       old_name = production.name
       renamed = @production_name != old_name
-      described = @description != production.description.to_s.strip
+      # Rich text: emptied counts as a change only when there were words, and
+      # the same words typed again (the editor's own HTML round-tripped) don't.
+      # (Content#blank? looks at the HTML, where an emptied editor still has a
+      # <div><br></div>, so ask the plain words.)
+      incoming = ActionText::Content.new(@description)
+      current = production.description.body || ActionText::Content.new("")
+      emptied = incoming.to_plain_text.blank?
+      described = emptied ? current.to_plain_text.present? : incoming.to_html != current.to_html
 
       unless renamed || described
         redirect_to manage_contract_path(@contract), notice: "Nothing to change."
@@ -430,7 +437,7 @@ module Manage
       end
 
       @contract.transaction do
-        production.update!(name: @production_name, description: @description.presence)
+        production.update!(name: @production_name, description: (emptied ? "" : @description))
         if renamed
           @contract.update!(production_name: @production_name)
           # Its other contracts that still carry the old name follow it.

@@ -2,7 +2,7 @@
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [ [ "Money", manage_money_index_path ], [ "Books", manage_money_books_path ], [ "Entries", manage_money_books_path(tab: "entries") ], [ @record.title, manage_money_record_path(@record) ] ],
+    breadcrumbs: [ [ "Money", manage_money_index_path ], [ "Books", manage_money_books_path ], [ "Entries", manage_money_books_section_path(section: "entries") ], [ @record.title, manage_money_record_path(@record) ] ],
     text: "Change",
     links: []
   } %>

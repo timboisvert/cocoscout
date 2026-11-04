@@ -83,7 +83,7 @@
             <% if @organization.comped_usage? %>
               Comped: no charge for performers paid or staff scheduled.
             <% elsif @organization.bills_usage? %>
-              Billed monthly: $3 per performer paid, $5 per staff member scheduled.
+              Billed monthly: $5 per staff member and $3 per everyone else paid through CocoScout, plus $5 per bank debit after 2 free.
             <% else %>
               Not billed: usage is only billed on Pro.
             <% end %>

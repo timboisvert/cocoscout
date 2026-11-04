@@ -20,7 +20,8 @@ module Ticketing
       {
         title: @listing.display_title,
         production: @listing.production.name,
-        description: @listing.effective_description,
+        description: @listing.effective_description&.to_plain_text,
+        description_html: @listing.effective_description&.to_s,
         organizer: @listing.organization.name,
         starts_at: @listing.starts_at&.iso8601,
         ends_at: @listing.ends_at&.iso8601,

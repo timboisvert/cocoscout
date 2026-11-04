@@ -4,7 +4,7 @@
 # the bills CocoScout sends, and the daily check against Stripe. Four pages
 # and an org page:
 #
-#   /superadmin/finances                CocoScout: earned, spent, net, who paid
+#   /superadmin/finances                CocoScout: ours now, owed to us, owed back, profit by stream
 #   /superadmin/finances/organizations  each org: held, in flight, billed, paid us
 #   /superadmin/finances/subscriptions  plans, comps, bills, usage
 #   /superadmin/finances/stripe         does it all match Stripe?
@@ -15,8 +15,11 @@ module Superadmin
     before_action :use_superadmin_sidebar
 
     def cocoscout
-      @finances = CocoScoutFinances.new(params[:period])
       @check = PlatformReconciliation.latest
+      @give_back = UsageOverbilling.all_rows
+      @finances = CocoScoutFinances.new(params[:period], give_back: @give_back)
+      @money_now = CocoScoutMoneyNow.new(check: @check, give_back: @give_back)
+      @monthly = CocoScoutFinances.monthly(give_back: @give_back)
       respond_to do |format|
         format.html
         format.csv do
@@ -24,6 +27,71 @@ module Superadmin
                     filename: "cocoscout-ledger-#{@finances.period}-#{Date.current.iso8601}.csv", type: "text/csv"
         end
       end
+    end
+
+    # One month in full, for the month-by-month table's panel: where its
+    # money came from and where it went. Loaded when the panel opens.
+    def month
+      @finances = CocoScoutFinances.new(params[:month].to_s, give_back: UsageOverbilling.all_rows)
+      return head :not_found unless @finances.period == params[:month].to_s
+
+      render partial: "superadmin/finances/month_detail", locals: { finances: @finances }
+    end
+
+    # Give back one bill that charged too much (a second bill for a month, or
+    # more than the month's paid work): refunded to the card or bank it was
+    # paid from, or (how=credit) taken off the organization's next bills.
+    def give_back
+      invoice = BillingInvoice.find(params[:id])
+      how = give_back_how
+      row = UsageOverbilling.row_for(invoice)
+      unless row&.refundable_now?
+        message = row&.lands_on ? "its payment is still landing (about #{row.lands_on.strftime('%b %-d')})" : "there's nothing to give back on it"
+        redirect_to finances_path, alert: "#{invoice.organization.name}'s bill #{invoice.number} can't be given back yet: #{message}."
+        return
+      end
+
+      note = UsageOverbilling.give_back!(row, how: how)
+      done = how == "credit" ? "Credited #{helpers.usd(row.over_cents)} to #{invoice.organization.name}'s next bills, from bill #{invoice.number}." :
+                               "Refunded #{helpers.usd(row.over_cents)} to #{invoice.organization.name} on bill #{invoice.number}. It reaches their card or bank in a few days."
+      redirect_to finances_path, notice: note ? done : "Bill #{invoice.number} has already been given back."
+    rescue Stripe::StripeError => e
+      redirect_to finances_path, alert: "Giving back bill #{invoice.number} didn't go through: #{e.message}"
+    end
+
+    # Move money from CocoScout's own bank into its Stripe balance (a Stripe
+    # top-up), to cover what the organizations' balances are owed. A bank
+    # transfer, so it takes a few business days to become available; the
+    # books count it as soon as Stripe shows it, which the check run right
+    # after picks up.
+    ADD_FUNDS_MAX_CENTS = 1_000_000
+
+    def add_funds
+      cents = (params[:amount].to_s.delete("$,").to_d * 100).round.to_i
+      unless cents.between?(100, ADD_FUNDS_MAX_CENTS)
+        redirect_to finances_path, alert: "Add between $1 and #{helpers.usd(ADD_FUNDS_MAX_CENTS)}."
+        return
+      end
+
+      topup = Stripe::Topup.create(
+        { amount: cents, currency: "usd", description: "Added from CocoScout's bank by #{Current.user&.email_address}" },
+        { idempotency_key: "cocoscout-add-funds-#{Current.user&.id}-#{cents}-#{Time.current.strftime('%Y%m%d%H%M')}" }
+      )
+      PlatformCheckNowJob.perform_later
+      lands = topup["expected_availability_date"] ? Time.zone.at(topup["expected_availability_date"]).strftime("%b %-d") : "in a few business days"
+      redirect_to finances_path, notice: "Adding #{helpers.usd(cents)} from CocoScout's bank. Stripe expects it #{lands}; it counts toward the gap as soon as Stripe shows it (refresh in a minute)."
+    rescue Stripe::StripeError => e
+      redirect_to finances_path, alert: "Stripe didn't take the transfer: #{e.message} You can also add it in Stripe under Balances, Add to balance."
+    end
+
+    # Give back every bill that charged too much and can go now, the same way.
+    def give_back_all
+      how = give_back_how
+      rows = UsageOverbilling.all_rows.select(&:refundable_now?)
+      rows.each { |row| UsageGiveBackJob.perform_later(row.invoice.id, how) }
+      verb = how == "credit" ? "Crediting" : "Refunding"
+      redirect_to finances_path, notice: rows.any? ? "#{verb} #{helpers.pluralize(rows.size, 'bill')} (#{helpers.usd(rows.sum(&:over_cents))}). Refresh in a minute to see them go." :
+                                                     "Nothing can be given back right now."
     end
 
     def organizations
@@ -53,8 +121,8 @@ module Superadmin
           staff: StaffActivation.where(organization: org).for_month(month).count }
       end
       @last_invoices = BillingInvoice.where(organization_id: @orgs.map(&:id)).newest_first.group_by(&:organization_id)
-      paying = @orgs.select { |o| !o.comped? && o.subscription_status.in?(SubscriptionSyncService::ACCESS_STATUSES) }
-      @mrr_cents = paying.sum { |o| o.subscription_interval == "year" ? (SubscriptionPlan::PRO_ANNUAL_CENTS / 12.0).round : SubscriptionPlan::PRO_MONTHLY_CENTS }
+      paying = @orgs.select { |o| !o.comped? && (o.pro_on_monthly_bill? || o.subscription_status.in?(SubscriptionSyncService::ACCESS_STATUSES)) }
+      @mrr_cents = paying.sum { |o| !o.pro_on_monthly_bill? && o.subscription_interval == "year" ? (SubscriptionPlan::PRO_ANNUAL_CENTS / 12.0).round : SubscriptionPlan::PRO_MONTHLY_CENTS }
       @paying_count = paying.size
       @comped = @orgs.select(&:comped?)
       @past_due = @orgs.select { |o| o.subscription_status == "past_due" }
@@ -128,6 +196,10 @@ module Superadmin
     end
 
     private
+
+    def give_back_how
+      params[:how] == "credit" ? "credit" : "refund"
+    end
 
     def use_superadmin_sidebar
       @show_my_sidebar = false

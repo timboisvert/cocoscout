@@ -47,11 +47,6 @@ class OrgMoneySummary
     sums.filter_map { |key, cents| [ payees[key], cents ] if payees[key] }.sort_by { |_, cents| -cents }
   end
 
-  def usage_this_month(month = Date.current)
-    { performers: PerformerActivation.where(organization: organization).for_month(month).count,
-      staff: StaffActivation.where(organization: organization).for_month(month).count }
-  end
-
   def invoices
     BillingInvoice.where(organization: organization).newest_first
   end

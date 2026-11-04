@@ -122,8 +122,17 @@ class PayoutContribution < ApplicationRecord
   # draft discarded), the charge goes back to owed — otherwise it reads as
   # settled, and the share re-added to a new run pays out gross.
   after_destroy :undo_contract_deduction
+  # Contract money on a run is the run's to post; off it, it's owed on its own.
+  after_commit :restate_contract_money, on: %i[create destroy]
 
   private
+
+  def restate_contract_money
+    return unless source_type == "ContractPayment"
+
+    payment = ContractPayment.find_by(id: source_id)
+    BooksOutsidePoster.post_contract_payment!(payment) if payment
+  end
 
   def undo_contract_deduction
     return unless source_type == "ContractPayment" && amount_cents.negative?

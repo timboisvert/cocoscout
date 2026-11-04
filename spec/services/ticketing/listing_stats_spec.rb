@@ -20,6 +20,20 @@ RSpec.describe Ticketing::ListingStats do
     end
   end
 
+  # The Home week asked each show's seats on its own (2026-11-02).
+  it "reads every listing's seats in the same handful of queries" do
+    buy({ general => "2" })
+    others = 4.times.map do
+      other = create(:ticket_listing, organization: org)
+      other.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 50)
+      other
+    end
+    one = count_queries { Ticketing::ListingStats.for([ listing ]).each_value { |s| [ s.remaining, s.capacity, s.outside_sold, s.by_tier ] } }
+    five = count_queries { Ticketing::ListingStats.for([ listing, *others ]).each_value { |s| [ s.remaining, s.capacity, s.outside_sold, s.by_tier ] } }
+    expect(five - one).to be <= 1
+    expect(Ticketing::ListingStats.of(listing).remaining).to eq(58)
+  end
+
   it "counts sold, comps, money, refunds, check-ins, channels, codes and the daily series" do
     open_every_door!
     TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")

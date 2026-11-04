@@ -1,6 +1,6 @@
 <% content_for :title, "Pay People" %>
 
-<div class="w-full mb-10" data-controller="pay-run tips-worksheet pay-draft help-modal pay-hidden-staff"
+<div class="w-full mb-10" data-controller="pay-run tips-worksheet pay-draft help-modal pay-hidden-staff pay-tips"
      data-action="input->pay-run#recalc change->pay-run#recalc input->pay-hidden-staff#autoReveal change->pay-hidden-staff#autoReveal input->tips-worksheet#syncAll"
      data-pay-draft-url-value="<%= manage_staffing_pay_draft_path %>"
      data-pay-draft-initial-value="<%= @draft %>">
@@ -117,6 +117,18 @@
                   icon: "clock", type: :button, data: { action: "click->pay-hours#openPull" } %>
           </div>
         <% end %>
+        <%# Tips from settled days (Settle up) wait here like approved hours: one
+            click puts each person's shares on their tips worksheet, day by day. %>
+        <% if @members_with_tips_waiting.any? %>
+          <div class="flex items-center justify-between gap-3 px-3 py-2.5 border-b border-gray-200 bg-gray-50 flex-wrap" data-pay-tips-target="bar">
+            <p class="text-xs text-gray-600">
+              <%= pluralize(@members_with_tips_waiting.size, "person") %>
+              <%= @members_with_tips_waiting.size == 1 ? "has" : "have" %>
+              tips waiting from Settle up — <%= number_to_currency(@tips_waiting_cents / 100.0) %> to pay through us<%= ", plus cash tips for the record" if @members_with_tips_waiting.any? { |_, shares| shares.any?(&:cash?) } %>.
+            </p>
+            <%= render "shared/button", text: "Pull in tips", variant: "primary", size: "small", type: :button, data: { action: "click->pay-tips#pullAll" } %>
+          </div>
+        <% end %>
         <table class="block lg:table min-w-full text-sm">
           <thead class="hidden lg:table-header-group bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
             <tr>
@@ -144,9 +156,10 @@
                 # fallback for role-less work.
                 role_rates = @role_rates_by_member[member.id] || []
                 entries = @approved_entries_by_person[member.person_id] || []
+                tips_waiting = (@tips_waiting_by_person[member.person_id] || []).map { |sh| { id: sh.id, date: sh.day_label, amount: format("%.2f", sh.amount_cents / 100.0), method: sh.method } }
               %>
               <tr data-pay-run-target="row" data-pay-accordion-target="row" data-pay-hours-target="row"
-                  data-pay-hidden-staff-target="row"
+                  data-pay-hidden-staff-target="row" data-pay-tips-target="row" data-tips-waiting="<%= tips_waiting.to_json %>"
                   data-rate="<%= member.hourly_rate_cents.to_i %>" data-payable="<%= can_pay %>"
                   data-member-id="<%= member.id %>" data-member-name="<%= member.display_name %>"
                   data-hidden-from-pay="<%= hidden_from_pay %>"
@@ -198,6 +211,7 @@
                   <div class="text-right">
                     <input id="pay-tips-<%= member.id %>" type="hidden" name="lines[<%= member.id %>][tips]" data-pay-field="tips" data-action="input->pay-run#recalc">
                     <span id="pay-tips-sheet-<%= member.id %>" class="hidden"></span>
+                    <span id="pay-tip-shares-<%= member.id %>" class="hidden"></span>
                     <%= render "shared/button", text: "Add tips", variant: "secondary", size: "small", type: :button,
                           classes: "w-full lg:w-auto",
                           data: { action: "click->tips-worksheet#open", "tips-worksheet-target": "button",

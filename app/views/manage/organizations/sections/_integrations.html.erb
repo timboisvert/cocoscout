@@ -34,13 +34,13 @@
             Bar, food and merch sales, tips, sales tax and fees, pulled every morning for the night before and during the night as orders close, onto the day's worksheet.
           <% end %>
         </p>
-        <div class="flex items-center justify-between gap-2">
+        <div class="space-y-1.5">
           <% if square&.connected? %>
-            <%= render "shared/button", text: "Settings", variant: "secondary", size: "small", path: manage_organization_square_path(@organization) %>
-            <span class="text-xs text-gray-500"><% if @last_pull %>Last pull <%= @last_pull.started_at.strftime("%-l:%M %P, %b %-d") %><% else %>No pull yet<% end %></span>
+            <div><%= render "shared/button", text: "Settings", variant: "secondary", size: "small", path: manage_organization_square_path(@organization) %></div>
+            <p class="text-xs text-gray-500"><% if @last_pull %>Last pull <%= @last_pull.started_at.strftime("%-l:%M %P, %b %-d") %><% else %>No pull yet<% end %></p>
           <% else %>
-            <%= render "shared/button", text: "Connect with Square", variant: "primary", size: "small", path: manage_organization_square_path(@organization) %>
-            <span class="text-xs text-gray-500">Square's own sign-in; we never see your password.</span>
+            <div><%= render "shared/button", text: "Connect with Square", variant: "primary", size: "small", path: manage_organization_square_path(@organization) %></div>
+            <p class="text-xs text-gray-500">Square's own sign-in; we never see your password.</p>
           <% end %>
         </div>
       </div>

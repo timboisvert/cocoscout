@@ -56,6 +56,23 @@ struct NavData: Codable, Equatable {
     let signOutPath: String
 
     var isProduction: Bool { mode == "production" }
+
+    /// The copy the app keeps for next launch: no counts, no Door (they come
+    /// and go), so a stale number never shows before the first page's message.
+    var forCache: NavData {
+        NavData(mode: mode,
+                sections: sections.map { section in
+                    Section(label: section.label, items: section.items.map { item in
+                        var copy = item
+                        copy.badge = nil
+                        return copy
+                    })
+                },
+                icons: Icons(messages: Icon(path: icons.messages.path, count: 0),
+                             notifications: Icon(path: icons.notifications.path, count: 0)),
+                organization: organization, door: nil, modeSwitch: modeSwitch,
+                profilePath: profilePath, settingsPath: settingsPath, signOutPath: signOutPath)
+    }
 }
 
 extension Notification.Name {

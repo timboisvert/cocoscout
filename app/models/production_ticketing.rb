@@ -30,6 +30,9 @@ class ProductionTicketing < ApplicationRecord
   belongs_to :seat_chart, optional: true
   validates :seating_mode, inclusion: { in: RoomTicketingSetting::SEATING_MODES }, allow_nil: true
 
+  # The ticket page's own words, when they differ from the production's.
+  has_rich_text :description
+
   has_many :ticket_tiers, -> { order(:position, :id) }, dependent: :destroy, inverse_of: :production_ticketing
   has_many :price_rules, class_name: "TicketPriceRule", dependent: :destroy, inverse_of: :production_ticketing
   has_many :production_ticketing_shows, dependent: :delete_all

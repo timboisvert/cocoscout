@@ -22,6 +22,18 @@ class SquareApi
     def sandbox? = (ENV["SQUARE_ENVIRONMENT"].presence || Rails.application.credentials.dig(:square, :environment)).to_s == "sandbox"
     def host = sandbox? ? "connect.squareupsandbox.com" : "connect.squareup.com"
 
+    # The secret pasted from the wrong page of Square's Developer Console:
+    # an access token starts with EAAA, an application secret with sq0csb.
+    def secret_looks_like_token? = application_secret.to_s.start_with?("EAAA")
+
+    # Why Connect with Square cannot start, in words for the page, or nil.
+    def setup_problem
+      return "Square is not set up on this server yet." unless configured?
+      return "The Square secret on this server is an access token, not the Application Secret. In Square's Developer Console, the Application Secret is on the app's OAuth page." if secret_looks_like_token?
+
+      nil
+    end
+
     # Where "Connect with Square" sends the owner.
     def authorize_url(state:)
       params = { client_id: application_id, scope: SCOPES.join(" "), session: "false", state: state }

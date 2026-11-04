@@ -61,6 +61,12 @@ class FinancialSummaryService
     new(productions).summaries_by_period(period_key)
   end
 
+  # The same for any date range (nil = all time): the Checks page compares
+  # Financials with Books through today.
+  def self.summaries_by_production_in(productions, range)
+    new(productions).calculate_summary(range, by_production: true)
+  end
+
   def all_period_summaries
     PERIODS.keys.index_with { |period| summary_for_period(period) }
   end
@@ -122,7 +128,7 @@ class FinancialSummaryService
       end
     end
 
-    contract_money = contract_money_by_production
+    contract_money = contract_money_by_production(date_range)
     contract_money.each do |production_id, money|
       total[:contract_money_in] += money[:money_in]
       total[:contract_money_out] += money[:money_out]
@@ -215,15 +221,24 @@ class FinancialSummaryService
   # Contract money folded in so third-party deals aren't siloed: their revenue
   # lands in money-in and their contractor payouts in money-out, like any show.
   # (Gross model — see Contract#money_summary.)
-  def contract_money_by_production
+  # Only the period's money (date_range nil = all time), the same as the shows.
+  def contract_money_by_production(date_range = nil)
     third_party = @productions.select(&:type_third_party?)
     ActiveRecord::Associations::Preloader.new(records: third_party, associations: :contracts).call
 
-    with_contracts = third_party.filter_map { |p| [ p, p.contract ] if p.contract }
+    # Every contract that was ever live, not only the newest: a production
+    # on its second deal still earned under the first (Hags' August show sat
+    # under a completed contract and went uncounted, 2026-11-02). Each
+    # contract's shows are its own (Contract#contract_shows), so nothing
+    # counts twice.
+    with_contracts = third_party.flat_map do |p|
+      p.contracts.reject { |c| c.status_draft? || c.status_cancelled? }.map { |c| [ p, c ] }
+    end
     Contract.preload_money_data(with_contracts.map(&:last))
 
     with_contracts.each_with_object({}) do |(production, contract), out|
-      out[production.id] = contract.money_summary
+      money = contract.money_summary(date_range)
+      out[production.id] = out[production.id] ? out[production.id].merge(money) { |_, a, b| (a + b).round(2) } : money
     end
   end
 
@@ -274,4 +289,5 @@ class FinancialSummaryService
       retained: net_income
     }
   end
+  public :calculate_summary
 end

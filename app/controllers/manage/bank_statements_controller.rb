@@ -1,55 +1,74 @@
 # frozen_string_literal: true
 
 module Manage
-  # Money → Books → Bank (plan D3, §9.13): bring a statement in as a file and
-  # deal with every line: it matches something on the books, you record it,
-  # or you ignore it. The file is read once, here, and never kept. Books
-  # access, by the grid; changing needs manage.
+  # Money → Books → Bank (plan D3, §9.13): the transactions as the bank knows
+  # them, each one matched to something on the books, recorded, or ignored
+  # in place: an action on a line answers with a Turbo Stream that swaps its
+  # row (BankStatementStreams), and Record it fills a modal on the page.
+  # A statement comes in as a file from the modal; it is read once, here,
+  # never kept, and its lines are matched in BankStatementMatchJob, which
+  # tells the person when it's done. Rules and sorting have pages of their
+  # own (BankRulesController, BankSortController). Books access, by the
+  # grid; changing needs manage.
   class BankStatementsController < Manage::ManageController
-    before_action :require_change!, only: %i[create match ignore reopen]
+    include BooksCategoriesGate
+    include BankStatementStreams
+
+    PER_PAGE = 100
+
+    before_action :require_change!, only: %i[create match match_all ignore reopen destroy]
     before_action :set_line, only: %i[match ignore reopen]
 
     def show
       org = Current.organization
-      @imports = org.bank_statement_imports.order(created_at: :desc).limit(12).to_a
-      @last = @imports.first
-      @to_deal_with = org.bank_statement_lines.to_deal_with.includes(journal_line: :journal_entry).to_a
-      @recent_done = org.bank_statement_lines.done.order(updated_at: :desc).limit(8).includes(:money_record, journal_line: :journal_entry).to_a
+      @summary = BankStatementSummary.new(org)
+      @month = params[:month].to_s[/\A\d{4}-\d{2}\z/]
+      @kind = params[:kind].presence_in(%w[in out])
+      scope = org.bank_statement_lines.to_deal_with
+      scope = scope.where(on: Date.parse("#{@month}-01").all_month) if @month
+      scope = scope.where(@kind == "in" ? "amount_cents > 0" : "amount_cents < 0") if @kind
+      @pagy, @lines = pagy(scope, limit: PER_PAGE)
+      @candidates = BankStatementSummary.candidates_for(org, @lines)
+      @hints = BankStatementSummary.hints_for(org, @lines)
+      @recent_done = org.bank_statement_lines.done.order(updated_at: :desc).limit(8).includes(:money_record).to_a
       @done_count = org.bank_statement_lines.done.count
-      @books_bank_cents = ChartOfAccounts.account(org, :bank).natural_balance_cents
-      @books_bank_on_closing_cents = @last&.closing_on ? ChartOfAccounts.account(org, :bank).natural_balance_cents(basis: :cash, as_of: @last.closing_on) : nil
-      @candidates = {}
-      @to_deal_with.each { |line| @candidates[line.id] = line.journal_line ? describe(line.journal_line) : nil }
+      return unless OrganizationAccess.allows?(Current.user, org, :books, :manage)
+
+      @modal = bank_record_modal_locals
+      # A lot waiting: the panel at the top counts the payees sorting would take first.
+      @payees = BankSort.payees(org) if @summary.open_count >= BankSort::THRESHOLD
     end
 
     # The upload. The file's text is read out of the request and parsed
-    # while you wait; the temp file Rack made goes with the request.
+    # while you wait, its lines are saved, and the matching runs in a job.
+    # The temp file Rack made goes with the request.
     def create
       upload = params[:file]
       return redirect_to manage_money_bank_path, alert: "Choose the file first." if upload.blank? || !upload.respond_to?(:read)
       return redirect_to manage_money_bank_path, alert: "That file is too large. A month from the bank is well under 5 MB." if upload.size.to_i > 5.megabytes
 
-      text = upload.read
-      result = BankStatementParser.parse(text, filename: upload.original_filename)
-      import = nil
-      added = 0
-      BankStatementImport.transaction do
-        import = Current.organization.bank_statement_imports.create!(imported_by: Current.user, filename: File.basename(upload.original_filename.to_s), format: result.format,
-                                                                      from_on: result.lines.map { |l| l[:on] }.min, to_on: result.lines.map { |l| l[:on] }.max, lines_count: result.lines.size,
-                                                                      closing_balance_cents: result.closing_balance_cents, closing_on: result.closing_on)
-        result.lines.each do |l|
-          fingerprint = l[:fitid].present? ? "fitid:#{l[:fitid]}"[0, 60] : BankStatementLine.fingerprint_for(l[:on], l[:amount_cents], l[:description])
-          next if Current.organization.bank_statement_lines.exists?(fingerprint: fingerprint)
-
-          import.bank_statement_lines.create!(organization: Current.organization, on: l[:on], amount_cents: l[:amount_cents], description: l[:description].to_s[0, 255], fingerprint: fingerprint)
-          added += 1
-        end
-        import.update!(new_lines_count: added)
+      org = Current.organization
+      result = BankStatementParser.parse(upload.read, filename: upload.original_filename)
+      rows = result.lines.map do |l|
+        fingerprint = l[:fitid].present? ? "fitid:#{l[:fitid]}"[0, 60] : BankStatementLine.fingerprint_for(l[:on], l[:amount_cents], l[:description], l[:seq])
+        { organization_id: org.id, on: l[:on], amount_cents: l[:amount_cents], description: l[:description].to_s[0, 255], fingerprint: fingerprint,
+          description_key: BankStatementLine.description_key_for(l[:description]) }
       end
-      BankStatementMatcher.run!(Current.organization, import.bank_statement_lines.where(state: "open"))
-      matched = import.bank_statement_lines.where(state: "matched").count
-      left = import.bank_statement_lines.where(state: %w[open suggested]).count
-      redirect_to manage_money_bank_path, notice: "#{pluralize_lines(result.lines.size)} read#{added < result.lines.size ? ", #{result.lines.size - added} already in" : ''}. #{matched} matched the books by themselves; #{left} to deal with. The file is gone."
+      already = org.bank_statement_lines.where(fingerprint: rows.map { |r| r[:fingerprint] }).pluck(:fingerprint).to_set
+      rows.reject! { |r| already.include?(r[:fingerprint]) }
+      import = nil
+      BankStatementImport.transaction do
+        import = org.bank_statement_imports.create!(imported_by: Current.user, filename: File.basename(upload.original_filename.to_s), format: result.format,
+                                                    from_on: result.lines.map { |l| l[:on] }.min, to_on: result.lines.map { |l| l[:on] }.max,
+                                                    lines_count: result.lines.size, new_lines_count: rows.size, status: "matching",
+                                                    closing_balance_cents: result.closing_balance_cents, closing_on: result.closing_on,
+                                                    opening_balance_cents: result.opening_balance_cents, opening_on: result.opening_on)
+        BankStatementLine.insert_all(rows.map { |r| r.merge(bank_statement_import_id: import.id) }) if rows.any?
+      end
+      BankStatementMatchJob.perform_later(import.id)
+      skipped = result.lines.size - rows.size
+      redirect_to manage_money_bank_path, notice: "#{pluralize_lines(result.lines.size)} read#{skipped.positive? ? ", #{skipped} already in" : ''}. " \
+                                                  "We're matching them to the books now; you'll get a notification when it's done. The file is gone."
     rescue BankStatementParser::Unreadable => e
       redirect_to manage_money_bank_path, alert: e.message
     rescue CSV::MalformedCSVError
@@ -63,21 +82,41 @@ module Manage
     end
 
     def match
-      line = params[:journal_line_id].present? ? JournalLine.find_by(id: params[:journal_line_id], organization: Current.organization) : @line.journal_line
-      return redirect_to manage_money_bank_path, alert: "Pick the line on the books it matches." unless line
+      lines = if params[:journal_line_id].present?
+        JournalLine.where(id: params[:journal_line_id], organization: Current.organization).to_a
+      else
+        @line.journal_lines.to_a
+      end
+      return redirect_to back_path, alert: "Pick the line on the books it matches." if lines.empty?
 
-      @line.match!(line)
-      redirect_to manage_money_bank_path, notice: "Matched."
+      @line.match!(lines)
+      answer "Matched."
+    end
+
+    # Every suggestion confirmed at once.
+    def match_all
+      lines = Current.organization.bank_statement_lines.where(state: "suggested").to_a
+      lines.each { |line| line.match!(line.journal_lines.to_a) }
+      redirect_to back_path, notice: "#{pluralize_lines(lines.size)} matched."
     end
 
     def ignore
       @line.ignore!
-      redirect_to manage_money_bank_path, notice: "Ignored. It stays in the list of what you have dealt with."
+      answer "Ignored. It stays in the list of what you have dealt with."
     end
 
     def reopen
       @line.reopen!
-      redirect_to manage_money_bank_path, notice: "Back in the list."
+      answer "Back in the list."
+    end
+
+    # A statement and its lines, gone. Money recorded from its lines stays
+    # on the books; the lines were only the bank's side of it.
+    def destroy
+      import = Current.organization.bank_statement_imports.find(params[:id])
+      title = import.title
+      import.destroy!
+      redirect_to manage_money_bank_path, notice: "#{title} removed. Money you recorded from it stays on the books."
     end
 
     private
@@ -92,12 +131,19 @@ module Manage
       redirect_to manage_money_bank_path, alert: "You can look at the bank page but not change it."
     end
 
-    def pluralize_lines(n) = "#{n} #{n == 1 ? 'line' : 'lines'}"
-
-    # A line on the books, in words: what it is, from which entry.
-    def describe(journal_line)
-      entry = journal_line.journal_entry
-      { on: entry.cash_date || entry.entry_date, memo: entry.memo.presence || BooksReport::KIND_LABELS.fetch(entry.kind, entry.kind.humanize), kind: BooksReport::KIND_LABELS.fetch(entry.kind, entry.kind.humanize) }
+    # After an action on a line: the row swaps in place (Turbo), or the page
+    # comes back with its filters.
+    def answer(notice)
+      respond_to do |format|
+        format.turbo_stream { bank_line_streams(@line) }
+        format.html { redirect_to back_path, notice: notice }
+      end
     end
+
+    def back_path
+      manage_money_bank_path(bank_filters)
+    end
+
+    def pluralize_lines(n) = "#{n} #{n == 1 ? 'line' : 'lines'}"
   end
 end

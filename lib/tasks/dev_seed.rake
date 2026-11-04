@@ -59,16 +59,15 @@ namespace :dev_seed do
     report.sort.each { |what, count| puts format("  %-60s %d", what, count) }
   end
 
-  desc "List the stored files production's data refers to, for copying into the development bucket (W-9s left out)"
+  desc "Copy production's images into the dev bucket (no documents, W-9s or email logs); safe to run again, it skips what's there"
   task files: :environment do
     dev_seed_guard!
-    # Tax forms stay in production: a W-9 carries a full taxpayer number.
-    blob_ids = ActiveStorage::Attachment.where.not(record_type: %w[W9Submission]).distinct.pluck(:blob_id)
-    keys = ActiveStorage::Blob.where(id: blob_ids).pluck(:key)
-    path = Rails.root.join("tmp/dev_seed/blob_keys.txt")
-    FileUtils.mkdir_p(path.dirname)
-    File.write(path, keys.join("\n") + "\n")
-    puts "#{keys.size} files listed. To see production's images and documents in dev, copy them with your own AWS credentials:"
-    puts "  xargs -P 8 -I{} aws s3 cp s3://cocoscout-production/{} s3://cocoscout-development/{} --only-show-errors < #{path.relative_path_from(Rails.root)}"
+    service = ActiveStorage::Blob.service
+    abort "Dev doesn't store files in S3 (#{service.class.name}); nothing to copy." unless service.respond_to?(:bucket)
+
+    from = ENV.fetch("PROD_BUCKET", "cocoscout-production")
+    Dev::BlobCopier.new(client: service.client.client, from: from, to: service.bucket.name, keys: Dev::BlobCopier.keys).run!
+  rescue Dev::BlobCopier::AccessDenied => e
+    abort e.message
   end
 end

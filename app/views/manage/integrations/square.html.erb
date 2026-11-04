@@ -33,12 +33,12 @@
         <li>Which day a 12:15 am round belongs to follows your <%= link_to "Settle up setting", manage_money_settings_section_path(section: "settle_up"), class: "text-pink-600 hover:text-pink-700" %>.</li>
         <li>Nothing reaches the books until someone checks the day and settles it.</li>
       </ul>
-      <% if SquareApi.configured? %>
+      <% if (problem = SquareApi.setup_problem) %>
+        <p class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2"><%= problem %></p>
+      <% else %>
         <%= form_with url: manage_connect_organization_square_path(@organization), method: :post, data: { turbo: false } do %>
           <%= render "shared/button", text: "Connect with Square", variant: "primary", size: "medium", type: :submit %>
         <% end %>
-      <% else %>
-        <p class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">Square is not set up on this server yet.</p>
       <% end %>
     </div>
   <% else %>

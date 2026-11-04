@@ -1,0 +1,71 @@
+# frozen_string_literal: true
+
+# Runs an organization's bank rules over the lines waiting on the bank page
+# (Books V1.3, plan D3). The first rule that fits a line wins: a record
+# rule writes a MoneyRecord (the bank's description as the note, the line's
+# date and amount, from the bank) and the line is recorded; an ignore rule
+# ignores it. Small runs happen in the request; a big one goes to
+# BankRulesApplyJob, which tells the person when it's done.
+class BankRules
+  IN_REQUEST = 30
+
+  Result = Struct.new(:recorded, :ignored, keyword_init: true) do
+    def dealt_with = recorded + ignored
+  end
+
+  # rules: the rules to run (default all of the organization's).
+  # lines: the lines to run them over (default every line waiting).
+  def self.apply!(organization, rules: organization.bank_rules.order(:id).to_a, lines: organization.bank_statement_lines.to_deal_with.to_a, by: nil)
+    result = Result.new(recorded: 0, ignored: 0)
+    rules = rules.to_a
+    return result if rules.empty?
+
+    counts = Hash.new(0)
+    lines.each do |line|
+      rule = rules.find { |r| r.matches?(line) }
+      next unless rule
+
+      if rule.ignore?
+        line.ignore!
+        result.ignored += 1
+      else
+        record = organization.money_records.create!(
+          kind: (line.deposit? ? "in" : "out"), on: line.on, amount_cents: line.amount_cents.abs, category_key: rule.category_key,
+          counterparty: rule.counterparty.presence, production: rule.production, show: rule.show, via: "bank", memo: line.description, recorded_by: by
+        )
+        line.recorded!(record)
+        result.recorded += 1
+      end
+      counts[rule.id] += 1
+    end
+    counts.each { |id, n| BankRule.where(id: id).update_all([ "applied_count = applied_count + ?", n ]) }
+    result
+  end
+
+  # What a rule as typed would do, for the rule page: how many lines
+  # waiting it fits, the first of them, what they add up to, and whether
+  # the lines already dealt with that it fits agree with it (recorded as
+  # the same category, or ignored by an ignore rule) or say otherwise.
+  def self.preview(organization, contains:, direction:, action: "record", category_key: nil)
+    rule = BankRule.new(organization: organization, contains: contains, direction: direction.presence_in(BankRule::DIRECTIONS) || "any",
+                        action: action.presence_in(BankRule::ACTIONS) || "record", category_key: category_key.presence)
+    empty = { count: 0, samples: [], lines: [], total_cents: 0, from: nil, to: nil, agree: 0, disagree: 0 }
+    return empty if rule.phrases.empty?
+
+    lines = rule.waiting_lines
+    done = organization.bank_statement_lines.done.includes(:money_record).select { |line| rule.matches?(line) }
+    agree, disagree = done.partition do |line|
+      if line.state == "recorded" then rule.record? && line.money_record&.category_key == rule.category_key
+      elsif line.state == "ignored" then rule.ignore?
+      end
+    end
+    { count: lines.size, samples: lines.map(&:description).uniq.first(4),
+      lines: lines.first(8).map { |l| { on: l.on.strftime("%b %-d"), description: l.description, amount_cents: l.amount_cents } },
+      total_cents: lines.sum(&:amount_cents), from: lines.map(&:on).min&.strftime("%b %-d, %Y"), to: lines.map(&:on).max&.strftime("%b %-d, %Y"),
+      agree: agree.size, disagree: disagree.count { |l| l.state != "matched" } }
+  end
+
+  # The "applying" flag the bank page shows while a run is in the background.
+  def self.applying_key(organization) = "bank_rules_applying:#{organization.id}"
+  def self.applying?(organization) = Rails.cache.read(applying_key(organization)).present?
+end

@@ -1,0 +1,59 @@
+<%# Before a refund: why a credit is usually better, then a choice. A credit keeps the money in Stripe and still gives back every dollar, off the
+    organization's next bill; a refund is right when there's no next bill for it to come off. locals: id, rows (UsageOverbilling rows), money (CocoScoutMoneyNow), url %>
+<% m = money %>
+<% total = rows.sum(&:over_cents) %>
+<% orgs = rows.map { |row| row.invoice.organization }.uniq %>
+<% no_bill = orgs.reject { |org| m.next_bill_for(org) } %>
+<% credit_first = no_bill.empty? %>
+<div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-md sm:mx-4 overflow-hidden" data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white"><%= rows.one? ? "Refund #{usd(total)}?" : "Refund #{rows.size} bills, #{usd(total)}?" %></h3>
+      <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+    </div>
+    <div class="px-6 py-5 text-sm text-gray-700 space-y-3">
+      <% if credit_first %>
+        <p class="font-medium text-gray-900">A credit is better here.</p>
+        <ul class="list-disc pl-5 space-y-1">
+          <li>
+            They still get every dollar back: it comes off
+            <% if orgs.one? && (bill = m.next_bill_for(orgs.first)) %>
+              <%= orgs.first.name %>'s next bill, their <%= bill[:what] %> on <%= bill[:on].strftime("%b %-d") %><%= " (#{usd(bill[:so_far_cents])} so far this month)" if bill[:so_far_cents].to_i.positive? %>.
+            <% else %>
+              each organization's next bill.
+            <% end %>
+          </li>
+          <% if m.short_cents.positive? %>
+            <li>CocoScout is short <%= usd(m.short_cents) %>. A refund sends <%= usd(total) %> out of Stripe and makes it <%= usd(m.short_cents + total) %>; a credit keeps the money in Stripe.</li>
+          <% else %>
+            <li>A refund sends <%= usd(total) %> out of Stripe now; a credit keeps it there and costs nothing to move.</li>
+          <% end %>
+        </ul>
+        <p class="text-gray-500">Refund anyway if they'd rather have the money back now.</p>
+      <% else %>
+        <p class="font-medium text-gray-900">A refund is the way to give this back.</p>
+        <p><%= no_bill.map(&:name).to_sentence %> <%= no_bill.one? ? "has" : "have" %> no bills coming from us, so a credit would just sit there. The money goes back to the card or bank each bill was paid from.</p>
+        <% if m.short_cents.positive? %>
+          <p class="text-gray-500">CocoScout is short <%= usd(m.short_cents) %>; this makes it <%= usd(m.short_cents + total) %> until we earn or add it back.</p>
+        <% end %>
+      <% end %>
+      <p class="text-xs text-gray-500">Either way they get a credit note from Stripe saying why.</p>
+    </div>
+    <div class="px-4 sm:px-6 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] sm:py-4 bg-gray-50 border-t border-gray-200 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 [&>*]:w-full sm:[&>*]:w-auto [&_button]:w-full sm:[&_button]:w-auto">
+      <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+      <%= form_with url: url, method: :post, class: "inline" do %>
+        <%= hidden_field_tag :how, "refund" %>
+        <%= render "shared/button", text: credit_first ? "Refund anyway" : "Refund #{usd(total)}", variant: credit_first ? "secondary" : "primary", size: "medium", type: :submit %>
+      <% end %>
+      <% if credit_first %>
+        <%= form_with url: url, method: :post, class: "inline" do %>
+          <%= hidden_field_tag :how, "credit" %>
+          <%= render "shared/button", text: "Credit next bill instead", variant: "primary", size: "medium", type: :submit %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>

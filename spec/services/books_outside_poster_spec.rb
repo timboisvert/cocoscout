@@ -120,18 +120,51 @@ RSpec.describe BooksOutsidePoster do
       contract.contract_payments.create!(direction: direction, amount: amount, due_date: Date.new(2026, 10, 1), description: "Rent", **attrs)
     end
 
-    it "posts a check received on the day it was paid, and takes it back when it's unpaid again" do
+    # Earned on the date it's for (its due date), moved the day it was paid
+    # (Tim, 2026-11-02): an October rehearsal paid in November is October's,
+    # and owed to you from October 1 until it's paid.
+    it "posts a check received: owed from the date it's for, moved on the day it was paid; owed again when unpaid again" do
       rent = payment("incoming", 350)
-      expect(balance(:contract_income)).to eq(0)
+      expect([ balance(:contract_income), balance(:owed_to_you), balance(:bank) ]).to eq([ 35_000, 35_000, 0 ])
+      owed = JournalEntry.live.find_by(source: rent)
+      expect([ owed.entry_date, owed.cash_date ]).to eq([ Date.new(2026, 10, 1), nil ])
 
-      rent.mark_paid!(paid_on: Date.new(2026, 10, 3), method: "check")
-      expect(balance(:contract_income)).to eq(35_000)
-      expect(balance(:bank)).to eq(35_000)
-      expect(JournalEntry.live.find_by(source: rent).entry_date).to eq(Date.new(2026, 10, 3))
+      rent.mark_paid!(paid_on: Date.new(2026, 11, 3), method: "check")
+      expect([ balance(:contract_income), balance(:owed_to_you), balance(:bank) ]).to eq([ 35_000, 0, 35_000 ])
+      entry = JournalEntry.live.find_by(source: rent)
+      expect([ entry.entry_date, entry.cash_date ]).to eq([ Date.new(2026, 10, 1), Date.new(2026, 11, 3) ])
+      expect(owed.reload.reversal.entry_date).to eq(Date.new(2026, 10, 1))
 
       rent.update!(status: :pending, paid_date: nil)
-      expect(balance(:contract_income)).to eq(0)
-      expect(balance(:bank)).to eq(0)
+      expect([ balance(:contract_income), balance(:owed_to_you), balance(:bank) ]).to eq([ 35_000, 35_000, 0 ])
+
+      rent.update!(status: :cancelled)
+      expect([ balance(:contract_income), balance(:owed_to_you) ]).to eq([ 0, 0 ])
+    end
+
+    it "owes a contractor from the date it's for, and nothing before the date, with no amount, or on a run" do
+      share = payment("outgoing", 500)
+      expect([ balance(:contractor_pay), balance(:owed_to_contractors) ]).to eq([ 50_000, 50_000 ])
+      expect(BooksReconciliation.contractors_check(org)).to be_nil
+
+      payment("outgoing", 75, due_date: Date.current + 1)
+      payment("outgoing", 0, amount_tbd: true)
+      expect(balance(:owed_to_contractors)).to eq(50_000)
+
+      batch = PayoutBatch.open_for(org)
+      payee = create(:person)
+      item = batch.items.create!(payee: payee, amount_cents: 50_000, status: "pending")
+      contribution = PayoutContribution.create!(payout_batch: batch, payout_batch_item: item, payee: payee, source: share, amount_cents: 50_000, label: "Share")
+      expect([ balance(:contractor_pay), balance(:owed_to_contractors) ]).to eq([ 0, 0 ])
+      expect(BooksReconciliation.contractors_check(org)).to be_nil
+
+      contribution.destroy!
+      expect([ balance(:contractor_pay), balance(:owed_to_contractors) ]).to eq([ 50_000, 50_000 ])
+
+      LedgerPosting.unpost!(source: share, kind: "contract_payment")
+      expect(BooksReconciliation.contractors_check(org).expected_cents).to eq(50_000)
+      BooksOutsidePoster.post_contract_payments_due!
+      expect(balance(:owed_to_contractors)).to eq(50_000)
     end
 
     it "posts a contractor paid by hand, with the services netted out of it" do
@@ -156,6 +189,46 @@ RSpec.describe BooksOutsidePoster do
       run_share.mark_paid_via_payout_run!(reference_id: "tr_1")
 
       expect(JournalEntry.live.where(source_type: "ContractPayment")).to be_empty
+    end
+
+    it "moves money already on the books to the date it's for, reversing on the old entry's own dates" do
+      rent = payment("incoming", 350)
+      rent.mark_paid!(paid_on: Date.new(2026, 11, 3), method: "check")
+      old = JournalEntry.live.find_by(source: rent)
+      old.update_columns(entry_date: Date.new(2026, 11, 3)) # as the books used to date it
+
+      expect(ContractMoneyRedate.run!).to eq(1)
+      expect(JournalEntry.live.find_by(source: rent).entry_date).to eq(Date.new(2026, 10, 1))
+      reversal = JournalEntry.find_by(reversal_of_id: old.id)
+      expect([ reversal.entry_date, reversal.cash_date ]).to eq([ Date.new(2026, 11, 3), Date.new(2026, 11, 3) ])
+      income_in = ->(month) { -JournalLine.joins(:journal_entry).where(ledger_account: ChartOfAccounts.account(org, :contract_income), journal_entries: { entry_date: month.all_month }).sum(:amount_cents) }
+      expect([ income_in.call(Date.new(2026, 10, 1)), income_in.call(Date.new(2026, 11, 1)) ]).to eq([ 35_000, 0 ])
+      expect(balance(:contract_income)).to eq(35_000)
+
+      expect(ContractMoneyRedate.run!).to eq(0)
+    end
+
+    it "leaves money in a closed month where it is when only its date would change" do
+      rent = payment("incoming", 350)
+      rent.mark_paid!(paid_on: Date.new(2026, 10, 3), method: "check")
+      old = JournalEntry.live.find_by(source: rent)
+      old.update_columns(entry_date: Date.new(2026, 10, 3)) # as the books used to date it
+      org.update!(books_locked_through: Date.new(2026, 10, 31))
+
+      expect(ContractMoneyRedate.run!).to eq(0)
+      expect(JournalEntry.live.find_by(source: rent)).to eq(old)
+    end
+
+    it "re-dates on the old entry's own dates when the payment also gained its show since" do
+      rent = payment("incoming", 350)
+      rent.mark_paid!(paid_on: Date.new(2026, 11, 3), method: "check")
+      old = JournalEntry.live.find_by(source: rent)
+      old.update_columns(entry_date: Date.new(2026, 11, 3))
+      rent.update_columns(show_id: show.id) # tagged to its show after it was posted
+
+      expect(ContractMoneyRedate.run!).to eq(1)
+      expect(JournalEntry.where(reversal_of_id: old.id).sole.entry_date).to eq(Date.new(2026, 11, 3))
+      expect(JournalEntry.live.find_by(source: rent).journal_lines.pluck(:show_id)).to include(show.id)
     end
 
     it "is picked up by the backfill" do

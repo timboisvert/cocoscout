@@ -47,11 +47,9 @@
           Description
           <span class="text-gray-400 font-normal">(optional)</span>
         </label>
-        <textarea name="description"
-                  id="description"
-                  rows="3"
-                  placeholder="A brief description of your production..."
-                  class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"><%= @wizard_state[:description] %></textarea>
+        <div data-controller="no-attachments">
+          <%= rich_text_area_tag :description, @wizard_state[:description], placeholder: "A brief description of your production...", class: "w-full min-h-[120px]" %>
+        </div>
         <p class="mt-1.5 text-xs text-gray-500">Shown on public listings if you enable them later</p>
       </div>
     </div>

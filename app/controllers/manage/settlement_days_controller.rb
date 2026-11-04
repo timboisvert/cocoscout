@@ -22,8 +22,10 @@ module Manage
       @day = SettleUp.day(Current.organization, @date)
       @prev_day = SettleUp.days(Current.organization, (@date - 90)..(@date - 1)).first
       @next_day = SettleUp.days(Current.organization, (@date + 1)..(@date + 90)).last
-      @month = params[:month].present? ? Date.strptime(params[:month], "%Y-%m") : @date.beginning_of_month
-      @month_days = SettleUp.days(Current.organization, @month..@month.end_of_month).index_by(&:date)
+      # The day picker Home has: earlier, the day (a two-month calendar), later, Today.
+      @today = SettlementDay.day_for(Current.organization, Time.current)
+      @calendar_months = calendar_months_around(@date)
+      @day_states = SettleUp.date_states(Current.organization, @calendar_months.first..@calendar_months.last.end_of_month)
       @ticket_sources = Current.organization.ticket_sources.hand_made.active.ordered.to_a
     end
 
@@ -47,35 +49,58 @@ module Manage
       redirect_to manage_money_settle_up_day_path(@date), notice: "Door cash saved."
     end
 
+    # "Looks right" on the register card covers the tips on it too (Tim,
+    # 2026-11-03: tips from Square belong in the Square card). Checking
+    # writes the split as it stands, so settling pays the rows; it waits
+    # while a stretch with nobody on the bar has no answer yet.
     def check_register
       record = SettlementDay.find_or_initialize_by(organization: Current.organization, date: @date)
-      record.register_checked_at = params[:checked] == "1" ? Time.current : nil
+      checking = params[:checked] == "1"
+      if checking
+        tips = SettleUp.day(Current.organization, @date).tips
+        if tips.unresolved.any?
+          return redirect_to manage_money_settle_up_day_path(@date), alert: "Say who gets the tips rung up with nobody on the bar first: Change the split on the register."
+        end
+      end
+      record.register_checked_at = checking ? Time.current : nil
+      record.tips_checked_at = record.register_checked_at
       record.save!
-      redirect_to manage_money_settle_up_day_path(@date), notice: (params[:checked] == "1" ? "Register checked." : "Register unchecked.")
+      write_tip_shares(record) if checking
+      redirect_to manage_money_settle_up_day_path(@date), notice: (checking ? "Register checked." : "Register unchecked.")
     end
 
     # The day's tips: how they're split, each person's share and how it's
-    # paid, and whether someone has checked the section.
+    # paid, and who gets each stretch with nobody on the bar.
     def tips
       record = SettlementDay.find_or_initialize_by(organization: Current.organization, date: @date)
-      record.tips_split = params[:split].presence_in(%w[even hours typed]) || "even"
-      record.tips_checked_at = params[:checked] == "1" ? Time.current : nil
+      by_rule = params[:mode] == "rule"
+      record.tips_split = by_rule ? "rule" : (params[:split].presence_in(%w[even hours typed]) || "even")
+      record.tips_unstaffed = unstaffed_choices(record) if params[:unstaffed].present?
       record.save!
-      people = Person.where(id: params.fetch(:shares, {}).keys.map(&:to_i)).index_by(&:id)
-      params.fetch(:shares, {}).each do |person_id, attrs|
+      given = params.fetch(:shares, {}).to_unsafe_h
+      people = Person.where(id: given.keys.map(&:to_i)).index_by(&:id)
+      given.each do |person_id, attrs|
         person = people[person_id.to_i]
         next unless person
 
-        cents = (attrs[:amount].to_s.delete("$,").to_f * 100).round
         share = record.tip_shares.find_or_initialize_by(person: person)
         next if share.payout_contribution_id.present?
 
-        if cents.positive?
-          share.update!(amount_cents: cents, method: attrs[:method].presence_in(TipShare::METHODS) || "payout")
+        cents = cents_from(attrs["amount"])
+        if by_rule
+          save_rule_share(share, attrs, cents)
+        elsif cents.positive?
+          # Only a split the manager chose to type is "typed"; an even or
+          # by-hours split the page suggested is the page's own, so a rule
+          # turned on later works it out again instead of keeping it.
+          share.update!(amount_cents: cents, method: attrs["method"].presence_in(TipShare::METHODS) || "payout",
+                        source: record.tips_split == "typed" ? "typed" : "computed")
         elsif share.persisted?
           share.destroy!
         end
       end
+      add_person_to_tips(record, params[:new_share]) if params.dig(:new_share, :person_id).present?
+      write_tip_shares(record) if by_rule || record.tip_shares.where.not(worked_from: nil).exists?
       redirect_to manage_money_settle_up_day_path(@date), notice: "Tips saved."
     end
 
@@ -103,6 +128,110 @@ module Manage
     end
 
     private
+
+    # One row of the worked-out split, as the worksheet sent it back (§9.14):
+    # taken off, a span changed, a share typed over, or left as worked out.
+    def save_rule_share(share, attrs, cents)
+      if attrs["remove"] == "1"
+        share.destroy! if share.persisted?
+        return
+      end
+
+      share.source = "computed" if share.new_record?
+      share.method = attrs["method"].presence_in(TipShare::METHODS) || share.method || "payout"
+      share.house_role_id = attrs["house_role_id"].presence || share.house_role_id
+      from, to = span_from(attrs["from"], attrs["to"])
+      span_words = [ attrs["from"], attrs["to"] ].join("-")
+      if from && to && (attrs["span_shown"].blank? || span_words != attrs["span_shown"])
+        share.worked_from = from
+        share.worked_to = to
+      end
+      if params[:recompute] == "1"
+        share.source = "computed"
+      elsif attrs["shown"].present? && cents != cents_from(attrs["shown"])
+        share.source = "typed"
+      end
+      share.amount_cents = cents
+      share.save!
+    end
+
+    # Add a person and the span they worked, straight from the worksheet.
+    def add_person_to_tips(record, attrs)
+      person = Current.organization.organization_staff_members.active.find_by(person_id: attrs[:person_id])&.person
+      from, to = span_from(attrs[:from], attrs[:to])
+      return unless person && from && to
+
+      share = record.tip_shares.find_or_initialize_by(person: person)
+      return if share.payout_contribution_id.present?
+
+      share.assign_attributes(worked_from: from, worked_to: to, house_role_id: attrs[:house_role_id].presence, source: "computed", method: share.method || "payout")
+      share.save!
+    end
+
+    # unstaffed[<stretch key>] = house | split | <person id>: the answer for
+    # each stretch with nobody on, kept with the day; the rest of the day's
+    # answers stay as they were.
+    def unstaffed_choices(record)
+      given = params[:unstaffed].to_unsafe_h.filter_map do |key, choice|
+        choice = choice.to_s
+        next unless key.to_s.match?(/\A(untimed|\d{4}-\d{2}-\d{2}T[\d:]+Z)\z/)
+        next unless choice.in?(%w[house split]) || choice.match?(/\A\d+\z/)
+
+        [ key.to_s, choice ]
+      end
+      record.tips_unstaffed.merge(given.to_h)
+    end
+
+    # The split as it now stands, written back so settling the day pays the
+    # rows and nothing else. By the rule: the rows, and anyone the rule
+    # leaves out goes. By hand, with nothing saved yet: the suggestion shown.
+    def write_tip_shares(record)
+      tips = SettleUp.day(Current.organization, @date).tips
+      unless tips.by_rule?
+        return if record.tip_shares.exists?
+
+        tips.hand_rows.each do |row|
+          next unless row[:cents].positive?
+
+          record.tip_shares.create!(person: row[:worker].person, amount_cents: row[:cents], method: row[:method], source: "computed")
+        end
+        return
+      end
+
+      tips.rows.each do |row|
+        next if row.locked?
+
+        share = record.tip_shares.find_or_initialize_by(person: row.person)
+        share.assign_attributes(amount_cents: row.cents, source: row.source, method: row.method, house_role_id: row.house_role&.id)
+        share.save!
+      end
+      # A share for anyone the rule leaves out (an older even split, a role
+      # taken out of the rule since) goes: settling pays the rows, nothing else.
+      record.tip_shares.where(payout_contribution_id: nil).where.not(person_id: tips.rows.map { |r| r.person.id }).destroy_all
+    end
+
+    # "18:00" and "01:30" on the day's own clock: anything before the day
+    # starts is the small hours of the night after.
+    def span_from(from_text, to_text)
+      from = clock_on_day(from_text)
+      to = clock_on_day(to_text)
+      return nil unless from && to
+
+      to += 1.day if to <= from
+      [ from, to ]
+    end
+
+    def clock_on_day(text)
+      return nil unless text.to_s.match?(/\A\d{1,2}:\d{2}\z/)
+
+      hour, minute = text.split(":").map(&:to_i)
+      window = SettlementDay.window(Current.organization, @date)
+      time = @date.in_time_zone.change(hour: hour, min: minute)
+      time += 1.day if time < window.begin
+      time
+    end
+
+    def cents_from(text) = (text.to_s.delete("$,").to_f * 100).round
 
     def set_date
       @date = Date.iso8601(params[:date])

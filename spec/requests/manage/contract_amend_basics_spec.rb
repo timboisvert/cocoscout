@@ -45,7 +45,7 @@ RSpec.describe "Contracts — change the basic info", type: :request do
     expect(response).to redirect_to(manage_contract_path(contract))
     expect(flash[:notice]).to eq("Renamed to Nuns4Fun: The Sequel, with its new description.")
     expect(production.reload.name).to eq("Nuns4Fun: The Sequel")
-    expect(production.description).to eq("Two nuns, one stage.")
+    expect(production.description.to_plain_text).to eq("Two nuns, one stage.")
     expect(contract.reload.production_name).to eq("Nuns4Fun: The Sequel")
     expect(contract.contract_versions.count).to eq(versions_before)
   end
@@ -65,7 +65,7 @@ RSpec.describe "Contracts — change the basic info", type: :request do
     post apply_amend_basics_manage_contract_path(contract), params: { production_name: "Nuns4Fun", description: "  " }
 
     expect(flash[:notice]).to eq("Updated the description.")
-    expect(production.reload.description).to be_nil
+    expect(production.reload.description).to be_blank
   end
 
   it "refuses a blank name and changes nothing" do
@@ -74,7 +74,7 @@ RSpec.describe "Contracts — change the basic info", type: :request do
     expect(response).to have_http_status(:unprocessable_content)
     expect(response.body).to include("Give the production a name.")
     expect(production.reload.name).to eq("Nuns4Fun")
-    expect(production.description).to eq("Old words")
+    expect(production.description.to_plain_text).to eq("Old words")
   end
 
   it "says so when nothing changed" do

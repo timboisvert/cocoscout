@@ -77,6 +77,15 @@ RSpec.describe LedgerPosting do
     expect(described_class.trial_balance(org).values.sum).to eq(0)
   end
 
+  # A correction belongs to the period it corrects; money that went back
+  # later (a refund) is its own entry, never a reversal (2026-11-02).
+  it "reverses on the entry's own dates" do
+    original = post_sale(fee: 138)
+    travel_to(Date.new(2026, 12, 15)) { post_sale(fee: 150) }
+    reversal = original.reload.reversal
+    expect([ reversal.entry_date, reversal.cash_date ]).to eq([ original.entry_date, original.cash_date ])
+  end
+
   it "withdraws an entry when there's nothing left to post, and on unpost!" do
     post_sale
     described_class.post!(organization: org, source: source, kind: "sale", entry_date: Date.current,

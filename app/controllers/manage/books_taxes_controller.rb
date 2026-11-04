@@ -4,6 +4,7 @@ module Manage
   # Money → Books → Taxes (plan F): one year, summarized the way the forms
   # ask. Books access, by the grid. Nothing is filed from here.
   class BooksTaxesController < Manage::ManageController
+    include BooksCategoriesGate
     def show
       @year = params[:year].to_i.clamp(2020, Date.current.year + 1)
       @year = Tax::Calendar.working_tax_year if params[:year].blank?

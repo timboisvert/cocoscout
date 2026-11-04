@@ -1,0 +1,98 @@
+<%# Why CocoScout is short, what's coming in, and what to do about it. locals: id, money (CocoScoutMoneyNow), check (PlatformReconciliation or nil) %>
+<% m = money %>
+<% after = m.short_after_coming_cents %>
+<div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-lg sm:mx-4 overflow-hidden max-h-[90vh] flex flex-col" data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white">CocoScout is short <%= usd(m.short_cents) %></h3>
+      <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+    </div>
+
+    <div class="px-6 py-5 text-sm text-gray-700 space-y-5 overflow-y-auto">
+      <section>
+        <h4 class="font-semibold text-gray-900">Why</h4>
+        <p class="mt-1">
+          <% if check&.stripe_balance_cents %>
+            The organizations' balances add up to <%= usd(check.held_for_orgs_cents) %>, and Stripe holds <%= usd(check.stripe_balance_cents) %>.
+          <% end %>
+          The <%= usd(m.short_cents) %> difference is in CocoScout's bank: payouts in the past sent it there (<%= usd(m.sent_to_bank_cents) %> in all, of which <%= usd(m.paid_by_hand_cents) %> paid back organizations we paid from our bank).
+          Nobody's balance is wrong. Until it's back, nothing in Stripe is ours to withdraw, and if every organization withdrew everything at once, the last one would come up short.
+        </p>
+      </section>
+
+      <section>
+        <h4 class="font-semibold text-gray-900">Coming in</h4>
+        <% if m.coming_in.empty? %>
+          <p class="mt-1 text-gray-500">No bills on their way right now.</p>
+        <% else %>
+          <ul class="mt-1 divide-y divide-gray-100 rounded-lg border border-gray-200">
+            <% m.coming_in.each do |row| %>
+              <li class="flex justify-between gap-4 px-3 py-2">
+                <span class="min-w-0"><%= row.invoice.organization.name %> <span class="text-gray-500">· <%= row.invoice.title %><%= " · lands about #{row.lands_on.strftime('%a %b %-d')}" if row.lands_on %></span></span>
+                <span class="tabular-nums text-gray-900"><%= usd(row.cents) %></span>
+              </li>
+            <% end %>
+          </ul>
+        <% end %>
+        <% m.adding_from_bank.each do |line| %>
+          <p class="mt-2 text-gray-600">Already on its way from our bank: <%= usd(line.amount_cents) %><%= ", available about #{line.available_on.strftime('%a %b %-d')}" if line.available_on %>. It's counted above.</p>
+        <% end %>
+        <p class="mt-2 font-medium <%= after.positive? ? 'text-amber-800' : 'text-green-700' %>">
+          <% if after.zero? && m.coming_in.any? %>
+            That covers it<%= " by #{m.coming_in_by.strftime('%a %b %-d')}" if m.coming_in_by %>. Nothing to do.
+          <% elsif m.coming_in.any? %>
+            Once that lands<%= " (about #{m.coming_in_by.strftime('%a %b %-d')})" if m.coming_in_by %>, we're still <%= usd(after) %> short.
+          <% else %>
+            We're <%= usd(after) %> short until we add money or earn more.
+          <% end %>
+        </p>
+      </section>
+
+      <% if after.positive? %>
+        <section>
+          <h4 class="font-semibold text-gray-900">What you can do</h4>
+          <ol class="mt-2 space-y-4">
+            <li>
+              <div class="font-medium text-gray-900">Add <%= usd(m.suggested_add_cents) %> from our bank</div>
+              <p class="text-gray-600">A bank transfer into Stripe: it takes a few business days, and the gap closes as soon as Stripe shows it.<%= " To be even today instead of after #{m.coming_in_by.strftime('%b %-d')}, add #{usd(m.suggested_add_cents(after_coming: false))}." if m.coming_in.any? && m.coming_in_by %></p>
+              <%= form_with url: finances_add_funds_path, method: :post, class: "mt-2 flex flex-wrap items-center gap-2" do %>
+                <label class="sr-only" for="<%= id %>-amount">Amount</label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-3 flex items-center text-gray-500">$</span>
+                  <input type="text" inputmode="decimal" name="amount" id="<%= id %>-amount" value="<%= format('%.2f', m.suggested_add_cents / 100.0) %>"
+                         class="block w-32 pl-7 pr-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition">
+                </div>
+                <%= render "shared/button", text: "Add from our bank", variant: "primary", size: "medium", type: :submit %>
+              <% end %>
+            </li>
+            <li>
+              <div class="font-medium text-gray-900">Or wait for it to earn back</div>
+              <ul class="text-gray-600 list-disc pl-5">
+                <% if (tickets = m.tickets_to_close) %>
+                  <li>About <%= number_with_delimiter(tickets) %> more tickets sold (we keep about <%= usd(m.per_ticket_cents.round) %> a ticket after Stripe's processing).</li>
+                <% end %>
+                <% if m.usage_so_far_cents.positive? %>
+                  <li><%= Date.current.strftime("%B") %>'s usage bills, <%= usd(m.usage_so_far_cents) %> so far, land about <%= m.usage_lands_on.strftime("%b %-d") %><%= m.usage_so_far_cents >= after ? ", which covers it" : "" %>.</li>
+                <% end %>
+                <% if m.tickets_to_close.nil? && m.usage_so_far_cents.zero? %>
+                  <li>Whatever we earn next closes it.</li>
+                <% end %>
+              </ul>
+            </li>
+            <li>
+              <div class="font-medium text-gray-900">Or leave it</div>
+              <p class="text-gray-600">Nothing breaks: organizations spend and withdraw as usual. It matters only if they all withdrew everything at once, and we can't take any money out until it's closed.</p>
+            </li>
+          </ol>
+        </section>
+      <% end %>
+    </div>
+
+    <div class="px-4 sm:px-6 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] sm:py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+      <%= render "shared/button", text: "Close", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+    </div>
+  </div>
+</div>

@@ -277,6 +277,7 @@ class StripeWebhooksController < ApplicationController
     return unless record
 
     BillingInvoiceEmailJob.perform_later(record.id, "bill") if event_type == "invoice.finalized"
+    BillingInvoiceRefreshJob.set(wait: 2.hours).perform_later(record.id) if event_type == "invoice.finalized" && record.status == "open"
     BillingInvoiceEmailJob.perform_later(record.id, "receipt") if event_type == "invoice.paid"
   end
 
@@ -320,6 +321,13 @@ class StripeWebhooksController < ApplicationController
     # for those, at completion for cards and wallets.
     unless session.payment_status.to_s.in?(%w[paid no_payment_required])
       Rails.logger.info("[StripeWebhooks] checkout #{session.id} completed unpaid (#{session.payment_status}); waiting for the money")
+      return
+    end
+
+    # Pro monthly: the card or bank is saved; Pro starts on the monthly bill.
+    if metadata["kind"] == ProMonthlyStart::KIND
+      organization = Organization.find_by(id: metadata["organization_id"])
+      ProMonthlyStart.from_session!(organization, session) if organization
       return
     end
 

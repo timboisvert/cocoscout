@@ -38,10 +38,17 @@
         Your organization has complimentary Pro access, indefinitely.
       <% elsif organization.comped? %>
         Complimentary Pro access through <%= organization.comped_until.strftime("%B %-d, %Y") %>.
+      <% elsif organization.pro_on_monthly_bill? %>
+        $<%= SubscriptionPlan.monthly_dollars %>/month, on your one monthly bill with your usage.
+        <% if organization.pro_monthly_until %>
+          Ends <%= organization.pro_monthly_until.strftime("%B %-d, %Y") %>; your last bill is <%= organization.pro_monthly_until.to_date.next_day.strftime("%B %-d") %>.
+        <% else %>
+          Next bill <%= Date.current.next_month.beginning_of_month.strftime("%B %-d") %>.
+        <% end %>
       <% elsif paid && organization.subscription_current_period_end.present? %>
         <%= organization.subscription_canceled_at.present? ? "Your access ends" : "Renews" %>
         <%= organization.subscription_current_period_end.strftime("%B %-d, %Y") %>
-        · <%= organization.subscription_interval == "year" ? "$200/year" : "$20/month" %>
+        · <%= organization.subscription_interval == "year" ? "$#{SubscriptionPlan.annual_dollars}/year" : "$#{SubscriptionPlan.monthly_dollars}/month" %>
       <% elsif paid %>
         Unlimited productions and events, with every module unlocked.
       <% else %>
@@ -51,9 +58,20 @@
   </div>
 
   <% if paid && !organization.comped? %>
-    <%# turbo: false so the browser follows the redirect to Stripe's billing portal. %>
-    <%= button_to manage_billing_portal_path, form: { data: { turbo: false } }, class: "inline-block" do %>
-      <%= render "shared/button", text: "Manage subscription", variant: "secondary", size: "medium" %>
+    <div class="flex flex-wrap items-center gap-2">
+      <%# turbo: false so the browser follows the redirect to Stripe's billing portal. %>
+      <%= button_to manage_billing_portal_path, form: { data: { turbo: false } }, class: "inline-block" do %>
+        <%= render "shared/button", text: organization.pro_on_monthly_bill? ? "Payment method" : "Manage subscription", variant: "secondary", size: "medium" %>
+      <% end %>
+      <% if organization.pro_on_monthly_bill? && organization.pro_monthly_until.nil? %>
+        <%= render "shared/button", text: "Cancel Pro", variant: "secondary", size: "medium", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-cancel-pro" } %>
+      <% end %>
+    </div>
+    <% if organization.pro_on_monthly_bill? && organization.pro_monthly_until.nil? %>
+      <%= render "shared/confirm_modal", id: "confirm-cancel-pro", title: "Cancel Pro?",
+            message: "Pro stays on through #{Date.current.end_of_month.strftime('%B %-d')}. Your #{Date.current.next_month.beginning_of_month.strftime('%B %-d')} bill carries this month's Pro and usage, and it's your last one.",
+            confirm_text: "Cancel Pro", url: manage_billing_cancel_pro_path, method: :post %>
     <% end %>
   <% end %>
 </div>

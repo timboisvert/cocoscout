@@ -53,37 +53,63 @@ module StaffMeterService
   # invoices, regardless of whether the Pro plan is monthly or annual. Created
   # once, lazily, on the first metered event. Best-effort: returns the
   # subscription id or nil (usage still records on the customer either way).
+  #
+  # Exactly one, ever: every activation reports in its own job, so a show that
+  # makes ten people billable runs ten jobs at once, and each used to find no
+  # subscription and make one. Stripe's meter counts per customer, so every
+  # extra subscription billed the whole month again (Stars & Garters got three
+  # October bills). Now the org row is locked while we look, a usage
+  # subscription Stripe already has is taken rather than duplicated, and the
+  # create carries an idempotency key.
   def ensure_staffing_subscription!(org)
     return org.staffing_subscription_id if org.staffing_subscription_id.present?
-    return nil unless org.bills_usage?
+    # It sends the one monthly bill: usage, and Pro paid on it.
+    return nil unless org.bills_usage? || org.pro_on_monthly_bill?
 
     items = SubscriptionPlan.staffing_subscription_items
     return nil if items.nil? || org.stripe_customer_id.blank?
 
-    # Bills calendar months (the 1st to the end of the month), the same months
-    # the Billing page counts, so a bill matches the table.
-    subscription = Stripe::Subscription.create(
-      customer: org.stripe_customer_id,
-      items: items,
-      metadata: { organization_id: org.id, kind: "staffing" },
-      billing_cycle_anchor_config: { day_of_month: 1 },
-      proration_behavior: "none"
-    )
-    org.update_column(:staffing_subscription_id, subscription.id)
-    subscription.id
+    org.with_lock do
+      return org.staffing_subscription_id if org.staffing_subscription_id.present?
+
+      id = existing_usage_subscription_id(org) || Stripe::Subscription.create(
+        {
+          customer: org.stripe_customer_id,
+          items: items,
+          metadata: { organization_id: org.id, kind: "staffing" },
+          # Bills calendar months (the 1st to the end of the month), the same
+          # months the Billing page counts, so a bill matches the table.
+          billing_cycle_anchor_config: { day_of_month: 1 },
+          proration_behavior: "none"
+        },
+        { idempotency_key: "staffing-subscription-#{org.id}-#{org.stripe_customer_id}-#{Date.current.iso8601}" }
+      ).id
+      org.update_column(:staffing_subscription_id, id)
+      id
+    end
   rescue Stripe::StripeError => e
     Rails.logger.warn("Staffing subscription create failed for org #{org.id}: #{e.message}")
     nil
   end
 
-  # An org that no longer pays for usage (left Pro, or a superadmin comped its
-  # usage) keeps no usage subscription: cancel it without a final invoice, so
-  # the comp covers whatever was metered this month. Returns true if it
-  # canceled one.
-  def sync_usage_subscription!(org)
-    return false if org.bills_usage? || org.staffing_subscription_id.blank?
+  # A usage subscription the customer already has in Stripe (one we lost track
+  # of): the newest live one carrying our usage metadata.
+  def existing_usage_subscription_id(org)
+    Stripe::Subscription.list(customer: org.stripe_customer_id, status: "all", limit: 100).data
+                        .select { |sub| sub.metadata.to_h.stringify_keys["kind"] == "staffing" && %w[active trialing past_due].include?(sub.status) }
+                        .max_by(&:created)&.id
+  end
 
-    Stripe::Subscription.cancel(org.staffing_subscription_id)
+  # An org that no longer pays for usage (left Pro, or a superadmin comped its
+  # usage) keeps no usage subscription. Left Pro: a last bill now for what was
+  # metered so far. Usage comped: no last bill, the comp covers it. Returns
+  # true if it canceled one.
+  def sync_usage_subscription!(org)
+    return false if org.bills_usage? || org.pro_on_monthly_bill? || org.staffing_subscription_id.blank?
+
+    # Pro ended (a comp ran out, the plan was canceled): what was metered so
+    # far still bills, on a last bill now. Usage comped: the comp covers it.
+    Stripe::Subscription.cancel(org.staffing_subscription_id, { invoice_now: !org.comped_usage?, prorate: false })
     org.update_column(:staffing_subscription_id, nil)
     true
   rescue Stripe::InvalidRequestError => e

@@ -15,17 +15,22 @@ class BooksTaxSummary
   SPENDING_LINES = [
     [ "Contract labor", %w[performer_pay instructor_pay contractor_pay], "Performers, instructors and contractors (1099 total beside it)" ],
     [ "Wages", %w[staff_pay], "Staff pay" ],
+    [ "Cost of goods sold", %w[bar_purchases merchandise_purchases], "Bar stock and merchandise bought to sell" ],
     [ "Rent", %w[venue], "Venue and space" ],
-    [ "Advertising", %w[marketing], nil ],
+    [ "Utilities", %w[utilities], nil ],
+    [ "Repairs and maintenance", %w[repairs], nil ],
+    [ "Advertising", %w[marketing fundraising_costs], "Promotion and fundraising" ],
+    [ "Legal and professional services", %w[professional_services], nil ],
     [ "Supplies", %w[supplies production_costs equipment], "Sets, costumes, props, supplies, equipment" ],
     [ "Licenses and rights", %w[licensing], nil ],
     [ "Insurance", %w[insurance], nil ],
     [ "Travel and meals", %w[travel food_and_drink], nil ],
     [ "Software and subscriptions", %w[software], "CocoScout and other software" ],
-    [ "Fees", %w[ticketing_fees fees_paid_by_buyers course_fees], "Ticketing, card and platform fees, less what buyers paid" ]
+    [ "Fees", %w[ticketing_fees fees_paid_by_buyers course_fees bank_fees], "Ticketing, card, platform and bank fees, less what buyers paid" ]
   ].freeze
   NONPROFIT_INCOME_GROUPS = [
-    [ "Contributions, gifts and grants", %w[sponsorship_income donation_income grant_income] ],
+    [ "Contributions, gifts and grants", %w[sponsorship_income donation_income grant_income fundraising_income] ],
+    [ "Membership dues", %w[membership_income] ],
     [ "Program service revenue", %w[ticket_income product_income unused_pass_income course_income contract_income] ],
     [ "Sales of inventory", %w[bar_income merchandise_income] ]
   ].freeze

@@ -41,19 +41,28 @@ final class AppShell {
     let tabBarController = HotwireTabBarController(lazyLoadTabs: true)
     private(set) var menu: [MenuItem] = []
     private(set) var person: MenuPerson?
-    /// The V1.1 menu (NativeAppHelper#native_nav), once a page has sent one.
+    /// The V1.1 menu (NativeAppHelper#native_nav): last time's from the cache
+    /// at launch, then the one each page sends.
     private(set) var nav: NavData?
+    /// The button was tapped before any page had sent a V1.1 menu (the first
+    /// launch after upgrading from V1): the sheet opens as soon as one lands.
+    private var menuWanted = false
     private var loadedSignedIn: Bool?
     private lazy var menuButton = MenuButton { [weak self] in self?.showMenu() }
 
     private static let menuKey = "AppShell.menu"
     private static let personKey = "AppShell.person"
+    private static let navKey = "AppShell.nav"
 
     /// Starts with last time's menu, so the button is there right away for
-    /// someone still signed in.
+    /// someone still signed in, and last time's V1.1 menu, so the first tap
+    /// draws it. It used to start without `nav`, so a tap before the first
+    /// page's message opened the V1 tiles, with no production mode (Tim,
+    /// 2026-11-02). The page's own message corrects the picture within a second.
     func start() {
         menu = Self.cached([MenuItem].self, Self.menuKey) ?? []
         person = Self.cached(MenuPerson.self, Self.personKey)
+        nav = menu.isEmpty ? nil : Self.cached(NavData.self, Self.navKey)
         rebuild()
         if let path = pendingPath {
             pendingPath = nil
@@ -82,6 +91,12 @@ final class AppShell {
         Self.cache(newMenu.filter { $0.id != "door" }.map { MenuItem(id: $0.id, title: $0.title, path: $0.path, icon: $0.icon) },
                    Self.menuKey)
         Self.cache(newPerson, Self.personKey)
+        // Signed out: the next person's first tap must never see this one's menu.
+        if newMenu.isEmpty {
+            nav = nil
+            menuWanted = false
+            Self.cache(nil as NavData?, Self.navKey)
+        }
         // The app icon shows unread messages, as the notifications set it.
         let unread = newMenu.first { $0.id == "messages" }?.badge ?? 0
         Task { try? await UNUserNotificationCenter.current().setBadgeCount(unread) }
@@ -109,9 +124,16 @@ final class AppShell {
         guard let newNav else { return }
         nav = newNav
         menuButton.badge = nil
+        // Cached without the counts and the Door (it comes and goes with
+        // tonight's shows), as `menu` is cached without its badges.
+        Self.cache(newNav.forCache, Self.navKey)
         let unread = newNav.icons.messages.count + newNav.icons.notifications.count
         Task { try? await UNUserNotificationCenter.current().setBadgeCount(unread) }
         NotificationCenter.default.post(name: .cocoNavChanged, object: newNav)
+        if menuWanted {
+            menuWanted = false
+            showMenu()
+        }
     }
 
     // MARK: Tap to Pay on iPhone
@@ -131,21 +153,24 @@ final class AppShell {
 
     // MARK: The menu
 
+    /// Always the V1.1 sheet. Without a `nav` yet (only the first launch
+    /// after upgrading from V1, before the first page's message) it opens
+    /// when one lands, rather than drawing the V1 tiles. MenuViewController
+    /// stays for V1 installs, which never get a `nav`.
     func showMenu() {
         guard !menu.isEmpty else { return }
-        if let nav {
-            let sheet = NavMenuViewController(nav: nav, person: person, onOpen: { [weak self] path in
-                self?.tabBarController.dismiss(animated: true) { self?.replaceScreen(with: AppConfig.url(path)) }
-            }, onSignOut: { [weak self] in
-                self?.tabBarController.dismiss(animated: true) { self?.tabBarController.activeNavigator.route(AppConfig.url("/signout")) }
-            })
-            topViewController().present(sheet, animated: true)
+        guard let nav else {
+            menuWanted = true
             return
         }
-        let sheet = MenuViewController(items: menu, person: person) { [weak self] action in
-            self?.handle(action)
-        }
-        topViewController().present(sheet, animated: true)
+        let top = topViewController()
+        guard top.presentedViewController == nil, !(top is NavMenuViewController) else { return }
+        let sheet = NavMenuViewController(nav: nav, person: person, onOpen: { [weak self] path in
+            self?.tabBarController.dismiss(animated: true) { self?.openFromMenu(AppConfig.url(path)) }
+        }, onSignOut: { [weak self] in
+            self?.tabBarController.dismiss(animated: true) { self?.tabBarController.activeNavigator.route(AppConfig.url("/signout")) }
+        })
+        top.present(sheet, animated: true)
     }
 
     private func handle(_ action: MenuViewController.Action) {
@@ -156,6 +181,16 @@ final class AppShell {
             case .signOut:
                 self.tabBarController.activeNavigator.route(AppConfig.url("/signout"))
             }
+        }
+    }
+
+    /// A page the path configuration shows as a sheet (the organization
+    /// menu) slides up over the screen; any other becomes the whole screen.
+    private func openFromMenu(_ url: URL) {
+        if Hotwire.config.pathConfiguration.properties(for: url)["context"] as? String == "modal" {
+            tabBarController.activeNavigator.route(url)
+        } else {
+            replaceScreen(with: url)
         }
     }
 

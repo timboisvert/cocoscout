@@ -338,6 +338,10 @@ Rails.application.routes.draw do
     post   "/finances/stripe/opening_difference", to: "superadmin/finances#opening_difference", as: "finances_opening_difference"
     get    "/finances/statements/:id", to: "superadmin/finances#statement", as: "finances_statement"
     get    "/finances/invoices/:id", to: "superadmin/finances#invoice", as: "finances_invoice"
+    get    "/finances/months/:month", to: "superadmin/finances#month", as: "finances_month"
+    post   "/finances/add_funds", to: "superadmin/finances#add_funds", as: "finances_add_funds"
+    post   "/finances/bills/give_back_all", to: "superadmin/finances#give_back_all", as: "finances_give_back_all"
+    post   "/finances/bills/:id/give_back", to: "superadmin/finances#give_back", as: "finances_give_back"
     post   "/finances/orgs/:org_id/statements", to: "superadmin/finances#make_statement", as: "finances_make_statement"
     get    "/finances/orgs/:org_id",  to: "superadmin/finances#organization",   as: "finances_org_detail"
     # Course payments recorded by hand before payout runs (legacy).
@@ -1200,6 +1204,8 @@ Rails.application.routes.draw do
     post "/billing/checkout", to: "billing#checkout", as: "billing_checkout"
     get  "/billing/success",  to: "billing#success",  as: "billing_success"
     post "/billing/portal",   to: "billing#portal",   as: "billing_portal"
+    post "/billing/cancel_pro", to: "billing#cancel_pro", as: "billing_cancel_pro"
+    post "/billing/keep_pro", to: "billing#keep_pro", as: "billing_keep_pro"
     get  "/billing/statements/:id", to: "billing#statement", as: "billing_statement"
     get  "/billing/invoices/:id", to: "billing#invoice", as: "billing_invoice"
     patch "/billing/contacts",   to: "billing#update_contacts", as: "billing_contacts"
@@ -1662,6 +1668,11 @@ Rails.application.routes.draw do
     post   "staffing/shifts/:id/split",           to: "staffing/shifts#split",           as: "split_staffing_shift"
     post   "staffing/shifts/:id/merge_with_next", to: "staffing/shifts#merge_with_next", as: "merge_with_next_staffing_shift"
     post   "staffing/shifts/:id/merge",           to: "staffing/shifts#merge",           as: "merge_staffing_shift"
+    # A shift someone can't make: where the manager finds cover (ShiftVacancy).
+    get    "staffing/vacancies/:id",              to: "staffing/vacancies#show",         as: "staffing_vacancy"
+    post   "staffing/vacancies/:id/send_invitations", to: "staffing/vacancies#send_invitations", as: "send_invitations_staffing_vacancy"
+    post   "staffing/vacancies/:id/cancel",       to: "staffing/vacancies#cancel",       as: "cancel_staffing_vacancy"
+    post   "staffing/vacancies/:id/reclaim",      to: "staffing/vacancies#reclaim",      as: "reclaim_staffing_vacancy"
     # A show canceled, taken away or moved: tell its cast and staff
     # (docs/show_change_notices_plan.md).
     post "show-changes/canceled/:show_id", to: "show_changes#for_canceled_show", as: "tell_canceled_show"
@@ -1682,6 +1693,12 @@ Rails.application.routes.draw do
     get "money", to: "money#index", as: "money_index"
     get "money/books", to: "books#show", as: "money_books"
     get "money/books/download", to: "books#download", as: "money_books_download"
+    # Books starts with its categories: a few questions, a recommended list, an acknowledgment.
+    get   "money/books/setup", to: "books_setup#show",   as: "money_books_setup"
+    patch "money/books/setup", to: "books_setup#update"
+    # Books' sections, each its own page under the Books landing page
+    # (Tim, 2026-11-02: sections, the way Money has them, not tabs).
+    get "money/books/:section", to: "books#show", as: "money_books_section", constraints: { section: /accounts|entries|shows|checks/ }
     get  "money/books/statements", to: "books_statements#show", as: "money_statements"
     get  "money/books/statements/ledger", to: "books_statements#ledger", as: "money_statements_ledger"
     post "money/books/statements/lock", to: "books_statements#lock", as: "money_statements_lock"
@@ -1693,6 +1710,26 @@ Rails.application.routes.draw do
     post "money/books/bank/lines/:id/match",  to: "bank_statements#match",  as: "match_money_bank_line"
     post "money/books/bank/lines/:id/ignore", to: "bank_statements#ignore", as: "ignore_money_bank_line"
     post "money/books/bank/lines/:id/reopen", to: "bank_statements#reopen", as: "reopen_money_bank_line"
+    post "money/books/bank/lines/match-all", to: "bank_statements#match_all", as: "match_all_money_bank_lines"
+    delete "money/books/bank/statements/:id", to: "bank_statements#destroy", as: "money_bank_statement"
+    # Bank rules (a page of their own, Tim 2026-11-03): a phrase in the
+    # bank's description records or ignores the line. Sorting takes what's
+    # waiting one payee, then one line, at a time.
+    get    "money/books/bank/rules",         to: "bank_rules#index",   as: "money_bank_rules"
+    get    "money/books/bank/rules/new",     to: "bank_rules#new",     as: "new_money_bank_rule"
+    get    "money/books/bank/rules/preview", to: "bank_rules#preview", as: "preview_money_bank_rules"
+    get    "money/books/bank/rules/export",  to: "bank_rules#export",  as: "export_money_bank_rules"
+    post   "money/books/bank/rules/import",  to: "bank_rules#import",  as: "import_money_bank_rules"
+    post   "money/books/bank/rules/apply",   to: "bank_rules#apply",   as: "apply_money_bank_rules"
+    post   "money/books/bank/rules/dismiss", to: "bank_rules#dismiss", as: "dismiss_money_bank_payee"
+    post   "money/books/bank/rules",         to: "bank_rules#create"
+    get    "money/books/bank/rules/:id/edit", to: "bank_rules#edit",   as: "edit_money_bank_rule"
+    patch  "money/books/bank/rules/:id",     to: "bank_rules#update",  as: "money_bank_rule"
+    delete "money/books/bank/rules/:id",     to: "bank_rules#destroy"
+    get    "money/books/bank/sort",          to: "bank_sort#show",     as: "money_bank_sort"
+    post   "money/books/bank/sort/payee",    to: "bank_sort#payee",    as: "money_bank_sort_payee"
+    post   "money/books/bank/sort/line",     to: "bank_sort#line",     as: "money_bank_sort_line"
+    delete "money/books/bank/sort",          to: "bank_sort#stop"
     # Money recorded by hand: the sheet, a recorded entry's page, change, remove.
     get    "money/books/record",            to: "money_records#new",     as: "new_money_record"
     post   "money/books/record",            to: "money_records#create",  as: "money_records"
@@ -1715,6 +1752,7 @@ Rails.application.routes.draw do
     patch  "money/settings/offline-methods", to: "money_settings#update_offline_methods", as: "money_settings_offline_methods"
     patch  "money/settings/notifications", to: "money_settings#update_notifications", as: "money_settings_notifications"
     patch  "money/settings/settle-up", to: "money_settings#update_settle_up", as: "money_settings_settle_up"
+    patch  "money/settings/tips", to: "money_settings#update_tips", as: "money_settings_tips"
     patch  "money/settings/books", to: "money_settings#update_books", as: "money_settings_books"
     post   "money/settings/ticket-sources", to: "money_settings#create_ticket_source", as: "money_settings_ticket_sources"
     patch  "money/settings/ticket-sources/:id", to: "money_settings#update_ticket_source", as: "money_settings_ticket_source"
@@ -2218,6 +2256,14 @@ Rails.application.routes.draw do
     get "/",        to: "vacancy#show",    as: "vacancy"
     post "/confirm", to: "vacancy#confirm", as: "vacancy_confirm"
     get "/success",  to: "vacancy#success", as: "vacancy_success"
+  end
+
+  # Claim a shift someone can't make (the staff cover invitation's link; no login)
+  scope "/claim-shift/:token" do
+    get "/",         to: "claim_shift#show",    as: "claim_shift"
+    post "/claim",   to: "claim_shift#claim",   as: "do_claim_shift"
+    post "/decline", to: "claim_shift#decline", as: "decline_claim_shift"
+    get "/success",  to: "claim_shift#success", as: "claim_shift_success"
   end
 
   # Claim vacancy flow (invited person claims a role)

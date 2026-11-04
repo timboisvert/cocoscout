@@ -73,6 +73,9 @@ module Manage
       load_org_chart
     end
 
+    SCHEDULING_VIEWS = %w[week day].freeze
+    SCHEDULING_VIEW_COOKIE = :staffing_view
+
     # The weekly house-staff schedule (formerly the Staffing landing page).
     def scheduling
       return unless Current.organization
@@ -86,7 +89,7 @@ module Manage
       week_range = (@week_start..@week_end)
       shifts = Current.organization.shifts
         .for_week(@week_start)
-        .includes(:house_role, :additional_roles, { shift_additional_roles: :house_role }, :source, { shows: :production },
+        .includes(:house_role, :additional_roles, { shift_additional_roles: :house_role }, :source, :shift_vacancies, { shows: :production },
                   shift_assignments: { person: HEADSHOT_PRELOAD })
         .ordered
         .to_a
@@ -102,6 +105,15 @@ module Manage
         (week_range.cover?(Date.current) ? Date.current : nil) ||
         week_range.find { |d| @shows_by_day[d].present? || @shifts_by_day[d].present? } ||
         @week_start
+      # Desktop shows the week, or one day at a time (?view=day; Tim,
+      # 2026-11-04): the last choice is kept on this browser. A phone is
+      # always a day, whatever the cookie says.
+      @view = params[:view].to_s.presence_in(SCHEDULING_VIEWS)
+      if @view
+        cookies[SCHEDULING_VIEW_COOKIE] = { value: @view, expires: 1.year.from_now, same_site: :lax }
+      else
+        @view = cookies[SCHEDULING_VIEW_COOKIE].to_s.presence_in(SCHEDULING_VIEWS) || "week"
+      end
       # The days the week calendar and the phone's jump sheet can reach, with
       # what each holds: dots on days with shows, a status per week.
       @calendar_months = calendar_months_around(@week_start)
@@ -370,7 +382,9 @@ module Manage
 
       pairs_by_person = Hash.new { |h, k| h[k] = [] }
       shifts.each do |shift|
-        shift.shift_assignments.each { |a| pairs_by_person[a.person] << [ a, shift ] if a.person }
+        # Someone who can't make it keeps their row but is off the shift: not an
+        # update to send, and never re-sent the shift they declined.
+        shift.active_assignments.each { |a| pairs_by_person[a.person] << [ a, shift ] if a.person }
       end
 
       removals = Current.organization.staff_schedule_removals.pending
@@ -413,7 +427,7 @@ module Manage
       week_range = week_start.beginning_of_day..(week_start + 6.days).end_of_day
 
       shifts_by_person = Hash.new { |h, k| h[k] = [] }
-      shifts.each { |s| s.shift_assignments.each { |a| shifts_by_person[a.person_id] << s } }
+      shifts.each { |s| s.active_assignments.each { |a| shifts_by_person[a.person_id] << s } }
 
       removals_by_person = Current.organization.staff_schedule_removals.pending
                                   .where(shift_starts_at: week_range).group_by(&:person_id)

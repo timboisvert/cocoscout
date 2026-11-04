@@ -30,8 +30,11 @@ RSpec.describe "Manage books", type: :request do
 
     get manage_money_books_path
     expect(response.body).to include("All your money, wherever it sits", "CocoScout balance", "Waiting on upcoming shows")
+    # The sections are cards on the landing page, the way Money has them.
+    expect(response.body).to include("data-module-header", manage_money_books_section_path(section: "accounts"), manage_money_statements_path, manage_money_taxes_path, manage_money_bank_path)
 
-    get manage_money_books_path(tab: "accounts")
+    get manage_money_books_section_path(section: "accounts")
+    expect(response.body).to include(manage_money_books_path) # the breadcrumb back
     expect(response.body).to include("Money you have", "CocoScout balance", "$44.10", "Tickets sold for upcoming shows", "$40.00",
                                       "Tax to pay the government", "$4.10")
 
@@ -39,13 +42,13 @@ RSpec.describe "Manage books", type: :request do
     expect(response).to have_http_status(:ok)
 
     balance = ChartOfAccounts.account(org, :cocoscout_balance)
-    get manage_money_books_path(tab: "entries", account_id: balance.id)
+    get manage_money_books_section_path(section: "entries", account_id: balance.id)
     expect(response.body).to include("Ticket sale", "Entries touching", manage_ticket_order_path(order.id))
 
-    get manage_money_books_path(tab: "shows")
+    get manage_money_books_section_path(section: "shows")
     expect(response.body).to include("Waiting on the show", "$40.00", "$4.10")
 
-    get manage_money_books_path(tab: "checks")
+    get manage_money_books_section_path(section: "checks")
     expect(response.body).to include("The books balance", "The books agree with the records behind them", "Financials and Books")
   end
 
@@ -59,7 +62,9 @@ RSpec.describe "Manage books", type: :request do
     sign_in(superadmin)
     get manage_money_books_path(period: "all_time")
     expect(response.body).to include("Nothing on the books for all time")
-    get manage_money_books_path(tab: "accounts")
+    get manage_money_books_section_path(section: "accounts")
+    expect(response.body).to include("Nothing on the books yet")
+    get manage_money_books_path(tab: "accounts") # the old address still answers
     expect(response.body).to include("Nothing on the books yet")
   end
 

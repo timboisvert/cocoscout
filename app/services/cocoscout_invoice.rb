@@ -4,7 +4,9 @@
 # a month's usage. Stripe still does the billing and charging (BillingInvoice
 # mirrors each bill); this is the document, with Stripe's invoice number so a
 # charge never carries two numbers. A usage invoice names the people it
-# counted: staff with a paid shift and performers with a paid show that month.
+# counted: from November 2026 everyone paid through CocoScout that month
+# (staff and everyone else), before that staff with a paid shift and
+# performers with a paid show that month.
 class CocoScoutInvoice
   def self.document(billing_invoice)
     new(billing_invoice).document
@@ -73,17 +75,28 @@ class CocoScoutInvoice
     month = usage_month
     staff = StaffActivation.where(organization: @organization).for_month(month).count
     performers = PerformerActivation.where(organization: @organization).for_month(month).count
-    counted = staff * StaffBillingService::PER_ACTIVE_STAFF_CENTS + performers * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS
+    pro = UsageRules.pro_cents(@organization, month)
+    debits = UsageRules.extra_bank_debits(@organization, month)
+    withdrawn = UsageRules.withdrawn_cents(@organization, month)
+    withdrawal_fee = UsageRules.withdrawal_fee_cents(@organization, month, withdrawn)
+    counted = staff * StaffBillingService::PER_ACTIVE_STAFF_CENTS + performers * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS +
+              debits * UsageRules::EXTRA_BANK_DEBIT_CENTS + withdrawal_fee + pro
     lines = []
-    if staff.positive?
-      lines << InvoiceDocument::Line.new(description: "#{staff} active #{'staff member'.pluralize(staff)} × #{dollars(StaffBillingService::PER_ACTIVE_STAFF_CENTS)}",
-                                         detail: "Staff with a paid shift in #{month.strftime('%B %Y')}, counted once each.",
-                                         amount_cents: staff * StaffBillingService::PER_ACTIVE_STAFF_CENTS)
+    if pro.positive?
+      lines << InvoiceDocument::Line.new(description: "Pro plan, #{month.strftime('%B %Y')}",
+                                         detail: pro == SubscriptionPlan::PRO_MONTHLY_CENTS ? "#{dollars(SubscriptionPlan::PRO_MONTHLY_CENTS)} a month." : "#{dollars(SubscriptionPlan::PRO_MONTHLY_CENTS)} a month, for the days you were on Pro.",
+                                         amount_cents: pro)
     end
-    if performers.positive?
-      lines << InvoiceDocument::Line.new(description: "#{performers} active #{'performer'.pluralize(performers)} × #{dollars(PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS)}",
-                                         detail: "Performers paid for a show in #{month.strftime('%B %Y')}, counted once each.",
-                                         amount_cents: performers * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS)
+    lines += UsageRules.by_payment?(month) ? paid_people_items(month, staff, performers) : worked_people_items(month, staff, performers)
+    if debits.positive?
+      lines << InvoiceDocument::Line.new(description: "#{debits} bank #{'debit'.pluralize(debits)} beyond the #{UsageRules::FREE_BANK_DEBITS} free × #{dollars(UsageRules::EXTRA_BANK_DEBIT_CENTS)}",
+                                         detail: "Payout runs funded from your bank, and funds added from it, in #{month.strftime('%B %Y')}.",
+                                         amount_cents: debits * UsageRules::EXTRA_BANK_DEBIT_CENTS)
+    end
+    if withdrawal_fee.positive?
+      lines << InvoiceDocument::Line.new(description: "Withdrawals over #{dollars(UsageRules::FREE_WITHDRAWAL_CENTS)}: 0.25% of #{dollars(withdrawn - UsageRules::FREE_WITHDRAWAL_CENTS)}",
+                                         detail: "Our payment provider's cost for sending money to your bank, passed on. The first #{dollars(UsageRules::FREE_WITHDRAWAL_CENTS)} each month is free.",
+                                         amount_cents: withdrawal_fee)
     end
     difference = billed - counted
     if difference.positive?
@@ -95,6 +108,38 @@ class CocoScoutInvoice
       # Paid work that ended after Stripe drafted the bill: counted, not charged.
       lines << InvoiceDocument::Line.new(description: "Counted after this bill was issued", amount_cents: difference,
                                          detail: "Not charged on this bill.")
+    end
+    lines
+  end
+
+  # From November 2026: everyone paid through CocoScout that month (UsageRules).
+  def paid_people_items(month, staff, others)
+    lines = []
+    if staff.positive?
+      lines << InvoiceDocument::Line.new(description: "#{staff} #{'staff member'.pluralize(staff)} paid × #{dollars(StaffBillingService::PER_ACTIVE_STAFF_CENTS)}",
+                                         detail: "Staff paid through CocoScout in #{month.strftime('%B %Y')}, counted once each.",
+                                         amount_cents: staff * StaffBillingService::PER_ACTIVE_STAFF_CENTS)
+    end
+    if others.positive?
+      lines << InvoiceDocument::Line.new(description: "#{others} #{others == 1 ? 'other person' : 'other people'} paid × #{dollars(PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS)}",
+                                         detail: "Performers, contractors and everyone else paid through CocoScout in #{month.strftime('%B %Y')}, counted once each.",
+                                         amount_cents: others * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS)
+    end
+    lines
+  end
+
+  # Through October 2026: everyone whose paid work happened that month.
+  def worked_people_items(month, staff, performers)
+    lines = []
+    if staff.positive?
+      lines << InvoiceDocument::Line.new(description: "#{staff} active #{'staff member'.pluralize(staff)} × #{dollars(StaffBillingService::PER_ACTIVE_STAFF_CENTS)}",
+                                         detail: "Staff with a paid shift in #{month.strftime('%B %Y')}, counted once each.",
+                                         amount_cents: staff * StaffBillingService::PER_ACTIVE_STAFF_CENTS)
+    end
+    if performers.positive?
+      lines << InvoiceDocument::Line.new(description: "#{performers} active #{'performer'.pluralize(performers)} × #{dollars(PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS)}",
+                                         detail: "Performers paid for a show in #{month.strftime('%B %Y')}, counted once each.",
+                                         amount_cents: performers * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS)
     end
     lines
   end

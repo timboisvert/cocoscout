@@ -323,10 +323,10 @@ RSpec.describe MoneyTodoService do
       expect(service.payouts.items.first[:name]).to eq(production.name)
     end
 
-    # A show that's happened is due now; a contract payment is due when its date
-    # says so. The box headlines the first kind plus the near-dated second kind,
-    # and leaves a payment months out to the small-print total.
-    it "splits 'to pay' into what's due this week and what's just owed" do
+    # To pay means "you can go pay this now". A show that's happened is due
+    # now; a contract payment is due once its date is inside the week. A
+    # payment months out is owed, but it's Upcoming, not To pay.
+    it "puts a contract payment past the week in Upcoming, not To pay" do
       contract = create(:contract, organization: org, production: create(:production, organization: org))
       contract.contract_payments.create!(description: "Soon", amount: 100, direction: "outgoing",
                                          due_date: 3.days.from_now.to_date)
@@ -335,8 +335,39 @@ RSpec.describe MoneyTodoService do
 
       section = service.payouts
 
-      expect(section.amounts[:to_pay]).to eq(80.0 + 100 + 2_000)
+      expect(section.amounts[:to_pay]).to eq(80.0 + 100)
+      expect(section.amounts[:upcoming]).to eq(2_000)
       expect(section.due_soon_amount).to eq(80.0 + 100)
+      expect(section.columns).to include(:upcoming)
+      item = section.items.find { |i| i[:kind] == :contract }
+      expect(item[:subtitle]).to include("1 contract payment due", "1 upcoming")
+    end
+
+    # Ticket money in hand for a show that hasn't happened isn't payable yet.
+    it "puts a settlement for a show that hasn't happened in Upcoming" do
+      contract = create(:contract, :active, organization: org, production: production,
+                                            contractor_name: "Future Sketch")
+      allow_any_instance_of(Contract).to receive(:revenue_share?).and_return(true)
+      future = create(:show, production: production, event_type: :show, date_and_time: 3.days.from_now)
+      contract.contract_payments.create!(description: "50% to them", amount: 40, direction: "outgoing",
+                                         show: future, due_date: future.date_and_time.to_date,
+                                         notes: "Auto-calculated from show financials:\nFuture (x): $80.00")
+
+      item = service.payouts.items.find { |i| i[:name] == "Future Sketch" }
+      expect(item[:amounts][:upcoming]).to eq(40.0)
+      expect(item[:amounts][:to_pay]).to be_nil
+      expect(service.payouts.amounts[:to_pay]).to eq(80.0)
+    end
+
+    it "puts a payout worked out before its show in Upcoming" do
+      early = create(:show, production: production, event_type: :show, date_and_time: 2.days.from_now)
+      early_payout = ShowPayout.create!(show: early, status: "awaiting_payout",
+                                        calculated_at: Time.current, total_payout: 30)
+      ShowPayoutLineItem.create!(show_payout: early_payout, payee: create(:person), amount: 30)
+
+      section = service.payouts
+      expect(section.amounts[:to_pay]).to eq(80.0)
+      expect(section.amounts[:upcoming]).to eq(30.0)
     end
 
     it "never leaks another organization's payouts" do
