@@ -17,6 +17,7 @@
   rule = tips.rule
   roles_by_id = rule&.enabled? ? Current.organization.house_roles.index_by(&:id) : {}
   modal_id = "tips-split-#{day.param}"
+  math_id = "tips-math-#{day.param}"
   paid_words = { "payout" => "on their next pay", "cash" => "in cash at close" }
   workers = tips.sharers
   split = tips.split
@@ -41,7 +42,9 @@
     <% end %>
   </div>
   <% if by_rule %>
-    <p class="text-sm text-gray-600">Worked out from who was on when each sale rang up: <%= rule.summary(roles_by_id) %>.</p>
+    <%# One small way into the math, here and nowhere else (Tim, 2026-11-04). %>
+    <p class="text-sm text-gray-600">Worked out from who was on when each sale rang up: <%= rule.summary(roles_by_id) %>.
+      <a href="#<%= math_id %>" class="ml-1 text-xs text-pink-600 hover:text-pink-700 whitespace-nowrap" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= math_id %>">View share calculation</a></p>
     <div class="divide-y divide-gray-100">
       <% tips.rows.each do |row| %>
         <div class="flex items-baseline justify-between gap-3 py-1.5 text-sm">
@@ -88,6 +91,9 @@
     <p class="text-xs text-gray-500">Shares go on each person's next pay from Pay People, with their hours; cash shares came out of the door cash at close.</p>
   <% end %>
 </div>
+<% if by_rule %>
+  <%= render "manage/settlement_days/tips_math_modal", id: math_id, tips: tips, roles_by_id: roles_by_id %>
+<% end %>
 <% if editable %>
   <%= render "manage/settlement_days/tips_modal", id: modal_id, day: day, tips: tips, hand_rows: hand_rows, roles_by_id: roles_by_id %>
 <% end %>

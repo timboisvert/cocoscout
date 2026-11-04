@@ -396,7 +396,10 @@ RSpec.describe "Manage::SettlementDays tips by the clock", type: :request do
       get manage_money_settle_up_day_path(date.iso8601)
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Worked out from who was on when each sale rang up: Bartender keeps what rang up while on; Bar back 15% off the top")
-      expect(response.body).to include("Miles", "Camille", "From 32 orders while on.", "Change the split", "Add a person who worked", "Change the rule", "6 pm to 10 pm")
+      expect(response.body).to include("Miles", "Camille", "From 32 orders while on.", "Change the split", "Add someone", "Take off", "Change the rule", "6 pm to 10 pm")
+      # One small way into the math, and the math itself: the shared stretch, what rang up in it, and each one's half.
+      expect(response.body.scan("View share calculation").size).to eq(1)
+      expect(response.body).to include("Share calculation", "By who was on", "Adds up to")
       expect(response.body).not_to include(%(name="shares[#{pat.id}][amount]"))
       expect(response.body).to include(%(name="shares[#{miles.id}][amount]" inputmode="decimal" value="120.00"))
       expect(response.body).to include(%(name="shares[#{miles.id}][from]" value="18:00"), %(name="shares[#{miles.id}][to]" value="22:00"))

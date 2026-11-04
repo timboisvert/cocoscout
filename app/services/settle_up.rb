@@ -120,6 +120,8 @@ class SettleUp
     # The stretches of time with nobody on the bar, each a question for the
     # manager; the day's register can't be checked while one is unanswered.
     def stretches = by_rule? ? calculator.stretches : []
+    def periods = by_rule? ? calculator.periods : []
+    def shared? = by_rule? && calculator.shared?
     def unresolved = by_rule? ? calculator.unresolved : []
     # What stays with the house: by the rule, the stretches it keeps; by
     # hand, whatever the shares don't add up to.

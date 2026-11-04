@@ -64,6 +64,18 @@ class TipSplit
     end
   end
 
+  # The math, for the page to show (Tim, 2026-11-04): a run of quarter
+  # hours with the same people on the bar, what rang up in it, and how it
+  # was divided. cuts are the roles paid off the top ({ role_id:, percent:,
+  # person_ids:, cents: }); left_cents is what the equal-share people on
+  # split, or what waits on the manager when nobody was.
+  Period = Data.define(:from, :to, :cents, :orders, :cuts, :equal_ids, :left_cents) do
+    def words = "#{TipSplit.clock(from)} to #{TipSplit.clock(to)}"
+    def people = (cuts.flat_map { |cut| cut[:person_ids] } + equal_ids).uniq
+    def shared? = people.size > 1
+    def each_cents = equal_ids.any? ? left_cents / equal_ids.size : 0
+  end
+
   def self.money(cents) = ActiveSupport::NumberHelper.number_to_currency(cents / 100.0)
   def self.clock(time) = time.in_time_zone.strftime("%-l:%M %P").sub(":00", "")
   def self.percent_words(percent) = "#{percent % 1 == 0 ? percent.to_i : percent}%"
@@ -99,6 +111,26 @@ class TipSplit
 
   def unresolved = stretches.reject(&:resolved?)
 
+  # Quarter hours join while the same people were on: "7 pm to 8:45 pm,
+  # $11.00 from 5 orders, Kitty and Miles, $5.50 each".
+  def periods
+    rows
+    @periods ||= @quarters.each_with_object([]) do |quarter, joined|
+      last = joined.last
+      if last && last[:crew] == quarter[:crew]
+        last[:to] = quarter[:to]
+        %i[cents orders left].each { |key| last[key] += quarter[key] }
+        last[:cuts].each_with_index { |cut, i| cut[:cents] += quarter[:cuts][i][:cents] }
+      else
+        joined << quarter.merge(cuts: quarter[:cuts].map(&:dup))
+      end
+    end.map { |p| Period.new(from: p[:from], to: p[:to], cents: p[:cents], orders: p[:orders], cuts: p[:cuts], equal_ids: p[:equal_ids], left_cents: p[:left]) }
+  end
+
+  # Did any tips get divided between people? Without that the math is one
+  # person per stretch, and there is nothing to show.
+  def shared? = periods.any?(&:shared?)
+
   # What stays with the house: the stretches it keeps, and the ones nobody
   # has answered for yet.
   def house_cents
@@ -129,6 +161,7 @@ class TipSplit
     # Quarters with no equal-share person on, in time order, each with what
     # was left after any cut off the top; they join into stretches below.
     unstaffed = []
+    @quarters = []
 
     @tips_by_time.sort_by { |key, _| key }.each do |key, quarter|
       cents = quarter["cents"].to_i
@@ -143,11 +176,13 @@ class TipSplit
       end
 
       remaining = cents.to_f
+      cuts = []
       on.group_by(&:last).each do |role_id, people|
         next unless @rule.kind_for(role_id) == "percent"
 
         cut = cents * @rule.percent_for(role_id) / 100.0
         remaining -= cut
+        cuts << { role_id: role_id, percent: @rule.percent_for(role_id), person_ids: people.map { |worker, _| worker.person.id }, cents: cut }
         people.each do |worker, _|
           tally[worker.person.id][:cut_cents] += cut / people.size
           tally[worker.person.id][:percent] = @rule.percent_for(role_id)
@@ -155,6 +190,9 @@ class TipSplit
         end
       end
       equal = on.select { |_, role_id| @rule.kind_for(role_id) == "equal" }
+      equal_ids = equal.map { |worker, _| worker.person.id }
+      @quarters << { from: start, to: finish, cents: cents, orders: orders, cuts: cuts, equal_ids: equal_ids, left: remaining,
+                     crew: [ cuts.map { |cut| [ cut[:role_id], cut[:person_ids] ] }, equal_ids ] }
       if equal.empty?
         unstaffed << { key: key, from: start, to: finish, cents: remaining, orders: orders }
       else
