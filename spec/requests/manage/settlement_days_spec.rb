@@ -464,7 +464,7 @@ RSpec.describe "Manage::SettlementDays pays people", type: :request do
       expect(payout.line_items.map { |l| [ l.payee_name, l.amount.to_f, l.pay_choice ] }).to contain_exactly([ "Ana Diaz", 100.0, "run" ], [ "Ben Lee", 100.0, "run" ])
 
       get manage_money_settle_up_day_path(date.iso8601, open: show.id)
-      expect(response.body).to include("$200.00 to 2 people", "2 people on the run when the day settles", "Hold, not yet", "Paid another way…", "Remove from this show", "Who's paid and how", "$200.00 for 2 people goes on the payout run")
+      expect(response.body).to include("$200.00 to 2 people", "Hold, not yet", "Paid another way…", "Remove from this show", "Who's paid and how", "$200.00 for 2 people goes on the payout run")
       expect(response.body).not_to include("<select name=\"pay_choice\"")
       expect(response.body).not_to include("Recalculate")
 
@@ -518,7 +518,7 @@ RSpec.describe "Manage::SettlementDays pays people", type: :request do
       expect(flash[:notice]).to include("$100.00 for 1 person came off the payout run")
       expect(PayoutContribution.where(source_type: "ShowPayoutLineItem", source_id: payout.line_items.ids)).not_to exist
       get manage_money_settle_up_day_path(date.iso8601)
-      expect(response.body).to include("1 person on the run when the day settles")
+      expect(response.body).to include("1 held", "$100.00 for 1 person goes on the payout run when the day settles")
     end
 
     it "records a line paid another way from the day, and a hand edit to the money darkens the mark" do
