@@ -22,8 +22,10 @@ module Manage
       @day = SettleUp.day(Current.organization, @date)
       @prev_day = SettleUp.days(Current.organization, (@date - 90)..(@date - 1)).first
       @next_day = SettleUp.days(Current.organization, (@date + 1)..(@date + 90)).last
-      @month = params[:month].present? ? Date.strptime(params[:month], "%Y-%m") : @date.beginning_of_month
-      @month_days = SettleUp.days(Current.organization, @month..@month.end_of_month).index_by(&:date)
+      # The day picker Home has: earlier, the day (a two-month calendar), later, Today.
+      @today = SettlementDay.day_for(Current.organization, Time.current)
+      @calendar_months = calendar_months_around(@date)
+      @money_dates = SettleUp.dates(Current.organization, @calendar_months.first..@calendar_months.last.end_of_month)
       @ticket_sources = Current.organization.ticket_sources.hand_made.active.ordered.to_a
     end
 

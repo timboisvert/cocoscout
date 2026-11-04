@@ -82,6 +82,15 @@ class SettleUp
     dates.map { |date| build(organization, date, by_date.fetch(date, []), records[date], registers: registers.fetch(date, []), cash: cash) }
   end
 
+  # Just the dates in the span that had money in them, for a calendar's dots.
+  def self.dates(organization, range)
+    shows = revenue_shows(organization).where(date_and_time: range.begin.in_time_zone.beginning_of_day..(range.end.in_time_zone.end_of_day + 1.day)).pluck(:date_and_time)
+    dates = shows.map { |t| SettlementDay.day_for(organization, t) }.select { |d| range.cover?(d) }
+    dates += SettlementDay.where(organization: organization, date: range).pluck(:date)
+    dates += register_days(organization).where(business_date: range).distinct.pluck(:business_date)
+    dates.to_set
+  end
+
   # Days that are over, had money in them, and nobody has settled, from the
   # organization's Settle up start date on (SettleUpStart): earlier days are
   # history.

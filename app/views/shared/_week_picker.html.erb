@@ -14,6 +14,7 @@
     week_statuses  { monday => status }, optional                 (pick: :week)
     day_path       lambda(date) => path, selected_day, show_dates (pick: :day)
     legend         true (default) draws the status legend         (pick: :week)
+    dot_text       what a dotted day means, default "Days with shows" (pick: :day)
 %>
 <%
   pick = local_assigns.fetch(:pick, :week)
@@ -57,7 +58,7 @@
           <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-red-500"></span>Open slots</span>
         </div>
       <% elsif pick == :day %>
-        <p class="mt-3 pt-3 border-t border-gray-100 text-[11px] text-gray-500 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-pink-500"></span>Days with shows</p>
+        <p class="mt-3 pt-3 border-t border-gray-100 text-[11px] text-gray-500 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-pink-500"></span><%= local_assigns.fetch(:dot_text, "Days with shows") %></p>
       <% end %>
     </div>
   </div>

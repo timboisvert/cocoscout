@@ -26,41 +26,24 @@
     links: []
   } %>
 
-  <%# Previous day, the calendar in the middle, next day (plan §9.9). %>
-  <div class="flex flex-wrap items-center justify-center gap-2 mb-4">
-    <% if @prev_day %>
-      <%= render "shared/button", text: "← #{@prev_day.date.strftime('%a, %b %-d')}", variant: "secondary", size: "small", path: manage_money_settle_up_day_path(@prev_day.param) %>
-    <% else %>
-      <span class="text-xs text-gray-400 px-2">No earlier day</span>
-    <% end %>
-    <details class="relative">
-      <summary class="list-none cursor-pointer">
-        <%= render "shared/button", text: @date.strftime("%a, %b %-d, %Y ▾"), variant: "primary", size: "small", type: :button %>
-      </summary>
-      <%# On a phone the calendar spans the screen's width (fixed, with a gutter); wider, it hangs centered under the button. %>
-      <div class="fixed inset-x-4 w-auto sm:absolute sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[22rem] z-30 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 p-3">
-        <%= render "shared/month_calendar",
-              current_month: @month.in_time_zone,
-              month_link: ->(t) { manage_money_settle_up_day_path(@date.iso8601, month: t.strftime("%Y-%m")) },
-              items_by_date: @month_days.transform_values { |d| [ d ] },
-              item_partial: "manage/settlement_days/calendar_item",
-              min_cell: "min-h-[44px]",
-              mobile_grid: true,
-              empty_text: "No days with money this month.",
-              anchor: "day-calendar" %>
-        <div class="flex flex-wrap gap-3 text-[11px] text-gray-500 -mt-6 px-1">
-          <span class="inline-flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full bg-green-500"></span>settled</span>
-          <span class="inline-flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-500"></span>to settle</span>
-          <span class="inline-flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full bg-gray-300"></span>before Settle up</span>
-          <span>blank: nothing that day</span>
-        </div>
-      </div>
-    </details>
-    <% if @next_day %>
-      <%= render "shared/button", text: "#{@next_day.date.strftime('%a, %b %-d')} →", variant: "secondary", size: "small", path: manage_money_settle_up_day_path(@next_day.param) %>
-    <% else %>
-      <span class="text-xs text-gray-400 px-2">No later day</span>
-    <% end %>
+  <%# Earlier, the day, later, Today: the picker Home has, on the left where it is there. A phone gets the arrows and the day. %>
+  <%
+    earlier = manage_money_settle_up_day_path((@prev_day&.date || @date - 1).iso8601)
+    later = manage_money_settle_up_day_path((@next_day&.date || @date + 1).iso8601)
+    today_path = @date == @today ? nil : manage_money_settle_up_day_path(@today.iso8601)
+  %>
+  <div class="mb-4">
+    <%= render "shared/week_picker", label: @date.strftime("%a, %b %-d, %Y"), months: @calendar_months, pick: :day,
+          prev_path: earlier, next_path: later, today_path: today_path, today_text: "Today",
+          day_path: ->(d) { manage_money_settle_up_day_path(d.iso8601) }, selected_day: @date, show_dates: @money_dates, dot_text: "Days with money" %>
+    <div class="flex sm:hidden items-center gap-2">
+      <%= render "shared/button", text: "", icon: "chevron-left", variant: "secondary", size: "small", type: :link, path: earlier, title: "Earlier" %>
+      <span class="text-sm font-semibold text-gray-900"><%= @date.strftime("%a, %b %-d, %Y") %></span>
+      <%= render "shared/button", text: "", icon: "chevron-right", variant: "secondary", size: "small", type: :link, path: later, title: "Later" %>
+      <% if today_path %>
+        <%= render "shared/button", text: "Today", variant: "ghost", size: "small", type: :link, path: today_path %>
+      <% end %>
+    </div>
   </div>
 
   <% if day.before_start? %>

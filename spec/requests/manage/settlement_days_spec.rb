@@ -50,6 +50,19 @@ RSpec.describe "Settle up", type: :request do
     expect(response.body).to include(date.strftime("%b %-d"))
   end
 
+  it "steps between days with the picker Home has: earlier, the day, later, Today" do
+    get manage_money_settle_up_day_path(date.iso8601)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include('data-week-picker')
+    expect(response.body).to include(date.strftime("%a, %b %-d, %Y"))
+    expect(response.body).to match(/title="Earlier"[^>]*href="#{Regexp.escape(manage_money_settle_up_day_path((date - 1).iso8601))}"/)
+    expect(response.body).to match(/title="Later"[^>]*href="#{Regexp.escape(manage_money_settle_up_day_path((date + 1).iso8601))}"/)
+    expect(response.body).to include(%(href="#{manage_money_settle_up_day_path(SettlementDay.day_for(org, Time.current).iso8601)}")).and include(">Today<")
+    expect(response.body).to include("Days with money")
+    expect(response.body).not_to include("No earlier day")
+  end
+
   it "counts the door cash, and puts an over or short on the books when the day settles" do
     patch manage_door_cash_money_settle_up_day_path(date.iso8601), params: { counted: "5.00", float_kept: "0", note: "Found a five in the box" }
     record = SettlementDay.find_by!(organization: org, date: date)
