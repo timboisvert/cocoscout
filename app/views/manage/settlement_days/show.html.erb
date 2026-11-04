@@ -33,42 +33,19 @@
     today_path = @date == @today ? nil : manage_money_settle_up_day_path(@today.iso8601)
   %>
 
-  <% if day.before_start? %>
-    <%= render "shared/alert_panel",
-          eyebrow: "Before Settle up",
-          headline: "#{@date.strftime('%A, %B %-d')} is before Settle up started",
-          body: "Settle up starts on #{Current.organization.settle_up_starts_on.strftime('%B %-d, %Y')}. Days before it stay as they were: their money is on the books from each show's Financials, and nothing here needs doing.",
-          actions: (module_change?(:settle_up) ? [ { text: "Change the start date", variant: "secondary", path: manage_money_settings_section_path(section: "settle_up") } ] : []) %>
-  <% elsif day.settled? %>
-    <% open_run = PayoutBatch.current_open_draft(Current.organization) %>
-    <% on_run = day.shows.sum { |s| s.pay.performers? ? s.pay.rows.count { |r| r.stage.in?(%i[in_draft in_flight]) } : s.pay.payments.count { |p| p.payout_stage.present? } } %>
-    <%# Says "the draft payout run" while that's all it is; a run already funding is just "a payout run". %>
-    <% on_draft = day.shows.sum { |s| s.pay.performers? ? s.pay.rows.count { |r| r.stage == :in_draft } : s.pay.payments.count { |p| p.payout_stage == :in_draft } } %>
-    <%= render "shared/alert_panel",
-          eyebrow: "Settled",
-          headline: "#{@date.strftime('%A, %B %-d')} is settled",
-          body: "Settled #{record.settled_at.strftime('%b %-d at %-l:%M %P')}#{record.settled_by ? " by #{record.settled_by.default_person&.name || record.settled_by.email_address}" : ''}.#{on_run.positive? ? " #{pluralize(on_run, 'payout')} from this day #{on_run == 1 ? 'is' : 'are'} on #{on_draft == on_run ? 'the draft payout run' : 'a payout run'}." : ''}#{record.reopen_reason.present? ? " Reopened once: #{record.reopen_reason}" : ''} To change anything, reopen it; the books keep both versions.",
-          actions: [ (can_change ? { text: "Reopen this day", variant: "secondary", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "reopen-day" } } : nil),
-                     (open_run && on_run.positive? ? { text: "The payout run", variant: "primary", path: manage_payout_batch_path(open_run) } : nil) ].compact %>
-  <% elsif record&.reopened_at %>
-    <%= render "shared/alert_panel", tone: :amber,
-          eyebrow: "Reopened",
-          headline: "Reopened #{record.reopened_at.strftime('%b %-d')}#{record.reopened_by ? " by #{record.reopened_by.default_person&.name || record.reopened_by.email_address}" : ''}",
-          body: record.reopen_reason.presence || "Settle it again when it's right." %>
-  <% end %>
-
-  <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
-    <div>
+  <%# The title and the picker hold their place on every day (Tim, 2026-11-04): the row comes first, the picker never drops under the words on a desktop, and what the day's state has to say sits underneath. %>
+  <div class="flex flex-wrap sm:flex-nowrap items-start justify-between gap-3 mb-4">
+    <div class="min-w-0 sm:flex-1">
       <h1 class="text-2xl font-bold text-gray-900 coustard-regular"><%= @date.strftime("%A, %B %-d") %></h1>
       <p class="text-sm text-gray-600 mt-1">
         <% if day.any? %>
-          <%= what.join(", ").capitalize %>. Confirm each piece; settling the day puts it on the books and its payouts on the run.
+          <%= what.join(", ").capitalize %>.<% unless day.settled? || day.before_start? %> Confirm each piece; settling the day puts it on the books and its payouts on the run.<% end %>
         <% else %>
           Nothing with money in it happened this day.
         <% end %>
       </p>
     </div>
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-2 shrink-0">
       <%= render "shared/week_picker", label: @date.strftime("%a, %b %-d, %Y"), months: @calendar_months, pick: :day,
             prev_path: earlier, next_path: later, today_path: today_path, today_text: "Today",
             day_path: ->(d) { manage_money_settle_up_day_path(d.iso8601) }, selected_day: @date, day_statuses: @day_states %>
@@ -82,6 +59,43 @@
       </div>
     </div>
   </div>
+
+  <% if day.before_start? %>
+    <%= render "shared/alert_panel",
+          eyebrow: "Before Settle up",
+          headline: "#{@date.strftime('%A, %B %-d')} is before Settle up started",
+          body: "Settle up starts on #{Current.organization.settle_up_starts_on.strftime('%B %-d, %Y')}. Days before it stay as they were: their money is on the books from each show's Financials, and nothing here needs doing.",
+          actions: (module_change?(:settle_up) ? [ { text: "Change the start date", variant: "secondary", path: manage_money_settings_section_path(section: "settle_up") } ] : []) %>
+  <% elsif day.settled? %>
+    <% open_run = PayoutBatch.current_open_draft(Current.organization) %>
+    <% on_run = day.shows.sum { |s| s.pay.performers? ? s.pay.rows.count { |r| r.stage.in?(%i[in_draft in_flight]) } : s.pay.payments.count { |p| p.payout_stage.present? } } %>
+    <%# Says "the draft payout run" while that's all it is; a run already funding is just "a payout run". %>
+    <% on_draft = day.shows.sum { |s| s.pay.performers? ? s.pay.rows.count { |r| r.stage == :in_draft } : s.pay.payments.count { |p| p.payout_stage == :in_draft } } %>
+    <%
+      settled_words = "#{record.settled_at.strftime('%b %-d at %-l:%M %P')}#{record.settled_by ? " by #{record.settled_by.default_person&.name || record.settled_by.email_address}" : ''}."
+      run_words = on_run.positive? ? "#{pluralize(on_run, 'payout')} from this day #{on_run == 1 ? 'is' : 'are'} on #{on_draft == on_run ? 'the draft payout run' : 'a payout run'}." : nil
+    %>
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5" id="day-settled">
+      <p class="min-w-0 text-sm text-gray-600">
+        <svg class="inline-block w-4 h-4 -mt-0.5 mr-1 text-green-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.414 0l-3.5-3.5a1 1 0 111.414-1.42L8.5 12.086l6.79-6.796a1 1 0 011.414 0z" clip-rule="evenodd"/></svg><span class="font-semibold text-gray-900">Settled</span>
+        <%= settled_words %><% if run_words %> <%= run_words %><% end %><% if record.reopen_reason.present? %> Reopened once: <%= record.reopen_reason %><% end %>
+      </p>
+      <div class="flex items-center gap-2 shrink-0">
+        <% if open_run && on_run.positive? %>
+          <%= render "shared/button", text: "The payout run", variant: "secondary", size: "small", type: :link, path: manage_payout_batch_path(open_run) %>
+        <% end %>
+        <% if can_change %>
+          <%= render "shared/button", text: "Reopen this day", variant: "secondary", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: "reopen-day" } %>
+        <% end %>
+      </div>
+    </div>
+  <% elsif record&.reopened_at %>
+    <%= render "shared/alert_panel", tone: :amber,
+          eyebrow: "Reopened",
+          headline: "Reopened #{record.reopened_at.strftime('%b %-d')}#{record.reopened_by ? " by #{record.reopened_by.default_person&.name || record.reopened_by.email_address}" : ''}",
+          body: record.reopen_reason.presence || "Settle it again when it's right." %>
+  <% end %>
 
   <% if day.any? %>
     <div class="grid grid-cols-2 <%= tiles.size >= 5 ? "lg:grid-cols-5" : "lg:grid-cols-4" %> gap-3 mb-6">
