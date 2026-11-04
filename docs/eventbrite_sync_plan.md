@@ -32,6 +32,8 @@ Each show on sale becomes its own Eventbrite event. A date that qualifies is cre
 
 Both sites sell every seat. Neither gets an allotment.
 
+CocoScout only lists the show on Eventbrite and hears about the sales made there. Nobody sells an Eventbrite ticket from inside CocoScout: there is no button for it, and no manager step. Buyers buy on Eventbrite's own site.
+
 - For each ticket type, Eventbrite is told: what Eventbrite has sold of it, plus what is left here. Buyers on both sites see the same number left.
 - **A sale here** (or a cart holding seats) lowers the number on Eventbrite within a few seconds.
 - **A sale there** is recorded here as an Eventbrite sale on that show and ticket type (the existing `TicketOutsideSale` rows that `Ticketing::Inventory` already subtracts). The number left here drops at once.
