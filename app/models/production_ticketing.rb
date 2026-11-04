@@ -24,6 +24,8 @@ class ProductionTicketing < ApplicationRecord
 
   belongs_to :organization
   belongs_to :production
+  # The ticket page's own words, when they differ from the production's.
+  has_rich_text :description
 
   has_many :ticket_tiers, -> { order(:position, :id) }, dependent: :destroy, inverse_of: :production_ticketing
   has_many :production_ticketing_shows, dependent: :delete_all

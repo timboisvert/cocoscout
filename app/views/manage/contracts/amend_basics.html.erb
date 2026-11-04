@@ -24,9 +24,9 @@
             Description
             <span class="text-gray-400 font-normal">(optional)</span>
           </label>
-          <textarea name="description" id="description" rows="5"
-                    placeholder="A few lines about the show for people buying tickets"
-                    class="<%= input_class %>"><%= @description %></textarea>
+          <div data-controller="no-attachments">
+            <%= rich_text_area_tag :description, @description, placeholder: "A few lines about the show for people buying tickets", class: "w-full min-h-[150px]" %>
+          </div>
           <p class="mt-1.5 text-xs text-gray-500">Shown on its ticket page and public listing.</p>
         </div>
 

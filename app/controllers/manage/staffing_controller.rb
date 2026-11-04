@@ -73,6 +73,9 @@ module Manage
       load_org_chart
     end
 
+    SCHEDULING_VIEWS = %w[week day].freeze
+    SCHEDULING_VIEW_COOKIE = :staffing_view
+
     # The weekly house-staff schedule (formerly the Staffing landing page).
     def scheduling
       return unless Current.organization
@@ -102,6 +105,15 @@ module Manage
         (week_range.cover?(Date.current) ? Date.current : nil) ||
         week_range.find { |d| @shows_by_day[d].present? || @shifts_by_day[d].present? } ||
         @week_start
+      # Desktop shows the week, or one day at a time (?view=day; Tim,
+      # 2026-11-04): the last choice is kept on this browser. A phone is
+      # always a day, whatever the cookie says.
+      @view = params[:view].to_s.presence_in(SCHEDULING_VIEWS)
+      if @view
+        cookies[SCHEDULING_VIEW_COOKIE] = { value: @view, expires: 1.year.from_now, same_site: :lax }
+      else
+        @view = cookies[SCHEDULING_VIEW_COOKIE].to_s.presence_in(SCHEDULING_VIEWS) || "week"
+      end
       # The days the week calendar and the phone's jump sheet can reach, with
       # what each holds: dots on days with shows, a status per week.
       @calendar_months = calendar_months_around(@week_start)

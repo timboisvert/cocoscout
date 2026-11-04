@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_04_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_04_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2570,7 +2570,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_04_010000) do
     t.string "fee_mode"
     t.integer "max_per_order"
     t.string "title"
-    t.text "description"
     t.string "door_note"
     t.string "age_note"
     t.string "accessibility_note"
@@ -2598,7 +2597,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_04_010000) do
 
   create_table "productions", force: :cascade do |t|
     t.string "name"
-    t.text "description"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "organization_id", null: false
@@ -4131,7 +4129,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_04_010000) do
     t.string "fee_mode"
     t.integer "max_per_order"
     t.string "title"
-    t.text "description"
     t.string "door_note"
     t.string "age_note"
     t.string "accessibility_note"

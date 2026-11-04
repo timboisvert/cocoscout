@@ -1,0 +1,73 @@
+<%#
+  One day on desktop (Day view; Tim, 2026-11-04): the phone's day page at
+  full width. The day's roles run on a timeline, by role or by person (each
+  bar opens its shift's menu), with the day's shows across the top; "+ Add a
+  shift" below; the shows listed under it, one line each, each opening its
+  detail. The week this day belongs to still owns the status bar, Publish
+  and Notify updates above.
+%>
+<%
+  day = @selected_day
+  day_shows = @shows_by_day[day] || []
+  day_shifts = @shifts_by_day[day] || []
+  stats = shift_slot_stats(day_shifts)
+  role_order = @house_roles.each_with_index.to_h { |r, i| [ r.id, i ] }
+  pct = stats[:total].positive? ? (100.0 * stats[:staffed] / stats[:total]).round : 0
+  meter = stats[:declined].positive? ? "bg-red-500" : (pct >= 100 ? "bg-green-500" : "bg-amber-400")
+  open_slots = day_shifts.select(&:needs_assignment?).sum(&:remaining_slots)
+%>
+<div class="hidden sm:block space-y-3" data-desktop-day="<%= day.iso8601 %>">
+  <div class="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden" data-controller="day-view" data-day-view-mode-value="gantt-roles">
+    <div class="flex items-center justify-between gap-4 px-4 py-2.5 border-b border-gray-200 bg-gray-50">
+      <div class="flex items-center gap-3 text-sm min-w-0">
+        <span class="font-semibold <%= day == Date.current ? 'text-pink-700' : 'text-gray-900' %>"><%= day.strftime("%A") %><%= " · Today" if day == Date.current %></span>
+        <span class="text-gray-600 whitespace-nowrap"><%= day_shows.any? ? pluralize(day_shows.size, "show") : "No shows" %></span>
+        <% if stats[:total].positive? %>
+          <span class="w-28 h-1.5 rounded-full bg-gray-100 overflow-hidden"><span class="block h-full <%= meter %>" style="width: <%= pct %>%"></span></span>
+          <span class="whitespace-nowrap font-semibold <%= stats[:declined].positive? ? 'text-red-700' : (pct >= 100 ? 'text-green-700' : 'text-amber-700') %>" data-day-staffed>
+            <%= stats[:staffed] %> of <%= stats[:total] %> staffed<%= " · #{stats[:declined]} can't" if stats[:declined].positive? %>
+          </span>
+        <% elsif day_shifts.any? %>
+          <span class="text-gray-500">Nobody needed</span>
+        <% end %>
+        <% if open_slots.positive? %><span class="text-xs text-gray-600"><%= open_slots %> open</span><% end %>
+      </div>
+      <% if day_shifts.any? %>
+        <div class="flex items-center gap-1 text-sm" data-day-view-toggles>
+          <button type="button" data-day-view-target="toggle" data-mode="gantt-roles" data-action="click->day-view#setMode"
+                  class="px-2.5 py-1 rounded font-medium bg-pink-100 text-pink-700 cursor-pointer border-0">By role</button>
+          <button type="button" data-day-view-target="toggle" data-mode="gantt-people" data-action="click->day-view#setMode"
+                  class="px-2.5 py-1 rounded font-medium text-gray-400 hover:bg-gray-100 cursor-pointer border-0">By person</button>
+        </div>
+      <% end %>
+    </div>
+    <% if day_shifts.any? %>
+      <div class="px-3 pt-3 pb-1 overflow-x-auto">
+        <div data-day-view-target="ganttRoles">
+          <%= render "manage/staffing/day_gantt", mode: "roles", day_shifts: day_shifts, day_shows: day_shows, role_order: role_order, menu: true %>
+        </div>
+        <div data-day-view-target="ganttPeople" class="hidden">
+          <%= render "manage/staffing/day_gantt", mode: "people", day_shifts: day_shifts, day_shows: day_shows, role_order: role_order, menu: true %>
+        </div>
+      </div>
+    <% else %>
+      <p class="px-4 pt-4 text-sm text-gray-500"><%= day_shows.any? ? "No shifts yet for these shows." : "Nothing scheduled this day." %></p>
+    <% end %>
+    <% if @house_role_count.positive? %>
+      <div class="flex items-center justify-between gap-3 px-4 py-2.5 border-t border-gray-100">
+        <%= render "shared/button", text: "+ Add a shift", variant: "dashed", size: "small", type: :button,
+              data: shift_add_data(day, day_shows, @house_roles).merge(action: "click->shift-add#open") %>
+        <%= link_to "+ Add a role", manage_staffing_house_roles_path, class: "text-xs font-medium text-pink-600 hover:text-pink-700" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if day_shows.any? %>
+    <div class="bg-white border border-gray-300 rounded-lg shadow-sm px-4 py-3 text-[13px]" data-shows-this-day>
+      <div class="text-[10.5px] font-bold uppercase tracking-wider text-gray-500 mb-1">Shows</div>
+      <% day_shows.each do |show| %>
+        <div class="py-0.5"><%= render "manage/staffing/show_line", show: show, venue: true %></div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

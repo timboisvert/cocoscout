@@ -139,7 +139,7 @@ RSpec.describe ProductionTicketing do
       show_on(2)
       listing = ProductionTicketingDates.sync!(setup).added.sole
 
-      expect([ listing.display_title, listing.effective_description, listing.effective_door_note,
+      expect([ listing.display_title, listing.effective_description.to_plain_text, listing.effective_door_note,
                listing.effective_fee_mode, listing.effective_max_per_order ])
         .to eq([ "Rising Stars Showcase", "New comics.", "Doors at 7", "org", 6 ])
 

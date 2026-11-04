@@ -3,7 +3,7 @@
   roles down the left, one slim line per show, one line per shift. A day with
   nothing on it narrows to a sliver. Every chip opens its shift's menu; the
   "+" in a cell adds another shift in that role that day; the timeline icon
-  on a day opens that day by role or by person.
+  on a day opens that day on its own (Day view, _desktop_day).
 %>
 <%
   days = (@week_start..@week_end).to_a
@@ -31,11 +31,11 @@
           <div class="flex items-center justify-between gap-1">
             <span class="text-[11px] font-semibold uppercase <%= today ? 'text-pink-700' : 'text-pink-600' %>"><%= day.strftime("%a") %><%= " · Today" if today %></span>
             <% if has_any[day] %>
-            <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="day-timeline-<%= day.iso8601 %>"
-                    class="w-6 h-6 -mr-1 rounded inline-flex items-center justify-center text-gray-400 hover:text-pink-600 hover:bg-white cursor-pointer bg-transparent border-0"
-                    title="<%= day.strftime("%A") %> as a timeline" aria-label="<%= day.strftime("%A, %b %-d") %> as a timeline">
+            <%= link_to manage_staffing_scheduling_path(view: "day", day: day.iso8601), data: { day_view_link: day.iso8601 },
+                  class: "w-6 h-6 -mr-1 rounded inline-flex items-center justify-center text-gray-400 hover:text-pink-600 hover:bg-white",
+                  title: "#{day.strftime("%A")} on its own", "aria-label": "#{day.strftime("%A, %b %-d")} on its own" do %>
               <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="3" width="9" height="2.4" rx="1"/><rect x="4" y="6.8" width="11" height="2.4" rx="1"/><rect x="2" y="10.6" width="7" height="2.4" rx="1"/></svg>
-            </button>
+            <% end %>
             <% end %>
           </div>
           <div class="text-lg font-bold text-gray-900 leading-tight"><%= day.day %></div>
@@ -113,25 +113,3 @@
     </div>
   </div>
 </div>
-
-<%# Each day as a timeline, by role or by person (the old per-day Gantt). %>
-<% days.select { |d| has_any[d] }.each do |day| %>
-  <% day_shifts = @shifts_by_day[day] || [] %>
-  <% role_order = @house_roles.each_with_index.to_h { |r, i| [ r.id, i ] } %>
-  <%= render layout: "shared/sheet", locals: { id: "day-timeline-#{day.iso8601}", title: day.strftime("%A, %b %-d"), size: "xl" } do %>
-    <div data-controller="day-view" data-day-view-mode-value="gantt-roles">
-      <div class="flex items-center gap-1 mb-3 text-sm">
-        <button type="button" data-day-view-target="toggle" data-mode="gantt-roles" data-action="click->day-view#setMode"
-                class="px-2.5 py-1 rounded font-medium bg-pink-100 text-pink-700 cursor-pointer border-0">By role</button>
-        <button type="button" data-day-view-target="toggle" data-mode="gantt-people" data-action="click->day-view#setMode"
-                class="px-2.5 py-1 rounded font-medium text-gray-400 hover:bg-gray-100 cursor-pointer border-0">By person</button>
-      </div>
-      <div data-day-view-target="ganttRoles">
-        <%= render "manage/staffing/day_gantt", mode: "roles", day_shifts: day_shifts, day_shows: @shows_by_day[day] || [], role_order: role_order, menu: true %>
-      </div>
-      <div data-day-view-target="ganttPeople" class="hidden">
-        <%= render "manage/staffing/day_gantt", mode: "people", day_shifts: day_shifts, day_shows: @shows_by_day[day] || [], role_order: role_order, menu: true %>
-      </div>
-    </div>
-  <% end %>
-<% end %>
