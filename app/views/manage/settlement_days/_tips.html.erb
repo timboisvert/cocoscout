@@ -36,7 +36,7 @@
   <div class="flex flex-wrap items-center justify-between gap-3">
     <h3 class="text-sm font-semibold text-gray-900">Tips, <%= money.call(tips.cents) %> <span class="ml-1 text-xs font-normal <%= nobody ? 'text-amber-700' : 'text-gray-500' %>"><%= nobody ? "nobody on the clock" : "who gets them" %></span></h3>
     <% if editable %>
-      <%= render "shared/button", text: (nobody ? "Say who worked" : "Change the split"), variant: "secondary", size: "small", type: :button,
+      <%= render "shared/button", text: (nobody ? "Add someone" : "Change the split"), variant: "secondary", size: "small", type: :button,
             data: { controller: "modal", action: "click->modal#open", modal_id: modal_id } %>
     <% end %>
   </div>
@@ -69,7 +69,7 @@
       <p class="text-xs text-gray-500">The house keeps <%= money.call(tips.house_cents) %><%= house_said.positive? ? " in all" : "" %>.</p>
     <% end %>
   <% elsif nobody %>
-    <p class="text-xs text-gray-500">The house keeps them until someone's named<%= rule&.enabled? ? "; say who worked and when, and the clock splits them" : "; say who worked, or add their shift or hours in Staffing" %>.</p>
+    <p class="text-xs text-gray-500">The house keeps them until someone was on<%= rule&.enabled? ? "; add who was on and when, and the clock splits them" : "; add who was on, or their shift or hours in Staffing" %>.</p>
   <% else %>
     <p class="text-sm text-gray-600">
       Split <%= { "even" => "evenly", "hours" => "by hours worked", "typed" => "as typed" }.fetch(split) %> between <%= workers.size == 1 ? workers.first.person.name : pluralize(workers.size, "person") %>.
