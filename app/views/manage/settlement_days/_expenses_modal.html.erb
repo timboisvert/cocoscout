@@ -52,7 +52,7 @@
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
-    <%= form_with url: manage_update_money_show_financials_path(show), method: :patch, multipart: true, class: "flex flex-col min-h-0 flex-1", data: { turbo: false, controller: "nested-form" } do %>
+    <%= form_with url: manage_update_money_show_financials_path(show), method: :patch, multipart: true, class: "flex flex-col min-h-0 flex-1", data: { turbo_action: "replace", controller: "nested-form" } do %>
       <%= hidden_field_tag :return_to, return_to, id: nil %>
       <%= hidden_field_tag "show_financials[expense_items_cleared]", "1", id: nil %>
       <template data-nested-form-target="template"><%= row.call("NEW_CHILD_RECORD") %></template>

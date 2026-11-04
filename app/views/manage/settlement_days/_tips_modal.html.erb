@@ -39,7 +39,7 @@
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
-    <%= form_with url: manage_tips_money_settle_up_day_path(day.param), method: :patch, class: "flex flex-col min-h-0 flex-1", data: { turbo: false } do %>
+    <%= form_with url: manage_tips_money_settle_up_day_path(day.param), method: :patch, class: "flex flex-col min-h-0 flex-1", data: { turbo_action: "replace" } do %>
       <div class="px-5 sm:px-6 py-4 overflow-y-auto space-y-4">
         <% if by_rule %>
           <%= hidden_field_tag :mode, "rule", id: nil %>

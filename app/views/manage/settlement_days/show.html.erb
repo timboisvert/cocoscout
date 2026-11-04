@@ -103,7 +103,7 @@
               </span>
             </h2>
           </div>
-          <%= form_with url: manage_door_cash_money_settle_up_day_path(day.param), method: :patch, class: "px-5 py-3 grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-2" do %>
+          <%= form_with url: manage_door_cash_money_settle_up_day_path(day.param), method: :patch, class: "px-5 py-3 grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-2", data: { turbo_action: "replace" } do %>
             <div>
               <div class="flex items-baseline justify-between gap-3 py-1.5 text-sm"><span class="text-gray-700">Cash taken at the door <span class="text-xs text-gray-500"><%= pluralize(dc.cash_orders_count, "sale") %>, tickets and products</span></span><span class="tabular-nums text-gray-900"><%= money.call(dc.expected_cents) %></span></div>
               <div class="flex items-baseline justify-between gap-3 py-1.5 text-sm font-medium"><span class="text-gray-900">Should be in the box</span><span class="tabular-nums text-gray-900"><%= money.call(dc.expected_cents) %></span></div>

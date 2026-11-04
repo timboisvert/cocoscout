@@ -21,7 +21,7 @@
       <span class="ml-2 text-xs font-medium <%= state_tone %>"><%= state_words %></span>
     </h2>
     <% if can_change && !day.settled? %>
-      <%= form_with url: manage_check_show_money_settle_up_day_path(day.param, show_id: show.id), method: :patch, data: { controller: "auto-submit" } do %>
+      <%= form_with url: manage_check_show_money_settle_up_day_path(day.param, show_id: show.id), method: :patch, data: { controller: "auto-submit", turbo_action: "replace" } do %>
         <%= hidden_field_tag :checked, "0", id: nil %>
         <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
           <input type="checkbox" name="checked" value="1" <%= "checked" if piece.confirmed? %> data-action="change->auto-submit#submit"
