@@ -352,7 +352,7 @@ class SettleUp
     lines = (financials&.ticket_sales_lines || []).map do |line|
       source = sources[line.ticket_source_id]
       built_in = source&.built_in? == true
-      types = if built_in then []
+      types = if built_in then (listing ? TicketSalesSync.by_type(listing) : [])
       elsif listing then by_type[line.ticket_source_id]
       else [ [ line.ticket_type.presence || PLAIN_TICKET, line.tickets_sold.to_i ] ]
       end

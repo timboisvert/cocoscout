@@ -39,9 +39,6 @@ module Manage
       @guest_filter = params[:guests].presence_in(GUEST_FILTERS) || "all"
       @query = params[:q].to_s.strip
       @guest_orders = guest_orders(@guest_filter, @query)
-      # The Sold elsewhere modal: the organization's other sites and what each sold here, by type.
-      @outside_sources = Current.organization.ticket_sources.hand_made.active.ordered.to_a
-      @outside_rows = @listing.ticket_outside_sales.index_by { |row| [ row.ticket_source_id, row.ticket_tier_id ] }
     end
 
     # Everyone holding tickets, as a spreadsheet.

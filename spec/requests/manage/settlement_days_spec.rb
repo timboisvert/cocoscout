@@ -154,6 +154,15 @@ RSpec.describe "Settle up", type: :request do
     expect(response).to redirect_to(back)
     get back
     expect(response.body).to include("4 General, 1 VIP · $120.00")
+
+    # What sold through CocoScout names its ticket types the same way.
+    order = TicketOrder.create!(organization: org, ticket_listing: listing, buyer_email: "pat@example.com", buyer_name: "Pat", status: "paid", channel: "online", money_path: "cocoscout", fee_mode: "buyer")
+    2.times { order.tickets.create!(ticket_listing: listing, ticket_tier: general, price_cents: 2_000, status: "valid") }
+    order.tickets.create!(ticket_listing: listing, ticket_tier: vip, price_cents: 4_000, status: "valid")
+    TicketSalesSync.sync!(show)
+    get back
+    expect(response.body).to include("Sold through CocoScout", "2 General, 1 VIP · $80.00")
+    expect(response.body).not_to include("from Ticketing</span><span class='tabular-nums text-gray-900'><a")
   end
 
   it "keeps a show's financials page as a read-only record of its day's card and what was left" do

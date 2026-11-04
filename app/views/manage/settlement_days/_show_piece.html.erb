@@ -21,13 +21,15 @@
   tickets_id = "tickets-#{show.id}"
   has_modal = piece.listing.nil? || piece.outside_sources.any? || outside_lines.any?
   typed = ->(text) { has_modal ? opens.call(tickets_id, text) : text }
-  # One line per site: what it sold, by type, then the money.
-  by_site = outside_lines.group_by { |l| l[:label] }.map do |label, group|
+  # One line per site: what it sold, by type, then the money. The types are
+  # named only when they add up to the count.
+  sold_words = lambda do |group|
     count = group.sum { |l| l[:count] }
     types = group.flat_map { |l| l[:types] || [] }.group_by(&:first).map { |name, pairs| [ name, pairs.sum(&:last) ] }.select { |_, n| n.positive? }
     sold = types.any? && types.sum(&:last) == count ? types.map { |name, n| "#{n} #{name}" }.join(", ") : count.to_s
-    { label: label, text: "#{sold} · #{money.call(group.sum { |l| l[:cents] })}" }
+    "#{sold} · #{money.call(group.sum { |l| l[:cents] })}"
   end
+  by_site = outside_lines.group_by { |l| l[:label] }.map { |label, group| { label: label, text: sold_words.call(group) } }
   notes = fin&.notes.to_s.strip
 %>
 <section class="bg-white border border-gray-200 rounded-xl overflow-hidden" id="show-<%= show.id %>">
@@ -52,7 +54,7 @@
         <%= line.call("Tickets", "nothing entered yet", (typed_tickets ? typed.call("Enter") : "—")) %>
       <% end %>
       <% online_lines.each do |l| %>
-        <%= line.call("Sold through CocoScout", "from Ticketing", (piece.listing ? link_to("#{l[:count]} · #{money.call(l[:cents])}", manage_ticket_listing_path(piece.listing), class: pink) : "#{l[:count]} · #{money.call(l[:cents])}")) %>
+        <%= line.call("Sold through CocoScout", nil, (piece.listing ? link_to(sold_words.call([ l ]), manage_ticket_listing_path(piece.listing), class: pink) : sold_words.call([ l ]))) %>
       <% end %>
       <% by_site.each do |site| %>
         <%= line.call(site[:label], nil, typed.call(ERB::Util.html_escape(site[:text]))) %>
@@ -83,7 +85,7 @@
   <%= render "manage/settlement_days/pay_block", piece: piece, day: day, editable: editable, return_to: return_to, open: (defined?(open_show_id) && open_show_id.to_s == show.id.to_s), open_modal_id: (defined?(open_modal_id) ? open_modal_id.to_s : "") %>
 </section>
 <% if has_modal %>
-  <%= render "manage/settlement_days/outside_tickets_modal", id: tickets_id, piece: piece, editable: editable, return_to: return_to, settled: day.settled? %>
+  <%= render "manage/settlement_days/outside_tickets_modal", id: tickets_id, show: show, listing: piece.listing, financials: fin, editable: editable, return_to: return_to, settled: day.settled? %>
 <% end %>
 <% if editable %>
   <%= render "manage/settlement_days/notes_modal", id: "notes-#{show.id}", show: show, financials: fin, return_to: return_to %>

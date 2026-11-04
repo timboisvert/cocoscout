@@ -124,8 +124,9 @@
       <div class="hidden sm:block"><%= render "shared/action_list", items: actions %></div>
       <% if live %>
         <%= render "manage/ticket_listings/comps_modal", id: "comps-modal", listing: @listing if comps_open %>
-        <%= render "manage/ticket_listings/outside_sales_modal", id: "outside-sales-modal", listing: @listing,
-              sources: @outside_sources, rows: @outside_rows %>
+        <%# The same table the show's day in Settle up opens (Tim, 2026-11-04). %>
+        <%= render "manage/settlement_days/outside_tickets_modal", id: "outside-sales-modal", title: "Sold elsewhere", show: show, listing: @listing,
+              financials: show.show_financials, editable: true, return_to: nil, settled: false %>
       <% end %>
 
       <div class="bg-white rounded-lg border border-gray-200 p-5">

@@ -8,27 +8,28 @@
       says what kind of money the show took: tickets, a flat fee, or none.
     - editable false (a settled day, the show's record): the same table as
       plain numbers, nothing to save.
-    Locals: id, piece (SettleUp::ShowPiece), editable, return_to, settled %>
+    The show's page in Ticketing opens it too, as Sold elsewhere (Tim,
+    2026-11-04), with no return_to: it comes back to that page.
+    A show sold here can name a new site in the table's last lines; it
+    joins the organization's ticket sources for every show.
+    Locals: id, show, listing (nil when CocoScout doesn't sell it),
+            financials, editable, return_to, settled, title (optional) %>
 <%
   input = "block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors"
   radio = "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500"
-  show = piece.show
-  listing = piece.listing
-  financials = piece.financials
   organization = show.production.organization
+  tiers = listing ? listing.ticket_tiers.active.reject(&:bundle?) : []
   sources = organization.ticket_sources.hand_made.active.ordered.to_a
   groups = []
   index = -1
   if listing
     saved = listing.ticket_outside_sales.index_by { |row| [ row.ticket_source_id, row.ticket_tier_id ] }
-    listing.ticket_tiers.active.reject(&:bundle?).then do |tiers|
-      sources.each do |source|
-        groups << { name: source.name, rows: tiers.map do |tier|
-          row = saved[[ source.id, tier.id ]]
-          { type: tier.name, tickets: row&.tickets_sold.to_i, amount: row ? row.amount_cents / 100.0 : 0, hidden: {},
-            tickets_name: "sales[#{source.id}][#{tier.id}][tickets]", amount_name: "sales[#{source.id}][#{tier.id}][amount]" }
-        end }
-      end
+    sources.each do |source|
+      groups << { name: source.name, rows: tiers.map do |tier|
+        row = saved[[ source.id, tier.id ]]
+        { type: tier.name, tickets: row&.tickets_sold.to_i, amount: row ? row.amount_cents / 100.0 : 0, hidden: {},
+          tickets_name: "sales[#{source.id}][#{tier.id}][tickets]", amount_name: "sales[#{source.id}][#{tier.id}][amount]" }
+      end }
     end
   else
     types = SettleUp.typed_ticket_types(financials)
@@ -70,7 +71,7 @@
      data-controller="modal" data-action="click->modal#closeOnBackdrop">
   <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[85vh]" data-action="click->modal#stopPropagation">
     <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-5 sm:px-6 py-4 flex-shrink-0">
-      <h3 class="text-lg font-semibold text-white">Outside tickets</h3>
+      <h3 class="text-lg font-semibold text-white"><%= local_assigns[:title].presence || "Outside tickets" %></h3>
       <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" aria-label="Close">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
@@ -82,7 +83,7 @@
         <div class="hidden sm:grid <%= columns %> gap-3 px-4 py-2 bg-gray-50 border-b border-gray-200 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
           <span>Sold through</span><span>Ticket type</span><span class="text-right">Tickets</span><span class="text-right">Amount</span>
         </div>
-        <% if groups.empty? %>
+        <% if groups.empty? && !(listing && editable) %>
           <p class="px-4 py-3 text-sm text-gray-500"><%= sources.empty? && editable ? "Name the places you sell tickets and each gets its lines here." : "Nothing sold on other sites." %></p>
         <% end %>
         <% groups.each do |group| %>
@@ -107,6 +108,26 @@
                   <span class="text-sm tabular-nums text-gray-900 sm:text-right"><%= row[:tickets] %><span class="sm:hidden text-gray-500"> <%= "ticket".pluralize(row[:tickets]) %></span></span>
                   <span class="text-sm tabular-nums text-gray-900 text-right"><%= number_to_currency(row[:amount]) %></span>
                 <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+        <% if editable && listing && tiers.any? %>
+          <%# A site not named yet: its name, and a line per ticket type. Saved, it's a ticket source for every show. %>
+          <div class="bg-gray-50/60 border-t border-dashed border-gray-300 divide-y divide-gray-100">
+            <% tiers.each_with_index do |tier, position| %>
+              <div class="grid grid-cols-2 <%= columns %> items-center gap-x-3 gap-y-1.5 px-4 py-2">
+                <% if position.zero? %>
+                  <%= text_field_tag :new_source_name, nil, id: nil, placeholder: (sources.any? ? "Add another site" : "The site, like Ticket Tailor"), "aria-label": "A new site's name", class: "#{input} col-span-2 sm:col-span-1 min-w-0" %>
+                <% else %>
+                  <span class="hidden sm:block"></span>
+                <% end %>
+                <span class="col-span-2 sm:col-span-1 min-w-0 truncate text-sm text-gray-700"><%= tier.name %></span>
+                <%= number_field_tag "sales[new][#{tier.id}][tickets]", nil, id: nil, min: 0, inputmode: "numeric", placeholder: "0", "aria-label": "The new site's #{tier.name} tickets", class: "#{input} tabular-nums text-right" %>
+                <div class="relative">
+                  <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-gray-500">$</span>
+                  <%= number_field_tag "sales[new][#{tier.id}][amount]", nil, id: nil, min: 0, step: "0.01", inputmode: "decimal", placeholder: "0.00", "aria-label": "The new site's #{tier.name} amount", class: "#{input} pl-7 tabular-nums text-right" %>
+                </div>
               </div>
             <% end %>
           </div>
@@ -160,7 +181,7 @@
     <% else %>
       <%= form_with url: (listing ? manage_ticket_listing_outside_sales_path(listing) : manage_update_money_show_financials_path(show)), method: :patch,
             class: "flex flex-col min-h-0 flex-1", data: (listing ? { turbo: false } : { turbo_action: "replace" }) do %>
-        <%= hidden_field_tag :return_to, return_to, id: nil %>
+        <%= hidden_field_tag :return_to, return_to, id: nil if return_to.present? %>
         <div class="group/rev px-5 sm:px-6 py-5 space-y-4 overflow-y-auto min-h-0">
           <%= intro %>
           <% if listing %>
