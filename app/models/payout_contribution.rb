@@ -16,6 +16,11 @@ class PayoutContribution < ApplicationRecord
   # post none — their earning lives on the ShowPayoutLineItem). dependent:
   # :destroy so removing a contribution from an open run reverses what it owed.
   has_many :payout_ledger_entries, as: :source, dependent: :destroy
+  # A Tips line carries the tip shares Pay People pulled onto it (Settle up).
+  # When the line goes (taken out of a draft, the draft discarded, the day
+  # reopened), its shares are simply not on a run any more: they wait on
+  # Pay People again instead of blocking the delete.
+  has_many :tip_shares, dependent: :nullify
 
   # Negative amounts are real: a contract service settled by payout deduction
   # is a negative line on the item, so the payee sees their gross share and

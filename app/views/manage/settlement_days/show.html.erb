@@ -42,10 +42,12 @@
   <% elsif day.settled? %>
     <% open_run = PayoutBatch.current_open_draft(Current.organization) %>
     <% on_run = day.shows.sum { |s| s.pay.performers? ? s.pay.rows.count { |r| r.stage.in?(%i[in_draft in_flight]) } : s.pay.payments.count { |p| p.payout_stage.present? } } %>
+    <%# Says "the draft payout run" while that's all it is; a run already funding is just "a payout run". %>
+    <% on_draft = day.shows.sum { |s| s.pay.performers? ? s.pay.rows.count { |r| r.stage == :in_draft } : s.pay.payments.count { |p| p.payout_stage == :in_draft } } %>
     <%= render "shared/alert_panel",
           eyebrow: "Settled",
           headline: "#{@date.strftime('%A, %B %-d')} is settled",
-          body: "Settled #{record.settled_at.strftime('%b %-d at %-l:%M %P')}#{record.settled_by ? " by #{record.settled_by.default_person&.name || record.settled_by.email_address}" : ''}.#{on_run.positive? ? " #{pluralize(on_run, 'payout')} from this day #{on_run == 1 ? 'is' : 'are'} on the payout run." : ''}#{record.reopen_reason.present? ? " Reopened once: #{record.reopen_reason}" : ''} To change anything, reopen it; the books keep both versions.",
+          body: "Settled #{record.settled_at.strftime('%b %-d at %-l:%M %P')}#{record.settled_by ? " by #{record.settled_by.default_person&.name || record.settled_by.email_address}" : ''}.#{on_run.positive? ? " #{pluralize(on_run, 'payout')} from this day #{on_run == 1 ? 'is' : 'are'} on #{on_draft == on_run ? 'the draft payout run' : 'a payout run'}." : ''}#{record.reopen_reason.present? ? " Reopened once: #{record.reopen_reason}" : ''} To change anything, reopen it; the books keep both versions.",
           actions: [ (can_change ? { text: "Reopen this day", variant: "secondary", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "reopen-day" } } : nil),
                      (open_run && on_run.positive? ? { text: "The payout run", variant: "primary", path: manage_payout_batch_path(open_run) } : nil) ].compact %>
   <% elsif record&.reopened_at %>
@@ -211,7 +213,7 @@
 <% if can_change && !day.settled? %>
   <%= render "shared/confirm_modal", id: settle_cid,
         title: "Settle #{@date.strftime('%A, %b %-d')}?",
-        message: "Every piece is confirmed. This closes the day: its numbers go on the books#{day.to_run_count.positive? ? ", and #{money.call(day.to_run_cents)} for #{pluralize(day.to_run_count, 'person')} goes on the open payout run, which you fund when it's ready" : ''}. You can reopen it later with a reason.",
+        message: "Every piece is confirmed. This closes the day: its numbers go on the books#{day.to_run_count.positive? ? ", and #{money.call(day.to_run_cents)} for #{pluralize(day.to_run_count, 'person')} goes on the draft payout run, which you fund when it's ready" : ''}. You can reopen it later with a reason.",
         confirm_text: "Settle the day",
         url: manage_settle_money_settle_up_day_path(day.param), method: :post %>
 <% end %>
@@ -224,6 +226,10 @@
     draft_payments = day.shows.flat_map { |s| s.pay.contract? ? s.pay.payments.select { |p| p.payout_stage == :in_draft } : [] }
     draft_count = draft_rows.size + draft_payments.size
     draft_cents = draft_rows.sum(&:cents) + draft_payments.sum { |p| (p.amount.to_d * 100).round }
+    tip_shares = day.tips ? day.tips.shares.select { |share| share.payout? && share.amount_cents.positive? } : []
+    tips_on_draft = tip_shares.select { |share| share.payout_contribution&.payout_batch&.open? }
+    tips_gone = tip_shares.select { |share| share.payout_contribution && !share.payout_contribution.payout_batch&.open? }
+    tips_back = tip_shares - tips_gone
     gone_count = day.shows.sum { |s| s.pay.performers? ? s.pay.rows.count { |r| r.stage.in?(%i[in_flight paid]) && !r.line&.manually_paid? } : s.pay.payments.count { |p| p.payout_stage == :in_flight || p.status_paid? } }
   %>
   <div id="reopen-day" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" data-controller="modal" data-action="click->modal#closeOnBackdrop">
@@ -239,7 +245,7 @@
           <p>Reopening undoes what settling did, so the day can change. Its numbers come off the books and go back on, dated <%= @date.strftime("%b %-d") %>, when you settle it again.</p>
           <% if draft_count.positive? %>
             <fieldset class="space-y-2">
-              <legend class="font-medium text-gray-700"><%= pluralize(draft_count, "payout") %> from this day, <%= money.call(draft_cents) %>, <%= draft_count == 1 ? "is" : "are" %> on the open payout run.</legend>
+              <legend class="font-medium text-gray-700"><%= pluralize(draft_count, "payout") %> from this day, <%= money.call(draft_cents) %>, <%= draft_count == 1 ? "is" : "are" %> on the draft payout run.</legend>
               <label class="flex items-start gap-2 cursor-pointer">
                 <input type="radio" name="payouts" value="off" checked class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
                 <span>Take <%= draft_count == 1 ? "it" : "them" %> off the run, so the pay can change. <%= draft_count == 1 ? "It goes" : "They go" %> back on when the day settles again.</span>
@@ -249,6 +255,13 @@
                 <span>Leave <%= draft_count == 1 ? "it" : "them" %> on the run. I'm changing something else, and the pay stays as it is.</span>
               </label>
             </fieldset>
+          <% end %>
+          <%# The tips are undone with the day, whatever is chosen above: they stop waiting on Pay People, and come off a draft run (Tim, 2026-11-04). %>
+          <% if tips_back.any? %>
+            <p>Its tips, <%= money.call(tips_back.sum(&:amount_cents)) %> for <%= pluralize(tips_back.size, "person") %>, <%= tips_on_draft.any? ? (tips_on_draft.size == tips_back.size ? "come off the draft payout run" : "stop waiting on Pay People or come off the draft payout run") : "stop waiting on Pay People" %> until the day settles again.</p>
+          <% end %>
+          <% if tips_gone.any? %>
+            <p>Tips for <%= pluralize(tips_gone.size, "person") %> are already funded or paid and stay as they are.</p>
           <% end %>
           <% if gone_count.positive? %>
             <p><%= pluralize(gone_count, "payout") %> from this day <%= gone_count == 1 ? "is" : "are" %> already funded or sent and <%= gone_count == 1 ? "stays" : "stay" %>; a difference rides the next run.</p>

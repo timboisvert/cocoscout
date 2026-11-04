@@ -31,6 +31,20 @@
   end
   # Nobody who shares tips was on: one short line and the way in, nothing else (Tim, 2026-11-04: the full block read badly with no one).
   nobody = !by_rule && workers.empty?
+  # On a settled day, one pill says where the tip money went, the way the
+  # payout lines say it (Tim, 2026-11-04): waiting on Pay People, on the
+  # draft payout run, on its way, paid. Mixed, it counts each.
+  tip_pill = nil
+  if day.settled? && tips.cents.positive?
+    tones = { waiting: "border-blue-200 text-blue-700 bg-blue-50", in_draft: "border-blue-200 text-blue-700 bg-blue-50", in_flight: "border-blue-200 text-blue-700 bg-blue-50", paid: "border-gray-200 text-gray-600 bg-gray-50" }
+    stages = tips.shares.select { |share| share.amount_cents.positive? }.map { |share| tips.share_stage(share) }
+    tip_pill = if stages.empty? then [ "Kept by the house", tones[:paid] ]
+    elsif stages.map(&:last).uniq.size == 1 then [ stages.first.last, tones[stages.first.first] ]
+    else [ stages.sort_by { |stage, _| tones.keys.index(stage) }.map(&:last).tally.map { |words, n| "#{n} #{words.sub(/\A./, &:downcase)}" }.join(" · "), "border-gray-200 text-gray-600 bg-white" ]
+    end
+  end
+  # Each row says its own only while the pill can't say it for everyone.
+  row_tags = tip_pill.nil? || stages.map(&:last).uniq.size > 1
   line = ->(label, note, value) { "<div class='flex items-baseline justify-between gap-3 py-1.5 text-sm'><span class='text-gray-700'>#{ERB::Util.html_escape(label)}#{note.present? ? " <span class='text-xs text-gray-500'>#{ERB::Util.html_escape(note)}</span>" : ''}</span><span class='tabular-nums text-gray-900'>#{value}</span></div>".html_safe }
 %>
 <div class="border-t border-gray-200 px-5 py-3 space-y-2" id="tips">
@@ -39,6 +53,8 @@
     <% if editable %>
       <%= render "shared/button", text: (nobody ? "Assign tips" : "Change the split"), variant: "secondary", size: "small", type: :button,
             data: { controller: "modal", action: "click->modal#open", modal_id: modal_id } %>
+    <% elsif tip_pill %>
+      <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap <%= tip_pill.last %>"><%= tip_pill.first %></span>
     <% end %>
   </div>
   <% if by_rule %>
@@ -52,7 +68,7 @@
             <span class="text-gray-900"><%= row.person.name %></span>
             <% if row.house_role %><span class="ml-1 text-xs text-gray-500"><%= row.house_role.name %></span><% end %>
             <% if row.span_words %><span class="ml-1 text-xs text-gray-500">· <%= row.span_words %></span><% end %>
-            <% if row.locked? %><span class="ml-1 text-xs text-gray-500">· on a payout run</span><% end %>
+            <% if row.locked? && row_tags %><span class="ml-1 text-xs text-gray-500">· on a payout run</span><% end %>
             <span class="block text-xs text-gray-500"><%= row.how %> <%= paid_words[row.method].capitalize %>.</span>
           </span>
           <span class="tabular-nums text-gray-900 whitespace-nowrap"><%= money.call(row.cents) %></span>
@@ -80,14 +96,14 @@
     </p>
     <div class="divide-y divide-gray-100">
       <% hand_rows.each do |row| %>
-        <%= line.call(row[:worker].person.name, [ (row[:worker].hours.positive? ? "#{row[:worker].hours} h" : nil), paid_words[row[:method]], (row[:share]&.payout_contribution_id.present? ? "on a payout run" : nil) ].compact.join(" · "), money.call(row[:cents])) %>
+        <%= line.call(row[:worker].person.name, [ (row[:worker].hours.positive? ? "#{row[:worker].hours} h" : nil), paid_words[row[:method]], (row[:share]&.payout_contribution_id.present? && row_tags ? "on a payout run" : nil) ].compact.join(" · "), money.call(row[:cents])) %>
       <% end %>
     </div>
     <% if tips.shares.any? && tips.unassigned_cents != 0 %>
       <p class="text-xs text-amber-700"><%= tips.unassigned_cents.positive? ? "#{money.call(tips.unassigned_cents)} not given to anyone, so the house keeps it." : "#{money.call(-tips.unassigned_cents)} more than the register took in tips." %></p>
     <% end %>
   <% end %>
-  <% unless nobody %>
+  <% unless nobody || tip_pill %>
     <p class="text-xs text-gray-500">Shares go on each person's next pay from Pay People, with their hours; cash shares came out of the door cash at close.</p>
   <% end %>
 </div>

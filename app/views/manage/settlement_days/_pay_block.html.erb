@@ -52,7 +52,7 @@
     stages = pay.payments.map do |payment|
       contractor = payment.contract&.contractor
       if payment.status_paid? then [ :paid, "Paid#{payment.paid_date ? " #{payment.paid_date.strftime('%b %-d')}" : ''}#{payment.offline_payment_method_label ? " · #{payment.offline_payment_method_label}" : ''}" ]
-      elsif payment.payout_stage == :in_draft then [ :in_draft, "On the open payout run, a draft" ]
+      elsif payment.payout_stage == :in_draft then [ :in_draft, "On the draft payout run" ]
       elsif payment.payout_stage == :in_flight then [ :in_flight, "On its way" ]
       elsif payment.settles_after_show? then [ :preview, "Settles after the show" ]
       elsif payment.amount_tbd? && payment.amount.to_f.zero? then [ :preview, "Waiting on ticket sales" ]
@@ -144,10 +144,12 @@
     saved_lines = pay.calc.in?(%i[current stale locked]) && pay.rows.any?
     summary, summary_tone = if !saved_lines then [ nil, nil ]
     elsif counts[:paid].to_i == pay.rows.size then [ "All paid", stage_chip[:paid] ]
-    elsif on_run == pay.rows.size then [ "On the payout run", stage_chip[:in_draft] ]
+    elsif counts[:in_draft].to_i == pay.rows.size then [ "On the draft payout run", stage_chip[:in_draft] ]
+    elsif counts[:in_flight].to_i == pay.rows.size then [ "On its way", stage_chip[:in_flight] ]
     elsif counts[:hold].to_i == pay.rows.size then [ "All held", stage_chip[:hold] ]
     else
-      [ [ (on_run.positive? ? "#{on_run} on a payout run" : nil), (counts[:hold].to_i.positive? ? "#{counts[:hold]} held" : nil), (counts[:paid].to_i.positive? ? "#{counts[:paid]} paid" : nil) ].compact.join(" · ").presence,
+      [ [ (counts[:in_draft].to_i.positive? ? "#{counts[:in_draft]} on the draft payout run" : nil), (counts[:in_flight].to_i.positive? ? "#{counts[:in_flight]} on its way" : nil),
+          (counts[:hold].to_i.positive? ? "#{counts[:hold]} held" : nil), (counts[:paid].to_i.positive? ? "#{counts[:paid]} paid" : nil) ].compact.join(" · ").presence,
         "border-gray-200 text-gray-600 bg-white" ]
     end
     can_change = editable && pay.scheme && pay.show_payout&.persisted? && pay.calc != :no_cast
@@ -213,7 +215,7 @@
               when :hold then "Held"
               when :paid, :in_draft, :in_flight then row.note
               end
-              chip = "On the payout run" if row.stage == :in_draft
+              chip = "On the draft payout run" if row.stage == :in_draft
               entries = if choosable
                 [ { text: (row.stage == :hold ? "Back on the run" : "Hold, not yet"), icon: (row.stage == :hold ? "arrow-left" : "clock"), form: hold_form },
                   { text: "Paid another way…", icon: "banknotes", data: { action: "click->modal#open", modal_id: "another-way-#{line.id}" } },

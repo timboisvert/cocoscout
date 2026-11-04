@@ -115,6 +115,19 @@ class SettleUp
 
       calculator.sharers
     end
+    # Where one share of a settled day's tips stands, the way a payout line
+    # says it: [stage, words]. Cash went out of the door cash at close; the
+    # rest waits on Pay People until the week's pay pulls it onto a run.
+    def share_stage(share)
+      contribution = share.payout_contribution
+      if share.cash? then [ :paid, "Paid in cash at close" ]
+      elsif contribution.nil? then [ :waiting, "Waiting on Pay People" ]
+      elsif contribution.payout_batch&.open? then [ :in_draft, "On the draft payout run" ]
+      elsif contribution.payout_batch_item&.paid? then [ :paid, "Paid" ]
+      else [ :in_flight, "On its way" ]
+      end
+    end
+
     def by_rule? = calculator.applies?
     def rows = calculator.rows
     # The stretches of time with nobody on the bar, each a question for the
@@ -446,7 +459,7 @@ class SettleUp
     stage, note = if line.paid?
       [ :paid, (line.manually_paid? ? "Paid another way#{line.payment_method_label ? " · #{line.payment_method_label}" : ''}" : "Paid, on a payout run") ]
     elsif batch&.open?
-      [ :in_draft, "On the open payout run, a draft" ]
+      [ :in_draft, "On the draft payout run" ]
     elsif batch && PayoutBatchService::UNSETTLED_BATCH_STATUSES.include?(batch.status)
       [ :in_flight, "On its way" ]
     elsif line.held?

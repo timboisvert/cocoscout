@@ -93,22 +93,34 @@ class SettlementPoster
   # Reopening takes back a share that Pay People already put on a run, while
   # that run is still a draft; once a run is funded the money has moved and
   # the share stands. Shares still waiting on Pay People just stop waiting.
+  # Answers the names of the people whose tips came off the draft.
   def self.unpay_tips!(record)
-    record.tip_shares.where.not(payout_contribution_id: nil).includes(payout_contribution: %i[payout_batch payout_batch_item]).each do |share|
+    names = []
+    record.tip_shares.where.not(payout_contribution_id: nil).includes(:person, payout_contribution: %i[payout_batch payout_batch_item]).each do |share|
       contribution = share.payout_contribution
       next unless contribution&.payout_batch&.open?
 
       item = contribution.payout_batch_item
       batch = contribution.payout_batch
       share.update!(payout_contribution: nil)
-      contribution.destroy!
-      item.reload
-      if item.payout_contributions.none?
-        item.destroy!
-      else
+      left = contribution.amount_cents - share.amount_cents
+      if left.positive?
+        # A week's tips are one line: other days ride it too, and only this
+        # day's share comes off (its day leaves the line's worksheet).
+        sheet = contribution.worksheet_entries.dup
+        at = sheet.index { |entry| entry["date"].to_s == share.day_label && entry["amount_cents"].to_i == share.amount_cents } || sheet.index { |entry| entry["date"].to_s == share.day_label }
+        sheet.delete_at(at) if at
+        contribution.update!(amount_cents: left, worksheet: sheet.presence)
+        contribution.payout_ledger_entries.where(entry_type: "earning").update_all(amount_cents: left, updated_at: Time.current)
         item.settle_amount!
+        batch.recalculate_total!
+      else
+        # The line's own removal re-totals the person's item and the run,
+        # and drops the item when nothing payable is left on it.
+        contribution.destroy!
       end
-      batch.recalculate_total!
+      names << share.person.name
     end
+    names
   end
 end

@@ -503,6 +503,10 @@ RSpec.describe "Manage::SettlementDays tips by the clock", type: :request do
       # Settling puts nothing on the run: the shares wait on Pay People.
       expect(PayoutContribution.where(payee: [ miles, camille, jo ]).count).to eq(0)
       expect(TipShare.waiting_for(org).sum(:amount_cents)).to eq(24_000)
+      # The settled day says so, in one pill on the tips, and the reopen modal says they'd stop waiting.
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body.scan("Waiting on Pay People").size).to eq(1)
+      expect(CGI.unescapeHTML(response.body)).to include("Its tips, $240.00 for 3 people, stop waiting on Pay People until the day settles again.")
 
       # Pay People offers them like approved hours, and ties each share to the
       # run's Tips line when the week's pay goes on.
@@ -518,9 +522,37 @@ RSpec.describe "Manage::SettlementDays tips by the clock", type: :request do
       expect(miles_share.payout_contribution.payout_batch).to be_open
       expect(TipShare.waiting_for(org).map(&:person)).to contain_exactly(camille, jo)
 
-      # Reopening the day takes Miles's share back off the draft run.
+      # Now the pill counts where each share stands, and each row tags its own.
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body).to include("2 waiting on Pay People · 1 on the draft payout run", "· on a payout run")
+
+      # Another settled day's share for Miles rides the same Tips line (a week's tips are one line).
+      earlier = SettlementDay.create!(organization: org, date: date - 1, status: "settled", settled_at: Time.current)
+      line = miles_share.payout_contribution
+      other_share = earlier.tip_shares.create!(person: miles, amount_cents: 1_500, method: "payout", source: "computed", payout_contribution: line)
+      line.update!(amount_cents: line.amount_cents + 1_500, worksheet: line.worksheet_entries + [ { "date" => other_share.day_label, "amount_cents" => 1_500 } ])
+      line.payout_ledger_entries.update_all(amount_cents: line.amount_cents)
+      line.payout_batch_item.settle_amount!
+
+      # Reopening the day takes Miles's share back off the draft run, and says so.
       post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "Wrong split" }
+      expect(response).to redirect_to(manage_money_settle_up_day_path(date.iso8601))
+      expect(flash[:notice]).to include("Miles's tips came off the draft payout run")
       expect(miles_share.reload.payout_contribution).to be_nil
+      # Only this day's share came off: the other day's stays on the line, which is now just its amount.
+      expect(other_share.reload.payout_contribution).to eq(line)
+      expect(line.reload).to have_attributes(amount_cents: 1_500, worksheet: [ { "date" => other_share.day_label, "amount_cents" => 1_500 } ])
+      expect(line.payout_ledger_entries.pluck(:amount_cents)).to eq([ 1_500 ])
+      expect(line.payout_batch_item.reload.amount_cents).to eq(1_500)
+      expect(TipShare.waiting_for(org)).not_to include(miles_share)
+      expect(record.reload).not_to be_settled
+
+      # With nothing else on the line, the line and the person's place on the run go with it, and the page still comes back.
+      earlier.update!(status: "settled")
+      post manage_reopen_money_settle_up_day_path((date - 1).iso8601), params: { reason: "And this one" }
+      expect(response).to redirect_to(manage_money_settle_up_day_path((date - 1).iso8601))
+      expect(other_share.reload.payout_contribution).to be_nil
+      expect(PayoutContribution.exists?(line.id)).to be(false)
     end
   end
 end
@@ -629,22 +661,22 @@ RSpec.describe "Manage::SettlementDays pays people", type: :request do
       expect(flash[:notice]).to include("Ben Lee: held for now")
 
       post manage_settle_money_settle_up_day_path(date.iso8601)
-      expect(flash[:notice]).to include("$100.00 for 1 person went on the payout run")
+      expect(flash[:notice]).to include("$100.00 for 1 person went on the draft payout run")
       run = PayoutBatch.current_open_draft(org)
       expect(run).to be_present
       expect(PayoutContribution.find_by(source: payout.line_items.find_by(payee: ana))&.payout_batch).to eq(run)
       expect(PayoutContribution.find_by(source: ben_line)).to be_nil
 
       get manage_money_settle_up_day_path(date.iso8601)
-      expect(response.body).to include("is settled", "1 on a payout run", "1 held", "The payout run")
+      expect(response.body).to include("is settled", "1 on the draft payout run", "1 held", "The payout run")
 
       # The reopen modal says what it undoes and asks about the payouts on the draft run.
-      expect(CGI.unescapeHTML(response.body)).to include("Reopening undoes what settling did", "1 payout from this day, $100.00, is on the open payout run.",
+      expect(CGI.unescapeHTML(response.body)).to include("Reopening undoes what settling did", "1 payout from this day, $100.00, is on the draft payout run.",
         "Take it off the run, so the pay can change.", "Leave it on the run. I'm changing something else")
 
       # Kept on the run: the day opens, the line stays and its show stays locked.
       post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "Door cash was off", payouts: "keep" }
-      expect(flash[:notice]).to include("Its payouts stayed on the payout run")
+      expect(flash[:notice]).to include("Its payouts stayed on the draft payout run")
       expect(PayoutContribution.find_by(source: payout.line_items.find_by(payee: ana))&.payout_batch).to eq(run)
       patch manage_check_show_money_settle_up_day_path(date.iso8601, show_id: show.id), params: { checked: "1" }
       post manage_settle_money_settle_up_day_path(date.iso8601)
@@ -652,7 +684,7 @@ RSpec.describe "Manage::SettlementDays pays people", type: :request do
 
       # Taken off (the default): the line comes back off the draft and rides again on settling.
       post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "A ticket count was wrong" }
-      expect(flash[:notice]).to include("$100.00 for 1 person came off the payout run")
+      expect(flash[:notice]).to include("$100.00 for 1 person came off the draft payout run")
       expect(PayoutContribution.where(source_type: "ShowPayoutLineItem", source_id: payout.line_items.ids)).not_to exist
       get manage_money_settle_up_day_path(date.iso8601)
       expect(response.body).to include("1 held", "$100.00 for 1 person goes on the payout run when the day settles")

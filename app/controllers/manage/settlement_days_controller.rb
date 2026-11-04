@@ -205,7 +205,7 @@ module Manage
       # Settling is what puts the day's payouts on the open run (Tim, 2026-11-04).
       staged = SettlementPayer.stage!(day, by: Current.user)
       notice = "#{@date.strftime('%A, %B %-d')} is settled."
-      notice += " #{staged.words} went on the payout run." if staged.any?
+      notice += " #{staged.words} went on the draft payout run." if staged.any?
       notice += " #{staged.notes.join(' ')}" if staged.notes.any?
       redirect_to manage_money_settle_up_day_path(@date), notice: notice
     end
@@ -216,16 +216,24 @@ module Manage
         return redirect_to manage_money_settle_up_day_path(@date), alert: "Say why the day is being reopened."
       end
 
-      record.reopen!(by: Current.user, reason: params[:reason])
-      SettlementPoster.unpost!(record)
-      # Reopening undoes what settling did; the modal asks whether the day's
-      # payouts come off the draft run too (Tim, 2026-11-04). Off is the default.
+      # Reopening undoes what settling did, all of it or none (a failure
+      # part way must not leave the day open with its tips still on a run):
+      # the books, the tips (off a draft run, and no longer waiting on Pay
+      # People), and, unless the modal says to keep them, the day's payouts
+      # on the draft run (Tim, 2026-11-04). Off is the default.
       notice = "#{@date.strftime('%A, %B %-d')} is open again."
-      if params[:payouts] == "keep"
-        notice += " Its payouts stayed on the payout run."
-      else
-        taken = SettlementPayer.unstage!(SettleUp.day(Current.organization, @date))
-        notice += " #{taken.words} came off the payout run; it goes back on when the day settles." if taken.any?
+      ActiveRecord::Base.transaction do
+        waiting = record.tip_shares.where(payout_contribution_id: nil, method: "payout").where("amount_cents > 0").count
+        record.reopen!(by: Current.user, reason: params[:reason])
+        tipped = SettlementPoster.unpost!(record)
+        if params[:payouts] == "keep"
+          notice += " Its payouts stayed on the draft payout run."
+        else
+          taken = SettlementPayer.unstage!(SettleUp.day(Current.organization, @date))
+          notice += " #{taken.words} came off the draft payout run; it goes back on when the day settles." if taken.any?
+        end
+        notice += " #{tipped.map { |name| "#{name}'s" }.to_sentence} tips came off the draft payout run." if tipped.any?
+        notice += " Its tips stopped waiting on Pay People." if waiting.positive?
       end
       redirect_to manage_money_settle_up_day_path(@date), notice: "#{notice} Settle it when it's right."
     end
