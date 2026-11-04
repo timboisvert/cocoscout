@@ -35,17 +35,11 @@ class SettlementPayer
     return { success: false, error: "the calculation has no rules" } if rules.blank?
 
     payout.update!(act_counts: show.lineup_act_counts) if rules.dig("distribution", "method").to_s == "per_act" && show.act_based?
-    choices = payout.line_items.to_h { |line| [ line_key(line), line.pay_choice ] }
-    result = PayoutCalculator.calculate(show: show, rules: rules, act_counts: payout.act_counts)
+    result = payout.keeping_pay_choices { PayoutCalculator.calculate(show: show, rules: rules, act_counts: payout.act_counts) }
     return result unless result[:success]
 
     show.reload
-
     payout.update!(calculated_at: Time.current, total_payout: result[:total])
-    payout.line_items.reload.each do |line|
-      choice = choices[line_key(line)]
-      line.update!(pay_choice: choice) if choice && choice != line.pay_choice
-    end
     result
   end
 
@@ -114,7 +108,4 @@ class SettlementPayer
     payment.direction_outgoing? && payment.status_pending? && payment.amount.to_f.positive? &&
       !payment.settles_after_show? && !payment.in_payout_run? && payment.contract&.contractor&.person.present?
   end
-
-  def self.line_key(line) = [ line.payee_type, line.payee_id, line.guest_name, line.is_individual_allocation ]
-  private_class_method :line_key
 end

@@ -8,6 +8,7 @@
   production = show.production
   calculations = Current.organization.payout_schemes.active.order(:name).to_a
   each_show = production.asks_calculation_each_show?
+  current = show.show_payout&.payout_scheme || PayoutScheme.default_for_show(show)
   new_path = manage_money_payout_calculation_wizard_start_path(production_id: production.id, return_to: return_to)
   select_classes = "mt-1 block w-full pl-3 pr-8 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
 %>
@@ -26,7 +27,7 @@
             <span class="font-medium text-gray-900">Use one of your calculations</span>
             <select name="payout_scheme_id" class="<%= select_classes %>">
               <% calculations.each do |calculation| %>
-                <option value="<%= calculation.id %>"><%= calculation.name %><%= calculation.rules_summary.present? ? " · #{calculation.rules_summary.truncate(60)}" : "" %></option>
+                <option value="<%= calculation.id %>" <%= "selected" if calculation == current %>><%= calculation.name %><%= calculation.rules_summary.present? ? " · #{calculation.rules_summary.truncate(60)}" : "" %></option>
               <% end %>
             </select>
           </label>

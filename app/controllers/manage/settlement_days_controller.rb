@@ -83,18 +83,27 @@ module Manage
       scheme = Current.organization.payout_schemes.active.find_by(id: params[:payout_scheme_id])
       return redirect_to manage_money_settle_up_day_path(@date), alert: "Pick a calculation to use." unless scheme
 
+      payout = show.show_payout
+      locked = payout&.line_items&.any? { |line| line.paid? || line.in_payout_run? }
       if params[:scope] == "show"
         production.update!(payout_calculation_mode: "each_show", pays_performers: true)
-        payout = show.show_payout || show.create_show_payout!(status: "awaiting_payout")
-        payout.update!(payout_scheme: scheme, override_rules: nil)
+        payout ||= show.create_show_payout!(status: "awaiting_payout")
+        payout.update!(payout_scheme: scheme, override_rules: nil) unless locked
         notice = "#{show.display_name} uses #{scheme.name}. You'll be asked for each #{production.name} show."
       else
         production.update!(payout_calculation_mode: "production", pays_performers: true)
         scheme.make_production_scheme!(production)
-        show.show_payout&.update!(payout_scheme: scheme, override_rules: nil) if show.show_payout&.calculated_at.blank?
+        payout&.update!(payout_scheme: scheme, override_rules: nil) unless locked
         notice = "Every #{production.name} show uses #{scheme.name} from now on."
       end
-      redirect_to manage_money_settle_up_day_path(@date), notice: notice
+      # A show already worked out is worked out again on the new calculation, each line keeping its choice.
+      if payout&.calculated_at.present? && !locked
+        result = SettlementPayer.calculate!(show.reload)
+        notice += result[:success] ? " #{show.display_name}: #{helpers.number_to_currency(result[:total])} to #{result[:line_items].size} #{'person'.pluralize(result[:line_items].size)}." : " It couldn't be worked out again: #{result[:error]}."
+      elsif locked
+        notice += " #{show.display_name}'s lines are paid or on a run, so they stay as they are."
+      end
+      redirect_to manage_money_settle_up_day_path(@date, open: show.id), notice: notice
     end
 
     # One line's choice: on the run when the day settles, or held for now.

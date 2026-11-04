@@ -47,6 +47,8 @@ class ShowPayoutLineItem < ApplicationRecord
   validates :pay_choice, inclusion: { in: PAY_CHOICES }
 
   def held? = pay_choice == "hold"
+  # Who this line pays, for matching a line across a recalculation.
+  def pay_choice_key = [ payee_type, payee_id, guest_name, is_individual_allocation ]
 
   # Rides the run when its day settles: chosen to, unpaid, not on one yet.
   def rides_on_settle? = pay_choice == "run" && !paid? && !in_payout_run? && amount.to_f.positive?

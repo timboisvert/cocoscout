@@ -460,7 +460,8 @@ RSpec.describe "Manage::SettlementDays pays people", type: :request do
       expect(payout.line_items.map { |l| [ l.payee_name, l.amount.to_f, l.pay_choice ] }).to contain_exactly([ "Ana Diaz", 100.0, "run" ], [ "Ben Lee", 100.0, "run" ])
 
       get manage_money_settle_up_day_path(date.iso8601, open: show.id)
-      expect(response.body).to include("$200.00 to 2 people", "2 people on the run when the day settles", "On the run when the day settles", "Hold, not yet", "Paid another way", "$200.00 for 2 people goes on the payout run")
+      expect(response.body).to include("$200.00 to 2 people", "2 people on the run when the day settles", "Hold, not yet", "Paid another way…", "Take off this show", "Who's paid and how", "$200.00 for 2 people goes on the payout run")
+      expect(response.body).not_to include("<select name=\"pay_choice\"")
       expect(response.body).not_to include("Recalculate")
 
       # The numbers move under it: the card says so, and the show waits on a recalculation.
@@ -514,6 +515,44 @@ RSpec.describe "Manage::SettlementDays pays people", type: :request do
 
       patch manage_update_money_show_financials_path(show), params: { return_to: manage_money_settle_up_day_path(date.iso8601), show_financials: { other_revenue: "25" } }
       expect(show.reload.show_financials.data_confirmed).to be(false)
+    end
+
+    it "changes who's paid and how from the day: a different calculation, everyone the same amount, someone taken off and the missing cast put back, each line keeping its choice" do
+      patch manage_calculate_show_money_settle_up_day_path(date.iso8601, show_id: show.id)
+      payout = show.reload.show_payout
+      ben_line = payout.line_items.find_by(payee: ben)
+      patch manage_pay_line_money_settle_up_day_path(date.iso8601, show_id: show.id, line_id: ben_line.id), params: { pay_choice: "hold" }
+
+      get manage_money_settle_up_day_path(date.iso8601, open: show.id)
+      expect(response.body).to include("The calculation", "Even split", "Everyone the same amount", "Each person their own amount", "The people", "Take off")
+
+      # Everyone the same amount, from the day: saved, worked out again, and Ben's hold kept.
+      back = manage_money_settle_up_day_path(date.iso8601, open: show.id)
+      patch manage_save_override_money_show_payout_path(show), params: { return_to: back, customize: { mode: "same", amount: "40" } }
+      expect(response).to redirect_to(back)
+      expect(payout.reload.line_items.map { |l| [ l.payee_name, l.amount.to_f, l.pay_choice ] }).to contain_exactly([ "Ana Diaz", 40.0, "run" ], [ "Ben Lee", 40.0, "hold" ])
+      get back
+      expect(response.body).to include("customized for this show", "Back to the calculation")
+
+      delete manage_clear_override_money_show_payout_path(show), params: { return_to: back }
+      expect(response).to redirect_to(back)
+      expect(payout.reload.line_items.find_by(payee: ben).amount.to_f).to eq(100.0)
+
+      # A different calculation for just this show, chosen from the day: worked out again on it.
+      flat = create(:payout_scheme, organization: org, production: nil, name: "Flat $25", rules: { "distribution" => { "method" => "flat_fee", "flat_amount" => 25 } })
+      patch manage_choose_calculation_money_settle_up_day_path(date.iso8601, show_id: show.id), params: { choice: "existing", payout_scheme_id: flat.id, scope: "show" }
+      expect(flash[:notice]).to include("Pavlov Show uses Flat $25", "$50.00 to 2 people")
+      expect(payout.reload.line_items.map { |l| [ l.amount.to_f, l.pay_choice ] }).to contain_exactly([ 25.0, "run" ], [ 25.0, "hold" ])
+
+      # Taken off from the day, and put back with the missing cast.
+      delete manage_remove_line_item_money_show_payout_path(show, line_item_id: payout.line_items.find_by(payee: ben).id), params: { return_to: back }
+      expect(response).to redirect_to(back)
+      expect(payout.reload.line_items.count).to eq(1)
+      get back
+      expect(response.body).to include("Ben Lee is cast but not on the payout")
+      post manage_add_missing_cast_money_show_payout_path(show), params: { return_to: back, amount: "30" }
+      expect(response).to redirect_to(back)
+      expect(payout.reload.line_items.find_by(payee: ben).amount.to_f).to eq(30.0)
     end
 
     it "keeps a show whose day isn't settled off the Money hub's To pay list, and the old pages point at the day" do

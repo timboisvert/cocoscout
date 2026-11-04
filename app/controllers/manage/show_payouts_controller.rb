@@ -225,7 +225,7 @@ module Manage
     def save_override
       base_rules = @show_payout.base_rules
       if base_rules.blank?
-        redirect_to manage_money_show_payout_path(@show),
+        redirect_to back_to_path,
                     alert: "Choose a payout calculation for this show before customizing it."
         return
       end
@@ -234,17 +234,17 @@ module Manage
       rules = case customize[:mode]
       when "same"
         amount = customize[:amount].to_f
-        return redirect_to(manage_money_show_payout_path(@show), alert: "Enter the amount everyone is paid.") if amount.negative? || customize[:amount].blank?
+        return redirect_to(back_to_path, alert: "Enter the amount everyone is paid.") if amount.negative? || customize[:amount].blank?
 
         PayoutRulesBuilder.same_amount(base_rules, amount)
       when "different"
         amounts = customize.fetch(:amounts, {}).to_h.select { |_key, value| value.present? }
-        return redirect_to(manage_money_show_payout_path(@show), alert: "Enter an amount for each person.") if amounts.empty?
+        return redirect_to(back_to_path, alert: "Enter an amount for each person.") if amounts.empty?
 
         if @show_payout.fixed_pot? && (expected = @show_payout.calculated_total)
           total = amounts.values.sum { |value| value.to_f }.round(2)
           if (total - expected).abs > 0.01
-            redirect_to manage_money_show_payout_path(@show),
+            redirect_to back_to_path,
                         alert: "Adjust the amounts so they add up to #{helpers.number_to_currency(expected)} — this calculation splits a fixed pot, and you entered #{helpers.number_to_currency(total)}."
             return
           end
@@ -255,17 +255,17 @@ module Manage
         overrides = amounts.to_h { |key, value| [ key.to_s, { flat_amount: value } ] }
         PayoutRulesBuilder.override(base_rules, performer_overrides: overrides)
       else
-        return redirect_to(manage_money_show_payout_path(@show), alert: "Choose whether everyone is paid the same amount or different amounts.")
+        return redirect_to(back_to_path, alert: "Choose whether everyone is paid the same amount or different amounts.")
       end
 
       @show_payout.update!(override_rules: rules)
-      redirect_to manage_money_show_payout_path(@show),
+      redirect_to back_to_path,
                   notice: with_recalculation_note("This event's calculation saved.")
     end
 
     def clear_override
       @show_payout.update!(override_rules: nil)
-      redirect_to manage_money_show_payout_path(@show),
+      redirect_to back_to_path,
                   notice: with_recalculation_note("Customization removed. This show pays as calculated.")
     end
 
@@ -464,7 +464,7 @@ module Manage
       amount = params[:amount].to_f
 
       unless payee_id.present?
-        redirect_to manage_money_show_payout_path(@show),
+        redirect_to back_to_path,
                     alert: "Please select a person to add."
         return
       end
@@ -475,7 +475,7 @@ module Manage
 
       # Check if already in payout
       if @show_payout.line_items.exists?(payee: payee)
-        redirect_to manage_money_show_payout_path(@show),
+        redirect_to back_to_path,
                     alert: "#{payee.name} is already in this payout."
         return
       end
@@ -500,7 +500,7 @@ module Manage
       notice = "Added #{payee.name} with payout of #{helpers.number_to_currency(amount)}."
       notice += " Payout reopened." if was_paid
 
-      redirect_to manage_money_show_payout_path(@show), notice: notice
+      redirect_to back_to_path, notice: notice
     end
 
     # Remove a line item
@@ -509,7 +509,7 @@ module Manage
       name = line_item.payee_name
 
       if line_item.paid?
-        redirect_to manage_money_show_payout_path(@show),
+        redirect_to back_to_path,
                     alert: "Cannot remove #{name} - they have already been paid. Unmark as paid first."
         return
       end
@@ -517,7 +517,7 @@ module Manage
       line_item.destroy!
       @show_payout.recalculate_total!
 
-      redirect_to manage_money_show_payout_path(@show),
+      redirect_to back_to_path,
                   notice: "Removed #{name} from payout."
     end
 
@@ -534,7 +534,7 @@ module Manage
       missing = current_cast.reject { |p| existing_payees.include?(p.id) }
 
       if missing.empty?
-        redirect_to manage_money_show_payout_path(@show),
+        redirect_to back_to_path,
                     notice: "All cast members are already in the payout."
         return
       end
@@ -564,7 +564,7 @@ module Manage
       notice = "Added #{missing.count} missing cast member#{'s' if missing.count != 1}."
       notice += " Payout reopened." if was_paid
 
-      redirect_to manage_money_show_payout_path(@show), notice: notice
+      redirect_to back_to_path, notice: notice
     end
 
 
@@ -815,7 +815,7 @@ module Manage
       if rules.dig("distribution", "method").to_s == "per_act" && show.act_based?
         payout.update!(act_counts: show.lineup_act_counts)
       end
-      result = PayoutCalculator.calculate(show: show, rules: rules, act_counts: payout.act_counts)
+      result = payout.keeping_pay_choices { PayoutCalculator.calculate(show: show, rules: rules, act_counts: payout.act_counts) }
       if result[:success]
         "Payouts recalculated: #{helpers.number_to_currency(result[:total])} total."
       else
