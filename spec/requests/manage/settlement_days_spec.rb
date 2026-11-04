@@ -299,7 +299,8 @@ RSpec.describe "Manage::SettlementDays tips by the clock", type: :request do
       record = SettlementDay.find_by!(organization: org, date: date)
       expect(record.tips_unstaffed).to eq({ key => "house" })
       get manage_money_settle_up_day_path(date.iso8601)
-      expect(response.body).to include("Nobody on the bar 6 pm to 7 pm: $40.00 from 8 orders, the house keeps it.", "The house keeps $40.00.")
+      expect(response.body).to include("Nobody on the bar 6 pm to 7 pm: $40.00 from 8 orders, the house keeps it.")
+      expect(response.body).not_to include("The house keeps $40.00.")
       expect(record.tip_shares.sum(:amount_cents)).to eq(20_000)
 
       # Or Miles gets it, whole.
@@ -440,8 +441,11 @@ RSpec.describe "Manage::SettlementDays pays people", type: :request do
 
     patch manage_choose_calculation_money_settle_up_day_path(date.iso8601, show_id: show.id), params: { choice: "nobody" }
     expect(production.reload.pays_performers).to be(false)
+    expect(flash[:notice]).to include("its shows settle without a payout")
     get manage_money_settle_up_day_path(date.iso8601)
-    expect(response.body).to include("Nobody is paid from Pavlov's shows")
+    expect(response.body).to include("No performers are paid for Pavlov", "Set up a payout")
+    patch manage_check_show_money_settle_up_day_path(date.iso8601, show_id: show.id), params: { checked: "1" }
+    expect(flash[:notice]).to include("confirmed")
   end
 
   context "with the production's calculation chosen" do
@@ -460,7 +464,7 @@ RSpec.describe "Manage::SettlementDays pays people", type: :request do
       expect(payout.line_items.map { |l| [ l.payee_name, l.amount.to_f, l.pay_choice ] }).to contain_exactly([ "Ana Diaz", 100.0, "run" ], [ "Ben Lee", 100.0, "run" ])
 
       get manage_money_settle_up_day_path(date.iso8601, open: show.id)
-      expect(response.body).to include("$200.00 to 2 people", "2 people on the run when the day settles", "Hold, not yet", "Paid another way…", "Take off this show", "Who's paid and how", "$200.00 for 2 people goes on the payout run")
+      expect(response.body).to include("$200.00 to 2 people", "2 people on the run when the day settles", "Hold, not yet", "Paid another way…", "Remove from this show", "Who's paid and how", "$200.00 for 2 people goes on the payout run")
       expect(response.body).not_to include("<select name=\"pay_choice\"")
       expect(response.body).not_to include("Recalculate")
 
@@ -497,7 +501,21 @@ RSpec.describe "Manage::SettlementDays pays people", type: :request do
       get manage_money_settle_up_day_path(date.iso8601)
       expect(response.body).to include("is settled", "1 on a payout run", "1 held", "The payout run")
 
+      # The reopen modal says what it undoes and asks about the payouts on the draft run.
+      expect(CGI.unescapeHTML(response.body)).to include("Reopening undoes what settling did", "1 payout from this day, $100.00, is on the open payout run.",
+        "Take it off the run, so the pay can change.", "Leave it on the run. I'm changing something else")
+
+      # Kept on the run: the day opens, the line stays and its show stays locked.
+      post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "Door cash was off", payouts: "keep" }
+      expect(flash[:notice]).to include("Its payouts stayed on the payout run")
+      expect(PayoutContribution.find_by(source: payout.line_items.find_by(payee: ana))&.payout_batch).to eq(run)
+      patch manage_check_show_money_settle_up_day_path(date.iso8601, show_id: show.id), params: { checked: "1" }
+      post manage_settle_money_settle_up_day_path(date.iso8601)
+      expect(PayoutContribution.where(source_type: "ShowPayoutLineItem", source_id: payout.line_items.ids).count).to eq(1)
+
+      # Taken off (the default): the line comes back off the draft and rides again on settling.
       post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "A ticket count was wrong" }
+      expect(flash[:notice]).to include("$100.00 for 1 person came off the payout run")
       expect(PayoutContribution.where(source_type: "ShowPayoutLineItem", source_id: payout.line_items.ids)).not_to exist
       get manage_money_settle_up_day_path(date.iso8601)
       expect(response.body).to include("1 person on the run when the day settles")
@@ -524,7 +542,7 @@ RSpec.describe "Manage::SettlementDays pays people", type: :request do
       patch manage_pay_line_money_settle_up_day_path(date.iso8601, show_id: show.id, line_id: ben_line.id), params: { pay_choice: "hold" }
 
       get manage_money_settle_up_day_path(date.iso8601, open: show.id)
-      expect(response.body).to include("The calculation", "Even split", "Everyone the same amount", "Each person their own amount", "The people", "Take off")
+      expect(response.body).to include("Use the calculation", "Even split", "Choose a different calculation", "Everyone the same amount", "Each person their own amount", "The people", "Remove")
 
       # Everyone the same amount, from the day: saved, worked out again, and Ben's hold kept.
       back = manage_money_settle_up_day_path(date.iso8601, open: show.id)
@@ -532,16 +550,20 @@ RSpec.describe "Manage::SettlementDays pays people", type: :request do
       expect(response).to redirect_to(back)
       expect(payout.reload.line_items.map { |l| [ l.payee_name, l.amount.to_f, l.pay_choice ] }).to contain_exactly([ "Ana Diaz", 40.0, "run" ], [ "Ben Lee", 40.0, "hold" ])
       get back
-      expect(response.body).to include("customized for this show", "Back to the calculation")
+      expect(response.body).to include("customized for this show")
 
-      delete manage_clear_override_money_show_payout_path(show), params: { return_to: back }
+      patch manage_save_override_money_show_payout_path(show), params: { return_to: back, customize: { mode: "calculation" } }
       expect(response).to redirect_to(back)
+      expect(flash[:notice]).to include("pays as Even split says")
       expect(payout.reload.line_items.find_by(payee: ben).amount.to_f).to eq(100.0)
 
       # A different calculation for just this show, chosen from the day: worked out again on it.
       flat = create(:payout_scheme, organization: org, production: nil, name: "Flat $25", rules: { "distribution" => { "method" => "flat_fee", "flat_amount" => 25 } })
-      patch manage_choose_calculation_money_settle_up_day_path(date.iso8601, show_id: show.id), params: { choice: "existing", payout_scheme_id: flat.id, scope: "show" }
+      patch manage_choose_calculation_money_settle_up_day_path(date.iso8601, show_id: show.id), params: { choice: "existing", payout_scheme_id: flat.id, scope: "show", reopen: "pay-modal-#{show.id}" }
+      expect(response).to redirect_to(manage_money_settle_up_day_path(date.iso8601, open: show.id, modal: "pay-modal-#{show.id}"))
       expect(flash[:notice]).to include("Pavlov Show uses Flat $25", "$50.00 to 2 people")
+      get manage_money_settle_up_day_path(date.iso8601, open: show.id, modal: "pay-modal-#{show.id}")
+      expect(response.body).to include(%(id="pay-modal-#{show.id}" class=" fixed inset-0))
       expect(payout.reload.line_items.map { |l| [ l.amount.to_f, l.pay_choice ] }).to contain_exactly([ 25.0, "run" ], [ 25.0, "hold" ])
 
       # Taken off from the day, and put back with the missing cast.

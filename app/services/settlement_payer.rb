@@ -85,20 +85,31 @@ class SettlementPayer
   # back off (the run re-totals); money already funded or sent stays, and
   # the difference rides the next run when the day settles again (§9.7).
   def self.unstage!(day)
+    count = 0
+    cents = 0
     day.shows.each do |piece|
       pay = piece.pay
       if pay.performers? && pay.show_payout
         pay.show_payout.line_items.each do |line|
           contribution = PayoutContribution.find_by(source: line)
-          PayoutRunRemoval.remove!(contribution) if contribution && PayoutRunRemoval.removable?(contribution)
+          next unless contribution && PayoutRunRemoval.removable?(contribution)
+
+          PayoutRunRemoval.remove!(contribution)
+          count += 1
+          cents += (line.net_amount.to_d * 100).round
         end
       elsif pay.contract?
         pay.payments.each do |payment|
           contribution = PayoutContribution.find_by(source: payment)
-          ContractorPayoutRunService.remove_contract_payment!(payment) if contribution && PayoutRunRemoval.removable?(contribution)
+          next unless contribution && PayoutRunRemoval.removable?(contribution)
+
+          ContractorPayoutRunService.remove_contract_payment!(payment)
+          count += 1
+          cents += (payment.amount.to_d * 100).round
         end
       end
     end
+    Staged.new(count: count, cents: cents, notes: [])
   end
 
   # A contract payment that rides the run when the day settles: money we owe,

@@ -25,6 +25,16 @@ export default class extends Controller {
         if (modalId) {
             const modal = document.getElementById(modalId)
             if (modal) {
+                // A trigger inside one modal (data-modal-close-id) swaps to this one
+                // instead of stacking: the first hides and comes back when this one
+                // closes. Its form, if it has one, learns which modal to reopen.
+                const closeId = event.currentTarget.dataset.modalCloseId
+                const from = closeId ? document.getElementById(closeId) : null
+                if (from) {
+                    from.classList.add('hidden')
+                    modal.dataset.modalReturnTo = closeId
+                    modal.querySelectorAll('input[name="reopen"]').forEach(input => { input.value = closeId })
+                }
                 modal.classList.remove('hidden')
                 document.addEventListener('keydown', this.keyHandler)
                 this.currentModal = modal
@@ -53,6 +63,12 @@ export default class extends Controller {
             modal.classList.add('hidden')
             document.removeEventListener('keydown', this.keyHandler)
             this.currentModal = null
+            const back = modal.dataset.modalReturnTo
+            if (back) {
+                delete modal.dataset.modalReturnTo
+                modal.querySelectorAll('input[name="reopen"]').forEach(input => { input.value = "" })
+                document.getElementById(back)?.classList.remove('hidden')
+            }
         }
     }
 

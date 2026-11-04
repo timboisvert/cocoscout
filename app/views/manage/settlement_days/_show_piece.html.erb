@@ -60,7 +60,7 @@
       <div class="pt-1 text-sm"><%= link_to "This show's page", manage_money_show_financials_path(show), class: pink %></div>
     </div>
   </div>
-  <%= render "manage/settlement_days/pay_block", piece: piece, day: day, editable: editable, return_to: return_to, open: (defined?(open_show_id) && open_show_id.to_s == show.id.to_s) %>
+  <%= render "manage/settlement_days/pay_block", piece: piece, day: day, editable: editable, return_to: return_to, open: (defined?(open_show_id) && open_show_id.to_s == show.id.to_s), open_modal_id: (defined?(open_modal_id) ? open_modal_id.to_s : "") %>
 </section>
 <% if editable %>
   <%= render "manage/settlement_days/other_revenue_modal", id: "other-revenue-#{show.id}", show: show, financials: fin, return_to: return_to %>

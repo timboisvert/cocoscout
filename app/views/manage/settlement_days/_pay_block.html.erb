@@ -30,7 +30,14 @@
   header_classes = "flex flex-wrap items-center justify-between gap-3 px-5 py-3 cursor-pointer hover:bg-gray-50/60 transition-colors"
 %>
 <% if pay.none? %>
-  <div class="px-5 py-2 border-t border-gray-100 text-xs text-gray-500">Nobody is paid from <%= production.name %>'s shows<%= editable ? "; the production's Pay tab turns performer pay on" : "" %>.</div>
+  <div class="px-5 py-2 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
+    <span>No performers are paid for <%= production.name %>; its shows settle without a payout.</span>
+    <% if editable %>
+      <%= form_with url: manage_choose_calculation_money_settle_up_day_path(day.param, show_id: show.id), method: :patch, data: { turbo_action: "replace" } do %>
+        <%= render "shared/button", text: "Set up a payout", variant: "ghost", size: "xs", type: :submit, name: "choice", value: "pay_after_all" %>
+      <% end %>
+    <% end %>
+  </div>
 <% elsif pay.contract? %>
   <%
     contract = pay.payments.first&.contract || show.space_rental&.contract || production.contract
@@ -170,7 +177,7 @@
                 [ { text: (row.stage == :hold ? "Back on the run" : "Hold, not yet"), icon: (row.stage == :hold ? "arrow-left" : "clock"), form: hold_form },
                   { text: "Paid another way…", icon: "banknotes", data: { action: "click->modal#open", modal_id: "another-way-#{line.id}" } },
                   (can_change ? { text: "Change the amount…", icon: "pencil", data: { action: "click->modal#open", modal_id: pay_modal_id } } : nil),
-                  { text: "Take off this show's payout", icon: "x-mark", form: remove_form } ]
+                  { text: "Remove from this show's payout", icon: "x-mark", form: remove_form } ]
               elsif editable && line&.manually_paid? && !line.in_payout_run?
                 [ { text: "Undo paid another way", icon: "arrow-left", form: "unmark-form-#{line.id}" } ]
               else
@@ -233,7 +240,7 @@
     <%= render "manage/settlement_days/calculation_modal", id: chooser_id, show: show, day: day, return_to: return_to %>
   <% end %>
   <% if can_change %>
-    <%= render "manage/settlement_days/pay_modal", id: pay_modal_id, show: show, pay: pay, day: day, return_to: back_open %>
+    <%= render "manage/settlement_days/pay_modal", id: pay_modal_id, show: show, pay: pay, day: day, return_to: back_open, open: (local_assigns[:open_modal_id].to_s == pay_modal_id) %>
   <% end %>
   <% if editable %>
     <% pay.rows.each do |row| %>

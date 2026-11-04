@@ -1,8 +1,10 @@
-<%# How a production pays its performers, asked on the day (Tim, 2026-11-04):
-    one of the organization's calculations, for every show of the production
-    from now on or just this one (then it asks for each show); a new one,
-    made in the wizard and brought back here; or nobody is paid from this
-    production's shows.
+<%# How a production's performers are paid, asked on the day (Tim,
+    2026-11-04): three distinct ways. One of the organization's calculations,
+    for every show of the production from now on or just this one (then it
+    asks for each show); a new calculation, made in the wizard and brought
+    back here; or no performers are paid for this production. Opened from a
+    show's card, or from Who's paid and how (then that modal steps aside and
+    comes back: `reopen`).
     Locals: id, show, day, return_to %>
 <%
   production = show.production
@@ -11,54 +13,73 @@
   current = show.show_payout&.payout_scheme || PayoutScheme.default_for_show(show)
   new_path = manage_money_payout_calculation_wizard_start_path(production_id: production.id, return_to: return_to)
   select_classes = "mt-1 block w-full pl-3 pr-8 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  card = "rounded-lg border border-gray-200 px-4 py-3 space-y-2"
 %>
 <div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" data-controller="modal" data-action="click->modal#closeOnBackdrop">
-  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-lg sm:mx-4 overflow-hidden" data-action="click->modal#stopPropagation">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-lg sm:mx-4 overflow-hidden flex flex-col max-h-[92vh]" data-action="click->modal#stopPropagation">
     <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
-      <h3 class="text-lg font-semibold text-white">How is <%= production.name %> paid?</h3>
+      <h3 class="text-lg font-semibold text-white">How are <%= production.name %>'s performers paid?</h3>
       <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10" aria-label="Close">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
-    <%= form_with url: manage_choose_calculation_money_settle_up_day_path(day.param, show_id: show.id), method: :patch, data: { turbo_action: "replace" } do %>
-      <div class="px-6 py-5 space-y-4 text-sm text-gray-700">
+    <div class="overflow-y-auto px-6 py-5 space-y-3 text-sm text-gray-700">
+      <%# 1. One of the calculations you have %>
+      <div class="<%= card %>">
+        <div class="font-medium text-gray-900">Use a calculation you have</div>
         <% if calculations.any? %>
-          <label class="block">
-            <span class="font-medium text-gray-900">Use one of your calculations</span>
-            <select name="payout_scheme_id" class="<%= select_classes %>">
-              <% calculations.each do |calculation| %>
-                <option value="<%= calculation.id %>" <%= "selected" if calculation == current %>><%= calculation.name %><%= calculation.rules_summary.present? ? " · #{calculation.rules_summary.truncate(60)}" : "" %></option>
-              <% end %>
-            </select>
-          </label>
-          <fieldset class="space-y-2">
-            <legend class="font-medium text-gray-900">For which shows?</legend>
-            <label class="flex items-start gap-2 cursor-pointer">
-              <input type="radio" name="scope" value="production" <%= "checked" unless each_show %> class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
-              <span>Every <%= production.name %> show, from now on<span class="block text-xs text-gray-500">Its shows start from this calculation; any one show can still be changed on its own.</span></span>
+          <%= form_with url: manage_choose_calculation_money_settle_up_day_path(day.param, show_id: show.id), method: :patch, data: { turbo_action: "replace" }, class: "space-y-3" do %>
+            <%= hidden_field_tag :reopen, "", id: nil %>
+            <label class="block">
+              <span class="sr-only">Which calculation</span>
+              <select name="payout_scheme_id" class="<%= select_classes %>">
+                <% calculations.each do |calculation| %>
+                  <option value="<%= calculation.id %>" <%= "selected" if calculation == current %>><%= calculation.name %><%= calculation.rules_summary.present? ? " · #{calculation.rules_summary.truncate(60)}" : "" %></option>
+                <% end %>
+              </select>
             </label>
-            <label class="flex items-start gap-2 cursor-pointer">
-              <input type="radio" name="scope" value="show" <%= "checked" if each_show %> class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
-              <span>Just this show<span class="block text-xs text-gray-500">You'll be asked which calculation to use for each <%= production.name %> show.</span></span>
-            </label>
-          </fieldset>
-          <p class="text-xs text-gray-500">Or <%= link_to "make a new calculation", new_path, class: "text-pink-600 hover:text-pink-700 font-medium" %>; it comes back to this day when it's saved.</p>
-        <% else %>
-          <p>There are no payout calculations yet. A calculation turns a show's money into what each performer is paid: a flat fee, a per-act rate, a share of the door.</p>
-          <%= link_to new_path do %>
-            <%= render "shared/button", text: "Make a calculation", variant: "primary", size: "medium", type: :button %>
+            <fieldset class="space-y-1.5">
+              <legend class="text-xs font-medium uppercase tracking-wide text-gray-500">For which shows</legend>
+              <label class="flex items-start gap-2 cursor-pointer">
+                <input type="radio" name="scope" value="production" <%= "checked" unless each_show %> class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+                <span>Every <%= production.name %> show, from now on<span class="block text-xs text-gray-500">Its shows start from this calculation; any one show can still be changed on its own.</span></span>
+              </label>
+              <label class="flex items-start gap-2 cursor-pointer">
+                <input type="radio" name="scope" value="show" <%= "checked" if each_show %> class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+                <span>Just this show<span class="block text-xs text-gray-500">You'll be asked which calculation to use for each <%= production.name %> show.</span></span>
+              </label>
+            </fieldset>
+            <div class="flex justify-end">
+              <%= render "shared/button", text: "Use it", variant: "primary", size: "small", type: :submit, name: "choice", value: "existing" %>
+            </div>
           <% end %>
+        <% else %>
+          <p class="text-gray-600">You have no payout calculations yet. Make one below.</p>
         <% end %>
-        <div class="border-t border-gray-100 pt-3">
-          <%= render "shared/button", text: "Nobody is paid from #{production.name}'s shows", variant: "ghost", size: "small", type: :submit, name: "choice", value: "nobody" %>
+      </div>
+
+      <%# 2. A new one %>
+      <div class="<%= card %>">
+        <div class="font-medium text-gray-900">Make a new calculation</div>
+        <p class="text-gray-600">A calculation turns a show's money into what each performer is paid: a flat fee, a per-act rate, a share of the door. The wizard walks you through it and comes back to this day when it's saved.</p>
+        <div class="flex justify-end">
+          <%= link_to new_path do %>
+            <%= render "shared/button", text: "Make a new calculation", variant: "secondary", size: "small", type: :button %>
+          <% end %>
         </div>
       </div>
-      <div class="px-6 py-4 bg-gray-50 flex justify-end gap-2">
-        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
-        <% if calculations.any? %>
-          <%= render "shared/button", text: "Use it", variant: "primary", size: "medium", type: :submit, name: "choice", value: "existing" %>
+
+      <%# 3. Nobody %>
+      <div class="<%= card %>">
+        <div class="font-medium text-gray-900">No performers are paid for <%= production.name %></div>
+        <p class="text-gray-600">Its performers aren't paid through CocoScout (volunteers, or paid some other way). Its shows settle without a payout, and nothing goes on the payout run for them. The show's card has the way back if that changes.</p>
+        <%= form_with url: manage_choose_calculation_money_settle_up_day_path(day.param, show_id: show.id), method: :patch, data: { turbo_action: "replace" }, class: "flex justify-end" do %>
+          <%= render "shared/button", text: "No performers are paid", variant: "secondary", size: "small", type: :submit, name: "choice", value: "nobody" %>
         <% end %>
       </div>
-    <% end %>
+    </div>
+    <div class="px-6 py-3 bg-gray-50 flex justify-end">
+      <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+    </div>
   </div>
 </div>

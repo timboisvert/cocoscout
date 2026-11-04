@@ -22,6 +22,8 @@ module Manage
       @day = SettleUp.day(Current.organization, @date)
       # The show whose "Who gets paid" is open on arrival (after a choice on one of its lines, or Calculate).
       @open_show_id = params[:open].to_s
+      # A modal to arrive with open, when a choice was made from inside it (the chooser, from Who's paid and how).
+      @open_modal_id = params[:modal].to_s
       @prev_day = SettleUp.days(Current.organization, (@date - 90)..(@date - 1)).first
       @next_day = SettleUp.days(Current.organization, (@date + 1)..(@date + 90)).last
       # The day picker Home has: earlier, the day (a two-month calendar), later, Today.
@@ -77,7 +79,12 @@ module Manage
       if params[:choice] == "nobody"
         production.update!(pays_performers: false)
         ShowPayout.restamp_pending_for_production!(production, nil)
-        return redirect_to manage_money_settle_up_day_path(@date), notice: "Nobody is paid from #{production.name}'s shows. The production's Pay tab turns it back on."
+        return redirect_to manage_money_settle_up_day_path(@date, open: show.id), notice: "No performers are paid for #{production.name}; its shows settle without a payout. Set up a payout, on the show's card, turns it back on."
+      end
+      # The way back from "nobody is paid" (Tim, 2026-11-04: it can be a slip): performer pay goes back on, and the question is asked again.
+      if params[:choice] == "pay_after_all"
+        production.update!(pays_performers: true)
+        return redirect_to manage_money_settle_up_day_path(@date, open: show.id), notice: "#{production.name} pays its performers again. Say how, on the show's card."
       end
 
       scheme = Current.organization.payout_schemes.active.find_by(id: params[:payout_scheme_id])
@@ -103,7 +110,7 @@ module Manage
       elsif locked
         notice += " #{show.display_name}'s lines are paid or on a run, so they stay as they are."
       end
-      redirect_to manage_money_settle_up_day_path(@date, open: show.id), notice: notice
+      redirect_to manage_money_settle_up_day_path(@date, open: show.id, modal: params[:reopen].presence), notice: notice
     end
 
     # One line's choice: on the run when the day settles, or held for now.
@@ -211,8 +218,16 @@ module Manage
 
       record.reopen!(by: Current.user, reason: params[:reason])
       SettlementPoster.unpost!(record)
-      SettlementPayer.unstage!(SettleUp.day(Current.organization, @date))
-      redirect_to manage_money_settle_up_day_path(@date), notice: "#{@date.strftime('%A, %B %-d')} is open again. Settle it when it's right."
+      # Reopening undoes what settling did; the modal asks whether the day's
+      # payouts come off the draft run too (Tim, 2026-11-04). Off is the default.
+      notice = "#{@date.strftime('%A, %B %-d')} is open again."
+      if params[:payouts] == "keep"
+        notice += " Its payouts stayed on the payout run."
+      else
+        taken = SettlementPayer.unstage!(SettleUp.day(Current.organization, @date))
+        notice += " #{taken.words} came off the payout run; it goes back on when the day settles." if taken.any?
+      end
+      redirect_to manage_money_settle_up_day_path(@date), notice: "#{notice} Settle it when it's right."
     end
 
     private

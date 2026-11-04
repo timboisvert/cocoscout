@@ -28,13 +28,15 @@
     elsif (row = rows_by_person[stretch.person_id]) then "to #{row.person.name}"
     end
   end
+  # Nobody who shares tips was on: one short line and the way in, nothing else (Tim, 2026-11-04: the full block read badly with no one).
+  nobody = !by_rule && workers.empty?
   line = ->(label, note, value) { "<div class='flex items-baseline justify-between gap-3 py-1.5 text-sm'><span class='text-gray-700'>#{ERB::Util.html_escape(label)}#{note.present? ? " <span class='text-xs text-gray-500'>#{ERB::Util.html_escape(note)}</span>" : ''}</span><span class='tabular-nums text-gray-900'>#{value}</span></div>".html_safe }
 %>
 <div class="border-t border-gray-200 px-5 py-3 space-y-2" id="tips">
   <div class="flex flex-wrap items-center justify-between gap-3">
-    <h3 class="text-sm font-semibold text-gray-900">Tips, <%= money.call(tips.cents) %> <span class="ml-1 text-xs font-normal text-gray-500">who gets them</span></h3>
+    <h3 class="text-sm font-semibold text-gray-900">Tips, <%= money.call(tips.cents) %> <span class="ml-1 text-xs font-normal <%= nobody ? 'text-amber-700' : 'text-gray-500' %>"><%= nobody ? "nobody on the clock" : "who gets them" %></span></h3>
     <% if editable %>
-      <%= render "shared/button", text: "Change the split", variant: "secondary", size: "small", type: :button,
+      <%= render "shared/button", text: (nobody ? "Say who worked" : "Change the split"), variant: "secondary", size: "small", type: :button,
             data: { controller: "modal", action: "click->modal#open", modal_id: modal_id } %>
     <% end %>
   </div>
@@ -61,17 +63,13 @@
         <p class="text-sm text-amber-700">Nobody on the bar <%= stretch.words %>: <%= money.call(stretch.cents) %><%= stretch.orders.positive? ? " from #{pluralize(stretch.orders, 'order')}" : "" %>. Say who gets it<%= editable ? " under Change the split" : "" %>.</p>
       <% end %>
     <% end %>
-    <% if tips.house_cents.positive? && tips.unresolved.empty? %>
-      <p class="text-xs text-gray-500">The house keeps <%= money.call(tips.house_cents) %>.</p>
+    <%# What the house keeps, when the stretches above don't already say it all (Tim, 2026-11-04: no saying it twice). %>
+    <% house_said = tips.stretches.select { |st| st.resolved? && st.house? }.sum(&:cents) %>
+    <% if tips.house_cents.positive? && tips.unresolved.empty? && tips.house_cents != house_said %>
+      <p class="text-xs text-gray-500">The house keeps <%= money.call(tips.house_cents) %><%= house_said.positive? ? " in all" : "" %>.</p>
     <% end %>
-  <% elsif workers.empty? %>
-    <p class="text-sm text-gray-600">
-      <% if rule&.enabled? %>
-        Nobody in a role that shares tips was on the clock or scheduled for this day. Add who worked and when, and the clock does the rest.
-      <% else %>
-        Nobody is on Staffing's schedule or hours for this day. Add who worked, or add their shift or hours in Staffing and come back.
-      <% end %>
-    </p>
+  <% elsif nobody %>
+    <p class="text-xs text-gray-500">The house keeps them until someone's named<%= rule&.enabled? ? "; say who worked and when, and the clock splits them" : "; say who worked, or add their shift or hours in Staffing" %>.</p>
   <% else %>
     <p class="text-sm text-gray-600">
       Split <%= { "even" => "evenly", "hours" => "by hours worked", "typed" => "as typed" }.fetch(split) %> between <%= workers.size == 1 ? workers.first.person.name : pluralize(workers.size, "person") %>.
@@ -86,7 +84,9 @@
       <p class="text-xs text-amber-700"><%= tips.unassigned_cents.positive? ? "#{money.call(tips.unassigned_cents)} not given to anyone, so the house keeps it." : "#{money.call(-tips.unassigned_cents)} more than the register took in tips." %></p>
     <% end %>
   <% end %>
-  <p class="text-xs text-gray-500">Shares go on each person's next pay from Pay People, with their hours; cash shares came out of the door cash at close.</p>
+  <% unless nobody %>
+    <p class="text-xs text-gray-500">Shares go on each person's next pay from Pay People, with their hours; cash shares came out of the door cash at close.</p>
+  <% end %>
 </div>
 <% if editable %>
   <%= render "manage/settlement_days/tips_modal", id: modal_id, day: day, tips: tips, hand_rows: hand_rows, roles_by_id: roles_by_id %>

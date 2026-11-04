@@ -93,7 +93,7 @@
 
     <div class="space-y-4">
       <% day.shows.each do |piece| %>
-        <%= render "manage/settlement_days/show_piece", piece: piece, day: day, can_change: can_change, open_show_id: @open_show_id %>
+        <%= render "manage/settlement_days/show_piece", piece: piece, day: day, can_change: can_change, open_show_id: @open_show_id, open_modal_id: @open_modal_id %>
       <% end %>
 
       <% if day.door_cash.any? %>
@@ -217,6 +217,15 @@
 <% end %>
 
 <% if can_change && day.settled? %>
+  <%# Reopening undoes what settling did, so the modal says so and asks about
+      the payouts (Tim, 2026-11-04: "reopening is essentially unsettling it"). %>
+  <%
+    draft_rows = day.shows.flat_map { |s| s.pay.performers? ? s.pay.rows.select { |r| r.stage == :in_draft } : [] }
+    draft_payments = day.shows.flat_map { |s| s.pay.contract? ? s.pay.payments.select { |p| p.payout_stage == :in_draft } : [] }
+    draft_count = draft_rows.size + draft_payments.size
+    draft_cents = draft_rows.sum(&:cents) + draft_payments.sum { |p| (p.amount.to_d * 100).round }
+    gone_count = day.shows.sum { |s| s.pay.performers? ? s.pay.rows.count { |r| r.stage.in?(%i[in_flight paid]) && !r.line&.manually_paid? } : s.pay.payments.count { |p| p.payout_stage == :in_flight || p.status_paid? } }
+  %>
   <div id="reopen-day" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" data-controller="modal" data-action="click->modal#closeOnBackdrop">
     <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-md sm:mx-4 overflow-hidden" data-action="click->modal#stopPropagation">
       <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
@@ -227,7 +236,23 @@
       </div>
       <%= form_with url: manage_reopen_money_settle_up_day_path(day.param), method: :post do %>
         <div class="px-6 py-5 space-y-3 text-sm text-gray-600">
-          <p>Nothing changes until you edit something and settle the day again. Then the books restate, dated <%= @date.strftime("%b %-d") %>; a payout already sent out of this day is adjusted on the next run.</p>
+          <p>Reopening undoes what settling did, so the day can change. Its numbers come off the books and go back on, dated <%= @date.strftime("%b %-d") %>, when you settle it again.</p>
+          <% if draft_count.positive? %>
+            <fieldset class="space-y-2">
+              <legend class="font-medium text-gray-700"><%= pluralize(draft_count, "payout") %> from this day, <%= money.call(draft_cents) %>, <%= draft_count == 1 ? "is" : "are" %> on the open payout run.</legend>
+              <label class="flex items-start gap-2 cursor-pointer">
+                <input type="radio" name="payouts" value="off" checked class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+                <span>Take <%= draft_count == 1 ? "it" : "them" %> off the run, so the pay can change. <%= draft_count == 1 ? "It goes" : "They go" %> back on when the day settles again.</span>
+              </label>
+              <label class="flex items-start gap-2 cursor-pointer">
+                <input type="radio" name="payouts" value="keep" class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+                <span>Leave <%= draft_count == 1 ? "it" : "them" %> on the run. I'm changing something else, and the pay stays as it is.</span>
+              </label>
+            </fieldset>
+          <% end %>
+          <% if gone_count.positive? %>
+            <p><%= pluralize(gone_count, "payout") %> from this day <%= gone_count == 1 ? "is" : "are" %> already funded or sent and <%= gone_count == 1 ? "stays" : "stay" %>; a difference rides the next run.</p>
+          <% end %>
           <label class="block"><span class="font-medium text-gray-700">Why?</span>
             <input type="text" name="reason" required placeholder="e.g. A count was fixed later" class="mt-1 block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"></label>
         </div>

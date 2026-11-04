@@ -231,6 +231,12 @@ module Manage
       end
 
       customize = params.fetch(:customize, {}).permit(:mode, :amount, amounts: {})
+      if customize[:mode] == "calculation"
+        # Back to the calculation as it is: the first of the three ways on the day's Who's paid and how.
+        @show_payout.update!(override_rules: nil)
+        return redirect_to(back_to_path, notice: with_recalculation_note("This show pays as #{@show_payout.base_scheme&.name || 'the calculation'} says."))
+      end
+
       rules = case customize[:mode]
       when "same"
         amount = customize[:amount].to_f
