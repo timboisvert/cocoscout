@@ -221,7 +221,7 @@ RSpec.describe "Public ticketing", type: :request do
     # Search Console, 2026-10-27: Events missing a description, and offers
     # missing validFrom.
     it "gives search engines a description and when each ticket went on sale, even with none written" do
-      [ listing, listing.production_ticketing, production ].compact.each { |r| r.update_columns(description: nil) if r.has_attribute?(:description) }
+      [ listing, listing.production_ticketing, production ].compact.each { |r| r.update!(description: "") }
       get event_path
       data = JSON.parse(response.body[%r{<script type="application/ld\+json">(.*?)</script>}m, 1])
       expect(data["description"]).to start_with(data["name"])

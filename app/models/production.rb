@@ -97,6 +97,9 @@ class Production < ApplicationRecord
 
   # Rich text for production-wide notes (legacy — superseded by documents).
   has_rich_text :notes
+  # What the production is: shown on its ticket page and public listing, and
+  # the words its ticketing setup and each date's listing can override.
+  has_rich_text :description
 
   # Rich-text documents & handbooks. `documents` are the ones this production
   # *owns* (its primary); `applied_documents` is everything that applies to it,

@@ -16,7 +16,7 @@
   else []
   end
   # A link to the production describes the production; one to a date, that date.
-  share_description = @dated ? description : (setup&.description.presence || @production.description.presence || description)
+  share_description = (@dated ? description : (setup&.description.presence || @production.description.presence || description))&.to_plain_text.to_s.squish
   page_url = @dated && selected ? tickets_event_url(org: @ticketing_profile.slug, event: selected.slug) : ticket_production_url(@ticketing_profile, @production)
   date_path = ->(listing) { tickets_event_path(org: @ticketing_profile.slug, event: @production.public_key, date: listing.slug, code: @code, **embed_params) }
   # The picture is the chosen date's (Show#ticket_page_image: its own wide
@@ -59,7 +59,7 @@
       "eventAttendanceMode" => show.is_online ? "https://schema.org/OnlineEventAttendanceMode" : "https://schema.org/OfflineEventAttendanceMode",
       # Search Console asks every Event for a description (2026-10-27); a date
       # with none of its own says what and where in a line.
-      "description" => description.to_s.truncate(500).presence ||
+      "description" => description&.to_plain_text.to_s.squish.truncate(500).presence ||
         [ "#{payload[:title]}#{" at #{pv[:name]}" if pv}", show.date_and_time.strftime("%A, %B %-d, %Y at %-l:%M %p") ].join(", ") + ".",
       "image" => image_url,
       "typicalAgeRange" => (selected.effective_minimum_age && "#{selected.effective_minimum_age}-"),
@@ -197,7 +197,7 @@
   <% if description.present? %>
     <div class="rounded-2xl border border-gray-200 bg-white px-5 py-4">
       <h2 class="font-semibold text-gray-900">About the show</h2>
-      <div class="mt-2 text-gray-700 space-y-3 leading-relaxed"><%= simple_format(description) %></div>
+      <div class="mt-2 text-gray-700 leading-relaxed"><%= description %></div>
     </div>
   <% end %>
 

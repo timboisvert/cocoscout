@@ -40,7 +40,8 @@ module Manage
 
     def save_name
       @wizard_state[:name] = params[:name]&.strip
-      @wizard_state[:description] = params[:description]&.strip
+      # Rich text: an emptied editor is no description, not its leftover markup.
+      @wizard_state[:description] = ActionText::Content.new(params[:description].to_s).to_plain_text.blank? ? "" : params[:description].to_s
       # Optional "what kind of production" — only allowlisted genres stick.
       @wizard_state[:genre] = ProductionGenres.keys.include?(params[:genre].to_s) ? params[:genre].to_s : nil
 

@@ -22,6 +22,8 @@ class TicketListing < ApplicationRecord
   belongs_to :show
   belongs_to :production
   belongs_to :contract, optional: true
+  # This date's own words, when they differ from the production's and its ticketing's.
+  has_rich_text :description
 
   has_many :ticket_tiers, -> { order(:position, :id) }, dependent: :destroy, inverse_of: :ticket_listing
   has_many :ticket_orders, dependent: :restrict_with_error
