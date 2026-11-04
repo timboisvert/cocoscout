@@ -41,7 +41,16 @@ class SettleUp
   #          :paid      paid another way, or by a run that went out
   #          :in_draft  on the open run (the day settled), still a draft
   #          :in_flight on a run that's funding or sending
-  PayRow = Data.define(:line, :payee, :name, :cents, :stage, :note)
+  #          :overpaid  paid more than the show now pays them (the day was
+  #                     reopened after they were paid); the difference comes
+  #                     out of their next pay
+  # A row whose day was reopened after the person was paid also says what
+  # was paid before and what happens to the difference (detail); its line is
+  # then the correction still to act on, and run_cents is what goes on the
+  # run for it (the difference, not the whole amount).
+  PayRow = Data.define(:line, :payee, :name, :cents, :stage, :note, :detail, :run_cents) do
+    def corrected? = detail.present?
+  end
 
   # Who gets paid from a show (Tim, 2026-11-04: paying people is part of
   # settling up). kind is :performers (the production's payout calculation
@@ -54,8 +63,8 @@ class SettleUp
   #   :needs_numbers the money isn't entered yet, so it can't be worked out
   #   :uncalculated it can be worked out from the numbers as they stand
   #   :stale        worked out, but the numbers changed since; work it out again
-  #   :locked       worked out and the numbers changed since, but lines are
-  #                 paid or on a run, so it stays as it is
+  #   :locked       worked out and the numbers changed since, but the day is
+  #                 settled, so it stays until the day is reopened
   #   :current      worked out from these numbers
   # preview_cents / preview_count: what the numbers as they stand would pay
   # (an :uncalculated or :stale show), nil otherwise.
@@ -69,8 +78,11 @@ class SettleUp
     def total_cents = performers? ? rows.sum(&:cents) : payments.sum { |p| (p.amount.to_d * 100).round }
     # What settling the day puts on the run, and for how many people.
     def to_run_rows = rows.select { |r| r.stage == :run }
-    def to_run_cents = performers? ? to_run_rows.sum(&:cents) : payments.select { |p| SettlementPayer.stageable?(p) }.sum { |p| (p.amount.to_d * 100).round }
-    def to_run_count = performers? ? to_run_rows.size : payments.count { |p| SettlementPayer.stageable?(p) }
+    def to_run_cents = performers? ? to_run_rows.sum(&:run_cents) : payments.select { |p| SettlementPayer.stageable?(p) }.sum { |p| (p.amount.to_d * 100).round } + more_owed.sum
+    def to_run_count = performers? ? to_run_rows.size : payments.count { |p| SettlementPayer.stageable?(p) } + more_owed.size
+    # On a contract show: what settling would add for settlements already
+    # paid that the show now owes more on (ContractSettlementCorrection).
+    def more_owed = contract? ? payments.filter_map { |p| ContractSettlementCorrection.outstanding_cents(p) }.select(&:positive?) : []
     def count_by_stage = rows.group_by(&:stage).transform_values(&:size)
   end
 
@@ -121,6 +133,8 @@ class SettleUp
     def share_stage(share)
       contribution = share.payout_contribution
       if share.cash? then [ :paid, "Paid in cash at close" ]
+      elsif contribution.nil? && share.owed_cents.zero? then [ :paid, "Paid" ]
+      elsif contribution.nil? && share.overpaid? then [ :overpaid, "Overpaid, comes out of their next pay" ]
       elsif contribution.nil? then [ :waiting, "Waiting on Pay People" ]
       elsif contribution.payout_batch&.open? then [ :in_draft, "On the draft payout run" ]
       elsif contribution.payout_batch_item&.paid? then [ :paid, "Paid" ]
@@ -430,15 +444,16 @@ class SettleUp
     preview = preview_rows(show, dry, rules)
     # The saved lines once worked out; before that, the people the numbers as they stand would pay.
     rows = if saved
-      show_payout.line_items.includes(:payee, payout_contribution: :payout_batch).sort_by { |l| -l.amount.to_f }.map { |line| pay_row(line) }
+      pay_rows(organization, show_payout.line_items.includes(:payee, payout_contribution: :payout_batch).to_a)
     else
       preview
     end
+    settled = show.date_and_time.present? && day_state_for(organization, show).last
     calc = if dry.act_payees.empty? then :no_cast
     elsif !per_act && !show.show_financials&.complete? then :needs_numbers
     elsif !saved then :uncalculated
     elsif numbers_changed_since?(show, show_payout.calculated_at)
-      rows.any? { |r| r.stage.in?(%i[paid in_draft in_flight]) } ? :locked : :stale
+      settled ? :locked : :stale
     else :current
     end
     hold = { needs_numbers: "Enter the tickets or a flat fee first", uncalculated: "Calculate the payout first", stale: "The numbers changed; recalculate first" }[calc]
@@ -467,7 +482,37 @@ class SettleUp
     else
       [ :run, "On the run when the day settles" ]
     end
-    PayRow.new(line: line, payee: line.payee, name: line.payee_name, cents: (line.net_amount.to_d * 100).round, stage: stage, note: note)
+    cents = (line.net_amount.to_d * 100).round
+    PayRow.new(line: line, payee: line.payee, name: line.payee_name, cents: cents, stage: stage, note: note, detail: nil, run_cents: cents)
+  end
+
+  # One row a person: a line on its own reads as it always did. Someone paid
+  # before the day was reopened has the paid line and, when the show now
+  # pays them a different amount, a correction beside it: the row is what
+  # the show pays them now, what was paid, and where the difference stands.
+  def self.pay_rows(organization, lines)
+    money = ->(cents) { ActiveSupport::NumberHelper.number_to_currency(cents.abs / 100.0) }
+    lines.group_by(&:pay_choice_key).values.map do |group|
+      next pay_row(group.first) if group.size == 1 && !group.first.correction?
+
+      settled, open = group.partition(&:paid_or_submitted?)
+      pending = open.first
+      first = settled.find { |line| !line.correction? } || group.first
+      paid_cents = settled.sum { |line| (line.net_amount.to_d * 100).round }
+      cents = group.sum { |line| (line.net_amount.to_d * 100).round }
+      difference = pending ? (pending.net_amount.to_d * 100).round : 0
+      stage, note, detail = if pending.nil?
+        [ :paid, pay_row(first).note, "#{money.call(paid_cents)} paid in all, after a correction." ]
+      elsif difference.negative?
+        still = organization.payout_balance_cents_for(pending.payee, category: "performer").negative?
+        [ :overpaid, "Overpaid #{money.call(difference)}", "Paid #{money.call(paid_cents)}. The #{money.call(difference)} over #{still ? 'comes' : 'came'} out of their next pay." ]
+      else
+        row = pay_row(pending)
+        where = { run: "goes on the payout run when the day settles", hold: "is held, not yet", in_draft: "is on the draft payout run", in_flight: "is on its way" }.fetch(row.stage, "is owed")
+        [ row.stage, row.note, "Paid #{money.call(paid_cents)}. #{money.call(difference)} more #{where}." ]
+      end
+      PayRow.new(line: pending || first, payee: first.payee, name: first.payee_name, cents: cents, stage: stage, note: note, detail: detail, run_cents: [ difference, 0 ].max)
+    end.sort_by { |row| -row.cents }
   end
 
   # A dry run of the calculation, before the money is confirmed: the rows
@@ -480,7 +525,7 @@ class SettleUp
       cents = (amounts[ShowPayout.act_key(payee)].to_d * 100).round
       next if cents.zero? && !amounts.key?(ShowPayout.act_key(payee))
 
-      PayRow.new(line: nil, payee: payee, name: (payee.respond_to?(:display_name) ? payee.display_name : payee.name), cents: cents, stage: :preview, note: nil)
+      PayRow.new(line: nil, payee: payee, name: (payee.respond_to?(:display_name) ? payee.display_name : payee.name), cents: cents, stage: :preview, note: nil, detail: nil, run_cents: cents)
     end
   end
 

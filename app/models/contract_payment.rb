@@ -8,6 +8,12 @@ class ContractPayment < ApplicationRecord
   # :destroy so removing it detaches from the run (see PayoutContribution).
   has_one :payout_contribution, as: :source, dependent: :destroy
 
+  # A correction to a settlement that was already paid when its day was
+  # reopened (ContractSettlementCorrection): the difference, as a payment of
+  # its own beside the one that stays as it was paid.
+  belongs_to :correction_of, class_name: "ContractPayment", optional: true
+  has_many :corrections, class_name: "ContractPayment", foreign_key: :correction_of_id, dependent: :nullify, inverse_of: :correction_of
+
   # Its invoice, once anyone has opened it (ContractInvoice.for!). The invoice
   # outlives the payment, void, so its number is never reused.
   has_one :contract_invoice, inverse_of: :contract_payment
@@ -287,6 +293,17 @@ class ContractPayment < ApplicationRecord
   # Whether this payment has been added to a payout run.
   def in_payout_run?
     payout_contribution.present?
+  end
+
+  def correction? = correction_of_id.present?
+
+  # Paid as Tim means it (2026-11-04): settled, or on a payout run that was
+  # submitted. Only a draft run can still change.
+  def paid_or_submitted?
+    return true if status_paid?
+
+    batch = payout_contribution&.payout_batch
+    batch.present? && !batch.open?
   end
 
   # A settlement whose amount is still waiting on ticket sales.

@@ -156,13 +156,15 @@
                 # fallback for role-less work.
                 role_rates = @role_rates_by_member[member.id] || []
                 entries = @approved_entries_by_person[member.person_id] || []
-                tips_waiting = (@tips_waiting_by_person[member.person_id] || []).map { |sh| { id: sh.id, date: sh.day_label, amount: format("%.2f", sh.amount_cents / 100.0), method: sh.method } }
+                tips_waiting = (@tips_waiting_by_person[member.person_id] || []).map { |sh| { id: sh.id, date: sh.day_label, amount: format("%.2f", sh.owed_cents / 100.0), method: sh.method } }
+                tips_overpaid = @tips_overpaid_by_person[member.person_id] || []
+                comes_out_cents = tips_overpaid.sum { |sh| -sh.owed_cents }
               %>
               <tr data-pay-run-target="row" data-pay-accordion-target="row" data-pay-hours-target="row"
                   data-pay-hidden-staff-target="row" data-pay-tips-target="row" data-tips-waiting="<%= tips_waiting.to_json %>"
                   data-rate="<%= member.hourly_rate_cents.to_i %>" data-payable="<%= can_pay %>"
                   data-member-id="<%= member.id %>" data-member-name="<%= member.display_name %>"
-                  data-hidden-from-pay="<%= hidden_from_pay %>"
+                  data-hidden-from-pay="<%= hidden_from_pay %>" data-comes-out-cents="<%= comes_out_cents %>"
                   <% if hidden_from_pay %>style="display: none"<% end %>
                   class="block lg:table-row bg-white lg:bg-transparent border border-gray-200 lg:border-0 rounded-lg lg:rounded-none p-3 lg:p-0 <%= "opacity-60" unless can_pay %>">
                 <%# Person header — the accordion toggle on mobile (name + live summary
@@ -178,6 +180,9 @@
                     </svg>
                   </div>
                   <div data-acc-summary class="hidden text-xs font-medium text-gray-600 mt-1 lg:hidden"></div>
+                  <% if comes_out_cents.positive? %>
+                    <span class="block text-[11px] text-amber-700"><%= number_to_currency(comes_out_cents / 100.0) %> in tips paid over on <%= tips_overpaid.map(&:day_label).to_sentence %> comes out of their next pay that covers it.</span>
+                  <% end %>
                   <% unless can_pay %><span class="text-[11px] text-amber-600">Needs to connect a bank to get paid</span><% end %>
                   <% if member.needs_w9? %><span class="block text-[11px] text-amber-600">No W-9 on file yet</span><% end %>
                   <% if hidden_from_pay %><span class="block text-[11px] text-gray-500"><%= member.inactive? ? "Inactive" : "Usually hidden" %> — shown for a one-off payment</span><% end %>

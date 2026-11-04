@@ -150,6 +150,7 @@
             <% lines.each do |line| %>
               <div class="flex items-center justify-between gap-3 px-3 py-2 bg-white text-sm">
                 <span class="min-w-0 truncate text-gray-900"><%= line.payee_name %><%= line.is_guest? ? " <span class='text-xs text-gray-500'>guest</span>".html_safe : "" %>
+                  <% if line.correction? %><span class="text-xs text-gray-500">· <%= line.overpaid? ? "overpaid" : "more owed" %> since they were paid</span><% end %>
                   <% if line.calculation_details.is_a?(Hash) && line.calculation_details.dig("inputs", "manual") %><span class="text-xs text-gray-500">· added by hand</span><% end %>
                 </span>
                 <span class="flex items-center gap-3 shrink-0">

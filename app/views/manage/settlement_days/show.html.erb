@@ -240,11 +240,29 @@
     draft_payments = day.shows.flat_map { |s| s.pay.contract? ? s.pay.payments.select { |p| p.payout_stage == :in_draft } : [] }
     draft_count = draft_rows.size + draft_payments.size
     draft_cents = draft_rows.sum(&:cents) + draft_payments.sum { |p| (p.amount.to_d * 100).round }
-    tip_shares = day.tips ? day.tips.shares.select { |share| share.payout? && share.amount_cents.positive? } : []
-    tips_on_draft = tip_shares.select { |share| share.payout_contribution&.payout_batch&.open? }
-    tips_gone = tip_shares.select { |share| share.payout_contribution && !share.payout_contribution.payout_batch&.open? }
-    tips_back = tip_shares - tips_gone
-    gone_count = day.shows.sum { |s| s.pay.performers? ? s.pay.rows.count { |r| r.stage.in?(%i[in_flight paid]) && !r.line&.manually_paid? } : s.pay.payments.count { |p| p.payout_stage == :in_flight || p.status_paid? } }
+    tip_shares = day.tips ? day.tips.shares.select(&:payout?) : []
+    on_draft = ->(share) { share.payout_contribution&.payout_batch&.open? }
+    submitted = ->(share) { share.payout_contribution.present? && !on_draft.call(share) }
+    # Tips still to come: waiting on Pay People, or on the draft run.
+    tips_back = tip_shares.select { |share| !submitted.call(share) && share.owed_cents.positive? }
+    tips_on_draft = tips_back.select(&on_draft)
+    # Already paid, which means paid another way or on a run that was
+    # submitted (Tim, 2026-11-04): it stays paid, and the modal says who.
+    paid_people = day.shows.flat_map do |s|
+      pay = s.pay
+      if pay.performers? && pay.show_payout
+        pay.show_payout.line_items.select(&:paid_or_submitted?).map { |line| [ line.payee_name, (line.net_amount.to_d * 100).round ] }
+      elsif pay.contract?
+        pay.payments.select { |p| p.status_paid? || p.payout_stage == :in_flight }.map { |p| [ p.contract&.contractor&.name || p.display_name, (p.amount.to_d * 100).round ] }
+      else
+        []
+      end
+    end
+    paid_people = paid_people.group_by(&:first).map { |name, pairs| [ name, pairs.sum(&:last) ] }.select { |_, cents| cents.positive? }
+    tips_paid = tip_shares.filter_map do |share|
+      cents = share.paid_cents.to_i + (submitted.call(share) ? share.owed_cents : 0)
+      [ share.person.name, cents ] if cents.positive?
+    end
   %>
   <div id="reopen-day" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" data-controller="modal" data-action="click->modal#closeOnBackdrop">
     <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-md sm:mx-4 overflow-hidden" data-action="click->modal#stopPropagation">
@@ -272,13 +290,17 @@
           <% end %>
           <%# The tips are undone with the day, whatever is chosen above: they stop waiting on Pay People, and come off a draft run (Tim, 2026-11-04). %>
           <% if tips_back.any? %>
-            <p>Its tips, <%= money.call(tips_back.sum(&:amount_cents)) %> for <%= pluralize(tips_back.size, "person") %>, <%= tips_on_draft.any? ? (tips_on_draft.size == tips_back.size ? "come off the draft payout run" : "stop waiting on Pay People or come off the draft payout run") : "stop waiting on Pay People" %> until the day settles again.</p>
+            <p>Its tips, <%= money.call(tips_back.sum(&:owed_cents)) %> for <%= pluralize(tips_back.size, "person") %>, <%= tips_on_draft.any? ? (tips_on_draft.size == tips_back.size ? "come off the draft payout run" : "stop waiting on Pay People or come off the draft payout run") : "stop waiting on Pay People" %> until the day settles again.</p>
           <% end %>
-          <% if tips_gone.any? %>
-            <p>Tips for <%= pluralize(tips_gone.size, "person") %> are already funded or paid and stay as they are.</p>
-          <% end %>
-          <% if gone_count.positive? %>
-            <p><%= pluralize(gone_count, "payout") %> from this day <%= gone_count == 1 ? "is" : "are" %> already funded or sent and <%= gone_count == 1 ? "stays" : "stay" %>; a difference rides the next run.</p>
+          <% if paid_people.any? || tips_paid.any? %>
+            <div>
+              <p class="font-medium text-gray-700">Already paid, and staying paid</p>
+              <ul class="mt-1 max-h-40 overflow-y-auto space-y-0.5">
+                <% paid_people.each do |name, cents| %><li><%= name %>, <%= money.call(cents) %></li><% end %>
+                <% tips_paid.each do |name, cents| %><li><%= name %>, <%= money.call(cents) %> in tips</li><% end %>
+              </ul>
+              <p class="mt-2">If the day then pays someone a different amount, the difference follows them: more owed goes on the next payout run<%= tips_paid.any? ? " (tips wait on Pay People)" : "" %>, and anything overpaid comes out of their next pay.</p>
+            </div>
           <% end %>
           <label class="block"><span class="font-medium text-gray-700">Why?</span>
             <input type="text" name="reason" required placeholder="e.g. A count was fixed later" class="mt-1 block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"></label>

@@ -60,7 +60,7 @@ module Manage
       show = find_show
       result = SettlementPayer.calculate!(show)
       if result[:success]
-        count = result[:line_items].size
+        count = result[:line_items].map(&:pay_choice_key).uniq.size
         redirect_to manage_money_settle_up_day_path(@date, open: show.id), notice: "#{show.display_name}: #{helpers.number_to_currency(result[:total])} to #{count} #{"person".pluralize(count)}."
       else
         redirect_to manage_money_settle_up_day_path(@date, open: show.id), alert: "#{show.display_name} couldn't be worked out: #{result[:error]}."
@@ -185,7 +185,7 @@ module Manage
           share.update!(amount_cents: cents, method: attrs["method"].presence_in(TipShare::METHODS) || "payout",
                         source: record.tips_split == "typed" ? "typed" : "computed")
         elsif share.persisted?
-          share.destroy!
+          share.drop!
         end
       end
       add_person_to_tips(record, params[:new_share]) if params.dig(:new_share, :person_id).present?
@@ -223,7 +223,7 @@ module Manage
       # on the draft run (Tim, 2026-11-04). Off is the default.
       notice = "#{@date.strftime('%A, %B %-d')} is open again."
       ActiveRecord::Base.transaction do
-        waiting = record.tip_shares.where(payout_contribution_id: nil, method: "payout").where("amount_cents > 0").count
+        waiting = record.tip_shares.where(payout_contribution_id: nil, method: "payout").where("amount_cents > COALESCE(paid_cents, 0)").count
         record.reopen!(by: Current.user, reason: params[:reason])
         tipped = SettlementPoster.unpost!(record)
         if params[:payouts] == "keep"
@@ -244,7 +244,7 @@ module Manage
     # taken off, a span changed, a share typed over, or left as worked out.
     def save_rule_share(share, attrs, cents)
       if attrs["remove"] == "1"
-        share.destroy! if share.persisted?
+        share.drop! if share.persisted?
         return
       end
 
@@ -318,7 +318,7 @@ module Manage
       end
       # A share for anyone the rule leaves out (an older even split, a role
       # taken out of the rule since) goes: settling pays the rows, nothing else.
-      record.tip_shares.where(payout_contribution_id: nil).where.not(person_id: tips.rows.map { |r| r.person.id }).destroy_all
+      record.tip_shares.where(payout_contribution_id: nil).where.not(person_id: tips.rows.map { |r| r.person.id }).each(&:drop!)
     end
 
     # "18:00" and "01:30" on the day's own clock: anything before the day

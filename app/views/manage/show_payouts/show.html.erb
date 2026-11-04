@@ -60,7 +60,7 @@
   # Check for regular performers (non-guests) who can't be paid on a run yet
   # because they haven't connected a bank.
   regular_line_items = @show_payout.line_items.where(payee_type: "Person").where(is_guest: [false, nil])
-  performers_without_payment = regular_line_items.reject(&:paid?).select { |li| li.payee && !li.auto_payout? }
+  performers_without_payment = regular_line_items.reject(&:paid?).reject(&:overpaid?).select { |li| li.payee && !li.auto_payout? }
 
   # Check for people with unpaid advances who haven't connected a bank
   show_advances_for_setup = @production.person_advances.for_show(@show).unpaid.includes(:person)

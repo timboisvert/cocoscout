@@ -91,24 +91,33 @@ class SettlementPoster
   end
 
   # Reopening takes back a share that Pay People already put on a run, while
-  # that run is still a draft; once a run is funded the money has moved and
-  # the share stands. Shares still waiting on Pay People just stop waiting.
+  # that run is still a draft. Once a run is submitted the money stays paid:
+  # the share lets go of its line and remembers what it paid, so the split
+  # can change and the difference follows the person (TipShare#keep_paid!).
+  # Shares still waiting on Pay People just stop waiting. Cash shares were
+  # handed over at close and stay as recorded.
   # Answers the names of the people whose tips came off the draft.
   def self.unpay_tips!(record)
     names = []
     record.tip_shares.where.not(payout_contribution_id: nil).includes(:person, payout_contribution: %i[payout_batch payout_batch_item]).each do |share|
       contribution = share.payout_contribution
-      next unless contribution&.payout_batch&.open?
+      unless contribution&.payout_batch&.open?
+        share.keep_paid! if share.payout? && contribution
+        next
+      end
 
       item = contribution.payout_batch_item
       batch = contribution.payout_batch
+      # What this share put on the line: all of it, or only the difference
+      # when the day had been paid once before.
+      riding = share.owed_cents
       share.update!(payout_contribution: nil)
-      left = contribution.amount_cents - share.amount_cents
-      if left.positive?
+      left = contribution.amount_cents - riding
+      if left != 0
         # A week's tips are one line: other days ride it too, and only this
         # day's share comes off (its day leaves the line's worksheet).
         sheet = contribution.worksheet_entries.dup
-        at = sheet.index { |entry| entry["date"].to_s == share.day_label && entry["amount_cents"].to_i == share.amount_cents } || sheet.index { |entry| entry["date"].to_s == share.day_label }
+        at = sheet.index { |entry| entry["date"].to_s == share.day_label && entry["amount_cents"].to_i == riding } || sheet.index { |entry| entry["date"].to_s == share.day_label }
         sheet.delete_at(at) if at
         contribution.update!(amount_cents: left, worksheet: sheet.presence)
         contribution.payout_ledger_entries.where(entry_type: "earning").update_all(amount_cents: left, updated_at: Time.current)

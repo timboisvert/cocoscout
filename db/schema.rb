@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_04_210000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_04_221000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -752,8 +752,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_04_210000) do
     t.string "settlement_method", default: "direct", null: false
     t.boolean "auto_shortfall", default: false, null: false
     t.jsonb "components", default: [], null: false
+    t.bigint "correction_of_id"
     t.index ["contract_id", "status"], name: "index_contract_payments_on_contract_id_and_status"
     t.index ["contract_id"], name: "index_contract_payments_on_contract_id"
+    t.index ["correction_of_id"], name: "index_contract_payments_on_correction_of_id"
     t.index ["due_date"], name: "index_contract_payments_on_due_date"
     t.index ["payment_token"], name: "index_contract_payments_on_payment_token", unique: true
     t.index ["show_id"], name: "index_contract_payments_on_show_id"
@@ -3292,12 +3294,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_04_210000) do
     t.boolean "paid_independently", default: false
     t.boolean "is_individual_allocation", default: false, null: false
     t.string "pay_choice", default: "run", null: false
+    t.bigint "correction_of_id"
+    t.index ["correction_of_id"], name: "index_show_payout_line_items_on_correction_of_id"
     t.index ["manually_paid_by_id"], name: "index_show_payout_line_items_on_manually_paid_by_id"
     t.index ["payee_type", "payee_id"], name: "index_show_payout_line_items_on_payee"
     t.index ["payment_method"], name: "index_show_payout_line_items_on_payment_method"
     t.index ["payout_reference_id"], name: "index_show_payout_line_items_on_payout_reference_id", where: "(payout_reference_id IS NOT NULL)"
     t.index ["payout_status"], name: "index_show_payout_line_items_on_payout_status"
-    t.index ["show_payout_id", "payee_type", "payee_id", "is_individual_allocation"], name: "idx_payout_line_items_unique_payee", unique: true
+    t.index ["show_payout_id", "payee_type", "payee_id", "is_individual_allocation"], name: "idx_payout_line_items_unique_payee", unique: true, where: "(correction_of_id IS NULL)"
     t.index ["show_payout_id"], name: "index_show_payout_line_items_on_show_payout_id"
   end
 
@@ -4670,6 +4674,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_04_210000) do
     t.datetime "worked_to"
     t.string "source", default: "typed", null: false
     t.bigint "house_role_id"
+    t.integer "paid_cents"
     t.index ["house_role_id"], name: "index_tip_shares_on_house_role_id"
     t.index ["payout_contribution_id"], name: "index_tip_shares_on_payout_contribution_id"
     t.index ["person_id"], name: "index_tip_shares_on_person_id"
@@ -4879,6 +4884,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_04_210000) do
   add_foreign_key "contract_documents", "contracts"
   add_foreign_key "contract_invoices", "contract_payments", on_delete: :nullify
   add_foreign_key "contract_invoices", "organizations"
+  add_foreign_key "contract_payments", "contract_payments", column: "correction_of_id", on_delete: :nullify
   add_foreign_key "contract_payments", "contracts"
   add_foreign_key "contract_payments", "shows"
   add_foreign_key "contract_people", "contracts"
@@ -5135,6 +5141,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_04_210000) do
   add_foreign_key "show_changes", "shows", on_delete: :nullify
   add_foreign_key "show_changes", "users", column: "changed_by_user_id", on_delete: :nullify
   add_foreign_key "show_financials", "shows"
+  add_foreign_key "show_payout_line_items", "show_payout_line_items", column: "correction_of_id", on_delete: :nullify
   add_foreign_key "show_payout_line_items", "show_payouts"
   add_foreign_key "show_payout_line_items", "users", column: "manually_paid_by_id"
   add_foreign_key "show_payouts", "payout_schemes"

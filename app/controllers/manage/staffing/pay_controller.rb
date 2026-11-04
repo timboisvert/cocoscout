@@ -69,7 +69,10 @@ module Manage
           shares = @tips_waiting_by_person[member.person_id]
           [ member, shares ] if shares.present?
         end
-        @tips_waiting_cents = @members_with_tips_waiting.sum { |_, shares| shares.select(&:payout?).sum(&:amount_cents) }
+        @tips_waiting_cents = @members_with_tips_waiting.sum { |_, shares| shares.select(&:payout?).sum(&:owed_cents) }
+        # Tips someone was paid over (their day was reopened after it was
+        # paid): it comes out of their next pay here, on its own line.
+        @tips_overpaid_by_person = StaffPayRunService.overpaid_tips_by_person(Current.organization)
         @draft = PayDraft.read(Current.organization)
       end
 
