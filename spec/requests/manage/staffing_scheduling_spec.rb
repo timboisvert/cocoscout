@@ -30,10 +30,10 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
 
   before { sign_in(owner) }
 
-  # Desktop shows the week or one day (Tim, 2026-11-04): Day / Week to switch,
-  # the choice kept on this browser, Day landing on today when it's in the
-  # week. A phone is a day regardless.
-  describe "Day and Week on desktop" do
+  # Desktop shows seven days or one (Tim, 2026-11-04), with Home's 7 days /
+  # 3 days control: 7 days the default, 1 day landing on today when it's in
+  # the week, the choice remembered. A phone is a day regardless.
+  describe "7 days and 1 day on desktop" do
     let(:role) { create(:house_role, organization: org, name: "Bar") }
     let!(:shift) do
       create(:shift, organization: org, house_role: role, source: early_show,
@@ -46,47 +46,54 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
       Nokogiri::HTML(response.body)
     end
 
-    it "shows the week by default, with Day landing on today" do
+    it "shows seven days by default, with 1 day landing on today" do
       get manage_staffing_scheduling_path(week_start: week_start.to_s)
       page = doc
       expect(page.at_css("[data-week-grid]")).to be_present
       expect(page.at_css("[data-desktop-day]")).to be_nil
-      toggle = page.at_css("[data-scheduling-view-toggle]")
-      expect(toggle.css("a").map(&:text).map(&:strip)).to eq([ "Day", "Week" ])
-      expect(toggle.at_css("a[href*='view=day']")["href"]).to eq(manage_staffing_scheduling_path(view: "day", day: Date.current.iso8601))
-      expect(page.at_css("[data-day-view-link='#{show_day.iso8601}']")["href"]).to eq(manage_staffing_scheduling_path(view: "day", day: show_day.iso8601))
+      toggle = page.at_css("[data-days-toggle]")
+      expect(toggle.css("a").map(&:text)).to eq([ "7 days", "1 day" ])
+      expect(toggle.at_css(".bg-pink-500").text).to eq("7 days")
+      expect(toggle.at_css("a[href*='days=1']")["href"]).to eq(manage_staffing_scheduling_path(days: 1, day: Date.current.iso8601))
+      expect(page.at_css("[data-day-view-link='#{show_day.iso8601}']")["href"]).to eq(manage_staffing_scheduling_path(days: 1, day: show_day.iso8601))
     end
 
-    it "shows one day at full width, by role or by person, with its shows, and walks day by day" do
+    it "shows one day at full width, by role or by person, its shows on the timeline only, and walks day by day" do
       create(:shift_assignment, shift: shift, person: staffer)
-      get manage_staffing_scheduling_path(view: "day", day: show_day.iso8601)
+      get manage_staffing_scheduling_path(days: 1, day: show_day.iso8601)
       page = doc
       day = page.at_css("[data-desktop-day='#{show_day.iso8601}']")
       expect(day).to be_present
       expect(page.at_css("[data-week-grid]")).to be_nil
+      expect(page.at_css("[data-days-toggle] .bg-pink-500").text).to eq("1 day")
       expect(day.at_css("[data-day-staffed]").text).to include("1 of 1 staffed")
       expect(day.css("[data-day-view-target='toggle']").map(&:text).map(&:strip)).to eq([ "By role", "By person" ])
       expect(day.at_css("[data-day-view-target='ganttPeople']").text).to include("Dana Morris")
-      expect(day.at_css("[data-shows-this-day]").text).to include(early_show.production.name)
-      expect(page.at_css("[data-week-picker] a[title='Earlier']")["href"]).to eq(manage_staffing_scheduling_path(view: "day", day: (show_day - 1).iso8601))
-      expect(page.at_css("[data-week-picker] a[title='Later']")["href"]).to eq(manage_staffing_scheduling_path(view: "day", day: (show_day + 1).iso8601))
+      expect(day.at_css("[data-day-view-target='ganttRoles']").text).to include(early_show.production.name)
+      expect(day.at_css("[data-shows-this-day]")).to be_nil
+      # Add a role, then Add a shift, both the dashed "add one here" buttons.
+      adds = day.css("a, button").select { |b| b.text.strip.start_with?("+ Add") }
+      expect(adds.map { |b| b.text.strip }).to eq([ "+ Add a role", "+ Add a shift" ])
+      expect(adds.map { |b| b["class"] }).to all(include("border-dashed"))
+      expect(page.at_css("[data-week-picker] a[title='Earlier']")["href"]).to eq(manage_staffing_scheduling_path(days: 1, day: (show_day - 1).iso8601))
+      expect(page.at_css("[data-week-picker] a[title='Later']")["href"]).to eq(manage_staffing_scheduling_path(days: 1, day: (show_day + 1).iso8601))
       # The week's status bar stays: Publish is the week's.
       expect(page.at_css("[data-status-bar] [data-status='draft']")).to be_present
       # The phone's day is still there for a phone.
       expect(page.at_css("[data-phone-day]")["data-phone-day"]).to eq(show_day.iso8601)
     end
 
-    it "remembers the choice on this browser" do
-      get manage_staffing_scheduling_path(view: "day", day: show_day.iso8601)
+    it "remembers the choice" do
+      get manage_staffing_scheduling_path(days: 1, day: show_day.iso8601)
       get manage_staffing_scheduling_path
       expect(doc.at_css("[data-desktop-day]")).to be_present
-      get manage_staffing_scheduling_path(view: "week")
+      get manage_staffing_scheduling_path(days: 7)
       get manage_staffing_scheduling_path
       expect(doc.at_css("[data-week-grid]")).to be_present
     end
 
     it "says so when the day has nothing on it, and still offers a shift" do
-      get manage_staffing_scheduling_path(view: "day", day: (show_day + 2).iso8601)
+      get manage_staffing_scheduling_path(days: 1, day: (show_day + 2).iso8601)
       day = doc.at_css("[data-desktop-day]")
       expect(day.text).to include("Nothing scheduled this day.", "+ Add a shift")
     end
