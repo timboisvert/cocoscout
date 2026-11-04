@@ -7,7 +7,7 @@ module Manage
   # every piece is checked, and can be reopened with a reason (§9.7).
   class SettlementDaysController < Manage::ManageController
     before_action :set_date, except: :index
-    before_action :require_change!, only: %i[settle reopen door_cash check_show check_register tips]
+    before_action :require_change!, only: %i[settle reopen door_cash check_show check_register tips choose_calculation calculate_show pay_line]
 
     def index
       @filter = params[:filter].presence_in(%w[to_settle settled all]) || "to_settle"
@@ -20,6 +20,10 @@ module Manage
 
     def show
       @day = SettleUp.day(Current.organization, @date)
+      # The show whose "Who gets paid" is open on arrival (after a choice on one of its lines, or Calculate).
+      @open_show_id = params[:open].to_s
+      # A modal to arrive with open, when a choice was made from inside it (the chooser, from Who's paid and how).
+      @open_modal_id = params[:modal].to_s
       @prev_day = SettleUp.days(Current.organization, (@date - 90)..(@date - 1)).first
       @next_day = SettleUp.days(Current.organization, (@date + 1)..(@date + 90)).last
       # The day picker Home has: earlier, the day (a two-month calendar), later, Today.
@@ -29,12 +33,97 @@ module Manage
       @ticket_sources = Current.organization.ticket_sources.hand_made.active.ordered.to_a
     end
 
-    # "Looks right" on a show: its financials are confirmed as they stand.
+    # Confirm on a show (Tim, 2026-11-04: "I confirm this", not "looks
+    # right"): its financials are confirmed as they stand. It waits while the
+    # pay side has a question open (no calculation chosen, act counts to
+    # enter, the payout not worked out yet or worked out from older numbers).
+    # Confirming restamps the calculation, so the confirm itself never reads
+    # as the numbers changing.
     def check_show
-      show = Show.joins(:production).where(productions: { organization_id: Current.organization.id }).find(params[:show_id])
+      show = find_show
       financials = show.show_financials || show.create_show_financials!(revenue_type: "ticket_sales")
-      financials.update!(data_confirmed: params[:checked] == "1")
-      redirect_to manage_money_settle_up_day_path(@date), notice: (params[:checked] == "1" ? "#{show.display_name} checked." : "#{show.display_name} unchecked.")
+      checking = params[:checked] == "1"
+      pay = SettleUp.pay_for(Current.organization, show)
+      if checking && pay.held?
+        return redirect_to manage_money_settle_up_day_path(@date), alert: "#{pay.hold_reason}; then #{show.display_name} can be confirmed."
+      end
+
+      financials.update!(data_confirmed: checking)
+      pay.show_payout.update_column(:calculated_at, Time.current) if pay.calc == :current
+      redirect_to manage_money_settle_up_day_path(@date), notice: (checking ? "#{show.display_name} confirmed." : "#{show.display_name} unconfirmed.")
+    end
+
+    # The Calculate step (Tim, 2026-11-04): work out who gets paid from the
+    # numbers as they stand, or work it out again once they changed. Each
+    # line keeps its choice. The card opens on what it found.
+    def calculate_show
+      show = find_show
+      result = SettlementPayer.calculate!(show)
+      if result[:success]
+        count = result[:line_items].size
+        redirect_to manage_money_settle_up_day_path(@date, open: show.id), notice: "#{show.display_name}: #{helpers.number_to_currency(result[:total])} to #{count} #{"person".pluralize(count)}."
+      else
+        redirect_to manage_money_settle_up_day_path(@date, open: show.id), alert: "#{show.display_name} couldn't be worked out: #{result[:error]}."
+      end
+    end
+
+    # How a show's performers are paid, asked on the day when nothing says
+    # yet (Tim, 2026-11-04): one of the organization's calculations, for
+    # every show of the production from now on or just this one (then the
+    # production asks for each show); or nobody is paid from this
+    # production's shows. A new calculation is made in the wizard, which
+    # comes back here.
+    def choose_calculation
+      show = find_show
+      production = show.production
+      if params[:choice] == "nobody"
+        production.update!(pays_performers: false)
+        ShowPayout.restamp_pending_for_production!(production, nil)
+        return redirect_to manage_money_settle_up_day_path(@date, open: show.id), notice: "No performers are paid for #{production.name}; its shows settle without a payout. Set up a payout, on the show's card, turns it back on."
+      end
+      # The way back from "nobody is paid" (Tim, 2026-11-04: it can be a slip): performer pay goes back on, and the question is asked again.
+      if params[:choice] == "pay_after_all"
+        production.update!(pays_performers: true)
+        return redirect_to manage_money_settle_up_day_path(@date, open: show.id), notice: "#{production.name} pays its performers again. Say how, on the show's card."
+      end
+
+      scheme = Current.organization.payout_schemes.active.find_by(id: params[:payout_scheme_id])
+      return redirect_to manage_money_settle_up_day_path(@date), alert: "Pick a calculation to use." unless scheme
+
+      payout = show.show_payout
+      locked = payout&.line_items&.any? { |line| line.paid? || line.in_payout_run? }
+      if params[:scope] == "show"
+        production.update!(payout_calculation_mode: "each_show", pays_performers: true)
+        payout ||= show.create_show_payout!(status: "awaiting_payout")
+        payout.update!(payout_scheme: scheme, override_rules: nil) unless locked
+        notice = "#{show.display_name} uses #{scheme.name}. You'll be asked for each #{production.name} show."
+      else
+        production.update!(payout_calculation_mode: "production", pays_performers: true)
+        scheme.make_production_scheme!(production)
+        payout&.update!(payout_scheme: scheme, override_rules: nil) unless locked
+        notice = "Every #{production.name} show uses #{scheme.name} from now on."
+      end
+      # A show already worked out is worked out again on the new calculation, each line keeping its choice.
+      if payout&.calculated_at.present? && !locked
+        result = SettlementPayer.calculate!(show.reload)
+        notice += result[:success] ? " #{show.display_name}: #{helpers.number_to_currency(result[:total])} to #{result[:line_items].size} #{'person'.pluralize(result[:line_items].size)}." : " It couldn't be worked out again: #{result[:error]}."
+      elsif locked
+        notice += " #{show.display_name}'s lines are paid or on a run, so they stay as they are."
+      end
+      redirect_to manage_money_settle_up_day_path(@date, open: show.id, modal: params[:reopen].presence), notice: notice
+    end
+
+    # One line's choice: on the run when the day settles, or held for now.
+    def pay_line
+      show = find_show
+      line = show.show_payout&.line_items&.find_by(id: params[:line_id])
+      return redirect_to manage_money_settle_up_day_path(@date), alert: "That line isn't on this show any more." unless line
+      if line.paid? || line.in_payout_run?
+        return redirect_to manage_money_settle_up_day_path(@date), alert: "#{line.payee_name}'s line is #{line.paid? ? 'already paid' : 'already on a run'}."
+      end
+
+      line.update!(pay_choice: params[:pay_choice].presence_in(ShowPayoutLineItem::PAY_CHOICES) || "run")
+      redirect_to manage_money_settle_up_day_path(@date, open: show.id), notice: "#{line.payee_name}: #{line.held? ? 'held for now' : 'on the run when the day settles'}."
     end
 
     def door_cash
@@ -66,7 +155,7 @@ module Manage
       record.tips_checked_at = record.register_checked_at
       record.save!
       write_tip_shares(record) if checking
-      redirect_to manage_money_settle_up_day_path(@date), notice: (checking ? "Register checked." : "Register unchecked.")
+      redirect_to manage_money_settle_up_day_path(@date), notice: (checking ? "Register confirmed." : "Register unconfirmed.")
     end
 
     # The day's tips: how they're split, each person's share and how it's
@@ -107,13 +196,18 @@ module Manage
     def settle
       day = SettleUp.day(Current.organization, @date)
       unless day.all_checked?
-        return redirect_to manage_money_settle_up_day_path(@date), alert: "Check every piece first; #{day.checked_count} of #{day.pieces.size} are checked."
+        return redirect_to manage_money_settle_up_day_path(@date), alert: "Confirm every piece first; #{day.checked_count} of #{day.checks.size} are confirmed."
       end
 
       record = SettlementDay.find_or_initialize_by(organization: Current.organization, date: @date)
       record.settle!(by: Current.user)
       SettlementPoster.post!(record)
-      redirect_to manage_money_settle_up_day_path(@date), notice: "#{@date.strftime('%A, %B %-d')} is settled."
+      # Settling is what puts the day's payouts on the open run (Tim, 2026-11-04).
+      staged = SettlementPayer.stage!(day, by: Current.user)
+      notice = "#{@date.strftime('%A, %B %-d')} is settled."
+      notice += " #{staged.words} went on the payout run." if staged.any?
+      notice += " #{staged.notes.join(' ')}" if staged.notes.any?
+      redirect_to manage_money_settle_up_day_path(@date), notice: notice
     end
 
     def reopen
@@ -124,7 +218,16 @@ module Manage
 
       record.reopen!(by: Current.user, reason: params[:reason])
       SettlementPoster.unpost!(record)
-      redirect_to manage_money_settle_up_day_path(@date), notice: "#{@date.strftime('%A, %B %-d')} is open again. Settle it when it's right."
+      # Reopening undoes what settling did; the modal asks whether the day's
+      # payouts come off the draft run too (Tim, 2026-11-04). Off is the default.
+      notice = "#{@date.strftime('%A, %B %-d')} is open again."
+      if params[:payouts] == "keep"
+        notice += " Its payouts stayed on the payout run."
+      else
+        taken = SettlementPayer.unstage!(SettleUp.day(Current.organization, @date))
+        notice += " #{taken.words} came off the payout run; it goes back on when the day settles." if taken.any?
+      end
+      redirect_to manage_money_settle_up_day_path(@date), notice: "#{notice} Settle it when it's right."
     end
 
     private
@@ -232,6 +335,10 @@ module Manage
     end
 
     def cents_from(text) = (text.to_s.delete("$,").to_f * 100).round
+
+    def find_show
+      Show.joins(:production).where(productions: { organization_id: Current.organization.id }).find(params[:show_id])
+    end
 
     def set_date
       @date = Date.iso8601(params[:date])

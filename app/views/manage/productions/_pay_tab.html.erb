@@ -59,6 +59,19 @@
             <p class="text-sm text-gray-700">No calculation chosen yet.</p>
           <% end %>
 
+          <%# Chosen once, or asked for each show on the day's Settle up page (Tim, 2026-11-04). %>
+          <fieldset class="space-y-2">
+            <legend class="text-sm font-medium text-gray-900">Which shows use it</legend>
+            <label class="flex items-start gap-2 cursor-pointer text-sm text-gray-700">
+              <input type="radio" name="payout_calculation_mode" value="production" <%= "checked" unless production.asks_calculation_each_show? %> class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+              <span>Every show starts from the production's calculation<span class="block text-xs text-gray-500">Any one show can still be changed on its own.</span></span>
+            </label>
+            <label class="flex items-start gap-2 cursor-pointer text-sm text-gray-700">
+              <input type="radio" name="payout_calculation_mode" value="each_show" <%= "checked" if production.asks_calculation_each_show? %> class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+              <span>Ask which calculation to use for each show<span class="block text-xs text-gray-500">Settle up asks when a show's money comes in.</span></span>
+            </label>
+          </fieldset>
+
           <div class="flex flex-wrap items-center gap-2">
             <%= render "shared/button", text: (current_calculation ? "Choose a different calculation" : "Choose a calculation"), variant: "secondary", size: "small", type: :button,
                   data: { controller: "modal", action: "click->modal#open", modal_id: picker_id } %>

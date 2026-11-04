@@ -1,0 +1,30 @@
+<%# The confirm mark on a Settle up card (Tim, 2026-11-04: "I confirm this",
+    not "looks right"): a round button with a check that lights pink once
+    the piece is confirmed, hollow until then, and amber-dashed while the
+    piece has a question open that has to be answered first. It submits the
+    piece's check form in place (the page keeps its scroll). The word beside
+    it turns into the record once confirmed.
+    Locals: url, checked, hold_reason (nil when nothing holds it), at (Time or nil) %>
+<%
+  held = !checked && hold_reason.present?
+  look = if checked then "bg-pink-500 border-pink-500 text-white ring-4 ring-pink-500/25 cursor-pointer"
+  elsif held then "bg-white border-amber-500 border-dashed text-amber-600 cursor-not-allowed"
+  else "bg-white border-gray-300 text-gray-300 hover:border-pink-500 hover:text-pink-500 cursor-pointer"
+  end
+%>
+<%= form_with url: url, method: :patch, data: { turbo_action: "replace" }, class: "flex items-center gap-2.5" do %>
+  <span class="text-sm font-medium text-gray-700 text-right leading-tight">
+    <% if checked %>
+      Confirmed<% if at %><span class="block text-[11px] font-normal text-gray-500"><%= at.strftime("%b %-d, %-l:%M %P") %></span><% end %>
+    <% elsif held %>
+      Confirm<span class="block text-[11px] font-normal text-amber-700"><%= hold_reason %></span>
+    <% else %>
+      Confirm
+    <% end %>
+  </span>
+  <button type="submit" name="checked" value="<%= checked ? 0 : 1 %>" aria-pressed="<%= checked ? 'true' : 'false' %>" <%= "disabled" if held %>
+          title="<%= checked ? 'Confirmed; click to take it back' : (held ? hold_reason : 'Confirm this piece') %>"
+          class="inline-grid place-items-center w-8 h-8 rounded-full border-2 shrink-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 <%= look %>">
+    <svg class="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+  </button>
+<% end %>

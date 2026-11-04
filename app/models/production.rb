@@ -128,6 +128,15 @@ class Production < ApplicationRecord
     act_based: "act_based"
   }, default: :role_based
 
+  # How a show's payout calculation is chosen (Settle up, Tim, 2026-11-04):
+  # once for the production (every show starts from its calculation), or
+  # asked for each show on the day's page. Either way the production's
+  # rows (PayoutSchemeDefault) are the record of what it chose.
+  PAYOUT_CALCULATION_MODES = %w[production each_show].freeze
+  validates :payout_calculation_mode, inclusion: { in: PAYOUT_CALCULATION_MODES }
+
+  def asks_calculation_each_show? = payout_calculation_mode == "each_show"
+
   # Production type: in-house (our production), third-party (renter/contractor), or course (education program)
   enum :production_type, {
     in_house: "in_house",

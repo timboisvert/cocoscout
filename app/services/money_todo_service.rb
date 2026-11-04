@@ -303,10 +303,14 @@ class MoneyTodoService
       .unpaid.distinct.pluck(:show_payout_id)
     return {} if unpaid_payout_ids.empty?
 
-    Show.where(id: ShowPayout.where(id: unpaid_payout_ids).select(:show_id))
-        .includes(show_payout: { line_items: { payout_contribution: :payout_batch } })
-        .order(date_and_time: :desc)
-        .group_by(&:production_id)
+    shows = Show.where(id: ShowPayout.where(id: unpaid_payout_ids).select(:show_id))
+                .includes(show_payout: { line_items: { payout_contribution: :payout_batch } })
+                .order(date_and_time: :desc).to_a
+    # A show whose day is in Settle up and not settled yet pays from the day
+    # (Tim, 2026-11-04): its lines ride the run when the day settles, so
+    # they aren't money to pay by hand. The day is on the to-settle list.
+    waiting = SettleUp.awaiting_settlement(organization, shows).map(&:id).to_set
+    shows.reject { |s| waiting.include?(s.id) }.group_by(&:production_id)
   end
 
   def production_payout_items

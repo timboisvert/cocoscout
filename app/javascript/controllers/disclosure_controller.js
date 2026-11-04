@@ -9,6 +9,10 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
     static targets = ["content", "icon"]
 
+    // For controls that sit inside the toggle (a button on the header row):
+    // data-action="click->disclosure#keep:stop" keeps their click from toggling.
+    keep() {}
+
     toggle() {
         this.contentTarget.classList.toggle("hidden")
 

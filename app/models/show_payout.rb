@@ -161,6 +161,19 @@ class ShowPayout < ApplicationRecord
   # has to say how many acts each person did. Those counts live here (keyed by
   # payee) so they survive the line items being rebuilt on every recalculation.
 
+  # Run a calculation (which rebuilds the line items) without losing the
+  # choice made on each line on Settle up (run or hold). Lines are matched
+  # on who they pay, the way they come back from the calculator.
+  def keeping_pay_choices
+    choices = line_items.to_h { |line| [ line.pay_choice_key, line.pay_choice ] }
+    result = yield
+    line_items.reload.each do |line|
+      choice = choices[line.pay_choice_key]
+      line.update_column(:pay_choice, choice) if choice && choice != line.pay_choice
+    end
+    result
+  end
+
   # The rules a calculation would actually run on: an event-level override, this
   # payout's scheme, or — when neither is set — the default scheme for the show.
   def resolved_rules

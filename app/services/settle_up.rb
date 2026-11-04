@@ -9,12 +9,71 @@
 #   SettleUp.days(organization, range)      # the Days in a span, newest first
 #   SettleUp.to_settle(organization)        # days over and not yet settled
 class SettleUp
-  ShowPiece = Data.define(:show, :financials, :listing, :ticket_lines, :outside_sources, :products_cents, :other_revenue_cents, :expenses_cents, :flat_fee_cents) do
+  # A value worked out the first time it's asked for: the lists of days never
+  # ask a show who it pays, the day's page does.
+  class Cell
+    def initialize(&block) = @block = block
+    def value = (@value ||= @block.call)
+  end
+
+  ShowPiece = Data.define(:show, :financials, :listing, :ticket_lines, :outside_sources, :products_cents, :other_revenue_cents, :expenses_cents, :flat_fee_cents, :pay_cell) do
     def confirmed? = financials&.data_confirmed? == true
     def tickets_count = ticket_lines.sum { |l| l[:count] }
     def tickets_cents = ticket_lines.sum { |l| l[:cents] }
     def in_cents = tickets_cents + products_cents + other_revenue_cents + flat_fee_cents
     def state = confirmed? ? :ok : (financials&.has_data? ? :wait : :miss)
+    # Who gets paid from this show (Pay), worked out when first asked.
+    def pay = pay_cell.value
+    # Why the show can't be confirmed yet, if it can't: the pay side has a
+    # question open (no calculation, act counts to enter).
+    def hold_reason = confirmed? ? nil : pay.hold_reason
+  end
+
+  # One person's line in "Who gets paid" from a show: the calculated line
+  # (nil before the money is confirmed, when the row is a preview), what
+  # they get, and where it stands.
+  #   stage  :preview   worked out, not saved yet (the money isn't confirmed)
+  #          :run       on the payout run when the day settles
+  #          :hold      held back for now
+  #          :paid      paid another way, or by a run that went out
+  #          :in_draft  on the open run (the day settled), still a draft
+  #          :in_flight on a run that's funding or sending
+  PayRow = Data.define(:line, :payee, :name, :cents, :stage, :note)
+
+  # Who gets paid from a show (Tim, 2026-11-04: paying people is part of
+  # settling up). kind is :performers (the production's payout calculation
+  # pays the people cast), :contract (the show settles on a contract's
+  # payments) or :none (nobody is paid from this show).
+  # calc says where the payout calculation stands (Tim, 2026-11-04: a
+  # calculate step first, and a word when the numbers moved under it):
+  #   :none         no calculation to run (a contract, nobody paid, no scheme)
+  #   :no_cast      nobody is cast, so there's nobody to pay
+  #   :needs_numbers the money isn't entered yet, so it can't be worked out
+  #   :uncalculated it can be worked out from the numbers as they stand
+  #   :stale        worked out, but the numbers changed since; work it out again
+  #   :locked       worked out and the numbers changed since, but lines are
+  #                 paid or on a run, so it stays as it is
+  #   :current      worked out from these numbers
+  # preview_cents / preview_count: what the numbers as they stand would pay
+  # (an :uncalculated or :stale show), nil otherwise.
+  Pay = Data.define(:kind, :show, :show_payout, :scheme, :rows, :payments, :hold_reason, :calc, :preview_cents, :preview_count) do
+    def performers? = kind == :performers
+    def contract? = kind == :contract
+    def none? = kind == :none
+    def held? = hold_reason.present?
+    def calculated? = performers? && show_payout&.calculated_at.present? && rows.any?
+    def can_calculate? = calc.in?(%i[uncalculated stale])
+    def total_cents = performers? ? rows.sum(&:cents) : payments.sum { |p| (p.amount.to_d * 100).round }
+    # What settling the day puts on the run, and for how many people.
+    def to_run_rows = rows.select { |r| r.stage == :run }
+    def to_run_cents = performers? ? to_run_rows.sum(&:cents) : payments.select { |p| SettlementPayer.stageable?(p) }.sum { |p| (p.amount.to_d * 100).round }
+    def to_run_count = performers? ? to_run_rows.size : payments.count { |p| SettlementPayer.stageable?(p) }
+    def count_by_stage = rows.group_by(&:stage).transform_values(&:size)
+  end
+
+  Check = Data.define(:key, :name, :short, :state, :hold_reason) do
+    def ok? = state == :ok
+    def held? = !ok? && hold_reason.present?
   end
 
   DoorCash = Data.define(:expected_cents, :cash_orders_count, :record) do
@@ -87,13 +146,22 @@ class SettleUp
     def ended? = SettlementDay.ended?(organization, date)
     def registers_state = record&.register_checked? ? :ok : :wait
     def register_label = registers.size == 1 ? "Bar, #{registers.first.location_name}" : "Registers"
-    def pieces
-      shows.map { |s| [ s.show.display_name, s.state ] } +
-        (door_cash.any? ? [ [ "Door cash", door_cash.state ] ] : []) +
-        (registers.any? ? [ [ register_label, registers_state ] ] : [])
+    # Every piece to confirm, in page order, with why it can't be yet when it
+    # can't: the rail at the bottom draws one dot per check.
+    def checks
+      shows.map { |s| Check.new(key: "show-#{s.show.id}", name: s.show.display_name, short: SettleUp.short_name(s.show), state: s.state, hold_reason: s.hold_reason) } +
+        (door_cash.any? ? [ Check.new(key: "door-cash", name: "Door cash", short: "Door cash", state: door_cash.state, hold_reason: nil) ] : []) +
+        (registers.any? ? [ Check.new(key: "register", name: register_label, short: (registers.size == 1 ? "Bar" : "Registers"), state: registers_state,
+                                      hold_reason: (tips.unresolved.any? ? "Say who gets the tips rung up with nobody on the bar first" : nil)) ] : [])
     end
-    def checked_count = pieces.count { |_, state| state == :ok }
-    def all_checked? = pieces.any? && pieces.all? { |_, state| state == :ok }
+    def pieces = checks.map { |c| [ c.name, c.state ] }
+    def checked_count = checks.count(&:ok?)
+    def all_checked? = checks.any? && checks.all?(&:ok?)
+    # What settling puts on the payout run: the sum over the shows, and how
+    # many people (a person in two shows counts once per show here; the run
+    # itself folds them into one line).
+    def to_run_cents = shows.sum { |s| s.pay.to_run_cents }
+    def to_run_count = shows.sum { |s| s.pay.to_run_count }
     def register_sales_cents = registers.sum { |r| r.gross_cents - r.refunds_cents }
     def in_cents = shows.sum(&:in_cents) + register_sales_cents
     def out_cents = shows.sum(&:expenses_cents) + registers.sum(&:fees_cents)
@@ -270,7 +338,144 @@ class SettleUp
     expenses = financials ? (financials.calculated_expenses * 100).round : 0
     fee = financials&.flat_fee? ? (financials.flat_fee.to_f * 100).round : 0
     ShowPiece.new(show: show, financials: financials, listing: listing, ticket_lines: lines, outside_sources: outside,
-                  products_cents: products, other_revenue_cents: other, expenses_cents: expenses, flat_fee_cents: fee)
+                  products_cents: products, other_revenue_cents: other, expenses_cents: expenses, flat_fee_cents: fee,
+                  pay_cell: Cell.new { pay_for(organization, show) })
+  end
+
+  # Who gets paid from a show, as it stands (Tim, 2026-11-04): a show on a
+  # contract settles on the contract's payments for it; otherwise the
+  # production's payout calculation pays the people cast, worked out from
+  # the money once it's confirmed (a preview before that). A production
+  # that doesn't pay its performers pays nobody.
+  def self.pay_for(organization, show)
+    production = show.production
+    contract = show.space_rental&.contract || production.contract || show.contract_payments.first&.contract
+    payments = contract ? contract_payments_for(show, contract).select(&:direction_outgoing?) : []
+    blank = { rows: [], payments: [], hold_reason: nil, calc: :none, preview_cents: nil, preview_count: nil }
+    if contract && (payments.any? || production.third_party? || contract.revenue_share?)
+      return Pay.new(**blank, kind: :contract, show: show, show_payout: nil, scheme: nil, payments: payments)
+    end
+    return Pay.new(**blank, kind: :none, show: show, show_payout: nil, scheme: nil) unless production.pays_performers?
+
+    show_payout = show.show_payout
+    show_payout = nil unless show_payout&.persisted?
+    scheme = if production.asks_calculation_each_show?
+      show_payout&.payout_scheme
+    else
+      show_payout&.payout_scheme || PayoutScheme.default_for_show(show)
+    end
+    hold = if scheme.nil?
+      production.asks_calculation_each_show? ? "Choose this show's calculation first" : "Say how #{production.name} pays its performers first"
+    end
+    rules = (show_payout&.override_rules.presence || scheme&.rules || {}).deep_stringify_keys
+    per_act = rules.dig("distribution", "method").to_s == "per_act"
+    hold ||= "Enter how many acts each person did first" if per_act && !show.act_based? && show_payout&.act_counts.blank?
+    return Pay.new(**blank, kind: :performers, show: show, show_payout: show_payout, scheme: scheme, hold_reason: hold) if hold
+
+    # By show_id, not show:, so the dry-run payout never hangs off the show's
+    # association as an unsaved record (the real one is created on Calculate).
+    dry = show_payout || ShowPayout.new(show_id: show.id, payout_scheme: scheme)
+    saved = show_payout&.calculated_at.present? && show_payout.line_items.any?
+    preview = preview_rows(show, dry, rules)
+    # The saved lines once worked out; before that, the people the numbers as they stand would pay.
+    rows = if saved
+      show_payout.line_items.includes(:payee, payout_contribution: :payout_batch).sort_by { |l| -l.amount.to_f }.map { |line| pay_row(line) }
+    else
+      preview
+    end
+    calc = if dry.act_payees.empty? then :no_cast
+    elsif !per_act && !show.show_financials&.complete? then :needs_numbers
+    elsif !saved then :uncalculated
+    elsif numbers_changed_since?(show, show_payout.calculated_at)
+      rows.any? { |r| r.stage.in?(%i[paid in_draft in_flight]) } ? :locked : :stale
+    else :current
+    end
+    hold = { needs_numbers: "Enter the tickets or a flat fee first", uncalculated: "Calculate the payout first", stale: "The numbers changed; recalculate first" }[calc]
+    Pay.new(kind: :performers, show: show, show_payout: show_payout, scheme: scheme, rows: rows, payments: [], hold_reason: hold, calc: calc,
+            preview_cents: (calc.in?(%i[uncalculated stale]) ? preview.sum(&:cents) : nil), preview_count: (calc.in?(%i[uncalculated stale]) ? preview.size : nil))
+  end
+
+  # Whether the show's money or its cast moved after the payout was worked
+  # out. Confirming a show restamps its calculation (the controller), so a
+  # confirm alone never reads as a change.
+  def self.numbers_changed_since?(show, calculated_at)
+    [ show.show_financials&.updated_at, show.show_person_role_assignments.maximum(:updated_at), show.ticket_listing&.ticket_outside_sales&.maximum(:updated_at) ]
+      .compact.any? { |t| t > calculated_at + 1.second }
+  end
+
+  def self.pay_row(line)
+    batch = line.payout_contribution&.payout_batch
+    stage, note = if line.paid?
+      [ :paid, (line.manually_paid? ? "Paid another way#{line.payment_method_label ? " · #{line.payment_method_label}" : ''}" : "Paid, on a payout run") ]
+    elsif batch&.open?
+      [ :in_draft, "On the open payout run, a draft" ]
+    elsif batch && PayoutBatchService::UNSETTLED_BATCH_STATUSES.include?(batch.status)
+      [ :in_flight, "On its way" ]
+    elsif line.held?
+      [ :hold, "Held, not yet" ]
+    else
+      [ :run, "On the run when the day settles" ]
+    end
+    PayRow.new(line: line, payee: line.payee, name: line.payee_name, cents: (line.net_amount.to_d * 100).round, stage: stage, note: note)
+  end
+
+  # A dry run of the calculation, before the money is confirmed: the rows
+  # it would make, keyed back to each payee. Empty when it can't run yet.
+  def self.preview_rows(show, payout, rules)
+    amounts = payout.preview_amounts(rules)
+    return [] if amounts.empty?
+
+    payout.act_payees.filter_map do |payee|
+      cents = (amounts[ShowPayout.act_key(payee)].to_d * 100).round
+      next if cents.zero? && !amounts.key?(ShowPayout.act_key(payee))
+
+      PayRow.new(line: nil, payee: payee, name: (payee.respond_to?(:display_name) ? payee.display_name : payee.name), cents: cents, stage: :preview, note: nil)
+    end
+  end
+
+  # The contract payments a show settles on (the same pick the show's payouts
+  # page makes): the rows linked to it, its settlement however it's found,
+  # and anything due that day.
+  def self.contract_payments_for(show, contract)
+    linked = show.contract_payments.includes(contract: :contractor).order(:due_date).to_a
+    settlement = contract.find_payment_for_show(show)
+    same_day = show.date_and_time ? contract.contract_payments.where(show_id: nil, due_date: show.date_and_time.to_date).to_a : []
+    (linked + [ settlement ].compact + same_day).uniq(&:id).sort_by { |p| [ p.due_date || Date.new(1), p.id ] }
+  end
+
+  # A dot's name on the rail: the show's name, short.
+  def self.short_name(show)
+    # The name the show's card wears, so a dot and its card read the same.
+    show.display_name.to_s.truncate(14, omission: "…")
+  end
+
+  # Whether a show is paid from its day's Settle up page: on or after the
+  # organization's Settle up start date. Earlier shows keep their own pages.
+  def self.in_settle_up?(organization, show)
+    starts = organization.settle_up_starts_on
+    return false unless starts && show.date_and_time
+
+    SettlementDay.day_for(organization, show.date_and_time) >= starts
+  end
+
+  # The day a show settles on, and whether it has: [date, settled?].
+  def self.day_state_for(organization, show)
+    date = SettlementDay.day_for(organization, show.date_and_time)
+    [ date, SettlementDay.where(organization: organization, date: date).settled.exists? ]
+  end
+
+  # Of these shows, the ones whose day is in Settle up and not settled yet:
+  # their payouts ride the run when the day settles, so nothing else should
+  # list them as money to pay by hand.
+  def self.awaiting_settlement(organization, shows)
+    starts = organization.settle_up_starts_on
+    return [] unless starts
+
+    candidates = shows.select { |s| s.date_and_time && SettlementDay.day_for(organization, s.date_and_time) >= starts }
+    return [] if candidates.empty?
+
+    settled = SettlementDay.where(organization: organization, date: candidates.map { |s| SettlementDay.day_for(organization, s.date_and_time) }.uniq).settled.pluck(:date).to_set
+    candidates.reject { |s| settled.include?(SettlementDay.day_for(organization, s.date_and_time)) }
   end
 
   # Cash taken at the door for the day's shows (tickets and products paid

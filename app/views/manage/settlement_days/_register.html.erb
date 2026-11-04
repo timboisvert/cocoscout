@@ -5,25 +5,19 @@
     Locals: day, registers, can_change %>
 <%
   money = ->(cents) { cents.negative? ? "−#{number_to_currency(-cents / 100.0)}" : number_to_currency(cents / 100.0) }
-  state_words = { ok: "Checked", wait: "Came in, not checked" }.fetch(day.registers_state)
+  state_words = { ok: "Confirmed", wait: "Not confirmed" }.fetch(day.registers_state)
   tone = { ok: "text-green-700", wait: "text-amber-700" }.fetch(day.registers_state)
   provider = registers.first.integration.provider.capitalize
 %>
 <section class="bg-white border border-gray-200 rounded-xl overflow-hidden" id="register">
   <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-gray-200">
     <h2 class="text-base font-semibold text-gray-900"><%= registers.size == 1 ? "Bar, #{registers.first.location_name}" : "Registers" %>
-      <span class="ml-2 text-xs font-medium text-gray-500">from <%= provider %></span>
       <span class="ml-2 text-xs font-medium <%= tone %>"><%= state_words %></span>
     </h2>
     <% if can_change && !day.settled? %>
-      <%= form_with url: manage_check_register_money_settle_up_day_path(day.param), method: :patch, data: { controller: "auto-submit", turbo_action: "replace" } do %>
-        <%= hidden_field_tag :checked, "0", id: nil %>
-        <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-          <input type="checkbox" name="checked" value="1" <%= "checked" if day.record&.register_checked? %> data-action="change->auto-submit#submit"
-                 class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
-          Looks right
-        </label>
-      <% end %>
+      <%= render "manage/settlement_days/confirm_mark", url: manage_check_register_money_settle_up_day_path(day.param),
+            checked: day.record&.register_checked? == true, at: day.record&.register_checked_at,
+            hold_reason: (day.tips.unresolved.any? ? "Say who gets the tips rung up with nobody on the bar first" : nil) %>
     <% end %>
   </div>
   <div class="divide-y divide-gray-100">
@@ -43,8 +37,7 @@
           <div class="flex items-baseline justify-between gap-3 py-1 text-sm"><span class="text-gray-700">Sales tax collected <span class="text-xs text-gray-500">set aside</span></span><span class="tabular-nums text-gray-900"><%= money.call(register.tax_cents) %></span></div>
           <div class="flex items-baseline justify-between gap-3 py-1 text-sm"><span class="text-gray-700">Tips <span class="text-xs text-gray-500">who gets them, below</span></span><span class="tabular-nums text-gray-900"><%= money.call(register.tips_cents) %></span></div>
           <div class="flex items-baseline justify-between gap-3 py-1 text-sm"><span class="text-gray-700"><%= provider %>'s fees</span><span class="tabular-nums text-gray-900"><%= money.call(-register.fees_cents) %></span></div>
-          <div class="flex items-baseline justify-between gap-3 py-1 text-sm font-medium border-t border-gray-100 mt-1 pt-1.5"><span class="text-gray-900">On its way to your bank <span class="text-xs font-normal text-gray-500">straight from <%= provider %>, not through CocoScout</span></span><span class="tabular-nums text-gray-900"><%= money.call(register.net_cents) %></span></div>
-          <p class="text-xs text-gray-500 mt-1">Read <%= register.pulled_at&.strftime("%b %-d at %-l:%M %P") %>. Change what counts on <%= link_to "Integrations", manage_organization_square_path(day.organization), class: "text-pink-600 hover:text-pink-700" %>.</p>
+          <div class="flex items-baseline justify-between gap-3 py-1 text-sm font-medium border-t border-gray-100 mt-1 pt-1.5"><span class="text-gray-900">To your bank from <%= provider %></span><span class="tabular-nums text-gray-900"><%= money.call(register.net_cents) %></span></div>
         </div>
       </div>
     <% end %>
@@ -52,4 +45,7 @@
   <% if day.tips.any? %>
     <%= render "manage/settlement_days/tips", day: day, tips: day.tips, can_change: can_change %>
   <% end %>
+  <%# Where the numbers come from, as a band at the bottom of the box; the
+      integration isn't linked from the money lines (Tim, 2026-11-04). %>
+  <div class="px-5 py-2.5 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 flex flex-wrap items-center justify-between gap-x-4 gap-y-1"><span>Pulled in automatically from <%= provider %>, which sends the money straight to your bank, not through CocoScout.</span><%= link_to "Manage #{provider} integration", manage_organization_square_path(day.organization), class: "text-pink-600 hover:text-pink-700 whitespace-nowrap" %></div>
 </section>
