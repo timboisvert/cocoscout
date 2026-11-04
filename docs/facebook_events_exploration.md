@@ -1,5 +1,7 @@
 # Facebook events from Ticketing: exploration (2026-11-04, for V1.4)
 
+**Held (Tim, 2026-11-04): part of V1.4, not to be built until V1.3 is deployed.**
+
 Tim's ask: when a date is published to Ticketing, it should also be publishable to Facebook events.
 
 ## What Meta allows today

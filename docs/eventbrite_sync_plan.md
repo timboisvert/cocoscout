@@ -1,5 +1,7 @@
 # Eventbrite: list our shows there and keep the seats in step
 
+**Held (Tim, 2026-11-04): part of V1.4, not to be built until V1.3 is deployed.**
+
 Plan, 2026-11-04. Not built. Tim's model (11/4): the integration belongs to the organization, like Square. Listing is switched on in ticketing, at three levels. Both sites sell from one pool of seats, and CocoScout keeps the two counts in step.
 
 Research behind this: Eventbrite's API is self-serve and can create, picture, ticket and publish an event. Its API terms (§3.6(9)) bar use in "a product or service that competes" with Eventbrite and let them revoke access at any time. That risk is accepted or not by Tim; nothing below removes it.
