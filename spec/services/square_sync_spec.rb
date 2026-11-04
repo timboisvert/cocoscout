@@ -55,6 +55,9 @@ RSpec.describe SquareSync do
     expect(day.gross_cents).to eq(3_900)
     expect(day.tax_cents).to eq(370)
     expect(day.tips_cents).to eq(800)
+    # By quarter hour too, for the tip split (§9.14): the 9:10 round and the 12:15 one.
+    expect(day.tips_by_time).to eq({ SquareSync.quarter_key(Time.zone.local(2026, 10, 30, 21, 0)) => { "cents" => 300, "orders" => 1 },
+                                     SquareSync.quarter_key(Time.zone.local(2026, 10, 31, 0, 15)) => { "cents" => 500, "orders" => 1 } })
     expect(day.refunds_cents).to eq(100)
     expect(day.fees_cents).to eq(150)
     expect(day.net_cents).to eq(3_900 + 370 + 800 - 100 - 150)

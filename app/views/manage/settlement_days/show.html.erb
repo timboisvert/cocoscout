@@ -66,7 +66,7 @@
     <div class="flex items-center gap-2">
       <%= render "shared/week_picker", label: @date.strftime("%a, %b %-d, %Y"), months: @calendar_months, pick: :day,
             prev_path: earlier, next_path: later, today_path: today_path, today_text: "Today",
-            day_path: ->(d) { manage_money_settle_up_day_path(d.iso8601) }, selected_day: @date, show_dates: @money_dates, dot_text: "Days with money" %>
+            day_path: ->(d) { manage_money_settle_up_day_path(d.iso8601) }, selected_day: @date, day_statuses: @day_states %>
       <div class="flex sm:hidden items-center gap-2">
         <%= render "shared/button", text: "", icon: "chevron-left", variant: "secondary", size: "small", type: :link, path: earlier, title: "Earlier" %>
         <span class="text-sm font-semibold text-gray-900"><%= @date.strftime("%a, %b %-d, %Y") %></span>

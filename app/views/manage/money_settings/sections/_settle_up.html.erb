@@ -74,6 +74,13 @@
 
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
     <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-900">Tips</h3>
+    </div>
+    <p class="px-6 py-4 text-sm text-gray-600">Who gets the bar's tips: split by hand on the worksheet, or worked out from who was on the clock when each sale rang up. <%= link_to "Set the rule", manage_money_settings_section_path(section: "tips"), class: "text-pink-600 hover:text-pink-700" %>.</p>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
       <h3 class="text-sm font-semibold text-gray-900">Ticket sources</h3>
     </div>
     <p class="px-6 py-4 text-sm text-gray-600">Where tickets get sold besides CocoScout: Eventbrite, HotTix. Each gets its rows on the outside-tickets worksheet. <%= link_to "Edit the list", manage_money_settings_section_path(section: "ticket_sources"), class: "text-pink-600 hover:text-pink-700" %>.</p>

@@ -1,0 +1,85 @@
+<%# Tips go to whoever was working (plan §9.14): the switch, and a share per
+    Staffing role. Locals: @tip_rule, @house_roles %>
+<%
+  rule = @tip_rule
+  roles = @house_roles
+  input = "px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  radio = "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500"
+%>
+<div class="bg-white border border-gray-200 rounded-xl p-6">
+  <h2 class="text-lg font-semibold text-gray-900 mb-1">Tips</h2>
+  <p class="text-sm text-gray-600">
+    Who gets the bar's tips on a day's Settle up worksheet. By hand, or worked out from who was on the clock when each sale rang up.
+  </p>
+</div>
+
+<%= form_with url: manage_money_settings_tips_path, method: :patch, class: "space-y-6" do %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-900">Tips go to the people on the bar when the sale rang up</h3>
+      <p class="text-sm text-gray-600 mt-1">Your register keeps the time of every order, and Staffing knows who was on then: the clock-ins when there are any, else the scheduled shift. A bartender alone from 6 to 8 keeps the tips rung up from 6 to 8; from 8 to 10, two of them split what came in while both were on.</p>
+    </div>
+    <div class="px-6 py-5">
+      <label class="flex items-start gap-3 cursor-pointer">
+        <input type="hidden" name="enabled" value="0">
+        <input type="checkbox" name="enabled" value="1" <%= "checked" if rule.enabled? %> class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+        <span class="text-sm">
+          <span class="font-semibold text-gray-900">Work out the split from who was working</span>
+          <span class="block text-gray-600 mt-0.5">Off, a day's tips are split by hand on the worksheet: evenly, by hours, or as typed. On, the worksheet opens already split, and anyone can still change a span or a share.</span>
+        </span>
+      </label>
+    </div>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-900">Who shares them</h3>
+      <p class="text-sm text-gray-600 mt-1">Each of Staffing's roles is in or out. A role that shares equally splits, by the clock, what rang up while its people were on. A role with a fixed cut takes its percent off the top first, then the rest splits among the equal shares. Door and box office stay out unless you say so.</p>
+    </div>
+    <% if roles.empty? %>
+      <p class="px-6 py-5 text-sm text-gray-600">No roles in Staffing yet. <%= link_to "Add roles in Staffing", manage_staffing_house_roles_path, class: "text-pink-600 hover:text-pink-700" %>, then say which share the tips.</p>
+    <% else %>
+      <div class="divide-y divide-gray-100">
+        <div class="hidden sm:grid grid-cols-[1fr_8rem_12rem_14rem] gap-3 px-6 py-2 bg-gray-50 text-[11px] font-medium uppercase tracking-wide text-gray-500"><span>Role</span><span>Out</span><span>Shares equally</span><span>A fixed cut off the top</span></div>
+        <% roles.each do |role| %>
+          <% kind = rule.kind_for(role.id) %>
+          <div class="grid grid-cols-1 sm:grid-cols-[1fr_8rem_12rem_14rem] gap-3 items-center px-6 py-3 text-sm">
+            <span class="font-medium text-gray-900"><%= role.name %></span>
+            <label class="inline-flex items-center gap-2 text-gray-700 cursor-pointer">
+              <input type="radio" name="roles[<%= role.id %>][share]" value="out" <%= "checked" if kind.nil? %> class="<%= radio %>"><span class="sm:hidden">Out</span>
+            </label>
+            <label class="inline-flex items-center gap-2 text-gray-700 cursor-pointer">
+              <input type="radio" name="roles[<%= role.id %>][share]" value="equal" <%= "checked" if kind == "equal" %> class="<%= radio %>"><span class="sm:hidden">Shares equally</span>
+            </label>
+            <label class="inline-flex items-center gap-2 text-gray-700 cursor-pointer">
+              <input type="radio" name="roles[<%= role.id %>][share]" value="percent" <%= "checked" if kind == "percent" %> class="<%= radio %>">
+              <span class="sm:hidden">A fixed cut of</span>
+              <span class="relative inline-block">
+                <input type="text" name="roles[<%= role.id %>][percent]" inputmode="decimal" value="<%= kind == "percent" ? TipSplit.percent_words(rule.percent_for(role.id)).delete("%") : "" %>" placeholder="15" class="<%= input %> w-20 pr-7 text-right tabular-nums" onfocus="this.closest('div').querySelector('input[value=percent]').checked = true">
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">%</span>
+              </span>
+            </label>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-900">When nobody was on</h3>
+    </div>
+    <p class="px-6 py-4 text-sm text-gray-600">Tips rung up while nobody who shares was clocked in or scheduled go to the pool, and the pool splits evenly among the night's sharers. The worksheet says so, with the orders and the amount.</p>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-900">Without Staffing</h3>
+    </div>
+    <p class="px-6 py-4 text-sm text-gray-600">On a day with no shifts or clock-ins, the clock has nothing to read, so the worksheet stays the by-hand split. Add a person and the span they worked on the worksheet itself, and the rule takes it from there.</p>
+  </div>
+
+  <div class="flex justify-end">
+    <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+  </div>
+<% end %>

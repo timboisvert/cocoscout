@@ -27,19 +27,27 @@ class SettleUp
   end
 
   # Someone who worked the day, for splitting tips: from Staffing's shifts
-  # and hours. hours is what they logged, else what they were scheduled.
-  Worker = Data.define(:person, :hours, :staff_member)
+  # and hours, each span in the role it was worked (TipSplit::Span). hours is
+  # what they logged, else what they were scheduled.
+  Worker = Data.define(:person, :staff_member, :spans) do
+    def hours = spans.sum(&:hours).round(2)
+  end
 
   # The day's tips (plan §9.3): the register's total, how it's split, each
   # share, and who was there. Nothing is split until someone checks it.
-  Tips = Data.define(:cents, :record, :shares, :workers) do
+  # With the organization's tip rule on and the clock to read (§9.14), the
+  # split is worked out from who was on: rows, pool.
+  Tips = Data.define(:cents, :record, :shares, :workers, :rule, :by_time, :calculator) do
     def any? = cents.positive?
     def checked? = record&.tips_checked? == true
     def state = checked? ? :ok : :wait
-    def split = record&.tips_split.presence || "even"
+    def split = record&.tips_split.presence_in(%w[even hours typed]) || "even"
     def assigned_cents = shares.sum(&:amount_cents)
     def unassigned_cents = cents - assigned_cents
     def share_for(person) = shares.find { |sh| sh.person_id == person.id }
+    def by_rule? = calculator.applies?
+    def rows = calculator.rows
+    def pool = calculator.pool
   end
 
   Day = Data.define(:organization, :date, :record, :shows, :door_cash, :registers, :tips) do
@@ -89,6 +97,22 @@ class SettleUp
     dates += SettlementDay.where(organization: organization, date: range).pluck(:date)
     dates += register_days(organization).where(business_date: range).distinct.pluck(:business_date)
     dates.to_set
+  end
+
+  # Where each day with money in it stands, for the calendar's dots (Tim,
+  # 2026-11-03: not that a day had money, but whether it's done): settled,
+  # to settle (over and open), or waiting (not over yet, or history from
+  # before the Settle up start date).
+  def self.date_states(organization, range)
+    settled = SettlementDay.where(organization: organization, date: range).settled.pluck(:date).to_set
+    starts = organization.settle_up_starts_on
+    dates(organization, range).to_h do |date|
+      state = if settled.include?(date) then :settled
+      elsif (starts && date < starts) || !SettlementDay.ended?(organization, date) then :waiting
+      else :to_settle
+      end
+      [ date, state ]
+    end
   end
 
   # Days that are over, had money in them, and nobody has settled, from the
@@ -156,30 +180,46 @@ class SettleUp
   end
 
   def self.tips(organization, date, registers, record)
-    cents = registers.select { |r| r.integration.brings?("tips") }.sum(&:tips_cents)
+    with_tips = registers.select { |r| r.integration.brings?("tips") }
+    cents = with_tips.sum(&:tips_cents)
     shares = record ? record.tip_shares.includes(:person).to_a : []
-    Tips.new(cents: cents, record: record, shares: shares, workers: (cents.positive? ? workers(organization, date, shares) : []))
+    by_time = with_tips.each_with_object(Hash.new { |h, k| h[k] = { "cents" => 0, "orders" => 0 } }) do |register, merged|
+      register.tips_by_time.each { |key, q| merged[key]["cents"] += q["cents"].to_i; merged[key]["orders"] += q["orders"].to_i }
+    end
+    workers = cents.positive? ? workers(organization, date, shares) : []
+    rule = organization.tip_rule
+    Tips.new(cents: cents, record: record, shares: shares, workers: workers, rule: rule, by_time: by_time.to_h,
+             calculator: TipSplit.new(rule: rule, tips_cents: cents, tips_by_time: by_time.to_h, workers: workers, shares: shares))
   end
 
-  # Who worked the day: Staffing's shift assignments and logged hours in the
-  # day's window, plus anyone already given a share.
+  # Who worked the day, and when: a saved share's span when someone set it,
+  # else Staffing's logged hours in the day's window, else the scheduled
+  # shift; plus anyone already given a share. Each span knows its role.
   def self.workers(organization, date, shares)
     window = SettlementDay.window(organization, date)
-    hours = Hash.new(0.0)
     people = {}
-    organization.staff_time_entries.where(started_at: window).includes(:person).each do |entry|
+    logged = Hash.new { |h, k| h[k] = [] }
+    scheduled = Hash.new { |h, k| h[k] = [] }
+    organization.staff_time_entries.where(started_at: window).includes(:person, shift_assignment: :shift).each do |entry|
       people[entry.person_id] = entry.person
-      hours[entry.person_id] += entry.hours.to_f
+      logged[entry.person_id] << TipSplit::Span.new(from: entry.started_at, to: entry.ended_at, house_role_id: entry.house_role_id || entry.shift_assignment&.shift&.house_role_id)
     end
     organization.shifts.where(starts_at: window).includes(shift_assignments: :person).each do |shift|
       shift.shift_assignments.select(&:active?).each do |assignment|
         people[assignment.person_id] ||= assignment.person
-        hours[assignment.person_id] += shift.scheduled_hours unless hours.key?(assignment.person_id)
+        scheduled[assignment.person_id] << TipSplit::Span.new(from: shift.starts_at, to: shift.ends_at, house_role_id: shift.house_role_id)
       end
     end
-    shares.each { |sh| people[sh.person_id] ||= sh.person }
+    set_by_hand = {}
+    shares.each do |sh|
+      people[sh.person_id] ||= sh.person
+      set_by_hand[sh.person_id] = [ TipSplit::Span.new(from: sh.worked_from, to: sh.worked_to, house_role_id: sh.house_role_id) ] if sh.worked_from && sh.worked_to
+    end
     members = organization.organization_staff_members.where(person_id: people.keys).index_by(&:person_id)
-    people.values.sort_by(&:name).map { |person| Worker.new(person: person, hours: hours[person.id].round(2), staff_member: members[person.id]) }
+    people.values.sort_by(&:name).map do |person|
+      spans = set_by_hand[person.id] || (logged[person.id].presence || scheduled[person.id]).sort_by(&:from)
+      Worker.new(person: person, staff_member: members[person.id], spans: spans)
+    end
   end
 
   def self.show_piece(organization, show)

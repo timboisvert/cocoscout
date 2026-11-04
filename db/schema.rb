@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_03_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_03_210000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2780,6 +2780,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_150000) do
     t.datetime "pulled_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "tips_by_time", default: {}, null: false
     t.index ["integration_id", "external_location_id", "business_date"], name: "index_register_days_on_location_and_date", unique: true
     t.index ["integration_id"], name: "index_register_days_on_integration_id"
     t.index ["location_id"], name: "index_register_days_on_location_id"
@@ -4646,6 +4647,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_150000) do
     t.index ["ticket_tier_id"], name: "index_tickets_on_ticket_tier_id"
   end
 
+  create_table "tip_rules", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.boolean "enabled", default: false, null: false
+    t.jsonb "role_shares", default: {}, null: false
+    t.string "nobody_on", default: "pool", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_tip_rules_on_organization_id", unique: true
+  end
+
   create_table "tip_shares", force: :cascade do |t|
     t.bigint "settlement_day_id", null: false
     t.bigint "person_id", null: false
@@ -4654,6 +4665,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_150000) do
     t.bigint "payout_contribution_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "worked_from"
+    t.datetime "worked_to"
+    t.string "source", default: "typed", null: false
+    t.bigint "house_role_id"
+    t.index ["house_role_id"], name: "index_tip_shares_on_house_role_id"
     t.index ["payout_contribution_id"], name: "index_tip_shares_on_payout_contribution_id"
     t.index ["person_id"], name: "index_tip_shares_on_person_id"
     t.index ["settlement_day_id", "person_id"], name: "index_tip_shares_on_settlement_day_id_and_person_id", unique: true
@@ -5282,6 +5298,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_150000) do
   add_foreign_key "tickets", "ticket_tiers"
   add_foreign_key "tickets", "ticket_tiers", column: "bundle_tier_id"
   add_foreign_key "tickets", "users", column: "checked_in_by_id", on_delete: :nullify
+  add_foreign_key "tip_rules", "organizations"
+  add_foreign_key "tip_shares", "house_roles"
   add_foreign_key "tip_shares", "payout_contributions"
   add_foreign_key "tip_shares", "people"
   add_foreign_key "tip_shares", "settlement_days"

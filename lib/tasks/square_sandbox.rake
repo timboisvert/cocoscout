@@ -76,7 +76,7 @@ namespace :square do
                             sales_by_category: night.sales_by_category, gross_cents: night.sales_cents, tips_cents: night.tips_cents,
                             tax_cents: night.tax_cents, refunds_cents: night.refund_cents, fees_cents: night.fee_cents,
                             net_cents: night.sales_cents + night.tax_cents + night.tips_cents - night.refund_cents - night.fee_cents,
-                            orders_count: night.orders.size, pulled_at: date.in_time_zone.change(hour: 5))
+                            orders_count: night.orders.size, pulled_at: date.in_time_zone.change(hour: 5), tips_by_time: night.tips_by_time(date))
       day.save!
       made += 1
     end
@@ -134,6 +134,22 @@ class BarNight
   end
 
   def refund_cents = refunds(@orders.map { |o| [ nil, o ] }).sum { |_, cents, _| cents }
+
+  # The night's tips by quarter hour, the way a Square pull keeps them
+  # (§9.14): doors at 6, busiest from 8 to 11, last round around half past
+  # midnight. Drawn after the orders, so the orders stay the same.
+  def tips_by_time(date)
+    evening = date.in_time_zone
+    by_time = Hash.new { |h, k| h[k] = { "cents" => 0, "orders" => 0 } }
+    @orders.each do |order|
+      hour = weighted([ 18, 19, 19, 20, 20, 20, 21, 21, 21, 22, 22, 22, 23, 23, 24 ])
+      rang_at = evening.change(hour: hour % 24, min: @random.rand(60)) + (hour >= 24 ? 1.day : 0)
+      quarter = by_time[SquareSync.quarter_key(rang_at)]
+      quarter["cents"] += order[:tip]
+      quarter["orders"] += 1
+    end
+    by_time.sort.to_h
+  end
 
   private
 

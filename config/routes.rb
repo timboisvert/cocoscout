@@ -1687,6 +1687,7 @@ Rails.application.routes.draw do
     patch  "money/settings/offline-methods", to: "money_settings#update_offline_methods", as: "money_settings_offline_methods"
     patch  "money/settings/notifications", to: "money_settings#update_notifications", as: "money_settings_notifications"
     patch  "money/settings/settle-up", to: "money_settings#update_settle_up", as: "money_settings_settle_up"
+    patch  "money/settings/tips", to: "money_settings#update_tips", as: "money_settings_tips"
     patch  "money/settings/books", to: "money_settings#update_books", as: "money_settings_books"
     post   "money/settings/ticket-sources", to: "money_settings#create_ticket_source", as: "money_settings_ticket_sources"
     patch  "money/settings/ticket-sources/:id", to: "money_settings#update_ticket_source", as: "money_settings_ticket_source"

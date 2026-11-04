@@ -6,9 +6,10 @@ module Manage
   # people outside CocoScout's Stripe rail, who hears about payout runs, and
   # where the org sells tickets.
   class MoneySettingsController < Manage::ManageController
-    SECTIONS = %w[settle_up offline_methods notifications ticket_sources books].freeze
+    SECTIONS = %w[settle_up tips offline_methods notifications ticket_sources books].freeze
     SECTION_LABELS = {
       "settle_up" => "Settle up",
+      "tips" => "Tips",
       "offline_methods" => "Offline Methods",
       "notifications" => "Notifications",
       "ticket_sources" => "Ticket Sources",
@@ -21,6 +22,9 @@ module Manage
 
     def show
       case @section
+      when "tips"
+        @tip_rule = Current.organization.tip_rule || Current.organization.build_tip_rule
+        @house_roles = Current.organization.house_roles.active.order(:position, :name).to_a
       when "offline_methods"
         @enabled_offline_payout_methods = Current.organization.enabled_offline_payout_methods
       when "notifications"
@@ -125,6 +129,20 @@ module Manage
       end
       Current.organization.update!(settlement_day_mode: mode, settlement_day_starts_at: hour, settle_up_starts_on: starts_on)
       redirect_to section_path("settle_up"), notice: "Settle up settings saved."
+    end
+
+    # Tips go to whoever was working (plan §9.14): the switch, and a share per
+    # Staffing role: out, equal by the clock, or a percent off the top.
+    def update_tips
+      rule = Current.organization.tip_rule || Current.organization.build_tip_rule
+      roles = Current.organization.house_roles.active.to_a
+      rule.enabled = params[:enabled] == "1"
+      rule.role_shares = TipRule.role_shares_from(params.fetch(:roles, {}).to_unsafe_h.with_indifferent_access, roles)
+      if rule.save
+        redirect_to section_path("tips"), notice: (rule.enabled? ? "Tips settings saved. Days with the clock to read open already split." : "Tips settings saved.")
+      else
+        redirect_to section_path("tips"), alert: rule.errors.full_messages.to_sentence
+      end
     end
 
     def update_books

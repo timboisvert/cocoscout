@@ -59,7 +59,9 @@ RSpec.describe "Settle up", type: :request do
     expect(response.body).to match(/title="Earlier"[^>]*href="#{Regexp.escape(manage_money_settle_up_day_path((date - 1).iso8601))}"/)
     expect(response.body).to match(/title="Later"[^>]*href="#{Regexp.escape(manage_money_settle_up_day_path((date + 1).iso8601))}"/)
     expect(response.body).to include(%(href="#{manage_money_settle_up_day_path(SettlementDay.day_for(org, Time.current).iso8601)}")).and include(">Today<")
-    expect(response.body).to include("Days with money")
+    # The calendar's dots say where a day stands, not just that it had money (Tim, 2026-11-03).
+    expect(response.body).to include("Settled", "To settle", "Not over yet, or history")
+    expect(response.body).to include(%(aria-label="#{date.strftime("%A, %B %-d")} · to settle"))
     expect(response.body).not_to include("No earlier day")
   end
 
@@ -185,5 +187,123 @@ RSpec.describe "Manage::SettlementDays with a register", type: :request do
     expect(ChartOfAccounts.account(org, :bank).natural_balance_cents).to eq(0)
     expect(share.reload.payout_contribution).to be_nil
     expect(PayoutContribution.where(payee: bartender).count).to eq(0)
+  end
+end
+
+# Tips go to whoever was working (plan §9.14): the organization's rule, read
+# against the register's tips by quarter hour and Staffing's shifts.
+RSpec.describe "Manage::SettlementDays tips by the clock", type: :request do
+  let(:password) { "Password123!" }
+  let(:owner) { create(:user, password: password) }
+  let!(:org) { create(:organization, :pro, owner: owner, settlement_day_mode: "calendar") }
+  let!(:owner_role) { create(:organization_role, :manager, user: owner, organization: org) }
+  let!(:lodge) { create(:location, organization: org, name: "Lincoln Lodge") }
+  let(:date) { Date.current - 2 }
+  let(:night) { date.in_time_zone }
+  let!(:integration) { org.integrations.create!(provider: "square", tokens: { "access_token" => "tok" }, settings: { "locations" => [ { "id" => "L1", "name" => "The bar" } ], "location_map" => { "L1" => lodge.id.to_s } }) }
+  # $10 of tips every quarter hour from 6 pm to midnight: $240. Clock times,
+  # not offsets: the day may be the one the clocks fall back on.
+  let(:by_time) { (18 * 4...24 * 4).to_h { |q| [ SquareSync.quarter_key(night.change(hour: q / 4, min: (q % 4) * 15)), { "cents" => 1_000, "orders" => 2 } ] } }
+  let!(:register) do
+    integration.register_days.create!(organization: org, location: lodge, external_location_id: "L1", business_date: date, sales_by_category: { "bar" => 100_000 }, gross_cents: 100_000,
+                                      tips_cents: 24_000, tax_cents: 0, refunds_cents: 0, fees_cents: 0, net_cents: 124_000, orders_count: 48, pulled_at: Time.current, tips_by_time: by_time)
+  end
+  let(:bartender) { org.house_roles.create!(name: "Bartender") }
+  let!(:bar_back) { org.house_roles.create!(name: "Bar back") }
+  let(:door) { org.house_roles.create!(name: "Door") }
+  let(:miles) { create(:person, name: "Miles") }
+  let(:camille) { create(:person, name: "Camille") }
+  let(:jo) { create(:person, name: "Jo Back") }
+  let(:pat) { create(:person, name: "Pat Door") }
+
+  def at(hour) = hour >= 24 ? (night + 1.day).change(hour: hour - 24) : night.change(hour: hour)
+
+  def shift(person, role, from, to)
+    org.shifts.create!(house_role: role, starts_at: at(from), ends_at: at(to)).shift_assignments.create!(person: person)
+  end
+
+  before do
+    [ miles, camille, jo, pat ].each { |p| org.organization_staff_members.create!(person: p) }
+    shift(miles, bartender, 18, 22)
+    shift(camille, bartender, 20, 24)
+    shift(pat, door, 18, 24)
+    post handle_signin_path, params: { email_address: owner.email_address, password: password }
+  end
+
+  it "has a Tips section in Money settings where the roles are set, off by default" do
+    get manage_money_settings_section_path(section: "tips")
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Work out the split from who was working", "Bartender", "Bar back", "Door", "A fixed cut off the top")
+
+    patch manage_money_settings_tips_path, params: { enabled: "1", roles: { bartender.id => { share: "equal" }, bar_back.id => { share: "percent", percent: "15" }, door.id => { share: "out" } } }
+    rule = org.reload.tip_rule
+    expect(rule).to be_enabled
+    expect(rule.role_shares).to eq({ bartender.id.to_s => { "kind" => "equal" }, bar_back.id.to_s => { "kind" => "percent", "percent" => 15.0 } })
+    expect(flash[:notice]).to include("Tips settings saved")
+  end
+
+  it "stays the by-hand split while the rule is off" do
+    get manage_money_settle_up_day_path(date.iso8601)
+    expect(response.body).to include("By hours worked", "Pat Door")
+    expect(response.body).not_to include("Tips go to the people on the bar")
+  end
+
+  context "with the rule on" do
+    before { org.create_tip_rule!(enabled: true, role_shares: { bartender.id.to_s => { "kind" => "equal" }, bar_back.id.to_s => { "kind" => "percent", "percent" => 15 } }) }
+
+    it "opens already split by the clock, with each span and how, and leaves the door out" do
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Tips go to the people on the bar when the sale rang up: Bartender keeps what rang up while on; Bar back 15% off the top")
+      expect(response.body).to include("Miles", "Camille", "From 32 orders while on.", "Add a person", "Change the rule")
+      expect(response.body).not_to include(%(name="shares[#{pat.id}][amount]"))
+      expect(response.body).to include(%(name="shares[#{miles.id}][amount]" inputmode="decimal" value="120.00"))
+      expect(response.body).to include(%(name="shares[#{miles.id}][from]" value="18:00"), %(name="shares[#{miles.id}][to]" value="22:00"))
+    end
+
+    it "saves the split, adds a bar back with a span, keeps a typed share, and sends the shares to the run on settle" do
+      # Saved as worked out: $120 each.
+      patch manage_tips_money_settle_up_day_path(date.iso8601), params: { mode: "rule", checked: "0",
+        shares: { miles.id => { amount: "120.00", shown: "120.00", method: "payout", from: "18:00", to: "22:00", span_shown: "18:00-22:00", house_role_id: bartender.id },
+                  camille.id => { amount: "120.00", shown: "120.00", method: "payout", from: "20:00", to: "00:00", span_shown: "20:00-00:00", house_role_id: bartender.id } } }
+      record = SettlementDay.find_by!(organization: org, date: date)
+      expect(record.tip_shares.pluck(:source).uniq).to eq([ "computed" ])
+      expect(record.tip_shares.sum(:amount_cents)).to eq(24_000)
+      expect(record.tip_shares.find_by(person: miles).worked_from).to be_nil # Staffing's span, not set by hand
+
+      # Jo worked the bar back from 8 to 10: 15% of those two hours ($80) is $12, off the top.
+      patch manage_tips_money_settle_up_day_path(date.iso8601), params: { mode: "rule", checked: "0", new_share: { person_id: jo.id, house_role_id: bar_back.id, from: "20:00", to: "22:00" } }
+      jo_share = record.tip_shares.find_by!(person: jo)
+      expect(jo_share.amount_cents).to eq(1_200)
+      expect(jo_share.worked_from).to eq(night.change(hour: 20))
+      expect(jo_share.worked_to).to eq(night.change(hour: 22))
+      expect(record.tip_shares.sum(:amount_cents)).to eq(24_000)
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body).to include("Jo Back", "15% off the top while on.")
+
+      # Camille's share typed to $100: it stays, and the rest adjust around it.
+      patch manage_tips_money_settle_up_day_path(date.iso8601), params: { mode: "rule", checked: "1",
+        shares: { camille.id => { amount: "100.00", shown: record.tip_shares.find_by(person: camille).amount_cents.then { |c| format("%.2f", c / 100.0) }, method: "payout" } } }
+      expect(record.tip_shares.find_by(person: camille)).to have_attributes(amount_cents: 10_000, source: "typed")
+      expect(record.tip_shares.sum(:amount_cents)).to eq(24_000)
+      expect(record.reload.tips_checked_at).to be_present
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body).to include("Typed in.", "Work it all out again")
+
+      # Back in the clock's hands.
+      patch manage_tips_money_settle_up_day_path(date.iso8601), params: { mode: "rule", checked: "1", recompute: "1", shares: { camille.id => { amount: "100.00", shown: "100.00", method: "payout" } } }
+      expect(record.tip_shares.find_by(person: camille).source).to eq("computed")
+
+      # A span changed by hand sticks, and the shares follow it: Miles off at 8 leaves the 8–10 stretch to Camille.
+      patch manage_tips_money_settle_up_day_path(date.iso8601), params: { mode: "rule", checked: "1",
+        shares: { miles.id => { amount: "0", shown: "0", method: "payout", from: "18:00", to: "20:00", span_shown: "18:00-22:00", house_role_id: bartender.id } } }
+      expect(record.tip_shares.find_by(person: miles)).to have_attributes(worked_to: night.change(hour: 20), amount_cents: 8_000, source: "computed")
+
+      patch manage_check_register_money_settle_up_day_path(date.iso8601), params: { checked: "1" }
+      post manage_settle_money_settle_up_day_path(date.iso8601)
+      expect(record.reload).to be_settled
+      expect(ChartOfAccounts.account(org, :tips_owed).natural_balance_cents).to eq(24_000)
+      expect(PayoutContribution.where(payee: [ miles, camille, jo ], label: "Tips").sum(:amount_cents)).to eq(24_000)
+    end
   end
 end

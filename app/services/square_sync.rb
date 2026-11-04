@@ -8,9 +8,16 @@
 #
 #   SquareSync.pull!(integration, from: Date.yesterday, to: Date.current, trigger: "morning")
 class SquareSync
-  Totals = Struct.new(:sales, :tips, :tax, :refunds, :fees, :orders) do
-    def initialize = super(Hash.new(0), 0, 0, 0, 0, 0)
+  Totals = Struct.new(:sales, :tips, :tax, :refunds, :fees, :orders, :tips_by_time) do
+    def initialize = super(Hash.new(0), 0, 0, 0, 0, 0, Hash.new { |h, k| h[k] = { "cents" => 0, "orders" => 0 } })
     def net = sales.values.sum + tax + tips - refunds - fees
+  end
+
+  # The quarter hour a time falls in, as the key tips_by_time uses (UTC, so
+  # it reads the same whatever the organization's zone is set to later).
+  def self.quarter_key(time)
+    utc = time.utc
+    utc.change(min: utc.min / 15 * 15, sec: 0).iso8601
   end
 
   def self.pull!(integration, from:, to:, trigger: "manual")
@@ -54,7 +61,8 @@ class SquareSync
       window = SettlementDay.window(@organization, from).begin..SettlementDay.window(@organization, to).end
       days = Hash.new { |h, k| h[k] = Totals.new }
       api.orders(loc["id"], from: window.begin, to: window.end).each do |order|
-        date = SettlementDay.day_for(@organization, Time.zone.parse(order["closed_at"] || order["created_at"]))
+        rang_at = Time.zone.parse(order["closed_at"] || order["created_at"])
+        date = SettlementDay.day_for(@organization, rang_at)
         next unless (from..to).cover?(date)
 
         totals = days[date]
@@ -72,6 +80,10 @@ class SquareSync
         end
         totals.tax += money(order["total_tax_money"])
         totals.tips += money(order["total_tip_money"])
+        # By quarter hour too, so the tips can go to whoever was on (§9.14).
+        quarter = totals.tips_by_time[self.class.quarter_key(rang_at)]
+        quarter["cents"] += money(order["total_tip_money"])
+        quarter["orders"] += 1
         totals.refunds += money(order.dig("return_amounts", "total_money"))
       end
       api.payments(loc["id"], from: window.begin, to: window.end).each do |payment|
@@ -89,7 +101,7 @@ class SquareSync
         day.assign_attributes(organization: @organization, location_id: @integration.our_location_id(loc["id"]),
                               sales_by_category: totals.sales.transform_values(&:to_i), gross_cents: totals.sales.values.sum,
                               tips_cents: totals.tips, tax_cents: totals.tax, refunds_cents: totals.refunds, fees_cents: totals.fees,
-                              net_cents: totals.net, orders_count: totals.orders, pulled_at: Time.current)
+                              net_cents: totals.net, orders_count: totals.orders, pulled_at: Time.current, tips_by_time: totals.tips_by_time.to_h)
         day.save! if day.any? || day.persisted?
       end
     end
