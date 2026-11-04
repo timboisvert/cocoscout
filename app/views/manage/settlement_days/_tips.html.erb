@@ -34,7 +34,7 @@
 %>
 <div class="border-t border-gray-200 px-5 py-3 space-y-2" id="tips">
   <div class="flex flex-wrap items-center justify-between gap-3">
-    <h3 class="text-sm font-semibold text-gray-900">Tips, <%= money.call(tips.cents) %> <span class="ml-1 text-xs font-normal <%= nobody ? 'text-amber-700' : 'text-gray-500' %>"><%= nobody ? "nobody on the clock" : "who gets them" %></span></h3>
+    <h3 class="text-sm font-semibold text-gray-900">Tips, <%= money.call(tips.cents) %><% if nobody %> <span class="ml-1 text-xs font-normal text-amber-700">nobody on the clock</span><% end %></h3>
     <% if editable %>
       <%= render "shared/button", text: (nobody ? "Assign tips" : "Change the split"), variant: "secondary", size: "small", type: :button,
             data: { controller: "modal", action: "click->modal#open", modal_id: modal_id } %>
