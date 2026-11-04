@@ -563,6 +563,50 @@ a check mark per line, and the same words in the Integrations → Your bank sect
 The code must match the words: the upload is read from the request body (or a
 temporary file deleted in an `ensure`), never attached to anything.
 
+### 9.14 Tips go to whoever was working (Tim, 2026-11-03; a vision, not built)
+
+At Stars & Garters the bartender on when a round rings up gets that round's
+tip, two bartenders on at once split the rounds that came in while both were
+on, and a bar back takes 15%. Those are the organization's rules, so they live
+in settings, and the day's worksheet applies them.
+
+- **Where:** Money → Settings → Tips. One switch, "Work out the split from who
+  was working", off by default. Off, the day's tips section is what it is now:
+  a split typed by hand, evenly or by hours. On, the worksheet opens already
+  split, and anyone can still change it.
+- **The rule, in the organization's words:** "Tips go to the people on the bar
+  when the sale rang up." Its pieces:
+  - *Who shares them:* each of Staffing's roles is in or out. A role that is in
+    shares equally by the clock (Bartender) or takes a fixed cut off the top
+    first (Bar back, 15%). Door and box office are out unless said so.
+  - *By the clock:* every order has its time (Square's orders, and door sales
+    the same), and Staffing knows who was on then: the clock-ins when there
+    are any, else the scheduled shift. A bartender alone from 6 to 8 keeps the
+    tips rung up from 6 to 8; from 8 to 10 two of them split what came in
+    while both were on.
+  - *Nobody on:* tips rung up when no sharer was clocked in or scheduled go to
+    the pool and split evenly among the night's sharers; the worksheet says so
+    ("$31 from 9 orders with nobody on the clock, split evenly").
+- **Without Staffing** (the module off, or no shifts that day): the clock has
+  nothing to read, so the section stays the by-hand split; the roles setting
+  still says who is listed, in what order.
+- **On the worksheet:** a row per person with the span they worked (6:00 to
+  8:00 pm), their share, and a line saying how ("from 17 orders while on; plus
+  a share of the pool"). Add a person and the span they worked; change anyone's
+  span or share; each row still goes to the payout run or is paid in cash at
+  close. Changing a span works the other shares out again; a typed share stays
+  as typed and the rest adjust around it. "Looks right" checks the piece as it
+  does today, and settling the day sends each share where it goes.
+- **Data:** `TipRule` per organization (on or off, a share per role: equal or a
+  percent, what to do with tips nobody was on for). A tip share row gains the
+  span worked and whether it was worked out or typed. A register day keeps its
+  tips by quarter hour (`tips_by_time`, jsonb), so the split reads from the day
+  itself and never from raw orders, which go at 90 days.
+- **Build order:** the settings page and `TipRule`; tips by time on the Square
+  pull; the worksheet's computed split with spans; add a person and adjust;
+  specs for a two-bartender night, a bar back, and a span with nobody on.
+  After Tim's yes to this section.
+
 ## 10. Build log (2026-10-31)
 
 Built in one pass on `v1.3`, in the plan's order; each phase is one commit.

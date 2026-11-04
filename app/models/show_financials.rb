@@ -11,7 +11,8 @@ class ShowFinancials < ApplicationRecord
   # methods reads those two columns.
   has_many :ticket_sales_lines, -> { ordered }, dependent: :destroy
 
-  accepts_nested_attributes_for :expense_items, allow_destroy: true, reject_if: :all_blank
+  # A new row with no amount is a line nobody filled in (the category box always has a value).
+  accepts_nested_attributes_for :expense_items, allow_destroy: true, reject_if: ->(attrs) { attrs["id"].blank? && attrs["amount"].blank? }
   # The worksheet sends a row for every ticket source; a new one with no
   # tickets and no money is simply a source that sold nothing.
   accepts_nested_attributes_for :ticket_sales_lines, allow_destroy: true,

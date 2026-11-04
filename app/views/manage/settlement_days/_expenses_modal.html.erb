@@ -1,0 +1,74 @@
+<%# A show's expenses, on the day's worksheet (Tim, 2026-11-03: the old
+    Financials worksheet goes; each thing opens its own). A row per expense:
+    what kind, what it was, how much, the receipt. Older expenses kept as
+    plain rows on the record become expense items when this saves.
+    Locals: id, show, financials, return_to %>
+<%
+  input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  categories = ExpenseCategories.options_for_select(Current.organization)
+  saved = financials ? financials.expense_items.ordered.to_a : []
+  legacy = saved.any? ? [] : (financials&.normalized_expense_details&.select { |i| i.is_a?(Hash) } || [])
+  row = lambda do |index, item: nil, legacy_item: nil|
+    capture do
+      key = "show_financials[expense_items_attributes][#{index}]"
+%>
+      <div class="nested-fields rounded-lg border border-gray-200 p-3 space-y-2">
+        <% if item %><input type="hidden" name="<%= key %>[id]" value="<%= item.id %>"><% end %>
+        <input type="hidden" name="<%= key %>[_destroy]" value="0">
+        <div data-removal-fields class="space-y-2">
+          <div class="flex flex-col sm:flex-row gap-2">
+            <%= select_tag "#{key}[category]", options_for_select(categories, item&.category || legacy_item&.dig("category")), id: nil, class: "#{input} sm:w-56 flex-none" %>
+            <%= text_field_tag "#{key}[description]", item&.description || legacy_item&.dig("description"), id: nil, placeholder: "What it was", class: "#{input} min-w-0 flex-1" %>
+            <div class="relative w-full sm:w-32 flex-none">
+              <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-gray-500">$</span>
+              <%= number_field_tag "#{key}[amount]", (item ? format("%.2f", item.amount) : legacy_item&.dig("amount")), id: nil, step: "0.01", min: 0, placeholder: "0.00", class: "#{input} pl-7 tabular-nums" %>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600">
+            <label class="inline-flex items-center gap-2 cursor-pointer">
+              <% if item&.receipt&.attached? %>
+                <%= link_to "Receipt", manage_money_file_path(item.receipt.attachment), target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700 font-medium" %>
+                <span class="text-gray-400">·</span> replace it:
+              <% else %>
+                Receipt:
+              <% end %>
+              <%= file_field_tag "#{key}[receipt]", id: nil, accept: "application/pdf,image/jpeg,image/png", class: "text-xs text-gray-600 file:mr-2 file:rounded-md file:border-0 file:bg-gray-100 file:px-2 file:py-1 file:text-xs file:font-medium file:text-gray-700 hover:file:bg-gray-200" %>
+            </label>
+            <button type="button" data-action="click->nested-form#<%= item ? 'toggleRemove' : 'remove' %>" class="text-gray-500 hover:text-red-600 cursor-pointer">Remove</button>
+          </div>
+        </div>
+        <p data-removal-note class="hidden text-xs text-amber-700">Removed when you save. <button type="button" data-action="click->nested-form#toggleRemove" class="underline cursor-pointer">Keep it</button></p>
+      </div>
+<%
+    end
+  end
+%>
+<div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end justify-center sm:items-center sm:p-4"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[85vh]" data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-5 sm:px-6 py-4 flex-shrink-0">
+      <h3 class="text-lg font-semibold text-white">Expenses</h3>
+      <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" aria-label="Close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <%= form_with url: manage_update_money_show_financials_path(show), method: :patch, multipart: true, class: "flex flex-col min-h-0 flex-1", data: { turbo: false, controller: "nested-form" } do %>
+      <%= hidden_field_tag :return_to, return_to, id: nil %>
+      <%= hidden_field_tag "show_financials[expense_items_cleared]", "1", id: nil %>
+      <template data-nested-form-target="template"><%= row.call("NEW_CHILD_RECORD") %></template>
+      <div class="p-5 sm:p-6 space-y-3 overflow-y-auto min-h-0 flex-1">
+        <p class="text-sm text-gray-600">What this show cost: the guest act, the rights, the printing, the pizza. Each goes on the books in its category when the day is settled.</p>
+        <div class="space-y-2" data-nested-form-target="children">
+          <% saved.each_with_index { |item, i| concat row.call(i, item: item) } %>
+          <% legacy.each_with_index { |item, i| concat row.call(i, legacy_item: item) } %>
+          <% if saved.empty? && legacy.empty? %><%= row.call(0) %><% end %>
+        </div>
+        <%= render "shared/button", text: "Another expense", variant: "secondary", size: "xs", type: :button, icon: "plus", data: { action: "click->nested-form#add" } %>
+      </div>
+      <div class="px-5 sm:px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2 flex-shrink-0">
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+        <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+</div>

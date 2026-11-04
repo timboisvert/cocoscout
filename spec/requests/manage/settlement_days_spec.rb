@@ -63,6 +63,38 @@ RSpec.describe "Settle up", type: :request do
     expect(response.body).not_to include("No earlier day")
   end
 
+  it "opens a show's expenses and other revenue in their own modals, and saves each back onto the day" do
+    get manage_money_settle_up_day_path(date.iso8601)
+    expect(response.body).to include(%(data-modal-id="expenses-#{show.id}")).and include(%(data-modal-id="other-revenue-#{show.id}"))
+    expect(response.body).not_to include("Open the worksheet")
+
+    fin = show.show_financials || show.create_show_financials!
+    fin.update!(other_revenue_details: [ { "description" => TicketSalesSync::PRODUCTS_LABEL, "amount" => 40.0 } ])
+
+    patch manage_update_money_show_financials_path(show), params: { return_to: manage_money_settle_up_day_path(date.iso8601),
+      show_financials: { expense_items_cleared: "1", expense_items_attributes: {
+        "0" => { category: ExpenseItem::CATEGORIES.first, description: "Pizza for the cast", amount: "42.50", _destroy: "0" },
+        "1" => { category: ExpenseItem::CATEGORIES.first, description: "", amount: "", _destroy: "0" } } } }
+    expect(response).to redirect_to(manage_money_settle_up_day_path(date.iso8601))
+    expect(fin.reload.expense_items.map { |i| [ i.description, i.amount.to_f ] }).to eq([ [ "Pizza for the cast", 42.5 ] ])
+
+    patch manage_update_money_show_financials_path(show), params: { return_to: manage_money_settle_up_day_path(date.iso8601),
+      show_financials: { other_revenue_details_cleared: "1", other_revenue_details: {
+        "0" => { description: TicketSalesSync::PRODUCTS_LABEL, amount: "40.0" },
+        "1" => { description: "Raffle", amount: "85", _destroy: "0" },
+        "2" => { description: "", amount: "", _destroy: "0" },
+        "3" => { description: "Sponsor", amount: "100", _destroy: "1" } } } }
+    expect(response).to redirect_to(manage_money_settle_up_day_path(date.iso8601))
+    expect(fin.reload.normalized_other_revenue_details.map { |i| [ i["description"], i["amount"].to_f ] }).to contain_exactly([ TicketSalesSync::PRODUCTS_LABEL, 40.0 ], [ "Raffle", 85.0 ])
+
+    get manage_money_settle_up_day_path(date.iso8601)
+    expect(response.body).to include("Pizza for the cast").and include("Raffle").and include("$42.50").and include("$85.00").and include("$40.00")
+
+    patch manage_update_money_show_financials_path(show), params: { return_to: manage_money_settle_up_day_path(date.iso8601),
+      show_financials: { expense_items_cleared: "1", expense_items_attributes: { "0" => { id: fin.expense_items.first.id, category: ExpenseItem::CATEGORIES.first, description: "Pizza", amount: "", _destroy: "0" } } } }
+    expect(fin.reload.expense_items).to be_empty
+  end
+
   it "counts the door cash, and puts an over or short on the books when the day settles" do
     patch manage_door_cash_money_settle_up_day_path(date.iso8601), params: { counted: "5.00", float_kept: "0", note: "Found a five in the box" }
     record = SettlementDay.find_by!(organization: org, date: date)

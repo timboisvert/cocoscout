@@ -44,6 +44,8 @@ module Manage
           format.html { redirect_to back, notice: "Financial data saved successfully." }
           format.turbo_stream { redirect_to back, notice: "Financial data saved successfully." }
         end
+      elsif params[:return_to].to_s.start_with?("/manage/money/settle-up/")
+        redirect_to params[:return_to], alert: "That did not save: #{@show_financials.errors.full_messages.to_sentence}"
       else
         render :edit, status: :unprocessable_content
       end
@@ -112,9 +114,9 @@ module Manage
         :expenses,
         :notes,
         :data_confirmed,
-        other_revenue_details: [ :description, :amount ],
+        other_revenue_details: [ :description, :amount, :_destroy ],
         expense_details: [ :category, :description, :amount ],
-        expense_items_attributes: [ :id, :category, :description, :amount, :position, :_destroy ],
+        expense_items_attributes: [ :id, :category, :description, :amount, :position, :receipt, :_destroy ],
         ticket_sales_lines_attributes: [ :id, :ticket_source_id, :tickets_sold, :amount, :position, :_destroy ]
       )
 
@@ -131,6 +133,16 @@ module Manage
         end
       end
 
+      # The day's worksheet sends a row per expense: a new one left blank is
+      # nothing, a saved one blanked out goes.
+      if permitted[:expense_items_attributes].present?
+        permitted[:expense_items_attributes].each_value do |row|
+          next if row[:amount].present?
+
+          row[:_destroy] = "1" if row[:id].present?
+        end
+      end
+
       # Convert hash-style params to arrays for details fields
       # Rails sends {"0" => {desc: x}, "1" => {desc: y}} but we need [{desc: x}, {desc: y}]
       # Note: permitted params are ActionController::Parameters objects, need deep conversion
@@ -140,9 +152,12 @@ module Manage
         end
       end
       if permitted[:other_revenue_details].present?
-        permitted[:other_revenue_details] = permitted[:other_revenue_details].to_unsafe_h.values.map do |v|
-          v.is_a?(ActionController::Parameters) ? v.to_unsafe_h : v
-        end
+        # Plain hashes, built once: reading the key back after assigning it
+        # would hand back unpermitted Parameters. A blank line, or one
+        # removed on the day's worksheet, is not a row.
+        rows = permitted[:other_revenue_details].to_unsafe_h.values.map { |v| v.to_h.except("_destroy", "_removed") }
+        rows = permitted[:other_revenue_details].to_unsafe_h.values.zip(rows).filter_map { |raw, row| row unless raw["_destroy"] == "1" || (row["description"].blank? && row["amount"].blank?) }
+        permitted[:other_revenue_details] = rows
       end
 
       permitted
