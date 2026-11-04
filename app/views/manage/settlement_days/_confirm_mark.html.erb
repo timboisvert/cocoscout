@@ -7,9 +7,9 @@
     Locals: url, checked, hold_reason (nil when nothing holds it), at (Time or nil) %>
 <%
   held = !checked && hold_reason.present?
-  look = if checked then "bg-pink-500 border-pink-500 text-white ring-4 ring-pink-500/25"
+  look = if checked then "bg-pink-500 border-pink-500 text-white ring-4 ring-pink-500/25 cursor-pointer"
   elsif held then "bg-white border-amber-500 border-dashed text-amber-600 cursor-not-allowed"
-  else "bg-white border-gray-300 text-gray-300 hover:border-pink-500 hover:text-pink-500"
+  else "bg-white border-gray-300 text-gray-300 hover:border-pink-500 hover:text-pink-500 cursor-pointer"
   end
 %>
 <%= form_with url: url, method: :patch, data: { turbo_action: "replace" }, class: "flex items-center gap-2.5" do %>
