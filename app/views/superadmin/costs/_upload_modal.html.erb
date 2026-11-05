@@ -16,7 +16,7 @@
           <%= label_tag "#{id}-files", "The bills (PDFs, as many as you like)", class: "block text-sm font-medium text-gray-700 mb-1" %>
           <%= file_field_tag "files[]", id: "#{id}-files", multiple: true, required: true, accept: "application/pdf,image/*",
                 class: "block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100" %>
-          <p class="mt-1 text-xs text-gray-500">Amazon's monthly invoices and Anthropic's receipts are read for you: the number, the total, the month, and on an Amazon invoice what each service cost. Anything else you fill in. Nothing counts until you've checked it.</p>
+          <p class="mt-1 text-xs text-gray-500">Amazon's monthly invoices and Anthropic's and GitHub's receipts are read for you: the number, the total, the month, and on an Amazon invoice what each service cost. Anything else you fill in. Nothing counts until you've checked it.</p>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>

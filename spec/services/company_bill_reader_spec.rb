@@ -67,6 +67,29 @@ RSpec.describe CompanyBillReader do
                                          period_month: Date.new(2026, 10, 1), paid_on: Date.new(2026, 10, 20))
   end
 
+  it "reads a GitHub receipt for Copilot, whichever way it writes the date" do
+    receipt = <<~TEXT
+      GitHub
+      We received payment for your GitHub.com subscription. Thanks for your business!
+      GITHUB RECEIPT - PERSONAL SUBSCRIPTION - timboisvert
+      Copilot Pro - Month
+      Subtotal: $10.00 USD
+      Total: $10.70 USD*
+      Charged to: Visa (4*** **** **** 4242)
+      Transaction ID: 6XK29ALQ
+      Date: 15 Mar 2026 10:23AM PST
+      For service through: 2026-04-14
+    TEXT
+    result = described_class.from_text(receipt)
+    expect(result).to be_complete
+    expect(result.attributes).to include(vendor: "GitHub", category: "software", description: "GitHub Copilot Pro", bill_number: "6XK29ALQ",
+                                         bill_total_cents: 1_070, period_month: Date.new(2026, 3, 1), paid_on: Date.new(2026, 3, 15))
+
+    table = "GitHub Receipt\nDate 2026-02-15\nAccount billed timboisvert\nItem GitHub Copilot $10.00\nTotal $10.00 USD\nTransaction ID ch_3Abc9\n"
+    expect(described_class.from_text(table).attributes).to include(vendor: "GitHub", description: "GitHub Copilot", bill_number: "ch_3Abc9",
+                                                                   bill_total_cents: 1_000, period_month: Date.new(2026, 2, 1))
+  end
+
   it "reads the text out of a real PDF" do
     pdf = Prawn::Document.new { |doc| amazon.each_line { |line| doc.text line.chomp } }.render
     result = described_class.read(StringIO.new(pdf), filename: "invoice.pdf")

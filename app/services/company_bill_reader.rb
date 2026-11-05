@@ -6,12 +6,16 @@
 # that stays "to check" until someone confirms it against the PDF, so a
 # misread never reaches Spent on its own.
 #
-# Knows two layouts well: Amazon Web Services' monthly invoice and
-# Anthropic's receipt (Stripe's standard receipt). Anything else gets a
-# best guess at the total and the date, and the rest is typed in.
+# Knows three layouts: Amazon Web Services' monthly invoice, Anthropic's
+# receipt (Stripe's standard receipt) and GitHub's payment receipt
+# (Copilot). Anything else gets a best guess at the total and the date,
+# and the rest is typed in.
 class CompanyBillReader
   MONEY = /(?:USD\s*)?(-?)\$\s?([\d,]+\.\d{2})/
   DATE = /([A-Z][a-z]+)\.?\s+(\d{1,2})\s*,\s*(\d{4})/
+  # GitHub writes its dates "2026-01-15" or "15 Jan 2026".
+  ISO_DATE = /(\d{4})-(\d{2})-(\d{2})/
+  DAY_FIRST_DATE = /(\d{1,2})\s+([A-Z][a-z]+)\.?,?\s+(\d{4})/
   # Lines in an Amazon invoice's Detail that are parts of a service, not one.
   NOT_A_SERVICE = /\A(charges|credits?|tax|vat|gst|ct|total|net charges|subtotal|discounts?|estimated|usage|summary|detail|aws service charges)\b/i
 
@@ -42,6 +46,7 @@ class CompanyBillReader
   def result
     attrs = if @flat.match?(/Amazon Web Services/i) then amazon
     elsif @flat.match?(/Anthropic/i) then anthropic
+    elsif @flat.match?(/GitHub/i) then github
     else other
     end
     found = []
@@ -102,6 +107,21 @@ class CompanyBillReader
     }
   end
 
+  # GitHub's payment receipt: "Total: $10.00 USD", "Transaction ID: ...",
+  # "Date: 15 Jan 2026" (or 2026-01-15). The charge is for the month ahead,
+  # so the day it was paid is the month it counts in.
+  def github
+    paid = date_after(/\bDate:?/) || first_date
+    plan = @flat[/(Copilot[A-Za-z+ ]{0,24}?)(?=\s+(?:-|–|\(|\$|Month|Year|Qty|\d)|\s*$)/i, 1]&.squish
+    {
+      vendor: "GitHub", category: "software", description: plan ? "GitHub #{plan}" : "GitHub",
+      bill_number: @flat[/(?:Transaction|Order|Receipt|Invoice) (?:ID|number|no\.?|#):?\s*([A-Za-z0-9_-]{4,})/i, 1],
+      bill_total_cents: money_after(/\bTotal(?: paid| charged)?:?/) || money_after(/Amount(?: paid| charged)?:?/),
+      period_month: paid&.beginning_of_month,
+      billed_on: paid, paid_on: paid
+    }
+  end
+
   def other
     day = date_after(/Date paid/i) || date_after(/Invoice date:?/i) || date_after(/Date:?/i) || first_date
     {
@@ -120,18 +140,29 @@ class CompanyBillReader
     match && cents(match[-2], match[-1])
   end
 
+  # The first date after a label on its line, however it's written.
   def date_after(label)
-    match = @flat.match(Regexp.new("(?i:#{label.source})[^\\n]{0,20}?#{DATE.source}"))
-    match && to_date(match[-3], match[-2], match[-1])
+    rest = @flat[Regexp.new("(?i:#{label.source})([^\\n]{0,60})"), 1]
+    rest && date_in(rest)
   end
 
   def first_date
-    match = @flat.match(DATE)
-    match && to_date(match[1], match[2], match[3])
+    date_in(@flat)
+  end
+
+  # The earliest-placed date in a piece of text: "January 15, 2026",
+  # "2026-01-15" or "15 Jan 2026".
+  def date_in(text)
+    found = [
+      text.match(DATE)&.then { |m| [ m.begin(0), to_date(m[1], m[2], m[3]) ] },
+      text.match(ISO_DATE)&.then { |m| [ m.begin(0), to_date(m[2].to_i, m[3], m[1]) ] },
+      text.match(DAY_FIRST_DATE)&.then { |m| [ m.begin(0), to_date(m[2], m[1], m[3]) ] }
+    ].compact.select(&:last)
+    found.min_by(&:first)&.last
   end
 
   def to_date(month, day, year)
-    number = month_number(month)
+    number = month.is_a?(Integer) ? month : month_number(month)
     number && Date.valid_date?(year.to_i, number, day.to_i) ? Date.new(year.to_i, number, day.to_i) : nil
   end
 
