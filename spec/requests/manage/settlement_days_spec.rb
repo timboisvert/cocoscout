@@ -166,6 +166,23 @@ RSpec.describe "Settle up", type: :request do
     expect(response.body).not_to include("from Ticketing</span><span class='tabular-nums text-gray-900'><a")
   end
 
+  it "says a show sold here once before anything sells, and gives other sites one line for a ticket that has a door price too" do
+    tailor = org.ticket_sources.create!(name: "Ticket Tailor")
+    listing = TicketListing.create!(show: show)
+    online = listing.ticket_tiers.create!(name: "Reserve a spot", price_cents: 1_500, quantity: 30, sells_at: "online")
+    door = listing.ticket_tiers.create!(name: "Reserve a spot", price_cents: 2_000, quantity: 30, sells_at: "door", position: 1)
+    back = manage_money_settle_up_day_path(date.iso8601)
+
+    get back
+    expect(response.body).to include("Sold through CocoScout", "0 tickets</span>", "Sold on other sites", %(name="sales[#{tailor.id}][#{online.id}][tickets]"))
+    expect(response.body).not_to include("nothing entered yet", "Checked in", %(name="sales[#{tailor.id}][#{door.id}][tickets]"), %(name="sales[new][#{door.id}][tickets]"))
+
+    # Numbers already saved against the door's type stay in sight, each line saying its price.
+    TicketOutsideSales.record!(listing, { tailor.id.to_s => { door.id.to_s => { "tickets" => "2", "amount" => "40" } } })
+    get back
+    expect(response.body).to include(%(name="sales[#{tailor.id}][#{door.id}][tickets]"), "$15.00, online only", "$20.00, at the door only")
+  end
+
   it "keeps a show's financials page as a read-only record of its day's card and what was left" do
     fin = show.show_financials || show.create_show_financials!
     fin.update!(ticket_count: 30, ticket_revenue: 450, data_confirmed: true)

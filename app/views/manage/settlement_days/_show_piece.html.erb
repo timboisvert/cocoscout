@@ -57,6 +57,9 @@
         <%= line.call("Tickets", "this show had no revenue", (typed_tickets ? typed.call("Change") : "—")) %>
       <% elsif fin&.flat_fee? %>
         <%= line.call("A flat fee instead of tickets", nil, (piece.listing ? money.call(piece.flat_fee_cents) : typed.call(money.call(piece.flat_fee_cents)))) %>
+      <% elsif piece.listing && online_lines.empty? %>
+        <%# Sold here and nothing sold yet: its own line, in place of a "nothing entered" that the other sites' line then said again (Tim, 2026-11-04). %>
+        <%= sold_line.call("Sold through CocoScout", [ "0 tickets" ], link_to(money.call(0), manage_ticket_listing_path(piece.listing), class: pink)) %>
       <% elsif piece.ticket_lines.empty? %>
         <%= line.call("Tickets", "nothing entered yet", (typed_tickets ? typed.call("Enter") : "—")) %>
       <% end %>
@@ -74,8 +77,9 @@
         <%= line.call("Collected by the contractor", "already in the tickets", typed.call(number_to_currency(fin.contractor_collected))) %>
       <% end %>
       <% if piece.listing %>
-        <% sold = Ticket.where(ticket_order_id: piece.listing.ticket_orders.select(:id), status: Ticket::SOLD_STATUSES) %>
-        <%= line.call("Checked in", nil, "#{sold.where(status: 'checked_in').count} of #{sold.count}") %>
+        <% tickets_out = Ticket.where(ticket_order_id: piece.listing.ticket_orders.select(:id), status: Ticket::SOLD_STATUSES) %>
+        <%# Nobody to check in until a ticket is out. %>
+        <% if tickets_out.exists? %><%= line.call("Checked in", nil, "#{tickets_out.where(status: 'checked_in').count} of #{tickets_out.count}") %><% end %>
       <% end %>
     </div>
     <div>

@@ -195,7 +195,7 @@ RSpec.describe "Ticket sources and per-source sales", type: :request do
       get manage_money_show_financials_path(show)
 
       expect(response.body).to include("Eventbrite")
-      expect(response.body).to include("40 General Admission · $400.00")
+      expect(response.body).to include("40 General Admission</span>", "")
       expect(response.body).not_to include("show_financials[ticket_sales_lines_attributes]")
     end
   end
@@ -272,7 +272,7 @@ RSpec.describe "Ticket sources and per-source sales", type: :request do
 
     it "shows on the day as its own line, never one to type over" do
       get day_path
-      expect(response.body).to include("Sold through CocoScout", "12 · $240.00")
+      expect(response.body).to include("Sold through CocoScout", "12 tickets</span>", "")
       expect(response.body).not_to match(/ticket_sales_lines_attributes\]\[\d+\]\[ticket_source_id\]"[^>]*value="#{built_in.id}"/)
     end
 

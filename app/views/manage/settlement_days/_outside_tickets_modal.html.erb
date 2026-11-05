@@ -18,7 +18,10 @@
   input = "block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors"
   radio = "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500"
   organization = show.production.organization
-  tiers = listing ? listing.ticket_tiers.active.reject(&:bundle?) : []
+  tiers = listing ? TicketOutsideSales.tiers_for(listing) : []
+  # Two types with one name say their price, and where they sell, to be told apart.
+  repeated = tiers.map(&:name).tally.select { |_, n| n > 1 }.keys
+  tier_note = ->(tier) { repeated.include?(tier.name) ? [ number_to_currency(tier.price_cents / 100.0), tier.sells_at_words&.downcase ].compact.join(", ") : nil }
   sources = organization.ticket_sources.hand_made.active.ordered.to_a
   groups = []
   index = -1
@@ -27,7 +30,7 @@
     sources.each do |source|
       groups << { name: source.name, rows: tiers.map do |tier|
         row = saved[[ source.id, tier.id ]]
-        { type: tier.name, tickets: row&.tickets_sold.to_i, amount: row ? row.amount_cents / 100.0 : 0, hidden: {},
+        { type: tier.name, note: tier_note.call(tier), tickets: row&.tickets_sold.to_i, amount: row ? row.amount_cents / 100.0 : 0, hidden: {},
           tickets_name: "sales[#{source.id}][#{tier.id}][tickets]", amount_name: "sales[#{source.id}][#{tier.id}][amount]" }
       end }
     end
@@ -94,7 +97,7 @@
                 <%# On a phone every line says its site; from sm up, only a site's first line does. %>
                 <div class="col-span-2 flex items-baseline gap-2 min-w-0 sm:contents">
                   <span class="min-w-0 truncate text-sm font-medium text-gray-900 <%= 'sm:invisible' if position.positive? %>"><%= group[:name] %></span>
-                  <span class="min-w-0 truncate text-sm text-gray-700"><%= row[:type] %></span>
+                  <span class="min-w-0 truncate text-sm text-gray-700"><%= row[:type] %><% if row[:note].present? %> <span class="text-xs text-gray-500"><%= row[:note] %></span><% end %></span>
                 </div>
                 <% if editable %>
                   <%= number_field_tag row[:tickets_name], (row[:tickets].positive? ? row[:tickets] : nil), id: nil, min: 0, inputmode: "numeric", placeholder: "0",
@@ -122,7 +125,7 @@
                 <% else %>
                   <span class="hidden sm:block"></span>
                 <% end %>
-                <span class="col-span-2 sm:col-span-1 min-w-0 truncate text-sm text-gray-700"><%= tier.name %></span>
+                <span class="col-span-2 sm:col-span-1 min-w-0 truncate text-sm text-gray-700"><%= tier.name %><% if tier_note.call(tier).present? %> <span class="text-xs text-gray-500"><%= tier_note.call(tier) %></span><% end %></span>
                 <%= number_field_tag "sales[new][#{tier.id}][tickets]", nil, id: nil, min: 0, inputmode: "numeric", placeholder: "0", "aria-label": "The new site's #{tier.name} tickets", class: "#{input} tabular-nums text-right" %>
                 <div class="relative">
                   <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-gray-500">$</span>
