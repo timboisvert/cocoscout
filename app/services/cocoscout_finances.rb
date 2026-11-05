@@ -6,7 +6,9 @@
 # never from the theaters' money, plus the bills it has sent and not yet been
 # paid: a bill is earned in the month it covers, and whether it's paid is a
 # question of collecting it (Tim, 2026-11-01). The ledger itself stays cash,
-# since it has to match Stripe to the cent.
+# since it has to match Stripe to the cent. What CocoScout costs to run
+# outside Stripe (Amazon, Claude: CompanyExpense, from the Costs page) is
+# added on top the same way, each bill in the month it's for.
 class CocoScoutFinances
   PERIODS = {
     "this_month" => "This month", "last_month" => "Last month", "last_30_days" => "Last 30 days",
@@ -79,8 +81,24 @@ class CocoScoutFinances
 
   def unpaid_cents(kind = nil) = adjustment_cents(kind: kind, what: :unpaid)
 
+  # Bills paid outside Stripe for the months the period touches: Amazon,
+  # Claude, anything else on the Costs page. Only ones someone has checked.
+  def outside_costs
+    CompanyExpense.counted_in(range)
+  end
+
+  def outside_cost_cents
+    @outside_cost_cents ||= outside_costs.sum(:amount_cents)
+  end
+
+  # [["Amazon (hosting)", -cents], ...], biggest first.
+  def outside_cost_lines
+    outside_costs.group(:vendor, :category).sum(:amount_cents).sort_by { |_, cents| -cents }
+                 .map { |(vendor, category), cents| [ "#{vendor} (#{CompanyExpense.category_label(category).downcase})", -cents ] }
+  end
+
   def income_cents = by_type(:income).sum { |_, cents| cents } + adjustment_cents
-  def costs_cents = by_type(:cost).sum { |_, cents| cents }
+  def costs_cents = by_type(:cost).sum { |_, cents| cents } - outside_cost_cents
   def net_cents = income_cents + costs_cents
 
   # Profit and loss for the period, one stream at a time, so each stream's
@@ -129,7 +147,7 @@ class CocoScoutFinances
           [ "Bank-debit fees on payout runs and top-ups (we absorb them)", entries.where(entry_type: "funding_cost").sum(:amount_cents) ],
           [ "Stripe's processing on other charges", processing[:running] ],
           [ "Other Stripe income", income["other_income"] ]
-        ] ]
+        ] + outside_cost_lines ]
       ]
       list.filter_map do |key, name, lines|
         lines = lines.map { |label, cents| [ label, cents.to_i ] }.reject { |_, cents| cents.zero? }
@@ -141,8 +159,9 @@ class CocoScoutFinances
   # Earned, spent and kept, month by month, newest first, from the first
   # month with any money (at least twelve), the current one so far. Earned
   # counts bills sent and not yet paid; unpaid_cents says how much of it.
+  # Spent counts the bills paid outside Stripe, in the month each is for.
   def self.monthly(months: nil, now: Time.current, give_back: nil)
-    first = CocoScoutLedgerEntry.minimum(:occurred_at)
+    first = [ CocoScoutLedgerEntry.minimum(:occurred_at), CompanyExpense.confirmed.minimum(:period_month)&.in_time_zone ].compact.min
     months ||= [ first ? ((now.year * 12 + now.month) - (first.year * 12 + first.month) + 1) : 1, 12 ].max
     from = (now - (months - 1).months).beginning_of_month
     by_month = bill_adjustments(give_back: give_back).group_by { |at, *| at.to_date.beginning_of_month }
@@ -151,12 +170,13 @@ class CocoScoutFinances
     income = CocoScoutLedgerEntry.where(occurred_at: from..now, entry_type: CocoScoutLedgerEntry.types_in(:income)).group(month).sum(:amount_cents)
     costs = CocoScoutLedgerEntry.where(occurred_at: from..now, entry_type: CocoScoutLedgerEntry.types_in(:cost)).group(month).sum(:amount_cents)
     fees = CocoScoutLedgerEntry.where(occurred_at: from..now, entry_type: "ticket_fee").group(month).sum(:amount_cents)
+    outside = CompanyExpense.confirmed.where(period_month: from.to_date..now.to_date).group(:period_month).sum(:amount_cents)
     (0...months).map do |back|
       day = (now - back.months).to_date.beginning_of_month
       adjust = by_month.fetch(day, [])
       unpaid = adjust.select { |_, _, what, _| what == :unpaid }.sum(&:last)
       earned = income[day].to_i + adjust.sum(&:last)
-      spent = -costs[day].to_i
+      spent = -costs[day].to_i + outside[day].to_i
       { month: day, earned_cents: earned, spent_cents: spent, kept_cents: earned - spent, unpaid_cents: unpaid,
         tickets: fees[day].to_i / TicketPricing::PLATFORM_FEE_CENTS, partial: back.zero? }
     end

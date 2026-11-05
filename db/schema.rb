@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_04_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_05_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -520,6 +520,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_04_120000) do
     t.index ["organization_id"], name: "index_cocoscout_ledger_entries_on_organization_id"
     t.index ["source_type", "source_id", "entry_type"], name: "index_cocoscout_ledger_entries_on_source_and_type", unique: true
     t.index ["source_type", "source_id"], name: "index_cocoscout_ledger_entries_on_source"
+  end
+
+  create_table "company_expenses", force: :cascade do |t|
+    t.string "vendor", null: false
+    t.string "category", default: "other", null: false
+    t.string "description"
+    t.string "bill_number"
+    t.bigint "bill_total_cents", default: 0, null: false
+    t.decimal "share_percent", precision: 5, scale: 2, default: "100.0", null: false
+    t.bigint "amount_cents", default: 0, null: false
+    t.date "period_month"
+    t.date "billed_on"
+    t.date "paid_on"
+    t.string "paid_by", default: "company", null: false
+    t.jsonb "breakdown", default: [], null: false
+    t.text "note"
+    t.datetime "confirmed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["period_month"], name: "index_company_expenses_on_period_month"
+    t.index ["vendor", "bill_number"], name: "index_company_expenses_on_vendor_and_bill_number", unique: true, where: "(bill_number IS NOT NULL)"
   end
 
   create_table "content_templates", force: :cascade do |t|

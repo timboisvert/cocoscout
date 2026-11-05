@@ -1,5 +1,5 @@
-<%# The four Finances pages. locals: current (:cocoscout, :organizations, :subscriptions, :stripe) %>
-<% tabs = [ [ :cocoscout, "CocoScout", finances_path ], [ :organizations, "Organizations", finances_organizations_path ],
+<%# The five Finances pages. locals: current (:cocoscout, :costs, :organizations, :subscriptions, :stripe) %>
+<% tabs = [ [ :cocoscout, "CocoScout", finances_path ], [ :costs, "Costs", finances_costs_path ], [ :organizations, "Organizations", finances_organizations_path ],
             [ :subscriptions, "Subscriptions & bills", finances_subscriptions_path ], [ :stripe, "Stripe check", finances_stripe_check_path ] ] %>
 <nav class="mt-4 border-b border-gray-200 flex gap-6 overflow-x-auto">
   <% tabs.each do |key, label, path| %>

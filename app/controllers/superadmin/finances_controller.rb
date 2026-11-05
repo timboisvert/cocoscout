@@ -2,7 +2,7 @@
 
 # Superadmin Finances: CocoScout's own money, every organization's money,
 # the bills CocoScout sends, and the daily check against Stripe. Four pages
-# and an org page:
+# and an org page (a fifth, Costs, is Superadmin::CostsController):
 #
 #   /superadmin/finances                CocoScout: ours now, owed to us, owed back, profit by stream
 #   /superadmin/finances/organizations  each org: held, in flight, billed, paid us
@@ -23,7 +23,7 @@ module Superadmin
       respond_to do |format|
         format.html
         format.csv do
-          send_data ledger_csv(@finances.entries.includes(:organization).order(:occurred_at)),
+          send_data ledger_csv(@finances.entries.includes(:organization).order(:occurred_at), @finances.outside_costs.order(:period_month, :vendor, :id)),
                     filename: "cocoscout-ledger-#{@finances.period}-#{Date.current.iso8601}.csv", type: "text/csv"
         end
       end
@@ -210,13 +210,19 @@ module Superadmin
       @show_superadmin_sidebar = true
     end
 
-    def ledger_csv(entries)
+    # CocoScout's ledger for the period, then the bills paid outside Stripe
+    # (the Costs page), each dated to the month it's for.
+    def ledger_csv(entries, outside_costs = [])
       require "csv"
       CSV.generate do |csv|
         csv << [ "Date", "Kind", "Organization", "Amount", "Description" ]
         entries.find_each do |entry|
           csv << [ entry.occurred_at.in_time_zone.to_date.iso8601, entry.label, entry.organization&.name,
                    format("%.2f", entry.amount_cents / 100.0), entry.description ]
+        end
+        outside_costs.each do |bill|
+          csv << [ bill.period_month.iso8601, "#{bill.category_label} (paid outside Stripe)", nil, format("%.2f", -bill.amount_cents / 100.0),
+                   [ bill.vendor, bill.description, bill.bill_number ].compact.join(" ") ]
         end
       end
     end

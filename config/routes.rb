@@ -323,6 +323,15 @@ Rails.application.routes.draw do
 
     # Finances: CocoScout's money, every org's money, bills, and the Stripe check.
     get    "/finances",               to: "superadmin/finances#cocoscout",      as: "finances"
+    get    "/finances/costs",          to: "superadmin/costs#index",       as: "finances_costs"
+    post   "/finances/costs",          to: "superadmin/costs#create"
+    post   "/finances/costs/upload",   to: "superadmin/costs#upload",      as: "finances_costs_upload"
+    post   "/finances/costs/confirm_all", to: "superadmin/costs#confirm_all", as: "finances_costs_confirm_all"
+    get    "/finances/costs/export",   to: "superadmin/costs#export",      as: "finances_costs_export"
+    get    "/finances/costs/receipts", to: "superadmin/costs#receipts",    as: "finances_costs_receipts"
+    patch  "/finances/costs/:id",      to: "superadmin/costs#update",      as: "finances_cost"
+    delete "/finances/costs/:id",      to: "superadmin/costs#destroy"
+    get    "/finances/costs/:id/documents/:attachment_id", to: "superadmin/costs#document", as: "finances_cost_document"
     get    "/finances/organizations", to: "superadmin/finances#organizations",  as: "finances_organizations"
     get    "/finances/subscriptions", to: "superadmin/finances#subscriptions",  as: "finances_subscriptions"
     get    "/finances/stripe",        to: "superadmin/finances#stripe_check",   as: "finances_stripe_check"
