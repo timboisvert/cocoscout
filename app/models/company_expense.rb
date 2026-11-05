@@ -48,7 +48,10 @@ class CompanyExpense < ApplicationRecord
   scope :confirmed, -> { where.not(confirmed_at: nil) }
   scope :to_check, -> { where(confirmed_at: nil) }
   scope :for_year, ->(year) { where(period_month: Date.new(year.to_i, 1, 1)..Date.new(year.to_i, 12, 31)) }
-  scope :newest_first, -> { order(Arel.sql("period_month DESC NULLS FIRST"), :vendor, :id) }
+  # Newest month first, and within a month the latest paid first (the day
+  # it was billed when there's no paid day).
+  scope :newest_first, -> { order(Arel.sql("period_month DESC NULLS FIRST, COALESCE(paid_on, billed_on) DESC NULLS LAST, id DESC")) }
+  scope :oldest_first, -> { order(Arel.sql("period_month ASC, COALESCE(paid_on, billed_on) ASC NULLS LAST, id ASC")) }
 
   # Confirmed bills for the months a time range touches (nil: all of them).
   def self.counted_in(range)

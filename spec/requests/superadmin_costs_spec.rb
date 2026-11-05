@@ -88,6 +88,23 @@ RSpec.describe "Superadmin Finances - Costs", type: :request do
       expect(CompanyExpense.count).to eq(0)
     end
 
+    it "lists the bills newest first, by the day each was paid" do
+      bill = ->(vendor, month, paid) { CompanyExpense.create!(vendor: vendor, category: "software", bill_total_cents: 1_000, period_month: Date.new(2026, month, 1),
+                                                              paid_on: paid, bill_number: "#{vendor}-#{paid}", confirmed_at: Time.current) }
+      bill.call("GitHub", 10, Date.new(2026, 10, 2))
+      bill.call("Zed", 9, Date.new(2026, 9, 28))
+      bill.call("Anthropic", 10, Date.new(2026, 10, 20))
+      bill.call("Apple", 9, Date.new(2026, 9, 5))
+
+      expect(CompanyExpense.newest_first.pluck(:paid_on).map(&:day)).to eq([ 20, 2, 28, 5 ])
+      get finances_costs_path(year: 2026)
+      list = response.body[response.body.index("Every bill in 2026")..]
+      expect(%w[Anthropic-2026-10-20 GitHub-2026-10-02 Zed-2026-09-28 Apple-2026-09-05].map { |number| list.index(number) }).to eq(
+        %w[Anthropic-2026-10-20 GitHub-2026-10-02 Zed-2026-09-28 Apple-2026-09-05].map { |number| list.index(number) }.sort
+      )
+      expect(CSV.parse(CompanyExpenseExport.csv(2026), headers: true).map { |row| row["Paid on"] }).to eq(%w[2026-09-05 2026-09-28 2026-10-02 2026-10-20])
+    end
+
     it "doesn't nag about months a vendor has no bill for" do
       [ 1, 2, 4, 5 ].each do |month|
         CompanyExpense.create!(vendor: "Amazon", category: "hosting", bill_total_cents: 50_000, period_month: Date.new(2025, month, 1), confirmed_at: Time.current)

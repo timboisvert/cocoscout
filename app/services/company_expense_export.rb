@@ -11,7 +11,7 @@ class CompanyExpenseExport
   def self.basename(year) = "CocoScout costs #{year}"
 
   def self.bills(year)
-    CompanyExpense.confirmed.for_year(year).with_attached_documents.order(:period_month, :vendor, :id)
+    CompanyExpense.confirmed.for_year(year).with_attached_documents.oldest_first
   end
 
   def self.csv(year)
