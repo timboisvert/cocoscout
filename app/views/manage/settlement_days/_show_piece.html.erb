@@ -70,8 +70,9 @@
       <% by_site.each do |site| %>
         <%= sold_line.call(site[:label], site[:sold][:words], typed.call(site[:sold][:money])) %>
       <% end %>
+      <%# Zero until something is entered, said the way the line above says it; the amount opens the modal (Tim, 2026-11-05: "Enter" made no sense beside a zero). %>
       <% if piece.listing && piece.outside_sources.any? && by_site.empty? && editable %>
-        <%= line.call("Sold on other sites", "nothing entered", typed.call("Enter")) %>
+        <%= sold_line.call("Sold on other sites", [ "0 tickets" ], typed.call(money.call(0))) %>
       <% end %>
       <% if fin && fin.contractor_collected.to_f.positive? && !piece.non_revenue? %>
         <%= line.call("Collected by the contractor", "already in the tickets", typed.call(number_to_currency(fin.contractor_collected))) %>

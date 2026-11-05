@@ -175,7 +175,7 @@ RSpec.describe "Settle up", type: :request do
 
     get back
     expect(response.body).to include("Sold through CocoScout", "0 tickets</span>", "Sold on other sites", %(name="sales[#{tailor.id}][#{online.id}][tickets]"))
-    expect(response.body).not_to include("nothing entered yet", "Checked in", %(name="sales[#{tailor.id}][#{door.id}][tickets]"), %(name="sales[new][#{door.id}][tickets]"))
+    expect(response.body).not_to include("nothing entered", ">Enter<", "Checked in", %(name="sales[#{tailor.id}][#{door.id}][tickets]"), %(name="sales[new][#{door.id}][tickets]"))
 
     # Numbers already saved against the door's type stay in sight, each line saying its price.
     TicketOutsideSales.record!(listing, { tailor.id.to_s => { door.id.to_s => { "tickets" => "2", "amount" => "40" } } })
