@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_05_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_05_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2826,9 +2826,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_05_120000) do
     t.datetime "archived_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "past_codes", default: [], null: false, array: true
     t.index ["code"], name: "index_short_links_on_code", unique: true
     t.index ["created_by_id"], name: "index_short_links_on_created_by_id"
     t.index ["organization_id"], name: "index_short_links_on_organization_id"
+    t.index ["past_codes"], name: "index_short_links_on_past_codes", using: :gin
     t.index ["target_type", "target_id"], name: "index_short_links_canonical_per_target", unique: true, where: "((kind)::text = 'canonical'::text)"
     t.index ["target_type", "target_id"], name: "index_short_links_on_target_type_and_target_id"
   end

@@ -42,7 +42,7 @@ class TicketCheckout
     held = replacing.present? ? listing.ticket_orders.holding.find_by(token: replacing.to_s) : nil
     return held if held && same_request?(held, requests, discount)
 
-    short_link = via.present? ? ShortLink.live.where(organization: listing.organization).find_by(code: via.to_s.strip.upcase) : nil
+    short_link = via.present? ? ShortLink.live.where(organization: listing.organization).with_code(via).first : nil
     order = nil
     ActiveRecord::Base.transaction do
       # Expiring it now frees its seats for the new hold (Inventory ignores a
@@ -88,7 +88,7 @@ class TicketCheckout
 
     shares = pass.shares(rows)
     fee_mode = pass.fee_mode(rows)
-    short_link = via.present? ? ShortLink.live.where(organization: pass.organization).find_by(code: via.to_s.strip.upcase) : nil
+    short_link = via.present? ? ShortLink.live.where(organization: pass.organization).with_code(via).first : nil
     orders = []
     ActiveRecord::Base.transaction do
       # Shows locked in one order, so two buyers' passes can't deadlock.
