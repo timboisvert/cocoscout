@@ -56,7 +56,9 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
       expect(body).to include("$162.00", "Less bills sent, not collected yet", "Since we started")
       expect(body).to include("Owed to us", "Late", late.title, "$42.00", "Bills not yet paid")
       expect(body).to include("Tickets", "50¢ ticket fees (300 tickets)", "$150.00", "card processing on tickets", "less $80.00", "We kept", "$160.00")
-      expect(body).to include("Running CocoScout", "Stripe: Connect: Active Accounts", "Cost us", "$60.00")
+      expect(body).to include("platform fees", "Stripe: Connect: Active Accounts", "Cost us", "$60.00")
+      # Stripe's fees are their own kind of cost: $240 earned, $140 of it went on to Stripe.
+      expect(body).to include("Went on to Stripe", "$140.00", "Left after Stripe", "Building and running", "To Stripe")
       expect(body).to include("Month by month", "Bills sent in this period", "Pro plan", "Paid")
     end
 

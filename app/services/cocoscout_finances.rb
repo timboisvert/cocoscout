@@ -9,6 +9,16 @@
 # since it has to match Stripe to the cent. What CocoScout costs to run
 # outside Stripe (Amazon, Claude: CompanyExpense, from the Costs page) is
 # added on top the same way, each bill in the month it's for.
+#
+# Two kinds of cost, kept apart (Tim, 2026-11-05):
+#   Stripe's fees          tied to payments. The money came in with a
+#                          payment and part of it went on to Stripe; with
+#                          no payments there are none.
+#   building and running   Amazon, Claude, GitHub: what it costs to bring
+#                          CocoScout into existence and keep it up, owed
+#                          with or without a single payment.
+# Earned less Stripe's fees is what payments left us (#after_stripe_cents);
+# less building and running is profit (#net_cents).
 class CocoScoutFinances
   PERIODS = {
     "this_month" => "This month", "last_month" => "Last month", "last_30_days" => "Last 30 days",
@@ -91,20 +101,36 @@ class CocoScoutFinances
     @outside_cost_cents ||= outside_costs.sum(:amount_cents)
   end
 
-  # [["Amazon (hosting)", -cents], ...], biggest first.
-  def outside_cost_lines
-    outside_costs.group(:vendor, :category).sum(:amount_cents).sort_by { |_, cents| -cents }
-                 .map { |(vendor, category), cents| [ "#{vendor} (#{CompanyExpense.category_label(category).downcase})", -cents ] }
+  # Building and running CocoScout, in its two parts, each vendor a line:
+  #   [{ key: :building, name:, lines: [["Anthropic (Claude)", cents], ...], cents: }, { key: :running, ... }]
+  # Positive cents; a part with nothing in it is left out.
+  def fixed_costs
+    @fixed_costs ||= begin
+      sums = outside_costs.group(:vendor, :category).sum(:amount_cents)
+      CompanyExpense::PARTS.filter_map do |key, name|
+        lines = sums.select { |(_, category), _| CompanyExpense.part_of(category) == key }.sort_by { |_, cents| -cents }
+                    .map { |(vendor, category), cents| [ "#{vendor} (#{CompanyExpense.category_label(category).downcase})", cents ] }
+        { key: key, name: name, lines: lines, cents: lines.sum(&:last) } if lines.any?
+      end
+    end
   end
 
   def income_cents = by_type(:income).sum { |_, cents| cents } + adjustment_cents
-  def costs_cents = by_type(:cost).sum { |_, cents| cents } - outside_cost_cents
+
+  # Stripe's fees for the period, below zero: tied to payments.
+  def stripe_costs_cents = by_type(:cost).sum { |_, cents| cents }
+
+  # What payments left us: earned, less what went on to Stripe.
+  def after_stripe_cents = income_cents + stripe_costs_cents
+
+  # Every cost, below zero: Stripe's fees and building and running.
+  def costs_cents = stripe_costs_cents - outside_cost_cents
   def net_cents = income_cents + costs_cents
 
-  # Profit and loss for the period, one stream at a time, so each stream's
-  # earnings sit beside what Stripe charged to bring them in. Every income
-  # and cost entry lands in exactly one stream, so the streams' nets add up
-  # to #net_cents.
+  # What payments left us for the period, one stream at a time, so each
+  # stream's earnings sit beside what Stripe charged to bring them in. Every
+  # income and Stripe cost entry lands in exactly one stream, so the streams'
+  # nets add up to #after_stripe_cents. Building and running is #fixed_costs.
   #
   #   [{ key:, name:, lines: [[label, cents], ...], net_cents: }, ...]
   def streams
@@ -143,11 +169,11 @@ class CocoScoutFinances
           [ "Usage bills paid with credit given earlier", adjustment_cents(kind: "usage", what: :credit, sign: :more) ],
           [ "Stripe's processing on those bills", processing[:usage] ]
         ] ],
-        [ :running, "Running CocoScout", stripe_fee_lines + [
+        [ :running, "Stripe's platform fees", stripe_fee_lines + [
           [ "Bank-debit fees on payout runs and top-ups (we absorb them)", entries.where(entry_type: "funding_cost").sum(:amount_cents) ],
           [ "Stripe's processing on other charges", processing[:running] ],
           [ "Other Stripe income", income["other_income"] ]
-        ] + outside_cost_lines ]
+        ] ]
       ]
       list.filter_map do |key, name, lines|
         lines = lines.map { |label, cents| [ label, cents.to_i ] }.reject { |_, cents| cents.zero? }
@@ -159,7 +185,9 @@ class CocoScoutFinances
   # Earned, spent and kept, month by month, newest first, from the first
   # month with any money (at least twelve), the current one so far. Earned
   # counts bills sent and not yet paid; unpaid_cents says how much of it.
-  # Spent counts the bills paid outside Stripe, in the month each is for.
+  # Spent is in two parts: stripe_cents (fees tied to payments) and
+  # fixed_cents (building and running, each bill in the month it's for);
+  # after_stripe_cents is what payments left before building and running.
   def self.monthly(months: nil, now: Time.current, give_back: nil)
     first = [ CocoScoutLedgerEntry.minimum(:occurred_at), CompanyExpense.confirmed.minimum(:period_month)&.in_time_zone ].compact.min
     months ||= [ first ? ((now.year * 12 + now.month) - (first.year * 12 + first.month) + 1) : 1, 12 ].max
@@ -176,8 +204,11 @@ class CocoScoutFinances
       adjust = by_month.fetch(day, [])
       unpaid = adjust.select { |_, _, what, _| what == :unpaid }.sum(&:last)
       earned = income[day].to_i + adjust.sum(&:last)
-      spent = -costs[day].to_i + outside[day].to_i
-      { month: day, earned_cents: earned, spent_cents: spent, kept_cents: earned - spent, unpaid_cents: unpaid,
+      stripe = -costs[day].to_i
+      fixed = outside[day].to_i
+      spent = stripe + fixed
+      { month: day, earned_cents: earned, stripe_cents: stripe, after_stripe_cents: earned - stripe, fixed_cents: fixed,
+        spent_cents: spent, kept_cents: earned - spent, unpaid_cents: unpaid,
         tickets: fees[day].to_i / TicketPricing::PLATFORM_FEE_CENTS, partial: back.zero? }
     end
   end

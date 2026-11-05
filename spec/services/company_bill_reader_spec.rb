@@ -105,7 +105,7 @@ RSpec.describe CompanyBillReader do
   it "reads an Anthropic receipt: the receipt number, what was paid, and the day" do
     result = described_class.from_text(anthropic)
     expect(result).to be_complete
-    expect(result.attributes).to include(vendor: "Anthropic", category: "software", bill_number: "2069-5479-2866", bill_total_cents: 18_118,
+    expect(result.attributes).to include(vendor: "Anthropic", category: "development", bill_number: "2069-5479-2866", bill_total_cents: 18_118,
                                          period_month: Date.new(2026, 10, 1), paid_on: Date.new(2026, 10, 20))
   end
 
@@ -124,7 +124,7 @@ RSpec.describe CompanyBillReader do
     TEXT
     result = described_class.from_text(receipt)
     expect(result).to be_complete
-    expect(result.attributes).to include(vendor: "GitHub", category: "software", description: "GitHub Copilot Pro", bill_number: "6XK29ALQ",
+    expect(result.attributes).to include(vendor: "GitHub", category: "development", description: "GitHub Copilot Pro", bill_number: "6XK29ALQ",
                                          bill_total_cents: 1_070, period_month: Date.new(2026, 3, 1), paid_on: Date.new(2026, 3, 15))
 
     table = "GitHub Receipt\nDate 2026-02-15\nAccount billed timboisvert\nItem GitHub Copilot $10.00\nTotal $10.00 USD\nTransaction ID ch_3Abc9\n"

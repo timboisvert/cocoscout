@@ -137,32 +137,41 @@ RSpec.describe "Superadmin Finances - Costs", type: :request do
       expect(response.body).not_to include("Missing from")
     end
 
-    it "counts confirmed bills in Spent and Profit on the CocoScout page, in the month each is for, and not in what's ours in Stripe" do
+    it "counts confirmed bills on the CocoScout page as building and running, apart from Stripe's fees, in the month each is for" do
       this_month = Date.current.beginning_of_month
       CocoScoutLedgerEntry.create!(entry_type: "subscription", amount_cents: 100_000, occurred_at: Time.current)
       CocoScoutLedgerEntry.create!(entry_type: "stripe_fee", amount_cents: -5_000, occurred_at: Time.current, description: "Connect: Active Accounts")
       CompanyExpense.create!(vendor: "Amazon", category: "hosting", bill_total_cents: 30_000, period_month: this_month, confirmed_at: Time.current)
-      CompanyExpense.create!(vendor: "Anthropic", category: "software", bill_total_cents: 23_000, share_percent: 50, paid_by: "reimbursed",
+      CompanyExpense.create!(vendor: "Anthropic", category: "development", bill_total_cents: 23_000, share_percent: 50, paid_by: "reimbursed",
                              period_month: this_month.prev_month, confirmed_at: Time.current)
       CompanyExpense.create!(vendor: "Amazon", category: "hosting", bill_total_cents: 77_700, period_month: this_month)
 
       finances = CocoScoutFinances.new("this_month")
-      expect(finances.costs_cents).to eq(-35_000)
-      expect(finances.net_cents).to eq(65_000)
-      expect(finances.streams.sum { |stream| stream[:net_cents] }).to eq(65_000)
-      expect(finances.streams.find { |stream| stream[:key] == :running }[:lines]).to include([ "Amazon (hosting)", -30_000 ])
+      # Earned $1,000; $50 went on to Stripe, leaving $950; Amazon's $300 is owed either way.
+      expect(finances).to have_attributes(stripe_costs_cents: -5_000, after_stripe_cents: 95_000, outside_cost_cents: 30_000, costs_cents: -35_000, net_cents: 65_000)
+      expect(finances.streams.sum { |stream| stream[:net_cents] }).to eq(95_000)
+      expect(finances.streams.flat_map { |stream| stream[:lines] }.map(&:first)).not_to include("Amazon (hosting)")
+      expect(finances.fixed_costs).to eq([ { key: :running, name: "Keeping it running", lines: [ [ "Amazon (hosting)", 30_000 ] ], cents: 30_000 } ])
+      expect(CocoScoutFinances.new("all_time").fixed_costs.map { |part| [ part[:key], part[:cents] ] }).to eq([ [ :building, 11_500 ], [ :running, 30_000 ] ])
 
       monthly = CocoScoutFinances.monthly.index_by { |row| row[:month] }
-      expect(monthly[this_month]).to include(spent_cents: 35_000, kept_cents: 65_000)
-      expect(monthly[this_month.prev_month]).to include(spent_cents: 11_500, kept_cents: -11_500)
+      expect(monthly[this_month]).to include(stripe_cents: 5_000, after_stripe_cents: 95_000, fixed_cents: 30_000, spent_cents: 35_000, kept_cents: 65_000)
+      expect(monthly[this_month.prev_month]).to include(stripe_cents: 0, fixed_cents: 11_500, spent_cents: 11_500, kept_cents: -11_500)
 
       money = CocoScoutMoneyNow.new(check: nil)
       expect(money.profit_cents).to eq(100_000 - 5_000 - 30_000 - 11_500)
       expect(money.ours_in_stripe_cents).to eq(95_000)
 
       get finances_path
-      expect(response.body).to include("Plus costs paid from our bank, not from Stripe", "$415.00", "Amazon (hosting)", "less $300.00",
-                                       "1 uploaded bill", "counted yet")
+      expect(response.body).to include("Plus costs paid from our bank, not from Stripe", "$415.00", "1 uploaded bill", "counted yet")
+      expect(response.body).to include("Went on to Stripe", "$50.00", "Left after Stripe", "$950.00", "95% of what we earned",
+                                       "Building and running CocoScout", "Keeping it running", "Amazon (hosting)", "$300.00", "$650.00")
+
+      get finances_path(period: "all_time")
+      expect(response.body).to include("Building it", "Anthropic (development tools)", "$115.00")
+
+      get finances_month_path(month: this_month.strftime("%Y-%m"))
+      expect(response.body).to include("Building and running CocoScout", "Amazon (hosting)")
 
       get finances_path(period: "this_month", format: :csv)
       expect(response.body).to include("Hosting (paid outside Stripe)", "-300.00")

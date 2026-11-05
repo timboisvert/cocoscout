@@ -10,9 +10,10 @@
       </button>
     </div>
     <div class="px-6 py-5 overflow-y-auto">
-      <div class="grid grid-cols-3 gap-3 text-sm">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
         <div class="rounded-lg border border-gray-200 p-3"><div class="text-gray-600">Earned</div><div class="text-lg font-bold tabular-nums text-gray-900"><%= usd(row[:earned_cents]) %></div></div>
-        <div class="rounded-lg border border-gray-200 p-3"><div class="text-gray-600">Spent</div><div class="text-lg font-bold tabular-nums text-gray-900"><%= usd(row[:spent_cents]) %></div></div>
+        <div class="rounded-lg border border-gray-200 p-3"><div class="text-gray-600">To Stripe</div><div class="text-lg font-bold tabular-nums text-gray-900"><%= usd(row[:stripe_cents]) %></div></div>
+        <div class="rounded-lg border border-gray-200 p-3"><div class="text-gray-600">Building and running</div><div class="text-lg font-bold tabular-nums text-gray-900"><%= usd(row[:fixed_cents]) %></div></div>
         <div class="rounded-lg border <%= row[:kept_cents].negative? ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50' %> p-3">
           <div class="text-gray-600"><%= row[:kept_cents].negative? ? "Lost" : "Profit" %></div>
           <div class="text-lg font-bold tabular-nums text-gray-900"><%= usd(row[:kept_cents].abs) %></div>

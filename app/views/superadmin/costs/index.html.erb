@@ -13,7 +13,7 @@
 
   <p class="mt-4 text-sm text-gray-600 max-w-3xl">
     What CocoScout costs to run that never passes through Stripe: Amazon, Claude, and anything else Coco Runs Everything pays for it.
-    Each bill counts in the month it's for, in Spent and Profit on <%= link_to "CocoScout", finances_path, class: "text-pink-600 hover:underline" %>.
+    Each bill counts in the month it's for, under Building and running on <%= link_to "CocoScout", finances_path, class: "text-pink-600 hover:underline" %>, apart from Stripe's fees.
     This is CocoScout only; the company's other business isn't here.
   </p>
 
@@ -223,7 +223,7 @@
       <%= render "superadmin/costs/form_modal", id: "cost-#{bill.id}-edit", expense: bill, vendors: @known_vendors,
             title: "#{bill.vendor}, #{bill.period_month.strftime('%B %Y')}", url: finances_cost_path(bill), method: :patch, submit_text: "Save" %>
       <%= render "shared/confirm_modal", id: "cost-#{bill.id}-remove", title: "Remove this bill?",
-            message: "#{h(bill.vendor)}, #{usd(bill.amount_cents)} for #{bill.period_month.strftime('%B %Y')}, stops counting in Spent and its files go.",
+            message: "#{h(bill.vendor)}, #{usd(bill.amount_cents)} for #{bill.period_month.strftime('%B %Y')}, stops counting and its files go.",
             confirm_text: "Remove", url: finances_cost_path(bill), method: :delete %>
     <% end %>
   <% end %>

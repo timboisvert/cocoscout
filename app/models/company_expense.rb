@@ -20,12 +20,18 @@
 class CompanyExpense < ApplicationRecord
   CATEGORIES = {
     "hosting" => "Hosting",
+    "development" => "Development tools",
     "software" => "Software and subscriptions",
     "programs" => "Developer programs and licenses",
     "professional" => "Legal and professional",
     "marketing" => "Marketing",
     "other" => "Other"
   }.freeze
+
+  # The two parts of building and running CocoScout: what goes into making
+  # it (Claude, Copilot), and everything that keeps it up and in business.
+  PARTS = { building: "Building it", running: "Keeping it running" }.freeze
+  BUILDING_CATEGORIES = %w[development].freeze
 
   PAID_BY = {
     "company" => "Coco Runs Everything paid it",
@@ -61,6 +67,10 @@ class CompanyExpense < ApplicationRecord
     confirmed.where(period_month: range.first.to_date.beginning_of_month..range.last.to_date)
   end
 
+  def self.part_of(category)
+    BUILDING_CATEGORIES.include?(category.to_s) ? :building : :running
+  end
+
   def self.category_label(key)
     CATEGORIES.fetch(key.to_s, key.to_s.humanize)
   end
@@ -74,6 +84,7 @@ class CompanyExpense < ApplicationRecord
   # Has its total and its month: it can count once it's confirmed.
   def ready? = !bill_total_cents.nil? && period_month.present?
   def category_label = self.class.category_label(category)
+  def part = self.class.part_of(category)
   def paid_by_label = PAID_BY.fetch(paid_by, paid_by.to_s.humanize)
   def partial_share? = share_percent.to_d < 100
 

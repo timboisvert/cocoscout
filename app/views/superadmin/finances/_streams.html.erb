@@ -2,7 +2,7 @@
 <% cols = local_assigns.fetch(:columns, 2) %>
 <% streams = finances.streams %>
   <% if streams.empty? %>
-    <p class="mt-4 text-sm text-gray-500">Nothing earned or spent in this period.</p>
+    <p class="mt-4 text-sm text-gray-500">Nothing came in, or went to Stripe, in this period.</p>
   <% else %>
     <div class="mt-4 grid grid-cols-1 <%= cols == 2 ? 'lg:grid-cols-2' : '' %> gap-4">
       <% streams.each do |stream| %>

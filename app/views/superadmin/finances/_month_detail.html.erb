@@ -2,6 +2,7 @@
 <%= turbo_frame_tag "month-detail-#{finances.period}" do %>
   <h4 class="mt-5 text-sm font-semibold text-gray-900">Where it came from and where it went</h4>
   <%= render "superadmin/finances/streams", finances: finances, columns: 1 %>
+  <%= render "superadmin/finances/fixed_costs", finances: finances %>
   <% payers = finances.by_organization %>
   <% if payers.any? %>
     <h4 class="mt-5 text-sm font-semibold text-gray-900">Who paid us in <%= finances.label.split.first %></h4>

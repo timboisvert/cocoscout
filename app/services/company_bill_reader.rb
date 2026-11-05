@@ -104,7 +104,7 @@ class CompanyBillReader
   def anthropic
     paid = date_after(/Date paid/i) || date_after(/paid on/i) || date_after(/Date of issue/i)
     {
-      vendor: "Anthropic", category: "software", description: "Claude",
+      vendor: "Anthropic", category: "development", description: "Claude",
       bill_number: @flat[/Receipt number\s+([A-Z0-9-]+)/i, 1] || @flat[/Invoice number\s+([A-Z0-9-]+)/i, 1],
       bill_total_cents: money_after(/Amount paid/i) || @flat.match(/#{MONEY.source}\s+paid on/i)&.then { |m| cents(m[1] || m[2], m[3]) } ||
                         money_after(/Amount due/i) || money_after(/^\s*Total/i),
@@ -120,7 +120,7 @@ class CompanyBillReader
     paid = date_after(/\bDate:?/) || first_date
     plan = @flat[/(Copilot[A-Za-z+ ]{0,24}?)(?=\s+(?:-|–|\(|\$|Month|Year|Qty|\d)|\s*$)/i, 1]&.squish
     {
-      vendor: "GitHub", category: "software", description: plan ? "GitHub #{plan}" : "GitHub",
+      vendor: "GitHub", category: "development", description: plan ? "GitHub #{plan}" : "GitHub",
       bill_number: @flat[/(?:Transaction|Order|Receipt|Invoice) (?:ID|number|no\.?|#):?\s*([A-Za-z0-9_-]{4,})/i, 1],
       bill_total_cents: money_after(/\bTotal(?: paid| charged)?:?/) || money_after(/Amount(?: paid| charged)?:?/),
       period_month: paid&.beginning_of_month,
