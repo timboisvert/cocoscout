@@ -26,7 +26,6 @@ module Superadmin
       last = @year == Date.current.year ? Date.current.month : 12
       @months = (1..last).map { |month| Date.new(@year, month, 1) }
       @by_month = @bills.group_by(&:period_month)
-      @missing = CompanyExpense.missing_months(@year)
       @known_vendors = CompanyExpense.distinct.order(:vendor).pluck(:vendor)
     end
 

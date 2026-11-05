@@ -65,19 +65,6 @@ class CompanyExpense < ApplicationRecord
     ((confirmed.pluck(Arel.sql("DISTINCT EXTRACT(YEAR FROM period_month)::int")).compact + [ Date.current.year ]).uniq).sort.reverse
   end
 
-  # Months of a year (through last month) where a vendor billed most months
-  # and one is missing: [[vendor, [Date, ...]], ...].
-  def self.missing_months(year, today: Date.current)
-    months = (1..12).map { |m| Date.new(year.to_i, m, 1) }.select { |day| day < today.beginning_of_month }
-    for_year(year).confirmed.group_by(&:vendor).filter_map do |vendor, bills|
-      have = bills.map(&:period_month).uniq
-      next if have.size < 3
-
-      missing = months.select { |day| day > have.min && !have.include?(day) }
-      [ vendor, missing ] if missing.any?
-    end
-  end
-
   def confirmed? = confirmed_at.present?
   def category_label = self.class.category_label(category)
   def paid_by_label = PAID_BY.fetch(paid_by, paid_by.to_s.humanize)

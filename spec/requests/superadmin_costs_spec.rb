@@ -88,12 +88,13 @@ RSpec.describe "Superadmin Finances - Costs", type: :request do
       expect(CompanyExpense.count).to eq(0)
     end
 
-    it "says which months a regular bill is missing for" do
+    it "doesn't nag about months a vendor has no bill for" do
       [ 1, 2, 4, 5 ].each do |month|
         CompanyExpense.create!(vendor: "Amazon", category: "hosting", bill_total_cents: 50_000, period_month: Date.new(2025, month, 1), confirmed_at: Time.current)
       end
       get finances_costs_path(year: 2025)
-      expect(response.body).to include("Missing from 2025", "Amazon: March")
+      expect(response.body).to include("Every bill in 2025")
+      expect(response.body).not_to include("Missing from")
     end
 
     it "counts confirmed bills in Spent and Profit on the CocoScout page, in the month each is for, and not in what's ours in Stripe" do

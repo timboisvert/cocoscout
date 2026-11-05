@@ -119,14 +119,6 @@
     </div>
   </div>
 
-  <% if @missing.any? %>
-    <div class="mt-4">
-      <%= render "shared/alert_panel", tone: :amber, eyebrow: "Missing from #{@year}",
-            headline: @missing.map { |vendor, months| "#{vendor}: #{months.map { |month| month.strftime('%B') }.to_sentence}" }.join("; "),
-            body: "These bill most months and have none for these. Upload them so the year is whole." %>
-    </div>
-  <% end %>
-
   <%# Month by month, a column for each vendor: how the costs have grown. %>
   <div class="mt-4 rounded-lg border border-gray-200 bg-white overflow-x-auto">
     <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Month by month</h2>
