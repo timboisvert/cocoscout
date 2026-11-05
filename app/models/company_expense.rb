@@ -6,7 +6,8 @@
 # match Stripe to the cent, never sees it. CocoScoutFinances and
 # CocoScoutMoneyNow add these on top, so Spent and Profit are whole.
 #
-#   bill_total_cents  what the bill says
+#   bill_total_cents  what the bill says; nil until it's known, and $0
+#                     is a real total (a month Amazon's credits paid)
 #   share_percent     how much of it is CocoScout's (a reimbursed Claude
 #                     receipt is 50%)
 #   amount_cents      the cost to CocoScout: the total times the share
@@ -38,12 +39,12 @@ class CompanyExpense < ApplicationRecord
   validates :vendor, presence: true
   validates :category, inclusion: { in: CATEGORIES.keys }
   validates :paid_by, inclusion: { in: PAID_BY.keys }
-  validates :bill_total_cents, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
+  validates :bill_total_cents, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validates :share_percent, numericality: { greater_than: 0, less_than_or_equal_to: 100 }
   validates :bill_number, uniqueness: { scope: :vendor, allow_nil: true, message: "is already here for this vendor" }
   # A bill that counts needs its amount and its month.
   validates :period_month, presence: { message: "is needed: which month is it for?" }, if: :confirmed?
-  validates :bill_total_cents, numericality: { greater_than: 0, message: "is needed" }, if: :confirmed?
+  validates :bill_total_cents, presence: { message: "is needed (0 for a bill that charged nothing)" }, if: :confirmed?
 
   scope :confirmed, -> { where.not(confirmed_at: nil) }
   scope :to_check, -> { where(confirmed_at: nil) }
@@ -69,6 +70,9 @@ class CompanyExpense < ApplicationRecord
   end
 
   def confirmed? = confirmed_at.present?
+
+  # Has its total and its month: it can count once it's confirmed.
+  def ready? = !bill_total_cents.nil? && period_month.present?
   def category_label = self.class.category_label(category)
   def paid_by_label = PAID_BY.fetch(paid_by, paid_by.to_s.humanize)
   def partial_share? = share_percent.to_d < 100

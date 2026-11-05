@@ -60,6 +60,48 @@ RSpec.describe CompanyBillReader do
                                                   [ "Amazon Simple Storage Service", 15_000 ] ])
   end
 
+  # Amazon's own layout, as its PDFs read: amounts as "USD 139.46", a
+  # Savings Plan line under a service, and credits that can pay the lot.
+  it "reads Amazon's real layout, and a month its credits paid in full is a real $0" do
+    invoice = <<~TEXT
+                                           Amazon Web Services, Inc. Invoice
+      Account number:
+      111122223333                         Invoice Summary
+      Bill to Address:                     Invoice Number:                         2896000001
+                                           Invoice Date:                    November 1 , 2026
+                                           TOTAL AMOUNT DUE ON November 1 , 2026   USD 139.46
+      This invoice is for the billing period October 1 - October 31 , 2026
+       Summary
+         AWS Service Charges                                                USD 139.46
+            Charges                                                         USD 171.50
+            Savings Plan (Charges covered by Savings Plans)                 -USD 50.00
+            Credits                                                           USD 0.00
+            Tax                                                              USD 17.96
+       Total for this invoice                                               USD 139.46
+       Detail
+         AWS Key Management Service                                           USD 0.00
+            Charges                                                           USD 0.00
+         Elastic Load Balancing                                              USD 19.37
+            Charges                                                          USD 16.84
+            Estimated US sales tax to be collected                            USD 2.53
+         Amazon Elastic Compute Cloud                                       USD 120.09
+            Charges                                                         USD 154.66
+            Savings Plan (Charges covered by Savings Plans)                 -USD 50.00
+            Estimated US sales tax to be collected                           USD 15.43
+      * May include estimated US sales tax, VAT, ST, GST and CT.
+    TEXT
+    result = described_class.from_text(invoice)
+    expect(result).to be_complete
+    expect(result.attributes).to include(bill_number: "2896000001", bill_total_cents: 13_946, period_month: Date.new(2026, 10, 1), billed_on: Date.new(2026, 11, 1))
+    expect(result.attributes[:breakdown]).to eq([ [ "Elastic Load Balancing", 1_937 ], [ "Amazon Elastic Compute Cloud", 12_009 ] ])
+    expect(result.attributes).not_to have_key(:note)
+
+    free = invoice.gsub("USD 139.46", "USD 0.00").sub("Credits                                                           USD 0.00", "Credits   -USD 117.51")
+    result = described_class.from_text(free)
+    expect(result).to be_complete
+    expect(result.attributes).to include(bill_total_cents: 0, note: "Amazon credits covered $117.51 of this month.")
+  end
+
   it "reads an Anthropic receipt: the receipt number, what was paid, and the day" do
     result = described_class.from_text(anthropic)
     expect(result).to be_complete

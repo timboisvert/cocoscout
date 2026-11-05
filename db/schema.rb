@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_05_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_05_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -527,7 +527,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_05_130000) do
     t.string "category", default: "other", null: false
     t.string "description"
     t.string "bill_number"
-    t.bigint "bill_total_cents", default: 0, null: false
+    t.bigint "bill_total_cents"
     t.decimal "share_percent", precision: 5, scale: 2, default: "100.0", null: false
     t.bigint "amount_cents", default: 0, null: false
     t.date "period_month"

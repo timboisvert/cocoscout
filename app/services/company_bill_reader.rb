@@ -11,13 +11,14 @@
 # (Copilot). Anything else gets a best guess at the total and the date,
 # and the rest is typed in.
 class CompanyBillReader
-  MONEY = /(?:USD\s*)?(-?)\$\s?([\d,]+\.\d{2})/
+  # "$1,284.37", "-$12.00", and Amazon's "USD 139.46" and "-USD 50.00".
+  MONEY = /(-)?(?:USD\s?|\$\s?)(-)?([\d,]+\.\d{2})/
   DATE = /([A-Z][a-z]+)\.?\s+(\d{1,2})\s*,\s*(\d{4})/
   # GitHub writes its dates "2026-01-15" or "15 Jan 2026".
   ISO_DATE = /(\d{4})-(\d{2})-(\d{2})/
   DAY_FIRST_DATE = /(\d{1,2})\s+([A-Z][a-z]+)\.?,?\s+(\d{4})/
   # Lines in an Amazon invoice's Detail that are parts of a service, not one.
-  NOT_A_SERVICE = /\A(charges|credits?|tax|vat|gst|ct|total|net charges|subtotal|discounts?|estimated|usage|summary|detail|aws service charges)\b/i
+  NOT_A_SERVICE = /\A(charges|credits?|tax|vat|gst|ct|total|net charges|subtotal|discounts?|estimated|usage|summary|detail|aws service charges|savings plan \()/i
 
   Result = Data.define(:attributes, :found) do
     # Enough was read to count the bill once it's confirmed.
@@ -50,7 +51,7 @@ class CompanyBillReader
     else other
     end
     found = []
-    found << :total if attrs[:bill_total_cents].to_i.positive?
+    found << :total if attrs[:bill_total_cents]
     found << :month if attrs[:period_month]
     found << :number if attrs[:bill_number]
     Result.new(attributes: attrs.compact, found: found)
@@ -60,13 +61,17 @@ class CompanyBillReader
 
   def amazon
     billed = date_after(/Invoice Date:?/i)
+    credits = money_after(/^\s*Credits/)
     {
       vendor: "Amazon", category: "hosting", description: "Amazon Web Services",
       bill_number: @flat[/Invoice Number:?\s*([A-Z0-9-]+)/i, 1],
-      bill_total_cents: money_after(/Total for this invoice/i) || money_after(/TOTAL AMOUNT DUE[^$\n]*/i) || money_after(/AWS Service Charges/i),
+      bill_total_cents: money_after(/Total for this invoice/i) || money_after(/TOTAL AMOUNT DUE ON/i) || money_after(/AWS Service Charges/i),
       period_month: amazon_period || billed&.beginning_of_month,
       billed_on: billed,
-      breakdown: amazon_services
+      breakdown: amazon_services,
+      # A bill Amazon's credits paid, in part or in full, says so: the
+      # total is what was charged, not what the month would have cost.
+      note: (ActiveSupport::NumberHelper.number_to_currency(credits.abs / 100.0).then { |amount| "Amazon credits covered #{amount} of this month." } if credits.to_i.nonzero?)
     }
   end
 
@@ -89,7 +94,8 @@ class CompanyBillReader
       match = line.match(/\A(.+?)\s+#{MONEY.source}\z/)
       next unless match && !match[1].match?(NOT_A_SERVICE) && match[1].match?(/[A-Za-z]{3}/)
 
-      [ match[1].squish, cents(match[2], match[3]) ]
+      amount = cents(match[2] || match[3], match[4])
+      [ match[1].squish, amount ] if amount.nonzero?
     end
   end
 
@@ -100,7 +106,7 @@ class CompanyBillReader
     {
       vendor: "Anthropic", category: "software", description: "Claude",
       bill_number: @flat[/Receipt number\s+([A-Z0-9-]+)/i, 1] || @flat[/Invoice number\s+([A-Z0-9-]+)/i, 1],
-      bill_total_cents: money_after(/Amount paid/i) || @flat.match(/#{MONEY.source}\s+paid on/i)&.then { |m| cents(m[1], m[2]) } ||
+      bill_total_cents: money_after(/Amount paid/i) || @flat.match(/#{MONEY.source}\s+paid on/i)&.then { |m| cents(m[1] || m[2], m[3]) } ||
                         money_after(/Amount due/i) || money_after(/^\s*Total/i),
       period_month: paid&.beginning_of_month,
       billed_on: paid, paid_on: (paid if @flat.match?(/Date paid|paid on/i))
@@ -136,8 +142,8 @@ class CompanyBillReader
 
   # The first amount after a label, on the same line or the next.
   def money_after(label)
-    match = @flat.match(Regexp.new("(?i:#{label.source})[^\\n$]{0,80}\\n?[^\\n$]{0,40}#{MONEY.source}"))
-    match && cents(match[-2], match[-1])
+    match = @flat.match(Regexp.new("(?i:#{label.source})[^\\n$]{0,80}?\\n?[^\\n$]{0,40}?#{MONEY.source}"))
+    match && cents(match[-3] || match[-2], match[-1])
   end
 
   # The first date after a label on its line, however it's written.

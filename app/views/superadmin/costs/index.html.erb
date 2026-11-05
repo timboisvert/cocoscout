@@ -1,7 +1,7 @@
 <% content_for :title, "Costs" %>
 <% total = @bills.sum(&:amount_cents) %>
 <% month_totals = @months.to_h { |month| [ month, @by_month.fetch(month, []).sum(&:amount_cents) ] } %>
-<% busy_months = month_totals.select { |_, cents| cents.positive? } %>
+<% busy_months = month_totals.select { |month, _| @by_month.key?(month) } %>
 <% latest, latest_cents = busy_months.max_by { |month, _| month } %>
 <% before = latest && busy_months.select { |month, _| month < latest }.max_by { |month, _| month } %>
 
@@ -48,9 +48,9 @@
             <div class="flex flex-wrap items-baseline justify-between gap-2 mb-3">
               <div class="text-sm text-gray-900 font-medium">
                 <%= expense.vendor %>
-                <% if expense.bill_total_cents.positive? %><span class="tabular-nums"><%= usd(expense.amount_cents) %></span><% else %><span class="text-amber-700">no total read</span><% end %>
+                <% if expense.bill_total_cents %><span class="tabular-nums"><%= usd(expense.amount_cents) %></span><% else %><span class="text-amber-700">no total read</span><% end %>
                 <% if expense.period_month %>for <%= expense.period_month.strftime("%B %Y") %><% else %><span class="text-amber-700">no month read</span><% end %>
-                <% if expense.partial_share? && expense.bill_total_cents.positive? %><span class="text-xs font-normal text-gray-500">(<%= number_with_precision(expense.share_percent, strip_insignificant_zeros: true) %>% of <%= usd(expense.bill_total_cents) %>)</span><% end %>
+                <% if expense.partial_share? && expense.bill_total_cents.to_i.positive? %><span class="text-xs font-normal text-gray-500">(<%= number_with_precision(expense.share_percent, strip_insignificant_zeros: true) %>% of <%= usd(expense.bill_total_cents) %>)</span><% end %>
               </div>
               <div class="text-sm">
                 <% expense.documents.each do |doc| %>
@@ -139,10 +139,10 @@
             <tr>
               <td class="px-4 py-2 text-gray-900"><%= month.strftime("%B") %></td>
               <% @vendors.each do |vendor| %>
-                <% cents = bills.select { |bill| bill.vendor == vendor }.sum(&:amount_cents) %>
-                <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= cents.positive? ? usd(cents) : "—" %></td>
+                <% from_vendor = bills.select { |bill| bill.vendor == vendor } %>
+                <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= from_vendor.any? ? usd(from_vendor.sum(&:amount_cents)) : "—" %></td>
               <% end %>
-              <td class="px-4 py-2 text-right tabular-nums font-medium text-gray-900"><%= month_totals[month].positive? ? usd(month_totals[month]) : "—" %></td>
+              <td class="px-4 py-2 text-right tabular-nums font-medium text-gray-900"><%= bills.any? ? usd(month_totals[month]) : "—" %></td>
             </tr>
           <% end %>
         </tbody>

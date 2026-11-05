@@ -68,6 +68,29 @@ RSpec.describe "Superadmin Finances - Costs", type: :request do
       expect(response.body).not_to include("to check")
     end
 
+    it "takes a bill that charged nothing (credits paid it) as a real $0, and still waits on one whose total wasn't read" do
+      post finances_costs_upload_path, params: { files: [ amazon_pdf(number: "2498000001", total: "USD 0.00"),
+                                                          pdf_upload([ "Thanks for your order." ], "mystery.pdf") ] }
+      free = CompanyExpense.find_by!(bill_number: "2498000001")
+      mystery = CompanyExpense.find_by!(vendor: "mystery")
+      expect(free).to have_attributes(bill_total_cents: 0, ready?: true)
+      expect(mystery).to have_attributes(bill_total_cents: nil, ready?: false)
+
+      get finances_costs_path
+      expect(response.body).to include("no total read")
+
+      post finances_costs_confirm_all_path
+      expect(free.reload).to be_confirmed
+      expect(mystery.reload).not_to be_confirmed
+      expect(flash[:notice]).to include("Confirmed 1 bill", "1 bill still needs an amount or a month")
+
+      patch finances_cost_path(mystery), params: { confirm: "1", company_expense: { vendor: "Mystery", category: "other", bill_total: "", period_month: "2026-03" } }
+      expect(mystery.reload).not_to be_confirmed
+
+      get finances_costs_path(year: 2026)
+      expect(response.body).to include("Every bill in 2026", "$0.00", "Across the 1 month with a bill")
+    end
+
     it "won't take the same bill twice" do
       post finances_costs_upload_path, params: { files: [ amazon_pdf ] }
       post finances_costs_upload_path, params: { files: [ amazon_pdf ] }

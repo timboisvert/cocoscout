@@ -24,7 +24,7 @@
     <%= label_tag "#{key}-total", "Bill total", class: label %>
     <div class="relative">
       <span class="absolute inset-y-0 left-3 flex items-center text-gray-500">$</span>
-      <%= text_field_tag "company_expense[bill_total]", (format("%.2f", expense.bill_total_cents / 100.0) if expense.bill_total_cents.to_i.positive?), id: "#{key}-total",
+      <%= text_field_tag "company_expense[bill_total]", (format("%.2f", expense.bill_total_cents / 100.0) unless expense.bill_total_cents.nil?), id: "#{key}-total",
             inputmode: "decimal", required: true, placeholder: "0.00", class: "#{input} pl-7 tabular-nums" %>
     </div>
   </div>

@@ -89,7 +89,7 @@ module Superadmin
 
     # Confirm every uploaded bill that has its amount and its month.
     def confirm_all
-      ready, not_ready = CompanyExpense.to_check.partition { |expense| expense.bill_total_cents.positive? && expense.period_month }
+      ready, not_ready = CompanyExpense.to_check.partition(&:ready?)
       ready.each { |expense| expense.update!(confirmed_at: Time.current) }
       left = " #{helpers.pluralize(not_ready.size, 'bill')} still #{not_ready.one? ? 'needs' : 'need'} an amount or a month." if not_ready.any?
       redirect_to finances_costs_path, notice: "Confirmed #{helpers.pluralize(ready.size, 'bill')}, #{helpers.usd(ready.sum(&:amount_cents))} in all.#{left}"
@@ -156,7 +156,7 @@ module Superadmin
       raw = params.fetch(:company_expense, {}).permit(:vendor, :category, :description, :bill_number, :bill_total, :share_percent,
                                                       :period_month, :billed_on, :paid_on, :paid_by, :note)
       attrs = raw.slice(:vendor, :category, :description, :bill_number, :paid_by, :note).to_h
-      attrs[:bill_total_cents] = (raw[:bill_total].to_s.delete("$, ").to_d * 100).round.to_i if raw.key?(:bill_total)
+      attrs[:bill_total_cents] = raw[:bill_total].to_s.delete("$, ").presence&.then { |amount| (amount.to_d * 100).round.to_i } if raw.key?(:bill_total)
       attrs[:share_percent] = raw[:share_percent].to_s.delete("% ").presence&.to_d || 100 if raw.key?(:share_percent)
       attrs[:period_month] = parse_month(raw[:period_month]) if raw.key?(:period_month)
       attrs[:billed_on] = parse_day(raw[:billed_on]) if raw.key?(:billed_on)
