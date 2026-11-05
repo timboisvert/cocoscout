@@ -1434,6 +1434,7 @@ Rails.application.routes.draw do
     get    "ticketing/productions/:production_id/links", to: "short_links#index",  as: "production_ticketing_links"
     post   "ticketing/productions/:production_id/links", to: "short_links#create"
     delete "ticketing/productions/:production_id/links/:id", to: "short_links#destroy", as: "production_ticketing_link"
+    post   "ticketing/productions/:production_id/links/:id/new_code", to: "short_links#regenerate", as: "production_ticketing_link_new_code"
     delete "ticketing/productions/:production_id/codes/:code_id", to: "production_ticketings#destroy_code", as: "production_ticketing_code"
     patch  "ticketing/productions/:production_id/codes/:code_id", to: "production_ticketings#update_code"
     get    "ticketing/shows/:id",                 to: "ticket_listings#show"

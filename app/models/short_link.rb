@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
 # A short link: cocoscout.com/t/K7M2P. The code comes from ShortKeyService
-# (like /a/, /s/ and /c/) and never changes; where it points is worked out when
-# it's followed, so a renamed slug or public key never breaks a printed QR.
+# (like /a/, /s/ and /c/) and never changes once somebody has followed it
+# (until then a manager can swap one that reads badly); where it points is
+# worked out when it's followed, so a renamed slug or public key never breaks
+# a printed QR.
 #
 # Every production with ticketing has one canonical code, the link on its
 # posters: it keeps working as dates are added, and a date is a suffix
@@ -88,6 +90,23 @@ class ShortLink < ApplicationRecord
     orders = ticket_orders.paid_like.includes(:tickets).to_a
     tickets = orders.flat_map(&:tickets).select { |t| Ticket::SOLD_STATUSES.include?(t.status) }
     { orders: orders.size, tickets: tickets.size, cents: tickets.sum { |t| t.price_cents - t.discount_cents } }
+  end
+
+  # Nobody has followed it and nothing was sold through it, so its code can
+  # still be swapped for another.
+  def unused?
+    clicks_count.zero? && !ticket_orders.exists?
+  end
+
+  # A new code for a link nobody has used yet (the one it got reads like a
+  # word); the old code stops working. False once somebody has followed it.
+  # The row is locked, so a click landing at the same moment is counted first.
+  def regenerate_code!
+    with_lock do
+      next false unless unused?
+
+      update!(code: ShortKeyService.generate(type: :link))
+    end
   end
 
   def record_click!

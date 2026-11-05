@@ -70,6 +70,49 @@ RSpec.describe "Ticketing links", type: :request do
     expect(response.body).not_to include("cocoscout.com</span>/t/#{link.code}")
   end
 
+  it "swaps a code nobody has opened for a new one, the production's or a named link's, and not once it's been opened" do
+    sign_in_manager
+    canonical = ShortLink.canonical_for!(production)
+    poster = production.short_links.create!(kind: "named", label: "Poster", organization: org)
+    old_code = canonical.code
+    old_poster = poster.code
+
+    get manage_production_ticketing_links_path(production)
+    expect(response.body).to include("confirm-new-code-#{canonical.id}", "confirm-new-code-#{poster.id}", "Get a new code?")
+
+    post manage_production_ticketing_link_new_code_path(production, canonical)
+    expect(response).to redirect_to(manage_production_ticketing_links_path(production))
+    expect(canonical.reload.code).not_to eq(old_code)
+    expect(canonical).to be_canonical
+    expect(flash[:notice]).to include("cocoscout.com/t/#{canonical.code}", "cocoscout.com/t/#{old_code} no longer works")
+    get "/t/#{old_code}"
+    expect(response).to have_http_status(:not_found)
+
+    post manage_production_ticketing_link_new_code_path(production, poster)
+    expect(poster.reload.code).not_to eq(old_poster)
+    expect(flash[:notice]).to include("Poster is now cocoscout.com/t/#{poster.code}")
+
+    # Opened once: the code is the link's for good.
+    get "/t/#{poster.code}", headers: { "User-Agent" => "Mozilla/5.0" }
+    kept = poster.reload.code
+    post manage_production_ticketing_link_new_code_path(production, poster)
+    expect(poster.reload.code).to eq(kept)
+    expect(flash[:alert]).to include("has already been opened")
+    get manage_production_ticketing_links_path(production)
+    expect(response.body).to include("confirm-new-code-#{canonical.id}")
+    expect(response.body).not_to include("confirm-new-code-#{poster.id}")
+  end
+
+  it "doesn't swap another organization's code" do
+    sign_in_manager
+    other = create(:production, organization: create(:organization, :pro))
+    theirs = ShortLink.canonical_for!(other)
+    their_code = theirs.code
+    post manage_production_ticketing_link_new_code_path(production, theirs)
+    expect(response).to have_http_status(:not_found)
+    expect(theirs.reload.code).to eq(their_code)
+  end
+
   it "doesn't attribute an order to another theater's link" do
     other = create(:organization, :pro)
     other_link = ShortLink.canonical_for!(TicketingProfile.for(other))

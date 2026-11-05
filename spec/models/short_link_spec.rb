@@ -22,6 +22,21 @@ RSpec.describe ShortLink do
     expect(link.code).to eq("AB12C")
   end
 
+  it "takes a new code until somebody follows it" do
+    link = described_class.canonical_for!(production)
+    first = link.code
+    expect(link).to be_unused
+    expect(link.regenerate_code!).to be(true)
+    expect(link.reload.code).not_to eq(first)
+    expect(described_class.lookup(first)).to be_nil
+
+    link.record_click!
+    kept = link.code
+    expect(link.regenerate_code!).to be(false)
+    expect(link.reload.code).to eq(kept)
+    expect(link).not_to be_unused
+  end
+
   it "resolves its destination when followed, with a preset code and a date" do
     TicketingProfile.for(org).update!(slug: "sgtix")
     link = described_class.create!(target: production, organization: org, kind: "named", label: "Friends", query: { "code" => "FRIENDS" })
