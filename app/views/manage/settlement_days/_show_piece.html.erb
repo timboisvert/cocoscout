@@ -7,7 +7,7 @@
   state_tone = { ok: "text-green-700", wait: "text-amber-700", miss: "text-red-700" }.fetch(piece.state)
   outside_lines = piece.ticket_lines.reject { |l| l[:built_in] }
   online_lines = piece.ticket_lines.select { |l| l[:built_in] }
-  line = ->(label, note, value) { "<div class='flex items-baseline justify-between gap-3 py-1.5 text-sm'><span class='text-gray-700'>#{ERB::Util.html_escape(label)}#{note.present? ? " <span class='text-xs text-gray-500'>#{ERB::Util.html_escape(note)}</span>" : ''}</span><span class='tabular-nums text-gray-900'>#{value}</span></div>".html_safe }
+  line = ->(label, note, value) { "<div class='flex items-baseline justify-between gap-3 py-1.5 text-sm'><span class='min-w-0 text-gray-700'>#{ERB::Util.html_escape(label)}#{note.present? ? " <span class='text-xs text-gray-500'>#{ERB::Util.html_escape(note)}</span>" : ''}</span><span class='tabular-nums text-gray-900 whitespace-nowrap'>#{value}</span></div>".html_safe }
   editable = can_change && !day.settled?
   return_to = manage_money_settle_up_day_path(day.param)
   pink = "text-pink-600 hover:text-pink-700"
@@ -21,15 +21,22 @@
   tickets_id = "tickets-#{show.id}"
   has_modal = piece.listing.nil? || piece.outside_sources.any? || outside_lines.any?
   typed = ->(text) { has_modal ? opens.call(tickets_id, text) : text }
-  # One line per site: what it sold, by type, then the money. The types are
-  # named only when they add up to the count.
-  sold_words = lambda do |group|
+  # One line per site: the money on the right, where every other number on
+  # the card sits, and what it sold beside the name in small words, by type
+  # (Tim, 2026-11-04: several types wrapped the whole line badly). Each type
+  # moves to the next line whole. The types are named only when they add up
+  # to the count.
+  sold = lambda do |group|
     count = group.sum { |l| l[:count] }
     types = group.flat_map { |l| l[:types] || [] }.group_by(&:first).map { |name, pairs| [ name, pairs.sum(&:last) ] }.select { |_, n| n.positive? }
-    sold = types.any? && types.sum(&:last) == count ? types.map { |name, n| "#{n} #{name}" }.join(", ") : count.to_s
-    "#{sold} · #{money.call(group.sum { |l| l[:cents] })}"
+    named = types.any? && types.sum(&:last) == count
+    { words: (named ? types.map { |name, n| "#{n} #{name}" } : [ pluralize(count, "ticket") ]), money: money.call(group.sum { |l| l[:cents] }) }
   end
-  by_site = outside_lines.group_by { |l| l[:label] }.map { |label, group| { label: label, text: sold_words.call(group) } }
+  sold_line = lambda do |label, words, value|
+    said = words.each_with_index.map { |word, i| "<span class='inline-block max-w-full'>#{ERB::Util.html_escape(word)}#{i < words.size - 1 ? ',' : ''}</span>" }.join(" ")
+    "<div class='flex items-baseline justify-between gap-3 py-1.5 text-sm'><span class='min-w-0 text-gray-700'><span class='inline-block max-w-full'>#{ERB::Util.html_escape(label)}</span> <span class='text-xs text-gray-500'>#{said}</span></span><span class='tabular-nums text-gray-900 whitespace-nowrap'>#{value}</span></div>".html_safe
+  end
+  by_site = outside_lines.group_by { |l| l[:label] }.map { |label, group| { label: label, sold: sold.call(group) } }
   notes = fin&.notes.to_s.strip
 %>
 <section class="bg-white border border-gray-200 rounded-xl overflow-hidden" id="show-<%= show.id %>">
@@ -54,10 +61,11 @@
         <%= line.call("Tickets", "nothing entered yet", (typed_tickets ? typed.call("Enter") : "—")) %>
       <% end %>
       <% online_lines.each do |l| %>
-        <%= line.call("Sold through CocoScout", nil, (piece.listing ? link_to(sold_words.call([ l ]), manage_ticket_listing_path(piece.listing), class: pink) : sold_words.call([ l ]))) %>
+        <% ours = sold.call([ l ]) %>
+        <%= sold_line.call("Sold through CocoScout", ours[:words], (piece.listing ? link_to(ours[:money], manage_ticket_listing_path(piece.listing), class: pink) : ours[:money])) %>
       <% end %>
       <% by_site.each do |site| %>
-        <%= line.call(site[:label], nil, typed.call(ERB::Util.html_escape(site[:text]))) %>
+        <%= sold_line.call(site[:label], site[:sold][:words], typed.call(site[:sold][:money])) %>
       <% end %>
       <% if piece.listing && piece.outside_sources.any? && by_site.empty? && editable %>
         <%= line.call("Sold on other sites", "nothing entered", typed.call("Enter")) %>
