@@ -170,7 +170,7 @@
   <div class="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 pl-4 <%= turbo_native_app? ? 'pr-[96px]' : 'pr-4' %> pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex items-center gap-2" data-ticketing-phone-bar>
     <span class="flex-1 min-w-0 flex flex-col">
       <span class="inline-flex self-start items-center rounded-md px-2 py-0.5 text-xs font-medium <%= status_classes %>"><%= status_label %></span>
-      <span class="text-xs text-gray-600 truncate mt-0.5"><%= @stats.sold %> sold<% if door_phase.in?(%i[presale door]) %> · tonight<% end %></span>
+      <span class="text-xs text-gray-600 truncate mt-0.5"><%= @stats.sold_anywhere %> sold<% if door_phase.in?(%i[presale door]) %> · tonight<% end %></span>
     </span>
     <%= render "shared/action_menu", id: "ticket-listing-#{@listing.id}-actions", items: menu_items, title: "This show" %>
     <% if door_action %>
