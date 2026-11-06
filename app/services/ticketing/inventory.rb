@@ -106,9 +106,23 @@ module Ticketing
     # Each other site's tickets and money, most tickets first:
     # [["HotTix", 5, 45_000], ["Ticket Tailor", 3, 2_700]].
     def outside_by_site(tier: nil)
-      outside_rows(tier).joins(:ticket_source).group("ticket_sources.name").pluck("ticket_sources.name", Arel.sql("SUM(tickets_sold)"), Arel.sql("SUM(amount_cents)"))
-                        .map { |name, n, cents| [ name, n.to_i, cents.to_i ] }.reject { |_, n, cents| n.zero? && cents.zero? }
-                        .sort_by { |name, n, cents| [ -n, -cents, name ] }
+      self.class.site_rows(outside_rows(tier).joins(:ticket_source).group("ticket_sources.name")
+                                             .pluck("ticket_sources.name", Arel.sql("SUM(tickets_sold)"), Arel.sql("SUM(amount_cents)")))
+    end
+
+    # The same for many dates in one query: { listing_id => [[site, tickets, cents]] },
+    # every id present (a page of shows, such as Home's week).
+    def self.outside_by_site_for(listing_ids)
+      rows = TicketOutsideSale.where(ticket_listing_id: listing_ids).joins(:ticket_source)
+                              .group(:ticket_listing_id, "ticket_sources.name")
+                              .pluck(:ticket_listing_id, "ticket_sources.name", Arel.sql("SUM(tickets_sold)"), Arel.sql("SUM(amount_cents)"))
+                              .group_by(&:first)
+      listing_ids.to_h { |id| [ id, site_rows(rows.fetch(id, []).map { |row| row.drop(1) }) ] }
+    end
+
+    def self.site_rows(rows)
+      rows.map { |name, n, cents| [ name, n.to_i, cents.to_i ] }.reject { |_, n, cents| n.zero? && cents.zero? }
+          .sort_by { |name, n, cents| [ -n, -cents, name ] }
     end
 
     # The money other sites took, as typed on the show's page, by site:

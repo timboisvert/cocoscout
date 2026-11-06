@@ -35,22 +35,32 @@ module HomeHelper
   end
 
   # [tone, short words, long words] for a show's tickets, or nil without any.
+  # Sold is every ticket sold, here and on other sites, of the seats left once
+  # comps are set aside (ListingStats#sold_anywhere), the same number the
+  # show page and Ticketing give; the money is every site's too. Only a
+  # canceled date counts the tickets held here: those are the ones to refund.
   def home_ticket_chip(tickets)
     return nil unless tickets
 
     stats = tickets.stats
+    sold = stats.sold_anywhere
+    money = "#{number_to_currency(tickets.sales_cents / 100.0, precision: 0)}#{' so far' if tickets.so_far?}"
     if tickets.canceled?
       stats.sold.positive? ? [ :bad, "#{stats.sold} to refund", "#{stats.sold} hold tickets · refund them" ] : [ :none, "Canceled", "Canceled" ]
     elsif tickets.draft?
       [ :warn, "Not on sale", "Not on sale yet" ]
     elsif tickets.live?
-      [ :live, "#{stats.checked_in} in · #{stats.sold}", "#{stats.checked_in} checked in · #{stats.sold} sold" ]
+      [ :live, "#{stats.checked_in} in · #{sold}", "#{stats.checked_in} checked in · #{sold} sold" ]
     elsif tickets.sold_out?
-      [ :ok, "Sold out", "Sold out · #{stats.sold} · #{number_to_currency(stats.gross_cents / 100.0, precision: 0)}" ]
+      [ :ok, "Sold out", "Sold out · #{sold} · #{money}" ]
     else
-      of = stats.capacity ? " of #{stats.capacity}" : ""
-      [ :none, stats.sold.to_s, "#{stats.sold} sold#{of} · #{number_to_currency(stats.gross_cents / 100.0, precision: 0)}" ]
+      [ :none, sold.to_s, "#{stats.sold_words} · #{money}" ]
     end
+  end
+
+  # Every ticket sold across a day's shows, here and on other sites.
+  def home_sold_count(rows)
+    rows.sum { |row| row.tickets&.stats&.sold_anywhere.to_i }
   end
 
   def home_staffing_chip(staffing)

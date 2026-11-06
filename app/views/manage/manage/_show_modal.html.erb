@@ -84,7 +84,13 @@
           <% if t.draft? %>
             <div class="flex justify-between gap-3"><dt class="text-gray-500">On sale</dt><dd class="font-semibold text-amber-700">Not yet · it's a draft</dd></div>
           <% else %>
-            <div class="flex justify-between gap-3"><dt class="text-gray-500">Sold</dt><dd class="text-gray-900"><%= stats.sold %><%= " of #{stats.capacity}" if stats.capacity %> · <%= number_to_currency(stats.gross_cents / 100.0, precision: 0) %><%= " · #{stats.comps} comps" if stats.comps.positive? %></dd></div>
+            <%# Every ticket sold, here and on other sites, of the seats left
+                once comps are set aside: the show page's count. Where another
+                site sold too, a line per place with its money under it. %>
+            <div class="flex justify-between gap-3" data-modal-sold><dt class="text-gray-500">Sold</dt><dd class="text-gray-900 tabular-nums"><%= stats.sold_anywhere %><%= " of #{stats.seats_to_sell}" if stats.seats_to_sell %> · <%= number_to_currency(t.sales_cents / 100.0, precision: 0) %><%= " so far" if t.so_far? %><%= " · #{pluralize(stats.comps, 'comp')}" if stats.comps.positive? %></dd></div>
+            <% t.places.each do |name, count, cents| %>
+              <div class="flex justify-between gap-3 text-xs" data-modal-place="<%= name %>"><dt class="text-gray-500 pl-3"><%= count %> on <%= name %></dt><dd class="tabular-nums <%= t.unreported?(name) ? 'text-gray-400 italic' : 'text-gray-600' %>"><%= t.unreported?(name) ? "not reported yet" : number_to_currency(cents / 100.0, precision: 0) %></dd></div>
+            <% end %>
           <% end %>
           <% if t.live? %>
             <div class="flex justify-between gap-3"><dt class="text-gray-500">Tonight</dt><dd class="font-semibold text-green-700">Door open · <%= stats.checked_in %> checked in · <%= link_to "Work the door", door_index_path, class: "text-pink-600 hover:text-pink-700" %></dd></div>

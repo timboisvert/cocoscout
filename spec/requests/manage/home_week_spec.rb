@@ -117,6 +117,35 @@ RSpec.describe "Production Home, show by show", type: :request do
       expect(row.text).to include("Canceled")
       expect(row.at_css("[data-chip='tickets']").text).to include("2 to refund")
     end
+
+    # Tim, 2026-11-06: Home said 7 (5 sold here + 2 comps) where the show page
+    # and Ticketing said 17 of 58 (5 here, 12 on Ticket Tailor, 2 comps).
+    it "count tickets sold on other sites, and say where each sold in the show's modal" do
+      listing = create(:ticket_listing, organization: org, show: thu_show)
+      order = create(:ticket_order, ticket_listing: listing, status: "paid", paid_at: Time.current)
+      2.times { create(:ticket, ticket_order: order) }
+      comp = create(:ticket_order, ticket_listing: listing, status: "paid", paid_at: Time.current, channel: "comp")
+      create(:ticket, ticket_order: comp, price_cents: 0)
+      tailor = TicketSource.create!(organization: org, name: "Ticket Tailor")
+      TicketOutsideSale.create!(organization: org, ticket_listing: listing, ticket_tier: listing.ticket_tiers.first,
+                                ticket_source: tailor, tickets_sold: 12, amount_cents: 0)
+      stats = Ticketing::ListingStats.of(listing)
+      expect(stats.sold_anywhere).to eq(14)
+
+      doc = page(week_start: week_start.to_s)
+      expect(doc.at_css("[data-home-show='#{thu_show.id}'] [data-chip='tickets']").text.squish).to eq("14")
+      expect(doc.at_css("[data-day-header='#{thu_show.date_and_time.to_date.iso8601}']").text).to include("14 sold")
+      modal = doc.at_css("#show-modal-#{thu_show.id}")
+      expect(modal.at_css("[data-modal-sold]").text.squish).to eq("Sold#{stats.sold_words.delete_suffix(' sold')} · $40 so far · 1 comp")
+      expect(modal.at_css("[data-modal-place='CocoScout']").text.squish).to eq("2 on CocoScout$40")
+      expect(modal.at_css("[data-modal-place='Ticket Tailor']").text.squish).to eq("12 on Ticket Tailornot reported yet")
+
+      # Once its money is typed in, the place says it and the total isn't "so far".
+      TicketOutsideSale.where(ticket_listing: listing).update_all(amount_cents: 18_000)
+      modal = page(week_start: week_start.to_s).at_css("#show-modal-#{thu_show.id}")
+      expect(modal.at_css("[data-modal-sold]").text.squish).to include("$220 · 1 comp")
+      expect(modal.at_css("[data-modal-place='Ticket Tailor']").text.squish).to eq("12 on Ticket Tailor$180")
+    end
   end
 
   it "shows the cast as faces with the name on hover in the show's modal" do

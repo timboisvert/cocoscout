@@ -25,11 +25,22 @@ class HomeWeek
   Signups = Data.define(:instance, :count, :capacity, :queued) do
     def form = instance.sign_up_form
   end
-  Tickets = Data.define(:listing, :stats, :phase) do
+  # outside: what other sites sold for this date, [[site, tickets, cents]]
+  # (Ticketing::Inventory.outside_by_site_for), loaded once for the week.
+  Tickets = Data.define(:listing, :stats, :phase, :outside) do
     def draft? = listing.status == "draft"
     def canceled? = listing.status == "canceled" || listing.show.canceled
     def live? = phase.in?(%i[presale door])
     def sold_out? = stats.remaining == 0
+
+    # Where it sold, a line per place with its money, CocoScout first; empty
+    # when it only sold here (the show page's Tickets card reads the same).
+    def places = outside.any? ? [ [ "CocoScout", stats.paid_sold, stats.gross_cents ] ] + outside : []
+    # Ticket money here and on other sites (what was typed for those).
+    def sales_cents = stats.gross_cents + outside.sum { |_, _, cents| cents }
+    # A site with tickets noted but no money entered yet: its sales are still to come.
+    def unreported?(site) = outside.any? { |name, count, cents| name == site && count.positive? && cents.zero? }
+    def so_far? = outside.any? { |_, count, cents| count.positive? && cents.zero? }
   end
   # missing: the per-show roles Role Call expects on this show that no shift
   # covers (a show's own; always empty on a day's row).
@@ -169,6 +180,7 @@ class HomeWeek
     end
     @listing_by_show = @listings.index_by(&:show_id)
     @stats = @listings.any? ? Ticketing::ListingStats.for(@listings) : {}
+    @outside = @listings.any? ? Ticketing::Inventory.outside_by_site_for(@listings.map(&:id)) : {}
   end
 
   def tickets_for(show)
@@ -177,7 +189,7 @@ class HomeWeek
     listing = @listing_by_show[show.id]
     return nil unless listing
 
-    Tickets.new(listing: listing, stats: @stats.fetch(listing.id), phase: DoorTonight.phase(listing))
+    Tickets.new(listing: listing, stats: @stats.fetch(listing.id), phase: DoorTonight.phase(listing), outside: @outside.fetch(listing.id, []))
   end
 
   # --- Staffing -----------------------------------------------------------
