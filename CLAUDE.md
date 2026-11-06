@@ -116,6 +116,24 @@ Key classes:
 - `border-gray-300` - Standard border color
 - `rounded` - Rounded corners
 
+### Pinned bottom bars and the Coco button (in the app)
+The app's floating Coco button is native, drawn over the page's bottom right
+corner. **It gets itself out of the way; pages never make room for it** (Tim,
+2026-11-06). `bridge/menu_button_controller.js` looks at what is pinned under
+the button's corner and tells the app: the button sits above a pinned bar,
+shrinks away while the reader scrolls down, and is gone under a sheet or modal.
+
+- A new bar, sheet or modal needs **nothing**: no marker, no padding. Pin it
+  (`fixed`, or `sticky bottom-0`) and run it edge to edge.
+- Never add `pr-[96px]` / `right-[96px]` for the button. The only ones left
+  are for installs before 1.1.3, and each asks `coco_button_in_the_way?`
+  (`spec/lib/coco_button_dodges_spec.rb` fails on any other).
+- To change how the button behaves (how far a scroll counts, what counts as a
+  bar), change the controller: it ships with a deploy, not an app release.
+- Don't put `backdrop-blur` on a bar that renders a sheet inside it
+  (`shared/action_menu`): the blur traps the sheet's overlay inside the bar.
+  Put the blur on a `before:` layer, as the ticketing bar does.
+
 ### Top Menu Breadcrumbs
 
 **CRITICAL: Breadcrumbs MUST be arrays, NOT hashes!**
