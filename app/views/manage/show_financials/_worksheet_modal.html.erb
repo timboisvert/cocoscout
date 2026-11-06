@@ -404,7 +404,7 @@
         <!-- Footer — always visible; the confirm checkbox lives here so you never
              have to scroll to reach it. data_confirmed gates payout calculation and
              the "needs financials" counts, so it stays a real, submitted field. -->
-        <div class="px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] sm:py-3 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 rounded-b-lg sticky bottom-0 z-10 <%= 'pr-[96px] sm:pr-4' if page && turbo_native_app? %>">
+        <div class="px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] sm:py-3 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 rounded-b-lg sticky bottom-0 z-10 <%= 'pr-[96px] sm:pr-4' if page && coco_button_in_the_way? %>">
           <label class="flex items-center gap-2 cursor-pointer select-none"
                  title="Check when the financials above are correct — even if revenue is $0. Required before payouts can be calculated.">
             <%= form.check_box :data_confirmed, class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>

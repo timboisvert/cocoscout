@@ -9,6 +9,10 @@
                                     "bridge--menu-person-value": (person.to_json if person),
                                     "bridge--menu-tap-to-pay-value": (native_tap_to_pay.to_json if native_tap_to_pay),
                                     "bridge--menu-nav-value": (native_nav&.to_json) } %>
+  <%# Where the floating Coco button belongs on this page: above a pinned
+      bar, away while scrolling down, gone under a sheet
+      (bridge/menu_button_controller.js). Only builds that can move it load it. %>
+  <%= tag.div hidden: true, data: { controller: "bridge--menu-button" } %>
   <% if person && Current.session %>
     <%= tag.div hidden: true, data: { controller: "bridge--push", "bridge--push-url-value": my_push_token_path,
                                       "bridge--push-session-value": Current.session.id,

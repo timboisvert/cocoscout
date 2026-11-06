@@ -200,7 +200,7 @@
 
     <%# Phone: Done Selecting pinned to the bottom, clear of the Coco button. %>
     <div class="lg:hidden h-24" aria-hidden="true"></div>
-    <div class="lg:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 pl-4 <%= turbo_native_app? ? 'pr-[96px]' : 'pr-4' %> pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex items-center gap-3" data-casting-select-phone-bar>
+    <div class="lg:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 pl-4 <%= coco_button_in_the_way? ? 'pr-[96px]' : 'pr-4' %> pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex items-center gap-3" data-casting-select-phone-bar>
       <span class="text-sm text-gray-600 flex-1 min-w-0 truncate"><%= pluralize(@cast_assignment_stages.count(&:cast?), "person") %> added to cast</span>
       <%= render partial: "shared/button", locals: { text: "Done Selecting", path: manage_casting_signups_auditions_cycle_path(@production, @audition_cycle), variant: "primary", size: "medium" } %>
     </div>

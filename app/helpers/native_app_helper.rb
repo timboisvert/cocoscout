@@ -39,14 +39,25 @@ module NativeAppHelper
 
   # The room every page leaves at its foot. In the app the floating Coco
   # button is native, drawn over the page (60pt across, 20 in from the right,
-  # reaching 10 below the safe area on iPhone; about 76dp tall on Android),
-  # and the page is never told it is there. So an app page ends 112px above
-  # the bottom, and whatever sits last on it (a form's Save, a wizard's
-  # Next, Pay now) is beside the button when scrolled to the end, never under
-  # it (Tim, 2026-11-02). A browser keeps the usual 32px. Pinned bars make
-  # their own room for the button's width (shared/sticky_actions).
+  # reaching 10 below the safe area on iPhone; about 76dp tall on Android).
+  # So an app page ends 112px above the bottom, and whatever sits last on it
+  # (a form's Save, a wizard's Next, Pay now) is beside the button when
+  # scrolled to the end, never under it (Tim, 2026-11-02). A browser keeps
+  # the usual 32px.
   def page_bottom
     turbo_native_app? ? "pb-28" : "pb-8"
+  end
+
+  # App builds whose Coco button can't move: every install before the
+  # "menu-button" bridge component (Tim, 2026-11-06). Only for them does a
+  # pinned bar leave the button's width free on its right (pr-[96px]).
+  # Newer builds are told what is pinned to the bottom of the page
+  # (bridge/menu_button_controller.js) and move the button themselves: above
+  # a bar, away while scrolling down, gone under a sheet. So a bar runs edge
+  # to edge and no view needs to know the button is there. Delete this, and
+  # every use of it, once those installs are gone.
+  def coco_button_in_the_way?
+    turbo_native_app? && !native_bridge_component?("menu-button")
   end
 
   # The store this phone's web browser belongs to (:ios or :android), or nil

@@ -1,6 +1,7 @@
 import HotwireNative
 import UIKit
 import UserNotifications
+import WebKit
 
 /// One menu tile as the server describes it (NativeAppHelper#native_menu):
 /// icon is an SF Symbol name; badge is a count; subtitle is a second line
@@ -136,6 +137,15 @@ final class AppShell {
         }
     }
 
+    // MARK: The Coco button gets out of the way
+
+    /// Each page says where the button belongs on it (MenuButtonComponent):
+    /// above a bar pinned to its bottom, or away while scrolling down or
+    /// under a sheet.
+    func placeMenuButton(rise: CGFloat, away: Bool, webView: WKWebView?) {
+        menuButton.place(rise: rise, away: away, webView: webView)
+    }
+
     // MARK: Tap to Pay on iPhone
 
     /// Who can sell with Tap to Pay on iPhone, with every menu: warm it up
@@ -219,6 +229,8 @@ final class AppShell {
             menuButton.install(in: tabBarController.view)
         }
         menuButton.isHidden = !signedIn
+        // A fresh screen: back to the corner until its first page says otherwise.
+        menuButton.place(rise: 0, away: false, webView: nil, animated: false)
         tabBarController.view.bringSubviewToFront(menuButton)
         menuButton.badge = nav == nil ? Self.badgeText(menu.reduce(0) { $0 + ($1.badge ?? 0) }) : nil
     }

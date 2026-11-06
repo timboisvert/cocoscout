@@ -3,6 +3,7 @@ package com.cocoscout.app
 import android.app.Application
 import com.cocoscout.app.bridge.DoorScannerComponent
 import com.cocoscout.app.bridge.FormComponent
+import com.cocoscout.app.bridge.MenuButtonComponent
 import com.cocoscout.app.bridge.MenuComponent
 import com.cocoscout.app.bridge.PushComponent
 import com.cocoscout.app.bridge.TapToPayComponent
@@ -43,6 +44,7 @@ class CocoScoutApplication : Application() {
         Hotwire.registerBridgeComponents(
             BridgeComponentFactory("form", ::FormComponent),
             BridgeComponentFactory("menu", ::MenuComponent),
+            BridgeComponentFactory("menu-button", ::MenuButtonComponent),
             BridgeComponentFactory("door-scanner", ::DoorScannerComponent),
             BridgeComponentFactory("push", ::PushComponent),
             BridgeComponentFactory("tap-to-pay", ::TapToPayComponent)

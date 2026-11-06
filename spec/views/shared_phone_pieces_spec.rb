@@ -32,15 +32,17 @@ RSpec.describe "Shared phone pieces", type: :view do
   end
 
   it "pins the Save bar to the bottom on a phone and leaves it in the form from sm up" do
-    allow(view).to receive(:turbo_native_app?).and_return(false)
+    allow(view).to receive(:coco_button_in_the_way?).and_return(false)
     doc = html(layout: "shared/sticky_actions") { "<button>Save</button>".html_safe }
     bar = doc.at_css("[data-sticky-actions]")
     expect(bar["class"]).to include("fixed", "bottom-0", "sm:static")
     expect(bar.text).to include("Save")
   end
 
-  it "leaves room for the Coco button in the app" do
-    allow(view).to receive(:turbo_native_app?).and_return(true)
+  it "leaves room for the Coco button only in app builds that can't move it" do
+    allow(view).to receive(:coco_button_in_the_way?).and_return(true)
     expect(html(layout: "shared/sticky_actions") { "x" }.at_css("[data-sticky-actions]")["class"]).to include("pr-[96px]")
+    allow(view).to receive(:coco_button_in_the_way?).and_return(false)
+    expect(html(layout: "shared/sticky_actions") { "x" }.at_css("[data-sticky-actions]")["class"]).not_to include("pr-[96px]")
   end
 end
