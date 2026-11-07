@@ -29,9 +29,10 @@ RSpec.describe "My::Shifts rows and sheet", type: :request do
     org.people << person
     production = create(:production, organization: org, name: "Rising Stars")
     show = create(:show, production: production, date_and_time: friday + 1.5.hours)
+    late_show = create(:show, production: production, date_and_time: friday + 3.hours)
     shift.update!(source: show)
     allow(ShiftExpectedAttendance).to receive(:for).and_wrap_original do |m, shifts|
-      shifts.include?(shift) ? { shift.id => [ ShiftExpectedAttendance::Line.new(show: show, expected: 12) ] } : m.call(shifts)
+      shifts.include?(shift) ? { shift.id => [ ShiftExpectedAttendance::Line.new(show: show, expected: 12), ShiftExpectedAttendance::Line.new(show: late_show, expected: 0) ] } : m.call(shifts)
     end
     [ week_start, week_start + 7 ].each { |ws| StaffingFinalization.create!(organization: org, week_start: ws, finalized_at: Time.current) }
     door_shift.shift_assignments.create!(person: told, position: 1, notified_at: 1.day.ago)
@@ -53,7 +54,8 @@ RSpec.describe "My::Shifts rows and sheet", type: :request do
     expect(hero.text.squish).to include("Next shift Bar, 7:00–11:00 PM", "#{friday.strftime('%A, %b %-d')} · Stars & Garters")
     # The whole night on the card: each show with its time and count, and
     # everyone working alongside with role and hours (told people only).
-    expect(hero.at_css("[data-next-shift-shows]").text.squish).to eq("8:30 PM Rising Stars 12 expected")
+    # A show on sale says its count, zero included.
+    expect(hero.at_css("[data-next-shift-shows]").text.squish).to eq("8:30 PM Rising Stars 12 expected 10:00 PM Rising Stars 0 expected")
     expect(hero.text).to include("Keys are in the office drawer.")
     # Never who else is working: not the card, not the sheet (Tim, 2026-11-07).
     expect(hero.text).not_to include("Mia Manager", "Working with you", "That night")

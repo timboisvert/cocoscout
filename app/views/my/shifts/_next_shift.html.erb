@@ -54,8 +54,9 @@
                 %>
                 <% if details.any? %><div class="text-xs text-gray-500"><%= details.join(" · ") %></div><% end %>
               </div>
-              <% if line.expected.to_i.positive? %>
-                <div class="flex-shrink-0 text-sm tabular-nums text-gray-700"><span class="font-semibold text-gray-900"><%= line.expected %></span> expected</div>
+              <%# A show on sale always says its count, zero included (Tim, 2026-11-07); a show with nothing on sale says nothing. %>
+              <% unless line.expected.nil? %>
+                <div class="flex-shrink-0 text-sm tabular-nums <%= line.expected.positive? ? 'text-gray-700' : 'text-gray-400' %>"><span class="font-semibold <%= line.expected.positive? ? 'text-gray-900' : 'text-gray-500' %>"><%= line.expected %></span> expected</div>
               <% end %>
             </div>
           <% end %>
