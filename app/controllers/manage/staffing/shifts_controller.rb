@@ -27,10 +27,12 @@ module Manage
       end
 
       def update
+        was_week = @shift.week_start
         saved = ActiveRecord::Base.transaction do
           @shift.update(shift_params) && (apply_additional_roles || true)
         end
         if saved
+          record_week_move(was_week) if @shift.week_start != was_week
           redirect_to_scheduling notice: "Shift updated."
         else
           redirect_to_scheduling alert: "Couldn't update shift: #{@shift.errors.full_messages.to_sentence}"
@@ -42,7 +44,7 @@ module Manage
       end
 
       def destroy
-        @shift.shift_assignments.each { |a| record_removal_if_notified(a) }
+        @shift.shift_assignments.each { |a| StaffScheduleRemoval.record!(a, shift: @shift) }
         @shift.destroy!
         redirect_to_scheduling notice: "Shift removed."
       end
@@ -74,7 +76,7 @@ module Manage
         assignment = @shift.shift_assignments.find_by(person_id: params[:person_id])
         if assignment
           name = assignment.person.name
-          record_removal_if_notified(assignment)
+          StaffScheduleRemoval.record!(assignment, shift: @shift)
           # Removing the one who couldn't make it closes the hole, with no notice.
           assignment.active_vacancy&.cancel!(by: Current.user) if assignment.declined?
           assignment.destroy!
@@ -325,17 +327,21 @@ module Manage
 
       # If this assignment was already notified to the person, log a pending
       # "shift removed" notice so the next targeted Notify updates tells them.
-      def record_removal_if_notified(assignment)
-        return if assignment.notified_at.nil?
-
-        shift = assignment.shift
-        location = shift.house_role.location&.name || shift.source.try(:location).try(:name)
-        Current.organization.staff_schedule_removals.create!(
-          person_id: assignment.person_id,
-          shift_starts_at: shift.starts_at,
-          shift_label: shift.role_label,
-          location_name: location
-        )
+      # A told shift moved to another week: for everyone told, it's no longer
+      # scheduled in the week they were told about, and new in the week it
+      # landed in (told there at that week's Notify updates, or seen on My
+      # Shifts if it's published).
+      def record_week_move(was_week)
+        @shift.shift_assignments.active.where.not(notified_at: nil).includes(:person).each do |assignment|
+          Current.organization.staff_schedule_removals.create!(
+            person_id: assignment.person_id,
+            shift_starts_at: assignment.told_starts_at || @shift.attribute_before_last_save(:starts_at),
+            shift_ends_at: assignment.told_ends_at,
+            shift_label: assignment.told_role_label.presence || @shift.role_label,
+            location_name: assignment.told_location_name.presence || @shift.location_name
+          )
+          assignment.update!(notified_at: nil, told_starts_at: nil, told_ends_at: nil, told_role_label: nil, told_location_name: nil)
+        end
       end
 
       def set_shift

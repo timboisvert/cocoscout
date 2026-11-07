@@ -24,7 +24,9 @@ module NotificationGroups
     Group.new("pay", "Pay and payouts", "Your pay on its way or sent back; for managers, payout runs that bounce, come back or pay by themselves.", :yours, true, :person, true, true, [], "Pay"),
     # Email always goes for contracts: it carries the signing link or the signed copy.
     Group.new("contracts", "Contracts", "Requests and reminders to sign, signed and countersigned, and ones that stall or expire.", :yours, true, :always, true, true, [], "Contracts"),
-    Group.new("shifts", "Shifts and hours", "Shifts assigned, hours approved, onboarding steps.", :yours, false, :person, true, true, [], "Shifts"),
+    # Push on by default, as for Casting (Tim, 2026-11-07): a shift notice
+    # is the kind people want on their phone.
+    Group.new("shifts", "Shifts and hours", "Shifts assigned, changed or taken off, cover shifts, onboarding steps.", :yours, true, :person, true, true, [], "Shifts"),
     Group.new("courses", "Courses", "Registrations, cancellations and session reminders.", :yours, false, :person, true, true, [], "Courses"),
     Group.new("ticketing_sales", "Sales as they happen", "Each online sale, door sale, comp and pass.", :ticketing, true, :plan, false, true, [], "Ticketing"),
     Group.new("ticketing_reports", "Reports", "Daily summary, show day, after the show.", :ticketing, false, :plan, false, true, [], "Ticketing"),
@@ -55,6 +57,8 @@ module NotificationGroups
     "shift_declined_manager" => "shifts", "shift_vacancy_invitation" => "shifts",
     "shift_vacancy_filled" => "shifts", "shift_vacancy_reclaimed" => "shifts",
     "shift_canceled" => "shifts", "shift_moved" => "shifts",
+    "staff_shift_added" => "shifts", "staff_shift_changed" => "shifts", "staff_shift_removed" => "shifts",
+    "shift_claim_confirmed" => "shifts",
     # Pay and Contracts, from senders that still go through messages
     "staff_1099_ready" => "pay", "contract_person_added" => "contracts",
     # Ticketing: the Tap to Pay launch (TapToPayLaunch), to everyone who can sell at a door that has it
@@ -68,7 +72,7 @@ module NotificationGroups
     "cast_notification" => "casting", "removed_from_cast_notification" => "casting",
     "audition_added_to_cast" => "signups", "audition_not_cast" => "signups",
     "audition_invitation" => "signups", "audition_not_invited" => "signups",
-    "staff_schedule_notification" => "shifts", "staff_onboarding_invite" => "shifts",
+    "staff_schedule_notification" => "shifts", "staff_schedule_changes" => "shifts", "staff_onboarding_invite" => "shifts",
     "staff_availability_confirm_request" => "shifts",
     "staff_w9_request" => "pay", "staff_w9_reminder" => "pay",
     "payout_setup_reminder" => "pay", "payment_setup_reminder" => "pay",

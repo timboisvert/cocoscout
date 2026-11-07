@@ -24,18 +24,43 @@ class ShiftVacancyNotificationService
               ))
     end
 
+    # Claimed by the person themself: they're covering it. Put on by a manager
+    # (fill! with accepted: false, fill_from_assignment!): they haven't been
+    # asked yet and hear at the next Notify updates, so the words say "put
+    # on", not "covering". The one who dropped it reads "you", not their own
+    # name.
     def notify_filled(vacancy)
       shift = vacancy.shift
       organization = shift.organization
-      variables = shift_variables(shift).merge(person_name: vacancy.vacated_by.name, filled_by_name: vacancy.filled_by&.name.to_s)
+      filled_by = vacancy.filled_by
+      row = shift.shift_assignments.find_by(person_id: filled_by&.id)
+      claimed = row&.accepted_at.present?
+      variables = shift_variables(shift).merge(person_name: vacancy.vacated_by.name, filled_by_name: filled_by&.name.to_s)
+      role = variables[:role_name]
+      subject = claimed ? "#{filled_by&.name} is covering the #{role} shift on #{variables[:shift_date]}" :
+                          "#{filled_by&.name} has been put on the #{role} shift on #{variables[:shift_date]}"
+      words = ->(dropper) do
+        who = dropper ? "you" : vacancy.vacated_by.name
+        claimed ? "#{filled_by&.name} is covering the <strong>#{role}</strong> shift on <strong>#{variables[:shift_time]}</strong> that #{who} couldn't make." :
+                  "#{filled_by&.name} has been put on the <strong>#{role}</strong> shift on <strong>#{variables[:shift_time]}</strong> that #{who} couldn't make, and will be told."
+      end
 
       managers = organization.staffing_notification_recipients
       if managers.any?
         deliver("shift_vacancy_filled", managers, organization, for_managers: true,
-                variables: variables.merge(link_url: vacancy_url(vacancy), link_text: "See the shift"))
+                variables: variables.merge(covering_subject: subject, covering_words: words.call(false), link_url: vacancy_url(vacancy), link_text: "See the shift"))
       end
       deliver("shift_vacancy_filled", [ vacancy.vacated_by ], organization, for_managers: false,
-              variables: variables.merge(link_url: my_shifts_url, link_text: "My Shifts"))
+              variables: variables.merge(covering_subject: subject, covering_words: words.call(true), link_url: my_shifts_url, link_text: "My Shifts"))
+    end
+
+    # They claimed it from an invitation: their confirmation, the moment it
+    # happens (the claim page said it and nothing else did).
+    def notify_claimed(invitation)
+      vacancy = invitation.shift_vacancy
+      shift = vacancy.shift
+      deliver("shift_claim_confirmed", [ invitation.person ], shift.organization, for_managers: false,
+              variables: ShiftWords.variables(shift, invitation.person).merge(vacated_by_name: vacancy.vacated_by.name))
     end
 
     def notify_reclaimed(vacancy)
@@ -87,7 +112,8 @@ class ShiftVacancyNotificationService
     def shift_variables(shift)
       starts = shift.starts_at
       {
-        role_name: shift.house_role&.name || "staff",
+        # The whole label: a Bartender + Door shift isn't a Bartender shift.
+        role_name: shift.role_label.presence || "staff",
         shift_date: starts.strftime("%a, %b %-d"),
         shift_time: starts.strftime("%A, %B %-d at %-l:%M %p"),
         organization_name: shift.organization.name

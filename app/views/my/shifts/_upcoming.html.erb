@@ -1,117 +1,145 @@
-<%# Goal 1: when do I work. Uses @rows_by_day, @has_any, @people, @expected_by_shift.
-    Under the organization, one line per show the shift covers, with how
-    many people to expect where the organization shows it (Tim, 2026-10-16:
-    just the show time, the show's name and the count; no box, no total).
+<%# Goal 1: when do I work. Uses @rows, @has_any, @people, @expected_by_shift,
+    @also_on_by_shift.
 
-    A shift you told them you can't make reads by where it stands (the
+    One shift, two lines (Tim, 2026-11-07: five shifts took three phone
+    screens): the date once, inline; the role and hours; under them the
+    shows that day, or the organization when they work for more than one.
+    Grouped by week. Tapping a row opens its sheet: the shows with how many
+    people to expect where the organization shows it, who else is on (only
+    people who've been told), the shift's note, and "I can't make it".
+    A notice's link lands on the row (shift_landing_controller: scroll,
+    light, open).
+
+    A shift they told them they can't make reads by where it stands (the
     performer flow, for staff): told, finding someone, then once it's
     settled a muted row saying who has it or that they're not filling it. %>
-<section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
-  <%= render "shared/section_heading", padding: "px-5 py-4", title: "Upcoming shifts" %>
-
-  <div class="p-5">
+<%
+  orgs = @rows.map { |r| r[:shift].organization }.compact.uniq
+  one_org = orgs.one? ? orgs.first : nil
+  this_week = Date.current.beginning_of_week
+  week_words = ->(ws) { ws == this_week ? "This week" : ws == this_week + 7 ? "Next week" : "Week of #{ws.strftime('%b %-d')}" }
+  rows_by_week = @rows.group_by { |r| r[:shift].starts_at.to_date.beginning_of_week }
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+%>
+<section class="rounded-xl border border-gray-200 bg-white overflow-hidden" data-controller="shift-landing">
+  <%= render "shared/section_heading", padding: "px-5 py-4", title: "Upcoming shifts" do %>
     <% if @has_any %>
-      <div class="space-y-5">
-        <% @rows_by_day.each do |day, rows| %>
-          <div>
-            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2"><%= day.strftime("%A, %B %-d") %></h3>
-            <div class="space-y-2">
-              <% rows.each do |row| %>
-                <% shift = row[:shift] %>
-                <% assignment = row[:assignment] %>
-                <% vacancy = row[:vacancy] %>
-                <% outcome = row[:outcome] %>
-                <% dropped = outcome || assignment.declined? %>
-                <% org = shift.organization %>
-                <% location_name = shift.source.try(:location).try(:name) %>
-                <%
-                  # The shows this shift covers: with counts where the organization
-                  # shows them; otherwise, for a show-tied shift, just the shows.
-                  show_lines = (@expected_by_shift || {})[shift.id]
-                  if show_lines.nil? && (shift.house_role&.show_specific? || shift.shows.any?)
-                    show_lines = shift.covered_shows.map { |cs| ShiftExpectedAttendance::Line.new(show: cs, expected: nil) }
-                  end
-                  tone = if outcome then "bg-white border-gray-200 opacity-75"
-                  elsif dropped then "bg-pink-50 border-pink-200"
-                  else "bg-gray-50 border-gray-100"
-                  end
-                %>
-                <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-3 rounded-lg border <%= tone %>" data-shift-row="<%= outcome ? 'settled' : (dropped ? 'dropped' : 'on') %>">
-                  <div class="flex items-start gap-4 flex-1 min-w-0">
-                    <div class="flex-shrink-0 w-12 flex items-center gap-1 pt-0.5">
-                      <span class="text-lg leading-none font-bold text-gray-900"><%= shift.starts_at.strftime("%-d") %></span>
-                      <span class="text-[9px] leading-tight font-semibold text-pink-600 uppercase"><%= shift.starts_at.strftime("%b") %></span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <div class="font-medium text-gray-900 truncate <%= "line-through text-gray-500" if dropped %>"><%= shift.role_label %></div>
-                      <div class="text-sm text-gray-600 tabular-nums"><%= shift.starts_at.strftime("%-l:%M %p") %>–<%= shift.ends_at.strftime("%-l:%M %p") %></div>
-                      <div class="text-xs text-gray-500 truncate">
-                        <% if org %><%= org.name %><% end %><% if location_name.present? && location_name != org&.name %> · <%= location_name %><% end %>
-                        <% if @people.size > 1 %> · <%= row[:person].name %><% end %>
-                      </div>
-                      <% Array(show_lines).each do |line| %>
-                        <div class="text-xs text-gray-600 mt-0.5" data-show-line>
-                          <span class="font-semibold text-gray-800"><%= line.words %></span><% if line.expected %> · <span class="tabular-nums"><%= line.expected %> expected</span><% end %>
-                        </div>
-                      <% end %>
-                      <% if outcome %>
-                        <div class="mt-1 text-xs text-gray-600 font-medium" data-shift-outcome>
-                          <% if vacancy.filled? && vacancy.filled_by %>
-                            <%= vacancy.filled_by.name %> has it now.
-                          <% else %>
-                            They're not filling it.
-                          <% end %>
-                        </div>
-                      <% elsif dropped %>
-                        <div class="mt-1 text-xs text-pink-700 font-medium" data-shift-state>
-                          You told them you can't make it<% if assignment.decline_reason.present? %> — “<%= assignment.decline_reason %>”<% end %><% if vacancy&.finding_replacement? %> · they're finding someone to cover it<% end %>
-                        </div>
-                      <% end %>
-                    </div>
-                  </div>
+      <span class="text-xs text-gray-500"><%= @upcoming_count %><%= " · #{one_org.name}" if one_org %></span>
+    <% end %>
+  <% end %>
 
-                  <% unless outcome %>
-                    <div class="flex-shrink-0 sm:self-center">
-                      <% if dropped %>
-                        <%= button_to "I'm back on", my_undo_decline_shift_path(assignment), method: :post,
-                              class: "text-xs text-gray-600 hover:text-gray-900 underline bg-transparent border-0 cursor-pointer p-0" %>
-                      <% else %>
-                        <% cid = "cant-make-it-#{assignment.id}" %>
-                        <% form_id = "decline-shift-#{assignment.id}" %>
-                        <%= render "shared/button", text: "I can't make it", variant: "primary", size: "small", type: :button,
-                              classes: "w-full sm:w-auto justify-center min-h-[44px] sm:min-h-0",
-                              data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
-                        <%= render layout: "shared/sheet", locals: { id: cid, title: "Can't make this shift?", footer: capture {
-                              concat render("shared/button", text: "Never mind", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" })
-                              concat render("shared/button", text: "I can't make it", variant: "primary", size: "medium", type: :submit, form_id: form_id)
-                            } } do %>
-                          <div class="space-y-4">
-                            <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                              <div class="font-medium text-gray-900"><%= shift.role_label %> · <%= shift.starts_at.strftime("%a, %b %-d") %></div>
-                              <div class="text-sm text-gray-600 tabular-nums"><%= shift.starts_at.strftime("%-l:%M %p") %>–<%= shift.ends_at.strftime("%-l:%M %p") %><% if org %> · <%= org.name %><% end %></div>
-                              <% Array(show_lines).each do |line| %>
-                                <div class="text-xs text-gray-600">Covers <%= line.words %></div>
-                              <% end %>
-                            </div>
-                            <%= form_with url: my_decline_shift_path(assignment), method: :post, id: form_id do %>
-                              <label class="block text-sm font-medium text-gray-700 mb-1" for="<%= form_id %>-reason">Add a note (optional)</label>
-                              <%= text_area_tag :reason, nil, rows: 2, id: "#{form_id}-reason", placeholder: "e.g. I'm out of town that weekend",
-                                    class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
-                            <% end %>
-                            <p class="text-sm text-gray-600">We'll tell <span class="font-medium text-gray-900"><%= org&.name %></span> and they'll look for someone to cover it. You can take it back here until someone does.</p>
-                          </div>
-                        <% end %>
-                      <% end %>
-                    </div>
-                  <% end %>
+  <% if @has_any %>
+    <% rows_by_week.each do |week_start, rows| %>
+      <div class="px-5 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500"><%= week_words.call(week_start) %></div>
+      <div class="divide-y divide-gray-100">
+        <% rows.each do |row| %>
+          <%
+            shift = row[:shift]
+            assignment = row[:assignment]
+            vacancy = row[:vacancy]
+            outcome = row[:outcome]
+            dropped = outcome || assignment.declined?
+            org = shift.organization
+            location_name = shift.location_name
+            # The shows this shift covers: with counts where the organization
+            # shows them; otherwise, for a show-tied shift, just the shows.
+            show_lines = (@expected_by_shift || {})[shift.id]
+            if show_lines.nil? && (shift.house_role&.show_specific? || shift.shows.any?)
+              show_lines = shift.covered_shows.map { |cs| ShiftExpectedAttendance::Line.new(show: cs, expected: nil) }
+            end
+            show_lines = Array(show_lines)
+            second = []
+            second << org.name if org && !one_org
+            second << row[:person].name if @people.size > 1
+            second += show_lines.map { |l| l.expected.to_i.positive? ? "#{l.words} · #{l.expected} expected" : l.words }
+            second << location_name if second.empty? && location_name.present?
+            cid = assignment && !dropped ? "cant-make-it-#{assignment.id}" : nil
+            state = outcome ? "settled" : (dropped ? "dropped" : "on")
+          %>
+          <div id="shift-<%= shift.id %>" data-shift-row="<%= state %>"
+               class="flex items-center gap-3 px-5 py-2.5 transition-colors <%= outcome ? 'opacity-60' : '' %> <%= cid ? 'cursor-pointer hover:bg-gray-50' : '' %>"
+               <% if cid %>data-controller="modal" data-action="click->modal#open" data-modal-id="<%= cid %>" role="button" tabindex="0"<% end %>>
+            <div class="w-14 flex items-center gap-1.5 flex-shrink-0">
+              <span class="text-xl leading-none font-bold text-gray-900 tabular-nums"><%= shift.starts_at.strftime("%-d") %></span>
+              <span class="flex flex-col text-[10px] leading-tight uppercase">
+                <span class="font-semibold text-pink-600"><%= shift.starts_at.strftime("%b") %></span>
+                <span class="text-gray-500"><%= shift.starts_at.strftime("%a") %></span>
+              </span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium truncate <%= dropped ? 'line-through text-gray-500 font-normal' : 'text-gray-900' %>">
+                <%= shift.role_label %> · <span class="tabular-nums"><%= ShiftWords.shift_hours(shift) %></span>
+              </div>
+              <% if outcome %>
+                <div class="text-xs text-gray-600 truncate" data-shift-outcome>
+                  <% if vacancy.filled? && vacancy.filled_by %><%= vacancy.filled_by.name %> has it now.<% else %>They're not filling it.<% end %>
                 </div>
+              <% elsif dropped %>
+                <div class="text-xs text-pink-700 truncate" data-shift-state>
+                  You told them you can't make it<% if assignment.decline_reason.present? %> — “<%= assignment.decline_reason %>”<% end %><% if vacancy&.finding_replacement? %> · they're finding someone to cover it<% end %>
+                </div>
+              <% elsif second.any? %>
+                <div class="text-xs text-gray-500 truncate" data-row-detail><%= second.join(" · ") %></div>
               <% end %>
             </div>
+            <% if outcome %>
+            <% elsif dropped %>
+              <%= button_to "I'm back on", my_undo_decline_shift_path(assignment), method: :post,
+                    class: "text-xs text-pink-700 hover:text-pink-800 font-medium underline bg-transparent border-0 cursor-pointer p-0 flex-shrink-0 min-h-[44px]" %>
+            <% else %>
+              <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            <% end %>
           </div>
+
+          <% if cid %>
+            <% form_id = "decline-shift-#{assignment.id}" %>
+            <% also_on = (@also_on_by_shift || {})[shift.id] %>
+            <%= render layout: "shared/sheet", locals: { id: cid, title: shift.role_label, footer: capture {
+                  concat render("shared/button", text: "Close", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" })
+                  concat render("shared/button", text: "I can't make it", variant: "primary", size: "medium", type: :submit, form_id: form_id)
+                } } do %>
+              <div class="space-y-4" data-shift-sheet>
+                <div>
+                  <div class="font-medium text-gray-900"><%= ShiftWords.day(shift.starts_at) %> · <span class="tabular-nums"><%= ShiftWords.shift_hours(shift) %></span></div>
+                  <div class="text-sm text-gray-600"><%= org&.name %><% if location_name.present? && location_name != org&.name %> · <%= location_name %><% end %><% if @people.size > 1 %> · <%= row[:person].name %><% end %></div>
+                </div>
+                <% if show_lines.any? %>
+                  <div>
+                    <div class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1"><%= ShiftWords.that_day(shift.starts_at).sub(/\Athat/, "That") %></div>
+                    <% show_lines.each do |line| %>
+                      <div class="text-sm" data-show-line><span class="text-gray-900"><%= line.words %></span><% if line.expected.to_i.positive? %> · <span class="tabular-nums text-gray-600"><%= line.expected %> expected</span><% end %></div>
+                    <% end %>
+                  </div>
+                <% end %>
+                <% if also_on.present? %>
+                  <div>
+                    <div class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1">Also on</div>
+                    <div class="text-sm text-gray-900" data-also-on><%= also_on %></div>
+                  </div>
+                <% end %>
+                <% if shift.notes.present? %>
+                  <div>
+                    <div class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1">Notes</div>
+                    <div class="text-sm text-gray-900 whitespace-pre-line"><%= shift.notes %></div>
+                  </div>
+                <% end %>
+                <div class="border-t border-gray-200 pt-4">
+                  <div class="text-sm font-semibold text-gray-900 mb-2">Can't make this shift?</div>
+                  <%= form_with url: my_decline_shift_path(assignment), method: :post, id: form_id do %>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" for="<%= form_id %>-reason">Add a note (optional)</label>
+                    <%= text_area_tag :reason, nil, rows: 2, id: "#{form_id}-reason", placeholder: "e.g. I'm out of town that weekend", class: input_class %>
+                  <% end %>
+                  <p class="text-sm text-gray-600 mt-2">We'll tell <span class="font-medium text-gray-900"><%= org&.name %></span> so they can sort out cover. You can take it back here until someone has it.</p>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
         <% end %>
       </div>
-    <% else %>
-      <%= render "shared/empty_state", icon: "clock", title: "No upcoming shifts", body: "They'll show up here once your schedule is posted.", compact: true %>
     <% end %>
-  </div>
+  <% else %>
+    <div class="p-5">
+      <%= render "shared/empty_state", icon: "clock", title: "No upcoming shifts", body: "They'll show up here once your schedule is posted.", compact: true %>
+    </div>
+  <% end %>
 </section>

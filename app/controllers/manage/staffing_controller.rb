@@ -234,25 +234,32 @@ module Manage
       finalization.finalized_by = Current.user
       finalization.save!
 
-      subject = params[:subject].to_s.strip.presence || default_finalize_subject
-      intro   = params[:message].to_s.strip.presence || default_finalize_intro
-
-      comp = compute_schedule_updates(shifts, @week_start)
       notify_everyone = !was_published || params[:notify_all].present?
+      subject = params[:subject].to_s.strip.presence || default_finalize_subject
+      intro   = params[:message].to_s.strip.presence || (notify_everyone ? default_finalize_intro : default_updates_intro)
+
+      notices = StaffScheduleNotices.new(Current.organization, @week_start, shifts)
+      comp = notices.plan
       people = notify_everyone ? comp[:all_people] : comp[:update].map { |u| u[:person] }
 
       # Their own words, or the default? (V1.1 plan §9, option 3)
-      custom = ManagerWords.changed?([ subject, default_finalize_subject ], [ intro, default_finalize_intro ])
-      notified = notify_people_for_week(people: people, week_start: @week_start, shifts: shifts, subject: subject, intro: intro, custom_words: custom)
+      custom = ManagerWords.changed?([ subject, default_finalize_subject ], [ intro, notify_everyone ? default_finalize_intro : default_updates_intro ])
+      sent = notices.send!(people: people, everyone: notify_everyone, subject: subject, intro: intro, custom_words: custom, sender: Current.user)
+      notified = sent[:notified]
+      # Nobody is "up to date" because they can't be reached: say who wasn't told.
+      skipped = sent[:unreachable]
+      skipped_words = skipped.any? ? " #{skipped.size} #{skipped.size == 1 ? 'has' : 'have'} no account yet and #{skipped.size == 1 ? "wasn't" : "weren't"} notified: #{skipped.map(&:name).to_sentence}." : ""
 
       notice =
         if !was_published
-          notified.zero? ? "Schedule published. No staff are assigned yet, so no one was notified." :
-            "Schedule published — #{notified} staff member#{"s" unless notified == 1} notified."
+          (notified.zero? ? "Schedule published. No staff are assigned yet, so no one was notified." :
+            "Schedule published — #{notified} staff member#{"s" unless notified == 1} notified.") + skipped_words
+        elsif notified.zero? && skipped.any?
+          "No notifications were sent." + skipped_words
         elsif notified.zero?
           "Everyone's already up to date — no notifications were sent."
         else
-          "Notified #{notified} #{"person".pluralize(notified)} of their schedule #{notify_everyone ? "" : "changes"}.".squeeze(" ")
+          "Notified #{notified} #{"person".pluralize(notified)} of their schedule #{notify_everyone ? "" : "changes"}.".squeeze(" ") + skipped_words
         end
       redirect_to scheduling_return_url, notice: notice
     end
@@ -339,6 +346,12 @@ module Manage
     end
     helper_method :default_finalize_intro
 
+    # The several-changes notice's first line (Notify updates).
+    def default_updates_intro
+      "Here's what changed on your schedule for the week of #{@week_start.strftime("%B %-d")}:"
+    end
+    helper_method :default_updates_intro
+
     private
 
     # Has this staff member created/claimed their CocoScout account? True once
@@ -363,134 +376,10 @@ module Manage
       Current.organization.people.where.not(id: existing_ids).order(:name)
     end
 
-    # Classify this week's staff for the comms row / notify action. Returns:
-    #   update:        [{ person:, reason: :new|:changed|:removed }] — need a notify
-    #   current_count: how many assigned people are fully up to date
-    #   total:         distinct people involved (assigned or with a pending removal)
-    #   all_people:    every such Person (for a full re-notify)
-    # "changed" = the shift row was edited after we last told them (shift.updated_at
-    # > their assignment's notified_at). "new" = an un-notified assignment.
+    # Where this week's notices stand (StaffScheduleNotices#plan): who needs
+    # one and why, who's current, who can't be reached.
     def compute_schedule_updates(shifts, week_start)
-      week_range = week_start.beginning_of_day..(week_start + 6.days).end_of_day
-
-      pairs_by_person = Hash.new { |h, k| h[k] = [] }
-      shifts.each do |shift|
-        # Someone who can't make it keeps their row but is off the shift: not an
-        # update to send, and never re-sent the shift they declined.
-        shift.active_assignments.each { |a| pairs_by_person[a.person] << [ a, shift ] if a.person }
-      end
-
-      removals = Current.organization.staff_schedule_removals.pending
-                        .where(shift_starts_at: week_range).includes(:person).to_a
-      removal_person_ids = removals.map(&:person_id).to_set
-
-      update = []
-      current_count = 0
-      pairs_by_person.each do |person, pairs|
-        reason =
-          if pairs.any? { |a, _s| a.notified_at.nil? } then :new
-          elsif pairs.any? { |a, s| a.notified_at && s.updated_at > a.notified_at } then :changed
-          elsif removal_person_ids.include?(person.id) then :removed
-          end
-        reason ? update << { person: person, reason: reason } : current_count += 1
-      end
-
-      # People with a pending removal but no remaining assignment this week.
-      assigned_ids = pairs_by_person.keys.map(&:id).to_set
-      removals.reject { |r| assigned_ids.include?(r.person_id) }.map(&:person).compact.uniq.each do |person|
-        update << { person: person, reason: :removed }
-      end
-
-      all_people = (pairs_by_person.keys + removals.map(&:person)).compact.uniq
-      {
-        update: update.uniq { |u| u[:person].id }.sort_by { |u| u[:person].name.to_s.downcase },
-        current_count: current_count,
-        total: all_people.size,
-        all_people: all_people
-      }
-    end
-
-    # Message the given people about this week: each gets their own shift list plus
-    # any pending removals, via the seeded ContentTemplate (in-app message). Stamps
-    # notified_at on their assignments, clears their removals, and records billing.
-    # Returns how many people were actually notified (those with a login).
-    # custom_words: the manager changed the subject or intro, so it's also a
-    # Message from them; otherwise a Notification alone (V1.1 plan §9).
-    def notify_people_for_week(people:, week_start:, shifts:, subject:, intro:, custom_words: false)
-      week_range = week_start.beginning_of_day..(week_start + 6.days).end_of_day
-
-      shifts_by_person = Hash.new { |h, k| h[k] = [] }
-      shifts.each { |s| s.active_assignments.each { |a| shifts_by_person[a.person_id] << s } }
-
-      removals_by_person = Current.organization.staff_schedule_removals.pending
-                                  .where(shift_starts_at: week_range).group_by(&:person_id)
-
-      notified = 0
-      people.each do |person|
-        next unless person&.user
-
-        person_shifts = (shifts_by_person[person.id] || []).sort_by(&:starts_at)
-        person_removals = removals_by_person[person.id] || []
-        next if person_shifts.empty? && person_removals.empty?
-
-        ContentTemplateService.deliver(
-          template_key: "staff_schedule_notification",
-          variables: {
-            recipient_name: first_name_of(person),
-            organization_name: Current.organization.name,
-            week_label: week_start.strftime("%B %-d"),
-            intro: ERB::Util.html_escape(intro),
-            shifts_list: shifts_list_html(person_shifts),
-            removals_list: removals_list_html(person_removals),
-            my_shifts_link: my_shifts_url
-          },
-          subject_override: subject,
-          sender: (Current.user if custom_words),
-          recipients: [ person ],
-          organization: Current.organization,
-          message_type: :system,
-          visibility: :personal,
-          custom_words: custom_words
-        )
-
-        Shift.where(id: person_shifts.map(&:id)).each do |s|
-          s.shift_assignments.where(person_id: person.id).update_all(notified_at: Time.current)
-        end
-        StaffScheduleRemoval.where(id: person_removals.map(&:id)).update_all(notified_at: Time.current, updated_at: Time.current)
-        # Scheduling someone bills nothing: a staff member is billable once a
-        # paid shift is over (UsageRules, UsageSweepJob).
-        notified += 1
-      end
-      notified
-    end
-
-    def first_name_of(person)
-      person.name.to_s.split(/\s+/).first.presence || person.name.to_s
-    end
-
-    # Pre-rendered (self-escaped) <li> list of a person's shifts, injected into the
-    # notification template.
-    def shifts_list_html(shifts)
-      shifts.map do |s|
-        location = s.house_role.location&.name || s.source.try(:location).try(:name)
-        "<li style=\"margin-bottom:6px;\">" \
-          "<strong>#{ERB::Util.html_escape(s.starts_at.strftime("%A, %b %-d"))}</strong> · " \
-          "#{ERB::Util.html_escape(s.starts_at.strftime("%-l:%M %p"))}–#{ERB::Util.html_escape(s.ends_at.strftime("%-l:%M %p"))} · " \
-          "#{ERB::Util.html_escape(s.role_label)}" \
-          "#{location ? " · #{ERB::Util.html_escape(location)}" : ""}" \
-        "</li>"
-      end.join
-    end
-
-    def removals_list_html(removals)
-      removals.map do |r|
-        loc = r.location_name.present? ? " · #{ERB::Util.html_escape(r.location_name)}" : ""
-        "<li style=\"margin-bottom:6px;\">" \
-          "<strong>#{ERB::Util.html_escape(r.shift_starts_at.strftime("%A, %b %-d"))}</strong> · " \
-          "#{ERB::Util.html_escape(r.shift_starts_at.strftime("%-l:%M %p"))} · " \
-          "#{ERB::Util.html_escape(r.shift_label.to_s)}#{loc}" \
-        "</li>"
-      end.join
+      StaffScheduleNotices.new(Current.organization, week_start, shifts).plan
     end
 
     # { show_id => [role names] } for every show in the loaded week that lacks

@@ -30,7 +30,7 @@ RSpec.describe "My::Shifts can't make it", type: :request do
     doc = Nokogiri::HTML(response.body)
     sheet = doc.at_css("#cant-make-it-#{assignment.id}[data-sheet]")
     expect(sheet).to be_present
-    expect(sheet.text).to include("Can't make this shift?", "Bar", "they'll look for someone to cover it")
+    expect(sheet.text).to include("Can't make this shift?", "Bar", "so they can sort out cover")
     expect(sheet.at_css("button[type='submit'][form='decline-shift-#{assignment.id}']")).to be_present
 
     post my_decline_shift_path(assignment), params: { reason: "Out of town" }

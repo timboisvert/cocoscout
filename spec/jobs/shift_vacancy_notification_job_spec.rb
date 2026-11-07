@@ -40,6 +40,25 @@ RSpec.describe ShiftVacancyNotificationJob, type: :job do
     expect(Message.count).to eq(0)
   end
 
+  it "says put on, not covering, when a manager assigned by hand, and 'you' to the one who dropped it" do
+    vacancy.fill!(priya)
+    expect { described_class.perform_now(vacancy.id, "filled") }.to change(Notification, :count).by(2)
+    to_manager = Notification.find_by(user: manager_user)
+    expect(to_manager.title).to eq("Priya Kaur has been put on the Bar shift on #{shift.starts_at.strftime('%a, %b %-d')}")
+    expect(to_manager.body).to include("that Dana Morris couldn't make, and will be told")
+    expect(to_manager.body).not_to include("is covering")
+    to_dana = Notification.find_by(user: dana_user)
+    expect(to_dana.body).to include("that you couldn't make")
+    expect(to_dana.body).not_to include("Dana Morris couldn't")
+  end
+
+  it "names the whole role label" do
+    shift.assign_additional_roles!([ create(:house_role, organization: org, name: "Door").id ])
+    vacancy.fill!(priya, accepted: true)
+    described_class.perform_now(vacancy.id, "filled")
+    expect(Notification.find_by(user: dana_user).body).to include("Bar + Door")
+  end
+
   it "tells the managers they're back on" do
     vacancy.reclaim!
 

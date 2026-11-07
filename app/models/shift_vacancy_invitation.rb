@@ -42,6 +42,9 @@ class ShiftVacancyInvitation < ApplicationRecord
         claimed = shift_vacancy.fill!(person, accepted: true)
       end
     end
+    # Their own confirmation, with the shift in it (the claim page alone
+    # said it before).
+    ShiftVacancyNotificationJob.perform_later(shift_vacancy_id, "claimed", id) if claimed
     claimed
   end
 

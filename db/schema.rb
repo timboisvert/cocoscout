@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_06_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_07_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2740,6 +2740,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "decline_reason"
+    t.datetime "told_starts_at"
+    t.datetime "told_ends_at"
+    t.string "told_role_label"
+    t.string "told_location_name"
     t.index ["person_id"], name: "index_shift_assignments_on_person_id"
     t.index ["shift_id", "person_id"], name: "idx_shift_assignments_unique", unique: true
     t.index ["shift_id"], name: "index_shift_assignments_on_shift_id"
@@ -3463,6 +3467,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_120000) do
     t.datetime "notified_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "shift_ends_at"
     t.index ["organization_id", "shift_starts_at"], name: "idx_on_organization_id_shift_starts_at_1d096fe153"
     t.index ["organization_id"], name: "index_staff_schedule_removals_on_organization_id"
     t.index ["person_id"], name: "index_staff_schedule_removals_on_person_id"

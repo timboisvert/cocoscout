@@ -55,8 +55,8 @@ class ShiftVacancy < ApplicationRecord
     transaction do
       declined_row&.destroy!
       unless shift.shift_assignments.active.exists?(person_id: person.id)
-        shift.shift_assignments.create!(person: person, position: next_position,
-                                        accepted_at: (stamp if accepted), notified_at: (stamp if accepted))
+        told = accepted ? StaffScheduleNotices.told_attributes(shift, at: stamp) : {}
+        shift.shift_assignments.create!(person: person, position: next_position, accepted_at: (stamp if accepted), **told)
       end
       update!(status: :filled, filled_by: person, filled_at: stamp, closed_at: stamp, closed_by: by)
     end
