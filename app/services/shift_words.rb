@@ -68,17 +68,25 @@ module ShiftWords
   # The same, for a page of shifts in one query: { shift_id => "Mia Manager
   # (House)" }, leaving out the viewer's own people.
   def also_on_for(shifts, person_ids)
+    also_on_rows_for(shifts, person_ids).transform_values do |mine|
+      mine.map { |a| "#{a.person.name} (#{a.shift.role_label})" }.uniq.join(", ")
+    end
+  end
+
+  # The rows behind it, for a card that names each person's role and hours:
+  # { shift_id => [ShiftAssignment, ...] }, told people only, in order of
+  # when they start.
+  def also_on_rows_for(shifts, person_ids)
     return {} if shifts.empty?
 
     rows = ShiftAssignment.active.where.not(notified_at: nil).where.not(person_id: person_ids)
                           .joins(:shift).where(shifts: { organization_id: shifts.map(&:organization_id).uniq })
                           .where("shifts.starts_at < ? AND shifts.ends_at > ?", shifts.map(&:ends_at).max, shifts.map(&:starts_at).min)
-                          .includes(:person, shift: [ :house_role, :additional_roles ]).to_a
+                          .includes(:person, shift: [ :house_role, :additional_roles, :organization ]).to_a
     shifts.each_with_object({}) do |shift, h|
       mine = rows.select { |a| a.shift.organization_id == shift.organization_id && a.shift.starts_at < shift.ends_at && a.shift.ends_at > shift.starts_at }
                  .sort_by { |a| [ a.shift.starts_at, a.person.name.to_s ] }
-      names = mine.map { |a| "#{a.person.name} (#{a.shift.role_label})" }.uniq
-      h[shift.id] = names.join(", ") if names.any?
+      h[shift.id] = mine if mine.any?
     end
   end
 

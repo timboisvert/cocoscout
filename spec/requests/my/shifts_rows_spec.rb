@@ -27,6 +27,12 @@ RSpec.describe "My::Shifts rows and sheet", type: :request do
 
   before do
     org.people << person
+    production = create(:production, organization: org, name: "Rising Stars")
+    show = create(:show, production: production, date_and_time: friday + 1.5.hours)
+    shift.update!(source: show)
+    allow(ShiftExpectedAttendance).to receive(:for).and_wrap_original do |m, shifts|
+      shifts.include?(shift) ? { shift.id => [ ShiftExpectedAttendance::Line.new(show: show, expected: 12) ] } : m.call(shifts)
+    end
     [ week_start, week_start + 7 ].each { |ws| StaffingFinalization.create!(organization: org, week_start: ws, finalized_at: Time.current) }
     door_shift.shift_assignments.create!(person: told, position: 1, notified_at: 1.day.ago)
     door_shift.shift_assignments.create!(person: untold, position: 2)
@@ -44,7 +50,14 @@ RSpec.describe "My::Shifts rows and sheet", type: :request do
     # opening the same sheet; the list is "Then 1 more".
     hero = page.at_css("[data-next-shift]")
     expect(hero["id"]).to eq("shift-#{shift.id}")
-    expect(hero.text.squish).to include("Next shift Bar, 7:00–11:00 PM", "#{friday.strftime('%A, %b %-d')} · Stars & Garters", "with Mia Manager")
+    expect(hero.text.squish).to include("Next shift Bar, 7:00–11:00 PM", "#{friday.strftime('%A, %b %-d')} · Stars & Garters")
+    # The whole night on the card: each show with its time and count, and
+    # everyone working alongside with role and hours (told people only).
+    expect(hero.at_css("[data-next-shift-shows]").text.squish).to include("That night", "8:30 PM", "Rising Stars", "12 expected")
+    crew = hero.at_css("[data-next-shift-crew]").text.squish
+    expect(crew).to include("Working with you", "Mia Manager", "Door", "8:00–10:00 PM")
+    expect(crew).not_to include("Uma Untold")
+    expect(hero.text).to include("Keys are in the office drawer.")
     expect(hero.at_css("[data-modal-id='cant-make-it-#{assignment.id}']")).to be_present
     expect(page.at_css("[data-upcoming-shifts]").text.squish).to include("Upcoming shifts 1 more · Stars & Garters", "Week of #{(week_start + 7).strftime('%b %-d')}")
     expect(page.at_css("[data-upcoming-shifts] #shift-#{shift.id}")).to be_nil

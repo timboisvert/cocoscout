@@ -1,11 +1,14 @@
-<%# The next shift first (plan: staffing notifications §5, idea 3): the
-    nearest shift they're on, as a card above the glance, so the thing they
-    opened the page for is the first thing on it. Role and hours, the
-    organization and place, that night's shows and who else is on (told
-    people only), then "I can't make it" (its sheet, rendered by the list)
+<%# The next shift first (plan: staffing notifications §5, idea 3; Tim,
+    2026-11-07: this is the one to lay out in full). The nearest shift they're
+    on, as a card above the glance: role and hours, the day, the organization
+    and place; the shows that night, each with its time, room, call time and
+    how many people to expect where the organization shows it; everyone
+    working alongside, with their role and hours (told people only); the
+    shift's note; then "I can't make it" (its sheet, rendered by the list)
     and Directions when the place has an address. Carries the shift's anchor,
-    so a notice's link lands and opens here. Uses @hero, @people,
-    @show_lines_by_shift, @also_on_by_shift. %>
+    so a notice's link lands and opens here. The shifts after this one keep
+    their two-line rows. Uses @hero, @people, @show_lines_by_shift,
+    @also_on_rows_by_shift. %>
 <%
   row = @hero
   shift = row[:shift]
@@ -21,29 +24,89 @@
   location = shift.house_role&.location || shift.source.try(:location)
   location_name = shift.location_name
   show_lines = (@show_lines_by_shift || {})[shift.id] || []
-  shows = show_lines.map { |l| l.expected.to_i.positive? ? "#{l.words} · #{l.expected} expected" : l.words }
-  also_on = (@also_on_by_shift || {})[shift.id].to_s.gsub(/\s*\([^)]*\)/, "").presence
+  crew = (@also_on_rows_by_shift || {})[shift.id] || []
   cid = "cant-make-it-#{assignment.id}"
-  directions = location&.full_address.present? && location.address1.present? ? "https://www.google.com/maps/search/?api=1&query=#{ERB::Util.url_encode(location.full_address)}" : nil
+  directions = location && location.address1.present? ? "https://www.google.com/maps/search/?api=1&query=#{ERB::Util.url_encode(location.full_address)}" : nil
+  label_class = "text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1.5"
 %>
-<section id="shift-<%= shift.id %>" data-next-shift class="rounded-xl border border-pink-200 bg-gradient-to-br from-pink-50 to-white p-5 mb-4 transition-colors">
-  <div class="text-[11px] font-semibold uppercase tracking-wide text-pink-600">Next shift<%= " · #{when_words}" if when_words %></div>
-  <div class="mt-1 text-xl font-bold text-gray-900 coustard-regular"><%= shift.role_label %>, <span class="tabular-nums"><%= ShiftWords.shift_hours(shift) %></span></div>
-  <div class="mt-0.5 text-sm text-gray-700">
-    <%= starts.strftime("%A, %b %-d") %> · <%= org&.name %><% if location_name.present? && location_name != org&.name %> · <%= location_name %><% end %><% if @people.size > 1 %> · <%= row[:person].name %><% end %>
-  </div>
-  <% if shows.any? || also_on %>
-    <div class="mt-1 text-sm text-gray-600" data-next-shift-detail>
-      <%= [ shows.presence&.join(", "), (also_on ? "with #{also_on}" : nil) ].compact.join(" · ") %>
+<section id="shift-<%= shift.id %>" data-next-shift class="rounded-xl border border-pink-200 bg-white overflow-hidden mb-4 transition-colors">
+  <div class="bg-gradient-to-br from-pink-50 to-white px-5 pt-4 pb-4 border-b border-pink-100">
+    <div class="text-[11px] font-semibold uppercase tracking-wide text-pink-600">Next shift<%= " · #{when_words}" if when_words %></div>
+    <div class="mt-1 text-xl font-bold text-gray-900 coustard-regular"><%= shift.role_label %>, <span class="tabular-nums"><%= ShiftWords.shift_hours(shift) %></span></div>
+    <div class="mt-0.5 text-sm text-gray-700">
+      <%= starts.strftime("%A, %b %-d") %> · <%= org&.name %><% if location_name.present? && location_name != org&.name %> · <%= location_name %><% end %><% if @people.size > 1 %> · <%= row[:person].name %><% end %>
     </div>
-  <% end %>
-  <div class="mt-4 flex flex-wrap gap-2">
-    <%= render "shared/button", text: "I can't make it", variant: "secondary", size: "small", type: :button,
-          data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
-    <% if directions %>
-      <%= link_to directions, target: "_blank", rel: "noopener" do %>
-        <%= render "shared/button", text: "Directions", variant: "secondary", size: "small" %>
-      <% end %>
+  </div>
+
+  <div class="px-5 py-4 space-y-4">
+    <% if show_lines.any? %>
+      <div data-next-shift-shows>
+        <div class="<%= label_class %>"><%= ShiftWords.that_day(starts).sub(/\Athat/, "That") %></div>
+        <div class="divide-y divide-gray-100">
+          <% show_lines.each do |line| %>
+            <% show = line.show %>
+            <% at = ShiftWords.local(shift, show.date_and_time) %>
+            <div class="flex items-start gap-3 py-1.5" data-show-line>
+              <div class="w-[4.5rem] flex-shrink-0 text-sm font-semibold text-gray-900 tabular-nums"><%= at.strftime("%-l:%M %p") %></div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm text-gray-900"><span><%= line.words.sub(/\A\S+ \S+ /, "") %></span><% if show.name_subtitle.present? %> <span class="text-gray-600">· <%= show.name_subtitle %></span><% end %></div>
+                <%
+                  details = []
+                  details << show.location_space.name if show.location_space&.name.present?
+                  details << "call #{ShiftWords.local(shift, show.call_time).strftime('%-l:%M %p')}" if show.call_time_enabled? && show.call_time
+                %>
+                <% if details.any? %><div class="text-xs text-gray-500"><%= details.join(" · ") %></div><% end %>
+              </div>
+              <% if line.expected.to_i.positive? %>
+                <div class="flex-shrink-0 text-sm tabular-nums text-gray-700"><span class="font-semibold text-gray-900"><%= line.expected %></span> expected</div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
     <% end %>
+
+    <% if crew.any? %>
+      <div data-next-shift-crew>
+        <div class="<%= label_class %>">Working with you</div>
+        <div class="divide-y divide-gray-100">
+          <% crew.each do |a| %>
+            <%
+              headshot = a.person.respond_to?(:safe_headshot_variant) ? a.person.safe_headshot_variant(:thumb) : nil
+              same_hours = a.shift.starts_at == shift.starts_at && a.shift.ends_at == shift.ends_at
+            %>
+            <div class="flex items-center gap-3 py-1.5" data-crew-row>
+              <% if headshot %>
+                <%= image_tag headshot, alt: a.person.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
+              <% else %>
+                <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs flex-shrink-0"><%= a.person.initials %></div>
+              <% end %>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm text-gray-900 truncate"><%= a.person.name %></div>
+                <div class="text-xs text-gray-500 truncate"><%= a.shift.role_label %></div>
+              </div>
+              <div class="flex-shrink-0 text-xs tabular-nums <%= same_hours ? 'text-gray-400' : 'text-gray-700' %>"><%= same_hours ? "same hours" : ShiftWords.shift_hours(a.shift) %></div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <% if shift.notes.present? %>
+      <div>
+        <div class="<%= label_class %>">Notes</div>
+        <div class="text-sm text-gray-900 whitespace-pre-line"><%= shift.notes %></div>
+      </div>
+    <% end %>
+
+    <div class="flex flex-wrap gap-2 pt-1">
+      <%= render "shared/button", text: "I can't make it", variant: "secondary", size: "small", type: :button,
+            data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
+      <% if directions %>
+        <%= link_to directions, target: "_blank", rel: "noopener" do %>
+          <%= render "shared/button", text: "Directions", variant: "secondary", size: "small" %>
+        <% end %>
+      <% end %>
+    </div>
   </div>
 </section>
