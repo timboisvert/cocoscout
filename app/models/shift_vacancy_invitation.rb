@@ -13,8 +13,9 @@ class ShiftVacancyInvitation < ApplicationRecord
   scope :pending, -> { where(claimed_at: nil, declined_at: nil) }
   scope :claimed, -> { where.not(claimed_at: nil) }
   scope :declined, -> { where.not(declined_at: nil) }
-  # Still worth showing the invitee: not claimed, and the vacancy still active.
-  scope :unresolved, -> { joins(:shift_vacancy).where(claimed_at: nil).merge(ShiftVacancy.active) }
+  # Still worth showing the invitee: not claimed, the vacancy still active,
+  # and the shift not over yet (ShiftVacancy#past?).
+  scope :unresolved, -> { joins(shift_vacancy: :shift).where(claimed_at: nil).merge(ShiftVacancy.active).where("shifts.ends_at >= ?", Time.current) }
 
   validates :token, uniqueness: true, allow_nil: true
 
@@ -55,14 +56,15 @@ class ShiftVacancyInvitation < ApplicationRecord
     true
   end
 
+  # Filled or closed, or the shift is over.
   def expired?
-    !shift_vacancy.active?
+    !shift_vacancy.active? || shift_vacancy.past?
   end
 
   # Declined but still open: they can change their mind. Already on the shift
   # (a manager put them on meanwhile): nothing to claim.
   def can_claim?
-    !claimed? && shift_vacancy.active? && !shift.shift_assignments.active.exists?(person_id: person_id)
+    !claimed? && shift_vacancy.active? && !shift_vacancy.past? && !shift.shift_assignments.active.exists?(person_id: person_id)
   end
 
   private

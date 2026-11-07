@@ -75,6 +75,21 @@ RSpec.describe "Claiming a shift someone can't make", type: :request do
     expect(response.body).to include("You declined, but you can still claim it", "Claim this shift")
   end
 
+  # Tim, 2026-11-07: claim invitations go away when the show happens.
+  it "says the shift has already happened once it is over, and takes no claim" do
+    travel_to(shift.ends_at + 1.day) do
+      get claim_shift_path(priya_invitation.token)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("data-claim-state=\"gone\"", "This shift has already happened")
+      expect(response.body).not_to include("Claim this shift")
+
+      post do_claim_shift_path(priya_invitation.token)
+      expect(response).to redirect_to(claim_shift_path(priya_invitation.token))
+      expect(vacancy.reload).to be_finding_replacement
+      expect(shift.shift_assignments.active.where(person: priya)).not_to exist
+    end
+  end
+
   it "sends a bad token home" do
     get claim_shift_path("nope")
     expect(response).to redirect_to(root_path)

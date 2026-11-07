@@ -23,6 +23,13 @@ class RoleVacancy < ApplicationRecord
   scope :closed, -> { where(status: %w[not_filling filled cancelled]) }
   scope :for_show, ->(show) { where(show: show) }
 
+  # Over: the show has happened. Nobody steps into a role in a show that is
+  # over, so the claim page and the invitees' home pages let it go (Tim,
+  # 2026-11-07: claim invitations go away when the show happens).
+  def past?
+    show.date_and_time.present? && show.date_and_time < Time.current
+  end
+
   validates :status, presence: true
   validates :role, presence: true
 
