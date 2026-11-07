@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_05_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_06_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3713,7 +3713,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_05_150000) do
     t.string "invitation_role", default: "viewer"
     t.bigint "person_id"
     t.bigint "contract_id"
+    t.bigint "invited_by_person_id"
     t.index ["contract_id"], name: "index_team_invitations_on_contract_id"
+    t.index ["invited_by_person_id"], name: "index_team_invitations_on_invited_by_person_id"
     t.index ["organization_id"], name: "index_team_invitations_on_organization_id"
     t.index ["production_id"], name: "index_team_invitations_on_production_id"
     t.index ["token"], name: "index_team_invitations_on_token", unique: true

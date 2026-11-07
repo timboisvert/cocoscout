@@ -302,7 +302,7 @@ module My
         )
         rendered = ContentTemplateService.render("talent_left_production", {
           recipient_name: user.person&.first_name || "there",
-          talent_name: Current.user.person&.full_name || "A talent",
+          talent_name: Current.user.person&.name.presence || "A talent",
           production_name: @production.name,
           groups_removed: groups_text,
           talent_pool_url: talent_pool_url

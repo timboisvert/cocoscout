@@ -39,7 +39,7 @@ class ProductionTeamAdder
     existing = TeamInvitation.find_by(email: email, organization: organization, production: production)
     return Result.new(outcome: :invited_already, name: email, invitation: existing) if existing
 
-    invitation = TeamInvitation.create!(email: email, organization: organization, production: production, invitation_role: role)
+    invitation = TeamInvitation.create!(email: email, organization: organization, production: production, invitation_role: role, invited_by: by&.person)
     Manage::TeamMailer.production_invite(invitation).deliver_later
     Result.new(outcome: :invited, name: email, invitation: invitation)
   end
