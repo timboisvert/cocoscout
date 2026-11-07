@@ -26,7 +26,7 @@
     <% if show_lines.any? %>
       <div data-sheet-shows>
         <% show_lines.each do |line| %>
-          <div class="text-sm" data-show-line><span class="text-gray-900"><%= line.words %></span><% if line.expected.to_i.positive? %> · <span class="tabular-nums text-gray-600"><%= line.expected %> expected</span><% end %></div>
+          <div class="text-sm" data-show-line><span class="text-gray-900"><%= line.words %></span><% unless line.expected.nil? %> · <span class="tabular-nums text-gray-600"><%= line.expected %> expected</span><% end %></div>
         <% end %>
       </div>
     <% end %>
