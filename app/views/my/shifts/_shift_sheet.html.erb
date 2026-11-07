@@ -1,8 +1,8 @@
 <%# One shift's sheet (shared/sheet), opened from its row in the upcoming
     list or from the hero card: the day and hours, the organization and
     place, the shows with how many people to expect where the organization
-    shows it, who else is on (only people who've been told), the shift's
-    note, and "I can't make it". Locals: row (assignment/shift/person), cid
+    shows it, the shift's note, and "I can't make it". Never who else is
+    working (Tim, 2026-11-07). Locals: row (assignment/shift/person), cid
     (the sheet's id, also the row's modal id). %>
 <%
   shift = row[:shift]
@@ -10,7 +10,6 @@
   org = shift.organization
   location_name = shift.location_name
   show_lines = (@show_lines_by_shift || {})[shift.id] || []
-  also_on = (@also_on_by_shift || {})[shift.id]
   starts = ShiftWords.starts(shift)
   form_id = "decline-shift-#{assignment.id}"
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
@@ -25,17 +24,10 @@
       <div class="text-sm text-gray-600"><%= org&.name %><% if location_name.present? && location_name != org&.name %> · <%= location_name %><% end %><% if @people.size > 1 %> · <%= row[:person].name %><% end %></div>
     </div>
     <% if show_lines.any? %>
-      <div>
-        <div class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1"><%= ShiftWords.that_day(starts).sub(/\Athat/, "That") %></div>
+      <div data-sheet-shows>
         <% show_lines.each do |line| %>
           <div class="text-sm" data-show-line><span class="text-gray-900"><%= line.words %></span><% if line.expected.to_i.positive? %> · <span class="tabular-nums text-gray-600"><%= line.expected %> expected</span><% end %></div>
         <% end %>
-      </div>
-    <% end %>
-    <% if also_on.present? %>
-      <div>
-        <div class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1">Also on</div>
-        <div class="text-sm text-gray-900" data-also-on><%= also_on %></div>
       </div>
     <% end %>
     <% if shift.notes.present? %>

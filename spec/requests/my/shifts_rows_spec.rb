@@ -3,9 +3,9 @@
 require "rails_helper"
 
 # My Shifts on a phone (Tim, 2026-11-07): one shift, two lines, grouped by
-# week; tapping a row opens its sheet with the shows, who else is on (only
-# people who've been told) and "I can't make it"; a notice's link lands on
-# the row by its anchor.
+# week; tapping a row opens its sheet with the shows and "I can't make it"
+# (never who else is working); a notice's link lands on the row by its
+# anchor.
 RSpec.describe "My::Shifts rows and sheet", type: :request do
   let(:password) { "Password123!" }
   let(:user) { create(:user, password: password) }
@@ -53,11 +53,10 @@ RSpec.describe "My::Shifts rows and sheet", type: :request do
     expect(hero.text.squish).to include("Next shift Bar, 7:00–11:00 PM", "#{friday.strftime('%A, %b %-d')} · Stars & Garters")
     # The whole night on the card: each show with its time and count, and
     # everyone working alongside with role and hours (told people only).
-    expect(hero.at_css("[data-next-shift-shows]").text.squish).to include("That night", "8:30 PM", "Rising Stars", "12 expected")
-    crew = hero.at_css("[data-next-shift-crew]").text.squish
-    expect(crew).to include("Working with you", "Mia Manager", "Door", "8:00–10:00 PM")
-    expect(crew).not_to include("Uma Untold")
+    expect(hero.at_css("[data-next-shift-shows]").text.squish).to eq("8:30 PM Rising Stars 12 expected")
     expect(hero.text).to include("Keys are in the office drawer.")
+    # Never who else is working: not the card, not the sheet (Tim, 2026-11-07).
+    expect(hero.text).not_to include("Mia Manager", "Working with you", "That night")
     expect(hero.at_css("[data-modal-id='cant-make-it-#{assignment.id}']")).to be_present
     expect(page.at_css("[data-upcoming-shifts]").text.squish).to include("Upcoming shifts 1 more · Stars & Garters", "Week of #{(week_start + 7).strftime('%b %-d')}")
     expect(page.at_css("[data-upcoming-shifts] #shift-#{shift.id}")).to be_nil
@@ -69,8 +68,8 @@ RSpec.describe "My::Shifts rows and sheet", type: :request do
     expect(row.text).not_to include("Stars & Garters") # one organization: named once, on the card
 
     sheet = doc.at_css("#cant-make-it-#{assignment.id}[data-sheet]")
-    expect(sheet.text).to include("Bar", "7:00–11:00 PM", "Also on", "Mia Manager (Door)", "Keys are in the office drawer.", "Can't make this shift?")
-    expect(sheet.text).not_to include("Uma Untold")
+    expect(sheet.text).to include("Bar", "7:00–11:00 PM", "Rising Stars", "Keys are in the office drawer.", "Can't make this shift?")
+    expect(sheet.text).not_to include("Mia Manager", "Also on", "That night")
     expect(sheet.at_css("button[type='submit'][form='decline-shift-#{assignment.id}']")).to be_present
     expect(doc.at_css("#cant-make-it-#{next_week_row.id}[data-sheet]")).to be_present
 

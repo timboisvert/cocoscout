@@ -76,7 +76,7 @@ RSpec.describe StaffScheduleNotices do
     expect(notices.plan[:update]).to be_empty
   end
 
-  it "says New shift, with that night's shows and only the people who've been told" do
+  it "says New shift, with that night's shows and never who else is on" do
     production = create(:production, organization: org, name: "Rising Stars")
     show = create(:show, production: production, date_and_time: friday + 1.5.hours)
     s = shift(bar, friday)
@@ -92,8 +92,7 @@ RSpec.describe StaffScheduleNotices do
     expect(n.kind).to eq("staff_shift_added")
     expect(n.title).to eq("New shift: Bartender, Fri Nov 13, 6:00–11:30 PM at The Annex")
     expect(n.body).to include("That night: Rising Stars (7:30 PM)")
-    expect(n.body).to include("Also on: Dan Lee (Door)")
-    expect(n.body).not_to include("Uma Untold")
+    expect(n.body).not_to include("Dan Lee", "Uma Untold", "Also on")
     expect(n.path).to eq("/my/shifts#shift-#{s.id}")
   end
 

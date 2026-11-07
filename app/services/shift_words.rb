@@ -2,8 +2,8 @@
 
 # The words every staff notice uses for a shift (StaffScheduleNotices,
 # ShiftVacancyNotificationService, ShowChangeNotices): its day, hours, place,
-# the shows it covers, who else has been told they're on that day, and the
-# link that lands on it in My Shifts. One place, so "Fri Nov 13, 6:00–11:30
+# the shows it covers, and the link that lands on it in My Shifts. Never who
+# else is working (Tim, 2026-11-07: staff aren't shown each other's shifts). One place, so "Fri Nov 13, 6:00–11:30
 # PM at The Annex" reads the same everywhere.
 module ShiftWords
   module_function
@@ -52,44 +52,6 @@ module ShiftWords
       shows.map { |s| "#{s.production&.name || s.display_name} (#{start_time(local(shift, s.date_and_time))})" }.join(", ")
   end
 
-  # Others working that day, at the same organization, whose shift overlaps
-  # this one and who have been told they're on: "Mia Manager (House), Dan
-  # Lee (Door)". Nobody told, nil: a name here is a promise that they know.
-  def also_on(shift, person)
-    rows = ShiftAssignment.active.where.not(notified_at: nil).where.not(person_id: person.id)
-                          .joins(:shift).where(shifts: { organization_id: shift.organization_id })
-                          .where("shifts.starts_at < ? AND shifts.ends_at > ?", shift.ends_at, shift.starts_at)
-                          .includes(:person, shift: [ :house_role, :additional_roles ])
-                          .sort_by { |a| [ a.shift.starts_at, a.person.name.to_s ] }
-    names = rows.map { |a| "#{a.person.name} (#{a.shift.role_label})" }.uniq
-    names.presence&.join(", ")
-  end
-
-  # The same, for a page of shifts in one query: { shift_id => "Mia Manager
-  # (House)" }, leaving out the viewer's own people.
-  def also_on_for(shifts, person_ids)
-    also_on_rows_for(shifts, person_ids).transform_values do |mine|
-      mine.map { |a| "#{a.person.name} (#{a.shift.role_label})" }.uniq.join(", ")
-    end
-  end
-
-  # The rows behind it, for a card that names each person's role and hours:
-  # { shift_id => [ShiftAssignment, ...] }, told people only, in order of
-  # when they start.
-  def also_on_rows_for(shifts, person_ids)
-    return {} if shifts.empty?
-
-    rows = ShiftAssignment.active.where.not(notified_at: nil).where.not(person_id: person_ids)
-                          .joins(:shift).where(shifts: { organization_id: shifts.map(&:organization_id).uniq })
-                          .where("shifts.starts_at < ? AND shifts.ends_at > ?", shifts.map(&:ends_at).max, shifts.map(&:starts_at).min)
-                          .includes(:person, shift: [ :house_role, :additional_roles, :organization ]).to_a
-    shifts.each_with_object({}) do |shift, h|
-      mine = rows.select { |a| a.shift.organization_id == shift.organization_id && a.shift.starts_at < shift.ends_at && a.shift.ends_at > shift.starts_at }
-                 .sort_by { |a| [ a.shift.starts_at, a.person.name.to_s ] }
-      h[shift.id] = mine if mine.any?
-    end
-  end
-
   def location(shift)
     shift.house_role&.location&.name.presence || shift.source.try(:location).try(:name).presence
   end
@@ -110,7 +72,6 @@ module ShiftWords
       start_time: start_time(starts(shift)),
       location_name: location(shift),
       shows_line: shows_line(shift),
-      also_on: also_on(shift, person),
       shift_url: shift_url(shift),
       my_shifts_link: my_shifts_url
     }
