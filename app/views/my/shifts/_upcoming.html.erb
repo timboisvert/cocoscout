@@ -67,15 +67,15 @@
               </span>
             </div>
             <div class="flex-1 min-w-0">
-              <div class="text-sm font-medium truncate <%= dropped ? 'line-through text-gray-500 font-normal' : 'text-gray-900' %>">
+              <div class="text-sm font-medium <%= dropped ? 'line-through text-gray-500 font-normal' : 'text-gray-900' %>">
                 <%= shift.role_label %> · <span class="tabular-nums"><%= ShiftWords.shift_hours(shift) %></span>
               </div>
               <% if outcome %>
-                <div class="text-xs text-gray-600 truncate" data-shift-outcome>
+                <div class="text-xs text-gray-600" data-shift-outcome>
                   <% if vacancy.filled? && vacancy.filled_by %><%= vacancy.filled_by.name %> has it now.<% else %>They're not filling it.<% end %>
                 </div>
               <% elsif dropped %>
-                <div class="text-xs text-pink-700 truncate" data-shift-state>
+                <div class="text-xs text-pink-700" data-shift-state>
                   You told them you can't make it<% if assignment.decline_reason.present? %> — “<%= assignment.decline_reason %>”<% end %><% if vacancy&.finding_replacement? %> · they're finding someone to cover it<% end %>
                 </div>
               <% elsif second.any? %>
