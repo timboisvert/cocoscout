@@ -46,7 +46,7 @@ RSpec.describe "My::Shifts rows and sheet", type: :request do
     expect(hero["id"]).to eq("shift-#{shift.id}")
     expect(hero.text.squish).to include("Next shift Bar, 7:00–11:00 PM", "#{friday.strftime('%A, %b %-d')} · Stars & Garters", "with Mia Manager")
     expect(hero.at_css("[data-modal-id='cant-make-it-#{assignment.id}']")).to be_present
-    expect(page.at_css("[data-upcoming-shifts]").text).to include("Then 1 more", "Week of #{(week_start + 7).strftime('%b %-d')}")
+    expect(page.at_css("[data-upcoming-shifts]").text.squish).to include("Upcoming shifts 1 more · Stars & Garters", "Week of #{(week_start + 7).strftime('%b %-d')}")
     expect(page.at_css("[data-upcoming-shifts] #shift-#{shift.id}")).to be_nil
 
     row = page.at_css("#shift-#{next_week_shift.id}")
