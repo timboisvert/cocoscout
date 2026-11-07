@@ -107,4 +107,23 @@ RSpec.describe "My::Shifts can't make it", type: :request do
     get my_shifts_path
     expect(Nokogiri::HTML(response.body).text).not_to include("You're invited to cover a shift")
   end
+
+  # Tim, 2026-11-07: claim invitations go away when the show happens. An old
+  # open hole had kept its card on the home page for weeks.
+  it "stops showing an invitation once that shift is over" do
+    other = create(:person, name: "Lee Chen")
+    other_shift = create(:shift, organization: org, house_role: role, starts_at: shift_at + 1.day, ends_at: shift_at + 1.day + 4.hours)
+    dropped = other_shift.shift_assignments.create!(person: other, position: 1).tap(&:decline!)
+    invitation = dropped.active_vacancy.invitations.create!(person: person)
+
+    travel_to(other_shift.ends_at + 1.hour) do
+      get my_dashboard_path
+      home = Nokogiri::HTML(response.body)
+      expect(home.text).not_to include("You're invited to cover a shift")
+      expect(home.at_css("a[href='#{claim_shift_path(invitation.token)}']")).to be_nil
+
+      get my_shifts_path
+      expect(Nokogiri::HTML(response.body).text).not_to include("You're invited to cover a shift")
+    end
+  end
 end

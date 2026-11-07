@@ -88,6 +88,13 @@ RSpec.describe RoleVacancyInvitation, type: :model do
         pending_invitation.role_vacancy.update!(status: "filled")
         expect(described_class.unresolved).not_to include(pending_invitation)
       end
+
+      # Tim, 2026-11-07: claim invitations go away when the show happens.
+      it "drops it once the show has happened" do
+        travel_to(pending_invitation.show.date_and_time + 1.minute) do
+          expect(described_class.unresolved).not_to include(pending_invitation)
+        end
+      end
     end
   end
 
@@ -171,6 +178,14 @@ RSpec.describe RoleVacancyInvitation, type: :model do
       vacancy = create(:role_vacancy, :cancelled)
       invitation = create(:role_vacancy_invitation, role_vacancy: vacancy)
       expect(invitation.expired?).to be true
+    end
+
+    it "returns true once the show has happened, and the role can no longer be claimed" do
+      invitation = create(:role_vacancy_invitation)
+      travel_to(invitation.show.date_and_time + 1.minute) do
+        expect(invitation.expired?).to be true
+        expect(invitation.can_claim?).to be false
+      end
     end
   end
 end

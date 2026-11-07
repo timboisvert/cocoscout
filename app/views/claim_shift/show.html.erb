@@ -26,7 +26,7 @@
           <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
         </div>
         <h2 class="text-lg font-semibold text-gray-900 mb-2">No longer available</h2>
-        <p class="text-gray-600 text-sm"><%= @vacancy.filled? ? "Someone else has this shift now." : "This shift is no longer open." %></p>
+        <p class="text-gray-600 text-sm"><%= if @vacancy.filled? then "Someone else has this shift now." elsif @vacancy.past? then "This shift has already happened." else "This shift is no longer open." end %></p>
       </div>
 
     <% else %>

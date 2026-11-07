@@ -73,6 +73,17 @@ RSpec.describe "My alert panels", type: :request do
         expect(response.body).to include(decline_claim_vacancy_path(invitation.token))
       end
     end
+
+    # Tim, 2026-11-07: claim invitations go away when the show happens.
+    it "is gone from both once the show has happened" do
+      travel_to(show.date_and_time + 1.hour) do
+        [ my_dashboard_path, my_shows_path ].each do |path|
+          get path
+          expect(response.body).not_to include("You&#39;re invited to fill a role"), "still on #{path}"
+          expect(response.body).not_to include(claim_vacancy_path(invitation.token))
+        end
+      end
+    end
   end
 
   describe "Complete your info" do
