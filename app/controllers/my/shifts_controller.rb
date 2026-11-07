@@ -53,7 +53,9 @@ module My
         h[shift.id] = Array(lines)
       end
       # Who else is working alongside each shift, among people who've been told.
-      @also_on_by_shift = ShiftWords.also_on_for(@rows.map { |r| r[:shift] }.uniq, people_ids)
+      shifts = @rows.map { |r| r[:shift] }.uniq
+      @also_on_rows_by_shift = ShiftWords.also_on_rows_for(shifts, people_ids)
+      @also_on_by_shift = @also_on_rows_by_shift.transform_values { |rows| rows.map { |a| "#{a.person.name} (#{a.shift.role_label})" }.uniq.join(", ") }
       @has_any = @rows.any?
       @upcoming_count = @rows.count { |r| r[:assignment]&.active? }
 
