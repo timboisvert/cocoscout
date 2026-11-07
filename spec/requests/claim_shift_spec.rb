@@ -47,6 +47,14 @@ RSpec.describe "Claiming a shift someone can't make", type: :request do
     expect(shift.shift_assignments.find_by(person: priya)).to have_attributes(accepted_at: be_present, notified_at: be_present)
     expect(vacancy.reload).to be_filled
     expect(enqueued_jobs.map { |j| [ j["job_class"], j["arguments"] ] }).to include([ "ShiftVacancyNotificationJob", [ vacancy.id, "filled" ] ])
+    # Their own confirmation, with the shift in it, the moment they claim.
+    expect(enqueued_jobs.map { |j| [ j["job_class"], j["arguments"] ] }).to include([ "ShiftVacancyNotificationJob", [ vacancy.id, "claimed", priya_invitation.id ] ])
+    expect { perform_enqueued_jobs(only: ShiftVacancyNotificationJob) }.to change { priya.user.notifications.count }.by(1)
+    confirmation = priya.user.notifications.order(:id).last
+    expect(confirmation.kind).to eq("shift_claim_confirmed")
+    expect(confirmation.title).to eq("You've got the Bar shift, #{shift_at.strftime('%a %b %-d')}: 7:00–11:00 PM")
+    expect(confirmation.body).to include("Thanks for covering for Dana Morris")
+    expect(confirmation.path).to eq("/my/shifts#shift-#{shift.id}")
 
     post do_claim_shift_path(lee_invitation.token)
     expect(response).to redirect_to(claim_shift_path(lee_invitation.token))

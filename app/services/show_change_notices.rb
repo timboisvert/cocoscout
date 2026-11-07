@@ -34,7 +34,7 @@ class ShowChangeNotices
   # per-person version is listed under the draft.
   PER_PERSON = {
     "cast_off" => %w[event_date], "cast_moved" => %w[dates changes],
-    "staff_off" => %w[dates what shifts], "staff_moved" => %w[dates what shifts]
+    "staff_off" => %w[dates headline what outcome shifts remaining], "staff_moved" => %w[dates headline what outcome shifts]
   }.freeze
   MAIN_KEY = { "cast_off" => "event_date", "cast_moved" => "changes", "staff_off" => "shifts", "staff_moved" => "shifts" }.freeze
 
@@ -99,7 +99,8 @@ class ShowChangeNotices
 
   def hint(section)
     words = { "event_date" => "their dates", "dates" => "their dates", "changes" => "each of their dates, was and now",
-              "what" => "what happened", "shifts" => "their own shifts" }
+              "headline" => "the short version", "what" => "what happened", "outcome" => "what that means for their shift",
+              "shifts" => "their own shifts", "remaining" => "what's still on their day" }
     rest = per_person_keys(section).map { |key| "{{#{key}}} #{words[key]}" }
     "{{recipient_name}} becomes each person's first name#{rest.any? ? ", #{rest.to_sentence}" : ''}."
   end
@@ -130,6 +131,7 @@ class ShowChangeNotices
     section = section(key)
     return 0 unless section
 
+    @acted = section.audience != "staff" || !!shift_action
     if section.audience == "staff" && shift_action
       section.off? ? take_shifts_off!(section) : move_shifts!(section)
     end
@@ -139,15 +141,27 @@ class ShowChangeNotices
     ids = person_ids.map(&:to_i).to_set
     told = section.reachable.select { |r| ids.include?(r.person.id) }
     told.each do |recipient|
-      subject_vars, body_vars = person_variables(section, recipient)
+      subject_vars, body_vars = person_variables(section, recipient, acted: @acted)
+      their_subject, their_body = subject, body
+      unless @acted
+        # The draft was written as if the shifts would come off or move (the
+        # tick is on by default), so its words say so. Unticked, the shift
+        # stands: swap those words for the ones that are true. Words the
+        # manager changed by hand are theirs and stay.
+        ticked_subject_vars, ticked_body_vars = person_variables(section, recipient, acted: true)
+        %w[headline outcome remaining].each do |key|
+          their_subject = their_subject.gsub(ticked_subject_vars[key], subject_vars[key].to_s) if ticked_subject_vars[key].present?
+          their_body = their_body.gsub(ticked_body_vars[key], body_vars[key].to_s) if ticked_body_vars[key].present?
+        end
+      end
       shows = recipient.changes.filter_map(&:show)
       ContentTemplateService.deliver(
         template_key: section.template, variables: body_vars, sender: (sender if custom), recipients: [ recipient.person ],
         organization: organization, production: (shows.first.production if shows.map(&:production_id).uniq.one?),
         show: (shows.first if shows.one?), message_type: :system, visibility: :personal, custom_words: custom,
         mailer_class: ShowChangeMailer.with(organization_id: organization.id), mailer_method: :notice,
-        subject_override: ContentTemplate.interpolate(subject, subject_vars).squish,
-        body_override: ContentTemplate.interpolate(body, body_vars)
+        subject_override: ContentTemplate.interpolate(their_subject, subject_vars).squish,
+        body_override: ContentTemplate.interpolate(their_body, body_vars)
       )
       recipient.changes.each do |change|
         ShowChangeNotice.find_or_create_by!(show_change: change, person: recipient.person, audience: section.audience) do |notice|
@@ -188,6 +202,9 @@ class ShowChangeNotices
         next unless shift && shift.starts_at.to_i == Time.zone.parse(entry["starts_at"]).to_i
 
         shift.update!(starts_at: shift.starts_at + offset, ends_at: shift.ends_at + offset)
+        # Told here, so the week's Notify updates doesn't say "changed" again.
+        shift.shift_assignments.where.not(notified_at: nil)
+             .update_all(told_starts_at: shift.starts_at, told_ends_at: shift.ends_at)
       end
     end
   end
@@ -233,7 +250,9 @@ class ShowChangeNotices
   # subject, a line each in the body.
   # projected: a moved shift not moved yet reads as if it were (the preview,
   # with Move these shifts ticked).
-  def person_variables(section, recipient, projected: false)
+  # acted: the shifts were taken off or moved with the show (the manager's
+  # tick); false and the words say the shift stands as it was.
+  def person_variables(section, recipient, projected: false, acted: true)
     shared = shared_variables(section).merge("recipient_name" => recipient.first_name)
     changes = recipient.changes
     dates = changes.map { |c| short_date(c.moved? ? c.now_starts_at : c.was_starts_at) }.uniq.to_sentence
@@ -244,7 +263,11 @@ class ShowChangeNotices
     when "cast_moved"
       { "dates" => dates, "changes" => [ dates, changes.map { |c| "#{long_time(c.was_starts_at)} → #{long_time(c.now_starts_at)}" }.join("<br>") ] }
     else
-      { "dates" => dates, "what" => what(section, changes), "shifts" => [ dates, shift_lines(section, recipient, projected: projected).join("<br>") ] }
+      entries = staff_entries(recipient)
+      { "dates" => dates, "headline" => headline(section, entries, acted: acted), "what" => what(section, changes),
+        "outcome" => outcome(section, entries, acted: acted),
+        "shifts" => [ dates, shift_lines(section, recipient, projected: projected).join("<br>") ],
+        "remaining" => (section.off? ? remaining(recipient, entries, acted: acted) : "") }
     end
 
     subject_vars = shared.merge(vars.transform_values { |v| v.is_a?(Array) ? v.first : v })
@@ -263,6 +286,63 @@ class ShowChangeNotices
         "#{name} moved from #{long_time(change.was_starts_at)} to #{long_time(change.now_starts_at)}"
       end
     end.to_sentence
+  end
+
+  # This person's shift entries across their changes, oldest first.
+  def staff_entries(recipient)
+    recipient.changes.flat_map { |c| c.staff.select { |s| s["person_id"] == recipient.person.id } }
+                     .uniq { |s| s["shift_id"] }.sort_by { |s| s["starts_at"] }
+  end
+
+  # The push line and subject: the shift named (role, day, time), never the
+  # day alone, and what happened to it. With several shifts, their count.
+  def headline(section, entries, acted:)
+    first = entries.first
+    return (section.off? ? "A show is off" : "A show moved") unless first
+
+    from = Time.zone.parse(first["starts_at"])
+    name = "#{first['role']}, #{short_date(from)}, #{short_time(from)}"
+    if section.off?
+      if !acted then "Show off: your #{first['role']} shift, #{short_date(from)}, stands for now"
+      elsif entries.one? then "Shift off: #{name}"
+      else "#{entries.size} shifts off: #{entries.map { |e| short_date(Time.zone.parse(e['starts_at'])) }.uniq.to_sentence}"
+      end
+    else
+      if !acted then "Show moved: your #{first['role']} shift, #{short_date(from)}, keeps its hours"
+      elsif entries.one?
+        shift = organization.shifts.find_by(id: first["shift_id"])
+        now = shift&.starts_at || from
+        "New time: #{first['role']}, #{short_date(now)}, #{short_time(now)}"
+      else "New times for #{entries.size} shifts: #{entries.map { |e| short_date(Time.zone.parse(e['starts_at'])) }.uniq.to_sentence}"
+      end
+    end
+  end
+
+  # What the change means for the shift, finishing the "{{what}}" sentence.
+  def outcome(section, entries, acted:)
+    plural = entries.size > 1
+    if section.off?
+      acted ? ", so #{plural ? 'these shifts are' : 'this shift is'} off" : ". #{plural ? 'Your shifts stand' : 'Your shift stands'} for now; a manager will be in touch"
+    else
+      acted ? ", so #{plural ? 'your shifts moved' : 'your shift moved'} with it" : ". #{plural ? 'Your shifts keep their' : 'Your shift keeps its'} hours"
+    end
+  end
+
+  # What's still on this person's day once the shift is off: their other
+  # shifts that day, or that nothing else is. Nothing when the shift stands.
+  def remaining(recipient, entries, acted:)
+    return "" unless acted && entries.any?
+
+    gone_ids = entries.map { |e| e["shift_id"] }
+    days = entries.map { |e| Time.zone.parse(e["starts_at"]).to_date }.uniq
+    others = ShiftAssignment.active.where(person_id: recipient.person.id).joins(:shift)
+                            .where(shifts: { organization_id: organization.id })
+                            .where.not(shift_id: gone_ids)
+                            .includes(shift: [ :house_role, :additional_roles ])
+                            .map(&:shift).select { |s| days.include?(s.starts_at.to_date) }.sort_by(&:starts_at)
+    return "Nothing else is on your schedule #{days.one? ? ShiftWords.that_day(Time.zone.parse(entries.first['starts_at'])) : 'those days'}." if others.empty?
+
+    "You're still on #{others.map { |s| "#{s.role_label} #{ShiftWords.that_day(s.starts_at)}, #{ShiftWords.shift_hours(s)}" }.to_sentence}."
   end
 
   # This person's shifts in the change: was and now when it moved.

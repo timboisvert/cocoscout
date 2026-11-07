@@ -42,6 +42,8 @@ module My
       # How many people to expect at the shows each shift covers, where the
       # organization shows its staff the count (ShiftExpectedAttendance).
       @expected_by_shift = ShiftExpectedAttendance.for(@rows.map { |r| r[:shift] })
+      # Who else is working alongside each shift, among people who've been told.
+      @also_on_by_shift = ShiftWords.also_on_for(@rows.map { |r| r[:shift] }.uniq, people_ids)
       @has_any = @rows.any?
       @upcoming_count = @rows.count { |r| r[:assignment]&.active? }
 

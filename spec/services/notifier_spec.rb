@@ -40,6 +40,11 @@ RSpec.describe Notifier do
     expect(manager.notifications.count).to eq(2)
   end
 
+  it "keeps a link's anchor in the path, so a shift notice lands on its row" do
+    expect(described_class.local_path("https://cocoscout.com/my/shifts#shift-12")).to eq("/my/shifts#shift-12")
+    expect(described_class.local_path("https://cocoscout.com/my/shifts?x=1")).to eq("/my/shifts?x=1")
+  end
+
   describe "Ticketing's notices" do
     it "reach each manager whose plan emails it, or whose push for its group is on" do
       # Reports: the usual plan emails them; push is off by default.

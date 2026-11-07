@@ -70,12 +70,14 @@ class Notifier
     )
   end
 
-  # Links arrive as full URLs from email variables; the list keeps the path.
+  # Links arrive as full URLs from email variables; the list keeps the path
+  # (and the anchor, which lands a shift notice on its row in My Shifts).
   def self.local_path(url)
     return nil if url.blank?
 
     uri = URI.parse(url.to_s)
-    [ uri.path.presence || "/", uri.query ].compact.join("?")
+    path = [ uri.path.presence || "/", uri.query ].compact.join("?")
+    uri.fragment.present? ? "#{path}##{uri.fragment}" : path
   rescue URI::InvalidURIError
     nil
   end

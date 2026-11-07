@@ -53,6 +53,16 @@ class Shift < ApplicationRecord
     all_role_names.join(" + ")
   end
 
+  # Where: the role's place, else the booking's. Nil when neither has one.
+  def location_name
+    ShiftWords.location(self)
+  end
+
+  # The week this shift belongs to on the staffing schedule (Monday).
+  def week_start
+    starts_at.to_date.beginning_of_week
+  end
+
   # The extra roles that apply to one covered show: those covering every show
   # plus those scoped to this one. Reads the loaded rows, so a preloaded week
   # costs nothing more.
