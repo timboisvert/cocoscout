@@ -32,8 +32,8 @@
         <%= render "shared/button", text: "Add code", variant: "primary", size: "small", type: :button,
               data: { controller: "modal", action: "click->modal#open", modal_id: modal_id } %>
         <%= render "shared/action_menu", id: "codes-actions", title: "Discount codes", items: [
-              { text: "Export codes", path: "#", icon: "M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2", data: { controller: "modal", action: "click->modal#open", modal_id: "export-codes-modal" } },
-              { text: "Import codes", path: "#", icon: "M12 15V3m0 0L8 7m4-4l4 4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2", data: { controller: "modal", action: "click->modal#open", modal_id: "import-codes-modal" } }
+              { text: "Export codes", path: "#", icon: "M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2", data: { controller: "modal", action: "click->modal#open click->dropdown#close", modal_id: "export-codes-modal" } },
+              { text: "Import codes", path: "#", icon: "M12 15V3m0 0L8 7m4-4l4 4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2", data: { controller: "modal", action: "click->modal#open click->dropdown#close", modal_id: "import-codes-modal" } }
             ] %>
       <% end %>
       <% if codes.any? %>
