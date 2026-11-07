@@ -6,7 +6,7 @@
     shows that day, or the organization when they work for more than one.
     Grouped by week. Tapping a row opens its sheet (my/shifts/shift_sheet).
     The nearest shift is the page's hero card (my/shifts/next_shift), so the
-    list is "Then N more"; the hero's sheet is still rendered here.
+    list's count reads "N more"; the hero's sheet is still rendered here.
     A notice's link lands on the row or the card (shift_landing_controller:
     scroll, light, open).
 
@@ -20,12 +20,15 @@
   week_words = ->(ws) { ws == this_week ? "This week" : ws == this_week + 7 ? "Next week" : "Week of #{ws.strftime('%b %-d')}" }
   listed = @rows.reject { |r| r.equal?(@hero) }
   rows_by_week = listed.group_by { |r| ShiftWords.starts(r[:shift]).to_date.beginning_of_week }
-  list_title = @hero ? (listed.any? ? "Then #{listed.size} more" : "Nothing else scheduled") : "Upcoming shifts"
+  # The heading stays "Upcoming shifts" (Tim, 2026-11-07: "Then 4 more" reads
+  # as a riddle); the count on its right says "4 more" when the nearest one
+  # is the card above.
+  count_words = @hero ? (listed.any? ? "#{listed.size} more" : nil) : @upcoming_count.to_s
 %>
 <section class="rounded-xl border border-gray-200 bg-white overflow-hidden" data-upcoming-shifts>
-  <%= render "shared/section_heading", padding: "px-5 py-4", title: list_title do %>
-    <% if @has_any && !@hero %>
-      <span class="text-xs text-gray-500"><%= @upcoming_count %><%= " · #{one_org.name}" if one_org %></span>
+  <%= render "shared/section_heading", padding: "px-5 py-4", title: "Upcoming shifts" do %>
+    <% if @has_any && count_words %>
+      <span class="text-xs text-gray-500"><%= count_words %><%= " · #{one_org.name}" if one_org %></span>
     <% end %>
   <% end %>
 
