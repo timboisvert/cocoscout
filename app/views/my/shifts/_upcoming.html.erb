@@ -1,14 +1,14 @@
-<%# Goal 1: when do I work. Uses @rows, @has_any, @people, @expected_by_shift,
-    @also_on_by_shift.
+<%# Goal 1: when do I work. Uses @rows, @hero, @has_any, @people,
+    @show_lines_by_shift, @also_on_by_shift.
 
     One shift, two lines (Tim, 2026-11-07: five shifts took three phone
     screens): the date once, inline; the role and hours; under them the
     shows that day, or the organization when they work for more than one.
-    Grouped by week. Tapping a row opens its sheet: the shows with how many
-    people to expect where the organization shows it, who else is on (only
-    people who've been told), the shift's note, and "I can't make it".
-    A notice's link lands on the row (shift_landing_controller: scroll,
-    light, open).
+    Grouped by week. Tapping a row opens its sheet (my/shifts/shift_sheet).
+    The nearest shift is the page's hero card (my/shifts/next_shift), so the
+    list is "Then N more"; the hero's sheet is still rendered here.
+    A notice's link lands on the row or the card (shift_landing_controller:
+    scroll, light, open).
 
     A shift they told them they can't make reads by where it stands (the
     performer flow, for staff): told, finding someone, then once it's
@@ -18,17 +18,21 @@
   one_org = orgs.one? ? orgs.first : nil
   this_week = Date.current.beginning_of_week
   week_words = ->(ws) { ws == this_week ? "This week" : ws == this_week + 7 ? "Next week" : "Week of #{ws.strftime('%b %-d')}" }
-  rows_by_week = @rows.group_by { |r| r[:shift].starts_at.to_date.beginning_of_week }
-  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  listed = @rows.reject { |r| r.equal?(@hero) }
+  rows_by_week = listed.group_by { |r| ShiftWords.starts(r[:shift]).to_date.beginning_of_week }
+  list_title = @hero ? (listed.any? ? "Then #{listed.size} more" : "Nothing else scheduled") : "Upcoming shifts"
 %>
-<section class="rounded-xl border border-gray-200 bg-white overflow-hidden" data-controller="shift-landing">
-  <%= render "shared/section_heading", padding: "px-5 py-4", title: "Upcoming shifts" do %>
-    <% if @has_any %>
+<section class="rounded-xl border border-gray-200 bg-white overflow-hidden" data-upcoming-shifts>
+  <%= render "shared/section_heading", padding: "px-5 py-4", title: list_title do %>
+    <% if @has_any && !@hero %>
       <span class="text-xs text-gray-500"><%= @upcoming_count %><%= " · #{one_org.name}" if one_org %></span>
     <% end %>
   <% end %>
 
   <% if @has_any %>
+    <% if @hero && listed.empty? %>
+      <div class="px-5 py-4 text-sm text-gray-500">That's the only shift on your schedule so far.</div>
+    <% end %>
     <% rows_by_week.each do |week_start, rows| %>
       <div class="px-5 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500"><%= week_words.call(week_start) %></div>
       <div class="divide-y divide-gray-100">
@@ -41,13 +45,8 @@
             dropped = outcome || assignment.declined?
             org = shift.organization
             location_name = shift.location_name
-            # The shows this shift covers: with counts where the organization
-            # shows them; otherwise, for a show-tied shift, just the shows.
-            show_lines = (@expected_by_shift || {})[shift.id]
-            if show_lines.nil? && (shift.house_role&.show_specific? || shift.shows.any?)
-              show_lines = shift.covered_shows.map { |cs| ShiftExpectedAttendance::Line.new(show: cs, expected: nil) }
-            end
-            show_lines = Array(show_lines)
+            starts = ShiftWords.starts(shift)
+            show_lines = (@show_lines_by_shift || {})[shift.id] || []
             second = []
             second << org.name if org && !one_org
             second << row[:person].name if @people.size > 1
@@ -60,10 +59,10 @@
                class="flex items-center gap-3 px-5 py-2.5 transition-colors <%= outcome ? 'opacity-60' : '' %> <%= cid ? 'cursor-pointer hover:bg-gray-50' : '' %>"
                <% if cid %>data-controller="modal" data-action="click->modal#open" data-modal-id="<%= cid %>" role="button" tabindex="0"<% end %>>
             <div class="w-14 flex items-center gap-1.5 flex-shrink-0">
-              <span class="text-xl leading-none font-bold text-gray-900 tabular-nums"><%= shift.starts_at.strftime("%-d") %></span>
+              <span class="text-xl leading-none font-bold text-gray-900 tabular-nums"><%= starts.strftime("%-d") %></span>
               <span class="flex flex-col text-[10px] leading-tight uppercase">
-                <span class="font-semibold text-pink-600"><%= shift.starts_at.strftime("%b") %></span>
-                <span class="text-gray-500"><%= shift.starts_at.strftime("%a") %></span>
+                <span class="font-semibold text-pink-600"><%= starts.strftime("%b") %></span>
+                <span class="text-gray-500"><%= starts.strftime("%a") %></span>
               </span>
             </div>
             <div class="flex-1 min-w-0">
@@ -91,52 +90,11 @@
             <% end %>
           </div>
 
-          <% if cid %>
-            <% form_id = "decline-shift-#{assignment.id}" %>
-            <% also_on = (@also_on_by_shift || {})[shift.id] %>
-            <%= render layout: "shared/sheet", locals: { id: cid, title: shift.role_label, footer: capture {
-                  concat render("shared/button", text: "Close", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" })
-                  concat render("shared/button", text: "I can't make it", variant: "primary", size: "medium", type: :submit, form_id: form_id)
-                } } do %>
-              <div class="space-y-4" data-shift-sheet>
-                <div>
-                  <div class="font-medium text-gray-900"><%= ShiftWords.day(shift.starts_at) %> · <span class="tabular-nums"><%= ShiftWords.shift_hours(shift) %></span></div>
-                  <div class="text-sm text-gray-600"><%= org&.name %><% if location_name.present? && location_name != org&.name %> · <%= location_name %><% end %><% if @people.size > 1 %> · <%= row[:person].name %><% end %></div>
-                </div>
-                <% if show_lines.any? %>
-                  <div>
-                    <div class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1"><%= ShiftWords.that_day(shift.starts_at).sub(/\Athat/, "That") %></div>
-                    <% show_lines.each do |line| %>
-                      <div class="text-sm" data-show-line><span class="text-gray-900"><%= line.words %></span><% if line.expected.to_i.positive? %> · <span class="tabular-nums text-gray-600"><%= line.expected %> expected</span><% end %></div>
-                    <% end %>
-                  </div>
-                <% end %>
-                <% if also_on.present? %>
-                  <div>
-                    <div class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1">Also on</div>
-                    <div class="text-sm text-gray-900" data-also-on><%= also_on %></div>
-                  </div>
-                <% end %>
-                <% if shift.notes.present? %>
-                  <div>
-                    <div class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1">Notes</div>
-                    <div class="text-sm text-gray-900 whitespace-pre-line"><%= shift.notes %></div>
-                  </div>
-                <% end %>
-                <div class="border-t border-gray-200 pt-4">
-                  <div class="text-sm font-semibold text-gray-900 mb-2">Can't make this shift?</div>
-                  <%= form_with url: my_decline_shift_path(assignment), method: :post, id: form_id do %>
-                    <label class="block text-sm font-medium text-gray-700 mb-1" for="<%= form_id %>-reason">Add a note (optional)</label>
-                    <%= text_area_tag :reason, nil, rows: 2, id: "#{form_id}-reason", placeholder: "e.g. I'm out of town that weekend", class: input_class %>
-                  <% end %>
-                  <p class="text-sm text-gray-600 mt-2">We'll tell <span class="font-medium text-gray-900"><%= org&.name %></span> so they can sort out cover. You can take it back here until someone has it.</p>
-                </div>
-              </div>
-            <% end %>
-          <% end %>
+          <%= render "my/shifts/shift_sheet", row: row, cid: cid if cid %>
         <% end %>
       </div>
     <% end %>
+    <%= render "my/shifts/shift_sheet", row: @hero, cid: "cant-make-it-#{@hero[:assignment].id}" if @hero %>
   <% else %>
     <div class="p-5">
       <%= render "shared/empty_state", icon: "clock", title: "No upcoming shifts", body: "They'll show up here once your schedule is posted.", compact: true %>

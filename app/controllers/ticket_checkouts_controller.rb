@@ -231,6 +231,7 @@ class TicketCheckoutsController < ApplicationController
     @listing = @order.ticket_listing
     @purchase = @order.ticket_purchase
     @ticketing_profile = TicketingProfile.for(@listing.organization)
+    use_time_zone_of(@listing.organization)
   end
 
   # What the buyer pays for: the whole checkout, or (an order from before

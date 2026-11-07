@@ -6,6 +6,12 @@ class ApplicationMailer < ActionMailer::Base
 
   before_action :attach_logo
 
+  # An email about one organization's records renders its times in that
+  # organization's zone (TimeZones.of reads it off the arguments and params).
+  def process(method_name, *args)
+    TimeZones.use(TimeZones.of(*args, params)) { super }
+  end
+
   private
 
   # A small copy made for email (240px, 32 KB, shown at 120px); the site's

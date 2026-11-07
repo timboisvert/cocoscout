@@ -203,7 +203,7 @@ module Manage
     end
 
     def organization_params
-      params.expect(organization: %i[name logo])
+      params.expect(organization: %i[name logo time_zone])
     end
 
     def ensure_user_is_owner

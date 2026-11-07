@@ -126,6 +126,14 @@
               <% end %>
             </div>
 
+            <!-- Time zone -->
+            <div>
+              <%= form.label :time_zone, "Time zone", class: "block text-sm font-medium text-slate-900 mb-1.5" %>
+              <%= form.time_zone_select :time_zone, ActiveSupport::TimeZone.us_zones, {},
+                class: "block w-full px-3 py-2.5 bg-white border border-slate-300 focus:ring-pink-500 focus:border-pink-500 rounded-lg shadow-sm text-slate-900 focus:outline-none focus:ring-2 transition" %>
+              <p class="mt-1.5 text-xs text-slate-500">Where your shows happen. Every time you enter reads in this zone.</p>
+            </div>
+
             <!-- Plan selection. The plan radios sit as (visually hidden)
                  siblings before the two option labels so each label's selected
                  state comes from its own named peer — nesting the interval

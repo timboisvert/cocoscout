@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_07_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_07_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2165,6 +2165,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_07_120000) do
     t.datetime "pro_monthly_from"
     t.datetime "pro_monthly_until"
     t.jsonb "comp_reminders", default: {}, null: false
+    t.string "time_zone", default: "Central Time (US & Canada)", null: false
     t.index ["books_categories_set_up_by_id"], name: "index_organizations_on_books_categories_set_up_by_id"
     t.index ["books_locked_by_id"], name: "index_organizations_on_books_locked_by_id"
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
@@ -3078,6 +3079,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_07_120000) do
     t.datetime "told_ends_at"
     t.string "told_role_label"
     t.string "told_location_name"
+    t.datetime "reminded_at"
     t.index ["person_id"], name: "index_shift_assignments_on_person_id"
     t.index ["shift_id", "person_id"], name: "idx_shift_assignments_unique", unique: true
     t.index ["shift_id"], name: "index_shift_assignments_on_shift_id"

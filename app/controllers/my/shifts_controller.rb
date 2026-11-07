@@ -42,6 +42,16 @@ module My
       # How many people to expect at the shows each shift covers, where the
       # organization shows its staff the count (ShiftExpectedAttendance).
       @expected_by_shift = ShiftExpectedAttendance.for(@rows.map { |r| r[:shift] })
+      # The shows each shift covers, for its row, its sheet and the hero:
+      # with counts where the organization shows them; otherwise, for a
+      # show-tied shift, just the shows.
+      @show_lines_by_shift = @rows.map { |r| r[:shift] }.uniq.each_with_object({}) do |shift, h|
+        lines = @expected_by_shift[shift.id]
+        if lines.nil? && (shift.house_role&.show_specific? || shift.shows.any?)
+          lines = shift.covered_shows.map { |cs| ShiftExpectedAttendance::Line.new(show: cs, expected: nil) }
+        end
+        h[shift.id] = Array(lines)
+      end
       # Who else is working alongside each shift, among people who've been told.
       @also_on_by_shift = ShiftWords.also_on_for(@rows.map { |r| r[:shift] }.uniq, people_ids)
       @has_any = @rows.any?
@@ -69,6 +79,10 @@ module My
       @pending_w9s = OrganizationStaffMember.pending_w9s(people_ids).select(&:acknowledged?)
 
       load_timekeeping(people_ids, finalized_weeks)
+      # The next shift first (plan §5, idea 3): the nearest shift they're on
+      # is the page's hero; the list then reads "Then N more".
+      @hero = @rows.find { |r| r[:assignment]&.active? }
+      @verify_hours = @unconfirmed_shifts.sum { |a| (a.shift.ends_at - a.shift.starts_at) / 3600.0 }
 
       # The Work availability card: the shape of their week and what's coming up.
       @availability_person = Current.user.person

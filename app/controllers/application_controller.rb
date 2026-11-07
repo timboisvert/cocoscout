@@ -11,8 +11,25 @@ class ApplicationController < ActionController::Base
   helper_method :turbo_native_app?
   layout :resolve_layout
 
+  # Every request starts in the app's zone and leaves no zone behind on the
+  # thread: an organization's pages switch to its own clock with
+  # use_time_zone_of (OrganizationContext, the public ticket pages).
+  prepend_around_action :isolate_time_zone
+
   before_action :track_my_dashboard
   before_action :show_my_sidebar
+
+  # The rest of this request reads and parses times in the organization's
+  # zone (TimeZones). Safe to call from a before_action: isolate_time_zone
+  # restores the app's zone when the request ends.
+  def use_time_zone_of(organization)
+    zone = organization.respond_to?(:time_zone) ? organization.time_zone.presence : nil
+    Time.zone = zone || TimeZones.default
+  end
+
+  def isolate_time_zone(&block)
+    Time.use_zone(TimeZones.default, &block)
+  end
 
   def track_my_dashboard
     # Only track if user is on a My:: controller page (not AuthController or other base controllers)

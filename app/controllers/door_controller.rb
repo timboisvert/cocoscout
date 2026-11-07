@@ -301,6 +301,7 @@ class DoorController < ApplicationController
   def set_listing
     @listing = TicketListing.includes(:organization, :production, show: %i[location location_space]).find(params[:listing_id])
     @level = TicketingDoorAccess.level_for(Current.user, @listing.organization)
+    use_time_zone_of(@listing.organization)
     profile = @listing.organization.ticketing_profile
     raise ActiveRecord::RecordNotFound unless @level && profile&.enabled?
   end

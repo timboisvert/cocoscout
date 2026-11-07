@@ -138,6 +138,9 @@ class Organization < ApplicationRecord
   validates :name, presence: true
   validates :settlement_day_mode, inclusion: { in: %w[smart calendar] }
   validates :settlement_day_starts_at, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than: 24 }
+  # The clock the organization's pages, forms, notices and reminders read in
+  # (TimeZones). Central unless it picked another.
+  validates :time_zone, inclusion: { in: ->(_) { ActiveSupport::TimeZone.all.map(&:name) }, message: "isn't a time zone we know" }
 
   # Whether staff must sign an agreement before working here. A required pointer to
   # an inactive/deleted template counts as "not required" (defensive).

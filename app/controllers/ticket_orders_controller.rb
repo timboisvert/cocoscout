@@ -78,5 +78,6 @@ class TicketOrdersController < ApplicationController
                         .find_by!(token: params[:token])
     @listing = @order.ticket_listing
     @ticketing_profile = TicketingProfile.for(@listing.organization)
+    use_time_zone_of(@listing.organization)
   end
 end

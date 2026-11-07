@@ -11,7 +11,9 @@
 
 <%# One wrapper hosts the modal + time-entry-form controllers, so the header
     quick-actions and the box buttons all reach the same modals. %>
-<div class="w-full mb-10" data-controller="modal time-entry-form">
+<%# shift-landing: a notice's link (#shift-<id>) scrolls to its shift (the
+    hero card or a row), lights it and opens its sheet. %>
+<div class="w-full mb-10" data-controller="modal time-entry-form shift-landing">
 
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
@@ -37,7 +39,8 @@
     <%= render "my/shifts/w9_prompt", memberships: @pending_w9s %>
     <%= render "my/shift_vacancy_invitation_alerts", invitations: @pending_shift_invitations %>
 
-    <%# Glance %>
+    <%# The next shift first, then the glance. %>
+    <%= render "my/shifts/next_shift" if @hero %>
     <%= render "my/shifts/summary" %>
 
     <%# What's coming up first, then completed shifts (confirm worked hours). %>

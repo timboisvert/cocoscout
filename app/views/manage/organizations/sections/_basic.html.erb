@@ -12,10 +12,15 @@
         </div>
       <% end %>
 
-      <div class="sm:flex sm:space-x-5">
+      <div class="sm:flex sm:space-x-5 space-y-6 sm:space-y-0">
         <div class="w-full sm:w-1/2">
           <%= f.label :name, "Organization Name", class: "block text-sm font-medium text-gray-700" %>
           <%= f.text_field :name, class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full focus:border-pink-500 focus:ring-pink-500" %>
+        </div>
+        <div class="w-full sm:w-1/2">
+          <%= f.label :time_zone, "Time zone", class: "block text-sm font-medium text-gray-700" %>
+          <%= f.time_zone_select :time_zone, ActiveSupport::TimeZone.us_zones, {}, class: "block shadow-sm rounded-lg border border-gray-400 px-3 py-2 mt-2 w-full focus:border-pink-500 focus:ring-pink-500" %>
+          <p class="text-xs text-gray-500 mt-1">Every time for <%= @organization.name %> reads in this zone: shows, shifts, sales windows, notices and reminders.</p>
         </div>
       </div>
 
