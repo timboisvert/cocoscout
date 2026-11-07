@@ -8,8 +8,8 @@ class ApplicationMailer < ActionMailer::Base
 
   # An email about one organization's records renders its times in that
   # organization's zone (TimeZones.of reads it off the arguments and params).
-  def process(method_name, *args)
-    TimeZones.use(TimeZones.of(*args, params)) { super }
+  def process(method_name, *args, **kwargs)
+    TimeZones.use(TimeZones.of(*args, kwargs, params)) { super }
   end
 
   private
