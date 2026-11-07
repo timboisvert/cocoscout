@@ -16,7 +16,7 @@ module Manage
     # A date's Settings, a tab each with its own Save.
     SETTINGS = { "tickets" => "Tickets", "products" => "Products", "sales" => "Sales", "page" => "Page", "codes" => "Discount codes", "comps" => "Comps" }.freeze
 
-    before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code destroy_code cancel
+    before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code destroy_code export_codes import_codes cancel
                                            change_review tell_change mark_change_told outside_sales tier_availability]
     before_action :set_settings_section, only: %i[edit update]
 
@@ -178,6 +178,24 @@ module Manage
       else
         redirect_to settings_path("codes"), alert: code.errors.full_messages.to_sentence
       end
+    end
+
+    # The Codes tab's ⋯ menu (DiscountCodeCsv): this date's codes as a
+    # spreadsheet, and a spreadsheet's codes added to this date only.
+    def export_codes
+      codes = @listing.ticket_discount_codes.where(active: true).order(:code)
+      send_data DiscountCodeCsv.export(codes), filename: "#{ticket_listing_file_stem}-discount-codes.csv", type: "text/csv"
+    end
+
+    def import_codes
+      result = DiscountCodeCsv.import(organization: Current.organization, ticket_listing: @listing, file: params[:file], text: params[:text])
+      @listing.update!(own_codes: true) if result.added.any? && !@listing.own_codes?
+      redirect_to settings_path("codes"), (result.ok? ? :notice : :alert) => result.summary
+    end
+
+    # "stargazers-2026-11-21", for a file about this date.
+    def ticket_listing_file_stem
+      "#{@listing.production.name.parameterize}-#{@listing.show.date_and_time.to_date.iso8601}"
     end
 
     # The Codes tab's switch: this date's own codes instead of the production's.

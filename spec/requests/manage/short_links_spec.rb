@@ -70,6 +70,67 @@ RSpec.describe "Ticketing links", type: :request do
     expect(response.body).not_to include("cocoscout.com</span>/t/#{link.code}")
   end
 
+  it "swaps a code for a new one whenever the manager asks, opened or not; the old code keeps forwarding and isn't shown" do
+    sign_in_manager
+    canonical = ShortLink.canonical_for!(production)
+    poster = production.short_links.create!(kind: "named", label: "Poster", organization: org)
+    old_code = canonical.code
+    old_poster = poster.code
+
+    # Already opened: the manager testing it. The button is there all the same.
+    get "/t/#{old_code}", headers: { "User-Agent" => "Mozilla/5.0" }
+    expect(canonical.reload.clicks_count).to eq(1)
+    get manage_production_ticketing_links_path(production)
+    expect(response.body).to include("confirm-new-code-#{canonical.id}", "confirm-new-code-#{poster.id}", "Get a new code?",
+                                     "The old code keeps forwarding")
+
+    post manage_production_ticketing_link_new_code_path(production, canonical)
+    expect(response).to redirect_to(manage_production_ticketing_links_path(production))
+    expect(canonical.reload.code).not_to eq(old_code)
+    expect(canonical).to be_canonical
+    expect(flash[:notice]).to include("cocoscout.com/t/#{canonical.code}", "The old code still forwards to it")
+    expect(flash[:notice]).not_to include(old_code)
+
+    # The old code goes where the new one does, counts as the same link, and
+    # is nowhere on the page.
+    get "/t/#{old_code}", headers: { "User-Agent" => "Mozilla/5.0" }
+    expect(response).to redirect_to("/tickets/starsandgarters/#{production.public_key}")
+    expect(canonical.reload.clicks_count).to eq(2)
+    get manage_production_ticketing_links_path(production)
+    expect(response.body).to include("cocoscout.com</span>/t/#{canonical.code}", "confirm-new-code-#{canonical.id}")
+    expect(response.body).not_to include(old_code)
+
+    post manage_production_ticketing_link_new_code_path(production, poster)
+    expect(poster.reload.code).not_to eq(old_poster)
+    expect(flash[:notice]).to include("Poster is now cocoscout.com/t/#{poster.code}")
+  end
+
+  it "credits an order to the link when the buyer came in on its old code" do
+    poster = production.short_links.create!(kind: "named", label: "Poster", organization: org)
+    old_code = poster.code
+    get "/t/#{old_code}"
+    poster.regenerate_code!
+    post tickets_start_checkout_path(org: "starsandgarters", event: listing.slug), params: { quantities: { general.id => 1 } }
+    order = TicketOrder.order(:id).last
+    expect(order.short_link).to eq(poster)
+    expect(order.utm).to eq("via" => poster.reload.code)
+
+    # Sold through, and it still swaps.
+    TicketOrderSettlement.settle!(order)
+    expect(poster.regenerate_code!).to be(true)
+    expect(ShortLink.lookup(old_code)).to eq(poster)
+  end
+
+  it "doesn't swap another organization's code" do
+    sign_in_manager
+    other = create(:production, organization: create(:organization, :pro))
+    theirs = ShortLink.canonical_for!(other)
+    their_code = theirs.code
+    post manage_production_ticketing_link_new_code_path(production, theirs)
+    expect(response).to have_http_status(:not_found)
+    expect(theirs.reload.code).to eq(their_code)
+  end
+
   it "doesn't attribute an order to another theater's link" do
     other = create(:organization, :pro)
     other_link = ShortLink.canonical_for!(TicketingProfile.for(other))

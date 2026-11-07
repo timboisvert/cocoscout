@@ -1,0 +1,39 @@
+<%# Upload any number of bills at once; each is read and waits to be checked. locals: id %>
+<% form_id = "#{id}-form" %>
+<% input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition" %>
+<div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-xl overflow-hidden" data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white">Upload bills</h3>
+      <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+    </div>
+    <div class="px-6 py-5 text-sm text-gray-700">
+      <%= form_with url: finances_costs_upload_path, method: :post, id: form_id, multipart: true, class: "space-y-4" do %>
+        <div>
+          <%= label_tag "#{id}-files", "The bills (PDFs, as many as you like)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= file_field_tag "files[]", id: "#{id}-files", multiple: true, required: true, accept: "application/pdf,image/*",
+                class: "block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100" %>
+          <p class="mt-1 text-xs text-gray-500">Amazon's monthly invoices and Anthropic's and GitHub's receipts are read for you: the number, the total, the month, and on an Amazon invoice what each service cost. Anything else you fill in. Nothing counts until you've checked it.</p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <%= label_tag "#{id}-paid-by", "Who paid these", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= select_tag "paid_by", options_for_select(CompanyExpense::PAID_BY.map { |value, name| [ name, value ] }, "company"), id: "#{id}-paid-by", class: input %>
+          </div>
+          <div>
+            <%= label_tag "#{id}-share", "CocoScout's share (%)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+            <%= text_field_tag "share_percent", "100", id: "#{id}-share", inputmode: "decimal", class: "#{input} tabular-nums" %>
+            <p class="mt-1 text-xs text-gray-500">50 for a Claude receipt the company reimburses half of.</p>
+          </div>
+        </div>
+      <% end %>
+    </div>
+    <div class="px-4 sm:px-6 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] sm:py-4 bg-gray-50 border-t border-gray-200 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 [&>*]:w-full sm:[&>*]:w-auto [&_button]:w-full sm:[&_button]:w-auto">
+      <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+      <%= render "shared/button", text: "Upload and read", variant: "primary", size: "medium", type: :submit, form_id: form_id %>
+    </div>
+  </div>
+</div>

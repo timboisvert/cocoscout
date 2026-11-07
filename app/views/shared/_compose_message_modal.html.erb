@@ -279,7 +279,7 @@
         </div>
 
         <%# Continue Button %>
-        <div class="flex items-center justify-end gap-3 pt-2 max-sm:sticky max-sm:bottom-0 max-sm:-mx-4 max-sm:px-4 <%= turbo_native_app? ? 'max-sm:pr-[96px]' : '' %> max-sm:pt-3 max-sm:pb-[calc(env(safe-area-inset-bottom)+12px)] max-sm:bg-white max-sm:border-t max-sm:border-gray-200" data-compose-phone-actions>
+        <div class="flex items-center justify-end gap-3 pt-2 max-sm:sticky max-sm:bottom-0 max-sm:-mx-4 max-sm:px-4 <%= coco_button_in_the_way? ? 'max-sm:pr-[96px]' : '' %> max-sm:pt-3 max-sm:pb-[calc(env(safe-area-inset-bottom)+12px)] max-sm:bg-white max-sm:border-t max-sm:border-gray-200" data-compose-phone-actions>
           <%= render "shared/button",
               text: "Cancel",
               variant: "ghost",
@@ -440,7 +440,7 @@
         </div>
 
         <%# Actions %>
-        <div class="flex items-center justify-end gap-3 max-sm:sticky max-sm:bottom-0 max-sm:-mx-4 max-sm:px-4 <%= turbo_native_app? ? 'max-sm:pr-[96px]' : '' %> max-sm:pt-3 max-sm:pb-[calc(env(safe-area-inset-bottom)+12px)] max-sm:bg-white max-sm:border-t max-sm:border-gray-200" data-compose-phone-actions>
+        <div class="flex items-center justify-end gap-3 max-sm:sticky max-sm:bottom-0 max-sm:-mx-4 max-sm:px-4 <%= coco_button_in_the_way? ? 'max-sm:pr-[96px]' : '' %> max-sm:pt-3 max-sm:pb-[calc(env(safe-area-inset-bottom)+12px)] max-sm:bg-white max-sm:border-t max-sm:border-gray-200" data-compose-phone-actions>
           <%# Back to step 1 (hidden by default, shown when in step-select mode) %>
           <%= render "shared/button",
               text: "\u2190 Back",

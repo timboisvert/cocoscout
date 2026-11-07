@@ -1,0 +1,230 @@
+<% content_for :title, "Costs" %>
+<% total = @bills.sum(&:amount_cents) %>
+<% month_totals = @months.to_h { |month| [ month, @by_month.fetch(month, []).sum(&:amount_cents) ] } %>
+<% busy_months = month_totals.select { |month, _| @by_month.key?(month) } %>
+<% latest, latest_cents = busy_months.max_by { |month, _| month } %>
+<% before = latest && busy_months.select { |month, _| month < latest }.max_by { |month, _| month } %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Superadmin", superadmin_path ], [ "Finances", finances_path ] ], text: "Costs", links: [] } %>
+
+  <%= render "superadmin/finances/tabs", current: :costs %>
+
+  <p class="mt-4 text-sm text-gray-600 max-w-3xl">
+    What CocoScout costs to run that never passes through Stripe: Amazon, Claude, and anything else Coco Runs Everything pays for it.
+    Each bill counts in the month it's for, under Building and running on <%= link_to "CocoScout", finances_path, class: "text-pink-600 hover:underline" %>, apart from Stripe's fees.
+    This is CocoScout only; the company's other business isn't here.
+  </p>
+
+  <div class="mt-4 flex flex-wrap items-center gap-2">
+    <%= render "shared/button", text: "Upload bills", variant: "primary", size: "small", type: :button,
+          data: { controller: "modal", action: "click->modal#open", modal_id: "costs-upload" } %>
+    <%= render "shared/button", text: "Add a cost by hand", variant: "secondary", size: "small", type: :button,
+          data: { controller: "modal", action: "click->modal#open", modal_id: "costs-add" } %>
+  </div>
+  <%= render "superadmin/costs/upload_modal", id: "costs-upload" %>
+  <%= render "superadmin/costs/form_modal", id: "costs-add", expense: CompanyExpense.new(period_month: Date.current.beginning_of_month), vendors: @known_vendors,
+        title: "Add a cost by hand", url: finances_costs_path, method: :post, submit_text: "Add it" %>
+
+  <%# Uploaded and read, not counted until checked against the PDF. %>
+  <% if @to_check.any? %>
+    <div class="mt-6 rounded-lg border border-amber-200 bg-white">
+      <div class="px-4 py-3 border-b border-amber-200 bg-amber-50 rounded-t-lg flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-sm font-semibold text-amber-900"><%= pluralize(@to_check.size, "bill") %> to check</h2>
+          <p class="text-xs text-amber-800 mt-0.5">Read off the files you uploaded. Open each file, make sure the total and the month match, then confirm. Nothing here counts yet.</p>
+        </div>
+        <% if @to_check.size > 1 %>
+          <%= form_with url: finances_costs_confirm_all_path, method: :post, data: { turbo_action: "replace" } do %>
+            <%= render "shared/button", text: "Confirm all #{@to_check.size}", variant: "secondary", size: "small", type: :submit %>
+          <% end %>
+        <% end %>
+      </div>
+      <div class="divide-y divide-gray-200">
+        <% @to_check.each do |expense| %>
+          <% key = "check-#{expense.id}" %>
+          <div class="px-4 py-4">
+            <div class="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+              <div class="text-sm text-gray-900 font-medium">
+                <%= expense.vendor %>
+                <% if expense.bill_total_cents %><span class="tabular-nums"><%= usd(expense.amount_cents) %></span><% else %><span class="text-amber-700">no total read</span><% end %>
+                <% if expense.period_month %>for <%= expense.period_month.strftime("%B %Y") %><% else %><span class="text-amber-700">no month read</span><% end %>
+                <% if expense.partial_share? && expense.bill_total_cents.to_i.positive? %><span class="text-xs font-normal text-gray-500">(<%= number_with_precision(expense.share_percent, strip_insignificant_zeros: true) %>% of <%= usd(expense.bill_total_cents) %>)</span><% end %>
+              </div>
+              <div class="text-sm">
+                <% expense.documents.each do |doc| %>
+                  <%= link_to "Open #{doc.filename}", finances_cost_document_path(expense, attachment_id: doc.id), target: "_blank", rel: "noopener", class: "text-pink-600 hover:underline" %>
+                <% end %>
+              </div>
+            </div>
+            <%= form_with url: finances_cost_path(expense), method: :patch, data: { turbo_action: "replace" } do %>
+              <%= render "superadmin/costs/fields", expense: expense, vendors: @known_vendors, key: key %>
+              <% if expense.breakdown.any? %>
+                <p class="mt-3 text-xs text-gray-500">By service: <%= expense.breakdown.map { |name, cents| "#{name} #{usd(cents)}" }.join(" · ") %></p>
+              <% end %>
+              <div class="mt-4 flex flex-wrap items-center gap-2">
+                <%= render "shared/button", text: "Confirm", variant: "primary", size: "small", type: :submit, name: "confirm", value: "1" %>
+                <%= render "shared/button", text: "Remove", variant: "secondary", size: "small", type: :button,
+                      data: { controller: "modal", action: "click->modal#open", modal_id: "#{key}-remove" } %>
+              </div>
+            <% end %>
+            <%= render "shared/confirm_modal", id: "#{key}-remove", title: "Remove this upload?",
+                  message: "#{h(expense.vendor)}#{" #{h(expense.bill_number)}" if expense.bill_number} and its file go. You can upload it again.",
+                  confirm_text: "Remove", url: finances_cost_path(expense), method: :delete %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%# A year. %>
+  <div class="mt-8 flex flex-wrap items-center gap-2">
+    <% @years.each do |year| %>
+      <%= link_to year, finances_costs_path(year: year),
+            class: "px-3 py-1.5 text-sm font-medium rounded-full #{@year == year ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}" %>
+    <% end %>
+    <% unless @years.include?(@year) %>
+      <span class="px-3 py-1.5 text-sm font-medium rounded-full bg-pink-500 text-white"><%= @year %></span>
+    <% end %>
+    <span class="flex-1"></span>
+    <% if @bills.any? %>
+      <%= render "shared/button", text: "Download #{@year} for the CPA", variant: "secondary", size: "small", path: finances_costs_export_path(year: @year) %>
+      <%= render "shared/button", text: "With every receipt", variant: "secondary", size: "small", path: finances_costs_receipts_path(year: @year) %>
+    <% end %>
+  </div>
+
+  <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="rounded-lg border border-gray-200 bg-white p-4">
+      <div class="text-sm text-gray-600">Spent in <%= @year %></div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(total) %></div>
+      <p class="text-xs text-gray-500 mt-1"><%= pluralize(@bills.size, "bill") %>, outside Stripe</p>
+    </div>
+    <div class="rounded-lg border border-gray-200 bg-white p-4">
+      <div class="text-sm text-gray-600">A month, on average</div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= busy_months.any? ? usd(total / busy_months.size) : "—" %></div>
+      <p class="text-xs text-gray-500 mt-1"><%= busy_months.any? ? "Across the #{pluralize(busy_months.size, 'month')} with a bill" : "No bills yet" %></p>
+    </div>
+    <div class="rounded-lg border border-gray-200 bg-white p-4">
+      <div class="text-sm text-gray-600"><%= latest ? latest.strftime("%B") : "Latest month" %></div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= latest ? usd(latest_cents) : "—" %></div>
+      <p class="text-xs text-gray-500 mt-1">
+        <% if before %>
+          <% change = latest_cents - before.last %>
+          <%= change.zero? ? "The same as" : "#{usd(change.abs)} #{change.positive? ? 'more' : 'less'} than" %> <%= before.first.strftime("%B") %>
+        <% else %>
+          The latest month with a bill
+        <% end %>
+      </p>
+    </div>
+  </div>
+
+  <%# Month by month, a column for each vendor: how the costs have grown. %>
+  <div class="mt-4 rounded-lg border border-gray-200 bg-white overflow-x-auto">
+    <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Month by month</h2>
+    <% if @bills.empty? %>
+      <p class="px-4 py-3 text-sm text-gray-500">No bills for <%= @year %> yet. Upload the year's Amazon invoices and Claude receipts to start.</p>
+    <% else %>
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <tr>
+            <th class="px-4 py-2">Month</th>
+            <% @vendors.each do |vendor| %><th class="px-4 py-2 text-right"><%= vendor %></th><% end %>
+            <th class="px-4 py-2 text-right">All of it</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% @months.reverse_each do |month| %>
+            <% bills = @by_month.fetch(month, []) %>
+            <tr>
+              <td class="px-4 py-2 text-gray-900"><%= month.strftime("%B") %></td>
+              <% @vendors.each do |vendor| %>
+                <% from_vendor = bills.select { |bill| bill.vendor == vendor } %>
+                <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= from_vendor.any? ? usd(from_vendor.sum(&:amount_cents)) : "—" %></td>
+              <% end %>
+              <td class="px-4 py-2 text-right tabular-nums font-medium text-gray-900"><%= bills.any? ? usd(month_totals[month]) : "—" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+        <tfoot class="border-t border-gray-200 bg-gray-50 font-semibold">
+          <tr>
+            <td class="px-4 py-2 text-gray-900"><%= @year %></td>
+            <% @vendors.each do |vendor| %>
+              <td class="px-4 py-2 text-right tabular-nums text-gray-900"><%= usd(@bills.select { |bill| bill.vendor == vendor }.sum(&:amount_cents)) %></td>
+            <% end %>
+            <td class="px-4 py-2 text-right tabular-nums text-gray-900"><%= usd(total) %></td>
+          </tr>
+        </tfoot>
+      </table>
+    <% end %>
+  </div>
+
+  <%# Every bill of the year, with its file. %>
+  <% if @bills.any? %>
+    <div class="mt-4 rounded-lg border border-gray-200 bg-white overflow-x-auto">
+      <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Every bill in <%= @year %></h2>
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <tr>
+            <th class="px-4 py-2">Month</th>
+            <th class="px-4 py-2">From</th>
+            <th class="px-4 py-2 text-right">Cost to CocoScout</th>
+            <th class="px-4 py-2">Who paid</th>
+            <th class="px-4 py-2">Files</th>
+            <th class="px-4 py-2"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% @bills.each do |bill| %>
+            <tr class="align-top">
+              <td class="px-4 py-2 text-gray-900 whitespace-nowrap"><%= bill.period_month.strftime("%B") %></td>
+              <td class="px-4 py-2">
+                <div class="text-gray-900"><%= bill.vendor %><%= " · #{bill.description}" if bill.description.present? && bill.description != bill.vendor %></div>
+                <div class="text-xs text-gray-500">
+                  <%= [ bill.category_label, bill.bill_number, (bill.paid_on ? "paid #{bill.paid_on.strftime('%b %-d')}" : nil), bill.note.presence ].compact.join(" · ") %>
+                </div>
+                <% if bill.breakdown.any? %>
+                  <details class="mt-1 text-xs text-gray-600">
+                    <summary class="cursor-pointer text-pink-600">By service</summary>
+                    <ul class="mt-1 space-y-0.5">
+                      <% bill.breakdown.sort_by { |_, cents| -cents.to_i }.each do |name, cents| %>
+                        <li class="flex justify-between gap-4 max-w-md"><span><%= name %></span><span class="tabular-nums"><%= usd(cents) %></span></li>
+                      <% end %>
+                    </ul>
+                  </details>
+                <% end %>
+              </td>
+              <td class="px-4 py-2 text-right tabular-nums text-gray-900 whitespace-nowrap">
+                <%= usd(bill.amount_cents) %>
+                <% if bill.partial_share? %><div class="text-xs text-gray-500"><%= number_with_precision(bill.share_percent, strip_insignificant_zeros: true) %>% of <%= usd(bill.bill_total_cents) %></div><% end %>
+              </td>
+              <td class="px-4 py-2 text-gray-700"><%= bill.paid_by == "reimbursed" ? "Tim, reimbursed" : "The company" %></td>
+              <td class="px-4 py-2">
+                <% if bill.documents.any? %>
+                  <% bill.documents.each do |doc| %>
+                    <div><%= link_to doc.filename.to_s.truncate(28), finances_cost_document_path(bill, attachment_id: doc.id), target: "_blank", rel: "noopener", class: "text-pink-600 hover:underline" %></div>
+                  <% end %>
+                <% else %>
+                  <span class="text-amber-700">No file</span>
+                <% end %>
+              </td>
+              <td class="px-4 py-2 whitespace-nowrap text-right">
+                <%= render "shared/button", text: "Edit", variant: "secondary", size: "small", type: :button,
+                      data: { controller: "modal", action: "click->modal#open", modal_id: "cost-#{bill.id}-edit" } %>
+                <%= render "shared/button", text: "Remove", variant: "secondary", size: "small", type: :button,
+                      data: { controller: "modal", action: "click->modal#open", modal_id: "cost-#{bill.id}-remove" } %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <% @bills.each do |bill| %>
+      <%= render "superadmin/costs/form_modal", id: "cost-#{bill.id}-edit", expense: bill, vendors: @known_vendors,
+            title: "#{bill.vendor}, #{bill.period_month.strftime('%B %Y')}", url: finances_cost_path(bill), method: :patch, submit_text: "Save" %>
+      <%= render "shared/confirm_modal", id: "cost-#{bill.id}-remove", title: "Remove this bill?",
+            message: "#{h(bill.vendor)}, #{usd(bill.amount_cents)} for #{bill.period_month.strftime('%B %Y')}, stops counting and its files go.",
+            confirm_text: "Remove", url: finances_cost_path(bill), method: :delete %>
+    <% end %>
+  <% end %>
+</div>

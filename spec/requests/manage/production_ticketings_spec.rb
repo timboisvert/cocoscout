@@ -152,6 +152,23 @@ RSpec.describe "Production ticketing", type: :request do
     expect(code.reload.active).to be(false)
   end
 
+  # The Codes tab's ⋯ menu (Tim, 2026-11-07): export the codes as a
+  # spreadsheet, import a spreadsheet's.
+  it "exports its codes and imports a spreadsheet's, skipping the ones already there" do
+    org.ticket_discount_codes.create!(production: production, code: "FRIENDS", kind: "fixed", amount_cents: 500)
+    get manage_production_ticketing_codes_export_path(production)
+    expect(response.headers["Content-Disposition"]).to include("rising-stars-discount-codes.csv")
+    expect(response.body.lines.map(&:chomp)).to eq([ "Code,Kind,Amount,Most uses,Shared with", "FRIENDS,$ off,5.00,,Production team and cast" ])
+
+    file = Rack::Test::UploadedFile.new(StringIO.new("Code,Kind,Amount\nFRIENDS,$ off,5\nCAST,% off,20\n"), "text/csv", original_filename: "codes.csv")
+    post manage_production_ticketing_codes_import_path(production), params: { file: file }
+    expect(flash[:notice]).to eq("Added CAST. Already here, skipped: FRIENDS.")
+    expect(org.ticket_discount_codes.where(production: production, active: true).pluck(:code)).to contain_exactly("FRIENDS", "CAST")
+
+    get manage_edit_production_ticketing_path(production, section: "codes")
+    expect(response.body).to include("Export codes", "Import codes", "export-codes-modal", "import-codes-modal")
+  end
+
   it "can't reach another theater's production" do
     other = create(:production, organization: create(:organization, :pro))
     get manage_production_ticketing_path(other)

@@ -101,16 +101,33 @@ final class PushRegistrar: NSObject, UNUserNotificationCenterDelegate {
 
     // MARK: Notifications arriving
 
+    // Both use Apple's completion-handler form, and finish on the main
+    // thread. The async form finished on a background thread, and iOS ends
+    // the app there ("Call must be made on main thread"): every tapped
+    // notification opened the app and crashed it (Tim, 2026-11-04).
+
     /// Shown even while the app is open.
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                            willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        [.banner, .list, .sound, .badge]
+                                            willPresent notification: UNNotification,
+                                            withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        let options: UNNotificationPresentationOptions = [.banner, .list, .sound, .badge]
+        if Thread.isMainThread {
+            completionHandler(options)
+        } else {
+            DispatchQueue.main.async { completionHandler(options) }
+        }
     }
 
-    /// A tap opens the page it's about (a message thread).
+    /// A tap opens the page it's about (a message thread, a notification's page).
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                            didReceive response: UNNotificationResponse) async {
-        guard let path = response.notification.request.content.userInfo["path"] as? String, path.hasPrefix("/") else { return }
-        await MainActor.run { AppShell.shared.open(path: path) }
+                                            didReceive response: UNNotificationResponse,
+                                            withCompletionHandler completionHandler: @escaping () -> Void) {
+        let path = response.notification.request.content.userInfo["path"] as? String
+        DispatchQueue.main.async {
+            if let path, path.hasPrefix("/") {
+                MainActor.assumeIsolated { AppShell.shared.open(path: path) }
+            }
+            completionHandler()
+        }
     }
 }

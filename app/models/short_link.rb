@@ -1,8 +1,11 @@
 # frozen_string_literal: true
 
 # A short link: cocoscout.com/t/K7M2P. The code comes from ShortKeyService
-# (like /a/, /s/ and /c/) and never changes; where it points is worked out when
-# it's followed, so a renamed slug or public key never breaks a printed QR.
+# (like /a/, /s/ and /c/). A manager can swap one they don't like for a new
+# one whenever they choose; the codes a link had before (past_codes) keep
+# forwarding, so nothing printed breaks, and are never shown again. Where a
+# code points is worked out when it's followed, so a renamed slug or public
+# key never breaks a printed QR.
 #
 # Every production with ticketing has one canonical code, the link on its
 # posters: it keeps working as dates are added, and a date is a suffix
@@ -26,15 +29,26 @@ class ShortLink < ApplicationRecord
   validates :kind, inclusion: { in: KINDS }
   validates :target_type, inclusion: { in: TARGET_TYPES }, allow_nil: true
   validates :label, presence: true, if: :named?
+  validate :code_was_never_another_links, if: :will_save_change_to_code?
 
   before_validation :assign_code, on: :create
 
   scope :live, -> { where(archived_at: nil) }
   scope :canonical, -> { where(kind: "canonical") }
   scope :named, -> { where(kind: "named") }
+  # The link a code belongs to: the code it shows today, or one it had before.
+  scope :with_code, ->(code) {
+    code = code.to_s.strip.upcase
+    where(code: code).or(where("short_links.past_codes @> ARRAY[?]::varchar[]", code))
+  }
 
   def self.lookup(code)
-    live.find_by(code: code.to_s.strip.upcase)
+    live.with_code(code).first
+  end
+
+  # A code no link has now or ever had.
+  def self.code_taken?(code)
+    with_code(code).exists?
   end
 
   # The one code a production (or box office) always has.
@@ -90,6 +104,15 @@ class ShortLink < ApplicationRecord
     { orders: orders.size, tickets: tickets.size, cents: tickets.sum { |t| t.price_cents - t.discount_cents } }
   end
 
+  # A new code for the link, whenever the manager chooses (the one it got
+  # reads like a word). The old code keeps forwarding here, counted as this
+  # link's, and is no longer shown anywhere.
+  def regenerate_code!
+    with_lock do
+      update!(past_codes: (past_codes + [ code ]).uniq, code: ShortKeyService.generate(type: :link))
+    end
+  end
+
   def record_click!
     self.class.where(id: id).update_all([ "clicks_count = clicks_count + 1, last_clicked_at = ?", Time.current ])
   end
@@ -98,5 +121,12 @@ class ShortLink < ApplicationRecord
 
   def assign_code
     self.code = ShortKeyService.generate(type: :link) if code.blank?
+  end
+
+  # A retired code still forwards to the link that had it.
+  def code_was_never_another_links
+    return if code.blank?
+
+    errors.add(:code, "has already been taken") if self.class.where.not(id: id).with_code(code).exists?
   end
 end

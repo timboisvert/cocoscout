@@ -18,6 +18,7 @@
     <%= @production.name %> has one short address for good: it keeps working as dates come and go, so a poster's QR never needs
     reprinting. A date is a suffix, like <span class="font-mono"><%= "cocoscout.com#{@canonical.short_path('oct-10')}" %></span>.
     Make a named link for each place you share it (a poster, your Instagram bio, a newsletter) to see which one sells.
+    Don't like a code? Swap it for a new one whenever you like: the old one keeps forwarding, so anything already printed still works.
   </p>
 
   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -46,6 +47,8 @@
               </span>
               <%= render "shared/button", text: "QR", variant: "outline-pink", size: "xs", type: :button, icon: "qr-code",
                     data: { action: "click->qr-code#open" } %>
+              <%= render "shared/button", text: "New code", variant: "outline-pink", size: "xs", type: :button, icon: "arrow-path",
+                    data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-new-code-#{link.id}" } %>
               <% unless link.canonical? %>
                 <%= render "shared/button", text: "Archive", variant: "ghost", size: "xs", type: :button,
                       data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-archive-link-#{link.id}" } %>
@@ -58,6 +61,12 @@
                 <div class="sm:hidden text-xs text-gray-500"><%= link.points_to %></div>
                 <div class="sm:hidden mt-2 flex flex-wrap items-center gap-1"><%= buttons %></div>
                 <%= render "shared/qr_modal", url: url, title: "Scan for tickets" %>
+                <% content_for :new_code_modals do %>
+                  <%= render "shared/confirm_modal", id: "confirm-new-code-#{link.id}", title: "Get a new code?",
+                        message: "cocoscout.com#{link.short_path} gets a new code, and the new one is what's shown from now on. The old code keeps forwarding, so anything already printed or shared still works.",
+                        confirm_text: "New code", confirm_icon: "arrow-path", method: :post,
+                        url: manage_production_ticketing_link_new_code_path(@production, link), form_data: { turbo_action: "replace" } %>
+                <% end %>
               </td>
               <td class="hidden sm:table-cell px-3 sm:px-4 py-3 text-gray-700">
                 <%= link.points_to %>
@@ -106,3 +115,4 @@
         message: "cocoscout.com#{link.short_path} stops working. Anything printed with it goes nowhere. Its clicks and sales stay on this page.",
         confirm_text: "Archive", url: manage_production_ticketing_link_path(@production, link), method: :delete %>
 <% end %>
+<%= yield :new_code_modals %>

@@ -53,7 +53,7 @@
           <div class="text-lg font-bold text-gray-900 leading-tight"><%= day.day %></div>
           <div class="text-[11px] text-gray-500 truncate">
             <% if rows.any? %>
-              <%= pluralize(rows.size, "show") %><% if (sold = rows.sum { |r| r.tickets&.stats&.sold.to_i }).positive? %> · <%= sold %> sold<% end %>
+              <%= pluralize(rows.size, "show") %><% if (sold = home_sold_count(rows)).positive? %> · <%= sold %> sold<% end %>
             <% elsif staffing_days[day] %>
               Staffing only
             <% else %>

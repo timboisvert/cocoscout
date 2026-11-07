@@ -63,6 +63,20 @@ object AppShell {
             .apply()
     }
 
+    /** Where the Coco button belongs on the page showing (MenuButtonComponent). */
+    data class ButtonPlace(val rise: Int = 0, val away: Boolean = false)
+
+    private val _buttonPlace = MutableStateFlow(ButtonPlace())
+    val buttonPlace: StateFlow<ButtonPlace> = _buttonPlace.asStateFlow()
+
+    /**
+     * Each page says where the button belongs on it: above a bar pinned to
+     * its bottom (rise, in dp), or away while scrolling down or under a sheet.
+     */
+    fun placeMenuButton(rise: Int, away: Boolean) {
+        _buttonPlace.value = ButtonPlace(rise, away)
+    }
+
     private var activity: MainActivity? = null
     /** Signed in or out, as the screen was last built for (from the cache at launch). */
     private var shownSignedIn: Boolean? = null
@@ -185,6 +199,8 @@ object AppShell {
      * page that sent the menu finishes first.
      */
     private fun startOver(path: String?) {
+        // A fresh screen: back to the corner until its first page says otherwise.
+        _buttonPlace.value = ButtonPlace()
         val navigator = activity?.currentNavigator ?: return
         android.os.Handler(android.os.Looper.getMainLooper()).post {
             navigator.reset {

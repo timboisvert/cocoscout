@@ -26,6 +26,17 @@ module Manage
       end
     end
 
+    # A new code for a link, the production's own or a named one, whenever the
+    # manager wants one: the first code can read like a word. The old code
+    # keeps forwarding and is no longer shown.
+    def regenerate
+      link = @production.short_links.live.find(params[:id])
+      link.regenerate_code!
+      name = link.canonical? ? "The production's link" : link.label
+      redirect_to manage_production_ticketing_links_path(@production),
+                  notice: "#{name} is now cocoscout.com#{link.short_path}. The old code still forwards to it, and isn't shown anymore."
+    end
+
     # Archiving stops the link; the code is never reissued.
     def destroy
       link = @production.short_links.named.find(params[:id])

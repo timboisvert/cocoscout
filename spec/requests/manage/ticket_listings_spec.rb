@@ -206,6 +206,16 @@ RSpec.describe "Manage ticket listings", type: :request do
       expect(code.reload.active).to be(false)
     end
 
+    it "imports a spreadsheet's codes as this date's own, and exports them" do
+      post manage_ticket_listing_codes_import_path(listing), params: { text: "Code,Amount\nFRIENDS,5\n" }
+      expect(flash[:notice]).to eq("Added FRIENDS.")
+      expect(listing.reload.own_codes?).to be(true)
+      expect(listing.ticket_discount_codes.sole.amount_cents).to eq(500)
+
+      get manage_ticket_listing_codes_export_path(listing)
+      expect(response.body).to include("FRIENDS,$ off,5.00")
+    end
+
     it "removes a draft nobody has bought, but not one with orders" do
       delete manage_ticket_listing_path(listing)
       expect(TicketListing.exists?(listing.id)).to be(false)

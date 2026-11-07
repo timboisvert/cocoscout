@@ -26,4 +26,33 @@ RSpec.describe "A ticketed show on a phone", type: :request do
     expect(menu.text).to include("Orders", "Settings", "Visibility")
     expect(menu.text).not_to include("Scan tickets")
   end
+
+  # The tiles above already count what's sold (Tim, 2026-11-06).
+  it "says only the show's status in the bar, never a second count of what's sold" do
+    get manage_ticket_listing_path(listing)
+    bar = Nokogiri::HTML(response.body).at_css("[data-ticketing-phone-bar]")
+    expect(bar.at_css("span span").text.squish).to be_present
+    expect(bar.text).not_to match(/\d+ sold/)
+  end
+
+  # The Coco button gets itself out of the way (bridge/menu_button_controller.js):
+  # the bar runs edge to edge, and only installs that can't move the button
+  # still get its width left free.
+  it "runs the bar edge to edge in an app build that moves its Coco button, and leaves room in one that can't" do
+    old_build = "CocoScout/1.1.2 (15; nav 2) Hotwire Native iOS; Turbo Native iOS; bridge-components: [form menu door-scanner push]"
+    new_build = "CocoScout/1.1.3 (16; nav 2) Hotwire Native iOS; Turbo Native iOS; bridge-components: [form menu menu-button door-scanner push]"
+    bar = ->(agent) do
+      get manage_ticket_listing_path(listing), headers: { "User-Agent" => agent }
+      Nokogiri::HTML(response.body)
+    end
+
+    old_page = bar.call(old_build)
+    expect(old_page.at_css("[data-ticketing-phone-bar]")["class"]).to include("pr-[96px]")
+    new_page = bar.call(new_build)
+    expect(new_page.at_css("[data-ticketing-phone-bar]")["class"]).to include("pr-4")
+    expect(new_page.at_css("[data-ticketing-phone-bar]")["class"]).not_to include("pr-[96px]")
+    # Both are given the piece that says where the button belongs; only the
+    # new build's bridge loads it.
+    expect(new_page.at_css("[data-controller='bridge--menu-button']")).to be_present
+  end
 end

@@ -108,6 +108,36 @@ needs the version bumped first. Where to see it: Xcode's Report navigator
 Cost: the Apple Developer Program includes 25 compute hours a month; one
 archive takes well under one.
 
+## Android: the release build is shrunk (R8, from 1.1.2 build 7)
+
+Google Play flagged 1.1.1 on 2026-11-04 ("DEX code optimization is below our
+threshold", obfuscation 1%; under 25% in any category "may impact your
+visibility and publishing capabilities"). The release build now runs R8
+(`isMinifyEnabled`, `isShrinkResources`), with the app's rules in
+`android/app/proguard-rules.pro`.
+
+- **Run it before every upload.** A shrunk build can break at runtime in ways
+  the debug build never shows (the first one died at launch). From `android/`,
+  with the emulator up and `adb reverse tcp:3000 tcp:3000`:
+  `./gradlew installShrunk` installs the release build exactly, pointed at
+  this Mac and signed with the debug key. Sign in, open the menu, a page, the
+  door's Scan, and a notification link
+  (`adb shell am start -a android.intent.action.VIEW -d "cocoscout://open?path=/my" com.cocoscout.app`).
+  The emulator can't run Tap to Pay; that needs a real phone.
+- **The score Google uses** is inside the bundle:
+  `unzip -p app/build/outputs/bundle/release/app-release.aab BUNDLE-METADATA/com.android.tools/r8.json`
+  (`stats`: each "no…Percentage" subtracted from 100). Build 7: obfuscation
+  24.4%, optimization 24.2%, shrinking 44.4%.
+- **What holds it under 25%:** Stripe Terminal's own rules (four artifacts)
+  keep every `com.stripe`, `kotlinx.coroutines`, `okhttp3`, Play services,
+  Tink and Jackson name. Its Tap to Pay code is protected and calls those by
+  name, so they are left alone. Hotwire's blanket `com.google.**` rule was the
+  other block; it is switched off (`ignoreFrom("dev.hotwire:core")`) and
+  restated narrowly in `proguard-rules.pro`. Check that copy when Hotwire is
+  upgraded, and look for a Stripe Terminal release with narrower rules.
+- R8 needs the 6 GB Gradle heap in `android/gradle.properties`. The mapping
+  file rides inside the bundle, so Play's crash reports stay readable.
+
 ## Android: Gradle Play Publisher
 
 What's in the repo: the `com.github.triplet.play` plugin (Gradle Play

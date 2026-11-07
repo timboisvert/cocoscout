@@ -2,7 +2,8 @@
   The shared Save bar (V1.1 plan Phase 0b): a form's buttons pinned to the
   bottom of the screen on a phone, so Save is always a thumb away on a long
   form; from sm up they sit in a row at the form's end as usual. In the app
-  it leaves room on the right for the Coco button.
+  the Coco button moves itself above the bar (bridge/menu_button_controller.js);
+  only builds that can't move it get room left on the right.
 
   Rendered as a layout around shared/button calls:
     render layout: "shared/sticky_actions" do
@@ -10,7 +11,7 @@
       render "shared/button", text: "Save", variant: "primary", type: :submit
     end
 %>
-<% app = turbo_native_app? %>
+<% app = coco_button_in_the_way? %>
 <div class="sm:hidden h-24" aria-hidden="true"></div>
 <div class="fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 pl-4 <%= app ? 'pr-[96px]' : 'pr-4' %> pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex gap-2 [&>*]:flex-1
             sm:static sm:z-auto sm:bg-transparent sm:backdrop-blur-none sm:border-0 sm:p-0 sm:mt-6 sm:justify-end sm:[&>*]:flex-none" data-sticky-actions>

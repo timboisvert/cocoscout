@@ -118,7 +118,7 @@
       clear of the Coco button in the app. The status bar above says why. %>
   <% if @shifts_by_day.any? && (!@week_finalized || @comms[:update].any?) %>
     <div class="sm:hidden h-24" aria-hidden="true"></div>
-    <div class="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 pl-4 <%= turbo_native_app? ? 'pr-[96px]' : 'pr-4' %> pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex items-center gap-3" data-scheduling-phone-bar>
+    <div class="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 pl-4 <%= coco_button_in_the_way? ? 'pr-[96px]' : 'pr-4' %> pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex items-center gap-3" data-scheduling-phone-bar>
       <% if !@week_finalized %>
         <span class="text-sm text-gray-600 flex-1 min-w-0 truncate">Draft · <%= pluralize(@comms[:total], "person") %> assigned</span>
         <%= render "shared/button", text: "Publish & notify", variant: "primary", size: "medium", type: :button,

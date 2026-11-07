@@ -192,6 +192,9 @@ class ShortKeyService
     end
 
     def key_exists?(type, key)
+      # A link's retired codes still forward, so they're taken too.
+      return ShortLink.code_taken?(key) if type == :link
+
       config = KEY_TYPES[type]
       model_class(type).exists?(config[:column] => key)
     end

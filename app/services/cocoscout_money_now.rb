@@ -5,7 +5,9 @@
 # out today, and what organizations owe it. Not tied to a period.
 #
 #   earned to date      every dollar earned (bills sent count, paid or not)
-#                       less every dollar spent
+#                       less every dollar spent, in Stripe or outside it
+#   paid outside Stripe what running CocoScout cost from the company's bank
+#                       (Amazon, Claude): spent, but never in Stripe
 #   not yet collected   bills sent and not yet paid
 #   sent to our bank    payouts to CocoScout's bank, less money added back
 #   paid by hand        organizations CocoScout paid from its own bank: the
@@ -36,9 +38,15 @@ class CocoScoutMoneyNow
 
   # Earned less spent since we started: counting every bill sent, less what
   # we charged too much (owed back), less credit given back that hasn't paid
-  # a bill yet.
+  # a bill yet, less what running CocoScout cost outside Stripe.
   def profit_cents
-    collected_profit_cents + not_collected_cents - owed_back_cents - unused_credit_cents
+    collected_profit_cents + not_collected_cents - owed_back_cents - unused_credit_cents - outside_cost_cents
+  end
+
+  # Bills paid from the company's bank, never from Stripe (CompanyExpense,
+  # the Costs page): they lower profit without touching what's in Stripe.
+  def outside_cost_cents
+    @outside_cost_cents ||= CompanyExpense.confirmed.sum(:amount_cents)
   end
 
   # The same, counting only what's been paid: the ledger.

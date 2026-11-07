@@ -74,7 +74,7 @@
   <%# Phone: Review & notify pinned to the bottom, clear of the Coco button. %>
   <% if @audition_sessions.any? && current_user_can_manage?(@production) %>
     <div class="sm:hidden h-24" aria-hidden="true"></div>
-    <div class="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 pl-4 <%= turbo_native_app? ? 'pr-[96px]' : 'pr-4' %> pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex items-center gap-3" data-schedule-phone-bar>
+    <div class="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 pl-4 <%= coco_button_in_the_way? ? 'pr-[96px]' : 'pr-4' %> pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex items-center gap-3" data-schedule-phone-bar>
       <%= link_to "Finish without notifying", manage_signups_auditions_cycle_requests_path(@production, @audition_cycle),
             class: "text-sm text-gray-500 flex-1 min-w-0 truncate" %>
       <%= render partial: "shared/button", locals: {

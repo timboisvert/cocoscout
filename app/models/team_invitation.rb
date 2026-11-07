@@ -7,6 +7,8 @@ class TeamInvitation < ApplicationRecord
   # An invitation onto a contract (a contract person, ContractPeopleAdder)
   # rather than onto a production's team.
   belongs_to :contract, optional: true
+  # Who sent it (the inviting user's profile), named in the email.
+  belongs_to :invited_by, class_name: "Person", foreign_key: "invited_by_person_id", optional: true
 
   normalizes :email, with: ->(e) { e.strip.downcase }
 

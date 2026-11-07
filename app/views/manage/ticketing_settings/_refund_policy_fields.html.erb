@@ -1,32 +1,55 @@
 <%# The refund policy's fields, shared by the box office and a production
-    that sets its own (RefundPolicy). Inside the caller's form, which carries
-    data-controller="radio-card" for the custom-days reveal.
+    that sets its own (RefundPolicy). Three cards on one line: refunds up to
+    a cutoff, none, or case by case; under the first, the cutoff as pills
+    with a typed number of days at the end (Tim, 2026-11-07: one row, not a
+    column of eight). Then the fees switch and the note, side by side.
+    Inside the caller's form, which carries data-controller="radio-card" for
+    the cutoff reveal.
     Locals: scope (the param prefix), policy (a RefundPolicy), input_class. %>
-<% choice = RefundPolicy.choice_for(policy.kind, policy.hours) %>
-<div class="space-y-2">
-  <% RefundPolicy::CHOICES.each do |value, title, hint| %>
-    <%= render layout: "shared/choice_card", locals: { name: "#{scope}[refund_choice]", value: value, selected: choice, title: title, hint: hint } do %>
-      <% if value == "custom" %>
-        <div class="flex items-center gap-2">
-          <%= number_field_tag "#{scope}[refund_days]", (choice == "custom" ? policy.hours / 24 : 3), min: 1, max: 365,
-                id: "#{scope}_refund_days", class: "#{input_class} max-w-[6rem]", "aria-label": "Days before the show" %>
-          <span class="text-sm text-gray-600">days before the show</span>
-        </div>
-      <% end %>
-    <% end %>
-  <% end %>
-</div>
-
-<div class="flex items-center justify-between gap-4 pt-2">
-  <div>
-    <div class="text-sm font-medium text-gray-900">Refund the fees too</div>
-    <div class="text-xs text-gray-600 mt-0.5">Off: within the policy, buyers get the ticket price and tax back, and the fees they paid aren't refunded. A show you cancel always refunds everything.</div>
-  </div>
-  <%= render "shared/toggle_switch", name: "#{scope}[refund_fees]", checked: policy.fees, hidden_false: true, id: "#{scope}_refund_fees", aria_label: "Refund the fees too" %>
-</div>
-
+<%
+  choice = RefundPolicy.choice_for(policy.kind, policy.hours)
+  kind = %w[none case_by_case].include?(choice) ? choice : "window"
+  window = kind == "window" ? choice : "window_24"
+  pill_class = "inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 transition-colors"
+  radio_class = "accent-pink-500"
+%>
 <div>
-  <label for="<%= scope %>_refund_policy_note" class="block text-sm font-medium text-gray-700 mb-1.5">Anything else buyers should know <span class="font-normal text-gray-500">(optional)</span></label>
-  <%= text_area_tag "#{scope}[refund_policy_note]", policy.note, id: "#{scope}_refund_policy_note", rows: 2, maxlength: RefundPolicy::NOTE_LIMIT,
-        placeholder: "Exchanges to another date are welcome up to 24 hours before.", class: input_class %>
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+    <% RefundPolicy::KIND_CHOICES.each do |value, title, hint| %>
+      <%= render layout: "shared/choice_card", locals: { name: "#{scope}[refund_choice]", value: value, selected: kind, title: title, hint: hint } do %><% end %>
+    <% end %>
+  </div>
+  <div class="mt-2 ml-4 pl-4 border-l-2 border-pink-200 <%= 'hidden' unless kind == 'window' %>" data-radio-card-target="extras" data-for="window" data-controller="pick-radio">
+    <p class="text-sm font-medium text-gray-700 mb-2">Refunds until</p>
+    <div class="flex flex-wrap gap-2">
+      <% RefundPolicy::WINDOW_CHOICES.each do |value, title| %>
+        <label class="<%= pill_class %>">
+          <%= radio_button_tag "#{scope}[refund_window]", value, window == value, id: "#{scope}_refund_window_#{value}", class: radio_class %>
+          <%= title %>
+        </label>
+      <% end %>
+      <label class="<%= pill_class %>">
+        <%= radio_button_tag "#{scope}[refund_window]", "custom", window == "custom", id: "#{scope}_refund_window_custom", class: radio_class %>
+        <%= number_field_tag "#{scope}[refund_days]", (window == "custom" ? policy.hours / 24 : 3), min: 1, max: 365,
+              id: "#{scope}_refund_days", class: "w-16 px-2 py-1 bg-white border border-gray-300 rounded-md text-sm text-gray-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500",
+              "aria-label": "Days before the show", data: { action: "focus->pick-radio#pick" } %>
+        days before
+      </label>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+  <div class="flex items-start justify-between gap-4 rounded-lg border border-gray-200 px-4 py-3">
+    <div>
+      <div class="text-sm font-medium text-gray-900">Refund the fees too</div>
+      <div class="text-xs text-gray-600 mt-0.5">Off: within the policy, buyers get the ticket price and tax back, not the fees. A show you cancel always refunds everything.</div>
+    </div>
+    <%= render "shared/toggle_switch", name: "#{scope}[refund_fees]", checked: policy.fees, hidden_false: true, id: "#{scope}_refund_fees", aria_label: "Refund the fees too" %>
+  </div>
+  <div>
+    <label for="<%= scope %>_refund_policy_note" class="block text-sm font-medium text-gray-700 mb-1.5">Anything else buyers should know <span class="font-normal text-gray-500">(optional)</span></label>
+    <%= text_area_tag "#{scope}[refund_policy_note]", policy.note, id: "#{scope}_refund_policy_note", rows: 2, maxlength: RefundPolicy::NOTE_LIMIT,
+          placeholder: "Exchanges to another date are welcome up to 24 hours before.", class: input_class %>
+  </div>
 </div>

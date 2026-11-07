@@ -30,8 +30,8 @@ android {
         // Hotwire Native Android needs Android 9 or later.
         minSdk = 28
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.1.1"
+        versionCode = 8
+        versionName = "1.1.3"
         buildConfigField("String", "BASE_URL", "\"https://cocoscout.com\"")
     }
 
@@ -53,9 +53,28 @@ android {
             buildConfigField("String", "BASE_URL", "\"http://localhost:3000\"")
         }
         release {
-            isMinifyEnabled = false
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            // R8 shrinks, optimizes and renames the code, and unused
+            // resources go with it. Google Play flagged 1.1.1 for shipping
+            // without it (obfuscation 1%, 2026-11-04). The app's own keep
+            // rules are in proguard-rules.pro; the libraries bring theirs.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Hotwire's own rules keep every com.google class by name
+            // (meant for Gson), which stops Firebase, ML Kit and Play
+            // services being renamed. Its rules are restated, narrowed, in
+            // proguard-rules.pro.
+            optimization { keepRules { ignoreFrom("dev.hotwire:core") } }
             signingConfig = signingConfigs.findByName("upload")
+        }
+        // The release build exactly (same R8 rules), but talking to this
+        // Mac and signed with the debug key, so a shrunk build can be run on
+        // the emulator before a store upload: `./gradlew installShrunk`.
+        create("shrunk") {
+            initWith(getByName("release"))
+            buildConfigField("String", "BASE_URL", "\"http://localhost:3000\"")
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
         }
     }
 

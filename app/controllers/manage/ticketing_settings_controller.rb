@@ -51,9 +51,9 @@ module Manage
     # The Refunds tab: the policy buyers see, for every production that
     # doesn't set its own (RefundPolicy).
     def update_refunds
-      raw = params.require(:ticketing_profile).permit(:refund_choice, :refund_days, :refund_fees, :refund_policy_note)
+      raw = params.require(:ticketing_profile).permit(:refund_choice, :refund_window, :refund_days, :refund_fees, :refund_policy_note)
       attrs = { refund_fees: raw[:refund_fees] == "1", refund_policy_note: raw[:refund_policy_note].to_s.strip.presence }
-      attrs.merge!(RefundPolicy.attributes_for(raw[:refund_choice], raw[:refund_days]) || {})
+      attrs.merge!(RefundPolicy.attributes_for(RefundPolicy.choice_from(raw), raw[:refund_days]) || {})
 
       if ticketing_profile.update(attrs)
         redirect_to section_path("refunds"), notice: "Refund policy saved."

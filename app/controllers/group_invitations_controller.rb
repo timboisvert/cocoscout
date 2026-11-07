@@ -42,7 +42,7 @@ class GroupInvitationsController < ApplicationController
         rendered = ContentTemplateService.render("group_member_added", {
           recipient_name: existing_person.first_name || "there",
           group_name: @group.name,
-          added_by_name: Current.user.person&.full_name || "A group member",
+          added_by_name: Current.user.person&.name.presence || "A group member",
           group_url: group_url,
           custom_message: params[:invitation_message]
         })
