@@ -1,14 +1,13 @@
 <%# The next shift first (plan: staffing notifications §5, idea 3; Tim,
     2026-11-07: this is the one to lay out in full). The nearest shift they're
     on, as a card above the glance: role and hours, the day, the organization
-    and place; the shows that night, each with its time, room, call time and
-    how many people to expect where the organization shows it; everyone
-    working alongside, with their role and hours (told people only); the
-    shift's note; then "I can't make it" (its sheet, rendered by the list)
-    and Directions when the place has an address. Carries the shift's anchor,
-    so a notice's link lands and opens here. The shifts after this one keep
-    their two-line rows. Uses @hero, @people, @show_lines_by_shift,
-    @also_on_rows_by_shift. %>
+    and place; the shows it covers, each with its time, room, call time and
+    how many people to expect where the organization shows it (nothing at all
+    for a shift that covers none); the shift's note; then "I can't make it"
+    (its sheet, rendered by the list) and Directions when the place has an
+    address. Never who else is working (Tim, 2026-11-07). Carries the shift's
+    anchor, so a notice's link lands and opens here. The shifts after this
+    one keep their two-line rows. Uses @hero, @people, @show_lines_by_shift. %>
 <%
   row = @hero
   shift = row[:shift]
@@ -24,7 +23,6 @@
   location = shift.house_role&.location || shift.source.try(:location)
   location_name = shift.location_name
   show_lines = (@show_lines_by_shift || {})[shift.id] || []
-  crew = (@also_on_rows_by_shift || {})[shift.id] || []
   cid = "cant-make-it-#{assignment.id}"
   directions = location && location.address1.present? ? "https://www.google.com/maps/search/?api=1&query=#{ERB::Util.url_encode(location.full_address)}" : nil
   label_class = "text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1.5"
@@ -41,7 +39,6 @@
   <div class="px-5 py-4 space-y-4">
     <% if show_lines.any? %>
       <div data-next-shift-shows>
-        <div class="<%= label_class %>"><%= ShiftWords.that_day(starts).sub(/\Athat/, "That") %></div>
         <div class="divide-y divide-gray-100">
           <% show_lines.each do |line| %>
             <% show = line.show %>
@@ -60,32 +57,6 @@
               <% if line.expected.to_i.positive? %>
                 <div class="flex-shrink-0 text-sm tabular-nums text-gray-700"><span class="font-semibold text-gray-900"><%= line.expected %></span> expected</div>
               <% end %>
-            </div>
-          <% end %>
-        </div>
-      </div>
-    <% end %>
-
-    <% if crew.any? %>
-      <div data-next-shift-crew>
-        <div class="<%= label_class %>">Working with you</div>
-        <div class="divide-y divide-gray-100">
-          <% crew.each do |a| %>
-            <%
-              headshot = a.person.respond_to?(:safe_headshot_variant) ? a.person.safe_headshot_variant(:thumb) : nil
-              same_hours = a.shift.starts_at == shift.starts_at && a.shift.ends_at == shift.ends_at
-            %>
-            <div class="flex items-center gap-3 py-1.5" data-crew-row>
-              <% if headshot %>
-                <%= image_tag headshot, alt: a.person.name, class: "w-8 h-8 rounded-lg object-cover flex-shrink-0" %>
-              <% else %>
-                <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs flex-shrink-0"><%= a.person.initials %></div>
-              <% end %>
-              <div class="flex-1 min-w-0">
-                <div class="text-sm text-gray-900 truncate"><%= a.person.name %></div>
-                <div class="text-xs text-gray-500 truncate"><%= a.shift.role_label %></div>
-              </div>
-              <div class="flex-shrink-0 text-xs tabular-nums <%= same_hours ? 'text-gray-400' : 'text-gray-700' %>"><%= same_hours ? "same hours" : ShiftWords.shift_hours(a.shift) %></div>
             </div>
           <% end %>
         </div>

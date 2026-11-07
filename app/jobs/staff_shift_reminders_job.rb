@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 # The afternoon before a shift, a reminder: "Tomorrow: Bartender, 6:00 PM at
-# The Annex", with that night's shows and who else is on among people who've
-# been told (plan: staffing notifications, Tim 2026-11-07, "do it all").
+# The Annex", with that night's shows (plan: staffing notifications, Tim
+# 2026-11-07, "do it all").
 #
 # Runs every hour and acts for each organization at 4 PM on its own clock.
 # A row is reminded once (reminded_at, stamped before the notice is sent, so
@@ -85,15 +85,13 @@ class StaffShiftRemindersJob < ApplicationJob
     end
   end
 
-  # The hours, role and place, then the shows and who else is on.
-  def list_item(shift, person)
+  # The hours, role and place, then the shows.
+  def list_item(shift, _person)
     e = ->(s) { ERB::Util.html_escape(s) }
     place = ShiftWords.location(shift)
     lines = [ "<strong>#{e.call(ShiftWords.shift_hours(shift))}</strong> · #{e.call(shift.role_label)}#{place ? " · #{e.call(place)}" : ''}" ]
     shows = ShiftWords.shows_line(shift)
     lines << e.call(shows) if shows
-    also = ShiftWords.also_on(shift, person)
-    lines << "Also on: #{e.call(also)}" if also
     "<li style=\"margin-bottom:6px;\">#{lines.join('<br>')}</li>"
   end
 end

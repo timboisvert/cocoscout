@@ -26,7 +26,7 @@ RSpec.describe StaffShiftRemindersJob do
 
   def notifications(person) = Notification.where(user: person.user).order(:id)
 
-  it "reminds at 4 PM the day before, once, with the shows and who else is on" do
+  it "reminds at 4 PM the day before, once, with the shows and never the crew" do
     publish!
     production = create(:production, organization: org, name: "Rising Stars")
     show = create(:show, production: production, date_and_time: friday + 1.5.hours)
@@ -43,7 +43,8 @@ RSpec.describe StaffShiftRemindersJob do
     n = notifications(jamie).last
     expect(n.kind).to eq("staff_shift_reminder")
     expect(n.title).to eq("Tomorrow: Bartender, 6:00 PM at The Annex")
-    expect(n.body).to include("Friday, Nov 13", "6:00–10:00 PM", "That night: Rising Stars (7:30 PM)", "Also on: Dan Lee (Door)")
+    expect(n.body).to include("Friday, Nov 13", "6:00–10:00 PM", "That night: Rising Stars (7:30 PM)")
+    expect(n.body).not_to include("Dan Lee")
     expect(n.body).to include("so the team can sort out cover")
     expect(n.path).to eq("/my/shifts#shift-#{s.id}")
     expect(row.reload.reminded_at).to be_present

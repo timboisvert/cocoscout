@@ -67,7 +67,6 @@ class StaffShiftNotices < ActiveRecord::Migration[8.1]
     { "name" => "start_time", "description" => "When it starts, e.g. 6:00 PM" },
     { "name" => "location_name", "description" => "Where, when the role or booking has a place" },
     { "name" => "shows_line", "description" => "The shows that day, e.g. \"That night: Rising Stars (7:30 PM)\"; blank when the shift has none" },
-    { "name" => "also_on", "description" => "Others working that day who have been told, e.g. \"Mia Manager (House)\"; blank when none" },
     { "name" => "shift_url", "description" => "My Shifts, landing on this shift" },
     { "name" => "my_shifts_link", "description" => "My Shifts" }
   ].freeze
@@ -104,7 +103,6 @@ class StaffShiftNotices < ActiveRecord::Migration[8.1]
         <p>Hi {{recipient_name}},</p>
         <p>{{organization_name}} put you on <strong>{{role_label}}</strong>, <strong>{{shift_day}}, {{shift_hours}}</strong>{{#location_name}} at {{location_name}}{{/location_name}}.</p>
         {{#shows_line}}<p>{{shows_line}}</p>{{/shows_line}}
-        {{#also_on}}<p>Also on: {{also_on}}.</p>{{/also_on}}
         <p><a href="{{shift_url}}">See this shift</a></p>
         <p>If you can't make it, say so on My Shifts so the team can sort out cover.</p>
       HTML
@@ -178,7 +176,6 @@ class StaffShiftNotices < ActiveRecord::Migration[8.1]
         <p>Hi {{recipient_name}},</p>
         <p><strong>{{role_label}}</strong>, <strong>{{shift_day}}, {{shift_hours}}</strong>{{#location_name}} at {{location_name}}{{/location_name}} is yours. Thanks for covering for {{vacated_by_name}}.</p>
         {{#shows_line}}<p>{{shows_line}}</p>{{/shows_line}}
-        {{#also_on}}<p>Also on: {{also_on}}.</p>{{/also_on}}
         <p><a href="{{shift_url}}">See this shift</a></p>
       HTML
       available_variables: SHIFT_VARS + [ { "name" => "vacated_by_name", "description" => "Who couldn't make it" } ]
