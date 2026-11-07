@@ -1,0 +1,56 @@
+<%# One shift's sheet (shared/sheet), opened from its row in the upcoming
+    list or from the hero card: the day and hours, the organization and
+    place, the shows with how many people to expect where the organization
+    shows it, who else is on (only people who've been told), the shift's
+    note, and "I can't make it". Locals: row (assignment/shift/person), cid
+    (the sheet's id, also the row's modal id). %>
+<%
+  shift = row[:shift]
+  assignment = row[:assignment]
+  org = shift.organization
+  location_name = shift.location_name
+  show_lines = (@show_lines_by_shift || {})[shift.id] || []
+  also_on = (@also_on_by_shift || {})[shift.id]
+  starts = ShiftWords.starts(shift)
+  form_id = "decline-shift-#{assignment.id}"
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+%>
+<%= render layout: "shared/sheet", locals: { id: cid, title: shift.role_label, footer: capture {
+      concat render("shared/button", text: "Close", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" })
+      concat render("shared/button", text: "I can't make it", variant: "primary", size: "medium", type: :submit, form_id: form_id)
+    } } do %>
+  <div class="space-y-4" data-shift-sheet>
+    <div>
+      <div class="font-medium text-gray-900"><%= ShiftWords.day(starts) %> · <span class="tabular-nums"><%= ShiftWords.shift_hours(shift) %></span></div>
+      <div class="text-sm text-gray-600"><%= org&.name %><% if location_name.present? && location_name != org&.name %> · <%= location_name %><% end %><% if @people.size > 1 %> · <%= row[:person].name %><% end %></div>
+    </div>
+    <% if show_lines.any? %>
+      <div>
+        <div class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1"><%= ShiftWords.that_day(starts).sub(/\Athat/, "That") %></div>
+        <% show_lines.each do |line| %>
+          <div class="text-sm" data-show-line><span class="text-gray-900"><%= line.words %></span><% if line.expected.to_i.positive? %> · <span class="tabular-nums text-gray-600"><%= line.expected %> expected</span><% end %></div>
+        <% end %>
+      </div>
+    <% end %>
+    <% if also_on.present? %>
+      <div>
+        <div class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1">Also on</div>
+        <div class="text-sm text-gray-900" data-also-on><%= also_on %></div>
+      </div>
+    <% end %>
+    <% if shift.notes.present? %>
+      <div>
+        <div class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1">Notes</div>
+        <div class="text-sm text-gray-900 whitespace-pre-line"><%= shift.notes %></div>
+      </div>
+    <% end %>
+    <div class="border-t border-gray-200 pt-4">
+      <div class="text-sm font-semibold text-gray-900 mb-2">Can't make this shift?</div>
+      <%= form_with url: my_decline_shift_path(assignment), method: :post, id: form_id do %>
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="<%= form_id %>-reason">Add a note (optional)</label>
+        <%= text_area_tag :reason, nil, rows: 2, id: "#{form_id}-reason", placeholder: "e.g. I'm out of town that weekend", class: input_class %>
+      <% end %>
+      <p class="text-sm text-gray-600 mt-2">We'll tell <span class="font-medium text-gray-900"><%= org&.name %></span> so they can sort out cover. You can take it back here until someone has it.</p>
+    </div>
+  </div>
+<% end %>

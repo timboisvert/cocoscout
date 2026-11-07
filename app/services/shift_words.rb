@@ -8,6 +8,13 @@
 module ShiftWords
   module_function
 
+  # A shift's times in its organization's clock (TimeZones), wherever the
+  # words are built: a request in another zone, a job, My Shifts for someone
+  # who works in two cities.
+  def local(shift, time) = time.in_time_zone(shift.organization&.time_zone.presence || Time.zone)
+  def starts(shift) = local(shift, shift.starts_at)
+  def ends(shift) = local(shift, shift.ends_at)
+
   def day(time) = time.strftime("%A, %b %-d")
   def date_short(time) = time.strftime("%a %b %-d")
   def start_time(time) = time.strftime("%-l:%M %p")
@@ -21,7 +28,7 @@ module ShiftWords
     end
   end
 
-  def shift_hours(shift) = hours(shift.starts_at, shift.ends_at)
+  def shift_hours(shift) = hours(starts(shift), ends(shift))
 
   # The part of the day a shift takes, for "so you have that evening back".
   def day_part(time)
@@ -41,8 +48,8 @@ module ShiftWords
     shows = shift.covered_shows.reject(&:canceled?)
     return nil if shows.empty?
 
-    "#{that_day(shift.starts_at).sub(/\Athat/, 'That')}: " +
-      shows.map { |s| "#{s.production&.name || s.display_name} (#{start_time(s.date_and_time)})" }.join(", ")
+    "#{that_day(starts(shift)).sub(/\Athat/, 'That')}: " +
+      shows.map { |s| "#{s.production&.name || s.display_name} (#{start_time(local(shift, s.date_and_time))})" }.join(", ")
   end
 
   # Others working that day, at the same organization, whose shift overlaps
@@ -89,10 +96,10 @@ module ShiftWords
       recipient_name: first_name(person),
       organization_name: shift.organization.name,
       role_label: shift.role_label,
-      shift_day: day(shift.starts_at),
-      shift_date_short: date_short(shift.starts_at),
+      shift_day: day(starts(shift)),
+      shift_date_short: date_short(starts(shift)),
       shift_hours: shift_hours(shift),
-      start_time: start_time(shift.starts_at),
+      start_time: start_time(starts(shift)),
       location_name: location(shift),
       shows_line: shows_line(shift),
       also_on: also_on(shift, person),
@@ -107,7 +114,7 @@ module ShiftWords
     e = ->(s) { ERB::Util.html_escape(s) }
     place = location(shift)
     "<li style=\"margin-bottom:6px;\">" \
-      "<a href=\"#{shift_url(shift)}\"><strong>#{e.call(day(shift.starts_at))}</strong></a> · " \
+      "<a href=\"#{shift_url(shift)}\"><strong>#{e.call(day(starts(shift)))}</strong></a> · " \
       "#{e.call(shift_hours(shift))} · #{e.call(shift.role_label)}#{place ? " · #{e.call(place)}" : ''}" \
     "</li>"
   end

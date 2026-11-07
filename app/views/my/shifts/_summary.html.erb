@@ -1,10 +1,13 @@
 <%# At-a-glance stat cards, in pipeline order: what's still to be paid (not
-    sent yet: approved or waiting for approval, MyShiftPay), what's coming up,
-    hours waiting for approval, then approved hours not sent yet. Money on its
+    sent yet: approved or waiting for approval, MyShiftPay), the hours still
+    to verify (their own next step), hours waiting for approval, then
+    approved hours not sent yet. On a phone the first two are enough (plan §5,
+    idea 3): the next shift is its own card above, and "waiting" and
+    "approved" are the Getting paid card's story further down. Money on its
     way is the Getting paid card's, so nothing here says "owed" while it's in
-    transit. Uses @shift_pay, @upcoming_count, @pending_hours, @approved_hours. %>
-<%# The next shift they're on: a row that reads "X has it now" is not theirs. %>
-<% next_shift = @rows.find { |r| r[:assignment]&.active? } %>
+    transit. Uses @shift_pay, @unconfirmed_shifts, @verify_hours,
+    @pending_hours, @approved_hours. %>
+<% to_verify = @unconfirmed_shifts || [] %>
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
   <div class="rounded-xl border border-pink-200 bg-pink-50 p-4">
     <div class="text-xs font-medium text-pink-600 uppercase tracking-wide">Still to be paid</div>
@@ -12,21 +15,27 @@
     <div class="text-[11px] text-gray-500 mt-0.5">not sent yet</div>
   </div>
 
-  <div class="rounded-xl border border-gray-200 bg-white p-4">
-    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Upcoming shifts</div>
-    <div class="text-2xl font-bold text-gray-900 mt-1 tabular-nums"><%= @upcoming_count %></div>
-    <div class="text-[11px] text-gray-400 mt-0.5">
-      <%= next_shift ? "next #{next_shift[:shift].starts_at.strftime('%a %b %-d')}" : "none scheduled" %>
+  <div class="rounded-xl border <%= to_verify.any? ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-white' %> p-4" data-hours-to-verify>
+    <div class="text-xs font-medium <%= to_verify.any? ? 'text-amber-700' : 'text-gray-500' %> uppercase tracking-wide">Hours to verify</div>
+    <div class="text-2xl font-bold text-gray-900 mt-1 tabular-nums"><%= number_with_precision(@verify_hours.to_f, precision: 2, strip_insignificant_zeros: true) %></div>
+    <div class="text-[11px] text-gray-500 mt-0.5 truncate">
+      <% if to_verify.one? %>
+        <% a = to_verify.first %><%= ShiftWords.starts(a.shift).strftime("%a %b %-d") %>, <%= a.shift.role_label %>
+      <% elsif to_verify.any? %>
+        <%= pluralize(to_verify.size, "shift") %>
+      <% else %>
+        all verified
+      <% end %>
     </div>
   </div>
 
-  <div class="rounded-xl border border-gray-200 bg-white p-4">
+  <div class="hidden lg:block rounded-xl border border-gray-200 bg-white p-4">
     <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Waiting for approval</div>
     <div class="text-2xl font-bold text-gray-900 mt-1 tabular-nums"><%= number_with_precision(@pending_hours, precision: 2, strip_insignificant_zeros: true) %></div>
     <div class="text-[11px] text-gray-500 mt-0.5">hours</div>
   </div>
 
-  <div class="rounded-xl border border-gray-200 bg-white p-4">
+  <div class="hidden lg:block rounded-xl border border-gray-200 bg-white p-4">
     <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Approved</div>
     <div class="text-2xl font-bold text-gray-900 mt-1 tabular-nums"><%= number_with_precision(@approved_hours, precision: 2, strip_insignificant_zeros: true) %></div>
     <div class="text-[11px] text-gray-500 mt-0.5">hours not sent yet</div>

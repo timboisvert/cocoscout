@@ -1,0 +1,49 @@
+<%# The next shift first (plan: staffing notifications §5, idea 3): the
+    nearest shift they're on, as a card above the glance, so the thing they
+    opened the page for is the first thing on it. Role and hours, the
+    organization and place, that night's shows and who else is on (told
+    people only), then "I can't make it" (its sheet, rendered by the list)
+    and Directions when the place has an address. Carries the shift's anchor,
+    so a notice's link lands and opens here. Uses @hero, @people,
+    @show_lines_by_shift, @also_on_by_shift. %>
+<%
+  row = @hero
+  shift = row[:shift]
+  assignment = row[:assignment]
+  org = shift.organization
+  starts = ShiftWords.starts(shift)
+  today = Date.current
+  when_words =
+    if starts.to_date == today then "Today"
+    elsif starts.to_date == today + 1 then "Tomorrow"
+    elsif starts.to_date < today + 6 then starts.strftime("%A")
+    end
+  location = shift.house_role&.location || shift.source.try(:location)
+  location_name = shift.location_name
+  show_lines = (@show_lines_by_shift || {})[shift.id] || []
+  shows = show_lines.map { |l| l.expected.to_i.positive? ? "#{l.words} · #{l.expected} expected" : l.words }
+  also_on = (@also_on_by_shift || {})[shift.id].to_s.gsub(/\s*\([^)]*\)/, "").presence
+  cid = "cant-make-it-#{assignment.id}"
+  directions = location&.full_address.present? && location.address1.present? ? "https://www.google.com/maps/search/?api=1&query=#{ERB::Util.url_encode(location.full_address)}" : nil
+%>
+<section id="shift-<%= shift.id %>" data-next-shift class="rounded-xl border border-pink-200 bg-gradient-to-br from-pink-50 to-white p-5 mb-4 transition-colors">
+  <div class="text-[11px] font-semibold uppercase tracking-wide text-pink-600">Next shift<%= " · #{when_words}" if when_words %></div>
+  <div class="mt-1 text-xl font-bold text-gray-900 coustard-regular"><%= shift.role_label %>, <span class="tabular-nums"><%= ShiftWords.shift_hours(shift) %></span></div>
+  <div class="mt-0.5 text-sm text-gray-700">
+    <%= starts.strftime("%A, %b %-d") %> · <%= org&.name %><% if location_name.present? && location_name != org&.name %> · <%= location_name %><% end %><% if @people.size > 1 %> · <%= row[:person].name %><% end %>
+  </div>
+  <% if shows.any? || also_on %>
+    <div class="mt-1 text-sm text-gray-600" data-next-shift-detail>
+      <%= [ shows.presence&.join(", "), (also_on ? "with #{also_on}" : nil) ].compact.join(" · ") %>
+    </div>
+  <% end %>
+  <div class="mt-4 flex flex-wrap gap-2">
+    <%= render "shared/button", text: "I can't make it", variant: "secondary", size: "small", type: :button,
+          data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
+    <% if directions %>
+      <%= link_to directions, target: "_blank", rel: "noopener" do %>
+        <%= render "shared/button", text: "Directions", variant: "secondary", size: "small" %>
+      <% end %>
+    <% end %>
+  </div>
+</section>

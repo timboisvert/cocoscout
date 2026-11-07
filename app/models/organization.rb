@@ -124,6 +124,9 @@ class Organization < ApplicationRecord
   FREE_PRODUCTION_LIMIT = 1
 
   validates :name, presence: true
+  # The clock the organization's pages, forms, notices and reminders read in
+  # (TimeZones). Central unless it picked another.
+  validates :time_zone, inclusion: { in: ->(_) { ActiveSupport::TimeZone.all.map(&:name) }, message: "isn't a time zone we know" }
 
   # Whether staff must sign an agreement before working here. A required pointer to
   # an inactive/deleted template counts as "not required" (defensive).

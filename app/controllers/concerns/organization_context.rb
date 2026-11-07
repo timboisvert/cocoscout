@@ -45,6 +45,7 @@ module OrganizationContext
       # Verify user still has access to this org (role may have been removed)
       if org && Current.user.accessible_organizations.where(id: org.id).exists?
         Current.organization = org
+        use_time_zone_of(org)
       else
         session[:current_organization_id].delete(user_id.to_s)
         Current.organization = nil
@@ -58,6 +59,7 @@ module OrganizationContext
         session[:current_organization_id] ||= {}
         session[:current_organization_id][Current.user.id.to_s] = auto_select_org.id
         Current.organization = auto_select_org
+        use_time_zone_of(auto_select_org)
       else
         Current.organization = nil
       end

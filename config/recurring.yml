@@ -92,6 +92,10 @@ development:
     class: CourseRemindersJob
     schedule: at 10am every day America/Chicago
 
+  staff_shift_reminders:
+    class: StaffShiftRemindersJob
+    schedule: every hour at minute 15
+
   production_ticketing_dates:
     class: ProductionTicketingDatesJob
     schedule: every hour
@@ -235,6 +239,10 @@ production:
   course_reminders:
     class: CourseRemindersJob
     schedule: at 10am every day America/Chicago
+
+  staff_shift_reminders:
+    class: StaffShiftRemindersJob
+    schedule: every hour at minute 15
 
   # Productions with ticketing set up list the shows their setup includes,
   # so dates added to the calendar join on their own.

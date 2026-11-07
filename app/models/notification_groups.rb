@@ -58,7 +58,8 @@ module NotificationGroups
     "shift_vacancy_filled" => "shifts", "shift_vacancy_reclaimed" => "shifts",
     "shift_canceled" => "shifts", "shift_moved" => "shifts",
     "staff_shift_added" => "shifts", "staff_shift_changed" => "shifts", "staff_shift_removed" => "shifts",
-    "shift_claim_confirmed" => "shifts",
+    "shift_claim_confirmed" => "shifts", "staff_shift_reminder" => "shifts",
+    "staff_hours_approved" => "pay",
     # Pay and Contracts, from senders that still go through messages
     "staff_1099_ready" => "pay", "contract_person_added" => "contracts",
     # Ticketing: the Tap to Pay launch (TapToPayLaunch), to everyone who can sell at a door that has it

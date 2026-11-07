@@ -138,6 +138,7 @@ class TicketsController < ApplicationController
     raise ActiveRecord::RecordNotFound if @preview && !preview_viewer?(@ticketing_profile.organization)
 
     @organization = @ticketing_profile.organization
+    use_time_zone_of(@organization)
   end
 
   # Upcoming shows that are on sale or about to be (scheduled, paused,
