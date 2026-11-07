@@ -22,12 +22,14 @@ RSpec.describe "Claiming a shift someone can't make", type: :request do
 
   before { vacancy.mark_finding_replacement! }
 
-  it "shows the shift with who's on it and Claim / Decline, logged out" do
+  it "shows the shift and Claim / Decline, logged out, and never who else is on it" do
     get claim_shift_path(priya_invitation.token)
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Stars &amp; Garters", "Bar", "Marco Ruiz", "Claim this shift", "Decline")
+    expect(response.body).to include("Stars &amp; Garters", "Bar", "Claim this shift", "Decline")
     expect(response.body).to include("data-claim-state=\"open\"")
-    expect(response.body).not_to include("Dana Morris")
+    # Staff aren't shown each other's shifts (Tim, 2026-11-07): not the
+    # person who dropped it, not the people still on it.
+    expect(response.body).not_to include("Dana Morris", "Marco Ruiz", "Also on this shift")
   end
 
   it "warns about their own clash without refusing" do
