@@ -48,16 +48,16 @@
               <div class="flex-1 min-w-0">
                 <div class="text-sm text-gray-900"><span><%= line.words.sub(/\A\S+ \S+ /, "") %></span><% if show.name_subtitle.present? %> <span class="text-gray-600">· <%= show.name_subtitle %></span><% end %></div>
                 <%
+                  # The room, the call time, and the count: a show on sale always
+                  # says its count, zero included (Tim, 2026-11-07); a show with
+                  # nothing on sale says nothing.
                   details = []
                   details << show.location_space.name if show.location_space&.name.present?
                   details << "call #{ShiftWords.local(shift, show.call_time).strftime('%-l:%M %p')}" if show.call_time_enabled? && show.call_time
+                  details << "#{line.expected} expected" unless line.expected.nil?
                 %>
-                <% if details.any? %><div class="text-xs text-gray-500"><%= details.join(" · ") %></div><% end %>
+                <% if details.any? %><div class="text-xs text-gray-500 tabular-nums" data-show-detail><%= details.join(" · ") %></div><% end %>
               </div>
-              <%# A show on sale always says its count, zero included (Tim, 2026-11-07); a show with nothing on sale says nothing. %>
-              <% unless line.expected.nil? %>
-                <div class="flex-shrink-0 text-sm tabular-nums <%= line.expected.positive? ? 'text-gray-700' : 'text-gray-400' %>"><span class="font-semibold <%= line.expected.positive? ? 'text-gray-900' : 'text-gray-500' %>"><%= line.expected %></span> expected</div>
-              <% end %>
             </div>
           <% end %>
         </div>

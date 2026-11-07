@@ -52,6 +52,5 @@ class ClaimShiftController < ApplicationController
     @shift = @vacancy.shift
     @organization = @shift.organization
     @person = @invitation.person
-    @others_on_shift = @shift.active_assignments.map(&:person)
   end
 end
