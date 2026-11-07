@@ -19,7 +19,22 @@ class RefundPolicy
   MAX_HOURS = 365 * 24
   NOTE_LIMIT = 500
 
-  # The settings form's cards: [value, title, hint].
+  # The settings form (Tim, 2026-11-07: one row, not a column of eight):
+  # three cards side by side, and under the first its cutoff as pills.
+  KIND_CHOICES = [
+    [ "window", "Up to a cutoff", "Refunds until a point before the show." ],
+    [ "none", "No refunds", "All sales final. A show you cancel is still refunded in full." ],
+    [ "case_by_case", "Case by case", "No window: buyers are told to ask you, and every refund is your call." ]
+  ].freeze
+  WINDOW_CHOICES = [
+    [ "window_0", "Until the show starts" ],
+    [ "window_24", "24 hours before" ],
+    [ "window_48", "48 hours before" ],
+    [ "window_168", "7 days before" ],
+    [ "window_720", "30 days before" ]
+  ].freeze
+
+  # Every choice as one flat list: [value, title, hint].
   CHOICES = [
     [ "window_0", "Until the show starts", "Any time before showtime." ],
     [ "window_24", "Up to 24 hours before", "The usual window." ],
@@ -36,6 +51,12 @@ class RefundPolicy
     return kind if %w[none case_by_case].include?(kind.to_s)
 
     WINDOWS.include?(hours.to_i) ? "window_#{hours.to_i}" : "custom"
+  end
+
+  # The form's choice: the kind card, and for a window the cutoff pill
+  # (refund_window); a flat choice (window_24, none) still reads as itself.
+  def self.choice_from(raw)
+    raw[:refund_choice].to_s == "window" ? raw[:refund_window] : raw[:refund_choice]
   end
 
   # The columns a card (and, for custom, its day count) saves as; nil for

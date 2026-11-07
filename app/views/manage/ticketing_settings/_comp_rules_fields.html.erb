@@ -37,7 +37,10 @@
   <% end %>
 
   <div class="divide-y divide-gray-100" data-dim-toggle-target="dimmed">
-    <fieldset class="px-6 py-4" data-controller="pick-radio">
+    <%# The padding sits on a wrapper: a fieldset's own top padding opens a
+        gap between its legend and the rest (Tim, 2026-11-07). %>
+    <div class="px-6 py-4">
+    <fieldset data-controller="pick-radio">
       <legend class="text-sm font-medium text-gray-900">Comps per date</legend>
       <p class="text-xs text-gray-600 mt-0.5 mb-3">How many a date can give away in all, whoever gives them.</p>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -59,6 +62,7 @@
         <% end %>
       </div>
     </fieldset>
+    </div>
 
     <div data-controller="dim-toggle">
       <div class="px-6 py-4 flex items-center justify-between gap-6">
@@ -70,7 +74,8 @@
               id: "#{scope}_team_comps", aria_label: "Production team managers can give comps",
               data: { dim_toggle_target: "switch", action: "change->dim-toggle#toggle" } %>
       </div>
-      <fieldset class="px-6 pb-5" data-dim-toggle-target="dimmed" data-controller="pick-radio">
+      <div class="px-6 pb-5" data-dim-toggle-target="dimmed">
+      <fieldset data-controller="pick-radio">
         <legend class="text-sm font-medium text-gray-900">How many of them a production team may give</legend>
         <p class="text-xs text-gray-600 mt-0.5 mb-3">Their part of the date's comps. Never more than the date has.</p>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -92,6 +97,7 @@
           <% end %>
         </div>
       </fieldset>
+      </div>
     </div>
 
     <% if local_assigns[:example].present? %>

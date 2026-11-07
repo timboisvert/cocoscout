@@ -80,6 +80,18 @@ module Manage
       redirect_to section_path("codes"), notice: "#{code.code} removed."
     end
 
+    # The Codes tab's ⋯ menu (DiscountCodeCsv): the codes as a spreadsheet,
+    # and a spreadsheet's codes added for every date.
+    def export_codes
+      codes = Current.organization.ticket_discount_codes.where(production: @production, active: true).order(:code)
+      send_data DiscountCodeCsv.export(codes), filename: "#{@production.name.parameterize}-discount-codes.csv", type: "text/csv"
+    end
+
+    def import_codes
+      result = DiscountCodeCsv.import(organization: Current.organization, production: @production, file: params[:file], text: params[:text])
+      redirect_to section_path("codes"), (result.ok? ? :notice : :alert) => result.summary
+    end
+
     # Who sees the code beside the ticket link (TicketDiscountCode::SHARED_WITH).
     def update_code
       code = Current.organization.ticket_discount_codes.where(production: @production).find(params[:code_id])
@@ -154,7 +166,7 @@ module Manage
     def update_refunds
       raw = params.require(:production_ticketing)
       attrs = if raw[:own_refund_policy] == "1"
-        chosen = RefundPolicy.attributes_for(raw[:refund_choice], raw[:refund_days]) || {}
+        chosen = RefundPolicy.attributes_for(RefundPolicy.choice_from(raw), raw[:refund_days]) || {}
         chosen.reverse_merge(refund_window_hours: nil).merge(refund_fees: raw[:refund_fees] == "1", refund_policy_note: raw[:refund_policy_note].to_s.strip.presence)
       else
         { refund_policy: nil, refund_window_hours: nil, refund_fees: nil, refund_policy_note: nil }

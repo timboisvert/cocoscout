@@ -1430,6 +1430,8 @@ Rails.application.routes.draw do
     get    "ticketing/productions/:production_id/settings(/:section)", to: "production_ticketings#edit", as: "edit_production_ticketing"
     patch  "ticketing/productions/:production_id/settings/:section", to: "production_ticketings#update", as: "update_production_ticketing"
     post   "ticketing/productions/:production_id/codes", to: "production_ticketings#create_code", as: "production_ticketing_codes"
+    get    "ticketing/productions/:production_id/codes/export", to: "production_ticketings#export_codes", as: "production_ticketing_codes_export"
+    post   "ticketing/productions/:production_id/codes/import", to: "production_ticketings#import_codes", as: "production_ticketing_codes_import"
     # The production's short links (cocoscout.com/t/CODE): its one code and the named ones.
     get    "ticketing/productions/:production_id/links", to: "short_links#index",  as: "production_ticketing_links"
     post   "ticketing/productions/:production_id/links", to: "short_links#create"
@@ -1460,6 +1462,8 @@ Rails.application.routes.draw do
     delete "ticketing/shows/:id",                 to: "ticket_listings#destroy"
     post   "ticketing/shows/:id/status",          to: "ticket_listings#change_status",   as: "ticket_listing_status"
     post   "ticketing/shows/:id/codes",           to: "ticket_listings#create_code",     as: "ticket_listing_codes"
+    get    "ticketing/shows/:id/codes/export",    to: "ticket_listings#export_codes",     as: "ticket_listing_codes_export"
+    post   "ticketing/shows/:id/codes/import",    to: "ticket_listings#import_codes",     as: "ticket_listing_codes_import"
     delete "ticketing/shows/:id/codes/:code_id",  to: "ticket_listings#destroy_code",    as: "ticket_listing_code"
     patch  "ticketing/shows/:id/codes/:code_id",  to: "ticket_listings#update_code"
     post   "ticketing/shows/:id/refund-buyers",   to: "ticket_listings#cancel",          as: "ticket_listing_cancel"

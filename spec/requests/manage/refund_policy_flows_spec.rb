@@ -44,7 +44,7 @@ RSpec.describe "Refund policy", type: :request do
     expect(response.body).not_to include("Up to 24 hours before")
 
     get manage_ticketing_settings_section_path(section: "refunds")
-    expect(response.body).to include("Refund policy", "Up to 24 hours before", "No refunds", "Case by case",
+    expect(response.body).to include("Refund policy", "Up to a cutoff", "24 hours before", "No refunds", "Case by case",
                                      "Buyers see:</span> Refunds up to 24 hours before the show. Fees aren&#39;t refunded.")
 
     patch manage_ticketing_settings_refunds_path, params: { ticketing_profile: { refund_choice: "custom", refund_days: "10", refund_fees: "1", refund_policy_note: "Exchanges welcome." } }

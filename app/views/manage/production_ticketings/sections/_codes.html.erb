@@ -1,6 +1,7 @@
 <%# Discount codes for every date of the production (Tim, 2026-10-17): the
-    list, or that there are none yet, and a pink modal to add one. A date
-    can have its own instead, on its Codes tab. Locals: setup, production. %>
+    list, or that there are none yet, a pink modal to add one, and a ⋯ menu
+    to export them or import a spreadsheet's. A date can have its own
+    instead, on its Codes tab. Locals: setup, production. %>
 <%
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   codes = production.organization.ticket_discount_codes.where(production: production, active: true).order(:code).to_a
@@ -11,6 +12,10 @@
         intro: "Codes buyers can enter at checkout, good for every date of #{production.name}. A single date can have its own instead, on its Settings." do %>
     <%= render "shared/button", text: "Add code", variant: "primary", size: "small", type: :button,
           data: { controller: "modal", action: "click->modal#open", modal_id: modal_id } %>
+    <%= render "shared/action_menu", id: "codes-actions", title: "Discount codes", items: [
+          { text: "Export codes", path: "#", icon: "M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2", data: { controller: "modal", action: "click->modal#open", modal_id: "export-codes-modal" } },
+          { text: "Import codes", path: "#", icon: "M12 15V3m0 0L8 7m4-4l4 4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2", data: { controller: "modal", action: "click->modal#open", modal_id: "import-codes-modal" } }
+        ] %>
   <% end %>
   <% if codes.any? %>
     <ul class="divide-y divide-gray-100">
@@ -23,6 +28,8 @@
   <% end %>
 </div>
 <%= render "manage/ticketing/code_modal", id: modal_id, url: manage_production_ticketing_codes_path(production), what: "every date of #{production.name}", input_class: input_class %>
+<%= render "manage/ticketing/code_transfer_modals", export_url: manage_production_ticketing_codes_export_path(production), import_url: manage_production_ticketing_codes_import_path(production),
+      count: codes.size, what: "every date of #{production.name}", input_class: input_class %>
 <% codes.each do |code| %>
   <%= render "shared/confirm_modal", id: "confirm-remove-code-#{code.id}", title: "Remove #{code.code}?",
         message: "Buyers won't be able to use it anymore. Orders that already used it keep their discount.",

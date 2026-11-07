@@ -31,6 +31,10 @@
             intro: "Codes buyers can enter at checkout, good for this date (#{ticket_listing_date_label(listing)}) only." do %>
         <%= render "shared/button", text: "Add code", variant: "primary", size: "small", type: :button,
               data: { controller: "modal", action: "click->modal#open", modal_id: modal_id } %>
+        <%= render "shared/action_menu", id: "codes-actions", title: "Discount codes", items: [
+              { text: "Export codes", path: "#", icon: "M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2", data: { controller: "modal", action: "click->modal#open", modal_id: "export-codes-modal" } },
+              { text: "Import codes", path: "#", icon: "M12 15V3m0 0L8 7m4-4l4 4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2", data: { controller: "modal", action: "click->modal#open", modal_id: "import-codes-modal" } }
+            ] %>
       <% end %>
       <% if codes.any? %>
         <ul class="divide-y divide-gray-100">
@@ -45,6 +49,8 @@
   </fieldset>
 </div>
 <%= render "manage/ticketing/code_modal", id: modal_id, url: manage_ticket_listing_codes_path(listing), what: "this date only", input_class: input_class %>
+<%= render "manage/ticketing/code_transfer_modals", export_url: manage_ticket_listing_codes_export_path(listing), import_url: manage_ticket_listing_codes_import_path(listing),
+      count: codes.size, what: "this date only", input_class: input_class %>
 <% codes.each do |code| %>
   <%= render "shared/confirm_modal", id: "confirm-remove-code-#{code.id}", title: "Remove #{code.code}?",
         message: "Buyers won't be able to use it anymore. Orders that already used it keep their discount.",
