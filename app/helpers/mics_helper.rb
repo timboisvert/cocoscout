@@ -107,11 +107,18 @@ module MicsHelper
     )
   end
 
-  # JSON-LD `Event` payload for one mic occurrence.
+  # How long a mic runs, for want of a column: spot_length_minutes is one
+  # performer's turn, not the night.
+  MIC_RUNTIME = 2.hours
+
+  # JSON-LD `Event` payload for one mic occurrence. Search Console
+  # (2026-11-08) asks every Event for an endDate, offers, an organizer and a
+  # performer: the night runs MIC_RUNTIME, the offer is what it costs to
+  # perform (free, or the cover), the venue organizes it, and the mic itself
+  # is the performing group, as a production is on a ticket page.
   def mic_event_jsonld(mic, occurrence)
     starts_at = occurrence[:starts_at]
-    spot_min  = mics_spot_length_minutes_int(mic.spot_length_minutes)
-    ends_at   = spot_min ? starts_at + (spot_min * 60) : nil
+    ends_at   = starts_at + MIC_RUNTIME
     status =
       case occurrence[:mic_status]
       when "cancelled" then "https://schema.org/EventCancelled"
@@ -124,11 +131,14 @@ module MicsHelper
       "@type": "Event",
       name: mic.name,
       startDate: starts_at.iso8601,
-      endDate: ends_at&.iso8601,
+      endDate: ends_at.iso8601,
       eventStatus: status,
       eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
       description: mic.blurb.presence,
       url: mics_detail_url(mic.slug),
+      organizer: { "@type": "Organization", name: venue.name },
+      performer: { "@type": "PerformingGroup", name: mic.name },
+      offers: [ mic_offer_jsonld(mic) ],
       location: {
         "@type": "Place",
         name: venue.name,
@@ -142,6 +152,15 @@ module MicsHelper
         }
       }
     }.compact
+  end
+
+  # What it costs to get up: free (a drink minimum is still free to perform),
+  # or the cover to perform or pass the hat. In stock while the mic is listed.
+  def mic_offer_jsonld(mic)
+    cents = mic.cost_free? || mic.cost_drink_minimum? ? 0 : mic.cover_amount_cents.to_i
+    name = { "free" => "Free", "drink_minimum" => "Free, drink minimum", "pay_to_perform" => "Pay to perform", "pay_pass_the_hat" => "Pass the hat" }[mic.cost.to_s] || "Free"
+    { "@type": "Offer", name: name, price: format("%.2f", cents / 100.0), priceCurrency: "USD",
+      availability: "https://schema.org/InStock", url: mics_detail_url(mic.slug) }
   end
 
   # Human-readable summary of a mic's schedule, e.g. "Every Tuesday at 8:00 PM"
