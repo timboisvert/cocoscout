@@ -51,7 +51,9 @@ RSpec.describe "My::Shifts rows and sheet", type: :request do
     # opening the same sheet; the list is "Then 1 more".
     hero = page.at_css("[data-next-shift]")
     expect(hero["id"]).to eq("shift-#{shift.id}")
-    expect(hero.text.squish).to include("Next shift Bar, 7:00–11:00 PM", "#{friday.strftime('%A, %b %-d')} · Stars & Garters")
+    # The eyebrow names the weekday once Friday is within six days: not pinned here.
+    expect(hero.text.squish).to match(/\ANext shift(?: · \w+)? Bar, 7:00–11:00 PM/)
+    expect(hero.text.squish).to include("#{friday.strftime('%A, %b %-d')} · Stars & Garters")
     # The whole night on the card: each show with its time and count, and
     # everyone working alongside with role and hours (told people only).
     # A show on sale says its count, zero included.
