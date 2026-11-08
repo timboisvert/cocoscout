@@ -59,6 +59,17 @@ RSpec.describe "Mics pre-launch checklist", type: :request do
       expect(event).not_to be_nil
       expect(event["eventStatus"]).to start_with("https://schema.org/Event")
       expect(event["location"]["@type"]).to eq("Place")
+      # Search Console, 2026-11-08: Events missing endDate, offers, organizer, performer.
+      expect(Time.iso8601(event["endDate"])).to eq(Time.iso8601(event["startDate"]) + 2.hours)
+      expect(event["organizer"]).to eq("@type" => "Organization", "name" => "Cafe Mustache")
+      expect(event["performer"]).to eq("@type" => "PerformingGroup", "name" => "Mustache Mic")
+      expect(event["offers"]).to eq([ { "@type" => "Offer", "name" => "Free", "price" => "0.00", "priceCurrency" => "USD",
+                                        "availability" => "https://schema.org/InStock", "url" => mics_detail_url(mic.slug) } ])
+
+      mic.update!(cost: :pay_to_perform, cover_amount_cents: 500)
+      get mics_detail_path(mic.slug)
+      offer = jsonld_blocks(response.body).detect { |b| b["@type"] == "Event" }["offers"].first
+      expect(offer).to include("name" => "Pay to perform", "price" => "5.00")
       breadcrumb = blocks.detect { |b| b["@type"] == "BreadcrumbList" }
       expect(breadcrumb["itemListElement"].size).to be >= 2
     end
