@@ -45,7 +45,7 @@ module ShiftWords
   # The shows the shift covers: "That night: Rising Stars (7:30 PM)". Nil for
   # a shift with none (a booking, a standalone shift).
   def shows_line(shift)
-    shows = shift.covered_shows.reject(&:canceled?)
+    shows = shift.shows_on_duty
     return nil if shows.empty?
 
     "#{that_day(starts(shift)).sub(/\Athat/, 'That')}: " +

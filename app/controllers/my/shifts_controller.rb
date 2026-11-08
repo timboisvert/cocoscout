@@ -42,15 +42,12 @@ module My
       # How many people to expect at the shows each shift covers, where the
       # organization shows its staff the count (ShiftExpectedAttendance).
       @expected_by_shift = ShiftExpectedAttendance.for(@rows.map { |r| r[:shift] })
-      # The shows each shift covers, for its row, its sheet and the hero:
-      # with counts where the organization shows them; otherwise, for a
-      # show-tied shift, just the shows.
+      # The shows each shift is there for (Shift#shows_on_duty), for its row,
+      # its sheet and the hero: with counts where the organization shows
+      # them; otherwise just the shows.
       @show_lines_by_shift = @rows.map { |r| r[:shift] }.uniq.each_with_object({}) do |shift, h|
-        lines = @expected_by_shift[shift.id]
-        if lines.nil? && (shift.house_role&.show_specific? || shift.shows.any?)
-          lines = shift.covered_shows.map { |cs| ShiftExpectedAttendance::Line.new(show: cs, expected: nil) }
-        end
-        h[shift.id] = Array(lines)
+        lines = @expected_by_shift[shift.id] || shift.shows_on_duty.map { |cs| ShiftExpectedAttendance::Line.new(show: cs, expected: nil) }
+        h[shift.id] = lines
       end
       @has_any = @rows.any?
       @upcoming_count = @rows.count { |r| r[:assignment]&.active? }

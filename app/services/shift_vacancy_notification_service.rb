@@ -78,7 +78,7 @@ class ShiftVacancyNotificationService
     # and claim link. Without a person, those two tokens stay for the mailer.
     def invitation_variables(vacancy, person: nil, claim_url: nil)
       shift = vacancy.shift
-      shows = shift.covered_shows.map { |s| "#{s.production&.name} (#{s.date_and_time.strftime("%-l:%M %p")})" }
+      shows = shift.shows_on_duty.map { |s| "#{s.production&.name} (#{s.date_and_time.strftime("%-l:%M %p")})" }
       location = shift.house_role&.location&.name || shift.source.try(:location).try(:name)
       shift_variables(shift).merge(
         person_name: vacancy.vacated_by.name,

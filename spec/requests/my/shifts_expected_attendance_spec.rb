@@ -52,6 +52,25 @@ RSpec.describe "My::Shifts expected attendance", type: :request do
     expect(lines).to eq([ [ "1:30 PM Stargazers rehearsal", nil ], [ "7:30 PM Stargazers", "3 expected" ] ])
   end
 
+  # Tim, 2026-11-08: a House Staff shift added from the 4:30 show is there
+  # for the 8:00 shows too. A show-specific role's shift stays its show's.
+  it "lists every show a house shift overlaps, whichever show it was added from; a show-specific shift only its own" do
+    late = create(:show, production: create(:production, organization: org, name: "Pavlov Improv"), date_and_time: show_at + 2.5.hours, duration_minutes: 90)
+    shift_for(show_at - 1.hour, show_at + 3.hours, source: show)
+    get my_shifts_path
+    lines = response.body.scan(/data-show-line>\s*<span[^>]*>([^<]+)<\/span>/).flatten.map(&:strip)
+    expect(lines).to eq([ "7:30 PM Stargazers", "10:00 PM Pavlov Improv" ])
+
+    booth = create(:house_role, organization: org, name: "Booth", role_type: :show_specific)
+    Shift.destroy_all
+    shift = create(:shift, organization: org, house_role: booth, starts_at: show_at - 1.hour, ends_at: show_at + 3.hours, source: show)
+    shift.shift_assignments.create!(person: person, position: 1)
+    get my_shifts_path
+    lines = response.body.scan(/data-show-line>\s*<span[^>]*>([^<]+)<\/span>/).flatten.map(&:strip)
+    expect(lines).to eq([ "7:30 PM Stargazers" ])
+    expect(late.reload).to be_present
+  end
+
   it "shows no count when the organization turns it off, or its box office is closed" do
     shift_for(show_at - 1.hour, show_at + 3.hours, source: show)
     org.update!(staff_see_ticket_counts: false)
