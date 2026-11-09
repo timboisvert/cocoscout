@@ -6,7 +6,7 @@ namespace :books do
     dry_run = args[:mode] != "post"
     ids = ENV["ORG"].presence&.split(",")&.map(&:to_i)
 
-    puts dry_run ? "DRY RUN — posted inside a transaction, then rolled back. Re-run as books:backfill[post] to keep it." : "POSTING to the books."
+    puts dry_run ? "DRY RUN — each organization is posted inside a transaction, then rolled back. Re-run as books:backfill[post] to keep it." : "POSTING to the books, one organization at a time."
     puts
 
     result = BooksBackfill.run!(dry_run: dry_run, organization_ids: ids)
@@ -21,6 +21,9 @@ namespace :books do
       end
       puts
     end
+    result.failures.each { |failure| puts "FAILED #{failure.organization.name} (##{failure.organization.id}): #{failure.error}. Nothing of theirs was kept." }
+    puts if result.failures.any?
     puts "#{result.rows.size} organizations. #{dry_run ? 'Nothing was kept.' : 'Posted.'}"
+    abort "#{result.failures.size} failed. Fix what's named above and run it again with ORG=#{result.failures.map { |f| f.organization.id }.join(',')}." if result.failures.any?
   end
 end

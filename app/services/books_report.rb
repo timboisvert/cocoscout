@@ -140,22 +140,37 @@ class BooksReport
     scope
   end
 
-  # Ticket money by show: still waiting on the show, recognized as income,
-  # and the tax collected for it.
-  def by_show
-    keys = %w[advance_ticket_sales ticket_income tax_to_remit]
-    accounts = @organization.ledger_accounts.where(key: keys).index_by(&:key)
-    return [] if accounts.empty?
+  # The shows with ticket money on the books, newest first. A relation, so
+  # the page takes fifty at a time: a show is found by its own lines (the
+  # index on the lines' show), never by reading every ticket line there is.
+  def shows_with_ticket_money
+    ids = ticket_money_accounts.values.map(&:id)
+    return Show.none if ids.empty?
 
-    sums = JournalLine.where(organization_id: @organization.id, ledger_account_id: accounts.values.map(&:id))
-                      .where.not(show_id: nil)
+    Show.joins(:production).where(productions: { organization_id: @organization.id })
+        .where("EXISTS (SELECT 1 FROM journal_lines WHERE journal_lines.show_id = shows.id AND journal_lines.organization_id = ? AND journal_lines.ledger_account_id IN (?))", @organization.id, ids)
+        .preload(:production).order(date_and_time: :desc, id: :desc)
+  end
+
+  # Ticket money by show: still waiting on the show, recognized as income,
+  # and the tax collected for it. shows: the ones to say it for (a page of
+  # shows_with_ticket_money), in the order given.
+  def by_show(shows = shows_with_ticket_money)
+    shows = shows.to_a
+    accounts = ticket_money_accounts
+    return [] if accounts.empty? || shows.empty?
+
+    sums = JournalLine.where(organization_id: @organization.id, ledger_account_id: accounts.values.map(&:id), show_id: shows.map(&:id))
                       .group(:show_id, :ledger_account_id).sum(:amount_cents)
-    shows = Show.where(id: sums.keys.map(&:first).uniq).includes(:production).index_by(&:id)
     pick = ->(show_id, key) { accounts[key] ? -sums.fetch([ show_id, accounts[key].id ], 0) : 0 }
-    shows.values.sort_by(&:date_and_time).reverse.map do |show|
+    shows.map do |show|
       ShowRow.new(show: show, waiting_cents: pick.call(show.id, "advance_ticket_sales"),
                   income_cents: pick.call(show.id, "ticket_income"), tax_cents: pick.call(show.id, "tax_to_remit"))
     end
+  end
+
+  def ticket_money_accounts
+    @ticket_money_accounts ||= @organization.ledger_accounts.where(key: %w[advance_ticket_sales ticket_income tax_to_remit]).index_by(&:key)
   end
 
   # Everything the Overview shows for a period, read from the lines. Dates

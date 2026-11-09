@@ -17,6 +17,10 @@
 # in the three weeks before it (and three days after) are searched for the
 # one set that adds up to it; found, it is a suggestion carrying all of
 # them. Each line on the books goes to one statement line at most.
+#
+# A statement coming in doesn't send every line still waiting through all
+# of this again (lines_to_match): its own lines, and the older open ones
+# that sit near something the books gained since the last statement.
 class BankStatementMatcher
   WINDOW = 14
   GROUP_BEFORE = 21
@@ -44,6 +48,27 @@ class BankStatementMatcher
     new(organization).run!(lines)
   end
 
+  # The open lines worth a look when a statement comes in: its own, and
+  # the older ones a line posted to the bank account since the last
+  # matching began (since) could now explain. Nothing an older line could
+  # match has changed otherwise, so it would only get the answer it got
+  # last time. since nil (no statement matched before): every open line.
+  def self.lines_to_match(organization, import, since:)
+    open = organization.bank_statement_lines.where(state: "open")
+    return open if since.nil?
+
+    on = "COALESCE(journal_entries.cash_date, journal_entries.entry_date)"
+    first, last = JournalLine.joins(:journal_entry).merge(JournalEntry.live)
+                             .where(organization: organization, ledger_account: ChartOfAccounts.account(organization, :bank))
+                             .where("journal_lines.created_at >= ?", since).pick(Arel.sql("MIN(#{on})"), Arel.sql("MAX(#{on})"))
+    mine = open.where(bank_statement_import_id: import.id)
+    return mine if first.nil?
+
+    # A statement line looks WINDOW days either side of itself for one
+    # entry, and GROUP_BEFORE days back (GROUP_AFTER on) for a group.
+    mine.or(open.where(on: (first - WINDOW)..(last + GROUP_BEFORE)))
+  end
+
   def initialize(organization)
     @organization = organization
     @bank = ChartOfAccounts.account(organization, :bank)
@@ -55,7 +80,9 @@ class BankStatementMatcher
     return result if lines.empty?
 
     @taken = taken_ids
-    @by_amount = load_candidates(lines.first.on - GROUP_BEFORE, lines.last.on + WINDOW).group_by(&:amount_cents)
+    candidates = load_candidates(lines.first.on - GROUP_BEFORE, lines.last.on + WINDOW)
+    @by_amount = candidates.group_by(&:amount_cents)
+    @by_date = candidates.sort_by { |c| [ c.on, c.id ] }
     lines.each do |line|
       if (pick = single(line))
         state, candidate = pick
@@ -131,9 +158,8 @@ class BankStatementMatcher
   # line, or nil when there is none or more than one. Lines of the kind the
   # description names are tried first, then everything.
   def group(line)
-    pool = @by_amount.values.flatten.select do |c|
-      !@taken.include?(c.id) && c.amount_cents.positive? == line.amount_cents.positive? &&
-        c.amount_cents.abs < line.amount_cents.abs && c.on.between?(line.on - GROUP_BEFORE, line.on + GROUP_AFTER)
+    pool = in_group_window(line).select do |c|
+      !@taken.include?(c.id) && c.amount_cents.positive? == line.amount_cents.positive? && c.amount_cents.abs < line.amount_cents.abs
     end
     return nil if pool.size < 2
 
@@ -141,11 +167,24 @@ class BankStatementMatcher
     [ hinted, pool ].uniq.each do |set|
       next if set.size < 2
 
-      set = set.sort_by { |c| (c.on - line.on).abs }.first(GROUP_POOL).sort_by { |c| -c.amount_cents.abs }
+      # Ties go by id, so the same books always give the same answer.
+      set = set.sort_by { |c| [ (c.on - line.on).abs, c.id ] }.first(GROUP_POOL).sort_by { |c| [ -c.amount_cents.abs, c.id ] }
       solutions = subsets(set, line.amount_cents.abs)
       return solutions.first if solutions.size == 1
     end
     nil
+  end
+
+  # The candidates dated in this line's group window, found in the list
+  # kept by date: a search to the window's first day and a walk to its
+  # last, not a pass over every candidate for every line.
+  def in_group_window(line)
+    from = line.on - GROUP_BEFORE
+    to = line.on + GROUP_AFTER
+    start = @by_date.bsearch_index { |c| c.on >= from }
+    return [] unless start
+
+    @by_date[start..].take_while { |c| c.on <= to }
   end
 
   # Up to two subsets of at most GROUP_MAX lines whose absolute amounts sum

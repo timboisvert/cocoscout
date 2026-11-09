@@ -358,9 +358,11 @@ class MoneyTodoService
   end
 
   def course_payout_items
-    courses = user.accessible_productions.courses
-                  .includes(course_offerings: { course_offering_payout: { line_items: { payout_contribution: :payout_batch } } }).to_a
-    offerings = courses.flat_map(&:course_offerings)
+    # Only the runs with an instructor line still unpaid: a run paid in full
+    # has nothing to say here, and after a few years most runs are.
+    unpaid = CourseOfferingPayout.where(id: CourseOfferingPayoutLineItem.unpaid.select(:course_offering_payout_id)).select(:course_offering_id)
+    offerings = CourseOffering.where(production_id: user.accessible_productions.courses.pluck(:id), id: unpaid).order(:id)
+                              .includes(course_offering_payout: { line_items: { payout_contribution: :payout_batch } }).to_a
     return [] if offerings.empty?
 
     # First session per offering, in one query — the course's own "when", so it
@@ -402,7 +404,10 @@ class MoneyTodoService
 
   def contract_payout_items
     items = []
-    organization.contracts
+    # Only the contracts with a payment to them still pending: every other
+    # one comes to nothing below, and finished contracts pile up.
+    owing = ContractPayment.where(direction: "outgoing", status: "pending").select(:contract_id)
+    organization.contracts.where(id: owing).order(:id)
                 .includes({ contract_payments: [ :show, { payout_contribution: :payout_batch } ] }, :contractor).each do |contract|
       outgoing = contract.contract_payments.select(&:direction_outgoing?)
       pending = outgoing.select(&:status_pending?)

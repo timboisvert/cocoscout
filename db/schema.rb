@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_09_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_09_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -414,6 +414,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_120000) do
     t.bigint "opening_balance_cents"
     t.date "opening_on"
     t.string "error"
+    t.datetime "matched_at"
     t.index ["imported_by_id"], name: "index_bank_statement_imports_on_imported_by_id"
     t.index ["organization_id"], name: "index_bank_statement_imports_on_organization_id"
   end
@@ -1548,6 +1549,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_120000) do
     t.index ["organization_id", "cash_date"], name: "index_journal_entries_on_organization_id_and_cash_date"
     t.index ["organization_id", "entry_date"], name: "index_journal_entries_on_organization_id_and_entry_date"
     t.index ["reversal_of_id"], name: "index_journal_entries_on_reversal_of_id"
+    t.index ["source_type", "source_id"], name: "index_journal_entries_on_source"
     t.index ["source_type", "source_id", "kind"], name: "idx_journal_entries_one_live_per_source_kind", unique: true, where: "((reversed_at IS NULL) AND (reversal_of_id IS NULL))"
   end
 

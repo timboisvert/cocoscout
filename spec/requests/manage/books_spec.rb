@@ -85,6 +85,33 @@ RSpec.describe "Manage books", type: :request do
     expect(BooksReconciliation.last(org.reload).map(&:account)).to eq([ "tax_to_remit" ])
   end
 
+  it "pages ticket money by show, newest first, adding up only the page's shows" do
+    production = create(:production, organization: org)
+    older = create(:show, production: production, date_and_time: Time.zone.local(2026, 3, 6, 20))
+    newer = create(:show, production: production, date_and_time: Time.zone.local(2026, 9, 4, 20))
+    elsewhere = create(:show, date_and_time: Time.zone.local(2026, 9, 5, 20))
+    { older => 11_100, newer => 22_200 }.each do |show, cents|
+      LedgerPosting.post!(organization: org, source: nil, kind: "sale", entry_date: show.date_and_time.to_date,
+                          lines: [ { account: :cocoscout_balance, amount_cents: cents, show: show }, { account: :ticket_income, amount_cents: -cents, show: show } ])
+    end
+    stub_const("Manage::BooksController::SHOWS_PER_PAGE", 1)
+    sign_in(superadmin)
+
+    report = BooksReport.new(org)
+    expect(report.shows_with_ticket_money.to_a).to eq([ newer, older ])
+    expect(report.by_show.map { |row| [ row.show, row.income_cents ] }).to eq([ [ newer, 22_200 ], [ older, 11_100 ] ])
+    expect(report.by_show([ older ]).map(&:income_cents)).to eq([ 11_100 ])
+    expect(BooksReport.new(elsewhere.production.organization).shows_with_ticket_money).to be_empty
+
+    get manage_money_books_section_path(section: "shows")
+    expect(response.body).to include("Sep 4, 2026", "$222.00", "Page 1 of 2", manage_money_books_section_path(section: "shows", page: 2))
+    expect(response.body).not_to include("$111.00")
+
+    get manage_money_books_section_path(section: "shows", page: 2)
+    expect(response.body).to include("Mar 6, 2026", "$111.00", "Page 2 of 2")
+    expect(response.body).not_to include("$222.00")
+  end
+
   it "opens for any manager of a Pro organization" do
     sign_in(create(:user, password: password))
     get manage_money_books_path

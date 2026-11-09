@@ -4,20 +4,33 @@
 # financials, every production expense and every paid contract payment,
 # posted to the books. Idempotent (LedgerPosting restates), so it can run
 # again after a
-# posting rule changes. Dry run by default: everything is posted inside a
-# transaction, the reconciliation is read, and then it's rolled back.
+# posting rule changes. Dry run by default: an organization is posted inside
+# a transaction, the reconciliation is read, and then it's rolled back.
+#
+# One organization, one transaction (Tim, 2026-11-09, from the 1.3 review):
+# it used to be one transaction for all of them, which held every
+# organization's rows until the last was done and lost the lot when one
+# failed. Now an organization that fails is rolled back by itself and named
+# in failures, and the rest still post. Run it again for the ones named.
 class BooksBackfill
   Row = Data.define(:organization, :cash_rows, :owed_rows, :financials, :expenses, :contract_payments, :bills, :mismatches, :trial_balance_cents)
-  Result = Data.define(:rows, :dry_run)
+  Failure = Data.define(:organization, :error)
+  Result = Data.define(:rows, :failures, :dry_run)
 
   def self.run!(dry_run: true, organization_ids: nil)
     rows = []
-    ActiveRecord::Base.transaction do
-      scope = organization_ids ? Organization.where(id: organization_ids) : Organization.all
-      scope.find_each { |organization| rows << post_organization!(organization) }
-      raise ActiveRecord::Rollback if dry_run
+    failures = []
+    scope = organization_ids ? Organization.where(id: organization_ids) : Organization.all
+    scope.find_each do |organization|
+      # requires_new: rolled back by itself wherever this is called from.
+      ActiveRecord::Base.transaction(requires_new: true) do
+        rows << post_organization!(organization)
+        raise ActiveRecord::Rollback if dry_run
+      end
+    rescue StandardError => e
+      failures << Failure.new(organization: organization, error: "#{e.class}: #{e.message}")
     end
-    Result.new(rows: rows, dry_run: dry_run)
+    Result.new(rows: rows, failures: failures, dry_run: dry_run)
   end
 
   def self.post_organization!(organization)

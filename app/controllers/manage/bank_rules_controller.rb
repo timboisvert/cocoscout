@@ -98,7 +98,7 @@ module Manage
     def run(rule, saved)
       org = Current.organization
       rules = rule ? [ rule ] : org.bank_rules.order(:id).to_a
-      lines = org.bank_statement_lines.to_deal_with.to_a.select { |line| rules.any? { |r| r.matches?(line) } }
+      lines = rule ? rule.waiting_lines : org.bank_statement_lines.to_deal_with.to_a.select { |line| rules.any? { |r| r.matches?(line) } }
       lead = saved ? "#{saved} " : ""
       back = params[:back] == "bank" ? manage_money_bank_path : manage_money_bank_rules_path
       if lines.empty?

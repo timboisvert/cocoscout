@@ -201,4 +201,15 @@ RSpec.describe "Manage::BankRules", type: :request do
     get manage_money_bank_sort_path
     expect(response).to redirect_to(manage_money_bank_path)
   end
+  it "finds a rule's lines in the database the way matches? reads them: either case, the right way, a % or _ as itself" do
+    fee = line(Date.new(2026, 10, 3), -1_500, "Card Fee 3% of_sale")
+    line(Date.new(2026, 10, 4), -1_500, "CARD FEE 35 ofXsale")
+    refund = line(Date.new(2026, 10, 5), 1_500, "CARD FEE 3% OF_SALE REVERSED")
+    rule = org.bank_rules.new(contains: "fee 3% of_sale", direction: "out", action: "ignore")
+
+    expect(rule.waiting_lines).to eq([ fee ])
+    rule.direction = "any"
+    expect(rule.fitting(org.bank_statement_lines.order(:id))).to eq([ fee, refund ])
+    expect(org.bank_rules.new(contains: " , ", direction: "any", action: "ignore").waiting_lines).to eq([])
+  end
 end

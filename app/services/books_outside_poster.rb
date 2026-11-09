@@ -189,7 +189,7 @@ class BooksOutsidePoster
     return 0 unless financials.ticket_sales?
     return 0 unless org_sells?(show)
 
-    lines = financials.ticket_sales_lines.includes(:ticket_source).to_a
+    lines = OutsideTicketTax.lines_with_sources(financials)
     return (financials.ticket_revenue.to_f * 100).round if lines.empty?
 
     lines.reject { |line| line.ticket_source&.built_in? }.sum { |line| (line.amount.to_f * 100).round }

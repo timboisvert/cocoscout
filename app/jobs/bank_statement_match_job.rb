@@ -1,10 +1,13 @@
 # frozen_string_literal: true
 
 # Matches a statement's lines to the books after the upload (Books V1.3,
-# plan D3; Tim, 2026-11-02: the import was one heavy request). Every open
-# line of the organization gets another look, not only the new file's, since
-# money recorded since may explain an older one. Then the person who brought
-# the file in is told what was found.
+# plan D3; Tim, 2026-11-02: the import was one heavy request). An older
+# line still open gets another look too when money recorded since the last
+# statement may explain it (BankStatementMatcher.lines_to_match), but not
+# every open line every time: an organization with a year waiting would
+# pay for the whole year on each file. matched_at is when this matching
+# began, so the next statement knows what "since" means. Then the person
+# who brought the file in is told what was found.
 class BankStatementMatchJob < ApplicationJob
   queue_as :default
 
@@ -13,11 +16,13 @@ class BankStatementMatchJob < ApplicationJob
     return unless import
 
     org = import.organization
-    BankStatementMatcher.run!(org, org.bank_statement_lines.where(state: "open"))
+    began = Time.current
+    since = org.bank_statement_imports.where.not(id: import.id).maximum(:matched_at)
+    BankStatementMatcher.run!(org, BankStatementMatcher.lines_to_match(org, import, since: since))
     # Then the organization's rules, over what the matching left open.
     BankRules.apply!(org, rules: org.bank_rules.on_import.order(:id).to_a, lines: org.bank_statement_lines.where(state: "open").to_a, by: import.imported_by)
     lines = import.bank_statement_lines
-    import.update!(status: "ready", error: nil, matched_count: lines.where(state: "matched").count, suggested_count: lines.where(state: "suggested").count)
+    import.update!(status: "ready", error: nil, matched_at: began, matched_count: lines.where(state: "matched").count, suggested_count: lines.where(state: "suggested").count)
     notify(import, lines)
   rescue StandardError => e
     import&.update_columns(status: "failed", error: e.message.truncate(255), updated_at: Time.current)

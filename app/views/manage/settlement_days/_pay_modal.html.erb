@@ -29,8 +29,11 @@
   on_payout_ids = lines.select { |l| l.payee_type == "Person" }.map(&:payee_id)
   cast_people = show.show_person_role_assignments.includes(:assignable).map(&:assignable).compact.select { |p| p.is_a?(Person) }.uniq
   missing_cast = cast_people.reject { |p| on_payout_ids.include?(p.id) }
-  # The production's talent pool, or everyone the organization knows when it has none.
-  addable = (production.effective_talent_pool&.people&.order(:name) || Current.organization.people.order(:name)).reject { |p| on_payout_ids.include?(p.id) }
+  # The people who could be added: the production's talent pool, or everyone
+  # the organization knows when it has none. Ids and names only, read once
+  # for a production however many of its shows are on the day.
+  pool_people = ((@pay_modal_people ||= {})[production.id] ||= (production.effective_talent_pool&.people || Current.organization.people).order(:name).pluck(:id, :name))
+  addable = pool_people.reject { |person_id, _name| on_payout_ids.include?(person_id) }
   pink = "text-pink-600 hover:text-pink-700"
   locked = lines.any? { |l| l.paid? || l.in_payout_run? }
 %>
@@ -189,7 +192,7 @@
             <span class="text-gray-700">Add someone</span>
             <select name="payee_id" required class="pl-3 pr-8 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" aria-label="Who">
               <option value="">Who…</option>
-              <% addable.each do |person| %><option value="<%= person.id %>"><%= person.name %></option><% end %>
+              <% addable.each do |person_id, name| %><option value="<%= person_id %>"><%= name %></option><% end %>
             </select>
             <span class="flex items-center gap-2">
               <span class="text-gray-500">$</span>

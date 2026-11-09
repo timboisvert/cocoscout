@@ -11,6 +11,7 @@ module Manage
   class BooksController < Manage::ManageController
     include BooksCategoriesGate
     SECTIONS = %w[overview accounts entries shows checks].freeze
+    SHOWS_PER_PAGE = 50
 
     def show
       # ?tab= was the old address of a section; it still answers.
@@ -37,7 +38,8 @@ module Manage
         @records = Current.organization.money_records.with_attached_receipt
                           .where(id: @entries.select { |e| e.source_type == "MoneyRecord" }.map(&:source_id)).index_by(&:id)
       when "shows"
-        @show_rows = @report.by_show
+        @pagy, shows = pagy(@report.shows_with_ticket_money, limit: SHOWS_PER_PAGE)
+        @show_rows = @report.by_show(shows)
       when "checks"
         @disagreements = BooksReconciliation.financials_vs_books(Current.organization, period_key: @period)
       end
