@@ -186,7 +186,14 @@ class SettleUp
         (registers.any? ? [ Check.new(key: "register", name: register_label, short: (registers.size == 1 ? "Bar" : "Registers"), state: registers_state,
                                       hold_reason: (tips.unresolved.any? ? "Say who gets the tips rung up with nobody on the bar first" : nil)) ] : [])
     end
-    def pieces = checks.map { |c| [ c.name, c.state ] }
+    # Each piece and where it stands, for a row in a list. Not from checks:
+    # why a show can't be confirmed yet means working out its pay, which a
+    # list of days has no use for.
+    def pieces
+      shows.map { |s| [ s.show.display_name, s.state ] } +
+        (door_cash.any? ? [ [ "Door cash", door_cash.state ] ] : []) +
+        (registers.any? ? [ [ register_label, registers_state ] ] : [])
+    end
     def checked_count = checks.count(&:ok?)
     def all_checked? = checks.any? && checks.all?(&:ok?)
     # What settling puts on the payout run: the sum over the shows, and how
@@ -248,19 +255,38 @@ class SettleUp
   # Days that are over, had money in them, and nobody has settled, from the
   # organization's Settle up start date on (SettleUpStart): earlier days are
   # history.
-  def self.to_settle(organization, as_of: Time.current)
+  def self.to_settle(organization, as_of: Time.current, limit: nil)
+    open = open_show_ids(organization, as_of: as_of)
+    dates = limit ? open.keys.first(limit) : open.keys
+    return [] if dates.empty?
+
+    by_date = revenue_shows(organization).where(id: open.values_at(*dates).flatten).to_a.group_by { |s| SettlementDay.day_for(organization, s.date_and_time) }
+    records = SettlementDay.where(organization: organization, date: dates).index_by(&:date)
+    registers = registers_by_date(organization, dates)
+    cash = door_cash_by_listing(by_date.values.flatten)
+    dates.map { |date| build(organization, date, by_date.fetch(date, []), records[date], registers: registers.fetch(date, []), cash: cash) }
+  end
+
+  # Just the dates to settle, oldest first: Home and the Money hub count
+  # them and name the oldest, which takes no day being built.
+  def self.open_dates(organization, as_of: Time.current) = open_show_ids(organization, as_of: as_of).keys
+
+  # { date => the ids of its shows }, oldest first, for the days to settle.
+  # Three reads of plain columns, however far back the organization goes.
+  def self.open_show_ids(organization, as_of: Time.current)
     starts = organization.settle_up_starts_on
     shows = revenue_shows(organization).where("date_and_time <= ?", as_of)
     shows = shows.where("date_and_time >= ?", starts.in_time_zone.beginning_of_day - 1.day) if starts
-    shows = shows.to_a
-    settled = SettlementDay.where(organization: organization).settled.pluck(:date).to_set
-    by_date = shows.group_by { |s| SettlementDay.day_for(organization, s.date_and_time) }
-    register_days(organization).where("business_date <= ?", as_of.to_date).distinct.pluck(:business_date).each { |d| by_date[d] ||= [] }
-    open = by_date.reject { |date, _| settled.include?(date) || (starts && date < starts) || !SettlementDay.ended?(organization, date, now: as_of) }
-                  .sort_by { |date, _| date }
-    registers = registers_by_date(organization, open.map(&:first))
-    cash = door_cash_by_listing(open.flat_map(&:last))
-    open.map { |date, day_shows| build(organization, date, day_shows, nil, registers: registers.fetch(date, []), cash: cash) }
+    by_date = Hash.new { |h, k| h[k] = [] }
+    shows.pluck(:id, :date_and_time).each { |id, time| by_date[SettlementDay.day_for(organization, time)] << id }
+    registers = register_days(organization).where("business_date <= ?", as_of.to_date)
+    registers = registers.where("business_date >= ?", starts) if starts
+    registers.distinct.pluck(:business_date).each { |date| by_date[date] }
+    return {} if by_date.empty?
+
+    settled = SettlementDay.where(organization: organization, date: by_date.keys.min..).settled.pluck(:date).to_set
+    by_date.reject { |date, _| settled.include?(date) || (starts && date < starts) || !SettlementDay.ended?(organization, date, now: as_of) }
+           .sort_by { |date, _| date }.to_h
   end
 
   # The register days for many dates at once, by date (the Settle up list

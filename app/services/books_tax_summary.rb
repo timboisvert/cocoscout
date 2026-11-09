@@ -91,8 +91,9 @@ class BooksTaxSummary
       report = TicketTaxReport.new(@organization, from: @range.begin, to: @range.end, basis: "sale", kind: "all")
       paid = @organization.sales_tax_remittances.where(paid_on: @range).sum(:amount_cents)
       outside = OutsideTicketTax.rows(@organization, from: @range.begin, to: @range.end).sum(&:tax_cents)
+      register = RegisterSalesTax.rows(@organization, from: @range.begin, to: @range.end).sum(&:tax_cents)
       { collected_cents: report.rows.sum(&:collected_cents), refunded_cents: report.rows.sum(&:refunded_cents), net_cents: report.total_net_cents,
-        outside_cents: outside, paid_cents: paid, set_aside_cents: SalesTaxSetAside.cents(@organization), rows: report.rows }
+        outside_cents: outside, register_cents: register, paid_cents: paid, set_aside_cents: SalesTaxSetAside.cents(@organization), rows: report.rows }
     end
   end
 
@@ -126,6 +127,7 @@ class BooksTaxSummary
       csv << [ "Sales tax collected", dollars(sales_tax[:collected_cents]) ]
       csv << [ "Sales tax given back on refunds", dollars(sales_tax[:refunded_cents]) ]
       csv << [ "Tax owed on tickets other sites sold", dollars(sales_tax[:outside_cents]) ]
+      csv << [ "Sales tax collected at your register", dollars(sales_tax[:register_cents]) ]
       csv << [ "Sales tax paid to the government", dollars(sales_tax[:paid_cents]) ]
       csv << [ "Sales tax still set aside", dollars(sales_tax[:set_aside_cents]) ]
       csv << []

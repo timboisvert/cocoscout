@@ -16,6 +16,37 @@ RSpec.describe BooksOutsidePoster do
     ChartOfAccounts.account(org, key).natural_balance_cents
   end
 
+  it "posts a show once per save, however many lines the save wrote, and not at all when it rolls back" do
+    financials = ShowFinancials.create!(show: show, revenue_type: "ticket_sales")
+    expect(described_class).to receive(:post_financials!).once.and_call_original
+    financials.update!(
+      other_revenue_details: [ { "description" => "Bar", "amount" => 150 } ],
+      ticket_sales_lines_attributes: [ { ticket_source_id: tailor.id, tickets_sold: 40, amount: 800 }, { ticket_source_id: org.ticket_sources.create!(name: "Hot Tix").id, tickets_sold: 5, amount: 50 } ],
+      expense_items_attributes: [ { category: "venue", amount: 300 }, { category: "marketing", amount: 25 }, { category: "venue", amount: 10 } ]
+    )
+    expect(balance(:ticket_income)).to eq(85_000)
+    expect(balance(:venue)).to eq(31_000)
+    expect(balance(:other_income)).to eq(15_000)
+    RSpec::Mocks.space.proxy_for(described_class).reset
+
+    # A line saved on its own still posts, once.
+    expect(described_class).to receive(:post_financials!).once.and_call_original
+    financials.expense_items.first.update!(amount: 100)
+    expect(balance(:venue)).to eq(11_000)
+    RSpec::Mocks.space.proxy_for(described_class).reset
+
+    expect(described_class).not_to receive(:post_financials!)
+    ShowFinancials.transaction do
+      financials.expense_items.first.update!(amount: 999)
+      raise ActiveRecord::Rollback
+    end
+    RSpec::Mocks.space.proxy_for(described_class).reset
+    expect(balance(:venue)).to eq(11_000)
+    # Nothing is left waiting: the next save posts.
+    financials.expense_items.first.update!(amount: 50)
+    expect(balance(:venue)).to eq(6_000)
+  end
+
   it "posts a show's outside ticket sales, other revenue and expenses, and restates them as the worksheet changes" do
     financials = ShowFinancials.create!(show: show, revenue_type: "ticket_sales")
     financials.ticket_sales_lines.create!(ticket_source: tailor, tickets_sold: 40, amount: 800.00)

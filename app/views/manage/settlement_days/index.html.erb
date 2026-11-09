@@ -1,13 +1,12 @@
 <% content_for :title, "Settle up" %>
 <%
   month_label = @month.strftime("%B %Y")
-  settled_this_month = @month_days.select(&:settled?)
   listed = case @filter
   when "settled" then @month_days.select(&:settled?)
   when "all" then @month_days
   else @to_settle
   end
-  oldest = @to_settle.first
+  oldest = @open_dates.first
 %>
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
@@ -46,7 +45,7 @@
       <%= render "shared/section_heading", padding: "px-5 py-3", title: (@filter == "to_settle" ? "To settle" : (@filter == "settled" ? "Settled in #{month_label}" : month_label)) do %>
         <span class="text-xs text-gray-500">
           <% if @filter == "to_settle" %>
-            <%= pluralize(@to_settle.size, "day") %><% if oldest %>, oldest <%= time_ago_in_words(oldest.date.in_time_zone) %> ago<% end %>
+            <%= pluralize(@open_dates.size, "day") %><% if oldest %>, oldest <%= time_ago_in_words(oldest.in_time_zone) %> ago<% end %>
           <% else %>
             <%= pluralize(listed.size, "day") %>
           <% end %>
@@ -54,6 +53,9 @@
       <% end %>
       <% listed.each do |day| %>
         <%= render "manage/settlement_days/day_row", day: day %>
+      <% end %>
+      <% if @filter == "to_settle" && @open_dates.size > listed.size %>
+        <p class="px-5 py-3 border-t border-gray-100 text-xs text-gray-500">The oldest <%= listed.size %> of <%= @open_dates.size %> days. The rest appear as these are settled.</p>
       <% end %>
     </div>
   <% end %>

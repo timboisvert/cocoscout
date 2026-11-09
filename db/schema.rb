@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_08_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_09_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -525,6 +525,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_130000) do
     t.index ["production_id"], name: "index_bills_on_production_id"
     t.index ["repeated_from_id"], name: "index_bills_on_repeated_from_id"
     t.index ["show_id"], name: "index_bills_on_show_id"
+  end
+
+  create_table "books_downloads", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "requested_by_id"
+    t.string "kind", null: false
+    t.jsonb "options", default: {}, null: false
+    t.string "status", default: "pending", null: false
+    t.integer "lines_count"
+    t.string "error"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "created_at"], name: "index_books_downloads_on_organization_id_and_created_at"
+    t.index ["organization_id"], name: "index_books_downloads_on_organization_id"
+    t.index ["requested_by_id"], name: "index_books_downloads_on_requested_by_id"
+  end
+
+  create_table "books_rollups", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.date "rolled_through", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_books_rollups_on_organization_id", unique: true
   end
 
   create_table "cast_assignment_stages", force: :cascade do |t|
@@ -1560,6 +1583,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_130000) do
     t.index ["organization_id", "key"], name: "index_ledger_accounts_on_organization_id_and_key", unique: true, where: "(key IS NOT NULL)"
   end
 
+  create_table "ledger_month_balances", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "ledger_account_id", null: false
+    t.date "month", null: false
+    t.bigint "accrual_cents", default: 0, null: false
+    t.bigint "cash_cents", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ledger_account_id", "month"], name: "index_ledger_month_balances_on_ledger_account_id_and_month", unique: true
+    t.index ["organization_id", "month"], name: "index_ledger_month_balances_on_organization_id_and_month"
+  end
+
   create_table "location_spaces", force: :cascade do |t|
     t.bigint "location_id", null: false
     t.string "name", null: false
@@ -2158,6 +2193,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_130000) do
     t.bigint "books_locked_by_id"
     t.boolean "books_nonprofit", default: false, null: false
     t.jsonb "books_profile", default: {}, null: false
+    t.jsonb "books_check", default: {}, null: false
     t.jsonb "money_categories_hidden", default: [], null: false
     t.datetime "books_categories_set_up_at"
     t.bigint "books_categories_set_up_by_id"
@@ -4897,6 +4933,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_130000) do
   add_foreign_key "bills", "productions"
   add_foreign_key "bills", "shows"
   add_foreign_key "bills", "users", column: "created_by_id"
+  add_foreign_key "books_downloads", "organizations"
+  add_foreign_key "books_downloads", "users", column: "requested_by_id"
+  add_foreign_key "books_rollups", "organizations"
   add_foreign_key "cast_assignment_stages", "talent_pools"
   add_foreign_key "casting_table_draft_assignments", "casting_tables"
   add_foreign_key "casting_table_draft_assignments", "roles"
@@ -5007,6 +5046,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_130000) do
   add_foreign_key "journal_lines", "ledger_accounts"
   add_foreign_key "journal_lines", "organizations"
   add_foreign_key "ledger_accounts", "organizations"
+  add_foreign_key "ledger_month_balances", "ledger_accounts"
+  add_foreign_key "ledger_month_balances", "organizations"
   add_foreign_key "location_spaces", "locations"
   add_foreign_key "locations", "organizations"
   add_foreign_key "mailing_list_memberships", "followers"

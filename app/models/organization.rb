@@ -62,6 +62,8 @@ class Organization < ApplicationRecord
   has_many :payout_batches, dependent: :destroy
   # The books (see LedgerPosting). Entries are permanent, so deleting an org
   # clears them in bulk, lines first — the order these are declared in.
+  has_many :ledger_month_balances, dependent: :delete_all
+  has_one :books_rollup, dependent: :delete
   has_many :journal_lines, dependent: :delete_all
   has_many :journal_entries, dependent: :delete_all
   has_many :money_records, dependent: :destroy
@@ -69,6 +71,7 @@ class Organization < ApplicationRecord
   has_many :bills, dependent: :destroy
   has_many :invoices, dependent: :destroy
   has_many :bank_statement_imports, dependent: :destroy
+  has_many :books_downloads, dependent: :destroy
   has_many :bank_statement_lines, dependent: :destroy
   has_many :bank_rules, dependent: :destroy
   has_many :bank_rule_dismissals, dependent: :destroy

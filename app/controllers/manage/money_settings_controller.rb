@@ -135,7 +135,7 @@ module Manage
       # already confirmed count as settled, so only unfinished ones wait.
       if previous && starts_on && starts_on < previous
         settled = SettleUpStart.convert!(Current.organization, starts_on: starts_on, before: previous)
-        waiting = SettleUp.to_settle(Current.organization).count { |day| day.date < previous }
+        waiting = SettleUp.open_dates(Current.organization).count { |date| date < previous }
         notice = "Settle up now starts #{starts_on.strftime('%B %-d, %Y')}. #{settled} #{'day'.pluralize(settled)} already confirmed came in settled#{waiting.positive? ? "; #{waiting} #{waiting == 1 ? 'is' : 'are'} waiting to settle" : ''}. Reopen a settled day to change it."
       end
       redirect_to section_path("settle_up"), notice: notice

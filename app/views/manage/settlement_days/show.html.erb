@@ -28,8 +28,8 @@
 
   <%# The day picker Home has, to the right of the big date (Tim, 2026-11-03); a phone gets the arrows and the day. %>
   <%
-    earlier = manage_money_settle_up_day_path((@prev_day&.date || @date - 1).iso8601)
-    later = manage_money_settle_up_day_path((@next_day&.date || @date + 1).iso8601)
+    earlier = manage_money_settle_up_day_path((@prev_date || @date - 1).iso8601)
+    later = manage_money_settle_up_day_path((@next_date || @date + 1).iso8601)
     today_path = @date == @today ? nil : manage_money_settle_up_day_path(@today.iso8601)
   %>
 

@@ -176,6 +176,21 @@
       </div>
     <% end %>
 
+    <%# Sales tax the register collected, on days that are settled. %>
+    <% if @register_rows.any? %>
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-lg font-semibold text-gray-900"><%= period_label %>: <%= money.call(@register_rows.sum(&:tax_cents)) %> collected at your register</h2>
+          <p class="text-sm text-gray-600 mt-1">Sales tax your register charged on what it sold. It arrives in your bank with the register's deposits, not set aside here, and it counts once its day is settled. <%= link_to "Settle up", manage_money_settle_up_path, class: "text-pink-600 hover:text-pink-700 underline" %>.</p>
+        </div>
+        <ul class="divide-y divide-gray-100">
+          <% @register_rows.each do |row| %>
+            <li class="flex flex-wrap items-center gap-x-4 gap-y-1 px-6 py-3 text-sm"><span class="flex-1 min-w-[10rem] text-gray-900"><%= row.name %> <span class="text-gray-500">· <%= pluralize(row.days, "day") %></span></span><span class="text-gray-600">Sold <span class="tabular-nums"><%= money.call(row.sales_cents) %></span></span><span class="font-semibold tabular-nums text-gray-900">Tax <%= money.call(row.tax_cents) %></span></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
     <%# How filing works: CocoScout collects, the organization files and pays. %>
     <div class="bg-white border border-gray-200 rounded-xl px-6 py-5">
       <h2 class="text-lg font-semibold text-gray-900">How to file and pay</h2>

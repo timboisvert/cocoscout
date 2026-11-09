@@ -11,6 +11,7 @@ class LedgerAccount < ApplicationRecord
 
   belongs_to :organization
   has_many :journal_lines, dependent: :restrict_with_exception
+  has_many :ledger_month_balances, dependent: :delete_all
 
   validates :code, :name, presence: true
   validates :account_type, inclusion: { in: TYPES }
@@ -25,12 +26,10 @@ class LedgerAccount < ApplicationRecord
   # Signed sum of the account's lines (debits +, credits −). Accrual counts an
   # entry on the day it was earned or incurred; cash counts it on the day the
   # money moved, and leaves out entries where it hasn't yet.
+  # The finished months come from the balances kept for them (BooksBalances),
+  # so this costs the same in year five as in month two.
   def balance_cents(as_of: nil, basis: :accrual)
-    lines = journal_lines.joins(:journal_entry)
-    date_column = basis == :cash ? "journal_entries.cash_date" : "journal_entries.entry_date"
-    lines = lines.where.not(journal_entries: { cash_date: nil }) if basis == :cash
-    lines = lines.where("#{date_column} <= ?", as_of) if as_of
-    lines.sum(:amount_cents)
+    BooksBalances.sums(organization_id, basis: basis, to: as_of, account_ids: [ id ])[id].to_i
   end
 
   # The balance as a person reads it: positive when the account holds money on

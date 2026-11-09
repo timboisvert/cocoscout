@@ -23,7 +23,8 @@ class TicketSalesLine < ApplicationRecord
   after_destroy -> { show_financials&.recalculate_ticket_totals!(emptied: true) }
   # The rollup above writes with update_columns, which fires nothing, so the
   # books are told from here.
-  after_commit { show_financials&.post_to_books }
+  after_save { ShowFinancials.post_to_books_after_commit(show_financials_id) }
+  after_destroy { ShowFinancials.post_to_books_after_commit(show_financials_id) }
 
   # What this line is called on screen. A line entered before the org named any
   # sources — or one whose source was archived away — still has an amount worth

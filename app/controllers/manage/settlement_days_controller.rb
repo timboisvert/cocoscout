@@ -9,11 +9,16 @@ module Manage
     before_action :set_date, except: :index
     before_action :require_change!, only: %i[settle reopen door_cash check_show check_register tips choose_calculation calculate_show pay_line]
 
+    LISTED = 60
+
     def index
       @filter = params[:filter].presence_in(%w[to_settle settled all]) || "to_settle"
       @month = params[:month].present? ? Date.strptime(params[:month], "%Y-%m") : Date.current.beginning_of_month
-      @to_settle = SettleUp.to_settle(Current.organization)
-      @month_days = SettleUp.days(Current.organization, @month..@month.end_of_month)
+      # Only the list being looked at is built: the days to settle (the
+      # oldest LISTED of them), or the month's.
+      @open_dates = SettleUp.open_dates(Current.organization)
+      @to_settle = @filter == "to_settle" ? SettleUp.to_settle(Current.organization, limit: LISTED) : []
+      @month_days = @filter == "to_settle" ? [] : SettleUp.days(Current.organization, @month..@month.end_of_month)
     rescue ArgumentError
       redirect_to manage_money_settle_up_path
     end
@@ -24,8 +29,10 @@ module Manage
       @open_show_id = params[:open].to_s
       # A modal to arrive with open, when a choice was made from inside it (the chooser, from Who's paid and how).
       @open_modal_id = params[:modal].to_s
-      @prev_day = SettleUp.days(Current.organization, (@date - 90)..(@date - 1)).first
-      @next_day = SettleUp.days(Current.organization, (@date + 1)..(@date + 90)).last
+      # The nearest day with money in it each way: their dates are all the
+      # arrows need, so no day is built for them.
+      @prev_date = SettleUp.dates(Current.organization, (@date - 90)..(@date - 1)).max
+      @next_date = SettleUp.dates(Current.organization, (@date + 1)..(@date + 90)).min
       # The day picker Home has: earlier, the day (a two-month calendar), later, Today.
       @today = SettlementDay.day_for(Current.organization, Time.current)
       @calendar_months = calendar_months_around(@date)

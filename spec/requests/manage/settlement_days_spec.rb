@@ -276,6 +276,42 @@ RSpec.describe "Settle up", type: :request do
     expect(response.body).to include("1 day to settle up", "Days to settle")
     get manage_path
     expect(response.body).to include("1 day to settle up")
+    # Home's line opens the oldest day, not the list.
+    expect(response.body).to include(manage_money_settle_up_day_path(date.iso8601))
+  end
+
+  it "counts the days to settle without building them, and builds only the ones a list shows" do
+    older = create(:show, production: production, date_and_time: 9.days.ago.change(hour: 20))
+    older_date = SettlementDay.day_for(org, older.date_and_time)
+    create(:show, production: production, date_and_time: 3.days.from_now.change(hour: 20))
+    settled = create(:show, production: production, date_and_time: 6.days.ago.change(hour: 20))
+    SettlementDay.create!(organization: org, date: SettlementDay.day_for(org, settled.date_and_time), status: "settled", settled_at: Time.current)
+
+    expect(SettleUp.open_dates(org)).to eq([ older_date, date ])
+    expect(SettleUp).not_to receive(:build)
+    expect(MoneyTodoService.new(user: owner, organization: org, row_limit: 0).settle_days.count).to eq(2)
+    RSpec::Mocks.space.proxy_for(SettleUp).reset
+
+    expect(SettleUp.to_settle(org, limit: 1).map(&:date)).to eq([ older_date ])
+    expect(SettleUp.to_settle(org).map(&:date)).to eq([ older_date, date ])
+    # A day someone opened keeps what they did: the list reads its record.
+    SettlementDay.create!(organization: org, date: date, status: "open", register_checked_at: Time.current)
+    expect(SettleUp.to_settle(org).last.record).to be_present
+
+    # A list of days never works out who gets paid.
+    expect(SettleUp).not_to receive(:pay_for)
+    get manage_money_settle_up_path
+    expect(response.body).to include("2 days", "Halloween Show")
+    get manage_money_index_path
+    expect(response.body).to include("2 days to settle up")
+  end
+
+  it "steps to the nearest day with money in it each way without building it" do
+    older = create(:show, production: production, date_and_time: 9.days.ago.change(hour: 20))
+    older_date = SettlementDay.day_for(org, older.date_and_time)
+    expect(SettleUp).to receive(:build).once.and_call_original
+    get manage_money_settle_up_day_path(date.iso8601)
+    expect(response.body).to include(manage_money_settle_up_day_path(older_date.iso8601), manage_money_settle_up_day_path((date + 1).iso8601))
   end
 
   it "saves the when-a-day-ends setting" do
@@ -328,6 +364,13 @@ RSpec.describe "Manage::SettlementDays with a register", type: :request do
     expect(ChartOfAccounts.account(org, :bar_income).natural_balance_cents).to eq(10_000 - 500)
     expect(ChartOfAccounts.account(org, :merchandise_income).natural_balance_cents).to eq(2_000 - 100)
     expect(ChartOfAccounts.account(org, :tax_to_remit).natural_balance_cents).to eq(1_000)
+    # The register's sales tax is counted where tax is counted: the books'
+    # check agrees, and the Sales tax page and the year's summary show it.
+    expect(RegisterSalesTax.owed_total_cents(org)).to eq(1_000)
+    expect(BooksReconciliation.check(org)).to be_empty
+    get manage_ticket_taxes_path(period: date.strftime("%Y-%m"))
+    expect(response.body).to include("$10.00 collected at your register", "Lincoln Lodge")
+    expect(BooksTaxSummary.new(org, year: date.year).sales_tax[:register_cents]).to eq(1_000)
     expect(ChartOfAccounts.account(org, :tips_owed).natural_balance_cents).to eq(1_500)
     expect(ChartOfAccounts.account(org, :ticketing_fees).natural_balance_cents).to eq(330)
     expect(ChartOfAccounts.account(org, :bank).natural_balance_cents).to eq(12_000 + 1_000 + 1_500 - 600 - 330)
@@ -341,6 +384,8 @@ RSpec.describe "Manage::SettlementDays with a register", type: :request do
     post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "Wrong split" }
     expect(ChartOfAccounts.account(org, :bank).natural_balance_cents).to eq(0)
     expect(TipShare.waiting_for(org)).to be_empty
+    expect(RegisterSalesTax.owed_total_cents(org)).to eq(0)
+    expect(BooksReconciliation.check(org)).to be_empty
   end
 end
 

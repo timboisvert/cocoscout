@@ -15,7 +15,8 @@ class ExpenseItem < ApplicationRecord
 
   scope :ordered, -> { order(:position) }
 
-  after_commit { show_financials&.reload&.post_to_books }
+  after_save { ShowFinancials.post_to_books_after_commit(show_financials_id) }
+  after_destroy { ShowFinancials.post_to_books_after_commit(show_financials_id) }
 
   private
 

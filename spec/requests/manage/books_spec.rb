@@ -52,6 +52,39 @@ RSpec.describe "Manage books", type: :request do
     expect(response.body).to include("The books balance", "The books agree with the records behind them", "Financials and Books")
   end
 
+  it "says how the checks stand from the last time they ran, and runs them again on the Checks page and overnight" do
+    sell(2)
+    sign_in(superadmin)
+    allow(BooksReconciliation).to receive(:check).and_call_original
+
+    # The first look at Books runs them once and keeps the answer.
+    get manage_money_books_path
+    expect(response.body).to include("The books agree with every record behind them")
+    expect(BooksReconciliation.last_run_at(org.reload)).to be_present
+    expect(BooksReconciliation).to have_received(:check).once
+
+    # After that a Books page reads what was kept, and never runs them.
+    get manage_money_books_path
+    get manage_money_books_section_path(section: "accounts")
+    get manage_money_books_section_path(section: "entries")
+    expect(BooksReconciliation).to have_received(:check).once
+
+    # A tax payment the books never heard about: the kept answer stands
+    # until the checks run again, on the Checks page or overnight.
+    SalesTaxRemittance.insert!({ organization_id: org.id, tax_name: "Sales tax", rate_bps: 1_025, period_start: Date.current.beginning_of_month,
+                                 period_end: Date.current.end_of_month, paid_on: Date.current, amount_cents: 100, created_at: Time.current, updated_at: Time.current })
+    get manage_money_books_path
+    expect(response.body).to include("The books agree with every record behind them")
+    get manage_money_books_section_path(section: "checks")
+    expect(response.body).to include("1 account disagree with the records behind them")
+    get manage_money_books_path
+    expect(response.body).to include("1 account disagree with the records behind them")
+
+    org.update_column(:books_check, {})
+    BooksReconciliationJob.perform_now
+    expect(BooksReconciliation.last(org.reload).map(&:account)).to eq([ "tax_to_remit" ])
+  end
+
   it "opens for any manager of a Pro organization" do
     sign_in(create(:user, password: password))
     get manage_money_books_path

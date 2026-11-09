@@ -7,7 +7,7 @@ module Manage
   # Headshots and posters are shown publicly on purpose and don't come here.
   class MoneyFilesController < Manage::ManageController
     RECORDS = {
-      "Bill" => :bills_invoices, "MoneyRecord" => :books, "ExpenseItem" => :settle_up, "W9Submission" => :staffing, "OrgStatement" => :books
+      "Bill" => :bills_invoices, "MoneyRecord" => :books, "ExpenseItem" => :settle_up, "W9Submission" => :staffing, "OrgStatement" => :books, "BooksDownload" => :books
     }.freeze
 
     def show

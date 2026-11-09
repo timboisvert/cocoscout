@@ -32,11 +32,34 @@ class ShowFinancials < ApplicationRecord
   after_destroy :sync_contract_payments_on_destroy
   # The books (Books stage B): what this show took in elsewhere and what it
   # cost, restated whenever the worksheet changes.
-  after_commit :post_to_books, on: %i[create update]
+  after_save { self.class.post_to_books_after_commit(id) }
   after_commit :remove_from_books, on: :destroy
 
   def post_to_books
     BooksOutsidePoster.post_financials!(self)
+  end
+
+  # One posting per save, however many lines it wrote: a worksheet saved
+  # with fifteen lines used to restate the show in the books sixteen times,
+  # once for itself and once per line. The worksheet and each of its lines
+  # ask here as they're written, and the show is posted once, as it stands,
+  # when their transaction commits. A rollback posts nothing.
+  def self.post_to_books_after_commit(id)
+    return if id.nil?
+
+    transaction = ActiveRecord::Base.current_transaction
+    return find_by(id: id)&.post_to_books if transaction.closed?
+
+    waiting = (ActiveSupport::IsolatedExecutionState[:show_financials_to_post] ||= {})
+    key = [ transaction.uuid, id ]
+    return if waiting[key]
+
+    waiting[key] = true
+    transaction.after_commit do
+      waiting.delete(key)
+      find_by(id: id)&.post_to_books
+    end
+    transaction.after_rollback { waiting.delete(key) }
   end
 
   def remove_from_books

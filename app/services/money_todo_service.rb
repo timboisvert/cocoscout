@@ -180,10 +180,12 @@ class MoneyTodoService
   # Days to settle (Books V1.3, plan §9.2): the days that are over, had money
   # in them, and nobody has settled. Oldest first; count covers them all.
   def settle_days
-    @settle_days ||= begin
-      days = SettleUp.to_settle(organization)
-      Section.new(count: days.size, amount: days.sum(&:in_cents) / 100.0, items: row_limit ? days.first(row_limit) : days)
-    end
+    @settle_days ||= Section.new(count: settle_dates.size, items: row_limit == 0 ? [] : SettleUp.to_settle(organization, limit: row_limit))
+  end
+
+  # The dates of those days alone: Home says how many and links the oldest.
+  def settle_dates
+    @settle_dates ||= SettleUp.open_dates(organization)
   end
 
   # Course runs still to settle, apart from the days: a course's money is its

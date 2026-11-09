@@ -52,6 +52,29 @@ class BooksReconciliation
     end
   end
 
+  # The checks, run now and kept on the organization, so a page can say how
+  # they stand without running them (Tim, 2026-11-09: every Books page ran
+  # all of them, sums over every sale ever, to draw one line). The nightly
+  # job and the Checks page keep it fresh.
+  def self.record!(organization)
+    mismatches = check(organization)
+    organization.update_column(:books_check, { "at" => Time.current.iso8601, "mismatches" => mismatches.map { |m| m.to_h.stringify_keys } })
+    mismatches
+  end
+
+  # What the checks said when they last ran; run once when they never have.
+  def self.last(organization)
+    kept = organization.books_check
+    return record!(organization) if kept.blank? || kept["at"].blank?
+
+    Array(kept["mismatches"]).map { |m| Mismatch.new(account: m["account"], books_cents: m["books_cents"].to_i, expected_cents: m["expected_cents"].to_i) }
+  end
+
+  def self.last_run_at(organization)
+    at = organization.books_check&.dig("at")
+    at.present? ? Time.zone.parse(at) : nil
+  end
+
   def self.check(organization)
     [ balance_check(organization), owed_check(organization), tax_check(organization), bills_check(organization), contractors_check(organization) ].compact
   end
@@ -110,8 +133,11 @@ class BooksReconciliation
     # Plus the tax owed on tickets other sites sold (OutsideTicketTax), less
     # what the organization has marked paid to the government.
     outside = OutsideTicketTax.owed_total_cents(organization)
+    # Plus the sales tax a register collected on days that are settled
+    # (RegisterSalesTax): it posts with the day, so it counts with the day.
+    register = RegisterSalesTax.owed_total_cents(organization)
     paid = SalesTaxRemittance.where(organization_id: organization.id).sum(:amount_cents)
-    expected = tickets + products + courses + passes + outside - paid
+    expected = tickets + products + courses + passes + outside + register - paid
     Mismatch.new(account: "tax_to_remit", books_cents: books, expected_cents: expected) unless books == expected
   end
 

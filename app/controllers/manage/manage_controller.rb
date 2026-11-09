@@ -110,7 +110,7 @@ module Manage
         # Only what can be paid now: money already in a run, or for a show
         # that hasn't happened, isn't anything to do (Tim, 2026-11-02).
         payable = todo.payouts.amounts[:to_pay].to_f
-        @home_attention = { days: todo.settle_days.count.to_i, oldest_day: todo.settle_days.items.first&.param, payouts: payable > 0.004 ? 1 : 0, payouts_amount: payable,
+        @home_attention = { days: todo.settle_days.count.to_i, oldest_day: todo.settle_dates.first&.iso8601, payouts: payable > 0.004 ? 1 : 0, payouts_amount: payable,
                             hours: Current.organization.staff_time_entries.pending.distinct.count(:person_id) }
       end
       @home_status = home_status_items(pro_manager)

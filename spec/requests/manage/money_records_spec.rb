@@ -107,12 +107,16 @@ RSpec.describe "Manage::MoneyRecords", type: :request do
 
   it "downloads the period as a CSV, one row per line" do
     post manage_money_records_path, params: { money_record: { kind: "in", on: "2026-10-27", amount: "900.00", category_key: "sponsorship", counterparty: "Logan Square Chamber", production_id: production.id, via: "bank" } }
+    # Asked for, then put together in the background and listed on Statements.
     travel_to Time.zone.local(2026, 10, 31, 12) do
-      get manage_money_books_download_path(period: "this_month")
+      perform_enqueued_jobs { get manage_money_books_download_path(period: "this_month") }
     end
-    expect(response.media_type).to eq("text/csv")
-    expect(response.headers["Content-Disposition"]).to include("books-this-month-when-earned.csv")
-    rows = CSV.parse(response.body)
+    expect(response).to redirect_to(manage_money_statements_path(anchor: "downloads"))
+    download = org.books_downloads.last
+    expect(download).to be_ready
+    expect(download.title).to eq("Every line, this month, when it was earned")
+    expect(download.file.filename.to_s).to eq("books-this-month-when-earned-2026-10-31.csv")
+    rows = CSV.parse(download.file.download.force_encoding("UTF-8"))
     expect(rows.first).to eq([ "Earned on", "Moved on", "What", "Description", "Category", "Production", "Show", "In", "Out" ])
     expect(rows.last).to eq([ "2026-10-27", "2026-10-27", "Recorded by hand", "Sponsorship · Logan Square Chamber", "Sponsorship", "Holiday Revue", nil, "900.00", nil ])
   end
