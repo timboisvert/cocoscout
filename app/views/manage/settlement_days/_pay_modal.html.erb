@@ -29,11 +29,10 @@
   on_payout_ids = lines.select { |l| l.payee_type == "Person" }.map(&:payee_id)
   cast_people = show.show_person_role_assignments.includes(:assignable).map(&:assignable).compact.select { |p| p.is_a?(Person) }.uniq
   missing_cast = cast_people.reject { |p| on_payout_ids.include?(p.id) }
-  # The people who could be added: the production's talent pool, or everyone
-  # the organization knows when it has none. Ids and names only, read once
-  # for a production however many of its shows are on the day.
-  pool_people = ((@pay_modal_people ||= {})[production.id] ||= (production.effective_talent_pool&.people || Current.organization.people).order(:name).pluck(:id, :name))
-  addable = pool_people.reject { |person_id, _name| on_payout_ids.include?(person_id) }
+  # Add someone is the shared People Picker (Tim, 2026-11-09): the talent
+  # pool before anything is typed (the organization's people when there is
+  # none), anyone in the organization by name. Its sheet sits after the modal.
+  picker_id = "pay-picker-#{show.id}"
   pink = "text-pink-600 hover:text-pink-700"
   locked = lines.any? { |l| l.paid? || l.in_payout_run? }
 %>
@@ -185,21 +184,21 @@
           <% end %>
         <% end %>
 
-        <% if addable.any? %>
-          <%= form_with url: manage_add_line_item_money_show_payout_path(show), method: :post, data: { turbo_action: "replace" }, class: "flex flex-wrap items-center gap-2 text-sm" do %>
-            <%= hidden_field_tag :return_to, return_to, id: nil %>
-            <%= hidden_field_tag :payee_type, "Person", id: nil %>
-            <span class="text-gray-700">Add someone</span>
-            <select name="payee_id" required class="pl-3 pr-8 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" aria-label="Who">
-              <option value="">Who…</option>
-              <% addable.each do |person_id, name| %><option value="<%= person_id %>"><%= name %></option><% end %>
-            </select>
-            <span class="flex items-center gap-2">
-              <span class="text-gray-500">$</span>
-              <input type="number" name="amount" value="0" min="0" step="0.01" required class="w-24 <%= input_classes %>" aria-label="Amount">
-              <%= render "shared/button", text: "Add", variant: "secondary", size: "small", type: :submit %>
-            </span>
-          <% end %>
+        <%= form_with url: manage_add_line_item_money_show_payout_path(show), method: :post, class: "flex flex-wrap items-center gap-2 text-sm",
+              data: { turbo_action: "replace", controller: "person-field", person_field_picker_id_value: picker_id,
+                      action: "people-picker:pick@window->person-field#picked submit->person-field#check" } do %>
+          <%= hidden_field_tag :return_to, return_to, id: nil %>
+          <%= hidden_field_tag :payee_type, "Person", id: nil %>
+          <%= hidden_field_tag :payee_id, nil, id: nil, data: { person_field_target: "field" } %>
+          <span class="text-gray-700">Add someone</span>
+          <%= render "shared/button", text: "Pick a person", icon: "search", variant: "secondary", size: "small", type: :button,
+                data: { controller: "people-picker-trigger", action: "click->people-picker-trigger#open",
+                        "people-picker-trigger-id-value": picker_id, person_field_target: "opener" } %>
+          <span class="flex items-center gap-2">
+            <span class="text-gray-500">$</span>
+            <input type="number" name="amount" value="0" min="0" step="0.01" required class="w-24 <%= input_classes %>" aria-label="Amount" data-person-field-target="next">
+            <%= render "shared/button", text: "Add", variant: "secondary", size: "small", type: :submit %>
+          </span>
         <% end %>
         <p class="text-xs text-gray-500">Someone added by hand keeps their amount through a recalculation only if the calculation names them; the show's full payout page has act counts and advances.
           <%= link_to "The show's payout page", manage_money_show_payout_path(show, return_to: return_to), class: pink %></p>
@@ -210,3 +209,6 @@
     </div>
   </div>
 </div>
+<%= render "shared/people_picker", id: picker_id, title: "Add to #{show.display_name}'s payout", scope: "people",
+      production_id: production.id, list: (production.effective_talent_pool ? "pool" : "org"),
+      exclude: on_payout_ids, exclude_label: "On the payout" %>

@@ -1004,6 +1004,22 @@ RSpec.describe "Manage::SettlementDays pays people", type: :request do
       post manage_add_missing_cast_money_show_payout_path(show), params: { return_to: back, amount: "30" }
       expect(response).to redirect_to(back)
       expect(payout.reload.line_items.find_by(payee: ben).amount.to_f).to eq(30.0)
+
+      # Add someone is the People Picker, not a menu of everyone: it knows who is on the payout already.
+      get back
+      picker = Nokogiri::HTML(response.body).at_css("[data-people-picker='pay-picker-#{show.id}']")
+      asks = JSON.parse(picker["data-people-picker-params-value"])
+      expect(asks).to include("scope" => "people", "production_id" => production.id, "exclude_label" => "On the payout")
+      expect(asks["exclude"]).to match_array([ ana.id, ben.id ])
+      expect(response.body).to include("Pick a person", 'data-person-field-target="field"')
+      expect(response.body).not_to include('<select name="payee_id"')
+      cy = create(:person, name: "Cy Vane")
+      org.people << cy
+      get manage_people_picker_search_path(asks.merge("q" => "Cy"))
+      expect(response.body).to include("Cy Vane")
+      post manage_add_line_item_money_show_payout_path(show), params: { return_to: back, payee_type: "Person", payee_id: cy.id, amount: "15" }
+      expect(response).to redirect_to(back)
+      expect(payout.reload.line_items.find_by(payee: cy).amount.to_f).to eq(15.0)
     end
 
     it "keeps a show whose day isn't settled off the Money hub's To pay list, and the old pages point at the day" do
