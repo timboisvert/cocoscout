@@ -69,7 +69,11 @@ class Organization < ApplicationRecord
   has_many :money_records, dependent: :destroy
   has_many :integrations, dependent: :destroy
   has_many :bills, dependent: :destroy
-  has_many :invoices, dependent: :destroy
+  # The invoices it wrote to anyone. A contract payment's invoice is a row in
+  # the same table (Invoice, kind "contract") that reads everything from its
+  # payment, so it belongs in none of the lists and totals these feed.
+  has_many :invoices, -> { standalone }, dependent: :destroy
+  has_many :contract_invoices, -> { for_contracts }, class_name: "Invoice", dependent: :destroy
   has_many :bank_statement_imports, dependent: :destroy
   has_many :books_downloads, dependent: :destroy
   has_many :bank_statement_lines, dependent: :destroy

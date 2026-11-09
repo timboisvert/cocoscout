@@ -123,7 +123,7 @@ module Manage
       # Only mint/expose a pay link when there's actually a settled amount to charge.
       @pay_url = @payment.collectable_online? ? pay_contract_url(token: @payment.payment_token!) : nil
       # Opening the Collect page numbers the invoice, like opening the invoice.
-      @invoice = @payment.invoiceable? ? ContractInvoice.for!(@payment) : @payment.contract_invoice
+      @invoice = @payment.invoiceable? ? Invoice.for!(@payment) : @payment.invoice
       @received_methods = RECEIVED_METHODS
     end
 
@@ -171,9 +171,9 @@ module Manage
                     alert: "There's nothing to invoice on this payment yet." and return
       end
 
-      invoice = ContractInvoice.for!(@payment)
+      invoice = Invoice.for!(@payment)
       reminder = invoice.sent_count.positive?
-      to = ContractInvoiceDelivery.send_invoice!(invoice, sender: Current.user, note: params[:custom_message])
+      to = InvoiceDelivery.send_invoice!(invoice, sender: Current.user, note: params[:custom_message])
       if to
         redirect_to manage_money_incoming_payment_path(@payment),
                     notice: "#{reminder ? 'Reminder about invoice' : 'Invoice'} #{invoice.display_number} sent to #{to}."

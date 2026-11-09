@@ -4,8 +4,10 @@ require "rails_helper"
 
 # One invoice per payment someone owes an organization (Tim, 2026-10-05),
 # numbered in order per organization, never reused. A combined payment is one
-# invoice listing what it combines; the payments it absorbed are void.
-RSpec.describe ContractInvoice do
+# invoice listing what it combines; the payments it absorbed are void. Since
+# 2026-11-09 it is a row in invoices (kind "contract") beside the invoices an
+# organization writes to anyone: one table, one sequence, one way to send.
+RSpec.describe Invoice, "for a contract payment" do
   let(:org) { create(:organization, name: "Stars & Garters") }
   let(:contract) { create(:contract, :active, organization: org, contractor_name: "Gigi Noble Wolf", contractor_email: "gigi@example.com", production_name: "Funhouse") }
 
@@ -51,8 +53,8 @@ RSpec.describe ContractInvoice do
 
     host.merge_in!([ absorbed ])
 
-    host_invoice = host.reload.contract_invoice
-    expect(absorbed_invoice.reload).to be_voided
+    host_invoice = host.reload.invoice
+    expect(absorbed_invoice.reload).to be_void
     expect(absorbed_invoice.void_reason).to eq("Combined into #{host_invoice.display_number}")
     expect(absorbed_invoice.combined_into_payment).to eq(host)
     expect(host_invoice.document.items.map(&:amount_cents)).to eq([ 30_000, 5_000 ])
@@ -63,8 +65,9 @@ RSpec.describe ContractInvoice do
     removed = owed("Rent", 300)
     invoice = described_class.for!(removed)
     removed.destroy!
-    expect(invoice.reload).to be_voided
+    expect(invoice.reload).to be_void
     expect(invoice.contract_payment_id).to be_nil
+    expect(invoice.state).to eq(:void)
 
     cancelled = owed("Deposit", 100)
     cancelled_invoice = described_class.for!(cancelled)
@@ -84,6 +87,34 @@ RSpec.describe ContractInvoice do
     payment.mark_paid!(paid_on: Date.new(2026, 10, 3), method: "bank_transfer", reference: "1042")
     paid = pdf_text(InvoicePdf.new(invoice.reload.document(pdf: true)).render)
     expect(paid).to include("PAID", "Paid October 3, 2026", "Bank transfer", "#1042")
+  end
+
+  it "shares one sequence and one table with the invoices the organization writes, and stays out of their lists and books" do
+    first = described_class.for!(owed("Rent", 300))
+    written = org.invoices.new(bill_to_name: "Lincoln Park High School", issued_on: Date.current, due_on: Date.current + 15, category_key: "sponsorship")
+    written.invoice_lines.build(description: "Program ad", quantity: 1, unit_cents: 12_000)
+    written.save!
+    third = described_class.for!(owed("Deposit", 100))
+
+    expect([ first, written, third ].map(&:display_number)).to eq(%w[SG-0001 SG-0002 SG-0003])
+    expect([ first, written, third ].map(&:kind)).to eq(%w[contract standalone contract])
+    # The database itself refuses a number used twice, whichever kind.
+    expect { described_class.transaction(requires_new: true) { described_class.where(id: third.id).update_all(number: 2) } }.to raise_error(ActiveRecord::RecordNotUnique)
+
+    # The organization's invoices are the ones it wrote; a payment's invoice
+    # is reached through its payment.
+    expect(org.invoices.to_a).to eq([ written ])
+    expect(org.contract_invoices.order(:number).to_a).to eq([ first, third ])
+    # Its money is the payment's: nothing of its own on the books, no lines, no due date of its own.
+    expect(JournalEntry.where(source: [ first, third ])).to be_empty
+    expect(JournalEntry.live.where(source: written).pluck(:kind)).to eq([ "invoice" ])
+    expect(first.due_on).to be_nil
+    expect(first.terms.due_on).to eq(first.contract_payment.due_date)
+    expect(first.terms.total_cents).to eq(30_000)
+    expect(first.state).to eq(:due)
+
+    # A pay link for one kind never opens the other's page.
+    expect(described_class.standalone.find_by(payment_token: first.payment_token)).to be_nil
   end
 
   it "names a bank transfer when one was recorded" do

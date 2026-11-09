@@ -1,22 +1,39 @@
 # frozen_string_literal: true
 
-# An invoice to anyone (plan D2): a sponsor, a school, a group buying a block
-# of seats. Numbered in the organization's one sequence with its contract
-# invoices (SG-0014). They pay by card or bank on a page of their own
-# (/pay/invoice/:token), or the organization records the check when it comes.
+# An organization's invoice (plan D2), numbered in its one sequence
+# (SG-0014) and never reused. Two kinds share the number, the page and PDF
+# (InvoiceDocument), the sending (InvoiceDelivery) and the void:
 #
-# On the books: the unpaid part sits as Money owed to you against the
-# income category (counted when earned, no cash date); each payment is that
-# much income arriving where it arrived (counted when it moved).
+#   standalone  an invoice to anyone: a sponsor, a school, a group buying a
+#               block of seats. It keeps its own lines, due date and
+#               payments. They pay by card or bank on its page
+#               (/pay/invoice/:token), or the organization records the check.
+#               On the books the unpaid part sits as Money owed to you
+#               against the income category (counted when earned, no cash
+#               date); each payment is that much income arriving where it
+#               arrived (counted when it moved).
+#   contract    the invoice for one payment someone owes under a contract.
+#               The payment keeps the money and its own place on the books;
+#               this row is its paper. Its page is the payment's pay page
+#               (/pay/contract/:token). The number is issued the first time
+#               anyone opens it (Invoice.for!), and it outlives a payment
+#               that was combined into another, removed or cancelled, void.
+#
+# What an invoice says (what's due, when, from whom, whether it's paid) is
+# its terms: Invoice::OwnTerms reads this row, Invoice::ContractTerms reads
+# the payment.
 class Invoice < ApplicationRecord
+  KINDS = %w[standalone contract].freeze
   STATUSES = %w[open paid void].freeze
   REMINDERS = { "before_and_overdue" => "3 days before, and when overdue", "overdue" => "Only when overdue", "none" => "None" }.freeze
   BANK_TRANSFER_MINIMUM_CENTS = 50_000
 
   include BooksLock::Validation
-  refuses_locked_books_on :issued_on
+  refuses_locked_books_on :issued_on, unless: :contract?
 
   belongs_to :organization
+  belongs_to :contract_payment, optional: true, inverse_of: :invoice
+  belongs_to :combined_into_payment, class_name: "ContractPayment", optional: true
   belongs_to :production, optional: true
   belongs_to :show, optional: true
   belongs_to :created_by, class_name: "User", optional: true
@@ -25,31 +42,68 @@ class Invoice < ApplicationRecord
   accepts_nested_attributes_for :invoice_lines, allow_destroy: true, reject_if: ->(attrs) { attrs["description"].blank? && attrs["unit"].blank? && attrs["unit_cents"].blank? }
 
   validates :number, presence: true, uniqueness: { scope: :organization_id }
-  validates :prefix, :bill_to_name, :issued_on, :due_on, :category_key, presence: true
+  validates :kind, inclusion: { in: KINDS }
+  validates :prefix, :issued_on, presence: true
   validates :status, inclusion: { in: STATUSES }
   validates :reminders, inclusion: { in: REMINDERS.keys }
-  validates :bill_to_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
-  validate :has_a_line
+  # Its own facts, which a contract payment's invoice reads from the payment.
+  with_options unless: :contract? do
+    validates :bill_to_name, :due_on, :category_key, presence: true
+    validates :bill_to_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_blank: true
+    validate :has_a_line
+  end
 
   before_validation :assign_number, on: :create
-  before_validation :total_lines
-  after_commit :post_to_books, on: %i[create update]
-  after_commit :unpost_from_books, on: :destroy
+  before_validation :total_lines, unless: :contract?
+  # A contract payment posts itself; its invoice has nothing of its own to post.
+  after_commit :post_to_books, on: %i[create update], unless: :contract?
+  after_commit :unpost_from_books, on: :destroy, unless: :contract?
 
+  scope :standalone, -> { where(kind: "standalone") }
+  scope :for_contracts, -> { where(kind: "contract") }
   scope :open, -> { where(status: "open") }
   scope :live, -> { where.not(status: "void") }
   scope :by_due, -> { order(:due_on, :id) }
 
+  # This payment's invoice, issuing it if it has none yet.
+  def self.for!(payment)
+    payment.invoice || issue!(payment)
+  end
+
+  # The organization's counter row is locked while the number is taken, so
+  # two invoices issued at once can't get the same one, and a payment opened
+  # twice at once gets one invoice.
+  def self.issue!(payment)
+    organization = payment.contract.organization
+    invoice = transaction do
+      organization.lock!
+      find_by(contract_payment_id: payment.id) ||
+        create!(kind: "contract", organization: organization, contract_payment: payment, payment_token: payment.payment_token!, issued_on: Date.current)
+    end
+    payment.association(:invoice).target = invoice
+    invoice
+  rescue ActiveRecord::RecordNotUnique
+    find_by!(contract_payment_id: payment.id)
+  end
+
+  def contract? = kind == "contract"
   def open? = status == "open"
   def paid? = status == "paid"
   def void? = status == "void"
-  def overdue? = open? && due_on < Date.current
+  # Its own due date; a contract payment's invoice has none (ask its state).
+  def overdue? = open? && due_on.present? && due_on < Date.current
   def unpaid_cents = [ total_cents - paid_cents, 0 ].max
   def amount = total_cents / 100.0
   def display_number = "#{prefix}-#{number.to_s.rjust(4, '0')}"
   def filename = "Invoice #{display_number}.pdf"
-  def state = void? ? :void : (paid? ? :paid : (overdue? ? :overdue : :due))
   def kind_label = "Invoice"
+
+  # What it says, read from wherever its money is kept.
+  def terms = contract? ? ContractTerms.new(self) : OwnTerms.new(self)
+
+  # Where it stands, for the page, the PDF and the lists: :due, :overdue,
+  # :paid or :void.
+  def state = terms.state
 
   def category_label = MoneyCategories.label_for(category_key, :income, organization: organization)
   def category_account = MoneyCategories.account_for(category_key, :income, organization: organization)
@@ -89,8 +143,12 @@ class Invoice < ApplicationRecord
     payment
   end
 
-  def void!(reason)
-    update!(status: "void", voided_at: Time.current, void_reason: reason.presence)
+  # combined_into: the contract payment that took this one's in, so an old
+  # link to it can say what became of it.
+  def void!(reason, combined_into: nil)
+    return if void?
+
+    update!(status: "void", voided_at: Time.current, void_reason: reason.presence, combined_into_payment: combined_into)
   end
 
   def for_label
@@ -100,33 +158,36 @@ class Invoice < ApplicationRecord
   end
 
   # The invoice as its page and PDF draw it (InvoiceDocument, shared with
-  # contract invoices and CocoScout's own bills).
+  # CocoScout's own bills), so the two can never disagree. The PDF also
+  # prints the pay link (the page has the button).
   def document(pdf: false)
+    said = terms
     InvoiceDocument.new(
       number: display_number,
       issued_on: issued_on,
-      due_on: state.in?(%i[due overdue]) ? due_on : nil,
+      due_on: said.state.in?(%i[due overdue]) ? said.due_on : nil,
       seller: organization.invoice_seller,
-      bill_to: InvoiceDocument::Party.new(name: bill_to_name, lines: [ bill_to_attention.presence && "Attn. #{bill_to_attention}", *bill_to_address.to_s.split(/\r?\n/).map(&:strip) ].compact,
-                                          email: bill_to_email),
-      reference: [ [ "Production", production&.name ], [ "Event", show && "#{show.display_name}, #{show.date_and_time.strftime('%a %b %-d, %Y')}" ] ],
-      items: invoice_lines.map { |l| InvoiceDocument::Line.new(description: l.description, detail: (l.quantity != 1 ? "#{l.quantity_label} × #{ActiveSupport::NumberHelper.number_to_currency(l.unit_cents / 100.0)}" : nil), amount_cents: l.amount_cents) },
-      total_cents: total_cents,
-      status: state,
+      bill_to: said.bill_to,
+      reference: said.reference,
+      items: said.items,
+      total_cents: said.total_cents,
+      status: said.state,
       status_line: status_line,
-      notes: notes(pdf: pdf),
+      notes: said.notes(pdf: pdf),
       footer: "Online payments are processed by #{CocoScoutIdentity::BRAND} (#{CocoScoutIdentity::LEGAL_NAME}) for #{organization.name}.",
       logo: organization.logo
     )
   end
 
+  # "Paid October 3, 2026 · Check · #1042"
   def status_line
-    money = ActiveSupport::NumberHelper.number_to_currency(unpaid_cents / 100.0)
-    case state
+    said = terms
+    money = ActiveSupport::NumberHelper.number_to_currency(said.amount_due_cents / 100.0) if said.state.in?(%i[due overdue])
+    case said.state
     when :void then [ "Void", void_reason ].compact_blank.join(": ")
-    when :paid then "Paid#{" #{paid_on.strftime('%B %-d, %Y')}" if paid_on}"
-    when :overdue then "Amount due: #{money}, was due #{due_on.strftime('%B %-d, %Y')}"
-    else "Amount due: #{money} by #{due_on.strftime('%B %-d, %Y')}"
+    when :paid then said.paid_line
+    when :overdue then "Amount due: #{money}, was due #{said.due_on.strftime('%B %-d, %Y')}"
+    else "Amount due: #{money} by #{said.due_on.strftime('%B %-d, %Y')}"
     end
   end
 
@@ -146,18 +207,6 @@ class Invoice < ApplicationRecord
   end
 
   private
-
-  def notes(pdf:)
-    note = organization.invoice_details_with_defaults["note"]
-    return [ memo.presence, note ].compact_blank unless state.in?(%i[due overdue])
-
-    check = pay_by_check ? "You can also pay by check to #{organization.invoice_seller.name}#{organization.invoice_seller.lines.any? ? ", #{organization.invoice_seller.lines.join(', ')}" : ''}." : nil
-    return [ memo.presence, check, note ].compact_blank unless pdf
-
-    url_options = Rails.application.config.action_mailer.default_url_options || { host: "localhost", port: 3000 }
-    pay = collectable_online? ? "Pay online: #{Rails.application.routes.url_helpers.pay_invoice_url(token: payment_token!, **url_options)}" : nil
-    [ memo.presence, pay, check, note ].compact_blank
-  end
 
   def has_a_line
     errors.add(:base, "Add at least one line") if invoice_lines.reject(&:marked_for_destruction?).empty?

@@ -31,8 +31,13 @@ module BooksLock
     extend ActiveSupport::Concern
 
     class_methods do
-      def refuses_locked_books_on(attribute)
+      # unless: a predicate naming records the lock doesn't govern (an
+      # invoice that is only the paper for a contract payment).
+      def refuses_locked_books_on(attribute, unless: nil)
+        exempt = binding.local_variable_get(:unless)
         validate do
+          next if exempt && public_send(exempt)
+
           date = public_send(attribute)
           next if date.blank? || organization.nil? || !BooksLock.locked?(organization, date)
           # A record that already stood inside the lock can keep its date.

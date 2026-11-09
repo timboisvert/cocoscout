@@ -14,9 +14,9 @@ class ContractPayment < ApplicationRecord
   belongs_to :correction_of, class_name: "ContractPayment", optional: true
   has_many :corrections, class_name: "ContractPayment", foreign_key: :correction_of_id, dependent: :nullify, inverse_of: :correction_of
 
-  # Its invoice, once anyone has opened it (ContractInvoice.for!). The invoice
+  # Its invoice, once anyone has opened it (Invoice.for!). The invoice
   # outlives the payment, void, so its number is never reused.
-  has_one :contract_invoice, inverse_of: :contract_payment
+  has_one :invoice, inverse_of: :contract_payment
 
   # Direction: whether they pay us or we pay them
   enum :direction, {
@@ -78,7 +78,7 @@ class ContractPayment < ApplicationRecord
   # recorded by hand. Netting it out of their payout isn't a payment from them.
   after_commit -> { ContractPaymentReceiptJob.perform_later(id) }, on: :update,
                if: -> { saved_change_to_status?(to: "paid") && direction_incoming? && payment_method != "payout_deduction" }
-  before_destroy -> { contract_invoice&.void!("Removed from the contract") }
+  before_destroy -> { invoice&.void!("Removed from the contract") }
 
   scope :upcoming, -> { status_pending.where("due_date >= ?", Date.current).order(:due_date) }
   scope :overdue, -> { status_pending.where("due_date < ?", Date.current).order(:due_date) }
@@ -215,9 +215,7 @@ class ContractPayment < ApplicationRecord
                 components: Array(components) + other.service_components + [ merged ])
         # Its invoice, if anyone opened it, now points at this one: an old
         # link to it shows this payment's invoice.
-        if other.contract_invoice
-          other.contract_invoice.void!("Combined into #{ContractInvoice.for!(self).display_number}", combined_into: self)
-        end
+        other.invoice&.void!("Combined into #{Invoice.for!(self).display_number}", combined_into: self)
         other.destroy!
       end
     end

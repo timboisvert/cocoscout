@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_09_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_09_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1487,13 +1487,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_110000) do
     t.integer "number", null: false
     t.string "prefix", null: false
     t.string "status", default: "open", null: false
-    t.string "bill_to_name", null: false
+    t.string "bill_to_name"
     t.string "bill_to_email"
     t.string "bill_to_attention"
     t.text "bill_to_address"
     t.date "issued_on", null: false
-    t.date "due_on", null: false
-    t.string "category_key", null: false
+    t.date "due_on"
+    t.string "category_key"
     t.bigint "production_id"
     t.bigint "show_id"
     t.text "memo"
@@ -1517,11 +1517,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_110000) do
     t.bigint "created_by_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "kind", default: "standalone", null: false
+    t.bigint "contract_payment_id"
+    t.bigint "combined_into_payment_id"
+    t.index ["contract_payment_id"], name: "index_invoices_on_contract_payment_id", unique: true
     t.index ["created_by_id"], name: "index_invoices_on_created_by_id"
+    t.index ["organization_id", "kind"], name: "index_invoices_on_organization_id_and_kind"
     t.index ["organization_id", "number"], name: "index_invoices_on_organization_id_and_number", unique: true
     t.index ["organization_id", "status", "due_on"], name: "index_invoices_on_organization_id_and_status_and_due_on"
     t.index ["organization_id"], name: "index_invoices_on_organization_id"
-    t.index ["payment_token"], name: "index_invoices_on_payment_token", unique: true
+    t.index ["payment_token"], name: "index_invoices_on_contract_payment_token", where: "((kind)::text = 'contract'::text)"
+    t.index ["payment_token"], name: "index_invoices_on_payment_token", unique: true, where: "((kind)::text = 'standalone'::text)"
     t.index ["production_id"], name: "index_invoices_on_production_id"
     t.index ["show_id"], name: "index_invoices_on_show_id"
   end
@@ -5036,6 +5042,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_110000) do
   add_foreign_key "invoice_payments", "invoices"
   add_foreign_key "invoice_payments", "organizations"
   add_foreign_key "invoice_payments", "users", column: "recorded_by_id"
+  add_foreign_key "invoices", "contract_payments", on_delete: :nullify
   add_foreign_key "invoices", "organizations"
   add_foreign_key "invoices", "productions"
   add_foreign_key "invoices", "shows"

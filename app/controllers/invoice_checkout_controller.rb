@@ -62,7 +62,7 @@ class InvoiceCheckoutController < ApplicationController
 
   def set_invoice
     @token = params[:token].to_s
-    @invoice = Invoice.find_by(payment_token: @token) if @token.present?
+    @invoice = Invoice.standalone.find_by(payment_token: @token) if @token.present?
     raise ActiveRecord::RecordNotFound unless @invoice
 
     @organization = @invoice.organization
