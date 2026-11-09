@@ -1,0 +1,48 @@
+<%# The audition cycle that's open and the sign-up forms that are on, a
+    line each with its way in. Nothing when there are none. Locals: page. %>
+<%
+  production = page.production
+  calls = page.audition_calls
+  forms = page.sign_up_forms
+%>
+<% if calls.any? || forms.any? %>
+  <section class="<%= ProductionPageHelper::CARD %>" data-production-signups>
+    <%= render "shared/section_heading", padding: "px-4 py-3", title_basis: "basis-24", title: "Auditions and sign-ups" %>
+    <% calls.each do |data| %>
+      <%
+        cycle = data[:call]
+        formats = [ ("Video" if cycle.accepts_video_submissions?), ("In-person" if cycle.accepts_in_person_auditions?) ].compact
+        n = data[:auditionee_count].to_i
+      %>
+      <div class="<%= ProductionPageHelper::ROW %>" data-production-auditions>
+        <div class="min-w-0 flex-1">
+          <div class="font-semibold text-gray-900"><%= formats.any? ? "#{formats.join(' and ')} auditions".sub(/\A[a-z]/, &:upcase) : "Auditions" %></div>
+          <div class="text-xs text-gray-500">
+            <%= cycle.opens_at.strftime("%b %-d") %><%= cycle.closes_at.present? ? " to #{cycle.closes_at.strftime('%b %-d')}" : ", no closing date" %>
+            · <span class="text-green-700">Open</span> · <%= n %> signed up
+          </div>
+        </div>
+        <%= link_to "Auditions", manage_signups_auditions_path(production), class: ProductionPageHelper::ROW_LINK %>
+      </div>
+    <% end %>
+    <% forms.each do |data| %>
+      <%
+        form = data[:form]
+        status = data[:form_status] || {}
+        detail =
+          if form.repeated? then pluralize(form.sign_up_form_instances.size, "event")
+          elsif form.shared_pool? then "Waitlist · #{pluralize(form.sign_up_slots.size, 'slot')}"
+          elsif form.single_event? && form.show.present? then form.show.date_and_time.strftime("%a, %b %-d")
+          end
+        state = form.active? ? status[:label] : "Off"
+      %>
+      <div class="<%= ProductionPageHelper::ROW %>" data-production-form="<%= form.id %>">
+        <div class="min-w-0 flex-1">
+          <div class="font-semibold text-gray-900 truncate"><%= form.name %></div>
+          <div class="text-xs text-gray-500"><%= [ state, detail ].compact_blank.join(" · ") %></div>
+        </div>
+        <%= link_to "Sign-up form", manage_signups_form_path(production, form), class: ProductionPageHelper::ROW_LINK %>
+      </div>
+    <% end %>
+  </section>
+<% end %>

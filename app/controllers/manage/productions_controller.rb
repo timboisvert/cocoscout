@@ -65,6 +65,10 @@ module Manage
       return if performed?
 
       @dashboard = DashboardService.new(@production).generate
+      # The production's own page, read-only: what's next, what needs doing,
+      # and the way into each part of it (ProductionPage; Tim, 2026-11-08).
+      @page = ProductionPage.new(production: @production, user: Current.user, dashboard: @dashboard, cast_loader: method(:build_show_cast))
+      @home = @page.home
     end
 
     def edit

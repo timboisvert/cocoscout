@@ -186,6 +186,18 @@ RSpec.describe "Production Home, show by show", type: :request do
     expect(doc.css("[data-home-week] [data-day-header]").size).to eq(2)
   end
 
+  # Tim, 2026-11-08: an event that isn't a show says what it is, next to
+  # the room; a show says nothing.
+  it "names an event that isn't a show on the phone's row, and leaves a show's alone" do
+    rehearsal = create(:show, :rehearsal, production: production, date_and_time: saturday.in_time_zone.change(hour: 14))
+    day = page(day: saturday.iso8601).at_css("[data-home-day]")
+    row = day.at_css("[data-home-show='#{rehearsal.id}']")
+    expect(row.at_css("[data-home-show-kind]").text).to eq("Rehearsal")
+    venue = rehearsal.location_space&.name || rehearsal.location&.name
+    expect(row.at_css("[data-home-show-where]").text.squish).to eq([ "Rehearsal", venue ].compact.join(" · "))
+    expect(day.at_css("[data-home-show='#{sat_show.id}'] [data-home-show-kind]")).to be_nil
+  end
+
   it "opens a week calendar whose rows go to that week, and has no month grid" do
     doc = page(week_start: week_start.to_s)
     picker = doc.at_css("[data-week-picker]")

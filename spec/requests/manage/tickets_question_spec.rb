@@ -41,7 +41,8 @@ RSpec.describe "The Tickets question", type: :request do
     expect(TicketingProfile.for(org).reload.enabled?).to be(true)
 
     get manage_production_path(production)
-    expect(response.body).to include("Sold on CocoScout", "1 upcoming date", "/t/#{ShortLink.canonical_for!(production).code}", "Open ticketing")
+    expect(response.body).to include("data-production-tickets-state", "Selling", "1 upcoming date", "/t/#{ShortLink.canonical_for!(production).code}",
+                                     "Ticketing for this production", manage_production_ticketing_path(production))
 
     # The show page shows where the tickets are, small, for reading only.
     get manage_production_show_path(production, show)

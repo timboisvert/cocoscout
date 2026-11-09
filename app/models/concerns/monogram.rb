@@ -12,12 +12,18 @@ module Monogram
 
   LITTLE_WORDS = %w[a an the of and or for to in on at by with o n].freeze
 
-  def initials
+  # The same letters for any name, for a row that has a title and no record
+  # to ask (shared/wide_thumb).
+  def self.letters(name)
     words = name.to_s.split
     kept = words.reject do |word|
       bare = word.downcase.gsub(/[^[:alnum:]]/, "")
       bare.blank? || LITTLE_WORDS.include?(bare)
     end
     (kept.presence || words).first(2).map { |word| word[0] }.join.upcase
+  end
+
+  def initials
+    Monogram.letters(name)
   end
 end

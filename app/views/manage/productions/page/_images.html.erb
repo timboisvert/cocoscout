@@ -1,0 +1,19 @@
+<%# The production's two pictures, small: its poster (3:4) and its wide
+    image (16:9), each as the lists draw it, with the way to change them.
+    Locals: page. %>
+<% production = page.production %>
+<section class="<%= ProductionPageHelper::CARD %>" data-production-images>
+  <%= render "shared/section_heading", padding: "px-4 py-3", title_basis: "basis-24", title: "Images" do %>
+    <%= render "shared/button", text: "Change", variant: "secondary", size: "small", path: manage_production_visual_assets_path(production) %>
+  <% end %>
+  <div class="p-4 flex items-end gap-3">
+    <div class="flex flex-col gap-1">
+      <%= render "shared/production_image", production: production, width: "w-[60px]", initials_class: "text-base", fallback_aspect: "poster" %>
+      <span class="text-xs text-gray-500">Poster</span>
+    </div>
+    <div class="flex flex-col gap-1">
+      <%= render "shared/wide_thumb", image: (production.wide_image.attached? ? production.safe_wide_image_variant(:small) : nil), name: production.name, width: "w-[142px]" %>
+      <span class="text-xs text-gray-500">Wide image</span>
+    </div>
+  </div>
+</section>

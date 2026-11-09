@@ -1,0 +1,9 @@
+<%# The current run's registration link, to copy or visit. Locals: page. %>
+<% run = page.current_run %>
+<section class="<%= ProductionPageHelper::CARD %>" data-production-registration-link>
+  <%= render "shared/section_heading", padding: "px-4 py-3", title_basis: "basis-24", title: "Registration link" %>
+  <div class="p-4">
+    <% if page.runs.size > 1 %><div class="text-xs text-gray-500 mb-2"><%= run.title %></div><% end %>
+    <%= render "shared/copy_url", url: "#{request.base_url}#{run.short_url_path}" %>
+  </div>
+</section>

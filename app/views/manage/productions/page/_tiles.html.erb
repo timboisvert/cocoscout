@@ -1,0 +1,11 @@
+<%# Three numbers side by side: a small label, the amount, a gray line
+    under it. Locals: tiles, [[label, dollars, words], ...]. %>
+<div class="grid grid-cols-3 gap-2 sm:gap-3">
+  <% tiles.each do |label, amount, words| %>
+    <div class="min-w-0 rounded-lg border border-gray-200 px-2.5 py-2 sm:px-3">
+      <div class="text-xs text-gray-500"><%= label %></div>
+      <div class="text-base sm:text-xl font-bold text-gray-900 tabular-nums truncate"><%= number_to_currency(amount, precision: (amount.to_f % 1).zero? ? 0 : 2) %></div>
+      <% if words.present? %><div class="text-xs text-gray-500 max-sm:hidden"><%= words %></div><% end %>
+    </div>
+  <% end %>
+</div>

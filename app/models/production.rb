@@ -287,11 +287,6 @@ class Production < ApplicationRecord
     end
   end
 
-  # Count of unique members in the talent pool
-  def talent_pool_member_count
-    talent_pool&.members&.count || 0
-  end
-
   # The production's main poster as an image variant, or nil when it has
   # none. Productions are pictured by their poster (3:4) and wide image
   # (16:9); there are no logos.

@@ -1,0 +1,45 @@
+<%# A contract production's contract, for the organization's managers: where
+    it stands, who it's with and when, what it has made and cost, and the
+    ways in. Its name and description are the contract's while it runs.
+    Locals: page. %>
+<%
+  production = page.production
+  contract = page.contract
+  label, tone = page.contract_status
+  open = page.contract_open?
+  money = contract.status_draft? ? nil : contract.money_display
+  due = page.contract_payments_due
+%>
+<section class="<%= ProductionPageHelper::CARD %>" data-production-contract>
+  <%= render "shared/section_heading", padding: "px-4 py-3", title_basis: "basis-24", title: "Contract" do %>
+    <%= render "shared/pro_marker" %>
+    <%= render "shared/pro_marker", kind: :lock unless open %>
+    <%= render "shared/button", text: "Open the contract", variant: "secondary", size: "small", path: manage_contract_path(contract),
+          data: (open ? {} : { action: "click->upgrade-modal#open", upgrade_feature: "contracts" }) %>
+  <% end %>
+  <div class="<%= ProductionPageHelper::ROW %> flex-wrap">
+    <span class="inline-flex items-center rounded-full border px-2 py-px text-[11px] font-semibold whitespace-nowrap <%= HomeHelper::CHIP_TONES[tone] %>" data-production-contract-state><%= label %></span>
+    <span class="min-w-0 flex-1 text-gray-900"><%= [ contract.contractor_name, contract.date_range ].compact_blank.join(" · ") %></span>
+  </div>
+  <% if money %>
+    <div class="px-4 py-3 border-b border-gray-100 last:border-b-0">
+      <%= render "manage/productions/page/tiles", tiles: [
+            [ "Made us", money[:made], nil ],
+            [ "Cost us", money[:cost], nil ],
+            [ "Net to us", money[:net], (money[:pending_shows].positive? ? "#{pluralize(money[:pending_shows], 'show')} awaiting financials" : nil) ]
+          ] %>
+    </div>
+  <% end %>
+  <% if can_amend_production_basics?(production) %>
+    <div class="<%= ProductionPageHelper::ROW %>">
+      <div class="min-w-0 flex-1 text-gray-900">Its name and description are set by the contract</div>
+      <%= link_to "Amend the contract", amend_basics_manage_contract_path(contract), class: ProductionPageHelper::ROW_LINK %>
+    </div>
+  <% end %>
+  <% if due.any? && page.pro_manager? && page.organization.feature_available?(:money) %>
+    <div class="<%= ProductionPageHelper::ROW %>" data-production-contract-due>
+      <div class="min-w-0 flex-1 text-gray-900"><%= pluralize(due.size, "payment") %> still to come from <%= contract.contractor_name %><% if due.first.due_date %> <span class="text-gray-500">· next due <%= due.first.due_date.strftime("%b %-d") %></span><% end %></div>
+      <%= link_to "Incoming payments", manage_money_production_incoming_path(production), class: ProductionPageHelper::ROW_LINK %>
+    </div>
+  <% end %>
+</section>

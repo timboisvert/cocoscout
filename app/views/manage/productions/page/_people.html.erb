@@ -1,0 +1,59 @@
+<%# The production team by name and role, the invitations still waiting,
+    and, on a contract production, the people on the contract (the
+    organization's managers see those). Change goes to the Team tab.
+    Locals: page. %>
+<%
+  production = page.production
+  contract_people = page.org_manager? ? page.contract_people : []
+  invitations = page.manager? ? page.invitations : []
+%>
+<% if page.team.any? || invitations.any? || contract_people.any? %>
+  <section class="<%= ProductionPageHelper::CARD %>" data-production-people>
+    <%= render "shared/section_heading", padding: "px-4 py-3", title_basis: "basis-24", title: (contract_people.any? ? "People" : "Production team") do %>
+      <% if page.manager? %>
+        <%= render "shared/button", text: "Change", variant: "secondary", size: "small", path: edit_manage_production_path(production, tab: 3) %>
+      <% end %>
+    <% end %>
+    <% page.team.each do |permission| %>
+      <%
+        user = permission.user
+        person = user.default_person || user.person
+        headshot = person&.safe_headshot_variant(:thumb)
+      %>
+      <div class="<%= ProductionPageHelper::ROW %>">
+        <% if headshot %>
+          <%= image_tag headshot, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+        <% else %>
+          <span class="w-10 h-10 rounded-lg bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-xs flex-shrink-0"><%= person&.initials.presence || user.email_address.first.upcase %></span>
+        <% end %>
+        <div class="min-w-0 flex-1">
+          <div class="font-semibold text-gray-900 truncate"><%= person&.name || user.email_address %><%= " (you)" if user.id == page.user.id %></div>
+          <div class="text-xs text-gray-500"><%= ProductionPageHelper::TEAM_ROLES[permission.role] %></div>
+        </div>
+      </div>
+    <% end %>
+    <% invitations.each do |invite| %>
+      <div class="<%= ProductionPageHelper::ROW %>">
+        <span class="w-10 h-10 rounded-lg bg-gray-50 border border-dashed border-gray-300 text-gray-500 flex items-center justify-center font-bold text-xs flex-shrink-0"><%= invite.person&.initials.presence || invite.email.first.upcase %></span>
+        <div class="min-w-0 flex-1">
+          <div class="font-semibold text-gray-900 truncate"><%= invite.email %></div>
+          <div class="text-xs text-gray-500">Invited, not yet accepted</div>
+        </div>
+      </div>
+    <% end %>
+    <% contract_people.each do |person, contract| %>
+      <% headshot = person.safe_headshot_variant(:thumb) %>
+      <div class="<%= ProductionPageHelper::ROW %>" data-production-contract-person>
+        <% if headshot %>
+          <%= image_tag headshot, alt: person.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0 ring-2 ring-pink-200" %>
+        <% else %>
+          <span class="w-10 h-10 rounded-lg bg-pink-100 text-pink-700 flex items-center justify-center font-bold text-xs flex-shrink-0"><%= person.initials %></span>
+        <% end %>
+        <div class="min-w-0 flex-1">
+          <div class="font-semibold text-gray-900 truncate"><%= person.name %></div>
+          <div class="text-xs text-gray-500">On the contract with <%= contract.contractor_name %></div>
+        </div>
+      </div>
+    <% end %>
+  </section>
+<% end %>

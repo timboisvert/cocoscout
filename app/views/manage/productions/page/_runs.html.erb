@@ -1,0 +1,37 @@
+<%# A course's runs, a line each: its name, where registration stands, how
+    many are registered of how many spots, and the way in. Locals: page. %>
+<section class="<%= ProductionPageHelper::CARD %>" data-production-runs>
+  <%= render "shared/section_heading", padding: "px-4 py-3", title_basis: "basis-24", title: "Runs" do %>
+    <% if page.manager? %>
+      <%= render "shared/button", text: "Add a run", variant: "secondary", size: "small", path: manage_course_wizard_start_path %>
+    <% end %>
+  <% end %>
+  <% if page.runs.empty? %>
+    <p class="px-4 py-3 text-sm text-gray-500">No runs yet.</p>
+  <% end %>
+  <% page.runs.each do |run| %>
+    <%
+      registered = page.students(run)
+      percent = run.capacity.to_i.positive? ? [ (registered * 100.0 / run.capacity).round, 100 ].min : nil
+      state =
+        if run.draft? then "Draft"
+        elsif run.completed? then "Completed"
+        elsif run.closed? then "Registration closed"
+        elsif run.opens_at && run.opens_at > Time.current then "Registration opens #{run.opens_at.strftime('%b %-d')}"
+        elsif run.full? then "Full"
+        else "Taking registrations"
+        end
+    %>
+    <%= link_to manage_course_offering_path(run), class: "#{ProductionPageHelper::ROW} hover:bg-gray-50 transition-colors", data: { production_run: run.id } do %>
+      <span class="min-w-0 flex-1">
+        <span class="block font-semibold text-gray-900 truncate"><%= run.title %><% if run.subtitle.present? %><span class="font-normal text-gray-500"> · <%= run.subtitle %></span><% end %></span>
+        <span class="block text-xs text-gray-500"><%= state %> · <%= run.formatted_price %></span>
+      </span>
+      <span class="flex-shrink-0 text-xs text-gray-700 tabular-nums whitespace-nowrap"><%= registered %><%= " of #{run.capacity}" if run.capacity %> registered</span>
+      <% if percent %>
+        <span class="hidden sm:block w-24 flex-shrink-0 h-1.5 rounded-full bg-gray-100"><span class="block h-1.5 rounded-full bg-pink-500" style="width: <%= percent %>%"></span></span>
+      <% end %>
+      <span class="hidden sm:inline <%= ProductionPageHelper::ROW_LINK %>">Open</span>
+    <% end %>
+  <% end %>
+</section>

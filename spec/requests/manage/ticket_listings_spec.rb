@@ -26,13 +26,14 @@ RSpec.describe "Manage ticket listings", type: :request do
     quiet = create(:production, organization: org, name: "Last Season")
     ProductionTicketing.for(quiet)
     # The production's wide image (never a poster) leads its line, and a
-    # production without one leaves the space blank (Tim, 2026-10-16).
+    # production without one gets its two letters in the same box (Tim,
+    # 2026-11-08).
     production.wide_image.attach(fixture_file_upload("test_image.png", "image/png"))
 
     get manage_ticket_listings_path
     body = response.body
     expect(body.scan("aspect-video rounded overflow-hidden").size).to eq(1)
-    expect(body.scan(%(aspect-video" aria-hidden="true")).size).to eq(1)
+    expect(Nokogiri::HTML(body).css("[data-wide-thumb-letters]").map { |box| box.text.squish }).to eq([ "LS" ])
     # The drawer under a production hangs stepped in, as on Ticketing home.
     expect(body).to include(%(<details class="group mx-3">))
     expect(body).to include("8 dates", "7 more dates", "All 8 dates of Improvised Animorphs",

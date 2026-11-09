@@ -1,0 +1,68 @@
+<%#
+  The phone's way between a page's sections, the one way everywhere (Tim,
+  2026-11-08: the list you drilled into on a production's and a show's
+  settings was a second way, and he didn't want it): a row naming the
+  section you're on; tapping it opens every section in a sheet. Hidden from
+  sm up, where the page's tab strip shows.
+
+  Two kinds of page use it:
+    - shared/settings_layout, whose sections are real addresses: give each
+      section a `path:` and the sheet's rows are links.
+    - a page on the tabs controller (a production's or a show's settings),
+      whose sections are panels on one page: give each an `index:` and the
+      rows are that controller's buttons. Render it inside the controller's
+      element; the controller keeps the row's name and the sheet's check
+      mark on the section showing (its sectionLabel and sectionItem targets).
+
+  Locals:
+    id        the sheet's DOM id
+    sections  array of { label:, path: or index:, active:, pro:, locked:,
+              badge:, danger: }
+%>
+<%
+  id = local_assigns.fetch(:id)
+  sections = local_assigns.fetch(:sections)
+  current = sections.find { |section| section[:active] } || sections.first
+  name = lambda do |section|
+    safe_join([
+      content_tag(:span, section[:label], class: "truncate #{'text-red-600' if section[:danger]}"),
+      (render("shared/pro_marker") if section[:pro]),
+      (render("shared/pro_marker", kind: :lock) if section[:pro] && section[:locked])
+    ].compact)
+  end
+%>
+<div class="sm:hidden mb-5" data-section-picker>
+  <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= id %>"
+          class="w-full flex items-center justify-between gap-3 px-4 min-h-[48px] bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-900 cursor-pointer">
+    <span class="flex items-center gap-2 min-w-0">
+      <span class="text-xs text-gray-500 flex-shrink-0">Section</span>
+      <span class="flex items-center gap-2 min-w-0" data-tabs-target="sectionLabel"><%= name.call(current) %></span>
+    </span>
+    <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+  </button>
+  <%= render layout: "shared/sheet", locals: { id: id, title: "Sections" } do %>
+    <div class="-mx-4 -my-5 divide-y divide-gray-100">
+      <% sections.each do |section| %>
+        <%
+          active = section == current
+          row_classes = "flex items-center justify-between gap-3 w-full min-h-[52px] px-5 text-[15px] text-left hover:bg-gray-50 cursor-pointer #{active ? 'text-pink-600 font-medium' : 'text-gray-800'}"
+        %>
+        <% body = capture do %>
+          <span class="flex items-center gap-2 min-w-0">
+            <span class="flex items-center gap-2 min-w-0" data-section-name><%= name.call(section) %></span>
+            <% if section[:badge].to_i.positive? %>
+              <span class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-gray-100 text-gray-600 text-[11px] font-semibold leading-none"><%= section[:badge] %></span>
+            <% end %>
+          </span>
+          <svg class="w-4 h-4 text-pink-500 flex-shrink-0 <%= 'hidden' unless active %>" data-section-check fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+        <% end %>
+        <% if section[:path] %>
+          <%= link_to section[:path], aria: { current: active ? "page" : nil }, class: row_classes do %><%= body %><% end %>
+        <% else %>
+          <button type="button" data-tabs-target="sectionItem" data-index="<%= section[:index] %>" data-action="tabs#select modal#close"
+                  <%= 'aria-current="true"'.html_safe if active %> class="<%= row_classes %>"><%= body %></button>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

@@ -124,12 +124,10 @@ RSpec.describe "Contracts — change the basic info", type: :request do
       expect(response.body).to include('name="production[description]"')
     end
 
-    it "sends the production page's 'Add one' to the contract" do
-      production.update!(description: nil)
-
+    it "says so on the production's page, with the way to the contract" do
       get manage_production_path(production)
 
-      expect(response.body).to include("No description yet.", amend_basics_manage_contract_path(contract))
+      expect(response.body).to include("Its name and description are set by the contract", "Amend the contract", amend_basics_manage_contract_path(contract))
     end
 
     it "gives a producer on the team the words but no way into the contract" do
