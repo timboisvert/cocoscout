@@ -217,6 +217,20 @@ RSpec.describe "A production's page", type: :request do
       expect(hrefs).to include(manage_contract_path(contract), manage_money_production_incoming_path(production))
       expect(hrefs).not_to include(manage_casting_production_path(production))
     end
+
+    # Its needs come from its contract (RoleCall; Tim, 2026-11-08): the page
+    # read "Needs Booth Tech" for a contract with no services.
+    it "asks its dates only for what the contract includes" do
+      org.update!(alert_uncovered_show_roles: true)
+      role = create(:house_role, organization: org, name: "Booth Tech", role_type: :show_specific, include_in_role_call: true)
+      service = org.house_services.create!(name: "Booth Tech").tap { |s| s.house_roles << role }
+      expect(doc_chip(page_for(production))).to be_nil
+
+      contract.update!(draft_data: (contract.draft_data || {}).merge("services" => [ { "name" => "Booth Tech", "service_id" => service.id } ]))
+      expect(doc_chip(page_for(production)).text).to include("Needs Booth Tech")
+    end
+
+    def doc_chip(doc) = doc.at_css("[data-production-coming-up] [data-chip='staffing']")
   end
 
   describe "a course" do
