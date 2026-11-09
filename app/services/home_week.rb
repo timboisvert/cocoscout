@@ -42,8 +42,9 @@ class HomeWeek
     def unreported?(site) = outside.any? { |name, count, cents| name == site && count.positive? && cents.zero? }
     def so_far? = outside.any? { |_, count, cents| count.positive? && cents.zero? }
   end
-  # missing: the per-show roles Role Call expects on this show that no shift
-  # covers (a show's own; always empty on a day's row).
+  # missing: what Role Call asks of this show that has no shift, by name: its
+  # services, then the every-show roles (a show's own; always empty on a
+  # day's row).
   Staffing = Data.define(:shifts, :staffed, :total, :declined, :day_has_shifts, :missing) do
     def none? = shifts.empty?
     def starts_at = shifts.map(&:starts_at).min
@@ -213,6 +214,10 @@ class HomeWeek
     @week_finalized = staffing_on? && @organization.staffing_finalizations.where(week_start: days.map(&:beginning_of_week).uniq)
                                                    .where.not(finalized_at: nil).exists?
     @declined_this_range = @shifts.flat_map { |s| s.shift_assignments.select(&:declined?) }
+    # Role Call's rules, the ones Scheduling flags a show by (RoleCall).
+    @role_call = if staffing_on? && @organization.alert_uncovered_show_roles?
+      RoleCall.new(organization: @organization, shows: @shows, services: @organization.services_available_to?(@user))
+    end
     # The day Staffing's week puts each shift on (WeekLoaders#staffing_day_for):
     # its show's or rental's day when that's in range, else its own start.
     @shifts_by_day = @shifts.group_by do |s|
@@ -225,33 +230,42 @@ class HomeWeek
   # tied to that show, or tied to none and overlapping it. Roles for the
   # whole night go on the day's own row (staffing_days), never on whichever
   # show their shift happens to be tied to (Tim, 2026-10-30). No chip at all
-  # when the organization has no per-show roles.
+  # for a show with no shift of its own that nothing is asked of: the
+  # organization has no per-show roles, or Role Call is on and wants nothing
+  # more here (a contract show running its own booth, a show excused from
+  # the role). Without Role Call such a show reads "No shifts".
   def staffing_for(show)
-    return nil unless staffing_on? && @per_show_roles.any?
+    return nil unless staffing_on?
     return nil if show.canceled # its row says whether the staff were told (told_for)
     return nil unless days.include?(show.date_and_time.to_date) # its shifts weren't loaded: say nothing
 
     day_shifts = (@shifts_by_day[show.date_and_time.to_date] || []).select { |s| s.house_role&.show_specific? }
-    mine = day_shifts.select do |shift|
-      covered = shift.covered_shows
-      covered.any? ? covered.any? { |c| c.id == show.id } : (shift.starts_at < show.ends_at && shift.ends_at > show.date_and_time)
-    end
+    mine = day_shifts.select { |shift| RoleCall.shift_for?(shift, show) }
+    missing = missing_for(show, mine)
+    return nil if mine.empty? && missing.empty? && (@role_call || @per_show_roles.empty?)
+
     stats = slot_stats(mine)
     Staffing.new(shifts: mine, staffed: stats[:staffed], total: stats[:total], declined: stats[:declined],
-                 day_has_shifts: day_shifts.any?, missing: missing_roles(show, mine))
+                 day_has_shifts: day_shifts.any?, missing: missing)
   end
 
-  # Role Call's roles for this show (when the organization has Role Call on)
-  # that no shift of the show covers, by name. Like Staffing's Role Call: a
-  # role scoped to another venue, or excused for this show, isn't missing.
-  def missing_roles(show, mine)
-    return [] unless @organization.alert_uncovered_show_roles?
+  # What Role Call asks of this show (when the organization has it on) that
+  # has no shift yet, by name: each service the show needs, then the
+  # every-show roles (RoleCall has the rules, the same ones Scheduling flags
+  # a show by: a contract show isn't asked for a role its services would
+  # carry but don't include). A role excused for this show isn't missing. A
+  # shift nobody's on yet isn't missing either: it reads "0/1".
+  def missing_for(show, mine)
+    return [] unless @role_call
 
-    covered = mine.flat_map { |s| [ s.house_role_id ] + s.shift_additional_roles.select { |r| r.show_id.nil? || r.show_id == show.id }.map(&:house_role_id) }.to_set
+    services = @role_call.needs(show).select(&:needed?)
+                         .reject { |need| @shifts.any? { |shift| RoleCall.on_service?(shift, show, need.service) } }
+                         .map { |need| need.service.name }
+    covered = mine.flat_map { |shift| RoleCall.role_ids_on(shift, show) }.to_set
     exempt = show.staffing_coverage_exempt_role_ids
-    @per_show_roles.select { |r| r.include_in_role_call && (r.location_id.nil? || r.location_id == show.location_id) }
-                   .reject { |r| covered.include?(r.id) || exempt.include?(r.id) }
-                   .map(&:name)
+    roles = @role_call.roles(show).reject { |role| covered.include?(role.id) || exempt.include?(role.id) }.map(&:name)
+    # A service and an every-show role can share a name (Booth Tech); say it once.
+    (services + roles).uniq
   end
 
   # Shifts in runs whose times overlap, each run in start order.

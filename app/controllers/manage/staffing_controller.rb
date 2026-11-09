@@ -115,40 +115,27 @@ module Manage
       @show_dates = calendar_show_dates(@calendar_from, @calendar_to)
       @week_statuses = calendar_week_statuses(@calendar_from, @calendar_to)
 
-      # Role Call (opt-in via Staffing settings): every show checked against the
-      # show-specific roles. @show_coverage drives the per-role breakdown in the
-      # show popover/panel; @uncovered_roles_by_show is the amber chip flag,
-      # which counts only roles that are neither covered nor excused.
+      # Role Call (opt-in via Staffing settings), by RoleCall's rules: each show
+      # checked against its services and the every-show roles. What each show
+      # needs (after-V1 #6; Pro, managers) is always listed in its panel:
+      # @show_needs, its production's, contract's and own services with who's
+      # on each. @show_coverage is the every-show roles its services don't
+      # carry (Tim, 2026-10-16: the modal said Booth Tech twice); a show with
+      # none has no entry. @uncovered_roles_by_show is the amber flag: the
+      # services nobody's on, then the roles neither covered nor excused.
       @role_call_enabled = Current.organization.alert_uncovered_show_roles?
-      @show_coverage = @role_call_enabled ? show_coverage_by_show(shifts) : {}
-      @uncovered_roles_by_show = @show_coverage.each_with_object({}) do |(show_id, entry), h|
-        missing = entry[:roles].reject { |r| r[:covered] || r[:exempt] }.map { |r| r[:name] }
-        h[show_id] = missing if missing.any?
-      end
-
-      # What each show needs (after-V1 #6; Pro, managers): its production's,
-      # contract's and own services, each with who's on it. Always listed in
-      # the show's panel; Role Call, when it's on, flags the ones nobody's on.
-      @services_on = Current.organization.services_available_to?(Current.user)
+      @services_on = role_call.services?
       @show_needs = @services_on ? service_coverage_by_show(shifts) : {}
       @org_services = @services_on ? Current.organization.house_services.ordered.includes(:house_roles).to_a : []
+      @show_coverage = @role_call_enabled ? show_coverage_by_show(shifts) : {}
+      @uncovered_roles_by_show = {}
       if @role_call_enabled
-        # A role one of the show's services carries (Booth Tech, when the
-        # production needs the Booth Tech service) is that service's row in
-        # the panel; Role Call lists only the roles its services don't explain
-        # (Tim, 2026-10-16: the modal said Booth Tech twice). A show with none
-        # left has no Role Call block at all.
-        @show_needs.each do |show_id, needs|
-          next unless @show_coverage[show_id]
-
-          explained = needs.select { |n| n[:needed] }.flat_map { |n| n[:service].house_roles.map(&:id) }.to_set
-          @show_coverage[show_id][:roles].reject! { |role| explained.include?(role[:id]) }
-          @show_coverage.delete(show_id) if @show_coverage[show_id][:roles].empty?
-        end
-        @show_needs.each do |show_id, needs|
-          missing = needs.select { |n| n[:needed] && !n[:covered] }.map { |n| n[:service].name }
+        @shows_by_day.values.flatten.each do |show|
+          services = Array(@show_needs[show.id]).select { |n| n[:needed] && !n[:covered] }.map { |n| n[:service].name }
+          roles = Array(@show_coverage.dig(show.id, :roles)).reject { |r| r[:covered] || r[:exempt] }.map { |r| r[:name] }
           # A service and an every-show role can share a name (Booth Tech); say it once.
-          @uncovered_roles_by_show[show_id] = (missing + Array(@uncovered_roles_by_show[show_id])).uniq if missing.any?
+          missing = (services + roles).uniq
+          @uncovered_roles_by_show[show.id] = missing if missing.any?
         end
         # "Still to staff this week": the services nobody's on, from now on,
         # and how many have no shift at all yet (one button adds those).
@@ -396,8 +383,7 @@ module Manage
     def show_coverage_by_show(shifts)
       # Only roles the org has kept in Role Call — a role opted out on the roles
       # page is invisible here, so it can neither flag a show nor be excused.
-      show_roles = Current.organization.house_roles.role_call.ordered.to_a
-      return {} if show_roles.empty?
+      return {} if role_call.every_show_roles.empty?
 
       covered = Hash.new { |h, k| h[k] = Set.new }
       shifts.each do |shift|
@@ -413,7 +399,9 @@ module Manage
       result = {}
       @shows_by_day.each_value do |shows|
         shows.each do |show|
-          applicable = show_roles.select { |role| role.location_id.nil? || role.location_id == show.location_id }
+          # The roles asked of this show: at its venue, not one its services
+          # carry, and for a contract show not one a service would carry.
+          applicable = role_call.roles(show)
           next if applicable.empty?
 
           exempt_ids = show.staffing_coverage_exempt_role_ids
@@ -427,6 +415,12 @@ module Manage
         end
       end
       result
+    end
+
+    # Role Call's rules for this week's shows (RoleCall).
+    def role_call
+      @role_call ||= RoleCall.new(organization: Current.organization, shows: @shows_by_day.values.flatten,
+                                  services: Current.organization.services_available_to?(Current.user))
     end
 
     # [{ person:, shift_count:, notifiable: }] for the finalize modal, sorted by
@@ -480,7 +474,6 @@ module Manage
       shows = @shows_by_day.values.flatten
       return {} if shows.empty?
 
-      resolver = ShowServices.new(shows)
       covering = Hash.new { |h, k| h[k] = [] }
       shifts.each do |shift|
         anchored = shift.covered_shows
@@ -489,11 +482,11 @@ module Manage
       end
 
       shows.each_with_object({}) do |show, result|
-        needs = resolver.for(show).select(&:staffed?)
+        needs = role_call.needs(show)
         next if needs.empty?
 
         # A contract service dropped here is still on the contract's bill.
-        contract = (resolver.contract_for(show) if needs.any? { |n| n.source == :contract })
+        contract = (role_call.contract_for(show) if needs.any? { |n| n.source == :contract })
         result[show.id] = needs.map do |need|
           role_ids = need.service.house_roles.map(&:id)
           on = covering[show.id].select do |shift|

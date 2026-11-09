@@ -125,9 +125,34 @@ RSpec.describe "Home, a staffing-only day", type: :request do
       expect(doc.at_css("#show-modal-#{eight.id} [data-modal-missing]").text).to include("Needs Booth Tech")
       expect(doc.at_css("[data-home-show='#{seven.id}'] [data-chip='staffing']").text).to include("1/1")
 
+      # Excused from the role, Role Call asks nothing more of it: no staffing chip.
       eight.update!(staffing_coverage_exempt_role_ids: [ booth.id ])
       doc = page(week_start: week_start.to_s)
-      expect(doc.at_css("[data-home-show='#{eight.id}'] [data-chip='staffing']").text).not_to include("Needs")
+      expect(doc.at_css("[data-home-show='#{eight.id}'] [data-chip='staffing']")).to be_nil
+    end
+
+    # Home reads a show's services the way Scheduling does (RoleCall; Tim,
+    # 2026-11-08: a contract show with no services read "Needs Booth Tech").
+    it "asks a contract show only for what its services include, and names a service with no shift" do
+      org.update!(alert_uncovered_show_roles: true)
+      service = org.house_services.create!(name: "Booth Tech").tap { |s| s.house_roles << booth }
+      other.update!(production_type: "third_party")
+      doc = page(week_start: week_start.to_s)
+      expect(doc.at_css("[data-home-show='#{eight.id}'] [data-chip='staffing']")).to be_nil
+      expect(doc.at_css("#show-modal-#{eight.id} [data-modal-missing]")).to be_nil
+      # Our own show with no booth tech is still asked for one.
+      expect(doc.at_css("[data-home-show='#{thu_show.id}'] [data-chip='staffing']").text).to include("Needs Booth Tech")
+
+      create(:contract, :active, organization: org, production: other, draft_data: { "services" => [ { "name" => "Booth Tech", "service_id" => service.id } ] })
+      doc = page(week_start: week_start.to_s)
+      expect(doc.at_css("[data-home-show='#{eight.id}'] [data-chip='staffing']").text).to include("Needs Booth Tech")
+
+      # A service is asked for whether or not its role is an every-show role.
+      booth.update!(include_in_role_call: false)
+      doc = page(week_start: week_start.to_s)
+      expect(doc.at_css("[data-home-show='#{eight.id}'] [data-chip='staffing']").text).to include("Needs Booth Tech")
+      # Our own show, with no services and no every-show role left: nothing is asked of it.
+      expect(doc.at_css("[data-home-show='#{thu_show.id}'] [data-chip='staffing']")).to be_nil
     end
 
     it "shows the same order on a phone, worded, with who's on" do
