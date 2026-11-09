@@ -46,7 +46,7 @@ RSpec.describe AppAnnouncement do
     perform_enqueued_jobs { described_class.announce!(limit: 1) }
     mail = ActionMailer::Base.deliveries.last
     expect(mail.to).to eq([ ada.email_address ])
-    expect(mail.subject).to eq("New: the CocoScout app for iPhone and Android")
+    expect(mail.subject).to eq("New: CocoScout app for iPhone and Android")
     body = mail.html_part ? mail.html_part.body.to_s : mail.body.to_s
     expect(body).to include("Hi Ada,", "The CocoScout app just launched", "you sign in with the account you already have", "/app", AppStores::APP_STORE_URL, AppStores::PLAY_STORE_URL,
                             "one-time note")
