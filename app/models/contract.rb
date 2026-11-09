@@ -1553,6 +1553,18 @@ class Contract < ApplicationRecord
     contract_payments.where(direction: "incoming", status: "paid").sum(:amount)
   end
 
+  # The part of total_incoming they actually paid us: on a pay link, or
+  # recorded by hand. The rest was settled without money arriving, by coming
+  # out of their share on a payout run; the contract page says which is which
+  # (Tim, 2026-11-08: a deducted Booth Tech charge isn't a payment received).
+  def total_payments_arrived
+    contract_payments.direction_incoming.status_paid.money_arrived.sum(:amount)
+  end
+
+  def total_deducted_from_payouts
+    total_incoming - total_payments_arrived
+  end
+
   def total_outgoing
     contract_payments.where(direction: "outgoing").where.not(status: "cancelled").sum(:amount)
   end

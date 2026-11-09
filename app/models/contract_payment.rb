@@ -45,6 +45,18 @@ class ContractPayment < ApplicationRecord
     [ "Other", "other" ]
   ].freeze
 
+  # Ways a payment is settled without any money arriving: a charge netted out
+  # of their share on a payout run, a share that went toward what they owed,
+  # a course's settlement paid inside its course payout.
+  NETTED_PAYMENT_METHODS = %w[payout_deduction offset course_payout].freeze
+
+  # Paid with money that actually arrived (a pay link, or recorded by hand),
+  # as opposed to settled by netting. A charge deducted from a payout is
+  # settled, but nobody paid it (Tim, 2026-11-08).
+  scope :money_arrived, -> {
+    where.not(payment_method: NETTED_PAYMENT_METHODS).or(where(payment_method: nil))
+  }
+
   validates :amount, presence: true, numericality: { greater_than_or_equal_to: 0 }
   validates :amount, numericality: { greater_than_or_equal_to: 0 }, unless: :amount_tbd?
   validates :due_date, presence: true
