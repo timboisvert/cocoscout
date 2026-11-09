@@ -2,8 +2,11 @@
 
 # Puts a Books spreadsheet together (BooksDownload): written a batch at a
 # time to a file on disk, stored under the organization's folder in the
-# private bucket, then whoever asked is told. Downloads older than a week
-# are removed on the way out.
+# private bucket, then whoever asked is told: it's ready, or it couldn't be
+# made (they were promised a notification either way; Tim, 2026-11-09).
+# Downloads older than a week are removed on the way out. Telling them and
+# the clearing out are outside the rescue, so neither can turn a download
+# that was made into one that failed.
 class BooksDownloadJob < ApplicationJob
   queue_as :default
 
@@ -11,6 +14,14 @@ class BooksDownloadJob < ApplicationJob
     download = BooksDownload.find_by(id: download_id)
     return unless download&.pending?
 
+    build(download)
+    notify(download)
+    download.organization.books_downloads.where(created_at: ...BooksDownload::KEPT_FOR.ago).find_each(&:destroy!)
+  end
+
+  private
+
+  def build(download)
     organization = download.organization
     Tempfile.create([ "books-download", ".csv" ], encoding: "UTF-8") do |file|
       lines = download.write(file)
@@ -19,14 +30,13 @@ class BooksDownloadJob < ApplicationJob
                            key: "organizations/#{organization.id}/books_downloads/#{download.id}/#{SecureRandom.hex(12)}.csv")
       download.update!(status: "ready", lines_count: lines, error: nil)
     end
-    notify(download)
-    organization.books_downloads.where(created_at: ...BooksDownload::KEPT_FOR.ago).find_each(&:destroy!)
   rescue StandardError => e
-    download&.update_columns(status: "failed", error: e.message.truncate(255), updated_at: Time.current)
+    download.update_columns(status: "failed", error: e.message.truncate(255), updated_at: Time.current)
+    urls = Rails.application.routes.url_helpers
+    BooksNotices.failed("books_download_failed", user: download.requested_by, organization: download.organization, subject: download,
+                        path: urls.manage_money_statements_path, download: download.title, statements_url: urls.manage_money_statements_url(**url_options))
     raise
   end
-
-  private
 
   def notify(download)
     user = download.requested_by

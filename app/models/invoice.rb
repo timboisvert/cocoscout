@@ -27,6 +27,10 @@ class Invoice < ApplicationRecord
   STATUSES = %w[open paid void].freeze
   REMINDERS = { "before_and_overdue" => "3 days before, and when overdue", "overdue" => "Only when overdue", "none" => "None" }.freeze
   BANK_TRANSFER_MINIMUM_CENTS = 50_000
+  # The reminders that go by themselves (InvoiceRemindersJob): this many days
+  # before it's due, and once in the days after it.
+  REMIND_BEFORE = 3
+  REMIND_OVERDUE_WITHIN = 14
 
   include BooksLock::Validation
   refuses_locked_books_on :issued_on, unless: :contract?
@@ -116,6 +120,31 @@ class Invoice < ApplicationRecord
     update_columns(payment_token: SecureRandom.urlsafe_base64(24))
     payment_token
   end
+
+  # Whether reminders go by themselves at all: an invoice the organization
+  # wrote, still open, that was emailed to someone. One that was never sent
+  # gets none: "a reminder" of something they never got would be the first
+  # they heard of it.
+  def reminds_itself?
+    !contract? && open? && reminders != "none" && sent_count.positive? && sent_at.present? && due_on.present? && bill_to_email.present?
+  end
+
+  # The day the next reminder goes by itself, or nil when none will. Each
+  # goes once, and any send counts: one sent inside the three days before
+  # it's due gets no "before" reminder, and one a manager sent again after
+  # the due date gets no "overdue" one. Read in the zone the caller is in.
+  def next_reminder_on(today = Date.current)
+    return nil unless reminds_itself?
+
+    sent_on = sent_at.to_date
+    before = due_on - REMIND_BEFORE
+    return [ before, today ].max if reminders == "before_and_overdue" && sent_on < before && today < due_on
+    return [ due_on + 1, today ].max if sent_on <= due_on && today <= due_on + REMIND_OVERDUE_WITHIN
+
+    nil
+  end
+
+  def reminder_due?(today = Date.current) = next_reminder_on(today) == today
 
   def collectable_online? = open? && unpaid_cents.positive? && (pay_by_card || pay_by_bank)
   def bank_transfer_allowed? = pay_by_bank && unpaid_cents >= BANK_TRANSFER_MINIMUM_CENTS

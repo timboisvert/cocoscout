@@ -96,6 +96,12 @@ development:
     class: CourseRemindersJob
     schedule: at 10am every day America/Chicago
 
+  # Invoices set to remind by themselves: three days before they're due, and
+  # once when they're overdue.
+  invoice_reminders:
+    class: InvoiceRemindersJob
+    schedule: at 9am every day America/Chicago
+
   staff_shift_reminders:
     class: StaffShiftRemindersJob
     schedule: every hour at minute 15
@@ -247,6 +253,12 @@ production:
   course_reminders:
     class: CourseRemindersJob
     schedule: at 10am every day America/Chicago
+
+  # Invoices set to remind by themselves: three days before they're due, and
+  # once when they're overdue.
+  invoice_reminders:
+    class: InvoiceRemindersJob
+    schedule: at 9am every day America/Chicago
 
   staff_shift_reminders:
     class: StaffShiftRemindersJob

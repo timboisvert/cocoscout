@@ -3,8 +3,9 @@
 # The words of the emails an organization sends about an invoice: the
 # invoice itself, a reminder, and the receipt once it's paid, for each kind
 # of invoice (Invoice). Each is a seeded ContentTemplate (the
-# PlatformTemplates pattern). The invoice and the reminder only ever go when
-# a manager presses Send; the receipt goes on its own when it's paid.
+# PlatformTemplates pattern). The invoice goes when a manager presses Send;
+# a reminder when they press it again, or by itself on the days the invoice
+# was set to (InvoiceRemindersJob); the receipt on its own when it's paid.
 #
 # An invoice to anyone is an email. A contract payment's also reaches a
 # payer with a CocoScout account as a message, and says the other ways the
@@ -14,7 +15,7 @@ class InvoiceTemplates
     { "name" => "payer_name", "description" => "Who the invoice is to" },
     { "name" => "organization_name", "description" => "The organization" },
     { "name" => "invoice_number", "description" => "e.g. SG-0014" },
-    { "name" => "amount", "description" => "The amount, e.g. $1,200.00" },
+    { "name" => "amount", "description" => "What is owed (on a receipt, the invoice's total), e.g. $1,200.00" },
     { "name" => "description", "description" => "What it is for" },
     { "name" => "invoice_url", "description" => "The invoice page, where they can pay" },
     { "name" => "invoice_pdf_url", "description" => "The invoice as a PDF" }

@@ -119,7 +119,14 @@
         "^/rails/active_storage/",
         "/manage/reports/[^/]+\\.csv$",
         "/staffing/taxes/1099s\\.csv$",
-        "/courses/[0-9]+/roster\\.csv$"
+        "/courses/[0-9]+/roster\\.csv$",
+        "/pay/invoice/[^/]+/invoice$",
+        "/manage/money/invoices/[^/]+/pdf",
+        "/manage/money/files/[0-9]+",
+        "/manage/money/books/statements\\.(pdf|csv)",
+        "/manage/money/books/taxes\\.csv",
+        "/manage/money/books/bank/rules/export",
+        "/manage/ticketing/taxes\\.csv"
       ],
       "properties": {
         "open_in": "document"

@@ -34,7 +34,9 @@
         <% if @invoice.open? && @invoice.paid_cents.positive? %><p class="text-sm text-gray-600"><%= money.call(@invoice.unpaid_cents) %> still owed</p><% end %>
         <dl class="mt-3 space-y-2 text-sm">
           <div><dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Sent</dt><dd class="text-gray-900"><%= @invoice.sent_at ? "#{@invoice.sent_at.strftime('%b %-d, %Y')} to #{@invoice.bill_to_email}#{" (#{@invoice.sent_count} times)" if @invoice.sent_count > 1}" : "Not yet" %></dd></div>
-          <div><dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Reminders</dt><dd class="text-gray-900"><%= Invoice::REMINDERS[@invoice.reminders] %></dd></div>
+          <div><dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Reminders</dt><dd class="text-gray-900"><%= Invoice::REMINDERS[@invoice.reminders] %>
+            <% if (next_on = @invoice.next_reminder_on) %><span class="block text-xs text-gray-500">The next one goes by itself <%= next_on == Date.current ? "today" : next_on.strftime("%b %-d") %>.</span>
+            <% elsif @invoice.open? && @invoice.reminders != "none" && @invoice.sent_count.zero? %><span class="block text-xs text-gray-500">None go until the invoice is sent.</span><% end %></dd></div>
           <div><dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">They can pay by</dt><dd class="text-gray-900"><%= @invoice.ways_to_pay.presence || "Nothing chosen" %></dd></div>
           <% if @invoice.created_by %><div><dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Made by</dt><dd class="text-gray-900"><%= @invoice.created_by.default_person&.name || @invoice.created_by.email_address %></dd></div><% end %>
           <% if @invoice.void_reason.present? %><div><dt class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Cancelled because</dt><dd class="text-gray-900"><%= @invoice.void_reason %></dd></div><% end %>

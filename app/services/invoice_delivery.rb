@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 # Sends an invoice to whoever owes it, whichever kind it is (one the
-# organization wrote, or a contract payment's): the invoice, then reminders,
-# only when a manager presses Send, and the receipt on its own when it's
-# paid. From "ORG via CocoScout" with the PDF attached. A payer with a
+# organization wrote, or a contract payment's): the invoice when a manager
+# presses Send, then reminders (Send again, or by themselves on the days the
+# invoice was set to: InvoiceRemindersJob), and the receipt on its own when
+# it's paid. From "ORG via CocoScout" with the PDF attached. A payer with a
 # CocoScout account also gets the same words as a message. The words are
 # InvoiceTemplates; what goes in them is the invoice's terms.
 class InvoiceDelivery
@@ -27,7 +28,9 @@ class InvoiceDelivery
 
   def send_invoice!(sender: nil, note: nil)
     key = @terms.template(@invoice.sent_count.zero? ? :invoice : :reminder)
-    to = deliver(key, base_variables.merge(@terms.invoice_variables(note)), sender: sender)
+    # What is still owed, which is the whole of it until part is paid.
+    owed = ActiveSupport::NumberHelper.number_to_currency(@terms.amount_due_cents / 100.0)
+    to = deliver(key, base_variables.merge(amount: owed).merge(@terms.invoice_variables(note)), sender: sender)
     @invoice.update!(sent_at: Time.current, sent_count: @invoice.sent_count + 1) if to
     to
   end

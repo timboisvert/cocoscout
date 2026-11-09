@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 # A big run of bank rules (more lines than BankRules::IN_REQUEST), in the
-# background: every line waiting, then a notification to whoever asked.
+# background: every line waiting, then a notification to whoever asked. A
+# run that stops part way says so too (each line is its own save, so what it
+# had dealt with stays dealt with).
 class BankRulesApplyJob < ApplicationJob
   queue_as :default
 
@@ -11,7 +13,14 @@ class BankRulesApplyJob < ApplicationJob
 
     user = user_id && User.find_by(id: user_id)
     rules = rule_id ? org.bank_rules.where(id: rule_id).to_a : org.bank_rules.order(:id).to_a
-    result = BankRules.apply!(org, rules: rules, by: user)
+    begin
+      result = BankRules.apply!(org, rules: rules, by: user)
+    rescue StandardError
+      urls = Rails.application.routes.url_helpers
+      BooksNotices.failed("bank_rules_failed", user: user, organization: org, path: urls.manage_money_bank_rules_path,
+                          to_deal_with: org.bank_statement_lines.to_deal_with.count, rules_url: urls.manage_money_bank_rules_url(**url_options))
+      raise
+    end
     notify(org, user, result) if user
   ensure
     Rails.cache.delete(BankRules.applying_key(org)) if org

@@ -237,4 +237,5 @@ def seed_content_templates
   TapToPayTemplates.ensure!(overwrite: true)
   FollowerTemplates.ensure!(overwrite: true)
   InvoiceTemplates.ensure!(overwrite: true)
+  BooksTemplates.ensure!(overwrite: true)
 end

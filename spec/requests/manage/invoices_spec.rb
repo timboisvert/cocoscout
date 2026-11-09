@@ -64,6 +64,13 @@ RSpec.describe "Manage::Invoices", type: :request do
     post manage_send_money_invoice_path(invoice)
     expect(invoice.reload.sent_count).to eq(2)
     expect(flash[:notice]).to include("Reminder")
+
+    # The page says when the next reminder goes by itself (InvoiceRemindersJob).
+    get manage_money_invoice_path(invoice)
+    expect(response.body).to include("3 days before, and when overdue", "The next one goes by itself #{(invoice.due_on - 3).strftime('%b %-d')}.")
+    unsent = make_invoice
+    get manage_money_invoice_path(unsent)
+    expect(response.body).to include("None go until the invoice is sent.")
   end
 
   it "records a check by hand, moves the money into the bank, and emails the receipt once paid in full" do
