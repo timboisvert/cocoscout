@@ -21,6 +21,26 @@ module HomeHelper
 
   PILL_DOTS = { red: "bg-red-600", amber: "bg-amber-500", pink: "bg-pink-500", green: "bg-green-500", gray: "bg-gray-400" }.freeze
 
+  CHIP_ICONS = {
+    "signups" => "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 7h6m-6 4h4",
+    "tickets" => "M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z",
+    "staffing" => "M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z",
+    "cast" => "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"
+  }.freeze
+
+  # A show's chips, in order: [[key, [tone, short, long], icon path], ...],
+  # only the ones that apply (sign-ups when it takes them, tickets, staffing,
+  # cast). A canceled show, or a moved one with people still to hear, says
+  # whether its staff and cast were notified, never "Needs Booth Tech" or
+  # "All cast". Home's rows and a production's page both draw these.
+  def home_row_chips(row, staffing_on:)
+    told = row.told
+    staffing = told ? (staffing_on ? home_told_chip(told, :staff) : nil) : home_staffing_chip(row.staffing)
+    cast = told ? home_told_chip(told, :cast) : home_cast_chip(row.cast)
+    { "signups" => home_signups_chip(row.signups), "tickets" => home_ticket_chip(row.tickets), "staffing" => staffing, "cast" => cast }
+      .filter_map { |key, chip| chip && [ key, chip, CHIP_ICONS.fetch(key) ] }
+  end
+
   # [tone, short words, long words] for a show's sign-ups, or nil without a form.
   def home_signups_chip(signups)
     return nil unless signups

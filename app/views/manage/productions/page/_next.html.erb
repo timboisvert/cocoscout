@@ -1,0 +1,37 @@
+<%# The next date that's still on, in one bar: when and where, how it's
+    selling for the people who see that, and the way in. Pink while its
+    door is open, with Work the door for the organization's managers. A
+    course's next session offers attendance. Locals: page. %>
+<%
+  row = page.next_row
+  if row
+    show = row.show
+    tickets = row.tickets
+    live = tickets&.live?
+    run = page.run_for(show)
+    number = page.session_number(show)
+    facts = [ ("Class #{number.first} of #{number.last}" if number), production_page_where(show, kind: !number).presence ]
+    facts << show.secondary_name if show.secondary_name.present? && !number
+    facts << pluralize(page.students(run), "student") if run
+    facts << tickets.stats.sold_words if tickets && !tickets.draft?
+    facts << "#{tickets.stats.checked_in} checked in" if live
+  end
+%>
+<% if row %>
+  <div class="mt-4 rounded-lg border px-3 sm:px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-2.5 <%= live ? 'border-pink-200 bg-pink-50' : 'border-gray-200 bg-white' %>" data-production-next="<%= show.id %>">
+    <span class="inline-flex items-center rounded-full border px-2 py-px text-[11px] font-semibold whitespace-nowrap <%= HomeHelper::CHIP_TONES[live ? :live : :none] %>"><%= live ? "Door open" : "Next" %></span>
+    <div class="min-w-0 flex-1 basis-56 text-sm">
+      <span class="font-semibold text-gray-900"><%= production_page_day(show.date_and_time) %> · <%= show.date_and_time.strftime("%-l:%M %p") %></span>
+      <% if facts.compact.any? %><span class="text-gray-600"> · <%= facts.compact.join(" · ") %></span><% end %>
+    </div>
+    <div class="w-full sm:w-auto flex flex-wrap gap-2">
+      <%= render "shared/button", text: "Open the show", variant: "secondary", size: "small", classes: "max-sm:flex-1 max-sm:py-2.5", path: manage_show_path(page.production, show) %>
+      <% if run %>
+        <%= render "shared/button", text: "Take attendance", variant: "secondary", size: "small", classes: "max-sm:flex-1 max-sm:py-2.5", path: manage_course_offering_attendance_path(run) %>
+      <% end %>
+      <% if live && page.org_manager? %>
+        <%= render "shared/button", text: "Work the door", variant: "primary", size: "small", classes: "max-sm:w-full max-sm:py-2.5", path: door_path(tickets.listing) %>
+      <% end %>
+    </div>
+  </div>
+<% end %>

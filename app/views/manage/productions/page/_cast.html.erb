@@ -1,0 +1,35 @@
+<%# The talent pool's faces and how many roles it casts, then where the
+    next date's availability stands and, when the production asks for one,
+    who's signed its agreement (the organization's managers). Locals: page. %>
+<%
+  production = page.production
+  availability = page.availability
+  agreement = page.agreement
+  counts = [ (page.pool_count.zero? ? "Nobody in the talent pool" : "#{page.pool_count} in the talent pool"), pluralize(page.roles_count, "role") ]
+%>
+<section class="<%= ProductionPageHelper::CARD %>" data-production-cast>
+  <%= render "shared/section_heading", padding: "px-4 py-3", title_basis: "basis-24", title: "Cast and talent pool" do %>
+    <%= render "shared/button", text: "Casting", variant: "secondary", size: "small", path: manage_casting_production_path(production) %>
+  <% end %>
+  <div class="<%= ProductionPageHelper::ROW %> flex-wrap">
+    <div class="min-w-0 flex-1 basis-40 flex flex-col gap-2">
+      <% if page.pool_people.any? %>
+        <%= render "shared/faces", people: page.pool_people, size: "w-10 h-10", more: page.pool_count - page.pool_people.size %>
+      <% end %>
+      <span class="text-gray-500" data-production-pool><%= counts.join(" · ") %></span>
+    </div>
+    <%= link_to "Talent pool", manage_casting_talent_pool_path(production), class: ProductionPageHelper::ROW_LINK %>
+  </div>
+  <% if availability %>
+    <div class="<%= ProductionPageHelper::ROW %>" data-production-availability>
+      <div class="min-w-0 flex-1 text-gray-900">Availability for <%= availability[:show].date_and_time.strftime("%a, %b %-d") %> <span class="text-gray-500">· <%= availability[:answered] %> of <%= availability[:of] %> answered</span></div>
+      <%= link_to "See availability", manage_casting_availability_path(production), class: ProductionPageHelper::ROW_LINK %>
+    </div>
+  <% end %>
+  <% if agreement %>
+    <div class="<%= ProductionPageHelper::ROW %>" data-production-agreement>
+      <div class="min-w-0 flex-1 text-gray-900">Agreement <%= render "shared/pro_marker" %> <span class="text-gray-500">· <%= agreement[:signed] %> of <%= agreement[:total] %> signed</span></div>
+      <%= link_to "See who", agreement_status_manage_production_path(production), class: ProductionPageHelper::ROW_LINK %>
+    </div>
+  <% end %>
+</section>

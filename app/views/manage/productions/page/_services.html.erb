@@ -1,0 +1,14 @@
+<%# The services every date of this production needs from the organization
+    (Production Settings, Services), a line each. Locals: page. %>
+<% production = page.production %>
+<section class="<%= ProductionPageHelper::CARD %>" data-production-services>
+  <%= render "shared/section_heading", padding: "px-4 py-3", title_basis: "basis-24", title: (page.contract_production? ? "What it needs from us" : "Services") do %>
+    <%= render "shared/pro_marker" %>
+    <%= render "shared/button", text: "Change", variant: "secondary", size: "small", path: edit_manage_production_path(production, tab: production_services_tab(production)) %>
+  <% end %>
+  <% page.service_needs.each do |need| %>
+    <div class="<%= ProductionPageHelper::ROW %>">
+      <div class="min-w-0 flex-1 text-gray-900"><%= need.house_service.name %> <span class="text-gray-500">· <%= pluralize(need.people_count, "person") %>, every date</span></div>
+    </div>
+  <% end %>
+</section>

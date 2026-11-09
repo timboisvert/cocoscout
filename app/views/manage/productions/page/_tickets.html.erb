@@ -1,0 +1,67 @@
+<%# Where the production's tickets stand. The organization's managers: once
+    it sells on CocoScout, how it's selling, its link, its next dates and
+    the way into its ticketing; before that, where people get tickets (the
+    Tickets question's answer, with Change). A production team member sees
+    what Who sees sales lets them (manage/production_sales/production_card).
+    A course has none. Locals: page. %>
+<%
+  production = page.production
+  tickets_tab = edit_manage_production_path(production, tab: production_tickets_tab(production))
+%>
+<% if page.team_sales_level %>
+  <%= render "manage/production_sales/production_card", production: production, level: page.team_sales_level, margin: "" %>
+<% elsif page.tickets_box? && production.tickets_mode == "cocoscout" %>
+  <%
+    listings = page.ticket_listings
+    setup = production.production_ticketing
+    selling = setup&.enabled?
+    short = short_link_url(code: ShortLink.canonical_for!(production).code)
+  %>
+  <section class="<%= ProductionPageHelper::CARD %>" data-production-tickets>
+    <%= render "shared/section_heading", padding: "px-4 py-3", title_basis: "basis-24", title: "Tickets" do %>
+      <%= render "shared/pro_marker" %>
+      <%= render "shared/button", text: "Ticketing for this production", variant: "secondary", size: "small", path: manage_production_ticketing_path(production) %>
+    <% end %>
+    <div class="px-4 py-3 border-b border-gray-100 flex flex-col gap-2.5">
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
+        <span class="inline-flex items-center rounded-full border px-2 py-px text-[11px] font-semibold whitespace-nowrap <%= HomeHelper::CHIP_TONES[selling ? :ok : :warn] %>" data-production-tickets-state><%= selling ? "Selling" : "Paused" %></span>
+        <span class="min-w-0 flex-1 text-gray-900">
+          <% if listings.any? %>
+            <%= page.tickets_sold %> sold across <%= pluralize(listings.size, "upcoming date") %> · <%= number_to_currency(page.tickets_cents / 100.0, precision: 0) %> taken in
+          <% else %>
+            No upcoming dates on sale.
+          <% end %>
+        </span>
+      </div>
+      <%= render "shared/copy_url", url: short, show_qr: true, qr_title: "Scan for tickets" %>
+    </div>
+    <% listings.first(ProductionPage::LISTED).each do |listing| %>
+      <div class="flex border-b border-gray-100 last:border-b-0" data-production-ticket-date="<%= listing.id %>">
+        <%= render "manage/ticketing/date_line", listing: listing, stats: page.ticket_stats.fetch(listing.id) %>
+      </div>
+    <% end %>
+    <% if page.contract %>
+      <div class="<%= ProductionPageHelper::ROW %>">
+        <div class="min-w-0 flex-1 text-gray-900">Who else sees its sales<% if page.contract.shares_ticket_sales && page.contract_people.any? %> <span class="text-gray-500">· <%= pluralize(page.contract_people.size, "person") %> on the contract</span><% end %></div>
+        <%= link_to "Change", manage_production_ticketing_visibility_path(production), class: ProductionPageHelper::ROW_LINK %>
+      </div>
+    <% end %>
+    <div class="flex flex-wrap gap-x-5 px-4">
+      <%= link_to "Orders for this production", manage_ticket_orders_path(production_id: production.id), class: "py-2.5 text-sm font-medium text-pink-600 hover:text-pink-700" %>
+      <% if listings.size > ProductionPage::LISTED %>
+        <%= link_to "All #{listings.size} dates", manage_production_ticketing_path(production), class: "py-2.5 text-sm font-medium text-pink-600 hover:text-pink-700" %>
+      <% end %>
+    </div>
+  </section>
+<% elsif page.tickets_box? %>
+  <section class="<%= ProductionPageHelper::CARD %>" data-production-tickets>
+    <%= render "shared/section_heading", padding: "px-4 py-3", title_basis: "basis-24", title: "Tickets" %>
+    <div class="p-4">
+      <% if production.tickets_mode == "unset" %>
+        <p class="text-sm text-gray-500">Where people get tickets isn't set. <%= link_to "Set it", tickets_tab, class: "text-pink-500 hover:text-pink-600 underline" %>: sold on CocoScout, somewhere else, or no tickets.</p>
+      <% else %>
+        <%= render "shared/ticketing/tickets_status", production: production, edit_path: tickets_tab %>
+      <% end %>
+    </div>
+  </section>
+<% end %>

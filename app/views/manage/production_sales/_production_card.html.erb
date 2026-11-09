@@ -2,7 +2,8 @@
     (Tim, 2026-10-16): the next few dates with how each is selling, beside
     the production's link. A manager at Everything gets a Ticket sales button
     and each date links to its sales page; at Numbers there's no button and
-    the rows don't link. Locals: production, level (:full or :numbers). %>
+    the rows don't link. Locals: production, level (:full or :numbers),
+    margin (the card's bottom margin, default "mb-8"). %>
 <%
   listings = Current.organization.ticket_listings.where(production: production).where.not(status: %w[draft canceled]).joins(:show)
                     .where(shows: { canceled: false }).where("shows.date_and_time >= ?", Time.current.beginning_of_day)
@@ -11,7 +12,7 @@
   link_url = short_link_url(code: ShortLink.canonical_for!(production).code)
   full = level == :full
 %>
-<div class="border border-gray-200 rounded-lg overflow-hidden mb-8 bg-white" data-production-tickets-card>
+<div class="border border-gray-200 rounded-lg overflow-hidden <%= local_assigns.fetch(:margin, "mb-8") %> bg-white" data-production-tickets-card>
   <%= render "shared/section_heading", padding: "px-4 py-3", title: "Tickets" do %>
     <%= render "shared/pro_marker" %>
     <% if full %>

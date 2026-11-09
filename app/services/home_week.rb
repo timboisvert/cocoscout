@@ -90,6 +90,11 @@ class HomeWeek
 
   def shows_on(day) = rows_by_day.fetch(day, []).map(&:show)
 
+  # One show's row, whether or not its day is in the range: a production's
+  # page lists its next dates however far off they are (ProductionPage). A
+  # show outside the range gets no staffing, since its shifts weren't loaded.
+  def row(show) = row_for(show)
+
   # { Date => [Staffing] } for the shifts no show row counts: the roles that
   # aren't per show (bartender, house staff, security work the whole night,
   # not one show), and every shift on a day with no show (a private party
@@ -224,6 +229,7 @@ class HomeWeek
   def staffing_for(show)
     return nil unless staffing_on? && @per_show_roles.any?
     return nil if show.canceled # its row says whether the staff were told (told_for)
+    return nil unless days.include?(show.date_and_time.to_date) # its shifts weren't loaded: say nothing
 
     day_shifts = (@shifts_by_day[show.date_and_time.to_date] || []).select { |s| s.house_role&.show_specific? }
     mine = day_shifts.select do |shift|

@@ -1,0 +1,28 @@
+<%# A first-party production's money, all time, for the organization's
+    managers: what it took in, what went out, what's left, and the way into
+    its money and its payouts. Locals: page. %>
+<%
+  production = page.production
+  money = page.money
+  with_data = money[:shows_with_data].to_i
+  tiles = [
+    [ "Taken in", money[:gross_revenue], "tickets and other income" ],
+    [ "Paid out", money[:cost_of_shows], "performers and expenses" ],
+    [ "What's left", money[:gross_profit], (with_data.positive? ? "from #{pluralize(with_data, 'show')}" : nil) ]
+  ]
+%>
+<section class="<%= ProductionPageHelper::CARD %>" data-production-money>
+  <%= render "shared/section_heading", padding: "px-4 py-3", title_basis: "basis-24", title: "Money" do %>
+    <%= render "shared/pro_marker" %>
+    <%= render "shared/button", text: "This production's money", variant: "secondary", size: "small", path: manage_money_production_financials_path(production) %>
+  <% end %>
+  <div class="px-4 py-3 border-b border-gray-100 last:border-b-0">
+    <%= render "manage/productions/page/tiles", tiles: tiles %>
+  </div>
+  <% if production.pays_performers %>
+    <div class="<%= ProductionPageHelper::ROW %>">
+      <div class="min-w-0 flex-1 text-gray-900">Performers are paid</div>
+      <%= link_to "Payouts", manage_money_production_payouts_path(production), class: ProductionPageHelper::ROW_LINK %>
+    </div>
+  <% end %>
+</section>

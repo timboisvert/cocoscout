@@ -475,7 +475,7 @@ class Show < ApplicationRecord
 
   # A list row's picture (shared/wide_thumb): this show's wide image, or the
   # production's. Wide ones only, never a poster (Tim, 2026-10-16); nil when
-  # there's neither, and the row leaves the space blank.
+  # there's neither, and the row draws the name's two letters in the box.
   def wide_image_for_rows
     return safe_wide_image_variant(:small) if wide_image.attached?
 
