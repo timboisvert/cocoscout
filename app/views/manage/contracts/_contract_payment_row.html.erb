@@ -107,16 +107,32 @@
   # A minus-fee settlement says how it got there: what the night sold, less
   # our fee (Tim, 2026-10-11: "We sold $695, subtracted their $300 and $50
   # for a booth tech").
+  # A settlement for several nights lists its working a day at a time: each
+  # night's ticket sales, then our fee for each night, then (below) each
+  # charge taken out, so every line ties to a date and to the contract's terms
+  # (Tim, 2026-11-08). A long stretch (a month, a whole run) sums each instead.
+  day = ->(show) { show.date_and_time.strftime("%b %-d") }
   fee_working = nil
   if !is_incoming && contract.ticket_revenue_minus_fee? && !awaiting_amount && folded_items.empty? && payment.amount.to_f.positive?
-    working_shows = contract.shows_for_payment(payment)
+    # Only the nights whose sales are in: the amount is worked out from those.
+    working_shows = contract.shows_for_payment(payment).select { |s| s.show_financials&.has_data? }
     sold = working_shows.sum { |s| contract.settled_revenue(s.show_financials) }
     fee_taken = (sold - payment.amount.to_f).round(2)
     if fee_taken.positive?
-      sold_label = working_shows.one? ? "Ticket sales — #{working_shows.first.date_and_time.strftime('%b %-d')}" : "Ticket sales"
-      fee_working = [ [ sold_label, sold ], [ "Our fee", -fee_taken ] ]
+      nightly_fees = contract.fee_by_night(working_shows, total: fee_taken)
+      fee_working =
+        if nightly_fees
+          working_shows.map { |s| [ "Ticket sales — #{day.(s)}", contract.settled_revenue(s.show_financials) ] } +
+            nightly_fees.map { |s, fee| [ (nightly_fees.many? ? "Our fee — #{day.(s)}" : "Our fee"), -fee ] }
+        else
+          [ [ "Ticket sales", sold ], [ "Our fee", -fee_taken ] ]
+        end
     end
   end
+  # The same for a settlement still waiting on sales: the fee we hold back,
+  # night by night when it covers more than one.
+  held_back_nights = held_back_fee ? contract.fee_by_night(contract.settlement_shows_for(payment), total: held_back_fee) : nil
+  held_back_nights = nil unless held_back_nights&.many?
   itemized = deductions.any? || folded_items.any? || fee_working.present?
   moved_label =
     if is_incoming
@@ -474,8 +490,15 @@
         <% if our_take %>
           <%# Nothing to hand back yet: the fee and the charges are ours
               however the night sells. %>
-          <dt class="text-gray-600">Our fee, held back from ticket sales</dt>
-          <dd class="text-right tabular-nums text-gray-900"><%= number_to_currency(held_back_fee) %></dd>
+          <% if held_back_nights %>
+            <% held_back_nights.each do |night, fee| %>
+              <dt class="text-gray-600">Our fee — <%= day.(night) %></dt>
+              <dd class="text-right tabular-nums text-gray-900"><%= number_to_currency(fee) %></dd>
+            <% end %>
+          <% else %>
+            <dt class="text-gray-600">Our fee, held back from ticket sales</dt>
+            <dd class="text-right tabular-nums text-gray-900"><%= number_to_currency(held_back_fee) %></dd>
+          <% end %>
           <% deductions.each do |charge| %>
             <dt class="min-w-0 text-gray-600"><%= charge.description %></dt>
             <dd class="text-right tabular-nums text-gray-900"><%= number_to_currency(charge.amount) %></dd>

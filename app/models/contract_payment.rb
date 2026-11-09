@@ -281,7 +281,13 @@ class ContractPayment < ApplicationRecord
     return false unless amount_tbd? || notes.to_s.include?("Auto-calculated from show financials")
     return false unless contract&.revenue_share? || contract&.ticket_revenue_minus_fee?
 
-    show ? show.date_and_time > Time.current : (due_date.present? && due_date > Date.current)
+    # A week's or a month's settlement waits for the last night it covers.
+    last_night = if contract.period_settlement?(self)
+      contract.settlement_shows_for(self).filter_map(&:date_and_time).max
+    else
+      show&.date_and_time
+    end
+    last_night ? last_night > Time.current : (due_date.present? && due_date > Date.current)
   end
 
   # Whether this payment has been added to a payout run.
