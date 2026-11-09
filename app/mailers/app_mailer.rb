@@ -19,6 +19,8 @@ class AppMailer < ApplicationMailer
     @to = params[:to]
     @variables = params[:variables] || {}
     @email_batch_id = params[:email_batch_id]
+    # An email that is itself about the app leaves the footer's line about it off.
+    @hide_app_note = params[:hide_app_note]
 
     # Render the template
     rendered = ContentTemplateService.render(@template_key, @variables)
