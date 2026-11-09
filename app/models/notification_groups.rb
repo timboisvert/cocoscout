@@ -82,6 +82,33 @@ module NotificationGroups
     "contract_invoice" => "contracts", "contract_invoice_reminder" => "contracts"
   }.freeze
 
+  # Fewer emails (Tim, 2026-11-09: "remove as many emails as possible for
+  # cost reasons. Then move as much to notifications as possible"). A notice
+  # in TEMPLATES or VOICED is a notification first. Whether it also emails
+  # is email?: someone with no account always gets the email, since it is
+  # all they have; someone with an account gets one only for the notices
+  # below, and then only while their Email switch for the group is on.
+  #
+  # EMAILS_TOO: an email goes at once as well as the notification. A show
+  # canceled or moved, being asked to cover, and everything about a
+  # person's own shifts: the week's schedule, a new shift, a change, one
+  # taken off, canceled or moved, the day-before reminder, and a cover
+  # shift they claimed. The shift ones were cut for an afternoon and put
+  # back (Tim, 2026-11-09: "stuff related to shifts ... should all be
+  # emails. We might have been a little overzealous"): with almost nobody
+  # on the app yet, a missed shift notice is a missed shift.
+  EMAILS_TOO = %w[show_canceled show_moved vacancy_invitation shift_vacancy_invitation
+                  shift_canceled shift_moved staff_shift_changed staff_shift_removed
+                  staff_shift_added staff_schedule_notification staff_schedule_changes staff_shift_reminder shift_claim_confirmed].freeze
+  # EMAIL_AS_BEFORE: the email is the point, whatever the switch says. A tax
+  # form's availability has to be told by mail or email; an onboarding
+  # invitation and an invoice carry a link to someone who may have no
+  # account; a canceled course goes to its students. The W-9 and
+  # availability requests are a manager's own send, drafted as an email on
+  # their page; they stay as they are until those pages change.
+  EMAIL_AS_BEFORE = %w[staff_1099_ready staff_onboarding_invite contract_invoice contract_invoice_reminder course_cancelled_registrant course_registration_confirmed
+                       staff_w9_request staff_w9_reminder staff_availability_confirm_request].freeze
+
   # Notices whose words are the news and whose link goes to a page that
   # doesn't repeat them (Tim, 2026-11-09, on Hours approved: "all this detail
   # in the message but then none in the notification"). A tap opens the
@@ -113,6 +140,20 @@ module NotificationGroups
   def voiced_category(template_key) = VOICED[template_key.to_s]
 
   def opens_its_words?(template_key) = OPENS_ITS_WORDS.include?(template_key.to_s)
+
+  # Whether this notice's email goes to this person (a Person or a User).
+  # A template that isn't a notification is none of this rule's business.
+  def email?(template_key, person)
+    key = template_key.to_s
+    category = category_for_template(key) || voiced_category(key)
+    return true if category.nil? || EMAIL_AS_BEFORE.include?(key)
+
+    user = person.is_a?(User) ? person : (person.user if person.respond_to?(:user))
+    return true if user.nil?
+    return false unless EMAILS_TOO.include?(key)
+
+    user.notification_email?(category)
+  end
 
   # The list's filters: the areas that have something in them.
   def areas = ALL.select(&:live).map(&:area).compact.uniq

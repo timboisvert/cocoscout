@@ -6,7 +6,9 @@ import { Controller } from "@hotwired/stimulus"
 // sent. Counts follow along. Nothing saves until Save.
 export default class extends Controller {
   static targets = ["switch", "groupCount", "planCount", "intro"]
-  static values = { plans: Object, custom: Array }
+  // notified: the kinds this person gets as notifications, not emails
+  // (a manager's sales as they happen; none for a bare address).
+  static values = { plans: Object, custom: Array, notified: Array }
 
   connect() {
     this.custom = new Set(this.customValue)
@@ -53,8 +55,11 @@ export default class extends Controller {
     })
 
     this.planCountTargets.forEach((el) => {
-      const count = el.dataset.plan === "custom" ? this.custom.size : (this.plansValue[el.dataset.plan] || []).length
-      el.textContent = count === 1 ? "1 email" : `${count} emails`
+      const kinds = el.dataset.plan === "custom" ? [...this.custom] : (this.plansValue[el.dataset.plan] || [])
+      const notified = kinds.filter((kind) => this.notifiedValue.includes(kind)).length
+      const count = kinds.length - notified
+      const emails = count === 1 ? "1 email" : `${count} emails`
+      el.textContent = notified ? `${emails} · ${notified === 1 ? "1 notification" : `${notified} notifications`}` : emails
     })
 
     if (this.hasIntroTarget) {

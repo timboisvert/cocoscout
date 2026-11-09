@@ -16,6 +16,10 @@ class TicketingNotifications
   Plan = Data.define(:key, :label, :description)
   Recipient = Data.define(:key, :name, :email, :user, :plan, :kinds) do
     def address? = key.start_with?("email:")
+    # Of what their plan takes in, what arrives as an email and what as a
+    # notification only (AS_THEY_HAPPEN, for someone with an account).
+    def emailed_kinds = address? ? kinds : kinds - AS_THEY_HAPPEN
+    def notified_kinds = kinds - emailed_kinds
   end
 
   KINDS = [
@@ -39,6 +43,12 @@ class TicketingNotifications
   ].freeze
 
   KEYS = KINDS.map(&:key).freeze
+  # Each sale, comp and pass as it happens (Tim, 2026-11-09: fewer emails;
+  # 204 of a month's emails were these, to one manager). A manager whose
+  # plan takes one in gets it as a notification, never as an email. An
+  # address that isn't a manager's still gets the email: it has no account
+  # to be notified through.
+  AS_THEY_HAPPEN = KINDS.select { |k| k.group == "Sales as they happen" }.map(&:key).freeze
   USUAL = KINDS.select(&:default_on).map(&:key).freeze
   MONEY = KINDS.select { |k| k.group == "Money" }.map(&:key).freeze
 
@@ -99,7 +109,7 @@ class TicketingNotifications
 
   # The email addresses a notice goes to right now.
   def emails_for(kind_key)
-    recipients.select { |r| r.kinds.include?(kind_key) }.map { |r| r.email.downcase }.uniq
+    recipients.select { |r| r.emailed_kinds.include?(kind_key) }.map { |r| r.email.downcase }.uniq
   end
 
   # Sets one person's or address's plan. key "user:12", "email:x" or "new"

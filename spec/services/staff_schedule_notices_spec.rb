@@ -56,7 +56,9 @@ RSpec.describe StaffScheduleNotices do
     shift(door, saturday, hours: 4).shift_assignments.create!(person: jamie, position: 1)
 
     expect(notices.plan[:update].map { |u| [ u[:person].name, u[:reason] ] }).to eq([ [ "Jamie Cruz", :new ] ])
-    result = send_updates(everyone: true)
+    # A notification and an email: shift notices all still email (Tim, 2026-11-09).
+    result = nil
+    expect { result = send_updates(everyone: true) }.to have_enqueued_job(ActionMailer::MailDeliveryJob).once
     expect(result[:notified]).to eq(1)
 
     n = last_notification(jamie)
@@ -107,7 +109,11 @@ RSpec.describe StaffScheduleNotices do
 
     s.update!(starts_at: friday - 30.minutes, ends_at: friday + 5.hours)
     expect(notices.plan[:update].map { |u| u[:reason] }).to eq([ :changed ])
-    send_updates
+    # The email still goes, while their Email switch for shifts is on.
+    expect { send_updates }.to have_enqueued_job(ActionMailer::MailDeliveryJob).once
+    jamie.user.set_notification_switches(email: { "shifts" => false })
+    jamie.user.save!
+    expect(NotificationGroups.email?("staff_shift_changed", jamie.reload)).to be(false)
     n = last_notification(jamie)
     expect(n.kind).to eq("staff_shift_changed")
     expect(n.title).to eq("New time for your Bartender shift, Fri Nov 13: 5:30–11:00 PM")

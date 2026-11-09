@@ -227,6 +227,7 @@ class ContentTemplateService
       # Deliver via email channel
       if channel == :email || channel == :both
         count = deliver_as_email(
+          template_key: template_key,
           subject: subject,
           body: result[:body],
           recipients: recipients,
@@ -300,6 +301,7 @@ class ContentTemplateService
           rendered = render(template_key, vars)
 
           count = deliver_as_email(
+            template_key: template_key,
             subject: rendered[:subject],
             body: rendered[:body],
             recipients: [ person ],
@@ -516,11 +518,16 @@ class ContentTemplateService
       )
     end
 
+    # template_key: when given, a notice that has become a notification
+    # emails only the people NotificationGroups.email? says it still does
+    # (someone with no account; a time-critical notice while their Email
+    # switch is on).
     def deliver_as_email(subject:, body:, recipients:, production:,
-                         mailer_class:, mailer_method:, email_batch:, variables:)
+                         mailer_class:, mailer_method:, email_batch:, variables:, template_key: nil)
       count = 0
       Array(recipients).each do |person|
         next unless person.respond_to?(:email) && person.email.present?
+        next if template_key && !NotificationGroups.email?(template_key, person)
 
         if mailer_class && mailer_method
           # Use the specified mailer

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_09_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_09_170000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -4792,6 +4792,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_160000) do
     t.boolean "message_digest_enabled", default: true
     t.datetime "last_message_digest_sent_at"
     t.integer "digest_throttle_days", default: 1, null: false
+    t.integer "digests_ignored", default: 0, null: false
     t.jsonb "dismissed_guides", default: {}, null: false
     t.jsonb "recent_production_ids", default: [], null: false
     t.datetime "deletion_requested_at"
