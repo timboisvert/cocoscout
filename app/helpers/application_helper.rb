@@ -11,8 +11,13 @@ module ApplicationHelper
   def canonical_link_tag(path = nil)
     return if path.nil? && content_for(:head).to_s.include?('rel="canonical"')
 
+    tag.link(rel: "canonical", href: canonical_address(path || request.path))
+  end
+
+  # A path's one address: on cocoscout.com, with no query string.
+  def canonical_address(path = request.path)
     base = Rails.env.production? ? CANONICAL_HOST : request.base_url
-    tag.link(rel: "canonical", href: "#{base}#{path || request.path}")
+    "#{base}#{path}"
   end
 
   # `impersonating?` / `impersonator_user_id` live on ApplicationController

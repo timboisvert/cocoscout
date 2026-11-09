@@ -93,6 +93,29 @@ RSpec.describe "Mics pre-launch checklist", type: :request do
     end
   end
 
+  # Search Console, 2026-11-09: 562 filter combinations each named themselves
+  # as the original, and Google had to pick between them.
+  describe "a filtered page names the page without its filters" do
+    def canonical_and_og_url
+      doc = Nokogiri::HTML(response.body)
+      [ doc.css('link[rel="canonical"]').map { |l| l["href"] }, doc.at('meta[property="og:url"]')["content"] ]
+    end
+
+    it "on a city, a bucket, a mic and a search" do
+      {
+        "/mics/chicago-il?access=fully&age=21&signup=online&view=map&when=tonight" => "/mics/chicago-il",
+        "/mics/chicago-il/tonight?access=fully&signup=in_person" => "/mics/chicago-il/tonight",
+        "#{mics_detail_path(mic.slug)}?view=list" => mics_detail_path(mic.slug),
+        "/mics/search?q=mustache" => "/mics/search",
+        "/mics/chicago-il" => "/mics/chicago-il"
+      }.each do |visited, named|
+        get visited
+        expect(response).to have_http_status(:ok), visited
+        expect(canonical_and_og_url).to eq([ [ "http://www.example.com#{named}" ], "http://www.example.com#{named}" ]), visited
+      end
+    end
+  end
+
   describe "Nominatim attribution is rendered where venue is geocoded" do
     it "is present on the mic detail page" do
       get mics_detail_path(mic.slug)
