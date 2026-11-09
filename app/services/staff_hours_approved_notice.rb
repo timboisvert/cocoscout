@@ -9,6 +9,10 @@
 # (named when the run is scheduled), they'll hear when it's on its way, and
 # nothing reaches them until they've added a bank. Hours marked as paid
 # outside CocoScout are not "approved" news and get nothing.
+#
+# A notification only (Tim, 2026-11-09: it emailed as well, and the
+# notification opened My Payments, which says none of this). No email goes;
+# a tap opens the notice's own page, with the list.
 class StaffHoursApprovedNotice
   def self.send!(entries, organization:)
     new(organization).send!(entries)
@@ -52,9 +56,7 @@ class StaffHoursApprovedNotice
       recipients: [ person ],
       organization: organization,
       message_type: :system,
-      visibility: :personal,
-      mailer_class: StaffingNoticeMailer.with(organization_id: organization.id),
-      mailer_method: :notice
+      visibility: :personal
     )
   end
 

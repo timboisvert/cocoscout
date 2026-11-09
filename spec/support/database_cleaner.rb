@@ -185,7 +185,7 @@ def seed_content_templates
     { key: "staff_hours_approved", name: "Hours approved (staff)", subject: "Hours approved: {{hours_words}}{{#amount}} · {{amount}}{{/amount}}",
       push_body: "{{organization_name}} approved {{hours_words}}{{#amount}} · {{amount}}{{/amount}}",
       body: "<p>Hi {{recipient_name}}, {{organization_name}} approved your hours:</p><ul>{{entries_list}}</ul><p>{{next_line}}</p><p><a href=\"{{my_payments_link}}\">See your pay</a></p>",
-      category: "shows", channel: "both" },
+      category: "shows", channel: "message" },
     { key: "staff_shift_added", name: "Shift added (staff)", subject: "New shift: {{role_label}}, {{shift_day}}",
       push_body: "New shift: {{role_label}}, {{shift_date_short}}, {{shift_hours}}{{#location_name}} at {{location_name}}{{/location_name}}",
       body: "<p>Hi {{recipient_name}}, {{organization_name}} put you on {{role_label}}, {{shift_day}}, {{shift_hours}}{{#location_name}} at {{location_name}}{{/location_name}}.</p>{{#shows_line}}<p>{{shows_line}}</p>{{/shows_line}}<p><a href=\"{{shift_url}}\">See this shift</a></p><p>If you can't make it, say so on My Shifts so the team can sort out cover.</p>",

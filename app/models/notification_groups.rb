@@ -82,6 +82,13 @@ module NotificationGroups
     "contract_invoice" => "contracts", "contract_invoice_reminder" => "contracts"
   }.freeze
 
+  # Notices whose words are the news and whose link goes to a page that
+  # doesn't repeat them (Tim, 2026-11-09, on Hours approved: "all this detail
+  # in the message but then none in the notification"). A tap opens the
+  # notice's own page, where the words and the link both are, instead of
+  # following the link. A shift notice isn't one: its link is the shift.
+  OPENS_ITS_WORDS = %w[staff_hours_approved].freeze
+
   # TicketingNotifications::KINDS' groups, to these.
   TICKETING = {
     "Sales as they happen" => "ticketing_sales",
@@ -104,6 +111,8 @@ module NotificationGroups
   def category_for_template(template_key) = TEMPLATES[template_key.to_s]
 
   def voiced_category(template_key) = VOICED[template_key.to_s]
+
+  def opens_its_words?(template_key) = OPENS_ITS_WORDS.include?(template_key.to_s)
 
   # The list's filters: the areas that have something in them.
   def areas = ALL.select(&:live).map(&:area).compact.uniq
