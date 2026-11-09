@@ -158,6 +158,13 @@ characters; that file is fine in git). Claude never runs `publishListing` or
 
 ### Tim's one-time steps (Google Cloud and Play Console, about 15 minutes)
 
+**Done 2026-11-08.** The project is `cocoscout-play`, the service account is
+`play-publisher@cocoscout-play.iam.gserviceaccount.com`, the key is in place,
+and Claude's check read the app's listing with it. The first upload with it
+went through the same day: 1.1.3 (build 8) to internal testing as a draft,
+`publishReleaseBundle` with no flags. The steps stay here for a new Mac or a
+replaced key.
+
 1. **Google Cloud console** (console.cloud.google.com), signed in as the
    Play developer account's owner: pick or create a project (e.g.
    `cocoscout-play`).
@@ -170,6 +177,14 @@ characters; that file is fine in git). Claude never runs `publishListing` or
 4. Open the service account → **Keys → Add key → Create new key → JSON**. A
    `.json` file downloads. It is a password: never into the repo, a chat, or
    a commit.
+   Google refused this at first ("Service account key creation is disabled",
+   policy `iam.disableServiceAccountKeyCreation`, on by default for newer
+   organizations). The way past it, for this project only: on the
+   organization, **IAM → Grant access** gives your own account the role
+   Organization Policy Administrator; then on `cocoscout-play`, **IAM & Admin
+   → Organization Policies → Disable service account key creation (Legacy) →
+   Manage policy → Override parent's policy**, one rule with enforcement
+   **Off**. That override is still set.
 5. Save that file in 1Password (CocoScout, next to the upload key), then put
    it where the build looks for it:
    ```bash
@@ -184,8 +199,12 @@ characters; that file is fine in git). Claude never runs `publishListing` or
    user**. (Google can take up to a day before the new account's uploads are
    accepted.)
 7. Tell Claude it's done. Claude checks the key reads the app's listing
-   (`./gradlew bootstrapListing` into a throwaway copy, nothing uploaded),
-   and the first upload rides the next release.
+   (`./gradlew bootstrapListing --app-details --listings --release-notes`
+   in a throwaway copy of `android/` made without the keystore, nothing
+   uploaded), and the first upload rides the next release. The three flags
+   matter: a bare `bootstrapListing` also asks for in-app products, and
+   Google answers that one with 403 "Please migrate to the new publishing
+   API" whatever the key's permissions.
 
 If Tim would rather the key never sit on disk, Claude can run the upload as
 `ANDROID_PUBLISHER_CREDENTIALS="$(op read 'op://<vault>/<item>/<file>')" ./gradlew publishReleaseBundle`

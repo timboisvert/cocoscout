@@ -66,6 +66,8 @@ class ContractDateChanges
       shows = shows_for(contract, rental)
       was_show_start = rental.effective_event_starts_at
       was_rental_start = rental.starts_at
+      # Asked before the night moves: the question is about where it was.
+      payments = movable_payments(contract, rental, shows)
 
       rental.update!(starts_at: starts_at, ends_at: ends_at, event_starts_at: event_starts_at, event_ends_at: event_ends_at)
 
@@ -80,16 +82,51 @@ class ContractDateChanges
         show.update!(changes)
       end
 
-      # Pending payments tied to those shows move with them, by the calendar
-      # days the show moved (seconds across a clock change, Nov 1 to Nov 3,
-      # came to a day short); paid ones are history and keep the date they
-      # were actually settled on.
+      # The night's pending payments move with it, by the calendar days the
+      # show moved (seconds across a clock change, Nov 1 to Nov 3, came to a
+      # day short); paid ones are history and keep the date they were actually
+      # settled on. "The night's" is the same question remove! asks: linked to
+      # its show, or falling due on its date. Only the linked ones used to
+      # move, so a fee nobody had linked stayed behind and went overdue on a
+      # date with no show (Full Five Fridays' Nov 6, moved to Nov 20; Tim,
+      # 2026-11-08).
       day_shift = (rental.effective_event_starts_at.to_date - was_show_start.to_date).to_i
-      contract.contract_payments.status_pending.where(show_id: shows.map(&:id)).find_each do |payment|
-        payment.update!(due_date: payment.due_date + day_shift)
-      end
+      payments.each { |payment| redate_payment!(payment, payment.due_date + day_shift, also_from: was_show_start.to_date) }
 
       starts_at.strftime("%b %-d")
+    end
+
+    # Put a pending payment on another date, and take what it says with it: a
+    # name that carries its date ("Booth Tech — Jan 16, 2027", "Jan 16 — 50%
+    # to them") and the date each folded service was billed for. Left alone,
+    # a moved payment went on naming the day it was moved from.
+    def redate_payment!(payment, to, also_from: nil)
+      from = payment.due_date
+      shift = (to - from).to_i
+      return payment if shift.zero?
+
+      moves = [ from, also_from ].compact.uniq.to_h { |date| [ date, date + shift ] }
+      components = Array(payment.components).map do |component|
+        billed_for = (Date.parse(component["billed_for"].to_s) rescue nil)
+        moves.key?(billed_for) ? component.merge("billed_for" => moves[billed_for].to_s) : component
+      end
+      payment.update!(due_date: to, description: redated_text(payment.description, moves), components: components)
+      payment
+    end
+
+    # `text` with each date in `moves` (old => new) written as the new one,
+    # in the two shapes payment names use: "Jan 16, 2027" and "Jan 16".
+    def redated_text(text, moves)
+      return text if text.blank? || moves.empty?
+
+      written = moves.each_with_object({}) do |(from, to), map|
+        map[from.strftime("%b %-d, %Y")] = to.strftime("%b %-d, %Y")
+        map[from.strftime("%b %-d")] = to.strftime("%b %-d")
+      end
+      # Longest first, so "Jan 16, 2027" is taken whole, and one pass, so a
+      # date just written is never moved again.
+      pattern = Regexp.union(written.keys.sort_by { |key| -key.length })
+      text.gsub(/\b(?:#{pattern.source})(?!\d)/) { |match| written[match] }
     end
 
     # Every per-event service line (and a staged amendment's) on this contract
@@ -284,6 +321,13 @@ class ContractDateChanges
     # the same way: a payment that check would count as this date's has to be a
     # payment this one is willing to remove.
     def drop_pending_payments!(contract, rental, shows)
+      pending_payments_for_date(contract, rental, shows).reject(&:in_payout_run?).each(&:destroy!).size
+    end
+
+    # The pending payments that are this date's: linked to one of its shows,
+    # or falling due on it (see #drop_pending_payments! for why the by-date
+    # half doesn't ask for a nil show_id).
+    def pending_payments_for_date(contract, rental, shows)
       other_dates_show_ids = Show.where(
         space_rental_id: contract.space_rentals.where.not(id: rental.id).select(:id)
       ).pluck(:id).to_set
@@ -293,7 +337,21 @@ class ContractDateChanges
                         .where(due_date: rental.starts_at.to_date)
                         .reject { |p| other_dates_show_ids.include?(p.show_id) }
 
-      (scope.to_a + by_date).uniq.reject(&:in_payout_run?).each(&:destroy!).size
+      (scope.to_a + by_date).uniq
+    end
+
+    # What moves when the date does. A week's or a month's settlement stays
+    # where it is: it's due for its whole stretch, not for this night. And
+    # when the contract has another booking the same day, "due that day"
+    # can't say whose a payment is, so only the linked ones move.
+    def movable_payments(contract, rental, shows)
+      day = rental.starts_at.to_date
+      shares_the_day = contract.space_rentals.where.not(id: rental.id).any? { |other| other.starts_at.to_date == day }
+      show_ids = shows.map(&:id)
+
+      pending_payments_for_date(contract, rental, shows)
+        .reject { |payment| contract.period_settlement?(payment) }
+        .select { |payment| !shares_the_day || show_ids.include?(payment.show_id) }
     end
   end
 end

@@ -132,7 +132,7 @@ class ContractPaymentSyncService
     attrs = { amount: 0, amount_tbd: true }
     if @contract.ticket_revenue_minus_fee? && payment.auto_shortfall?
       attrs.merge!(direction: "outgoing", auto_shortfall: false,
-                   description: settlement_description(period_label_for(payment)))
+                   description: @contract.minus_fee_settlement_name(payment))
     end
     payment.update!(attrs)
   end
@@ -178,14 +178,8 @@ class ContractPaymentSyncService
     elsif payment.direction_incoming? && payment.auto_shortfall?
       # Revenue caught back up — the settlement faces them again.
       payment.update!(direction: "outgoing", auto_shortfall: false,
-                      description: settlement_description(label))
+                      description: @contract.minus_fee_settlement_name(payment, shows))
     end
-  end
-
-  def settlement_description(label)
-    fee = ActionController::Base.helpers.number_to_currency(@contract.flat_fee_per_show)
-    base = "Ticket revenue less #{fee} fee"
-    @contract.settles_periodically? && label ? "#{base} — #{label}" : base
   end
 
   # How the settlement names its stretch of dates: a single night by its date,

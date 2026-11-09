@@ -327,13 +327,24 @@
               <p class="text-[11px] text-amber-600"><%= pluralize(money[:pending_shows], "show") %> still awaiting financials — revenue so far only.</p>
             <% end %>
             <%# Cash flow through contract payments (subset of the above for
-                ticket-based deals; the whole story for flat/rent deals). %>
+                ticket-based deals; the whole story for flat/rent deals).
+                Received is money they actually paid us. A charge that came
+                out of their share on a payout run is settled, but nobody paid
+                it, so it has its own line; the amount going out is their
+                share before those come off. %>
+            <% deducted = @contract.total_deducted_from_payouts %>
             <div class="flex justify-between border-t border-gray-100 pt-3">
               <dt class="text-xs text-gray-400">Payments received</dt>
-              <dd class="text-xs text-gray-600 tabular-nums"><%= number_to_currency(@contract.total_incoming) %></dd>
+              <dd class="text-xs text-gray-600 tabular-nums"><%= number_to_currency(@contract.total_payments_arrived) %></dd>
             </div>
+            <% if deducted.positive? %>
+              <div class="flex justify-between">
+                <dt class="text-xs text-gray-400">Deducted from their payouts</dt>
+                <dd class="text-xs text-gray-600 tabular-nums"><%= number_to_currency(deducted) %></dd>
+              </div>
+            <% end %>
             <div class="flex justify-between">
-              <dt class="text-xs text-gray-400">Payments scheduled out</dt>
+              <dt class="text-xs text-gray-400"><%= deducted.positive? ? "Payments scheduled out, before deductions" : "Payments scheduled out" %></dt>
               <dd class="text-xs text-gray-600 tabular-nums"><%= number_to_currency(@contract.total_outgoing) %></dd>
             </div>
           </dl>

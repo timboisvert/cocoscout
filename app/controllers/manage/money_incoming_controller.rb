@@ -220,10 +220,13 @@ module Manage
     # full Received page.
     RECENT_RECEIVED_LIMIT = 6
 
-    # Money owed to this org that has actually arrived, however it came
-    # (pay link, recorded check, netted out of a payout).
+    # Money owed to this org that has actually arrived: paid on a pay link, or
+    # recorded by hand. A charge netted out of their payout is settled, but
+    # nobody paid it, so it isn't a payment received; it shows as a deduction
+    # on the share it came out of (Tim, 2026-11-08: Received listed six
+    # "Deducted from payout" rows the day two shares joined a payout run).
     def received_scope
-      ContractPayment.direction_incoming.status_paid
+      ContractPayment.direction_incoming.status_paid.money_arrived
                      .joins(:contract)
                      .where(contracts: { organization_id: Current.organization.id })
     end

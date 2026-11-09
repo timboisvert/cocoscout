@@ -51,6 +51,18 @@ class ContractPayment < ApplicationRecord
     [ "Other", "other" ]
   ].freeze
 
+  # Ways a payment is settled without any money arriving: a charge netted out
+  # of their share on a payout run, a share that went toward what they owed,
+  # a course's settlement paid inside its course payout.
+  NETTED_PAYMENT_METHODS = %w[payout_deduction offset course_payout].freeze
+
+  # Paid with money that actually arrived (a pay link, or recorded by hand),
+  # as opposed to settled by netting. A charge deducted from a payout is
+  # settled, but nobody paid it (Tim, 2026-11-08).
+  scope :money_arrived, -> {
+    where.not(payment_method: NETTED_PAYMENT_METHODS).or(where(payment_method: nil))
+  }
+
   validates :amount, presence: true, numericality: { greater_than_or_equal_to: 0 }
   validates :amount, numericality: { greater_than_or_equal_to: 0 }, unless: :amount_tbd?
   validates :due_date, presence: true
@@ -287,7 +299,13 @@ class ContractPayment < ApplicationRecord
     return false unless amount_tbd? || notes.to_s.include?("Auto-calculated from show financials")
     return false unless contract&.revenue_share? || contract&.ticket_revenue_minus_fee?
 
-    show ? show.date_and_time > Time.current : (due_date.present? && due_date > Date.current)
+    # A week's or a month's settlement waits for the last night it covers.
+    last_night = if contract.period_settlement?(self)
+      contract.settlement_shows_for(self).filter_map(&:date_and_time).max
+    else
+      show&.date_and_time
+    end
+    last_night ? last_night > Time.current : (due_date.present? && due_date > Date.current)
   end
 
   # Whether this payment has been added to a payout run.

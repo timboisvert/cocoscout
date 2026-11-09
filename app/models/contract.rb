@@ -1553,6 +1553,18 @@ class Contract < ApplicationRecord
     contract_payments.where(direction: "incoming", status: "paid").sum(:amount)
   end
 
+  # The part of total_incoming they actually paid us: on a pay link, or
+  # recorded by hand. The rest was settled without money arriving, by coming
+  # out of their share on a payout run; the contract page says which is which
+  # (Tim, 2026-11-08: a deducted Booth Tech charge isn't a payment received).
+  def total_payments_arrived
+    contract_payments.direction_incoming.status_paid.money_arrived.sum(:amount)
+  end
+
+  def total_deducted_from_payouts
+    total_incoming - total_payments_arrived
+  end
+
   def total_outgoing
     contract_payments.where(direction: "outgoing").where.not(status: "cancelled").sum(:amount)
   end
@@ -1771,6 +1783,58 @@ class Contract < ApplicationRecord
     end
   end
 
+  # A settlement for a stretch of shows (a week, a month, the whole run) rather
+  # than one night. It belongs to no single show, so a show link on it is never
+  # the answer to "which shows does this cover": a week's settlement tied to
+  # its first night counted one night's fee and one night's ticket sales
+  # (contract 107, 2026-11-08: "Our fee −$70.00" on a $250 a show deal).
+  PER_NIGHT_CADENCES = %w[per_event next_day same_day].freeze
+
+  def period_settlement?(payment)
+    return false unless revenue_share? || ticket_revenue_minus_fee?
+    return false if PER_NIGHT_CADENCES.include?(settlement_cadence)
+
+    payment.amount_tbd? || payment.auto_shortfall? ||
+      payment.description.to_s.start_with?("Ticket revenue") || payment.description.to_s.match?(/revenue share/i)
+  end
+
+  # Our fee night by night, as [show, fee] pairs, for a settlement that lists
+  # its working a day at a time (Tim, 2026-11-08: "tickets for this day, our
+  # fee for this day, booth tech for this day"). Nil when the nights' fees
+  # don't add up to `total` (a whole-run fee that rounds), or when there are
+  # too many nights to list; the caller then shows one line for the fee.
+  FEE_LINES_LIMIT = 7
+
+  def fee_by_night(shows, total: nil)
+    shows = Array(shows).select(&:date_and_time).sort_by(&:date_and_time)
+    return nil unless ticket_revenue_minus_fee? && shows.size.between?(1, FEE_LINES_LIMIT)
+
+    lines = shows.map { |show| [ show, fee_for_show(show).round(2) ] }
+    total ||= flat_fee_for_shows(shows)
+    (lines.sum(&:last) - total.to_f).abs < 0.005 ? lines : nil
+  end
+
+  # What a minus-fee settlement is called while it faces them: the fee for
+  # every show it covers and the stretch it's for, the way the contract first
+  # wrote it ("Ticket revenue less $750.00 fee — week of Nov 2"). The sync used
+  # to rename a week for one show's fee and the nights whose sales were in so
+  # far ("less $250.00 fee — Nov 5–Nov 6").
+  def minus_fee_settlement_name(payment, shows = nil)
+    covered = settlement_shows_for(payment)
+    fee = covered.any? ? flat_fee_for_shows(covered) : flat_fee_per_show
+    label =
+      case settlement_cadence
+      when "once" then nil
+      when "weekly" then "week of #{payment.due_date.beginning_of_week.strftime('%b %-d')}"
+      when "monthly" then payment.due_date.strftime("%B %Y")
+      else
+        night = Array(shows).filter_map(&:date_and_time).min || covered.filter_map(&:date_and_time).min || payment.due_date
+        night.strftime("%b %-d")
+      end
+    base = "Ticket revenue less #{deal_money(fee)} fee"
+    label ? "#{base} — #{label}" : base
+  end
+
   # The fee due across a given number of shows. A per-show deal is simply the
   # price times the count; a whole-contract total is allocated proportionally,
   # and lands on exactly flat_fee_amount once every show is counted so a run
@@ -1780,7 +1844,9 @@ class Contract < ApplicationRecord
   # night, a deal that settles once covers every show, a weekly/monthly one
   # covers the shows in its period.
   def settlement_shows_for(payment)
-    return money_shows.select { |s| s.id == payment.show_id } if payment.show_id.present?
+    if payment.show_id.present? && !period_settlement?(payment)
+      return money_shows.select { |s| s.id == payment.show_id }
+    end
 
     case settlement_cadence
     when "once" then money_shows
@@ -1859,7 +1925,7 @@ class Contract < ApplicationRecord
     direct = contract_payments.where(show_id: show.id)
                               .where.not(settlement_method: "payout_deduction")
                               .order(:id).to_a
-                              .reject { |p| service_charge?(p) }
+                              .reject { |p| service_charge?(p) || period_settlement?(p) }
                               .first
     return direct if direct
 
@@ -1897,8 +1963,10 @@ class Contract < ApplicationRecord
 
     # Link the show_id for future lookups if we found a match — but never to a
     # show that's been destroyed (the after_destroy sync lands here), which
-    # would violate the contract_payments→shows FK.
-    if payment && payment.show_id.nil? && !show.destroyed?
+    # would violate the contract_payments→shows FK. Only a one-night payment
+    # is linked: a week's or a month's settlement covers every show in it, and
+    # tying it to whichever show asked first made it read as that night's alone.
+    if payment && payment.show_id.nil? && !show.destroyed? && PER_NIGHT_CADENCES.include?(settlement)
       payment.update_column(:show_id, show.id)
     end
 
@@ -1922,8 +1990,9 @@ class Contract < ApplicationRecord
 
   # Get all shows that map to a given ContractPayment
   def shows_for_payment(payment)
-    # If payment has a direct show link, use it
-    if payment.show_id.present?
+    # If payment has a direct show link, use it (a period's settlement never
+    # answers by one: see #period_settlement?)
+    if payment.show_id.present? && !period_settlement?(payment)
       show = Show.includes(:show_financials).find_by(id: payment.show_id)
       return show ? [ show ] : []
     end
