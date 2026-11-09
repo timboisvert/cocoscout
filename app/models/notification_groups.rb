@@ -87,7 +87,7 @@ module NotificationGroups
   # in the message but then none in the notification"). A tap opens the
   # notice's own page, where the words and the link both are, instead of
   # following the link. A shift notice isn't one: its link is the shift.
-  OPENS_ITS_WORDS = %w[staff_hours_approved].freeze
+  OPENS_ITS_WORDS = %w[staff_hours_approved books_check_mismatch].freeze
 
   # TicketingNotifications::KINDS' groups, to these.
   TICKETING = {

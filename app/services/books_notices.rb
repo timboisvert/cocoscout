@@ -41,6 +41,37 @@ class BooksNotices
       Rails.logger.error("[BooksNotices] #{template_key} not sent: #{e.class}: #{e.message}")
     end
 
+    # The nightly check found books that disagree with their records
+    # (BooksReconciliationJob), new or changed since the superadmins were
+    # last told. A disagreement is a posting CocoScout missed or made twice,
+    # so it's ours to chase before the organization asks. A notification to
+    # each superadmin (Tim, 2026-11-09: "go ahead"; no email, as for every
+    # new notice), whose own page lists each organization and account.
+    # found: [[organization, [BooksReconciliation::Mismatch, ...]], ...]
+    def books_disagree(found)
+      found = found.select { |_, mismatches| mismatches.any? }
+      return if found.empty?
+
+      money = ->(cents) { ActiveSupport::NumberHelper.number_to_currency(cents / 100.0) }
+      name = ->(mismatch) { ChartOfAccounts::SYSTEM.dig(mismatch.account.to_sym, :name) || mismatch.account }
+      escape = ->(words) { ERB::Util.html_escape(words) }
+      items = found.map do |organization, mismatches|
+        lines = mismatches.map { |m| "<li>#{escape.call(name.call(m))}: books say #{money.call(m.books_cents)}, records say #{money.call(m.expected_cents)} (off by #{money.call(m.difference_cents.abs)})</li>" }
+        %(<li><a href="#{urls.organization_detail_url(organization, **url_options)}">#{escape.call(organization.name)}</a><ul>#{lines.join}</ul></li>)
+      end
+      organization, mismatches = found.first
+      headline =
+        if found.size > 1 then "#{found.size} organizations' books don't agree with their records"
+        else "#{organization.name}, #{name.call(mismatches.first)} off by #{money.call(mismatches.first.difference_cents.abs)}#{" and #{mismatches.size - 1} more" if mismatches.size > 1}"
+        end
+      rendered = ContentTemplateService.render("books_check_mismatch", { "headline" => headline, "findings" => "<ul>#{items.join}</ul>" })
+      User.where(email_address: User::SUPERADMIN_EMAILS).find_each do |user|
+        Notifier.deliver_rendered(user: user, category: "books", kind: "books_check_mismatch", subject: rendered[:subject], body: rendered[:body])
+      end
+    rescue StandardError => e
+      Rails.logger.error("[BooksNotices] books check alert not sent: #{e.class}: #{e.message}")
+    end
+
     def urls = Rails.application.routes.url_helpers
     def url_options = Rails.application.config.action_mailer.default_url_options || { host: "localhost", port: 3000 }
   end

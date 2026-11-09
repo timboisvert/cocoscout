@@ -58,8 +58,28 @@ class BooksReconciliation
   # job and the Checks page keep it fresh.
   def self.record!(organization)
     mismatches = check(organization)
-    organization.update_column(:books_check, { "at" => Time.current.iso8601, "mismatches" => mismatches.map { |m| m.to_h.stringify_keys } })
+    organization.update_column(:books_check, { "at" => Time.current.iso8601, "mismatches" => mismatches.map { |m| m.to_h.stringify_keys } }
+                                               .merge(kept(organization).slice("alerted")))
     mismatches
+  end
+
+  # What's kept, read from the row: the organization in hand may have been
+  # loaded before the nightly job last wrote to it.
+  def self.kept(organization) = Organization.where(id: organization.id).pick(:books_check).to_h
+
+  # What the superadmins were last told about these books: each account that
+  # disagreed and by how much. The nightly job tells them again only when
+  # this changes (BooksReconciliationJob), and keeps it here; a page running
+  # the checks during the day leaves it alone, so what it finds is still
+  # news that night.
+  def self.signature(mismatches) = mismatches.map { |m| [ m.account.to_s, m.difference_cents ] }.sort
+
+  def self.news?(organization, mismatches)
+    signature(mismatches) != Array(kept(organization)["alerted"])
+  end
+
+  def self.told!(organization, mismatches)
+    organization.update_column(:books_check, kept(organization).merge("alerted" => signature(mismatches)))
   end
 
   # What the checks said when they last ran; run once when they never have.

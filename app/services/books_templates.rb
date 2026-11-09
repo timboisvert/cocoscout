@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 # The words of the Books notices added on 2026-11-09 (Tim: "Yes, all of
-# it"): an invoice paid on its page, and the three pieces of background
-# work whose only notice was the one for when they finished. Each is a
+# it"): an invoice paid on its page, the three pieces of background work
+# whose only notice was the one for when they finished, and the nightly
+# check telling CocoScout's superadmins that books disagree. Each is a
 # seeded ContentTemplate (the PlatformTemplates pattern), and each is a
 # notification only: the Notifications list and a push, never an email. The
 # body is kept for the template's editor and says the same. The older Books
@@ -38,7 +39,14 @@ class BooksTemplates
       subject: "{{download}} couldn't be put together",
       body: %(#{HELLO}<p>{{download}} for {{organization_name}} couldn't be put together, so there is nothing to download. Ask for it again from Statements.</p><p><a href="{{statements_url}}">Open Statements</a></p>),
       variables: WHO + [ { "name" => "download", "description" => "What was asked for" },
-                         { "name" => "statements_url", "description" => "The Statements page" } ] }
+                         { "name" => "statements_url", "description" => "The Statements page" } ] },
+    # To CocoScout's superadmins, not to the organization: a disagreement is
+    # ours to chase. The words are the notification's own page.
+    { key: "books_check_mismatch", name: "Books check found a disagreement", channel: "message",
+      subject: "Books check: {{headline}}",
+      body: %(<p>Last night's check of each organization's books against the records they add up found books that don't agree. This is new, or has changed, since you were last told.</p>{{findings}}<p>Nothing was changed. Each organization sees the same lines on the Checks section of its Books.</p>),
+      variables: [ { "name" => "headline", "description" => "One line: whose books, and what is off" },
+                   { "name" => "findings", "description" => "A list: each organization and each account that disagrees" } ] }
   ].freeze
 
   def self.ensure!(keys: nil, overwrite: false)
