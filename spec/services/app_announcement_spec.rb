@@ -49,7 +49,7 @@ RSpec.describe AppAnnouncement do
     expect(mail.subject).to eq("New: CocoScout app for iPhone and Android")
     body = mail.html_part ? mail.html_part.body.to_s : mail.body.to_s
     expect(body).to include("Hi Ada,", "The CocoScout app just launched", "you sign in with the account you already have", "/app", AppStores::APP_STORE_URL, AppStores::PLAY_STORE_URL,
-                            "one-time note")
+                            "Andie and Tim", "one-time note")
     expect(body).not_to include("with a buzz when something changes")
     # Every other email keeps that line.
     AppMailer.with(template_key: "cocoscout_bill_paid", to: "x@example.com", variables: {}).send_template.deliver_now
