@@ -358,6 +358,12 @@ class Production < ApplicationRecord
     ].join("-"))
   end
 
+  # Its ticket page's address: ticketing's own (Sales & page), else this
+  # production's public URL.
+  def ticket_page_key
+    production_ticketing&.page_key.presence || public_key
+  end
+
   # Public profile methods
   def update_public_key(new_key)
     return false if new_key == public_key

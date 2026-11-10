@@ -2659,6 +2659,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_190000) do
     t.boolean "team_comps"
     t.string "team_comps_limit"
     t.integer "team_comps_per_show"
+    t.string "page_key"
+    t.jsonb "old_page_keys", default: [], null: false
+    t.index ["organization_id", "page_key"], name: "index_production_ticketings_on_org_and_page_key", unique: true, where: "(page_key IS NOT NULL)"
     t.index ["organization_id"], name: "index_production_ticketings_on_organization_id"
     t.index ["production_id"], name: "index_production_ticketings_on_production_id", unique: true
   end

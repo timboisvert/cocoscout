@@ -59,11 +59,11 @@ module TicketingHelper
 
   # A production's public ticket page, by its key: /tickets/<org>/<production-key>.
   def ticket_production_path(profile, production, **options)
-    tickets_event_path(org: profile.slug, event: production.public_key, **options)
+    tickets_event_path(org: profile.slug, event: production.ticket_page_key, **options)
   end
 
   def ticket_production_url(profile, production, **options)
-    tickets_event_url(org: profile.slug, event: production.public_key, **options)
+    tickets_event_url(org: profile.slug, event: production.ticket_page_key, **options)
   end
 
   # A date as its pages name it: "Sat, Oct 5 · 7:30 PM".

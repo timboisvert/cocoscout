@@ -55,6 +55,30 @@ RSpec.describe "Public ticketing", type: :request do
     expect(response).to have_http_status(:not_found)
   end
 
+  it "serves a ticket page at the address ticketing gives it, and sends the production's and its earlier ones there" do
+    public_key = production.public_key
+    setup = ProductionTicketing.create!(production: production, page_key: "holly")
+    get tickets_event_path(org: "starsandgarters", event: "holly")
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(tickets_event_path(org: "starsandgarters", event: "holly", date: listing.slug))
+    get tickets_box_office_path(org: "starsandgarters")
+    expect(response.body).not_to include(tickets_event_path(org: "starsandgarters", event: public_key))
+
+    get tickets_event_path(org: "starsandgarters", event: public_key, date: "dec-5")
+    expect(response).to redirect_to(tickets_event_path(org: "starsandgarters", event: "holly", date: "dec-5"))
+
+    setup.update!(page_key: "thehollyproblem")
+    get tickets_event_path(org: "starsandgarters", event: "holly")
+    expect(response).to redirect_to(tickets_event_path(org: "starsandgarters", event: "thehollyproblem"))
+
+    # Back to the production's own: both earlier addresses land on it.
+    setup.update!(page_key: nil)
+    get tickets_event_path(org: "starsandgarters", event: "thehollyproblem")
+    expect(response).to redirect_to(tickets_event_path(org: "starsandgarters", event: public_key))
+    get tickets_event_path(org: "starsandgarters", event: public_key)
+    expect(response).to have_http_status(:ok)
+  end
+
   # Andy opened the show's sales link after curtain and found sales closed
   # (Tim, 2026-10-16): someone who works this door is sent to it instead.
   describe "for someone who works the door" do

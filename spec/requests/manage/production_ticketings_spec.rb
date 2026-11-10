@@ -152,6 +152,30 @@ RSpec.describe "Production ticketing", type: :request do
     expect(code.reload.active).to be(false)
   end
 
+  # A show renamed after its links went out (Tim, 2026-11-09): the ticket
+  # page's address is the production's own unless Sales & page gives it one.
+  it "gives the ticket page its own address, or the production's when blank" do
+    get manage_edit_production_ticketing_path(production, section: "sales")
+    expect(response.body).to include("Address", %(placeholder="#{production.public_key}"), "Links to the old address keep working.")
+
+    save = ->(key) { patch manage_update_production_ticketing_path(production, section: "sales"), params: { production_ticketing: { page_key: key } } }
+    save.("The-Holly-Problem")
+    expect(production.reload.ticket_page_key).to eq("the-holly-problem")
+
+    save.("no")
+    expect(flash[:alert]).to eq("The address must be 3 to 30 lowercase letters, numbers and hyphens")
+    other = create(:production, organization: org, name: "Other Show")
+    save.(other.public_key)
+    expect(flash[:alert]).to eq("That address is already taken by another page.")
+    expect(production.reload.ticket_page_key).to eq("the-holly-problem")
+
+    # Its own public URL typed in, or blank, is the production's again; the
+    # one it had is remembered.
+    save.(production.public_key)
+    setup = production.reload.production_ticketing
+    expect([ setup.page_key, setup.old_page_keys, production.ticket_page_key ]).to eq([ nil, [ "the-holly-problem" ], production.public_key ])
+  end
+
   # The Codes tab's ⋯ menu (Tim, 2026-11-07): export the codes as a
   # spreadsheet, import a spreadsheet's.
   it "exports its codes and imports a spreadsheet's, skipping the ones already there" do

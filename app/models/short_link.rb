@@ -80,7 +80,7 @@ class ShortLink < ApplicationRecord
     options[:date] = suffix.to_s if suffix.present?
     case target
     when Production
-      routes.tickets_event_path(org: TicketingProfile.for(target.organization).slug, event: target.public_key, **options)
+      routes.tickets_event_path(org: TicketingProfile.for(target.organization).slug, event: target.ticket_page_key, **options)
     when TicketingProfile
       routes.tickets_box_office_path(org: target.slug, **options)
     end
