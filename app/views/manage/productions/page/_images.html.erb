@@ -4,7 +4,7 @@
 <% production = page.production %>
 <section class="<%= ProductionPageHelper::CARD %>" data-production-images>
   <%= render "shared/section_heading", padding: "px-4 py-3", title_basis: "basis-24", title: "Images" do %>
-    <%= render "shared/button", text: "Change", variant: "secondary", size: "small", path: manage_production_visual_assets_path(production) %>
+    <%= render "shared/button", text: "Change", variant: "secondary", size: "small", path: edit_manage_production_path(production, anchor: "tab-1") %>
   <% end %>
   <div class="p-4 flex items-end gap-3">
     <div class="flex flex-col gap-1">
