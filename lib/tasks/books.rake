@@ -13,6 +13,12 @@ namespace :books do
     fmt = ->(cents) { format("$%.2f", cents / 100.0) }
     result.rows.each do |row|
       puts "#{row.organization.name} (##{row.organization.id}): #{row.cash_rows} cash rows, #{row.owed_rows} payout rows, #{row.financials} shows' financials, #{row.expenses} production expenses, #{row.contract_payments} paid contract payments, #{row.bills} CocoScout bills"
+      paid = row.hand_paid
+      if paid.lines.positive? || paid.guests.positive? || paid.contract_lines.positive?
+        puts "  paid by hand before the payout ledger: #{paid.lines} payout lines, #{fmt.call(paid.cents)}, to #{paid.people} people, now on the ledger and the books. Nobody's balance moved."
+        puts "  left off: #{paid.guests} guests' lines, #{fmt.call(paid.guest_cents)} (a guest has no account to post to)" if paid.guests.positive?
+        puts "  left off: #{paid.contract_lines} lines on contract shows, #{fmt.call(paid.contract_cents)} (the contract's own payments already carry that money)" if paid.contract_lines.positive?
+      end
       puts "  trial balance: #{fmt.call(row.trial_balance_cents)}#{' (OUT OF BALANCE)' unless row.trial_balance_cents.zero?}"
       if row.mismatches.empty?
         puts "  checks: the books agree with the records behind them"

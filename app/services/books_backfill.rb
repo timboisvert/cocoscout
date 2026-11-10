@@ -13,7 +13,7 @@
 # failed. Now an organization that fails is rolled back by itself and named
 # in failures, and the rest still post. Run it again for the ones named.
 class BooksBackfill
-  Row = Data.define(:organization, :cash_rows, :owed_rows, :financials, :expenses, :contract_payments, :bills, :mismatches, :trial_balance_cents)
+  Row = Data.define(:organization, :cash_rows, :owed_rows, :financials, :expenses, :contract_payments, :bills, :mismatches, :trial_balance_cents, :hand_paid)
   Failure = Data.define(:organization, :error)
   Result = Data.define(:rows, :failures, :dry_run)
 
@@ -37,6 +37,9 @@ class BooksBackfill
     ChartOfAccounts.rename!(organization)
     cash = OrgCashEntry.where(organization: organization)
     cash.find_each { |entry| BooksPoster.post!(entry) }
+    # Payouts paid by hand before the payout ledger existed go on it first
+    # (HandPaidPayouts), so the pass over the ledger below posts them too.
+    hand_paid = HandPaidPayouts.post!(organization)
     owed = PayoutLedgerEntry.where(organization: organization)
     owed.find_each { |entry| BooksPoster.post!(entry) }
     financials = ShowFinancials.joins(show: :production).where(productions: { organization_id: organization.id })
@@ -51,6 +54,7 @@ class BooksBackfill
     bills.find_each { |bill| BooksOutsidePoster.post_billing_invoice!(bill) }
     Row.new(organization: organization, cash_rows: cash.count, owed_rows: owed.count, financials: financials.count, expenses: expenses.count,
             contract_payments: payments.count, bills: bills.count,
-            mismatches: BooksReconciliation.check(organization), trial_balance_cents: LedgerPosting.trial_balance(organization).values.sum)
+            mismatches: BooksReconciliation.check(organization), trial_balance_cents: LedgerPosting.trial_balance(organization).values.sum,
+            hand_paid: hand_paid)
   end
 end
