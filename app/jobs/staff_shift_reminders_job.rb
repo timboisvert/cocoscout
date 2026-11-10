@@ -11,6 +11,10 @@
 # not a shift), and only to someone with a login to be reminded through. Two
 # shifts tomorrow make one notice. The words are the shift as it is now: the
 # same as My Shifts, so nothing here can disagree with it.
+#
+# A notification only, never an email (Tim, 2026-11-10: "Shift reminders
+# should only be notifications"): no email with it, and none later from the
+# unread digest, which could reach someone after the shift it calls tomorrow.
 class StaffShiftRemindersJob < ApplicationJob
   queue_as :default
 
@@ -53,25 +57,18 @@ class StaffShiftRemindersJob < ApplicationJob
   def deliver(organization, person, rows)
     shifts = rows.map(&:shift)
     first = shifts.first
-    ContentTemplateService.deliver(
-      template_key: "staff_shift_reminder",
-      variables: {
-        recipient_name: ShiftWords.first_name(person),
-        organization_name: organization.name,
-        shift_day: ShiftWords.day(ShiftWords.starts(first)),
-        headline: headline(shifts),
-        shifts_list: shifts.map { |s| list_item(s, person) }.join,
-        shift_url: ShiftWords.shift_url(first),
-        my_shifts_link: ShiftWords.my_shifts_url
-      },
-      sender: nil,
-      recipients: [ person ],
-      organization: organization,
-      message_type: :system,
-      visibility: :personal,
-      mailer_class: StaffingNoticeMailer.with(organization_id: organization.id),
-      mailer_method: :notice
-    )
+    words = ContentTemplateService.render("staff_shift_reminder", {
+      recipient_name: ShiftWords.first_name(person),
+      organization_name: organization.name,
+      shift_day: ShiftWords.day(ShiftWords.starts(first)),
+      headline: headline(shifts),
+      shifts_list: shifts.map { |s| list_item(s, person) }.join,
+      shift_url: ShiftWords.shift_url(first),
+      my_shifts_link: ShiftWords.my_shifts_url
+    })
+    Notifier.deliver_rendered(user: person.user, category: "shifts", kind: "staff_shift_reminder",
+                              subject: words[:subject], body: words[:body], push_body: words[:push_body],
+                              organization: organization, digest: false)
   end
 
   # "Bartender, 6:00 PM at The Annex"; "Bartender at 6:00 PM, then Door at 9:00 PM".
