@@ -72,6 +72,25 @@ CocoScout is free for performers. Producers run casting, ticketing and
 payouts from the same account: on the web at cocoscout.com, and from the
 app in production mode.
 
+### What's new (1.2)
+
+The first two sentences are Apple's own launch copy with CocoScout in its
+blank, as the launch email uses it (`TapToPayTemplates`); Apple's Marketing
+Guide allows no other words for announcing it, so check any change against
+the guide in `ios/apple_ttp/`. The last paragraph is ours.
+
+```
+Tap to Pay on iPhone is now available with CocoScout. That means you can accept all types of in-person, contactless payments—from physical debit and credit cards to Apple Pay and other digital wallets. Right on your iPhone.
+
+At the door, choose Tap to Pay on iPhone when you sell a ticket. Your organization's managers turn it on in Ticketing settings.
+```
+
+The description's THE DOOR paragraph and the promotional text don't mention
+it yet. If they should, use the full name "Tap to Pay on iPhone" every time
+(Apple's rule), for example: "The app scans tickets with the camera, checks
+in whole parties, and sells at the door, with Tap to Pay on iPhone for
+contactless payments." Not checked against the Marketing Guide.
+
 ### What's new (1.0)
 
 The first CocoScout app: your calendar, messages, sign-ups, contracts and
