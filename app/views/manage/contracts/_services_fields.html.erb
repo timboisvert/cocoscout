@@ -8,6 +8,9 @@
   Posts the same rows as before, so the wizard and amend parsers are unchanged:
   services[i][include|service_id|name|unit|per_event|quantity|unit_price|direction|settlement]
   and, per date, services[i][events][j][include|starts_at|hours|unit_price].
+  A service unticked in a date's Edit can come off every later date too
+  ("and every date after it": contract-services does it in the form; a post
+  with events[j][and_after] and no include is read the same way).
   Each date's inputs live in that date's Edit; contract-services keeps the
   chips and totals in step. The caller supplies the <form> and nav buttons.
 
@@ -250,6 +253,8 @@
         <%# Each date's Edit: every per-event service, its hours and its price that date. %>
         <% dates.each_with_index do |date, j| %>
           <% frozen = locked.include?(date[:key]) %>
+          <%# Dates after this one that can still change: where "every date after it" reaches. %>
+          <% later = frozen ? 0 : dates[(j + 1)..].count { |d| !locked.include?(d[:key]) } %>
           <div class="hidden fixed inset-0 z-[60] bg-black/50 flex items-stretch sm:items-center justify-center sm:p-4"
                data-contract-services-target="dateModal" data-date="<%= j %>" data-action="click->contract-services#backdrop">
             <div class="bg-white w-full sm:max-w-xl sm:rounded-xl shadow-2xl overflow-hidden flex flex-col text-left">
@@ -295,9 +300,21 @@
                                data-role="price" data-own="<%= own_price ? 1 : 0 %>" data-action="input->contract-services#slotPriced" class="w-full pl-6 pr-2 <%= small_input.sub('px-2 ', '') %>">
                       </span>
                       <span class="ml-auto w-20 text-right text-sm text-gray-900 tabular-nums" data-role="amount"></span>
+                      <% if later.positive? %>
+                        <%# Shown once the service is unticked here. hidden sits on this plain wrapper. %>
+                        <div class="hidden basis-full pl-7" data-role="afterWrap">
+                          <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                            <input type="checkbox" name="services[<%= i %>][events][<%= j %>][and_after]" value="1" class="<%= check %>" data-role="after">
+                            <span>Take <%= option.name %> off <%= later == 1 ? "the date after this one too" : "the #{later} dates after this one too" %></span>
+                          </label>
+                        </div>
+                      <% end %>
                     </div>
                   <% end %>
                 </div>
+                <% if later.positive? %>
+                  <p class="text-xs text-gray-500">Untick a service to take it off this date, or this date and every one after it. Earlier dates keep what they have.</p>
+                <% end %>
               </div>
               <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 px-5 py-4 bg-gray-50 border-t border-gray-200">
                 <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, classes: "w-full sm:w-auto min-h-11 sm:min-h-0",

@@ -655,6 +655,9 @@ module Manage
       @lines = @services_change.merge(staged["services"])
       @changes = @services_change.changes(@lines)
       @reason = staged["reason"]
+      # Who's scheduled to do a service this takes off a date: those shifts
+      # come off the schedule with it, once the manager has said so.
+      @staff_impact = ContractServiceStaffImpact.new(@contract, @lines) if @changes.any?
     end
 
     def apply_amend_services
@@ -666,14 +669,28 @@ module Manage
       return redirect_to(amend_services_manage_contract_path(@contract)) unless staged
 
       change = ContractServicesChange.new(@contract)
-      if change.changes(change.merge(staged["services"])).empty?
+      lines = change.merge(staged["services"])
+      if change.changes(lines).empty?
         @contract.update!(draft_data: @contract.draft_data.except("services_change"))
         redirect_to manage_contract_path(@contract), notice: "No changes to services or prices." and return
       end
 
-      version = change.apply!(staged["services"], reason: params[:reason].presence || staged["reason"], user: Current.user)
+      # Read before the services change: afterwards nothing says which shifts
+      # were there for the ones taken off.
+      staff = ContractServiceStaffImpact.new(@contract, lines)
+      unless staff_removal_confirmed?(staff)
+        redirect_to review_amend_services_manage_contract_path(@contract), alert: STAFF_REMOVAL_ALERT and return
+      end
+
+      version = nil
+      unscheduled = []
+      @contract.transaction do
+        version = change.apply!(staged["services"], reason: params[:reason].presence || staged["reason"], user: Current.user)
+        unscheduled = staff.unschedule!
+      end
       GenerateContractPdfJob.perform_later(@contract.id, version.id)
-      redirect_to manage_contract_path(@contract), notice: "Services and prices changed, recorded as #{version.label}."
+      redirect_to manage_contract_path(@contract),
+                  notice: [ "Services and prices changed, recorded as #{version.label}.", staff_removal_notice(unscheduled) ].compact.join(" ")
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotDestroyed => e
       redirect_to review_amend_services_manage_contract_path(@contract), alert: "Couldn't change the services: #{e.message}"
     end
@@ -952,6 +969,9 @@ module Manage
       @services_changed = @amend_data.key?("services") && @amend_data["services"] != @contract.draft_services
       @new_ticketing = @amend_data["ticketing"] if @ticketing_changed
       @new_services = @amend_data["services"] if @services_changed
+      # Who's scheduled to do a service this takes off a date: those shifts
+      # come off the schedule when the amendment takes effect.
+      @staff_impact = amendment_staff_impact if @services_changed
 
       # Production name change (blank means "no change" — we never wipe the name).
       staged_name = @amend_data["production_name"].to_s.strip
@@ -977,6 +997,17 @@ module Manage
       end
 
       @amend_data = @contract.amend_data
+      # The shifts the manager has just agreed come off the schedule ride with
+      # the amendment, so they go when it takes effect: now, or once it's signed.
+      if @amend_data.key?("services")
+        staff = amendment_staff_impact
+        unless staff_removal_confirmed?(staff)
+          redirect_to amend_review_manage_contract_path(@contract), alert: STAFF_REMOVAL_ALERT and return
+        end
+        @amend_data = @amend_data.except("unschedule_shift_ids")
+        @amend_data = @amend_data.merge("unschedule_shift_ids" => staff.shift_ids) if staff.shift_ids.any?
+        @contract.update_amend_data(@amend_data)
+      end
       force_overlap = params[:force_overlap] == "1"
       # E-sign contracts default to needing a signature; an offline one has no
       # signing machinery, so it can only ever be an internal correction.
@@ -999,6 +1030,30 @@ module Manage
     end
 
     private
+
+    STAFF_REMOVAL_ALERT = "People are scheduled for a service this takes off. Check who's listed, tick the box, then apply."
+
+    # Nobody's on a shift this takes off the schedule, or the manager ticked
+    # the box under the very list of them that stands now.
+    def staff_removal_confirmed?(impact)
+      !impact.people? || (params[:staff_acknowledged] == "1" && params[:staff_token].to_s == impact.token)
+    end
+
+    # "Booth Tech, Fri Nov 13 came off the schedule." for the flash.
+    def staff_removal_notice(lines)
+      return nil if lines.empty?
+
+      people = lines.flat_map { |line| line.people.map(&:id) }.uniq.size
+      shifts = "#{helpers.pluralize(lines.size, 'shift')} came off the schedule"
+      people.zero? ? "#{shifts}." : "#{shifts} (#{helpers.pluralize(people, 'person')})."
+    end
+
+    # The full amendment's services against the contract's, leaving out the
+    # dates it removes or moves (the date steps speak for those).
+    def amendment_staff_impact
+      skip = Array(@amend_data["removed_rental_ids"]) + (@amend_data["moved_rentals"] || {}).keys
+      ContractServiceStaffImpact.new(@contract, @amend_data["services"], skip_rental_ids: skip)
+    end
 
     # Cancelling takes every date away; the ones still to come are those
     # anyone could hold a ticket for or be scheduled to work.

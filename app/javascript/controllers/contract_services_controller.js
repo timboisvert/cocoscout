@@ -99,6 +99,7 @@ export default class extends Controller {
         const modal = this.dateModal(event.currentTarget.dataset.date)
         if (!modal) return
         modal._snapshot = Array.from(modal.querySelectorAll("input")).map(input => [ input, input.checked, input.value, input.dataset.own ])
+        modal.querySelectorAll("[data-contract-services-target=slot]").forEach(slot => this.offerAfter(slot))
         modal.classList.remove("hidden")
         this.refresh()
     }
@@ -121,14 +122,44 @@ export default class extends Controller {
         const modal = event.currentTarget.closest("[data-contract-services-target=dateModal]")
         modal?.querySelectorAll("[data-contract-services-target=slot]").forEach(slot => {
             if (slot.querySelector("[data-role=on]")?.checked) this.includeFor(this.service(slot.dataset.index), [ slot.dataset.date ])
+            this.takeOffAfter(slot)
         })
         modal?.classList.add("hidden")
         this.matchUsual()
         this.refresh()
     }
 
-    slotChanged() {
+    slotChanged(event) {
+        const slot = event?.currentTarget?.closest("[data-contract-services-target=slot]")
+        if (slot) this.offerAfter(slot)
         this.refresh()
+    }
+
+    // A service unticked in a date's Edit can come off every later date too.
+    // The offer shows only while it's unticked.
+    offerAfter(slot) {
+        const wrap = slot.querySelector("[data-role=afterWrap]")
+        if (!wrap) return
+        const on = slot.querySelector("[data-role=on]")?.checked
+        wrap.classList.toggle("hidden", !!on)
+        if (on) wrap.querySelector("[data-role=after]").checked = false
+    }
+
+    // On Save: "and the dates after this one" unticks the service on every
+    // later date that can still change. The dates are in order, so later is a
+    // higher number. The box itself is spent, so it isn't posted as well.
+    takeOffAfter(slot) {
+        const after = slot.querySelector("[data-role=after]")
+        if (!after?.checked) return
+        after.checked = false
+        slot.querySelector("[data-role=afterWrap]")?.classList.add("hidden")
+        if (slot.querySelector("[data-role=on]")?.checked) return
+        const from = Number(slot.dataset.date)
+        this.slotsFor(slot.dataset.index).forEach(other => {
+            if (Number(other.dataset.date) <= from || this.dateRow(other.dataset.date)?.dataset.locked) return
+            const on = other.querySelector("[data-role=on]")
+            if (on) on.checked = false
+        })
     }
 
     // A price typed for one date is that date's own from then on.
