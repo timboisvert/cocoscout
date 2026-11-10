@@ -39,9 +39,12 @@ RSpec.describe StaffShiftRemindersJob do
     described_class.perform_now(thursday_4pm - 3.hours)
     expect(notifications(jamie)).to be_empty
 
-    described_class.perform_now(thursday_4pm)
+    # A notification only: no email now, and none owed from the unread digest (Tim, 2026-11-10).
+    expect { described_class.perform_now(thursday_4pm) }.not_to have_enqueued_mail
     n = notifications(jamie).last
     expect(n.kind).to eq("staff_shift_reminder")
+    expect(n.digest).to be(false)
+    expect(Notification.owed_a_digest).to be_empty
     expect(n.title).to eq("Tomorrow: Bartender, 6:00 PM at The Annex")
     expect(n.body).to include("Friday, Nov 13", "6:00–10:00 PM", "That night: Rising Stars (7:30 PM)")
     expect(n.body).not_to include("Dan Lee")

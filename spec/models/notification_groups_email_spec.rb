@@ -27,8 +27,10 @@ RSpec.describe NotificationGroups, ".email?" do
     quiet.each { |key| expect(described_class.email?(key, member)).to be(false), key }
     # Everything about a person's own shifts still emails (Tim, 2026-11-09: "those should all be emails").
     shifts = %w[staff_schedule_notification staff_schedule_changes staff_shift_added staff_shift_changed staff_shift_removed
-                staff_shift_reminder shift_canceled shift_moved shift_claim_confirmed]
+                shift_canceled shift_moved shift_claim_confirmed]
     expect(shifts - described_class::EMAILS_TOO).to be_empty
+    # Except the day-before reminder: a notification only (Tim, 2026-11-10).
+    expect(described_class.email?("staff_shift_reminder", member)).to be(false)
     described_class::EMAILS_TOO.each { |key| expect(described_class.email?(key, member)).to be(true), key }
     expect(described_class.email?("shift_canceled", member.user)).to be(true)
   end

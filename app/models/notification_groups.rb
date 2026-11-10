@@ -92,14 +92,15 @@ module NotificationGroups
   # EMAILS_TOO: an email goes at once as well as the notification. A show
   # canceled or moved, being asked to cover, and everything about a
   # person's own shifts: the week's schedule, a new shift, a change, one
-  # taken off, canceled or moved, the day-before reminder, and a cover
-  # shift they claimed. The shift ones were cut for an afternoon and put
+  # taken off, canceled or moved, and a cover shift they claimed. Not the
+  # day-before reminder: it tells them nothing new, so it is a notification
+  # only (Tim, 2026-11-10; StaffShiftRemindersJob). The shift ones were cut for an afternoon and put
   # back (Tim, 2026-11-09: "stuff related to shifts ... should all be
   # emails. We might have been a little overzealous"): with almost nobody
   # on the app yet, a missed shift notice is a missed shift.
   EMAILS_TOO = %w[show_canceled show_moved vacancy_invitation shift_vacancy_invitation
                   shift_canceled shift_moved staff_shift_changed staff_shift_removed
-                  staff_shift_added staff_schedule_notification staff_schedule_changes staff_shift_reminder shift_claim_confirmed].freeze
+                  staff_shift_added staff_schedule_notification staff_schedule_changes shift_claim_confirmed].freeze
   # EMAIL_AS_BEFORE: the email is the point, whatever the switch says. A tax
   # form's availability has to be told by mail or email; an onboarding
   # invitation and an invoice carry a link to someone who may have no
