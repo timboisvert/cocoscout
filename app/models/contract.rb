@@ -695,10 +695,13 @@ class Contract < ApplicationRecord
 
       events_raw = row["events"]
       events_raw = events_raw.values if events_raw.respond_to?(:values) && !events_raw.is_a?(Array)
-      events = Array(events_raw).filter_map do |ev|
-        ev = ev.to_unsafe_h if ev.respond_to?(:to_unsafe_h)
-        ev = ev.stringify_keys
+      events_raw = Array(events_raw).map { |ev| (ev.respond_to?(:to_unsafe_h) ? ev.to_unsafe_h : ev).stringify_keys }
+      # "And every date after it": a date unticked that way takes the service
+      # off each later date too, whatever those post. Earlier dates stay.
+      off_from = events_raw.filter_map { |ev| ContractServicesChange.time_key(ev["starts_at"]) if ev["include"] != "1" && ev["and_after"] == "1" }.min
+      events = events_raw.filter_map do |ev|
         next unless ev["include"] == "1" && ev["starts_at"].present?
+        next if off_from && ContractServicesChange.time_key(ev["starts_at"]).to_i >= off_from
 
         hours = ev["hours"].to_f
         hours = 1 if hours <= 0
@@ -1096,7 +1099,15 @@ class Contract < ApplicationRecord
     update_draft_step(:payment_structure, amend["payment_structure"]) if amend.key?("payment_structure")
     update_draft_step(:payment_config, amend["payment_config"]) if amend.key?("payment_config")
     update_draft_step(:ticketing, amend["ticketing"]) if amend.key?("ticketing")
-    reconcile_service_payments!(amend["services"]) if amend.key?("services")
+    if amend.key?("services")
+      # The shifts the manager agreed come off with the services they were
+      # for (ContractServiceStaffImpact), read before the services change.
+      staff = if Array(amend["unschedule_shift_ids"]).any?
+        ContractServiceStaffImpact.new(self, amend["services"], skip_rental_ids: removed_rental_ids + (amend["moved_rentals"] || {}).keys)
+      end
+      reconcile_service_payments!(amend["services"])
+      staff&.unschedule!(only: amend["unschedule_shift_ids"])
+    end
 
     if staged_name.present? && staged_name != production_name.to_s
       update!(production_name: staged_name)
