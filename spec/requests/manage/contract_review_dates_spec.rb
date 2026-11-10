@@ -69,6 +69,40 @@ RSpec.describe "Contract wizard: Review the dates", type: :request do
     expect(page).to include("20% this show", "Usually 30% to us", "$25 this rehearsal")
   end
 
+  # Two free hours of a 2.5 hour rehearsal: the date takes the price of the
+  # half hour left, and the hourly rate stays the deal's (Tim, 2026-11-09).
+  it "gives an hourly date one price for the whole date, or its own hourly rate" do
+    half = Time.zone.parse("2026-10-21 18:00")
+    config = contract.draft_payment_config
+    config["event_rates"].first.merge!("unit" => "hourly", "amount" => 30.0)
+    contract.update!(draft_data: contract.draft_data.merge(
+      "bookings" => contract.draft_bookings + [ booking(half, "rehearsal", 2.5) ], "payment_config" => config
+    ))
+
+    html = page
+    expect(html).to include("Rehearsal price for this date", "for the whole rehearsal", "an hour",
+                            "Usually $30 an hour, $75.00 for 2.5 hrs. $0 means no charge.", %(name="units[rehearsal]"))
+
+    patch manage_review_dates_contract_wizard_path(contract), params: {
+      dates: [ half.iso8601 ], values: { "rehearsal" => "15" }, units: { "rehearsal" => "date" }, note: "Two hours free"
+    }
+    expect(contract.reload.draft_date_terms).to eq(half.iso8601 => { "total" => 15.0, "note" => "Two hours free" })
+    expect(page).to include("$15 for this rehearsal", "Usually $30 an hour", "$15.00", "Fixed charges $105.00")
+
+    # An hourly rate for the date instead replaces the whole-date price.
+    patch manage_review_dates_contract_wizard_path(contract), params: {
+      dates: [ half.iso8601 ], values: { "rehearsal" => "20" }, units: { "rehearsal" => "hour" }, note: ""
+    }
+    expect(contract.reload.draft_date_terms).to eq(half.iso8601 => { "amount" => 20.0 })
+    expect(page).to include("$20 an hour this rehearsal", "$50.00")
+
+    # The date's usual price goes back to the deal.
+    patch manage_review_dates_contract_wizard_path(contract), params: {
+      dates: [ half.iso8601 ], values: { "rehearsal" => "75" }, units: { "rehearsal" => "date" }, note: ""
+    }
+    expect(contract.reload.draft_date_terms).to be_empty
+  end
+
   it "sends the old Review your schedule step on to the deal, and on from the dates" do
     get manage_schedule_preview_contract_wizard_path(contract)
     expect(response).to redirect_to(manage_payments_contract_wizard_path(contract))

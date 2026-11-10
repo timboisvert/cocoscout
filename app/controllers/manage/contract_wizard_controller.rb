@@ -354,7 +354,7 @@ module Manage
         picked = dates.select { |d| types[d] == type }
         next unless field && picked.any?
 
-        @contract.set_draft_date_terms!(picked, value: value, note: params[:note], field: field)
+        @contract.set_draft_date_terms!(picked, value: value, note: params[:note], field: field, whole: params.dig(:units, type) == "date")
         saved += picked.size
       end
       redirect_to manage_review_dates_contract_wizard_path(@contract),

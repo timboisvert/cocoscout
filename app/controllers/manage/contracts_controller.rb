@@ -869,7 +869,7 @@ module Manage
         next unless field && picked.any?
 
         view.draft_data["payment_config"]["date_terms"] = terms
-        terms = view.next_date_terms(picked, value: value, note: params[:note], field: field)
+        terms = view.next_date_terms(picked, value: value, note: params[:note], field: field, whole: params.dig(:units, type) == "date")
         saved += picked.size
       end
       @contract.update_amend_data(@contract.amend_data.merge("date_terms" => terms)) if saved.positive?
