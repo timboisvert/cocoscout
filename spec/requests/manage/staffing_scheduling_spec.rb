@@ -204,8 +204,11 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
       add = doc.at_css("[data-cell='#{role.id}-#{empty_day.iso8601}'] button[aria-label^='Add a Bartender shift']")
       expect(add["data-action"]).to eq("click->shift-add#openForRole")
       expect(JSON.parse(add["data-role-defaults"])[role.id.to_s]["starts_at"]).to eq(empty_day.in_time_zone.change(hour: 17).strftime("%Y-%m-%dT%H:%M"))
-      # The phone's day says so too, with its own add.
-      phone = doc.at_css("[data-phone-day='#{empty_day.iso8601}']") || doc
+      # The phone's day says so too, with its own add. The phone shows one
+      # day, today unless asked: ask for the empty one, or this fails on the
+      # weekday the show is on.
+      get manage_staffing_scheduling_path(day: empty_day.iso8601)
+      phone = Nokogiri::HTML(response.body).at_css("[data-phone-day='#{empty_day.iso8601}']")
       expect(phone.text).to include("Nothing scheduled this day.")
     end
 
