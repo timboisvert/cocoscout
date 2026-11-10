@@ -37,13 +37,20 @@ module OrganizationContext
     flash[:switched_to] = Organization.find_by(id: organization_id)&.name
   end
 
+  # The session holds the organization someone is working in, but the session
+  # ends when the browser quits or the app is closed, while they stay signed
+  # in. Someone with several organizations was then asked to pick one again
+  # every time they came back (Tim, 2026-11-09). So this browser, or this
+  # phone's app, also keeps the last one for a year, and the session starts
+  # from it. Per person, as last_dashboard is.
   def set_current_organization
     user_id = Current.user&.id
     if user_id && session[:current_organization_id].is_a?(Hash)
-      company_id = session[:current_organization_id][user_id.to_s]
+      company_id = session[:current_organization_id][user_id.to_s] || remembered_organization_id
       org = Organization.find_by(id: company_id)
       # Verify user still has access to this org (role may have been removed)
       if org && Current.user.accessible_organizations.where(id: org.id).exists?
+        session[:current_organization_id][user_id.to_s] = org.id
         Current.organization = org
         use_time_zone_of(org)
       else
@@ -51,9 +58,11 @@ module OrganizationContext
         Current.organization = nil
       end
     elsif Current.user
-      # The one organization someone has is picked for them.
       orgs = Current.user.accessible_organizations
-      auto_select_org = orgs.first if orgs.one?
+      # Where they were last time on this browser, while they still belong
+      # to it; otherwise the one organization someone has is picked for them.
+      auto_select_org = orgs.find_by(id: remembered_organization_id) if remembered_organization_id
+      auto_select_org ||= orgs.first if orgs.one?
 
       if auto_select_org
         session[:current_organization_id] ||= {}
@@ -66,6 +75,26 @@ module OrganizationContext
     else
       Current.organization = nil
     end
+    remember_organization
+  end
+
+  # The organization this person last worked in on this browser, or nil.
+  def remembered_organization_id
+    return nil unless Current.user
+
+    kept = cookies.encrypted[:last_organization]
+    kept.is_a?(Hash) ? kept[Current.user.id.to_s] : nil
+  end
+
+  # Written only when it changes, so most pages set no cookie.
+  def remember_organization
+    return unless Current.user && Current.organization
+    return if remembered_organization_id == Current.organization.id
+
+    kept = cookies.encrypted[:last_organization]
+    kept = {} unless kept.is_a?(Hash)
+    kept[Current.user.id.to_s] = Current.organization.id
+    cookies.encrypted[:last_organization] = { value: kept, expires: 1.year.from_now, httponly: true }
   end
 
   def set_current_production
