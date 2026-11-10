@@ -158,7 +158,9 @@ RSpec.describe "Home, a staffing-only day", type: :request do
     it "shows the same order on a phone, worded, with who's on" do
       doc = page(day: thursday.iso8601)
       day = doc.at_css("[data-home-day='#{thursday.iso8601}']")
-      expect(day.text).to include("3 shows")
+      # No line counting the day's shows and how many need something: the
+      # rows under the strip say it (Tim, 2026-11-09).
+      expect(day.text).not_to match(/3 shows|needs? something|Nothing to do/)
       kinds = day.css("[data-home-show], [data-home-staffing-day]").map { |n| n["data-home-show"] ? "show" : "staffing" }
       expect(kinds).to eq(%w[staffing staffing show show show])
       crew = day.css("[data-home-staffing-day]")[1]
