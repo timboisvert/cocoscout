@@ -29,21 +29,24 @@ RSpec.describe BooksOutsidePoster do
     expect(balance(:other_income)).to eq(15_000)
     RSpec::Mocks.space.proxy_for(described_class).reset
 
+    # The $300 venue line, by id: a bare .first reads whichever row the
+    # database hands back first, which changes once rows have been updated.
+    room = financials.expense_items.order(:id).first
     # A line saved on its own still posts, once.
     expect(described_class).to receive(:post_financials!).once.and_call_original
-    financials.expense_items.first.update!(amount: 100)
+    room.update!(amount: 100)
     expect(balance(:venue)).to eq(11_000)
     RSpec::Mocks.space.proxy_for(described_class).reset
 
     expect(described_class).not_to receive(:post_financials!)
     ShowFinancials.transaction do
-      financials.expense_items.first.update!(amount: 999)
+      room.update!(amount: 999)
       raise ActiveRecord::Rollback
     end
     RSpec::Mocks.space.proxy_for(described_class).reset
     expect(balance(:venue)).to eq(11_000)
     # Nothing is left waiting: the next save posts.
-    financials.expense_items.first.update!(amount: 50)
+    room.update!(amount: 50)
     expect(balance(:venue)).to eq(6_000)
   end
 
