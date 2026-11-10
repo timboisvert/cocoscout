@@ -20,13 +20,17 @@
   focus = pick == :week ? selected_week : selected_day
   start_index = (months.index(focus.beginning_of_month) || 0).clamp(0, [ months.size - 2, 0 ].max)
   legend = local_assigns.fetch(:legend, pick == :week)
+  # One width whatever the dates say, so Next and Previous stay under the
+  # mouse click after click (Tim, 2026-11-10). Wide enough for the longest
+  # label of each kind: "Sep 28 – Nov 28, 2028", "Wed, Sep 28 – Wed, Nov 28".
+  label_width = pick == :week ? "w-[13.5rem]" : "w-[15.5rem]"
 %>
 <div class="hidden sm:flex items-center gap-2" data-week-picker>
   <%= render "shared/button", text: "", icon: "chevron-left", variant: "secondary", size: "small", type: :link,
         path: prev_path, title: pick == :week ? "Previous week" : "Earlier" %>
   <div class="relative" data-controller="dropdown">
     <%= render "shared/button", text: label, icon: "calendar", variant: "secondary", size: "small", type: :button,
-          data: { action: "dropdown#toggle" }, classes: "font-semibold" %>
+          data: { action: "dropdown#toggle" }, classes: "font-semibold tabular-nums #{label_width}" %>
     <div data-dropdown-target="menu"
          class="hidden absolute left-0 top-full mt-2 z-50 w-[540px] bg-white border border-gray-200 rounded-xl shadow-[0_16px_40px_rgba(17,24,39,0.16)] p-4"
          data-controller="month-pager" data-month-pager-index-value="<%= start_index %>" data-month-pager-per-page-value="2">
