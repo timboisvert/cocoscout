@@ -19,6 +19,13 @@ class Notification < ApplicationRecord
   validates :kind, :category, :title, presence: true
   validates :category, inclusion: { in: ->(_) { NotificationGroups.keys } }
 
+  # The ones this code has a group for. A notice filed under a group that a
+  # later release adds (Books, on v1.3) is in the table but can't be drawn
+  # here: on a dev machine that has run that release, or after rolling one
+  # back. The list, the count and the digest pass over it instead of failing
+  # for everyone who has one (Tim's localhost, 2026-11-09); it shows again
+  # once the code knows its group.
+  scope :understood, -> { where(category: NotificationGroups.keys) }
   scope :unread, -> { where(read_at: nil) }
   scope :newest_first, -> { order(created_at: :desc, id: :desc) }
   scope :in_category, ->(keys) { where(category: Array(keys)) }

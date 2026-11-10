@@ -465,7 +465,7 @@ class User < ApplicationRecord
   end
 
   def unread_notification_count
-    notifications.unread.count
+    notifications.understood.unread.count
   end
 
   # Intro guides (shared/_intro_guide). Three states per key: absent means the

@@ -53,7 +53,7 @@ class UnreadDigestJob < ApplicationJob
 
   def send_digest_to(user)
     unread_threads = collect_unread_threads(user)
-    notifications = user.notifications.owed_a_digest.order(:created_at).to_a
+    notifications = user.notifications.understood.owed_a_digest.order(:created_at).to_a
     return if unread_threads.empty? && notifications.empty?
 
     # Check if the oldest unread is old enough (waited INITIAL_DELAY)
