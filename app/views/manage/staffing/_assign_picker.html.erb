@@ -1,5 +1,6 @@
 <%# The assign picker and its conflict modal: shared by the scheduling page
-    and a shift vacancy's page, both under a shift-assign controller. %>
+    and a shift vacancy's page, both under a shift-assign controller.
+    Locals: hint (optional; the vacancy page says a pick is told at once). %>
 <%# === Assign: the shared People Picker (V1.1 plan §5), listing everyone
     qualified for the shift's role, free for all of it first, with the
     Everyone / Can work / Available the whole shift filters. A pick that
@@ -7,7 +8,7 @@
     work) goes through the conflict modal below first. %>
 <%= render "shared/people_picker", id: "shift-picker", title: "Assign", scope: "staff",
       filters: [ [ "Everyone", "all" ], [ "Can work", "can_work" ], [ "Available the whole shift", "free" ] ], filter_param: "fit",
-      placeholder: "Search by name", pick_action: "people-picker:pick->shift-assign#picked" %>
+      placeholder: "Search by name", hint: local_assigns[:hint], pick_action: "people-picker:pick->shift-assign#picked" %>
 <%# JS rewrites this form's action; pass the session CSRF token — the default per-form token is minted for "#" and gets rejected. %>
 <%= form_with url: "#", method: :post, local: true,
               authenticity_token: form_authenticity_token,

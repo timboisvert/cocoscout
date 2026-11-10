@@ -25,10 +25,12 @@ class ShiftVacancyNotificationService
     end
 
     # Claimed by the person themself: they're covering it. Put on by a manager
-    # (fill! with accepted: false, fill_from_assignment!): they haven't been
-    # asked yet and hear at the next Notify updates, so the words say "put
-    # on", not "covering". The one who dropped it reads "you", not their own
-    # name.
+    # (fill! with accepted: false, fill_from_assignment!): they haven't said
+    # yes, so the words say "put on", not "covering", and say whether they've
+    # heard: told at once when a manager picked them by hand
+    # (StaffScheduleNotices.tell_new_shift!), otherwise with the week's next
+    # updates, and never "will be told" of someone with no login. The one who
+    # dropped it reads "you", not their own name.
     def notify_filled(vacancy)
       shift = vacancy.shift
       organization = shift.organization
@@ -39,10 +41,14 @@ class ShiftVacancyNotificationService
       role = variables[:role_name]
       subject = claimed ? "#{filled_by&.name} is covering the #{role} shift on #{variables[:shift_date]}" :
                           "#{filled_by&.name} has been put on the #{role} shift on #{variables[:shift_date]}"
+      told = if row&.notified_at.present? then ", and has been told"
+      elsif filled_by&.user.nil? then ""
+      else ", and will be told"
+      end
       words = ->(dropper) do
         who = dropper ? "you" : vacancy.vacated_by.name
         claimed ? "#{filled_by&.name} is covering the <strong>#{role}</strong> shift on <strong>#{variables[:shift_time]}</strong> that #{who} couldn't make." :
-                  "#{filled_by&.name} has been put on the <strong>#{role}</strong> shift on <strong>#{variables[:shift_time]}</strong> that #{who} couldn't make, and will be told."
+                  "#{filled_by&.name} has been put on the <strong>#{role}</strong> shift on <strong>#{variables[:shift_time]}</strong> that #{who} couldn't make#{told}."
       end
 
       managers = organization.staffing_notification_recipients

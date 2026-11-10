@@ -65,7 +65,7 @@ module Manage
         if assignment.save
           # Put on by hand while someone couldn't make it: that covers the shift.
           covered = ShiftVacancy.fill_from_assignment!(assignment, by: Current.user)
-          covered_note = covered ? " That covers the shift #{covered.vacated_by.name} couldn't make." : ""
+          covered_note = covered ? " That covers the shift #{covered.vacated_by.name} couldn't make.#{told_note(assignment)}" : ""
           redirect_to_scheduling notice: "Assigned #{person.name}.#{covered_note}#{availability_note(person, @shift)}"
         else
           redirect_to_scheduling alert: assignment.errors.full_messages.to_sentence.presence || "Couldn't assign."
@@ -257,6 +257,16 @@ module Manage
         "Assigned #{person.name}.#{availability_note(person, @shift)}"
       rescue ActiveRecord::RecordInvalid => e
         "Couldn't assign #{person&.name}: #{e.message}"
+      end
+
+      # Cover picked by hand is told at once, not at the next Notify updates
+      # (Tim, 2026-11-10), and the page says which it was.
+      def told_note(assignment)
+        first = assignment.person.name.to_s.split.first
+        if StaffScheduleNotices.tell_new_shift!(assignment) then " #{first} has been told."
+        elsif assignment.person.user.nil? then " #{first} has no login, so tell them yourself."
+        else " #{first} will hear when the week is published."
+        end
       end
 
       # Assigning never refuses someone for what they said about their

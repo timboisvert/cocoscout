@@ -52,6 +52,22 @@ RSpec.describe ShiftVacancyNotificationJob, type: :job do
     expect(to_dana.body).not_to include("Dana Morris couldn't")
   end
 
+  it "says they've been told once a hand assignment told them" do
+    vacancy.fill!(priya)
+    shift.shift_assignments.find_by(person: priya).update!(notified_at: Time.current)
+    described_class.perform_now(vacancy.id, "filled")
+    expect(Notification.find_by(user: manager_user).body).to include("couldn't make, and has been told.")
+  end
+
+  it "never says someone with no login will be told" do
+    priya.update!(user: nil)
+    vacancy.fill!(priya)
+    described_class.perform_now(vacancy.id, "filled")
+    body = Notification.find_by(user: manager_user).body
+    expect(body).to include("that Dana Morris couldn't make.")
+    expect(body).not_to include("told")
+  end
+
   it "names the whole role label" do
     shift.assign_additional_roles!([ create(:house_role, organization: org, name: "Door").id ])
     vacancy.fill!(priya, accepted: true)

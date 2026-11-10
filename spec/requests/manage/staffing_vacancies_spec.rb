@@ -109,13 +109,78 @@ RSpec.describe "Manage::Staffing shift vacancies", type: :request do
     post manage_assign_staffing_shift_path(shift), params: { person_id: priya.id },
          headers: { "HTTP_REFERER" => manage_staffing_vacancy_url(vacancy) }
     expect(response).to redirect_to(manage_staffing_vacancy_url(vacancy))
-    expect(flash[:notice]).to include("Assigned Priya Kaur.", "covers the shift Dana Morris couldn't make")
+    # The week isn't published: Priya can't see the shift yet, so she isn't told yet, and the page says so.
+    expect(flash[:notice]).to include("Assigned Priya Kaur.", "covers the shift Dana Morris couldn't make", "Priya will hear when the week is published")
     expect(vacancy.reload).to be_filled
     expect(shift.shift_assignments.reload.map(&:person)).to contain_exactly(marco, priya)
+    expect(Notification.where(user: priya.user)).to be_empty
 
     get manage_staffing_vacancy_path(vacancy)
-    expect(response.body).to include("Covered", "Priya Kaur", "Dana Morris's row is gone", "Notify updates")
-    expect(response.body).not_to include("Send invitations")
+    # Settled: one closure card, not the working page (Tim, 2026-11-10).
+    doc = Nokogiri::HTML(response.body)
+    card = doc.at_css("[data-vacancy-closure][data-vacancy-covered]")
+    expect(card.text.squish).to include("Covered", "Covering it", "Priya Kaur was put on", "in place of Dana Morris", "Dana Morris dropped it", "Out of town",
+                                        "Also on the shift: Marco Ruiz", "Back to Scheduling")
+    expect(doc.at_css("[data-vacancy-told]")["data-vacancy-told"]).to eq("at_publish")
+    expect(card.text).to include("Priya hears when you publish it")
+    expect(response.body).not_to include("Send invitations", "Can't make it</div>", "Also on it:", "Tell Priya now")
+  end
+
+  # Tim, 2026-11-10: "assigning them directly should notify them directly",
+  # and the page should say it will.
+  describe "in a published week" do
+    before { create(:staffing_finalization, organization: org, week_start: shift_at.to_date.beginning_of_week, finalized_at: Time.current) }
+
+    it "says a hand assignment is told right away, then tells them, once" do
+      get manage_staffing_vacancy_path(vacancy)
+      doc = Nokogiri::HTML(response.body)
+      expect(doc.at_css("[data-vacancy-assign-tells]").text).to include("told right away")
+      expect(response.body).to include("Whoever you pick is told right away")
+
+      post manage_assign_staffing_shift_path(shift), params: { person_id: priya.id },
+           headers: { "HTTP_REFERER" => manage_staffing_vacancy_url(vacancy) }
+      expect(flash[:notice]).to include("covers the shift Dana Morris couldn't make", "Priya has been told.")
+      notices = Notification.where(user: priya.user)
+      expect(notices.map(&:kind)).to eq([ "staff_shift_added" ])
+      expect(notices.first.title).to include("New shift: Bar")
+      row = shift.shift_assignments.reload.find_by(person: priya)
+      expect(row.notified_at).to be_present
+      # Nothing left for Notify updates, and a second telling sends nothing.
+      expect(StaffScheduleNotices.tell_new_shift!(row)).to be(false)
+      expect(Notification.where(user: priya.user).count).to eq(1)
+
+      get manage_staffing_vacancy_path(vacancy)
+      expect(response.body).to include("Priya has been told")
+      expect(response.body).not_to include("Tell Priya now")
+    end
+
+    # Cover put on before a pick told them at once: the closed page offers it.
+    it "offers Tell now for cover who hasn't heard, and tells them once" do
+      vacancy # the open one, before it's covered
+      row = shift.shift_assignments.create!(person: priya, position: 3)
+      ShiftVacancy.fill_from_assignment!(row, by: owner)
+      get manage_staffing_vacancy_path(vacancy)
+      doc = Nokogiri::HTML(response.body)
+      expect(doc.at_css("[data-vacancy-told]")["data-vacancy-told"]).to eq("not_yet")
+      expect(doc.at_css("[data-vacancy-told]").text).to include("Priya hasn't been told yet", "Tell Priya now")
+
+      post manage_tell_cover_staffing_vacancy_path(vacancy)
+      expect(flash[:notice]).to eq("Priya has been told.")
+      expect(Notification.where(user: priya.user).map(&:kind)).to eq([ "staff_shift_added" ])
+
+      post manage_tell_cover_staffing_vacancy_path(vacancy)
+      expect(flash[:alert]).to include("Nothing was sent")
+      expect(Notification.where(user: priya.user).count).to eq(1)
+    end
+
+    it "says so when the person has no login to be told through" do
+      priya.update!(user: nil)
+      post manage_assign_staffing_shift_path(shift), params: { person_id: priya.id },
+           headers: { "HTTP_REFERER" => manage_staffing_vacancy_url(vacancy) }
+      expect(flash[:notice]).to include("Priya has no login, so tell them yourself.")
+      get manage_staffing_vacancy_path(vacancy)
+      expect(response.body).to include("Priya has no login, so tell them yourself")
+    end
   end
 
   it "closes the hole on Not filling it, and puts the person back on Put back" do

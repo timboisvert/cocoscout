@@ -67,6 +67,7 @@
     </div>
   </div>
 
+  <% if vacancy.active? %>
   <%# The shift, and who dropped it %>
   <div class="border border-gray-200 rounded-lg overflow-hidden mb-6 bg-white">
     <%= render "shared/section_heading", padding: "px-4 py-3", title: "The shift" %>
@@ -128,7 +129,6 @@
     </div>
   </div>
 
-  <% if vacancy.active? %>
     <% if @invitations.any? %>
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
         <%= render "shared/section_heading", padding: "px-4 py-3", title: "Asked so far", intro: "First to claim gets it." %>
@@ -197,7 +197,9 @@
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
       <%= render "shared/section_heading", title: "Or settle it yourself" %>
       <div class="p-5 sm:p-6 space-y-4">
+        <% told_at_once = StaffingFinalization.published?(shift.organization, shift.starts_at) %>
         <p class="text-sm text-gray-600">Put someone on the shift yourself, close it without filling it, or put <%= dropper.name %> back on if they can make it after all.</p>
+        <p class="text-sm text-gray-600" data-vacancy-assign-tells><%= told_at_once ? "Whoever you assign is told right away: you don't need Notify updates for it." : "This week isn't published yet, so whoever you assign hears when you publish it." %></p>
         <% not_filling_cid = "confirm-not-filling-#{vacancy.id}" %>
         <% put_back_cid = "confirm-put-back-#{vacancy.id}" %>
         <div class="flex flex-col sm:flex-row sm:flex-wrap gap-2">
@@ -218,51 +220,115 @@
     <%= render "shared/confirm_modal", id: put_back_cid, title: "Put #{dropper.name} back on?",
           message: "#{dropper.name} goes back on the #{shift.role_label} shift as if they'd never dropped it.",
           confirm_text: "Put back", url: manage_reclaim_staffing_vacancy_path(vacancy), method: :post %>
-    <%= render "manage/staffing/assign_picker" %>
+    <%= render "manage/staffing/assign_picker", hint: (told_at_once ? "Whoever you pick is told right away" : nil) %>
 
-  <% elsif vacancy.filled? %>
-    <% filled_by = vacancy.filled_by %>
-    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6" data-vacancy-covered>
-      <div class="bg-green-50 px-4 py-3 border-b border-green-200">
-        <h3 class="text-md font-semibold text-green-900 coustard-regular">Covered</h3>
-      </div>
-      <div class="p-5 sm:p-6">
-        <% if filled_by %>
-          <% claimed = vacancy.claimed_invitation %>
-          <%= link_to manage_person_path(filled_by), class: "flex items-center gap-3 group" do %>
-            <% headshot = filled_by.safe_headshot_variant(:thumb) %>
-            <% if headshot %>
-              <%= image_tag headshot, alt: filled_by.name, class: "w-12 h-12 rounded-lg object-cover" %>
-            <% else %>
-              <div class="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm"><%= filled_by.initials %></div>
-            <% end %>
-            <div>
-              <div class="font-medium text-gray-900 group-hover:text-pink-600 transition-colors"><%= filled_by.name %></div>
-              <div class="text-sm text-gray-500">
-                <%= claimed ? "Claimed it" : "Put on" %><% if vacancy.filled_at %> <%= vacancy.filled_at.strftime("%a, %b %-d at %-l:%M %p") %><% end %>
-                · <%= dropper.name %>'s row is gone
-                · <%= claimed ? "#{filled_by.name.to_s.split.first} is accepted and told" : "tell #{filled_by.name.to_s.split.first} with Notify updates" %>
-              </div>
+  <% else %>
+    <%#
+      Settled (Tim, 2026-11-10: "show something that's more a closure kind of
+      thing"): one card that says how it ended. The shift, who has it now,
+      a sentence for who dropped it and why, and whether the cover has been
+      told. No "The shift" box with the dropper beside it and no "Also on
+      it": that was the working page, shown after the work was done.
+    %>
+    <%
+      filled_by = vacancy.filled_by if vacancy.filled?
+      claimed = vacancy.filled? && vacancy.claimed_invitation
+      cover_row = filled_by && shift.shift_assignments.find { |a| a.person_id == filled_by.id && !a.declined? }
+      on_it = vacancy.cancelled? ? dropper : filled_by
+      first_name = on_it&.name.to_s.split.first
+      closure_title = vacancy.filled? ? "Covered" : (vacancy.cancelled? ? "#{dropper.name} is back on" : "Not filling it")
+      at = ->(time) { time ? time.strftime("%a, %b %-d at %-l:%M %p") : nil }
+      others = @others_on_shift.reject { |person| person == on_it }
+      # What the cover knows: told, can't be, will be at publish, or not yet.
+      told_state =
+        if !filled_by || !cover_row then nil
+        elsif claimed || cover_row.notified_at then :told
+        elsif filled_by.user.nil? then :no_login
+        elsif !StaffingFinalization.published?(shift.organization, shift.starts_at) then :at_publish
+        elsif shift.ends_at.past? then nil
+        else :not_yet
+        end
+    %>
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6" data-vacancy-closure
+         <%= "data-vacancy-covered" if vacancy.filled? %> <%= "data-vacancy-not-filling" if vacancy.not_filling? %> <%= "data-vacancy-back-on" if vacancy.cancelled? %>>
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: closure_title %>
+      <div class="p-4 space-y-4">
+        <div class="flex flex-col md:flex-row md:items-stretch bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div class="w-full md:w-1/2 px-3 py-2 flex items-center gap-4">
+            <div class="flex-shrink-0 w-14 flex items-center gap-1.5">
+              <span class="text-xl leading-none font-bold text-gray-900"><%= shift.starts_at.strftime("%-d") %></span>
+              <span class="text-[10px] leading-tight uppercase">
+                <span class="block font-semibold text-pink-600"><%= shift.starts_at.strftime("%b") %></span>
+                <span class="block text-gray-500"><%= shift.starts_at.strftime("%a") %></span>
+              </span>
             </div>
+            <div class="min-w-0">
+              <div class="font-medium text-gray-900"><%= shift.role_label %></div>
+              <div class="text-sm text-gray-600 tabular-nums"><%= shift_time_range(shift) %><% if location_name.present? %> · <%= location_name %><% end %></div>
+              <% if show_names.any? %>
+                <div class="text-xs text-purple-700">Covers <%= show_names.to_sentence %></div>
+              <% end %>
+            </div>
+          </div>
+          <div class="w-full md:w-1/2 md:border-l border-t md:border-t-0 border-gray-200 px-3 py-2 flex items-center gap-3">
+            <% if on_it %>
+              <%= link_to manage_person_path(on_it), class: "flex items-center gap-3 flex-1 min-w-0 group" do %>
+                <% headshot_variant = on_it.safe_headshot_variant(:thumb) %>
+                <% if headshot_variant %>
+                  <%= image_tag headshot_variant, alt: on_it.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                <% else %>
+                  <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm flex-shrink-0"><%= on_it.initials %></div>
+                <% end %>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[10px] text-gray-400 uppercase tracking-wide"><%= vacancy.cancelled? ? "Back on it" : "Covering it" %></div>
+                  <div class="text-sm font-medium text-gray-900 group-hover:text-pink-600 transition-colors truncate"><%= on_it.name %></div>
+                </div>
+              <% end %>
+            <% else %>
+              <div class="text-sm text-gray-500">Nobody in <%= dropper.name.to_s.split.first %>'s place</div>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="text-sm text-gray-600 space-y-1" data-vacancy-closure-words>
+          <% if vacancy.filled? && filled_by %>
+            <p><%= filled_by.name %> <%= claimed ? "claimed it" : "was put on" %><% if vacancy.filled_at %> <%= at.call(vacancy.filled_at) %><% end %>, in place of <%= dropper.name %>.</p>
+          <% elsif vacancy.not_filling? %>
+            <p>Closed<% if vacancy.closed_at %> <%= at.call(vacancy.closed_at) %><% end %> without finding cover. <%= dropper.name %> is off the shift; put someone on it from Scheduling if that changes.</p>
+          <% elsif vacancy.cancelled? %>
+            <p><%= dropper.name %> can make it after all<% if vacancy.closed_at %>, as of <%= at.call(vacancy.closed_at) %><% end %>. The shift is as it was.</p>
           <% end %>
+          <% unless vacancy.cancelled? %>
+            <p class="text-gray-500"><%= dropper.name %> dropped it <%= at.call(vacancy.vacated_at) %><% if vacancy.reason.present? %>: “<%= vacancy.reason %>”<% end %></p>
+          <% end %>
+          <% if others.any? %>
+            <p class="text-gray-500">Also on the shift: <%= others.map(&:name).to_sentence %>.</p>
+          <% end %>
+        </div>
+
+        <% if told_state %>
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border px-3 py-2 text-sm <%= told_state == :not_yet ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-gray-200 bg-gray-50 text-gray-700' %>" data-vacancy-told="<%= told_state %>">
+            <span class="flex-1 min-w-0">
+              <%= case told_state
+                  when :told then claimed ? "#{first_name} said yes and has their confirmation." : "#{first_name} has been told."
+                  when :no_login then "#{first_name} has no login, so tell them yourself."
+                  when :at_publish then "This week isn't published yet. #{first_name} hears when you publish it."
+                  when :not_yet then "#{first_name} hasn't been told yet."
+                  end %>
+            </span>
+            <% if told_state == :not_yet %>
+              <%= form_with url: manage_tell_cover_staffing_vacancy_path(vacancy), method: :post, data: { turbo_action: "replace" } do %>
+                <%= render "shared/button", text: "Tell #{first_name} now", variant: "primary", size: "small", type: :submit %>
+              <% end %>
+            <% end %>
+          </div>
         <% end %>
-      </div>
-    </div>
 
-  <% elsif vacancy.not_filling? %>
-    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6" data-vacancy-not-filling>
-      <%= render "shared/section_heading", title: "Not filling it" %>
-      <div class="p-5 sm:p-6 text-sm text-gray-600">
-        Closed<% if vacancy.closed_at %> <%= vacancy.closed_at.strftime("%a, %b %-d at %-l:%M %p") %><% end %> without finding cover. <%= dropper.name %> is off the shift; put someone on it from
-        <%= link_to "Scheduling", manage_staffing_scheduling_path(day: day.iso8601), class: "text-pink-600 hover:text-pink-700 underline" %> if that changes.
-      </div>
-    </div>
-
-  <% elsif vacancy.cancelled? %>
-    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6" data-vacancy-back-on>
-      <%= render "shared/section_heading", title: "#{dropper.name} is back on" %>
-      <div class="p-5 sm:p-6 text-sm text-gray-600">
-        They can make it after all<% if vacancy.closed_at %>, as of <%= vacancy.closed_at.strftime("%a, %b %-d at %-l:%M %p") %><% end %>. The shift is as it was.
+        <div>
+          <%= link_to manage_staffing_scheduling_path(day: day.iso8601) do %>
+            <%= render "shared/button", text: "Back to Scheduling", variant: "secondary", size: "small" %>
+          <% end %>
+        </div>
       </div>
     </div>
   <% end %>

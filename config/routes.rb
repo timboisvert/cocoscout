@@ -1605,6 +1605,7 @@ Rails.application.routes.draw do
     post   "staffing/vacancies/:id/send_invitations", to: "staffing/vacancies#send_invitations", as: "send_invitations_staffing_vacancy"
     post   "staffing/vacancies/:id/cancel",       to: "staffing/vacancies#cancel",       as: "cancel_staffing_vacancy"
     post   "staffing/vacancies/:id/reclaim",      to: "staffing/vacancies#reclaim",      as: "reclaim_staffing_vacancy"
+    post   "staffing/vacancies/:id/tell_cover",   to: "staffing/vacancies#tell_cover",   as: "tell_cover_staffing_vacancy"
     # A show canceled, taken away or moved: tell its cast and staff
     # (docs/show_change_notices_plan.md).
     post "show-changes/canceled/:show_id", to: "show_changes#for_canceled_show", as: "tell_canceled_show"

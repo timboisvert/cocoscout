@@ -6,8 +6,10 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
     static targets = ["chips", "fields", "count"]
 
+    // Not "picked": a property of that name hides the picked() action below,
+    // so a pick from the sheet did nothing (only "Add everyone" worked).
     connect() {
-        this.picked = new Set()
+        this.keys = new Set()
     }
 
     picked(event) {
@@ -23,8 +25,8 @@ export default class extends Controller {
     }
 
     add(key, name, initials, headshot) {
-        if (this.picked.has(key)) return
-        this.picked.add(key)
+        if (this.keys.has(key)) return
+        this.keys.add(key)
         const chip = document.createElement("span")
         chip.className = "inline-flex items-center gap-2 pl-1.5 pr-2 py-1 bg-pink-50 border border-pink-200 rounded-lg text-sm"
         chip.dataset.key = key
@@ -46,7 +48,7 @@ export default class extends Controller {
 
     remove(event) {
         const key = event.currentTarget.dataset.key
-        this.picked.delete(key)
+        this.keys.delete(key)
         this.chipsTarget.querySelector(`[data-key="${CSS.escape(key)}"]`)?.remove()
         this.fieldsTarget.querySelector(`input[data-key="${CSS.escape(key)}"]`)?.remove()
         this.refresh()
@@ -54,7 +56,7 @@ export default class extends Controller {
 
     refresh() {
         if (!this.hasCountTarget) return
-        const n = this.picked.size
+        const n = this.keys.size
         this.countTarget.textContent = n === 0 ? "Nobody chosen yet" : `${n} chosen`
     }
 
