@@ -199,7 +199,7 @@
       <div class="p-5 sm:p-6 space-y-4">
         <% told_at_once = StaffingFinalization.published?(shift.organization, shift.starts_at) %>
         <p class="text-sm text-gray-600">Put someone on the shift yourself, close it without filling it, or put <%= dropper.name %> back on if they can make it after all.</p>
-        <p class="text-sm text-gray-600" data-vacancy-assign-tells><%= told_at_once ? "Whoever you assign is told right away: you don't need Notify updates for it." : "This week isn't published yet, so whoever you assign hears when you publish it." %></p>
+        <p class="text-sm text-gray-600" data-vacancy-assign-tells><%= told_at_once ? "Whoever you assign is notified right away: you don't need Notify updates for it." : "This week isn't published yet, so whoever you assign will be notified when you publish it." %></p>
         <% not_filling_cid = "confirm-not-filling-#{vacancy.id}" %>
         <% put_back_cid = "confirm-put-back-#{vacancy.id}" %>
         <div class="flex flex-col sm:flex-row sm:flex-wrap gap-2">
@@ -220,7 +220,7 @@
     <%= render "shared/confirm_modal", id: put_back_cid, title: "Put #{dropper.name} back on?",
           message: "#{dropper.name} goes back on the #{shift.role_label} shift as if they'd never dropped it.",
           confirm_text: "Put back", url: manage_reclaim_staffing_vacancy_path(vacancy), method: :post %>
-    <%= render "manage/staffing/assign_picker", hint: (told_at_once ? "Whoever you pick is told right away" : nil) %>
+    <%= render "manage/staffing/assign_picker", hint: (told_at_once ? "Whoever you pick is notified right away" : nil) %>
 
   <% else %>
     <%#
@@ -310,15 +310,15 @@
           <div class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border px-3 py-2 text-sm <%= told_state == :not_yet ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-gray-200 bg-gray-50 text-gray-700' %>" data-vacancy-told="<%= told_state %>">
             <span class="flex-1 min-w-0">
               <%= case told_state
-                  when :told then claimed ? "#{first_name} said yes and has their confirmation." : "#{first_name} has been told."
-                  when :no_login then "#{first_name} has no login, so tell them yourself."
-                  when :at_publish then "This week isn't published yet. #{first_name} hears when you publish it."
-                  when :not_yet then "#{first_name} hasn't been told yet."
+                  when :told then claimed ? "#{first_name} said yes and has their confirmation." : "#{first_name} has been notified."
+                  when :no_login then "#{first_name} doesn't have a CocoScout login, so you'll need to tell them directly, outside of CocoScout."
+                  when :at_publish then "#{first_name} will be notified when you publish the week."
+                  when :not_yet then "#{first_name} hasn't been notified yet."
                   end %>
             </span>
             <% if told_state == :not_yet %>
               <%= form_with url: manage_tell_cover_staffing_vacancy_path(vacancy), method: :post, data: { turbo_action: "replace" } do %>
-                <%= render "shared/button", text: "Tell #{first_name} now", variant: "primary", size: "small", type: :submit %>
+                <%= render "shared/button", text: "Notify #{first_name} now", variant: "primary", size: "small", type: :submit %>
               <% end %>
             <% end %>
           </div>

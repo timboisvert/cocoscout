@@ -110,7 +110,7 @@ RSpec.describe "Manage::Staffing shift vacancies", type: :request do
          headers: { "HTTP_REFERER" => manage_staffing_vacancy_url(vacancy) }
     expect(response).to redirect_to(manage_staffing_vacancy_url(vacancy))
     # The week isn't published: Priya can't see the shift yet, so she isn't told yet, and the page says so.
-    expect(flash[:notice]).to include("Assigned Priya Kaur.", "covers the shift Dana Morris couldn't make", "Priya will hear when the week is published")
+    expect(flash[:notice]).to include("Assigned Priya Kaur.", "covers the shift Dana Morris couldn't make", "Priya will be notified when you publish the week")
     expect(vacancy.reload).to be_filled
     expect(shift.shift_assignments.reload.map(&:person)).to contain_exactly(marco, priya)
     expect(Notification.where(user: priya.user)).to be_empty
@@ -122,8 +122,8 @@ RSpec.describe "Manage::Staffing shift vacancies", type: :request do
     expect(card.text.squish).to include("Covered", "Covering it", "Priya Kaur was put on", "in place of Dana Morris", "Dana Morris dropped it", "Out of town",
                                         "Also on the shift: Marco Ruiz", "Back to Scheduling")
     expect(doc.at_css("[data-vacancy-told]")["data-vacancy-told"]).to eq("at_publish")
-    expect(card.text).to include("Priya hears when you publish it")
-    expect(response.body).not_to include("Send invitations", "Can't make it</div>", "Also on it:", "Tell Priya now")
+    expect(card.text).to include("Priya will be notified when you publish the week")
+    expect(response.body).not_to include("Send invitations", "Can't make it</div>", "Also on it:", "Notify Priya now")
   end
 
   # Tim, 2026-11-10: "assigning them directly should notify them directly",
@@ -131,15 +131,15 @@ RSpec.describe "Manage::Staffing shift vacancies", type: :request do
   describe "in a published week" do
     before { create(:staffing_finalization, organization: org, week_start: shift_at.to_date.beginning_of_week, finalized_at: Time.current) }
 
-    it "says a hand assignment is told right away, then tells them, once" do
+    it "says a hand assignment is notified right away, then notifies them, once" do
       get manage_staffing_vacancy_path(vacancy)
       doc = Nokogiri::HTML(response.body)
-      expect(doc.at_css("[data-vacancy-assign-tells]").text).to include("told right away")
-      expect(response.body).to include("Whoever you pick is told right away")
+      expect(doc.at_css("[data-vacancy-assign-tells]").text).to include("notified right away")
+      expect(response.body).to include("Whoever you pick is notified right away")
 
       post manage_assign_staffing_shift_path(shift), params: { person_id: priya.id },
            headers: { "HTTP_REFERER" => manage_staffing_vacancy_url(vacancy) }
-      expect(flash[:notice]).to include("covers the shift Dana Morris couldn't make", "Priya has been told.")
+      expect(flash[:notice]).to include("covers the shift Dana Morris couldn't make", "Priya has been notified.")
       notices = Notification.where(user: priya.user)
       expect(notices.map(&:kind)).to eq([ "staff_shift_added" ])
       expect(notices.first.title).to include("New shift: Bar")
@@ -150,8 +150,8 @@ RSpec.describe "Manage::Staffing shift vacancies", type: :request do
       expect(Notification.where(user: priya.user).count).to eq(1)
 
       get manage_staffing_vacancy_path(vacancy)
-      expect(response.body).to include("Priya has been told")
-      expect(response.body).not_to include("Tell Priya now")
+      expect(response.body).to include("Priya has been notified")
+      expect(response.body).not_to include("Notify Priya now")
     end
 
     # Cover put on before a pick told them at once: the closed page offers it.
@@ -162,10 +162,10 @@ RSpec.describe "Manage::Staffing shift vacancies", type: :request do
       get manage_staffing_vacancy_path(vacancy)
       doc = Nokogiri::HTML(response.body)
       expect(doc.at_css("[data-vacancy-told]")["data-vacancy-told"]).to eq("not_yet")
-      expect(doc.at_css("[data-vacancy-told]").text).to include("Priya hasn't been told yet", "Tell Priya now")
+      expect(doc.at_css("[data-vacancy-told]").text).to include("Priya hasn't been notified yet", "Notify Priya now")
 
       post manage_tell_cover_staffing_vacancy_path(vacancy)
-      expect(flash[:notice]).to eq("Priya has been told.")
+      expect(flash[:notice]).to eq("Priya has been notified.")
       expect(Notification.where(user: priya.user).map(&:kind)).to eq([ "staff_shift_added" ])
 
       post manage_tell_cover_staffing_vacancy_path(vacancy)
@@ -177,9 +177,10 @@ RSpec.describe "Manage::Staffing shift vacancies", type: :request do
       priya.update!(user: nil)
       post manage_assign_staffing_shift_path(shift), params: { person_id: priya.id },
            headers: { "HTTP_REFERER" => manage_staffing_vacancy_url(vacancy) }
-      expect(flash[:notice]).to include("Priya has no login, so tell them yourself.")
+      expect(flash[:notice]).to include("Priya doesn't have a CocoScout login, so you'll need to tell them directly, outside of CocoScout.")
       get manage_staffing_vacancy_path(vacancy)
-      expect(response.body).to include("Priya has no login, so tell them yourself")
+      expect(Nokogiri::HTML(response.body).at_css("[data-vacancy-told='no_login']").text)
+        .to include("Priya doesn't have a CocoScout login, so you'll need to tell them directly, outside of CocoScout.")
     end
   end
 

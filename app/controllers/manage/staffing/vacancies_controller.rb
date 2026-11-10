@@ -90,9 +90,9 @@ module Manage
         cover = @vacancy.filled_by if @vacancy.filled?
         row = cover && @vacancy.shift.shift_assignments.active.find_by(person_id: cover.id)
         if row && @vacancy.shift.ends_at.future? && StaffScheduleNotices.tell_new_shift!(row)
-          redirect_to manage_staffing_vacancy_path(@vacancy), notice: "#{cover.name.to_s.split.first} has been told."
+          redirect_to manage_staffing_vacancy_path(@vacancy), notice: "#{cover.name.to_s.split.first} has been notified."
         else
-          redirect_to manage_staffing_vacancy_path(@vacancy), alert: "Nothing was sent: they've been told already, or can't be reached yet."
+          redirect_to manage_staffing_vacancy_path(@vacancy), alert: "Nothing was sent: they've been notified already, or can't be reached yet."
         end
       end
 

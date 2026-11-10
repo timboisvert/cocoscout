@@ -259,13 +259,14 @@ module Manage
         "Couldn't assign #{person&.name}: #{e.message}"
       end
 
-      # Cover picked by hand is told at once, not at the next Notify updates
-      # (Tim, 2026-11-10), and the page says which it was.
+      # Cover picked by hand is notified at once, not at the next Notify
+      # updates (Tim, 2026-11-10), and the page says which it was. The word is
+      # always "notified", never "told", and "them", never a guessed "her".
       def told_note(assignment)
         first = assignment.person.name.to_s.split.first
-        if StaffScheduleNotices.tell_new_shift!(assignment) then " #{first} has been told."
-        elsif assignment.person.user.nil? then " #{first} has no login, so tell them yourself."
-        else " #{first} will hear when the week is published."
+        if StaffScheduleNotices.tell_new_shift!(assignment) then " #{first} has been notified."
+        elsif assignment.person.user.nil? then " #{first} doesn't have a CocoScout login, so you'll need to tell them directly, outside of CocoScout."
+        else " #{first} will be notified when you publish the week."
         end
       end
 
