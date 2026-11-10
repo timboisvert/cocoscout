@@ -107,6 +107,11 @@ Review the email, the password, and these notes:
 
 Contact: Tim Boisvert, boisvert@gmail.com, (phone).
 
+**From 1.2 these notes are replaced** by the ones in `ios/tap_to_pay.md`,
+"App Review notes for 1.2": Tap to Pay on iPhone takes card payments at
+the door inside the app, so "no money changes hands in it" stops being
+true, and Apple wants the notes to say how the entitlement is used.
+
 ## App Privacy (the questionnaire)
 
 Matches `ios/CocoScout/PrivacyInfo.xcprivacy` exactly.
@@ -129,7 +134,15 @@ Everything else: not collected. In particular —
 - Financial Info: no. Bank details for payouts are entered on Stripe's own
   page in a secure sheet; card payments by ticket buyers happen on their
   phone in Safari, not in the app. CocoScout never sees a card number.
-- Location: no. The door scanner uses the camera, not location.
+- Location: no through 1.1.x; the door scanner uses the camera, not
+  location. **From 1.2, answer this again.** Taking a tap asks for location
+  (`NSLocationWhenInUseUsageDescription`: "CocoScout checks your location
+  when you take card payments at the door, as card networks require"), and
+  the payment SDK sends it to our payment provider. That most likely makes
+  it Location → Precise Location, linked to the user, not used for
+  tracking, for App Functionality; check it against the payment provider's
+  published App Store privacy details for its Terminal iOS SDK before
+  answering, which was not done when this was written (2026-11-10).
 - Purchases: no — nothing is sold in the app.
 - Diagnostics, Crash data: no. There is no analytics or crash SDK in the
   app (Sentry runs on the server only). Usage Data → Product Interaction is
@@ -236,7 +249,9 @@ ActiveRecord::Base.transaction do
   end
 
   profile = TicketingProfile.for(org)
-  profile.update!(enabled: true, door_in_app: "always") # the reviewer finds the Door whatever day they look
+  # The reviewer finds the Door whatever day they look, and Tap to Pay on
+  # iPhone on its Sell screen (1.2: Apple reviews the entitlement in use).
+  profile.update!(enabled: true, door_in_app: "always", tap_to_pay: true)
 
   # Every night on sale, with two parties at its door. Each night's parties
   # are sold on that night's own day (the console's clock moves there for the
@@ -288,6 +303,7 @@ nothing) and it adds the next 14.
 - Submit build 5 (`CURRENT_PROJECT_VERSION = 5`; it adds the location and
   Bluetooth purpose strings App Store Connect asked for on build 4). Bump to
   6 for the next upload.
-- v1 ships without Tap to Pay: release builds leave it out until Apple
-  grants the distribution entitlement (ios/tap_to_pay.md). Still to build
-  for that: Apple's How to Tap screen.
+- v1 shipped without Tap to Pay: release builds left it out until Apple
+  granted the distribution entitlement, which it did on 2026-11-10. 1.2 is
+  the first build with it (`ios/tap_to_pay.md`, "The grant, and shipping
+  1.2").
