@@ -49,10 +49,25 @@ RSpec.describe "A ticketed show on a phone", type: :request do
     old_page = bar.call(old_build)
     expect(old_page.at_css("[data-ticketing-phone-bar]")["class"]).to include("pr-[96px]")
     new_page = bar.call(new_build)
-    expect(new_page.at_css("[data-ticketing-phone-bar]")["class"]).to include("pr-4")
+    expect(new_page.at_css("[data-ticketing-phone-bar]")["class"]).to include("px-4")
     expect(new_page.at_css("[data-ticketing-phone-bar]")["class"]).not_to include("pr-[96px]")
     # Both are given the piece that says where the button belongs; only the
     # new build's bridge loads it.
     expect(new_page.at_css("[data-controller='bridge--menu-button']")).to be_present
+  end
+
+  # From 1.1.4 Coco is in the app's top bar (Tim, 2026-11-09). That build has
+  # no menu-button component, like the oldest installs, but nothing floats
+  # over its pages: its bar runs edge to edge as the website's does.
+  it "runs the bar edge to edge in an app build with Coco in its top bar" do
+    get manage_ticket_listing_path(listing), headers: {
+      "User-Agent" => "CocoScout/1.1.4 (17; nav 2) CocoMenu/bar Hotwire Native iOS; Turbo Native iOS; bridge-components: [form menu door-scanner push]"
+    }
+    page = Nokogiri::HTML(response.body)
+    # A rounded bar, in from the screen's corners and up off its bottom edge (NativeAppHelper#phone_bar_room).
+    expect(page.at_css("[data-ticketing-phone-bar]")["class"]).to include("left-3!", "right-3!", "bottom-3!", "rounded-2xl")
+    expect(page.at_css("[data-ticketing-phone-bar]")["class"]).not_to include("pr-[96px]")
+    expect(page.at_css("main")["class"]).to include("pb-8")
+    expect(page.at_css("[data-controller='bridge--menu-button']")).to be_nil
   end
 end

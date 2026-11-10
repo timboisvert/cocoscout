@@ -1,0 +1,50 @@
+<%#
+  An Actions box (Home's, Tim 2026-10-28; Scheduling's on a phone,
+  2026-11-09): one line per thing waiting, the topic on the left, the
+  words, a chevron, and the whole line is the link. Lines where someone's
+  missing are tinted. Nothing at all when there are no items.
+
+  Locals:
+    items  [{ key:, topic: (optional: none on a page already about it), text:, detail: (optional), tone: (:red tints it),
+              example: (optional), action: { modal: "dom-id" } or { path: } }]
+    id     the heading's DOM id (default "actions-title")
+    classes  extra classes for the box (its margin, when to show)
+    heading  false leaves out the "Actions" heading, on a page that needs
+             no telling what the lines are (Scheduling on a phone)
+    note   optional HTML at the right of the heading
+    data   data attributes for the box
+%>
+<% items = Array(local_assigns[:items]).compact %>
+<% if items.any? %>
+  <% heading = local_assigns.fetch(:id, "actions-title") %>
+  <% titled = local_assigns[:heading] != false %>
+  <%= tag.section class: "bg-white border border-gray-200 rounded-lg overflow-hidden #{local_assigns[:classes]}", aria: (titled ? { labelledby: heading } : { label: "Actions" }), data: local_assigns[:data] || {} do %>
+    <% if titled %>
+      <h2 id="<%= heading %>" class="px-4 py-2 text-sm font-semibold text-gray-900 border-b border-gray-200 flex items-center justify-between gap-3">
+        Actions
+        <%= local_assigns[:note] %>
+      </h2>
+    <% end %>
+    <div class="divide-y divide-gray-100">
+      <% items.each do |item| %>
+        <%
+          action = item[:action] || {}
+          alert = item[:tone] == :red
+          row = "flex items-center gap-3 px-4 min-h-[44px] py-1.5 w-full text-left text-sm cursor-pointer #{alert ? 'bg-pink-50 hover:bg-pink-100' : 'hover:bg-gray-50'}"
+          inner = capture do
+        %>
+          <% if item[:topic].present? %><span class="w-[74px] sm:w-20 flex-shrink-0 text-[10.5px] font-semibold uppercase tracking-wide <%= alert ? 'text-pink-700' : 'text-gray-500' %>"><%= item[:topic] %></span><% end %>
+          <span class="flex-1 min-w-0 text-gray-900"><%= item[:text] %><% if item[:detail].present? %><span class="text-gray-500"> · <%= item[:detail] %></span><% end %><% if item[:example] %><span class="text-gray-400"> (example)</span><% end %></span>
+          <svg class="w-4 h-4 text-gray-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+        <% end %>
+        <% if action[:modal] %>
+          <button type="button" class="<%= row %> bg-transparent border-0" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= action[:modal] %>" data-status="<%= item[:key] %>"><%= inner %></button>
+        <% elsif action[:path] %>
+          <%= link_to action[:path], class: row, data: { status: item[:key] } do %><%= inner %><% end %>
+        <% else %>
+          <div class="<%= row %>" data-status="<%= item[:key] %>"><%= inner %></div>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

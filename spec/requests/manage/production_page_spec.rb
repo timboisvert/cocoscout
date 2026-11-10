@@ -108,7 +108,8 @@ RSpec.describe "A production's page", type: :request do
         manage_signups_production_path(production), manage_money_production_financials_path(production),
         production_manage_messages_path(production), manage_production_documents_path(production), edit_manage_production_path(production)
       ])
-      expect(doc.at_css("[data-production-images]")).to be_present
+      images = doc.at_css("[data-production-images]")
+      expect(images.at_css(%(a[href="#{edit_manage_production_path(production, anchor: "tab-1")}"]))).to be_present
       expect(doc.at_css("[data-production-contract], [data-production-runs]")).to be_nil
     end
 

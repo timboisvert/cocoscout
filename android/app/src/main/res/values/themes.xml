@@ -11,7 +11,7 @@
         <item name="toolbarStyle">@style/Widget.CocoScout.Toolbar</item>
     </style>
 
-    <!-- Page titles in Coustard on the left, as on iOS. -->
+    <!-- Page titles in Coustard on the left, as on iOS: 18sp, leaving room for the three icons. -->
     <style name="Widget.CocoScout.Toolbar" parent="Widget.Material3.Toolbar.Surface">
         <item name="titleTextAppearance">@style/TextAppearance.CocoScout.Title</item>
     </style>
@@ -19,7 +19,7 @@
     <style name="TextAppearance.CocoScout.Title" parent="TextAppearance.Material3.TitleLarge">
         <item name="android:fontFamily">@font/coustard_regular</item>
         <item name="fontFamily">@font/coustard_regular</item>
-        <item name="android:textSize">22sp</item>
+        <item name="android:textSize">18sp</item>
         <item name="android:textColor">@color/gray_900</item>
     </style>
 </resources>

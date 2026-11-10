@@ -5,15 +5,7 @@ module Manage
     before_action :set_production
     before_action :check_production_access
     before_action :set_poster, only: %i[edit_poster update_poster destroy_poster set_primary_poster]
-    before_action :ensure_user_is_manager, except: [ :index ]
-
-    def index
-      redirect_to edit_manage_production_path(@production, tab: 1)
-    end
-
-
-
-
+    before_action :ensure_user_is_manager
 
     def new_poster
       redirect_to edit_manage_production_path(@production, tab: 1)

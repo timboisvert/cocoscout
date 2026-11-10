@@ -116,20 +116,23 @@ Key classes:
 - `border-gray-300` - Standard border color
 - `rounded` - Rounded corners
 
-### Pinned bottom bars and the Coco button (in the app)
-The app's floating Coco button is native, drawn over the page's bottom right
-corner. **It gets itself out of the way; pages never make room for it** (Tim,
-2026-11-06). `bridge/menu_button_controller.js` looks at what is pinned under
-the button's corner and tells the app: the button sits above a pinned bar,
-shrinks away while the reader scrolls down, and is gone under a sheet or modal.
+### The Coco menu button (in the app)
+From app version 1.1.4 the Coco menu button is **at the right end of the
+app's top bar**, after Messages and Notifications and the size of their
+circles (Tim, 2026-11-09). Nothing floats
+over the page, so pages, bars, sheets and modals need nothing for it. Those
+builds say "CocoMenu/bar" in their user agent (`NativeAppVersion.menu_in_bar?`).
 
-- A new bar, sheet or modal needs **nothing**: no marker, no padding. Pin it
-  (`fixed`, or `sticky bottom-0`) and run it edge to edge.
-- Never add `pr-[96px]` / `right-[96px]` for the button. The only ones left
-  are for installs before 1.1.3, and each asks `coco_button_in_the_way?`
-  (`spec/lib/coco_button_dodges_spec.rb` fails on any other).
-- To change how the button behaves (how far a scroll counts, what counts as a
-  bar), change the controller: it ships with a deploy, not an app release.
+Installs before 1.1.4 still float Coco over the page's bottom right corner.
+Everything for them hangs off `NativeAppHelper#coco_button_floats?`, and all
+of it is deleted when those installs are gone:
+
+- `bridge/menu_button_controller.js` moves their button above a pinned bar,
+  away while scrolling down, and out from under a sheet (1.1.3 only).
+- `page_bottom` leaves room at the foot of the page for them.
+- The remaining `pr-[96px]` / `right-[96px]` are for installs before 1.1.3,
+  and each asks `coco_button_in_the_way?`
+  (`spec/lib/coco_button_dodges_spec.rb` fails on any other). Never add one.
 - Don't put `backdrop-blur` on a bar that renders a sheet inside it
   (`shared/action_menu`): the blur traps the sheet's overlay inside the bar.
   Put the blur on a `before:` layer, as the ticketing bar does.

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title><%= Dev::EnvironmentLabel.title_prefix %><%= content_for(:title) || "CocoScout" %></title>
+    <title><%= dev_title_prefix %><%= content_for(:title) || "CocoScout" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=5">
     <%# A form that lands back on the same page (Looks right, a count, a modal save) keeps the reader where they were (Tim, 2026-11-03): its visit is a page refresh (data-turbo-action="replace"), and a refresh preserves the scroll. %>
     <meta name="turbo-refresh-scroll" content="preserve">

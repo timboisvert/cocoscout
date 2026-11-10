@@ -22,6 +22,23 @@ RSpec.describe "Notifications", type: :request do
     expect(response.body).not_to include("Read one")
   end
 
+  # A group a later release adds (Books, on v1.3): its rows can be in the
+  # table before this code knows the group. The page used to fail outright
+  # for anyone who had one (Tim's localhost, 2026-11-09).
+  it "passes over a notice filed under a group this code doesn't know, and doesn't count it" do
+    note(title: "A known one")
+    later = note(title: "From a later release")
+    later.update_column(:category, "a_group_from_later")
+
+    get notifications_path
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("A known one")
+    expect(response.body).not_to include("From a later release")
+    expect(user.unread_notification_count).to eq(1)
+    get notification_path(later)
+    expect(response).to have_http_status(:not_found)
+  end
+
   it "marks one read when it's opened, and goes to its page in its organization" do
     n = note
     get open_notification_path(n)

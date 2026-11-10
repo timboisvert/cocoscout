@@ -63,8 +63,13 @@ module MicsHelper
 
   # Render the page's `<title>` AND `<meta name="description">` plus a full
   # OG/Twitter pack. Call from a view with `mics_seo title: "...", description: "..."`.
+  #
+  # A filtered page (?when=, ?access=, ?age=, ?signup=, ?view=) names the page
+  # without its filters. Each combination used to name itself, and Google
+  # listed 562 of them as duplicates it had to pick between (Search Console,
+  # 2026-11-09).
   def mics_seo(title:, description:, canonical_url: nil, og_image_url: nil)
-    canonical_url ||= request.original_url
+    canonical_url ||= canonical_address
     og_image_url  ||= asset_url_safe("mics/og-default.png")
     content_for :title, title
     content_for :head do

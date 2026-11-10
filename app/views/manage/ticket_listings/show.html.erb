@@ -172,7 +172,7 @@
   <%# The frosted white is on a layer behind the bar's content, not on the
       bar: a blur on the bar itself would hold the ⋯ sheet inside it, with
       no dimmed page behind and nowhere to tap to close. %>
-  <div class="sm:hidden fixed inset-x-0 bottom-0 z-30 before:content-[''] before:absolute before:inset-0 before:-z-10 before:bg-white/95 before:backdrop-blur border-t border-gray-200 pl-4 <%= coco_button_in_the_way? ? 'pr-[96px]' : 'pr-4' %> pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex items-center gap-2" data-ticketing-phone-bar>
+  <div class="sm:hidden fixed inset-x-0 bottom-0 z-30 before:content-[''] before:absolute before:inset-0 before:-z-10 before:bg-white/95 before:backdrop-blur border-t border-gray-200 <%= phone_bar_room %> flex items-center gap-2" data-ticketing-phone-bar>
     <span class="flex-1 min-w-0">
       <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium <%= status_classes %>"><%= status_label %></span>
     </span>

@@ -37,17 +37,33 @@
       ["Staffing", manage_staffing_index_path]
     ],
     text: "Scheduling",
-    links: top_links
+    links: top_links,
+    links_class: "max-sm:hidden"
   } %>
+  <%# On a phone those three are the small icon tiles every module's
+      sections are (shared/section_tiles), not a wrapped row of pink buttons
+      (Tim, 2026-11-09: the day's work was half a screen down, under four
+      rows of buttons and pills). %>
+  <%# Availability, Roles, then Regulars when it's on (Tim's order and words). %>
+  <%
+    phone_tiles = [
+      { icon: "calendar", text: "Availability", path: manage_staffing_availability_path },
+      { icon: "cog", text: "Roles", path: manage_staffing_house_roles_path }
+    ]
+    phone_tiles << { icon: "users", text: "Regulars", path: manage_staffing_scheduling_rules_path } if @regulars_enabled
+  %>
+  <div class="sm:hidden mb-3" data-phone-scheduling-links>
+    <%= render "shared/section_tiles", actions: phone_tiles %>
+  </div>
 
   <%= render "manage/staffing/regulars_apply_modal" if @regulars_enabled %>
 
-  <div class="border-t border-gray-200 pt-4 mt-2">
+  <div class="sm:border-t sm:border-gray-200 sm:pt-4 sm:mt-2">
 
   <%# === Desktop: seven days or one (Home's 7 days / 3 days control), and
       Apply regulars. A phone picks a day instead (the strip below). === %>
   <% one_day = @scheduling_days == 1 %>
-  <div class="<%= 'max-sm:hidden' unless @regulars_enabled && @regulars_matches.any? %> flex items-center justify-between mb-3 flex-wrap gap-2">
+  <div class="max-sm:hidden flex items-center justify-between mb-3 flex-wrap gap-2">
     <div class="flex items-center gap-3 flex-wrap">
       <% if one_day %>
         <%= render "shared/week_picker", pick: :day, label: @selected_day.strftime("%A, %b %-d, %Y"), months: @calendar_months,
@@ -78,8 +94,11 @@
         <%= link_to "1 day", manage_staffing_scheduling_path(days: 1, day: @selected_day.iso8601), class: "px-2.5 py-1 text-xs font-medium #{one_day ? 'bg-pink-500 text-white' : 'text-gray-700 hover:bg-gray-50'}" %>
       </span>
     </div>
-    <% if @regulars_enabled && @regulars_matches.any? %>
-      <%= render "shared/button", text: "Apply regulars (#{@regulars_matches.size})",
+    <%# Only while a regular can still be assigned: the ones already
+        scheduled don't count (Tim, 2026-11-09). %>
+    <% regulars_open = @regulars_enabled ? @regulars_matches.count(&:selectable?) : 0 %>
+    <% if regulars_open.positive? %>
+      <%= render "shared/button", text: "Apply regulars (#{regulars_open})",
             variant: "outline-pink", size: "small", icon: "star", type: :button,
             data: { controller: "modal", action: "click->modal#open", modal_id: "regulars-apply-modal" } %>
     <% end %>
@@ -114,11 +133,12 @@
     <% end %>
   <% end %>
 
-  <%# Phone: Publish, or Notify updates, pinned to the bottom (V1.1 plan §4),
-      clear of the Coco button in the app. The status bar above says why. %>
+  <%# Phone: Publish, or Notify updates, pinned to the bottom (V1.1 plan §4).
+      It is the only place a phone says the week is a draft or has updates
+      to send: the status row's pills for those are for desktop. %>
   <% if @shifts_by_day.any? && (!@week_finalized || @comms[:update].any?) %>
     <div class="sm:hidden h-24" aria-hidden="true"></div>
-    <div class="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 pl-4 <%= coco_button_in_the_way? ? 'pr-[96px]' : 'pr-4' %> pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex items-center gap-3" data-scheduling-phone-bar>
+    <div class="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 <%= phone_bar_room %> flex items-center gap-3" data-scheduling-phone-bar>
       <% if !@week_finalized %>
         <span class="text-sm text-gray-600 flex-1 min-w-0 truncate">Draft · <%= pluralize(@comms[:total], "person") %> assigned</span>
         <%= render "shared/button", text: "Publish & notify", variant: "primary", size: "medium", type: :button,

@@ -2,7 +2,9 @@
 
 require "rails_helper"
 
-# The app's floating Coco button gets itself out of the way (Tim, 2026-11-06):
+# Only for installs whose Coco button still floats over the page; newer
+# builds draw it in their top bar (Tim, 2026-11-09) and need none of this.
+# The floating Coco button gets itself out of the way (Tim, 2026-11-06):
 # the page reports what is pinned at its bottom
 # (bridge/menu_button_controller.js) and the button sits above it. So no view
 # makes room for the button by hand. The one exception is the width left free
@@ -17,8 +19,6 @@ RSpec.describe "Dodging the Coco button" do
       File.readlines(path).each_with_index.filter_map do |line, i|
         next unless line.match?(dodge)
         next if line.include?("coco_button_in_the_way?")
-        # shared/sticky_actions asks on the line above and keeps the answer.
-        next if path.end_with?("shared/_sticky_actions.html.erb") && line.include?("app ? 'pr-[96px]'")
 
         "#{path.delete_prefix("#{Rails.root}/")}:#{i + 1}"
       end
@@ -40,5 +40,29 @@ RSpec.describe "Dodging the Coco button" do
     expect(helper.coco_button_in_the_way?).to be(true)
     helper.agent = "Hotwire Native Android; Turbo Native Android; bridge-components: [form menu menu-button push]"
     expect(helper.coco_button_in_the_way?).to be(false)
+  end
+
+  it "leaves a build with the button in its top bar alone: no room at the foot, nothing to dodge" do
+    helper = Class.new do
+      include NativeAppHelper
+      attr_accessor :agent
+      def request = Struct.new(:user_agent).new(agent)
+      def turbo_native_app? = agent.to_s.include?("Turbo Native")
+    end.new
+
+    helper.agent = "CocoScout/1.1.3 (8; nav 2) Hotwire Native iOS; Turbo Native iOS; bridge-components: [form menu menu-button push]"
+    expect(helper.coco_button_floats?).to be(true)
+    expect(helper.page_bottom).to eq("pb-28")
+
+    helper.agent = "CocoScout/1.1.4 (9; nav 2) CocoMenu/bar Hotwire Native iOS; Turbo Native iOS; bridge-components: [form menu push]"
+    expect(helper.coco_button_floats?).to be(false)
+    expect(helper.coco_button_in_the_way?).to be(false)
+    expect(helper.page_bottom).to eq("pb-8")
+    expect(NativeAppVersion.nav(helper.agent)).to eq(2)
+    expect(NativeAppVersion.version(helper.agent)).to eq("1.1.4")
+
+    helper.agent = "Mozilla/5.0 (iPhone) Safari"
+    expect(helper.coco_button_floats?).to be(false)
+    expect(helper.page_bottom).to eq("pb-8")
   end
 end

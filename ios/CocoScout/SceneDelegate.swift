@@ -58,7 +58,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // Before any web view exists: the server tells V1.1 builds by this.
         Hotwire.config.applicationUserAgentPrefix = AppConfig.userAgentPrefix
         Hotwire.loadPathConfiguration(from: [.server(AppConfig.pathConfigurationURL)])
-        var components: [BridgeComponent.Type] = [FormComponent.self, MenuComponent.self, MenuButtonComponent.self, DoorScannerComponent.self, PushComponent.self]
+        var components: [BridgeComponent.Type] = [FormComponent.self, MenuComponent.self, DoorScannerComponent.self, PushComponent.self]
         // Tap to Pay only in builds run from Xcode (Debug) until Apple grants
         // its distribution entitlement; TestFlight and App Store builds leave
         // it out, so the door page doesn't offer it (NativeAppHelper).

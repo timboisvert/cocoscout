@@ -801,7 +801,6 @@ Rails.application.routes.draw do
     post "/shows/:production_id/:show_id/roles/:id/execute_slot_change", to: "show_roles#execute_slot_change", as: "execute_slot_change_show_role"
 
     # Visual Assets (production-level)
-    get  "/shows/:production_id/visual_assets", to: "visual_assets#index", as: "production_visual_assets"
     get  "/shows/:production_id/visual_assets/new_poster", to: "visual_assets#new_poster", as: "new_poster_production_visual_asset"
     post "/shows/:production_id/visual_assets/create_poster", to: "visual_assets#create_poster", as: "create_poster_production_visual_asset"
     get  "/shows/:production_id/visual_assets/:id/edit_poster", to: "visual_assets#edit_poster", as: "edit_poster_production_visual_asset"

@@ -2,16 +2,18 @@
   The organization menu (the band's ▾ on desktop, the phone's organization
   sheet), rethought 2026-10-21 (Tim): it opens from the band that says
   you're in production mode, so it answers, in order, where you are (the
-  organization, your role, its plan), how you leave (Exit production mode,
-  the CocoScout-pink bar), where else you could be (the other organizations,
-  one tap each), then, by plan and how many productions there are (Tim,
+  organization, your role, its plan, and right under it its own pages:
+  settings, plan and billing), how you leave (Exit production mode,
+  the CocoScout-pink bar; not in the app, whose Coco menu has it and whose
+  page already names the organization at its top: Tim, 2026-11-09), where
+  else you could be (the other organizations, one tap each), then, by plan and how many productions there are (Tim,
   later that day, design canvas "Organization menu by tier"):
     Producer plan, one production: the production itself (its row opens its
       settings) and a Pro card, since a second production is Pro;
     Pro, one production: the production's row and a plain Add a production;
     Pro, several: nothing about productions here; they're in the left nav.
-  Then this organization's own pages (settings, plan and billing). New
-  organization sits last, quiet.
+  Last, a question and a button: Create another
+  organization (Tim, 2026-11-09; it was a quiet "New organization" link).
 %>
 <% org = Current.organization %>
 <% organizations = Current.user.accessible_organizations.order(:name).to_a %>
@@ -30,8 +32,18 @@
   </span>
 </div>
 
-<%# The way out: the same pink bar as the account menu had (Tim, 2026-10-21: it belongs where you see you're in production mode). %>
-<% if (switch = panel_mode_switch(production_mode: true)) %>
+<%# This organization's own pages, right under its name so they read as its own (Tim, 2026-11-09). A Member sees neither. %>
+<% can_settings = current_user_is_global_manager? %>
+<% can_billing = Current.user.superadmin? || org.manageable_by?(Current.user) %>
+<% if can_settings %>
+  <%= link_to "Organization settings", manage_organization_path(org), class: item, role: "menuitem" %>
+<% end %>
+<% if can_billing %>
+  <%= link_to "Plan and billing", section_manage_organization_path(org, section: "billing"), class: item, role: "menuitem" %>
+<% end %>
+
+<%# The way out: the same pink bar as the account menu had (Tim, 2026-10-21: it belongs where you see you're in production mode). The app's is in the Coco menu. %>
+<% if !turbo_native_app? && (switch = panel_mode_switch(production_mode: true)) %>
   <%= render "shared/navigation/mode_switch", switch: switch, size: :menu %>
 <% end %>
 
@@ -94,18 +106,8 @@
   </div>
 <% end %>
 
-<%# This organization's own pages (the label only when there are any: a Member sees neither) %>
-<% can_settings = current_user_is_global_manager? %>
-<% can_billing = Current.user.superadmin? || org.manageable_by?(Current.user) %>
-<% if can_settings || can_billing %>
-  <div class="<%= label %> border-t border-gray-100">This organization</div>
-<% end %>
-<% if can_settings %>
-  <%= link_to "Organization settings", manage_organization_path(org), class: item, role: "menuitem" %>
-<% end %>
-<% if can_billing %>
-  <%= link_to "Plan and billing", section_manage_organization_path(org, section: "billing"), class: item, role: "menuitem" %>
-<% end %>
-
-<div class="border-t border-gray-100"></div>
-<%= link_to "New organization", new_manage_organization_path, class: "#{item} text-gray-500", role: "menuitem" %>
+<%# In the app this opens as a page of its own, not in the sheet (the page rules). %>
+<div class="border-t border-gray-100 px-3.5 py-3.5 flex flex-col gap-2.5" data-organization-menu-create>
+  <p class="text-[13px] text-gray-600">Want to make a different organization?</p>
+  <%= render "shared/button", text: "Create another organization", variant: "secondary", size: "small", path: new_manage_organization_path, classes: "w-full justify-center" %>
+</div>

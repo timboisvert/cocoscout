@@ -9,8 +9,6 @@
   rows = @home.rows_by_day[day] || []
   staffing = @home.staffing_days[day] || []
   busy_day = ->(d) { @range.cover?(d) ? @home.busy?(d) : @show_dates.include?(d) }
-  sold = home_sold_count(rows)
-  needing = rows.count { |r| [ home_ticket_chip(r.tickets), home_staffing_chip(r.staffing), home_cast_chip(r.cast), (r.told&.anyone_untold? ? [ :warn ] : nil) ].compact.any? { |t, _s, _l| t.in?(%i[warn bad]) } }
 %>
 <div class="sm:hidden space-y-3" data-home-day="<%= day.iso8601 %>"
      data-controller="day-swipe"
@@ -20,11 +18,9 @@
   <%= render "shared/day_strip", day: day, id: "home-jump", show_dates: @show_dates, months: @calendar_months, busy: busy_day,
         day_path: ->(d) { manage_path(day: d.iso8601) } %>
 
+  <%# Straight to the day's shows: a line counting them, and how many need
+      something, said what the rows under it already show (Tim, 2026-11-09). %>
   <% if rows.any? %>
-    <div class="flex items-center justify-between text-xs text-gray-500 px-0.5">
-      <span><%= pluralize(rows.size, "show") %><%= " · #{sold} sold" if sold.positive? %></span>
-      <span><%= needing.zero? ? "Nothing to do" : "#{needing} #{needing == 1 ? 'needs' : 'need'} something" %></span>
-    </div>
     <% @home.day_entries(day).each do |entry| %>
       <% if entry.is_a?(HomeWeek::Row) %>
         <%= render "manage/manage/show_row", row: entry, size: :phone %>

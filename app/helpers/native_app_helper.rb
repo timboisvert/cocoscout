@@ -18,6 +18,14 @@ module NativeAppHelper
     end
   end
 
+  # "[DEV] " ahead of a page's title on a dev machine, so a browser tab is
+  # never mistaken for production. Not in the app: its top bar shows the
+  # title in the little room beside the icons, and the yellow dev ribbon is
+  # right under it (Tim, 2026-11-09).
+  def dev_title_prefix
+    turbo_native_app? ? "" : Dev::EnvironmentLabel.title_prefix
+  end
+
   # Whether this copy of the app can do something native: Hotwire Native lists
   # the app's bridge components in its user agent ("bridge-components: [form
   # menu tap-to-pay]"). Tap to Pay is only in builds Apple lets take payments.
@@ -37,27 +45,54 @@ module NativeAppHelper
     NativeAppVersion.production_mode?(request.user_agent)
   end
 
-  # The room every page leaves at its foot. In the app the floating Coco
-  # button is native, drawn over the page (60pt across, 20 in from the right,
-  # reaching 10 below the safe area on iPhone; about 76dp tall on Android).
-  # So an app page ends 112px above the bottom, and whatever sits last on it
-  # (a form's Save, a wizard's Next, Pay now) is beside the button when
-  # scrolled to the end, never under it (Tim, 2026-11-02). A browser keeps
-  # the usual 32px.
-  def page_bottom
-    turbo_native_app? ? "pb-28" : "pb-8"
+  # App builds that still draw the Coco menu button floating over the page's
+  # bottom right corner: every install before the button moved into the top
+  # bar (Tim, 2026-11-09; NativeAppVersion.menu_in_bar?). Everything below
+  # that makes room for the button, or moves it, is only for them. Delete
+  # this, what asks it, bridge/menu_button_controller.js and
+  # spec/lib/coco_button_dodges_spec.rb once those installs are gone.
+  def coco_button_floats?
+    turbo_native_app? && !NativeAppVersion.menu_in_bar?(request.user_agent)
   end
 
-  # App builds whose Coco button can't move: every install before the
-  # "menu-button" bridge component (Tim, 2026-11-06). Only for them does a
-  # pinned bar leave the button's width free on its right (pr-[96px]).
-  # Newer builds are told what is pinned to the bottom of the page
+  # The room every page leaves at its foot. Where the Coco button floats
+  # (60pt across, 20 in from the right, reaching 10 below the safe area on
+  # iPhone; about 76dp tall on Android) a page ends 112px above the bottom,
+  # so whatever sits last on it (a form's Save, a wizard's Next, Pay now) is
+  # beside the button when scrolled to the end, never under it (Tim,
+  # 2026-11-02). A browser, and an app with the button in its top bar, keep
+  # the usual 32px.
+  def page_bottom
+    coco_button_floats? ? "pb-28" : "pb-8"
+  end
+
+  # Floating buttons that can't move: installs before the "menu-button"
+  # bridge component (Tim, 2026-11-06). Only for them does a pinned bar leave
+  # the button's width free on its right (pr-[96px]). Later floating builds
+  # are told what is pinned to the bottom of the page
   # (bridge/menu_button_controller.js) and move the button themselves: above
-  # a bar, away while scrolling down, gone under a sheet. So a bar runs edge
-  # to edge and no view needs to know the button is there. Delete this, and
-  # every use of it, once those installs are gone.
+  # a bar, away while scrolling down, gone under a sheet.
   def coco_button_in_the_way?
-    turbo_native_app? && !native_bridge_component?("menu-button")
+    coco_button_floats? && !native_bridge_component?("menu-button")
+  end
+
+  # The room inside a bar pinned to the bottom of a phone's screen, and in
+  # the app its shape. There the page reports no safe area, and a pinned bar
+  # sits on the very bottom of the glass while the page scrolls, or just
+  # above the home indicator when it doesn't. Edge to edge, its ends sat in
+  # the screen's rounded corners in the first case and it hung over a strip
+  # of bare page in the second (Tim, 2026-11-09). So in the app it is a
+  # rounded bar a little in from the sides and up from the bottom, which
+  # reads the same in both. A browser keeps the edge-to-edge bar and its own
+  # safe area. Installs whose Coco button can't move keep its width free.
+  def phone_bar_room
+    if coco_button_in_the_way?
+      "pl-4 pr-[96px] pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)]"
+    elsif turbo_native_app? && !coco_button_floats?
+      "left-3! right-3! bottom-3! rounded-2xl before:rounded-2xl border shadow-lg px-4 py-3"
+    else
+      "px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)]"
+    end
   end
 
   # The store this phone's web browser belongs to (:ios or :android), or nil

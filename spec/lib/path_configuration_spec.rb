@@ -26,6 +26,14 @@ RSpec.describe "The apps' page rules" do
     expect(nav2["rules"].flat_map { |r| r["patterns"] }).not_to include("^/manage", "^/select/")
   end
 
+  # From the organization menu's sheet, Create another organization opens as
+  # a page of its own, not inside the sheet (Tim, 2026-11-09).
+  it "opens a new organization as a page, after the rule that makes every /new a modal" do
+    page = rule(nav2, "^/manage/organizations/new$")
+    expect(page.dig("properties", "context")).to eq("default")
+    expect(nav2["rules"].index(page)).to be > nav2["rules"].index(rule(nav2, "/new$"))
+  end
+
   it "keeps a wizard's later steps in the modal, and the tabbed edit pages out of one" do
     modal = rule(nav2, "/new$")
     expect(modal["patterns"]).to include("/new/", "/edit$", "/edit/")
