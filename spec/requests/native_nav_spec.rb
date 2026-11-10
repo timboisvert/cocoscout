@@ -68,7 +68,7 @@ RSpec.describe "The app's V1.1 menu", type: :request do
     get organization_menu_path, headers: { "User-Agent" => v1_1 }
     expect(response).to have_http_status(:ok)
     page = Nokogiri::HTML(response.body).at_css("[data-organization-menu-page]")
-    expect(page.text.squish).to include("Stars & Garters", "Create another organization")
+    expect(page.text.squish).to include("Stars & Garters", "Create an organization")
     # The Coco menu has the way out, and the page opens by naming the
     # organization: no second exit, and no strip above it (Tim, 2026-11-09).
     expect(page.text).not_to include("Exit production mode", "This organization")
