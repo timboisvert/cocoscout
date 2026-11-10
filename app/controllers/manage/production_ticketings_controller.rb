@@ -149,7 +149,7 @@ module Manage
 
     def update_sales
       raw = params.require(:production_ticketing)
-      permitted = raw.permit(:max_per_order, :fee_mode, :low_stock_threshold, :title, :description,
+      permitted = raw.permit(:max_per_order, :fee_mode, :low_stock_threshold, :title, :description, :page_key,
                              :door_note, :age_note, :accessibility_note).to_h.transform_values(&:presence)
       if raw.key?(:age_choice)
         age = AgeLimit.value_for(raw[:age_choice], raw[:age_other])
@@ -157,7 +157,10 @@ module Manage
 
         permitted[:minimum_age] = age
       end
-      @setup.update!(permitted)
+      unless @setup.update(permitted)
+        return redirect_to(section_path("sales"), alert: @setup.errors.full_messages.first.sub(/\APage key/, "The address"))
+      end
+
       redirect_to section_path("sales"), notice: "Saved. Dates without their own settings use these."
     end
 

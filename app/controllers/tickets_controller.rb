@@ -56,11 +56,13 @@ class TicketsController < ApplicationController
     @listing = @organization.ticket_listings.find_by(slug: params[:event])
     unless @listing
       key = params[:event].to_s.downcase
-      found = @organization.productions.find_by(public_key: key)
-      # A production that changed its address (a show renamed): the old one
-      # still lands, on the new one, query and all.
-      if found.nil? && (moved = production_once_at(key))
-        return redirect_to(request.fullpath.sub(%r{/#{Regexp.escape(params[:event].to_s)}(?=\?|\z)}, "/#{moved.public_key}"), status: :moved_permanently)
+      found = ProductionTicketing.production_at(@organization, key) || @organization.productions.find_by(public_key: key) ||
+              production_once_at(key)
+      # A page that changed its address (a show renamed, in ticketing's
+      # Sales & page or on the production): the old one still lands, on the
+      # one it has now, query and all.
+      if found && found.ticket_page_key != key
+        return redirect_to(request.fullpath.sub(%r{/#{Regexp.escape(params[:event].to_s)}(?=\?|\z)}, "/#{found.ticket_page_key}"), status: :moved_permanently)
       end
       return production(found)
     end
@@ -83,9 +85,10 @@ class TicketsController < ApplicationController
 
   private
 
-  # The production that used to be at this address (Production#old_keys).
+  # The production that used to be at this address: its ticket page's own
+  # (ProductionTicketing#old_page_keys), or its public URL (Production#old_keys).
   def production_once_at(key)
-    @organization.productions.where.not(old_keys: [ nil, "" ]).find do |candidate|
+    ProductionTicketing.production_once_at(@organization, key) || @organization.productions.where.not(old_keys: [ nil, "" ]).find do |candidate|
       Array(JSON.parse(candidate.old_keys)).include?(key)
     rescue JSON::ParserError
       false
@@ -166,7 +169,7 @@ class TicketsController < ApplicationController
                                        .where(status: %w[on_sale paused closed])
                                        .joins(:show).where(shows: { canceled: false })
                                        .where("shows.date_and_time >= ?", Time.current)
-                                       .includes(:production, :ticket_tiers, show: %i[location location_space])
+                                       .includes(:ticket_tiers, production: :production_ticketing, show: %i[location location_space])
                                        .order("shows.date_and_time").to_a
   end
 

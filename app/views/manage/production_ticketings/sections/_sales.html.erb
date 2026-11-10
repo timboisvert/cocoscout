@@ -20,6 +20,15 @@
       <%= f.text_field :title, placeholder: production.name, class: input_class %>
     </div>
     <div>
+      <label for="production_ticketing_page_key" class="block text-sm font-medium text-gray-700 mb-1.5">Address</label>
+      <div class="flex flex-wrap items-center gap-x-1 gap-y-1.5">
+        <span class="text-sm text-gray-500 break-all"><%= tickets_box_office_url(org: ticketing_profile.slug).sub(%r{\Ahttps?://}, "") %>/</span>
+        <%= f.text_field :page_key, placeholder: production.public_key, pattern: "[a-z0-9][a-z0-9\\-]{2,29}", autocapitalize: "none", spellcheck: false,
+              class: "#{input_class} sm:w-64 flex-1 sm:flex-none" %>
+      </div>
+      <p class="text-xs text-gray-500 mt-1.5">Blank means the production's own<%= " (#{production.public_key})" if production.public_key.present? %>. Lowercase letters, numbers and hyphens. Links to the old address keep working.</p>
+    </div>
+    <div>
       <label for="production_ticketing_description" class="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
       <div data-controller="no-attachments">
         <%= f.rich_text_area :description, placeholder: production.description.to_plain_text.squish.truncate(200), class: "w-full min-h-[150px]" %>

@@ -31,7 +31,7 @@
       <% poster = production.safe_poster_variant(:small) %>
       <% next_show = row[:next].show %>
       <% next_note = public_listing_note(row[:next]) %>
-      <%= link_to tickets_event_path(org: @ticketing_profile.slug, event: production.public_key, **embed_params), class: "group block" do %>
+      <%= link_to tickets_event_path(org: @ticketing_profile.slug, event: production.ticket_page_key, **embed_params), class: "group block" do %>
         <% if poster %>
           <div class="aspect-[3/4] rounded-xl overflow-hidden border border-gray-200 bg-white"><%= image_tag poster, alt: "", class: "w-full h-full object-cover group-hover:opacity-90 transition-opacity" %></div>
         <% else %>

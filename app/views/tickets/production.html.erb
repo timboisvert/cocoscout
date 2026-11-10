@@ -18,7 +18,7 @@
   # A link to the production describes the production; one to a date, that date.
   share_description = (@dated ? description : (setup&.description.presence || @production.description.presence || description))&.to_plain_text.to_s.squish
   page_url = @dated && selected ? tickets_event_url(org: @ticketing_profile.slug, event: selected.slug) : ticket_production_url(@ticketing_profile, @production)
-  date_path = ->(listing) { tickets_event_path(org: @ticketing_profile.slug, event: @production.public_key, date: listing.slug, code: @code, **embed_params) }
+  date_path = ->(listing) { tickets_event_path(org: @ticketing_profile.slug, event: @production.ticket_page_key, date: listing.slug, code: @code, **embed_params) }
   # The picture is the chosen date's (Show#ticket_page_image: its own wide
   # image, its own poster, then the production's), so each date's page
   # shows that date's art; with no date to show, the production's.
@@ -187,7 +187,7 @@
 
     <% unless picking %>
     <%= render "tickets/picker", listing: selected, tiers: @tiers, inventory: @inventory, tax: @tax, code: @code, preview: @preview,
-          profile: @ticketing_profile, code_url: tickets_event_path(org: @ticketing_profile.slug, event: @production.public_key, date: selected.slug, **embed_params) %>
+          profile: @ticketing_profile, code_url: tickets_event_path(org: @ticketing_profile.slug, event: @production.ticket_page_key, date: selected.slug, **embed_params) %>
     <% Array(@passes).each do |pass| %>
       <%= render "tickets/pass_card", pass: pass, profile: @ticketing_profile, save: true %>
     <% end %>
