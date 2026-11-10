@@ -27,6 +27,22 @@ RSpec.describe "Production Home, show by show", type: :request do
     Nokogiri::HTML(response.body)
   end
 
+  # The show's own time leads; a booking that runs longer sits under it
+  # (Tim, 2026-11-09). A booking that matches the show says nothing more.
+  it "says when the space is booked, under the show's time, when the booking runs longer" do
+    contract = create(:contract, organization: org)
+    rental = create(:space_rental, contract: contract, starts_at: thu_show.date_and_time - 30.minutes, ends_at: thu_show.date_and_time + 2.hours)
+    thu_show.update!(space_rental: rental)
+    same = create(:space_rental, contract: contract, starts_at: sat_show.date_and_time, ends_at: sat_show.ends_at)
+    sat_show.update!(space_rental: same)
+
+    doc = page(week_start: week_start.to_s)
+    modal = doc.at_css("#show-modal-#{thu_show.id}")
+    expect(modal.text).to include("8:00–9:30 PM")
+    expect(modal.at_css("[data-space-booked]").text).to eq("Space booked 7:30–10:00 PM")
+    expect(doc.at_css("#show-modal-#{sat_show.id} [data-space-booked]")).to be_nil
+  end
+
   it "puts a row per show under its day, in time order, each opening its modal" do
     doc = page(week_start: week_start.to_s)
     grid = doc.at_css("[data-home-week]")

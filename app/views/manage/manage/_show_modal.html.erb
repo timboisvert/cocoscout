@@ -11,6 +11,12 @@
   venue = show.location_space&.name || show.location&.name
   hours = "#{show.date_and_time.strftime("%-l:%M")}–#{show.ends_at.strftime("%-l:%M %p")}"
   call_time = show.call_time_enabled? && show.call_time ? show.call_time.strftime("%-l:%M %p") : nil
+  # The space is often booked longer than the show runs (5:30 to 7:30 for a
+  # 6:00 show): the show's own time leads, the booking sits under it.
+  rental = show.space_rental
+  booked = if rental && (rental.starts_at != show.date_and_time || rental.ends_at != show.ends_at)
+    "#{rental.starts_at.strftime("%-l:%M")}–#{rental.ends_at.strftime("%-l:%M %p")}"
+  end
   footer = capture do
     render "shared/button", text: "Open the show", variant: "secondary", size: "small", type: :link, path: manage_show_path(show.production, show)
   end
@@ -23,6 +29,7 @@
     <div class="<%= section %> text-sm text-gray-600">
       <%= hours %><%= " · #{venue}" if venue %><%= " · call #{call_time}" if call_time %>
       <% if show.canceled %><span class="ml-2 font-semibold text-red-700">Canceled</span><% end %>
+      <% if booked %><p class="text-xs text-gray-500 mt-0.5" data-space-booked>Space booked <%= booked %></p><% end %>
     </div>
 
     <%# Canceled, or moved with people still to hear: who's been notified,
