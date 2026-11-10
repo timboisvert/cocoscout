@@ -39,6 +39,22 @@ RSpec.describe "Public ticketing", type: :request do
     expect(response.body.scan(/<link rel="canonical" href="([^"]+)"/).flatten).to eq([ "http://www.example.com/" ])
   end
 
+  # A show renamed (Of Santa and Satan became The Holly Problem; Tim,
+  # 2026-11-09): links already out there keep working.
+  it "sends a production's old address on to its new one, query and all" do
+    old_key = production.public_key
+    expect(production.update_public_key("thehollyproblem")).to be(true)
+
+    get tickets_event_path(org: "starsandgarters", event: old_key, date: "dec-5")
+    expect(response).to have_http_status(:moved_permanently)
+    expect(response).to redirect_to(tickets_event_path(org: "starsandgarters", event: "thehollyproblem", date: "dec-5"))
+
+    get tickets_event_path(org: "starsandgarters", event: "thehollyproblem")
+    expect(response).to have_http_status(:ok)
+    get tickets_event_path(org: "starsandgarters", event: "never-was")
+    expect(response).to have_http_status(:not_found)
+  end
+
   # Andy opened the show's sales link after curtain and found sales closed
   # (Tim, 2026-10-16): someone who works this door is sent to it instead.
   describe "for someone who works the door" do

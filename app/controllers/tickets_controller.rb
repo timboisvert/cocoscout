@@ -54,7 +54,16 @@ class TicketsController < ApplicationController
   # (Tim, 2026-10-18: one page, however you got there).
   def event
     @listing = @organization.ticket_listings.find_by(slug: params[:event])
-    return production(@organization.productions.find_by(public_key: params[:event].to_s.downcase)) unless @listing
+    unless @listing
+      key = params[:event].to_s.downcase
+      found = @organization.productions.find_by(public_key: key)
+      # A production that changed its address (a show renamed): the old one
+      # still lands, on the new one, query and all.
+      if found.nil? && (moved = production_once_at(key))
+        return redirect_to(request.fullpath.sub(%r{/#{Regexp.escape(params[:event].to_s)}(?=\?|\z)}, "/#{moved.public_key}"), status: :moved_permanently)
+      end
+      return production(found)
+    end
 
     # A draft's page is for the organization's managers (and superadmins) checking it before it goes on sale.
     if @listing.status == "draft"
@@ -73,6 +82,15 @@ class TicketsController < ApplicationController
   end
 
   private
+
+  # The production that used to be at this address (Production#old_keys).
+  def production_once_at(key)
+    @organization.productions.where.not(old_keys: [ nil, "" ]).find do |candidate|
+      Array(JSON.parse(candidate.old_keys)).include?(key)
+    rescue JSON::ParserError
+      false
+    end
+  end
 
   def remember_campaign
     campaign = params[:utm_campaign].to_s
