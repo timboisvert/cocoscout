@@ -20,8 +20,8 @@ import dev.hotwire.navigation.util.applyDefaultImeWindowInsets
 import kotlinx.coroutines.CompletableDeferred
 
 /**
- * The app's frame around the web pages: one screen, no tab bar, and the
- * floating Coco button that opens the menu (AppShell, menu/). Like the iOS app.
+ * The app's frame around the web pages: one screen, no tab bar, and Coco in
+ * each page's toolbar opening the menu (menu/ToolbarIcons). Like the iOS app.
  */
 class MainActivity : HotwireActivity() {
 
@@ -50,7 +50,7 @@ class MainActivity : HotwireActivity() {
             insets
         }
 
-        findViewById<ComposeView>(R.id.menu_button).setContent {
+        findViewById<ComposeView>(R.id.overlays).setContent {
             MenuOverlay()
             TapToPayOverlay()
         }

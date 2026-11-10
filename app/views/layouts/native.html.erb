@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title><%= Dev::EnvironmentLabel.title_prefix %><%= content_for(:title) || "CocoScout" %></title>
+    <title><%= dev_title_prefix %><%= content_for(:title) || "CocoScout" %></title>
     <%# No viewport-fit=cover: the app's opaque nav and tab bars already keep
         pages inside the safe area, and cover would slide content under them.
         maximum-scale=1: an app page never zooms. iPhone zooms in on any text

@@ -1680,7 +1680,7 @@
     %>
     <% if phone_state %>
       <div class="sm:hidden h-24" aria-hidden="true"></div>
-      <div class="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 pl-4 <%= coco_button_in_the_way? ? 'pr-[96px]' : 'pr-4' %> pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex items-center gap-3" data-payout-phone-bar>
+      <div class="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 <%= phone_bar_room %> flex items-center gap-3" data-payout-phone-bar>
         <span class="flex-1 min-w-0 text-sm font-semibold text-gray-900 truncate"><%= phone_state %></span>
         <% if phone_candidates.any? %>
           <%= render "shared/button", text: "Add to run", variant: "primary", size: "medium", type: :button,

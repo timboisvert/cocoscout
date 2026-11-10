@@ -10,7 +10,8 @@ import dev.hotwire.navigation.fragments.HotwireWebFragment
 
 /**
  * Every page: Hotwire's web screen with the page's title in the toolbar
- * (Coustard, on the left, via the theme). Like WebViewController.swift.
+ * (Coustard, on the left, via the theme), and on the right Messages,
+ * Notifications and Coco for the menu. Like WebViewController.swift.
  */
 @HotwireDestinationDeepLink(uri = "hotwire://fragment/web")
 open class WebFragment : HotwireWebFragment() {
@@ -20,7 +21,7 @@ open class WebFragment : HotwireWebFragment() {
         addToolbarIcons()
     }
 
-    /** V1.1: Messages and Notifications on the right of the toolbar (ToolbarIcons). */
+    /** On the right of the toolbar: Messages, Notifications, then Coco for the menu (ToolbarIcons). */
     private fun addToolbarIcons() {
         val toolbar = toolbarForNavigation() ?: return
         // Once per toolbar: the view is created again after a configuration change.

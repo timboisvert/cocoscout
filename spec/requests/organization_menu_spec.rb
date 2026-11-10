@@ -4,7 +4,8 @@ require "rails_helper"
 
 # The organization menu (shared/navigation/organization_menu_items; Tim's
 # review, 2026-10-21): where you are, Exit production mode, the other
-# organizations to switch to, this organization's pages, New organization.
+# organizations to switch to, this organization's pages, Create another
+# organization.
 # The account menu keeps Enter only; the Productions item has no count.
 RSpec.describe "The organization menu", type: :request do
   let(:password) { "Password123!" }
@@ -28,8 +29,12 @@ RSpec.describe "The organization menu", type: :request do
     expect(text).to include("Starlight Theater Owner · Pro")
     expect(text.index("Exit production mode")).to be < text.index("Switch to")
     expect(text.index("Switch to")).to be < text.index("Moonlight Players")
-    expect(text.index("Moonlight Players")).to be < text.index("This organization")
-    expect(text).to include("Organization settings", "Plan and billing", "Add a production", "New organization")
+    # Its own pages sit right under its name, before anywhere else you could be.
+    expect(text.index("Starlight Theater Owner · Pro")).to be < text.index("Organization settings")
+    expect(text.index("Plan and billing")).to be < text.index("Switch to")
+    expect(text).not_to include("This organization")
+    expect(text).to include("Organization settings", "Plan and billing", "Add a production")
+    expect(text).to end_with("Want to make a different organization? Create another organization")
     expect(text).not_to include("Starlight Theater Owner · Pro Switch to Starlight") # not itself under Switch to
     # The pink bar is the same component as My's Enter bar.
     expect(menu.at_css("a[href='#{my_dashboard_path}']")["class"]).to include("bg-pink-500")
@@ -79,7 +84,7 @@ RSpec.describe "The organization menu", type: :request do
     expect(nav_productions_link(response.body)).to be_present
     text = menu(response.body).text.squish
     expect(text).not_to include("Fall Revue", "Add a production", "Your production", "Running a second production?")
-    expect(text).to include("Organization settings", "Plan and billing", "New organization")
+    expect(text).to include("Organization settings", "Plan and billing", "Create another organization")
   end
 
   it "Producer plan with one production: no Productions in the nav; the production and the Pro card in the menu" do

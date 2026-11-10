@@ -1,6 +1,7 @@
 <% content_for :title, "Organization" %>
 <%# The apps open this as a sheet (path configuration); the items are the website's organization menu. %>
-<div class="max-w-md mx-auto py-4" data-organization-menu-page>
+<%# No bar above it in the app, so it opens on the organization itself: a little room under the sheet's grabber, none wasted. %>
+<div class="max-w-md mx-auto pt-2" data-organization-menu-page>
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
     <%= render "shared/navigation/organization_menu_items" %>
   </div>

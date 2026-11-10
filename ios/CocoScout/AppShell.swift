@@ -30,11 +30,11 @@ struct MenuPerson: Codable, Equatable {
     var headshotURL: URL? { headshotPath.map { AppConfig.url($0) } }
 }
 
-/// The app's frame around the web pages: one screen, no tab bar, and a
-/// floating pink button that opens the full-screen menu. Picking from the
+/// The app's frame around the web pages: one screen, no tab bar, and Coco in
+/// the top bar of every page (WebViewController), opening the menu. Picking from the
 /// menu replaces the screen (with iOS's cross-fade). The server sends the menu
 /// on every page load (MenuComponent); an empty menu means signed out, and
-/// the app shows just the sign-in screen, without the button.
+/// the app shows just the sign-in screen, without Coco.
 @MainActor
 final class AppShell {
     static let shared = AppShell()
@@ -49,13 +49,14 @@ final class AppShell {
     /// launch after upgrading from V1): the sheet opens as soon as one lands.
     private var menuWanted = false
     private var loadedSignedIn: Bool?
-    private lazy var menuButton = MenuButton { [weak self] in self?.showMenu() }
+    /// Someone is signed in: every page's top bar shows Coco (WebViewController).
+    var signedIn: Bool { !menu.isEmpty }
 
     private static let menuKey = "AppShell.menu"
     private static let personKey = "AppShell.person"
     private static let navKey = "AppShell.nav"
 
-    /// Starts with last time's menu, so the button is there right away for
+    /// Starts with last time's menu, so Coco is there right away for
     /// someone still signed in, and last time's V1.1 menu, so the first tap
     /// draws it. It used to start without `nav`, so a tap before the first
     /// page's message opened the V1 tiles, with no production mode (Tim,
@@ -110,21 +111,18 @@ final class AppShell {
             if !newMenu.isEmpty, let path = Self.pageAfterSignIn(page) {
                 open(path: path)
             }
-        } else {
-            menuButton.badge = nav == nil ? Self.badgeText(newMenu.reduce(0) { $0 + ($1.badge ?? 0) }) : nil
         }
     }
 
     // MARK: The V1.1 menu
 
     /// Every page sends it (MenuComponent). The menu sheet and the nav bar's
-    /// Messages and Notifications icons follow it; the Coco button carries no
-    /// badge (Tim, 2026-10-20); the app icon counts unread messages and
+    /// Messages and Notifications icons follow it; Coco carries no badge
+    /// (Tim, 2026-10-20); the app icon counts unread messages and
     /// notifications.
     func update(nav newNav: NavData?) {
         guard let newNav else { return }
         nav = newNav
-        menuButton.badge = nil
         // Cached without the counts and the Door (it comes and goes with
         // tonight's shows), as `menu` is cached without its badges.
         Self.cache(newNav.forCache, Self.navKey)
@@ -135,15 +133,6 @@ final class AppShell {
             menuWanted = false
             showMenu()
         }
-    }
-
-    // MARK: The Coco button gets out of the way
-
-    /// Each page says where the button belongs on it (MenuButtonComponent):
-    /// above a bar pinned to its bottom, or away while scrolling down or
-    /// under a sheet.
-    func placeMenuButton(rise: CGFloat, away: Bool, webView: WKWebView?) {
-        menuButton.place(rise: rise, away: away, webView: webView)
     }
 
     // MARK: Tap to Pay on iPhone
@@ -224,15 +213,6 @@ final class AppShell {
         } else {
             tabBarController.tabBar.isHidden = true
         }
-
-        if menuButton.superview == nil {
-            menuButton.install(in: tabBarController.view)
-        }
-        menuButton.isHidden = !signedIn
-        // A fresh screen: back to the corner until its first page says otherwise.
-        menuButton.place(rise: 0, away: false, webView: nil, animated: false)
-        tabBarController.view.bringSubviewToFront(menuButton)
-        menuButton.badge = nav == nil ? Self.badgeText(menu.reduce(0) { $0 + ($1.badge ?? 0) }) : nil
     }
 
     private func topViewController() -> UIViewController {

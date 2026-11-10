@@ -16,7 +16,9 @@
   missing = @missing_service_shifts&.size.to_i
 %>
 <% if week_shifts.any? || declined_count.positive? || other_declined.positive? || @still_to_staff.present? || @house_role_count.zero? %>
-  <div class="mb-3 flex flex-wrap items-center gap-2" data-status-bar>
+  <%# From sm up. A phone gets the same things as an Actions box above its
+      calendar, a bottom bar, and a ⋯ (manage/staffing/phone_day; Tim, 2026-11-09). %>
+  <div class="max-sm:hidden mb-3 flex flex-wrap items-center gap-2" data-status-bar>
     <% if week_shifts.any? %>
       <% if !@week_finalized %>
         <span class="<%= pill %> border-amber-200 bg-amber-50 text-amber-900" data-status="draft">
