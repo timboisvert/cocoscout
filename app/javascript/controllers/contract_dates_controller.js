@@ -49,6 +49,15 @@ export default class extends Controller {
         }
     }
 
+    // "For the whole rehearsal" / "an hour": one date's Edit shows that
+    // date's figure for whichever is picked.
+    unit(event) {
+        const select = event.currentTarget
+        const prefill = select.selectedOptions[0]?.dataset.prefill
+        const input = select.parentElement.querySelector("input[type=number]")
+        if (prefill && input) input.value = prefill
+    }
+
     visibleChecks() {
         return this.checkTargets.filter(box => !box.closest("[data-contract-dates-target=row]")?.classList.contains("hidden"))
     }

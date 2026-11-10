@@ -40,6 +40,17 @@ RSpec.describe "Contract date terms", type: :model do
     expect(contract.date_terms_words("rehearsal", { "amount" => 0.0 })).to eq([ "$0 this rehearsal", "Usually $50 per rehearsal", true ])
   end
 
+  it "bills an hourly date its one price for the whole date" do
+    rehearsal_rate.merge!("unit" => "hourly", "amount" => 30.0)
+    contract = revenue_share_contract
+    marked_down, usual = rehearsal_times.map(&:iso8601)
+    contract.set_draft_date_terms!([ marked_down ], value: "10", note: nil, field: :amount, whole: true)
+    contract.activate!
+
+    fees = contract.contract_payments.where("description LIKE 'Rehearsal — %'").order(:due_date)
+    expect(fees.map { |fee| fee.amount.to_f }).to eq([ 10.0, 90.0 ])
+  end
+
   it "keeps a date's own terms, drops ones back to the deal, and stamps them on the shows" do
     contract = revenue_share_contract
     free, paid = rehearsal_times.map(&:iso8601)

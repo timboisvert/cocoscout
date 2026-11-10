@@ -607,8 +607,11 @@ class Contract < ApplicationRecord
       events = shows.map do |show|
         hours = show.duration_minutes.to_i.positive? ? (show.duration_minutes / 60.0).round(2) : 1
         event = { "starts_at" => show.date_and_time.iso8601, "hours" => hours }
-        # A date with its own rate (Review the dates); $0 bills nothing.
-        own = terms_for(show)["amount"]
+        # A date with its own rate (Review the dates); $0 bills nothing. One
+        # price for the whole of an hourly date is that price over its hours.
+        terms = terms_for(show)
+        own = terms["amount"]
+        own = terms["total"].to_f / hours if terms.key?("total") && rate["unit"] == "hourly"
         own.nil? ? event : event.merge("unit_price" => own.to_f)
       end
       { "name" => EventTypes.labels[rate["event_type"]] || rate["event_type"].to_s.titleize,
