@@ -19,7 +19,7 @@
   end
 %>
 <div id="show-detail-<%= show.id %>" class="hidden fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center sm:p-4"
-     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+     data-controller="modal refresh-on-close" data-action="click->modal#closeOnBackdrop turbo:frame-load->refresh-on-close#changed">
   <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-2xl sm:mx-4 overflow-hidden text-left" data-action="click->modal#stopPropagation">
     <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-5 py-4">
       <h3 class="text-lg font-semibold text-white leading-snug sm:truncate"><%= show.display_name %> · <%= show.date_and_time.strftime("%a, %b %-d") %></h3>
@@ -63,11 +63,16 @@
           thing twice): what the show needs — its production's, contract's and
           own services, who's on each, the changes for this show alone — and
           any every-show role its services don't carry, in the one list. With
-          Role Call off it's the plain list. %>
+          Role Call off it's the plain list. It sits in its own frame, so
+          "Not this show" on three rows is three clicks in an open sheet
+          (Tim, 2026-11-09); the page behind catches up when the sheet
+          closes (refresh-on-close). Its links leave the frame. %>
       <% if @services_on || coverage %>
-        <%= render "manage/staffing/show_services_panel", show: show, needs: @show_needs[show.id] || [],
-              coverage: coverage, role_call: @role_call_enabled,
-              staff_it_data: shift_add_data(day, day_shows, @house_roles, source_show: show) %>
+        <%= turbo_frame_tag "show-needs-#{show.id}", target: "_top", class: "block" do %>
+          <%= render "manage/staffing/show_services_panel", show: show, needs: @show_needs[show.id] || [],
+                coverage: coverage, role_call: @role_call_enabled,
+                staff_it_data: shift_add_data(day, day_shows, @house_roles, source_show: show) %>
+        <% end %>
       <% end %>
     </div>
   </div>

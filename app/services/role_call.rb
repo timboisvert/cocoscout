@@ -11,7 +11,9 @@
 #                roles every show needs") at its venue
 #
 # A role one of the show's services carries is that service's line, never a
-# second one. And a contract production's needs come from its contract: a role
+# second one. That holds when the show drops the service ("Not this show"):
+# it has said it doesn't need Booth Tech, so the role isn't asked of it again
+# under the dropped line (Tim, 2026-11-09). And a contract production's needs come from its contract: a role
 # one of the organization's services carries (Booth Tech, when Booth Tech is a
 # service) is asked of a contract show only when its services include that
 # service. Our own productions are asked for every every-show role, as before.
@@ -47,7 +49,7 @@ class RoleCall
 
   # The every-show roles asked of this show.
   def roles(show)
-    carried = needs(show).select(&:needed?).flat_map { |need| need.service.house_roles.map(&:id) }.to_set
+    carried = needs(show).flat_map { |need| need.service.house_roles.map(&:id) }.to_set
     from_services_only = services? && show.production&.type_third_party?
     every_show_roles.select { |role| role.location_id.nil? || role.location_id == show.location_id }
                     .reject { |role| carried.include?(role.id) }

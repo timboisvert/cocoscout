@@ -11,6 +11,8 @@
     staff_it_data (the day payloads the Add-shift modal reads). %>
 <%
   production = show.production
+  # Each change reloads this panel alone, in the sheet's frame.
+  frame = "show-needs-#{show.id}"
   needed = needs.select { |n| n[:needed] }
   dropped = needs.reject { |n| n[:needed] }
   roles = coverage ? coverage[:roles] : []
@@ -75,14 +77,14 @@
           <% unless need[:covered] %>
             <%= render "shared/button", text: "Staff it", variant: "primary", size: "small", type: :button,
                   data: staff_it_data.merge(
-                    action: "click->modal#close click->shift-add#openForRole",
+                    action: "click->refresh-on-close#settle click->modal#close click->shift-add#openForRole",
                     "preselect-role-id": service.house_roles.first&.id,
                     "allowed-role-ids": service.house_roles.map(&:id).to_json,
                     "service-name": service.name,
                     "service-roles": service.roles_label
                   ) %>
           <% end %>
-          <%= form_with url: manage_staffing_show_service_path(show, service_id: service.id, needed: "0"), method: :patch do %>
+          <%= form_with url: manage_staffing_show_service_path(show, service_id: service.id, needed: "0"), method: :patch, data: { turbo_frame: frame } do %>
             <%= render "shared/button", text: need[:source] == :show ? "Remove" : "Not this show", variant: "secondary", size: "small", type: :submit %>
           <% end %>
         </div>
@@ -106,8 +108,8 @@
         <% unless role[:covered] %>
           <div class="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto pl-8 sm:pl-0">
             <%= render "shared/button", text: "Staff it", variant: "primary", size: "small", type: :button,
-                  data: staff_it_data.merge(action: "click->modal#close click->shift-add#openForRole", "preselect-role-id": role[:id]) %>
-            <%= form_with url: manage_staffing_show_coverage_exempt_path(show, role_id: role[:id], exempt: "1"), method: :patch do %>
+                  data: staff_it_data.merge(action: "click->refresh-on-close#settle click->modal#close click->shift-add#openForRole", "preselect-role-id": role[:id]) %>
+            <%= form_with url: manage_staffing_show_coverage_exempt_path(show, role_id: role[:id], exempt: "1"), method: :patch, data: { turbo_frame: frame } do %>
               <%= render "shared/button", text: "Not needed here", variant: "secondary", size: "small", type: :submit %>
             <% end %>
           </div>
@@ -132,7 +134,7 @@
             <p class="text-xs text-gray-400">Not needed for this show</p>
           <% end %>
         </div>
-        <%= form_with url: manage_staffing_show_service_path(show, service_id: need[:service].id, needed: "1"), method: :patch, class: "flex-shrink-0 w-full sm:w-auto pl-8 sm:pl-0" do %>
+        <%= form_with url: manage_staffing_show_service_path(show, service_id: need[:service].id, needed: "1"), method: :patch, data: { turbo_frame: frame }, class: "flex-shrink-0 w-full sm:w-auto pl-8 sm:pl-0" do %>
           <%= render "shared/button", text: "Needs it again", variant: "secondary", size: "small", type: :submit %>
         <% end %>
       </div>
@@ -145,7 +147,7 @@
           <p class="text-sm font-medium text-gray-500"><%= role[:name] %></p>
           <p class="text-xs text-gray-400">Not needed for this show</p>
         </div>
-        <%= form_with url: manage_staffing_show_coverage_exempt_path(show, role_id: role[:id]), method: :patch, class: "flex-shrink-0 w-full sm:w-auto pl-8 sm:pl-0" do %>
+        <%= form_with url: manage_staffing_show_coverage_exempt_path(show, role_id: role[:id]), method: :patch, data: { turbo_frame: frame }, class: "flex-shrink-0 w-full sm:w-auto pl-8 sm:pl-0" do %>
           <%= render "shared/button", text: "Needs it again", variant: "secondary", size: "small", type: :submit %>
         <% end %>
       </div>
@@ -160,7 +162,7 @@
         <%= render "shared/button", text: "Add a service for this show", variant: "dashed", size: "small", type: :button,
               classes: "w-full", data: { action: "click->disclosure#toggle" } %>
         <div class="hidden mt-2" data-disclosure-target="content">
-          <%= form_with url: manage_staffing_show_service_path(show, needed: "1"), method: :patch, class: "flex flex-wrap items-center gap-2" do %>
+          <%= form_with url: manage_staffing_show_service_path(show, needed: "1"), method: :patch, data: { turbo_frame: frame }, class: "flex flex-wrap items-center gap-2" do %>
             <label for="<%= add_cid %>" class="sr-only">Service</label>
             <%= select_tag :service_id, options_for_select(addable.map { |service| [ service.name, service.id ] }), id: add_cid,
                   class: "flex-1 min-w-0 px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>

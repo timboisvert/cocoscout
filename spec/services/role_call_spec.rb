@@ -33,14 +33,14 @@ RSpec.describe RoleCall do
     expect(asked(their_show)).to eq([ "House Manager" ]) # the service's line says Booth Tech
   end
 
-  it "leaves a role its service carries to the service on our own show too, and puts it back when the show drops the service" do
+  it "leaves a role its service carries to the service on our own show too, and doesn't ask for it again when the show drops the service" do
     ours.production_service_needs.create!(house_service: booth)
     expect(needed(our_show)).to eq([ "Booth Tech" ])
     expect(asked(our_show)).to eq([ "House Manager" ])
 
     ShowServices.change!(our_show, booth, needed: false)
     expect(needed(our_show)).to be_empty
-    expect(asked(our_show)).to eq([ "Booth Tech", "House Manager" ])
+    expect(asked(our_show)).to eq([ "House Manager" ])
   end
 
   it "asks every show for every role when services aren't on" do
