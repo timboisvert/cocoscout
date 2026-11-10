@@ -31,9 +31,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     /// Back in front: Tap to Pay on iPhone warms up again (Apple 1.5); the
     /// reader disconnects whenever the app goes to the background.
     func sceneDidBecomeActive(_ scene: UIScene) {
-        #if DEBUG
         TapToPaySetup.shared.warmUp()
-        #endif
     }
 
     /// A cocoscout.com link tapped while the app was already running.
@@ -58,13 +56,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // Before any web view exists: the server tells V1.1 builds by this.
         Hotwire.config.applicationUserAgentPrefix = AppConfig.userAgentPrefix
         Hotwire.loadPathConfiguration(from: [.server(AppConfig.pathConfigurationURL)])
-        var components: [BridgeComponent.Type] = [FormComponent.self, MenuComponent.self, DoorScannerComponent.self, PushComponent.self]
-        // Tap to Pay only in builds run from Xcode (Debug) until Apple grants
-        // its distribution entitlement; TestFlight and App Store builds leave
-        // it out, so the door page doesn't offer it (NativeAppHelper).
-        #if DEBUG
-        components.append(TapToPayComponent.self)
-        #endif
+        // Tap to Pay on iPhone is in every build from 1.2: Apple granted the
+        // publishing entitlement on 2026-11-10 (ios/tap_to_pay.md). Until
+        // then it was registered in Debug builds only. The server reads the
+        // component's name off the user agent to know this build can take a
+        // tap (NativeAppHelper#native_tap_to_pay), so 1.1.x installs are
+        // never offered it.
+        let components: [BridgeComponent.Type] = [FormComponent.self, MenuComponent.self, DoorScannerComponent.self, PushComponent.self,
+                                                  TapToPayComponent.self]
         Hotwire.registerBridgeComponents(components)
         Hotwire.registerRouteDecisionHandlers([
             OpenInSafariRouteDecisionHandler(),

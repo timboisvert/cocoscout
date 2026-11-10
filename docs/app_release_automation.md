@@ -56,9 +56,10 @@ What's in the repo:
 - `ios/CocoScout.xcodeproj/xcshareddata/xcschemes/CocoScout.xcscheme`: the
   CocoScout scheme, shared. Xcode Cloud only sees shared schemes in git;
   before this the scheme existed only on Tim's Mac. Archive uses Release,
-  which signs with `CocoScout-Release.entitlements`. That file must keep Tap
-  to Pay out until Apple grants it (`ios/tap_to_pay.md`); Xcode Cloud builds
-  exactly what is committed, so nothing changes there.
+  which signs with `CocoScout-Release.entitlements`. That file kept Tap to
+  Pay out until Apple granted the publishing entitlement (2026-11-10); from
+  1.2 it carries it (`ios/tap_to_pay.md`). Xcode Cloud builds exactly what
+  is committed, and its automatic signing makes the profile to match.
 - No `ci_post_clone.sh`: nothing to install. The two Swift packages
   (hotwire-native-ios, stripe-terminal-ios) are public and pinned by the
   committed `Package.resolved`, and the app needs no gitignored file to build.

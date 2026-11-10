@@ -30,8 +30,8 @@ android {
         // Hotwire Native Android needs Android 9 or later.
         minSdk = 28
         targetSdk = 36
-        versionCode = 9
-        versionName = "1.1.4"
+        versionCode = 10
+        versionName = "1.2"
         buildConfigField("String", "BASE_URL", "\"https://cocoscout.com\"")
     }
 
