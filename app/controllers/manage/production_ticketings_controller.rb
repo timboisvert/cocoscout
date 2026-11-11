@@ -41,7 +41,15 @@ module Manage
       @stats = Ticketing::ListingStats.for(@listings)
       matching = @setup&.enabled? ? @setup.matching_shows.pluck(:id).to_set : Set.new
       # Dates that stopped matching the setup but have tickets sold stay on sale.
-      @unmatched = @setup&.enabled? ? @listings.select { |l| l.inherits_tiers && !matching.include?(l.show_id) && @filter == "upcoming" } : []
+      # A canceled date isn't one of them: it left the setup because it was
+      # canceled, and it isn't on sale (Tim, 2026-11-11).
+      @unmatched = if @setup&.enabled? && @filter == "upcoming"
+        @listings.select do |l|
+          l.inherits_tiers && !matching.include?(l.show_id) && l.status != "canceled" && !l.show.canceled && l.worth_keeping?
+        end
+      else
+        []
+      end
     end
 
     def edit

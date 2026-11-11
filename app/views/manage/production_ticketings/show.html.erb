@@ -66,11 +66,20 @@
           body: "Choose which dates are included and when their sales open, set the ticket prices once, then turn it on.",
           actions: [ { text: "Set it up", path: manage_edit_production_ticketing_path(@production, section: "dates") } ] %>
   <% end %>
-  <% if @unmatched.any? %>
+  <%# Says which dates, so nobody has to hunt the list for them. %>
+  <% if @unmatched.one? %>
+    <% stray = @unmatched.first %>
     <%= render "shared/alert_panel",
           eyebrow: "Still on sale",
-          headline: "#{pluralize(@unmatched.size, 'date')} no longer #{@unmatched.one? ? 'matches' : 'match'} your settings",
-          body: "#{@unmatched.one? ? 'It has' : 'They have'} tickets sold, so #{@unmatched.one? ? 'it stays' : 'they stay'} on sale. Cancel one from its page if it isn't happening.",
+          headline: stray.show.date_and_time.strftime("%A, %B %-d at %-l:%M %p"),
+          body: "It's no longer one of the dates you chose to sell, but it has tickets sold, so it stays on sale. Cancel it from its page if it isn't happening.",
+          actions: [ { text: "Open that date", path: manage_ticket_listing_path(stray), variant: "secondary" } ],
+          tone: :amber %>
+  <% elsif @unmatched.any? %>
+    <%= render "shared/alert_panel",
+          eyebrow: "Still on sale",
+          headline: "#{@unmatched.size} dates outside the ones you chose to sell",
+          body: "#{@unmatched.map { |l| l.show.date_and_time.strftime('%b %-d') }.to_sentence} have tickets sold, so they stay on sale. Cancel one from its page if it isn't happening.",
           tone: :amber %>
   <% end %>
 

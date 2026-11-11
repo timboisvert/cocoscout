@@ -135,6 +135,25 @@ RSpec.describe "Production ticketing", type: :request do
     expect(response.body).not_to include("New dates join on their own")
   end
 
+  # Tim, 2026-11-11: a canceled date with nothing sold was reported as "1 date
+  # no longer matches your settings. It has tickets sold, so it stays on sale."
+  it "names an unpicked date that sold and stays on sale, and says nothing about a canceled one" do
+    save_tickets("0" => { name: "General", price: "20", position: "0" })
+    save_dates
+    second_show.update!(canceled: true)
+    second_show.ticket_listing.update_columns(status: "canceled")
+
+    get manage_production_ticketing_path(production)
+    expect(response.body).not_to include("Still on sale", "No longer in your selection")
+
+    create(:ticket_order, ticket_listing: first_show.ticket_listing, status: "paid", paid_at: Time.current)
+    save_dates(event_matching: "manual", selected_show_ids: [ "" ])
+    get manage_production_ticketing_path(production)
+    expect(response.body).to include("Still on sale", first_show.date_and_time.strftime("%A, %B %-d at %-l:%M %p"),
+                                     "no longer one of the dates you chose to sell", "Open that date")
+    expect(response.body.scan("No longer in your selection").size).to eq(1)
+  end
+
   it "saves seats, fees and words for every date, and production-wide codes" do
     patch manage_update_production_ticketing_path(production, section: "sales"),
           params: { production_ticketing: { max_per_order: "6", fee_mode: "org", title: "Rising Stars Showcase", door_note: "" } }
