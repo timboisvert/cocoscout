@@ -15,6 +15,10 @@ class GoogleCalendarApi
   class Unauthorized < Error; end
   # The event, or the calendar, isn't there any more.
   class NotFound < Error; end
+  # An event with that id is already on the calendar.
+  class Conflict < Error; end
+  # Google wants fewer calls for a moment. Wait, then carry on.
+  class RateLimited < Error; end
 
   SCOPES = %w[openid email https://www.googleapis.com/auth/calendar.app.created].freeze
   AUTH_HOST = "accounts.google.com"
@@ -73,6 +77,8 @@ class GoogleCalendarApi
       message = error_message(body, response.code)
       raise Unauthorized, message if response.code == "401" || body["error"] == "invalid_grant"
       raise NotFound, message if %w[404 410].include?(response.code)
+      raise Conflict, message if response.code == "409"
+      raise RateLimited, message if rate_limited?(response.code, body)
 
       raise Error, message
     rescue JSON::ParserError
@@ -100,6 +106,15 @@ class GoogleCalendarApi
       JSON.parse(Base64.urlsafe_decode64(payload + ("=" * (-payload.size % 4))))["email"]
     rescue ArgumentError, JSON::ParserError
       nil
+    end
+
+    # 429, or a 403 whose reason is one of Google's "slow down" answers.
+    def rate_limited?(code, body)
+      return true if code == "429"
+      return false unless code == "403" && body["error"].is_a?(Hash)
+
+      reasons = Array(body.dig("error", "errors")).map { |error| error["reason"].to_s }
+      reasons.any? { |reason| reason.match?(/rateLimitExceeded|quotaExceeded/i) } || body.dig("error", "message").to_s.match?(/rate limit/i)
     end
 
     def error_message(body, code)

@@ -4,6 +4,7 @@
 # Calendar is written again, or taken off.
 class GoogleCalendarSyncJob < ApplicationJob
   queue_as :background
+  limits_concurrency to: 1, key: ->(organization_id, *) { "google-calendar-#{organization_id}" }, duration: 30.minutes
   retry_on GoogleCalendarApi::Error, wait: :polynomially_longer, attempts: 4
   discard_on GoogleCalendarApi::Unauthorized
 

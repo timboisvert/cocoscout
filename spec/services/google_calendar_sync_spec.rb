@@ -33,7 +33,9 @@ RSpec.describe GoogleCalendarSync do
     allow(api).to receive(:insert_event) { { "id" => "g#{next_id += 1}" } }
     allow(api).to receive(:update_event) { |_cal, id, _event| { "id" => id } }
     allow(api).to receive(:delete_event).and_return({})
+    allow_any_instance_of(GoogleCalendarSync).to receive(:pause) { |_sync, seconds| pauses << seconds }
   end
+  let(:pauses) { [] }
 
   describe GoogleCalendarEntry do
     def entry(record) = described_class.new(integration.reload, record)
@@ -153,6 +155,63 @@ RSpec.describe GoogleCalendarSync do
 
       expect(api).to have_received(:delete_event).once
       expect(CalendarSyncEvent.where(integration: integration).pluck(:external_id)).to eq([ "old-1" ])
+    end
+
+    # Only from now on (Tim, 2026-11-11).
+    it "never writes, rewrites or removes a date that has already happened" do
+      past = show_at(2.hours.ago)
+      integration.calendar_sync_events.create!(syncable_type: "Show", syncable_id: past.id, external_id: "past-1", digest: "x", synced_at: 1.day.ago)
+      unlisted = show_at(3.days.ago)
+      ended = create(:contract, :active, organization: org)
+      ended.space_rentals.create!(location: location, location_space: ruse, starts_at: 2.days.ago, ends_at: 2.days.ago + 3.hours, confirmed: true)
+
+      sync.sync_all!(force: true)
+      past.update!(canceled: true)
+      described_class.new(integration.reload).sync_all!
+      described_class.new(integration.reload).sync_record!("Show", past.id)
+      described_class.new(integration.reload).sync_record!("Show", unlisted.id)
+
+      expect(api).not_to have_received(:insert_event)
+      expect(api).not_to have_received(:update_event)
+      expect(api).not_to have_received(:delete_event)
+      expect(CalendarSyncEvent.where(integration: integration).pluck(:external_id)).to eq([ "past-1" ])
+    end
+
+    it "waits and tries again when Google says slow down, and leaves a beat between events" do
+      show_at
+      show_at(showtime + 1.day)
+      refusals = 2
+      allow(api).to receive(:insert_event) do
+        raise GoogleCalendarApi::RateLimited, "Rate Limit Exceeded" if (refusals -= 1) >= 0
+
+        { "id" => "g#{SecureRandom.hex(3)}" }
+      end
+
+      sync.sync_all!
+
+      expect(CalendarSyncEvent.where(integration: integration).count).to eq(2)
+      expect(pauses).to eq([ 2, 4, 0.25, 0.25 ])
+      expect(integration.reload.status).to eq("connected")
+    end
+
+    it "says so plainly when Google keeps refusing, and keeps what was written" do
+      show_at
+      allow(api).to receive(:insert_event).and_raise(GoogleCalendarApi::RateLimited, "Rate Limit Exceeded")
+
+      expect { sync.sync_all! }.to raise_error(GoogleCalendarApi::RateLimited)
+
+      expect(integration.reload.last_error).to eq("Google asked CocoScout to slow down. The rest of your dates will be added in a few minutes.")
+    end
+
+    it "gives each event an id of its own, and writes over one Google already has" do
+      show = show_at
+      allow(api).to receive(:insert_event).and_raise(GoogleCalendarApi::Conflict, "The requested identifier already exists.")
+
+      sync.sync_all!
+
+      expect(api).to have_received(:insert_event).with("cal-1", hash_including(id: "cocoevent#{show.id}"))
+      expect(api).to have_received(:update_event).with("cal-1", "cocoevent#{show.id}", hash_including(status: "confirmed"))
+      expect(CalendarSyncEvent.where(integration: integration).sole.external_id).to eq("cocoevent#{show.id}")
     end
 
     it "writes every coming date again at night, and makes anew one Google no longer has" do

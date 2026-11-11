@@ -8,11 +8,17 @@
 #   - every night               → every coming event is written again, so
 #     anything edited or deleted in Google is put back
 #
+# Only from now on (Tim, 2026-11-11): a date that has already happened is
+# never written, written again, or taken off. Whatever the calendar says
+# about the past stays as it is.
+#
 # A date that hasn't changed costs no call: each event's digest is kept.
 class GoogleCalendarSync
-  # How far back a full pass reaches. Older events stay on the calendar as
-  # they were; they're just not rewritten.
-  LOOK_BACK = 31.days
+  # Google refuses a burst of writes to one calendar ("Rate Limit Exceeded"),
+  # so a full pass leaves a beat between events, and a refused call waits
+  # longer each time before it is tried again.
+  PACE = 0.25
+  BACK_OFF = [ 2, 4, 8, 16, 32 ].freeze
 
   attr_reader :integration
 
@@ -46,16 +52,24 @@ class GoogleCalendarSync
     rows = integration.calendar_sync_events.index_by { |row| [ row.syncable_type, row.syncable_id ] }
     wanted = wanted_records.index_by { |record| [ record.class.name, record.id ] }
 
-    wanted.each { |key, record| write(GoogleCalendarEntry.new(integration, record), rows[key], force: force) }
+    wanted.each do |key, record|
+      pause(PACE) if write(GoogleCalendarEntry.new(integration, record), rows[key], force: force)
+    end
     (rows.keys - wanted.keys).each do |key|
       record = rows[key].syncable
-      remove(rows[key]) unless record && belongs_on_calendar?(record)
+      next if record && (over?(record) || belongs_on_calendar?(record))
+
+      remove(rows[key])
+      pause(PACE)
     end
     integration.record_success!
   rescue GoogleCalendarApi::Unauthorized
     integration.record_error!("Google no longer lets CocoScout in. Connect Google Calendar again.")
   rescue GoogleCalendarApi::NotFound
     integration.record_error!("The calendar CocoScout made is gone from Google. Disconnect, then connect again to make a new one.")
+  rescue GoogleCalendarApi::RateLimited
+    integration.record_error!("Google asked CocoScout to slow down. The rest of your dates will be added in a few minutes.")
+    raise
   rescue GoogleCalendarApi::Error => e
     integration.record_error!(e.message)
     raise
@@ -66,6 +80,8 @@ class GoogleCalendarSync
     return unless CalendarSyncEvent::SYNCABLES.include?(type)
 
     record = type.constantize.find_by(id: id)
+    return if record && over?(record)
+
     row = integration.calendar_sync_events.find_by(syncable_type: type, syncable_id: id)
     if record && belongs_on_calendar?(record)
       write(GoogleCalendarEntry.new(integration, record), row)
@@ -94,11 +110,17 @@ class GoogleCalendarSync
     end
   end
 
+  # Already happened: a show that has started, a rental that has ended.
+  def over?(record)
+    time = record.is_a?(Show) ? record.date_and_time : record.ends_at
+    time.present? && time < Time.current
+  end
+
   private
 
-  # What a full pass writes: everything from a month back onward.
+  # What a full pass writes: everything from now on.
   def wanted_records
-    from = LOOK_BACK.ago
+    from = Time.current
     organization = integration.organization
     records = []
     if integration.calendar_includes?("shows")
@@ -113,26 +135,52 @@ class GoogleCalendarSync
     records
   end
 
+  # Whether Google was called.
   def write(entry, row, force: false)
     digest = entry.digest
-    return if row && row.digest == digest && !force
+    return false if row && row.digest == digest && !force
 
-    event = row ? update_or_insert(row, entry) : api.insert_event(integration.calendar_id, entry.payload)
+    event = patiently { row ? update_or_insert(row, entry) : insert(entry) }
     row ||= integration.calendar_sync_events.new(syncable_type: entry.record.class.name, syncable_id: entry.record.id)
     row.update!(external_id: event["id"], digest: digest, synced_at: Time.current)
+    true
+  end
+
+  # The event goes in under an id of our choosing. If Google already has that
+  # id (an earlier pass wrote it and never got to note it), it's written over.
+  def insert(entry)
+    api.insert_event(integration.calendar_id, entry.payload.merge(id: entry.event_id))
+  rescue GoogleCalendarApi::Conflict
+    api.update_event(integration.calendar_id, entry.event_id, entry.payload)
   end
 
   # The event may have been purged from Google entirely: then it's made anew.
   def update_or_insert(row, entry)
     api.update_event(integration.calendar_id, row.external_id, entry.payload)
   rescue GoogleCalendarApi::NotFound
-    api.insert_event(integration.calendar_id, entry.payload)
+    insert(entry)
   end
 
   def remove(row)
-    api.delete_event(integration.calendar_id, row.external_id)
+    patiently { api.delete_event(integration.calendar_id, row.external_id) }
     row.destroy!
   end
+
+  # Google said slow down: wait, longer each time, then give up to the job's
+  # own retry, which picks up where this pass stopped.
+  def patiently
+    waits = BACK_OFF.dup
+    begin
+      yield
+    rescue GoogleCalendarApi::RateLimited
+      raise if waits.empty?
+
+      pause(waits.shift)
+      retry
+    end
+  end
+
+  def pause(seconds) = sleep(seconds)
 
   # Google's access tokens last an hour: a fresh one when this one is nearly
   # spent, kept for the next job.

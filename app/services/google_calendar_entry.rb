@@ -22,6 +22,10 @@ class GoogleCalendarEntry
 
   def key = "#{record.class.name}-#{record.id}"
 
+  # The event's id in Google, chosen here (Google takes a to v and digits), so
+  # writing the same date twice can never leave two events.
+  def event_id = "#{show? ? 'cocoevent' : 'cocorental'}#{record.id}"
+
   # The event resource Google is sent. status: "confirmed" brings back an
   # event someone deleted in Google.
   def payload
