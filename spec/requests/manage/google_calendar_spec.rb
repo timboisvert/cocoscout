@@ -95,6 +95,14 @@ RSpec.describe "Manage::GoogleCalendar", type: :request do
       expect(response.body).not_to include("Online", "Hold")
     end
 
+    it "leaves an archived location's rooms out of the colors" do
+      ruse.location.update!(archived_at: Time.current)
+
+      get manage_organization_google_calendar_path(org)
+
+      expect(Nokogiri::HTML(response.body).css("input[name^='room_colors']")).to be_empty
+    end
+
     it "saves what goes on it, how titles read and the colors, and brings the calendar up to date" do
       expect {
         patch manage_organization_google_calendar_path(org), params: {

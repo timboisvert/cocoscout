@@ -514,7 +514,7 @@ class Organization < ApplicationRecord
   # The rooms a calendar colors by: every room of every location, by
   # location then name.
   def calendar_rooms
-    @calendar_rooms ||= LocationSpace.joins(:location).where(locations: { organization_id: id })
+    @calendar_rooms ||= LocationSpace.joins(:location).where(locations: { organization_id: id, archived_at: nil })
                                      .order("locations.name, location_spaces.name").includes(:location).to_a
   end
 
