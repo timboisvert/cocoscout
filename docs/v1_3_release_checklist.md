@@ -7,8 +7,16 @@ Android and in Apple's review.
 
 ## Where it stands (2026-11-10)
 
-- `v1.3` has main merged in (through 07528b87, 2026-11-11) and merges back
-  into main with no conflicts: about 130 commits and 38 migrations.
+- `v1.3` has main merged in (through c4a8266a, 2026-11-11) and merges back
+  into main with no conflicts: about 140 commits and 40 migrations.
+- **Rehearsed on a fresh production copy, 2026-11-11.** It caught one
+  thing: the migration that set each organization's Settle up start ran
+  code that reads tables made by later migrations, and stopped on
+  `tip_rules`. The switch now runs last
+  (`SettleUpStartsForExistingOrganizations`). With that, all the pending
+  migrations ran on real data, and the books dry run read `trial balance:
+  $0.00` and `the books agree` for all 16 organizations, with no `FAILED`
+  or `MISMATCH` line.
 - Apple approved Tap to Pay (1.2) on 2026-11-11, which is what 1.3 was
   waiting for.
 - The pre-deploy route check passes (it failed on `SettleUp`'s
@@ -23,9 +31,9 @@ Android and in Apple's review.
 
 ## 1. Before merging (yours)
 
-- [ ] **Rehearse on a fresh copy of production.** The dev copy is from
-      Nov 2 and has been worked in since. Pull a new one, then on the
-      `v1.3` worktree:
+- [x] **Rehearse on a fresh copy of production** (done 2026-11-11, see
+      above). To do it again: `bin/seed_dev_from_prod` from the main
+      folder, which also runs the migrations, then on the `v1.3` worktree:
 
       ```bash
       bin/rails db:migrate
@@ -48,7 +56,11 @@ Android and in Apple's review.
 ## 2. Merge and deploy (Claude merges and pushes on your word; you deploy)
 
 - [ ] Merge `refs/heads/v1.3` into `main`, push.
-- [ ] Deploy. It runs 38 migrations. The ones that move data:
+- [ ] Deploy. It runs 40 migrations. The ones that move data:
+      - `SettleUpStartsForExistingOrganizations` (the last one) starts
+        every organization's Settle up on the first of the month and counts
+        days already confirmed in Financials as settled (three days for
+        Stars & Garters on the Nov 11 copy).
       - `MergeContractInvoicesIntoInvoices` copies every contract invoice
         into `invoices` (the old table is left in place, unused).
       - `AddDigestsIgnoredToUsers` counts the digests each person has
