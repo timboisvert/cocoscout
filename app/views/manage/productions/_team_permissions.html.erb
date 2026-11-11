@@ -51,20 +51,16 @@
 
     <% [ [ "Production team", team_tiles ], [ "From #{organization.name}", org_tiles ] ].each do |heading, tiles| %>
       <% next if tiles.empty? && heading != "Production team" %>
-      <div class="flex items-center justify-between gap-3 mb-2 <%= 'mt-8' unless heading == 'Production team' %>">
-        <h3 class="text-sm font-semibold text-gray-900"><%= heading %></h3>
-        <% if heading == "Production team" && can_edit_team %>
-          <%= render "shared/button", text: "Add someone", variant: "primary", size: "small", type: :button,
-                data: { action: "click->production-team-modals#openAddModal" } %>
-        <% end %>
-      </div>
+      <% add_tile = heading == "Production team" && can_edit_team %>
+      <h3 class="text-sm font-semibold text-gray-900 mb-2 <%= 'mt-8' unless heading == 'Production team' %>"><%= heading %></h3>
       <% unless heading == "Production team" %>
         <p class="text-sm text-gray-500 mb-3">They manage every production in the organization. Choose here whether this one notifies them.</p>
       <% end %>
 
       <% if tiles.empty? %>
-        <p class="text-sm text-gray-400 mb-4"><%= live_contracts.any? ? "Nobody from #{Current.organization.name} on this team. The contract's people see the production on My." : "Nobody on this production's own team yet." %></p>
-      <% else %>
+        <p class="text-sm text-gray-400 mb-3"><%= live_contracts.any? ? "Nobody from #{Current.organization.name} on this team. The contract's people see the production on My." : "Nobody on this production's own team yet." %></p>
+      <% end %>
+      <% if tiles.any? || add_tile %>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <% tiles.each do |tile| %>
             <%
@@ -102,6 +98,14 @@
                 </div>
               </div>
             <% end %>
+          <% end %>
+          <% if add_tile %>
+            <%# Adding someone is the last tile (Tim, 2026-11-11), not a button above. %>
+            <button type="button" data-action="click->production-team-modals#openAddModal" data-team-add-tile
+                    aria-label="Add someone to the production team" title="Add someone to the production team"
+                    class="w-full min-h-[4.5rem] rounded-lg border-2 border-dashed border-gray-300 text-gray-400 flex items-center justify-center cursor-pointer hover:border-pink-400 hover:text-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-500 transition-colors">
+              <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+            </button>
           <% end %>
         </div>
       <% end %>

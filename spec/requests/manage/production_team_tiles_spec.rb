@@ -40,6 +40,7 @@ RSpec.describe "Production team tiles", type: :request do
     expect(tiles["Olive Orgwide"]["data-role-label"]).to eq("Organization manager")
     expect(tiles["Olive Orgwide"]["data-on-team"]).to eq("false")
     expect(tiles["Olive Orgwide"].text).to include("Not notified")
+    expect(page.css("[data-team-add-tile]").size).to eq(1)
   end
 
   it "saves a teammate's role and notifications together" do

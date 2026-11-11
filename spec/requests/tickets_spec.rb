@@ -475,6 +475,35 @@ RSpec.describe "Public ticketing", type: :request do
     # fees and tax in — so the total never jumps above it.
     # And a tap on the price opens what it's made of (Tim, 2026-10-02),
     # with no footer repeating it.
+    # Tim (2026-11-11): a box office can show prices before tax, "$15 plus
+    # tax", with the taxed price a tap away. Fees a buyer pays stay in.
+    it "shows prices before tax when the box office says so, the taxed price on a tap" do
+      panel = ->(body) { body[%r{<details class="mt-0.5">.*?</details>}m].to_s.gsub(/\s+/, " ") }
+      TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")
+      profile.update!(price_display: "before_tax")
+      listing.update!(fee_mode: "org")
+
+      get tickets_event_path(org: "starsandgarters", event: listing.slug)
+      expect(response.body).to include("$20.00", "+ tax")
+      expect(response.body).not_to include("incl. tax")
+      expect(panel.call(response.body)).to include("<dt>Sales tax</dt>", "$2.05", "One ticket, with tax", "$22.05")
+
+      get tickets_box_office_path(org: "starsandgarters")
+      expect(response.body).to include("$20.00 + tax")
+
+      listing.update!(fee_mode: "buyer")
+      get tickets_event_path(org: "starsandgarters", event: listing.slug)
+      expect(response.body).to include("$21.48", "incl. fees, + tax")
+      expect(panel.call(response.body)).to include("$23.53")
+
+      # Tax inside the price was never added, so there's nothing to leave out.
+      TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "included")
+      listing.update!(fee_mode: "org")
+      get tickets_event_path(org: "starsandgarters", event: listing.slug)
+      expect(response.body).to include("$20.00", "incl. tax")
+      expect(response.body).not_to include("+ tax")
+    end
+
     it "shows each ticket's real price, fees and tax in, and what it's made of on a tap" do
       panel = ->(body) { body[%r{<details class="mt-0.5">.*?</details>}m].to_s.gsub(/\s+/, " ") }
 

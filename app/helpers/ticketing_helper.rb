@@ -226,10 +226,37 @@ module TicketingHelper
     listing.low_stock_note(inventory.remaining)
   end
 
-  # The lowest all-in price a buyer can see for a show, for "From $21.42".
+  # The lowest price a buyer can see for a show, for "From $21.42": all-in,
+  # or before tax when the box office shows prices that way.
   def listing_from_price_cents(listing)
+    listing_public_tiers(listing).map { |tier| TicketPricing.shown_price_cents(listing, tier) }.min
+  end
+
+  def listing_public_tiers(listing)
     listing.ticket_tiers.select { |tier| tier.archived_at.nil? && !tier.hidden? && tier.sells_online? }
-           .map { |tier| TicketPricing.all_in_price_cents(listing, tier) }.min
+  end
+
+  # "Free", "From $21.42", or "From $15.00 + tax" when the box office shows
+  # prices before tax and this date's tickets have tax added on top.
+  def listing_from_price_text(listing, from, word: "From")
+    return (word == "From" ? "Free" : "free") if from.zero?
+
+    plus_tax = listing.prices_before_tax? &&
+               listing_public_tiers(listing).any? { |tier| TicketPricing.added_tax_cents(listing, tier).positive? }
+    "#{word} #{number_to_currency(from / 100.0)}#{' + tax' if plus_tax}"
+  end
+
+  # What a ticket's shown price takes in, beside it: "incl. fees & tax",
+  # "incl. tax", or, before tax, "incl. fees, + tax" and "+ tax".
+  def ticket_price_note(listing, taxed:, tax_added:)
+    fees = listing.buyer_pays_fees?
+    if tax_added && listing.prices_before_tax?
+      fees ? "incl. fees, + tax" : "+ tax"
+    elsif fees
+      taxed ? "incl. fees & tax" : "incl. fees"
+    elsif taxed
+      "incl. tax"
+    end
   end
 
   # The QR a ticket carries: its own /tickets/v page, which the door scanner reads

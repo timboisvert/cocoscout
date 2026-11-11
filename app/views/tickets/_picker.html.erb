@@ -16,11 +16,9 @@
   summary_class = "list-none [&::-webkit-details-marker]:hidden cursor-pointer"
   panel_class = "mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 space-y-1"
   # What each price includes, so the total never surprises anyone.
-  price_note = if listing.buyer_pays_fees?
-    taxed ? "incl. fees & tax" : "incl. fees"
-  elsif taxed
-    "incl. tax"
-  end
+  # Before tax ("$15.00 + tax") when the box office shows prices that way;
+  # the tap still opens every cent, and the total below is the real one.
+  price_note = ticket_price_note(listing, taxed: taxed, tax_added: tax_added)
 %>
 <div class="rounded-2xl border border-gray-200 bg-white overflow-hidden">
   <% if show.canceled || listing.status == "canceled" %>
@@ -62,7 +60,7 @@
               <% if breakdown && breakdown.rows.size > 1 %>
                 <details class="mt-0.5">
                   <summary class="<%= summary_class %> text-sm font-semibold text-gray-900">
-                    <span class="underline decoration-dotted decoration-gray-400 underline-offset-4"><%= ticket_price(breakdown.total_cents) %></span>
+                    <span class="underline decoration-dotted decoration-gray-400 underline-offset-4"><%= ticket_price(TicketPricing.shown_price_cents(listing, tier)) %></span>
                     <% if price_note %><span class="text-xs font-normal text-gray-600"><%= price_note %></span><% end %>
                   </summary>
                   <dl class="<%= panel_class %> max-w-[17rem]">
@@ -70,13 +68,13 @@
                       <div class="flex justify-between gap-4"><dt><%= label %></dt><dd class="tabular-nums"><%= number_to_currency(cents / 100.0) %></dd></div>
                     <% end %>
                     <div class="flex justify-between gap-4 pt-1 border-t border-gray-200 font-semibold text-gray-900">
-                      <dt><%= tier.bundle? ? "One #{tier.name}" : "One ticket" %></dt><dd class="tabular-nums"><%= number_to_currency(breakdown.total_cents / 100.0) %></dd>
+                      <dt><%= tier.bundle? ? "One #{tier.name}" : "One ticket" %><%= ", with tax" if breakdown.total_cents != TicketPricing.shown_price_cents(listing, tier) %></dt><dd class="tabular-nums"><%= number_to_currency(breakdown.total_cents / 100.0) %></dd>
                     </div>
                   </dl>
                 </details>
               <% else %>
                 <div class="text-sm font-semibold text-gray-900 mt-0.5">
-                  <%= ticket_price(TicketPricing.all_in_price_cents(listing, tier)) %>
+                  <%= ticket_price(TicketPricing.shown_price_cents(listing, tier)) %>
                   <% if !tier.free? && price_note %><span class="text-xs font-normal text-gray-600"><%= price_note %></span><% end %>
                 </div>
               <% end %>

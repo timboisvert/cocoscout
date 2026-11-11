@@ -174,7 +174,7 @@
                     <span class="flex-1 min-w-0 text-sm font-semibold <%= sold_out ? 'text-gray-400' : 'text-gray-900' %>"><%= listing.show.date_and_time.strftime("%-l:%M %p") %></span>
                     <span class="flex-shrink-0 flex items-baseline gap-2 text-xs">
                       <% if note %><span class="font-medium <%= sold_out ? 'text-gray-500' : 'text-amber-700' %>"><%= note %></span><% end %>
-                      <% if from && !sold_out %><span class="font-semibold text-gray-900"><%= from.zero? ? "Free" : "From #{number_to_currency(from / 100.0)}" %></span><% end %>
+                      <% if from && !sold_out %><span class="font-semibold text-gray-900"><%= listing_from_price_text(listing, from) %></span><% end %>
                     </span>
                   <% end %>
                 <% end %>
