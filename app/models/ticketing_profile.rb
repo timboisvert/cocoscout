@@ -16,6 +16,13 @@ class TicketingProfile < ApplicationRecord
   # The box office page's layout (Tim, 2026-10-18): dates first (this
   # weekend's shows, then every date by day) or a poster wall (one tile per
   # production, soonest first).
+  # How prices read on the buyer's pages (Tim, 2026-11-11): all in ("$23.53
+  # incl. taxes & fees"), or the ticket's own price with what a buyer pays
+  # on top named beside it ("$20.00 + taxes & fees"; only the parts they
+  # really pay: no "fees" when the organization absorbs them, no "tax" when
+  # there's none added). A tap on the price, and the total, are all-in
+  # either way.
+  PRICE_DISPLAYS = %w[all_in base].freeze
   BOX_OFFICE_LAYOUTS = %w[dates posters].freeze
   BOX_OFFICE_LAYOUT_LABELS = { "dates" => "Dates first", "posters" => "Poster wall" }.freeze
   WELCOME_LINE_LIMIT = 160
@@ -49,6 +56,7 @@ class TicketingProfile < ApplicationRecord
   validate :slug_not_reserved
   validate :slug_not_someone_elses_old_address
   validates :default_fee_mode, inclusion: { in: FEE_MODES }
+  validates :price_display, inclusion: { in: PRICE_DISPLAYS }
   validates :auto_withdraw, inclusion: { in: AUTO_WITHDRAW }
   validates :default_max_per_order, numericality: { only_integer: true, in: 1..100 }
   validates :support_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_nil: true
@@ -135,6 +143,10 @@ class TicketingProfile < ApplicationRecord
   def self.address_taken?(slug, except: nil)
     scope = except ? where.not(id: except.id) : all
     scope.where(slug: slug).or(scope.where("previous_slugs @> ?", [ slug ].to_json)).exists?
+  end
+
+  def prices_before_extras?
+    price_display == "base"
   end
 
   private

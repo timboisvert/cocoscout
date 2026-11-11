@@ -13,7 +13,7 @@
             <span class="block text-xs font-semibold text-pink-600"><%= show.date_and_time.strftime("%-l:%M %p") %><%= " · #{show.location_space&.name || show.location&.name}" if show.location %></span>
             <span class="block text-[17px] font-semibold text-gray-900 leading-snug mt-0.5"><%= listing.display_title %></span>
           </span>
-          <span class="flex-shrink-0 rounded-lg bg-pink-500 px-3.5 py-2 text-sm font-semibold text-white"><%= note == "Sold out" ? "Sold out" : (from.nil? ? "Tickets" : (from.zero? ? "Free" : "From #{number_to_currency(from / 100.0)}")) %></span>
+          <span class="flex-shrink-0 rounded-lg bg-pink-500 px-3.5 py-2 text-sm font-semibold text-white"><%= note == "Sold out" ? "Sold out" : (from.nil? ? "Tickets" : listing_from_price_text(listing, from)) %></span>
         <% end %>
       <% end %>
     </div>
@@ -42,7 +42,7 @@
           <div class="text-xs text-gray-500 mt-0.5">
             Next: <%= next_show.date_and_time.to_date == Date.current ? "tonight" : next_show.date_and_time.strftime("%a %b %-d") %> <%= next_show.date_and_time.strftime("%-l:%M %p") %>
             <% if row[:count] > 1 %> · <%= pluralize(row[:count], "date") %><% end %>
-            <% if next_note == "Sold out" && row[:count] == 1 %> · <span class="text-gray-500">sold out</span><% elsif row[:from] %> · <%= row[:from].zero? ? "free" : "from #{number_to_currency(row[:from] / 100.0)}" %><% end %>
+            <% if next_note == "Sold out" && row[:count] == 1 %> · <span class="text-gray-500">sold out</span><% elsif row[:from] %> · <%= listing_from_price_text(row[:next], row[:from], word: "from") %><% end %>
           </div>
         </div>
       <% end %>

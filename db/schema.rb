@@ -192,6 +192,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_140000) do
     t.boolean "resume_required", default: true, null: false
     t.string "signup_mode", default: "curated", null: false
     t.boolean "allow_slot_changes", default: true, null: false
+    t.datetime "paused_at"
     t.index ["production_id", "active"], name: "index_audition_cycles_on_production_id_and_active", unique: true, where: "(active = true)"
     t.index ["production_id"], name: "index_audition_cycles_on_production_id"
   end
@@ -4707,6 +4708,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_140000) do
     t.boolean "follow_boxes_ticked", default: true, null: false
     t.string "follow_main_words"
     t.boolean "attach_pdf_tickets", default: false, null: false
+    t.string "price_display", default: "all_in", null: false
     t.index ["organization_id"], name: "index_ticketing_profiles_on_organization_id", unique: true
     t.index ["previous_slugs"], name: "index_ticketing_profiles_on_previous_slugs", using: :gin
     t.index ["slug"], name: "index_ticketing_profiles_on_slug", unique: true

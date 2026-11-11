@@ -65,7 +65,7 @@ module Manage
         if assignment.save
           # Put on by hand while someone couldn't make it: that covers the shift.
           covered = ShiftVacancy.fill_from_assignment!(assignment, by: Current.user)
-          covered_note = covered ? " That covers the shift #{covered.vacated_by.name} couldn't make." : ""
+          covered_note = covered ? " That covers the shift #{covered.vacated_by.name} couldn't make.#{told_note(assignment)}" : ""
           redirect_to_scheduling notice: "Assigned #{person.name}.#{covered_note}#{availability_note(person, @shift)}"
         else
           redirect_to_scheduling alert: assignment.errors.full_messages.to_sentence.presence || "Couldn't assign."
@@ -257,6 +257,17 @@ module Manage
         "Assigned #{person.name}.#{availability_note(person, @shift)}"
       rescue ActiveRecord::RecordInvalid => e
         "Couldn't assign #{person&.name}: #{e.message}"
+      end
+
+      # Cover picked by hand is notified at once, not at the next Notify
+      # updates (Tim, 2026-11-10), and the page says which it was. The word is
+      # always "notified", never "told", and "them", never a guessed "her".
+      def told_note(assignment)
+        first = assignment.person.name.to_s.split.first
+        if StaffScheduleNotices.tell_new_shift!(assignment) then " #{first} has been notified."
+        elsif assignment.person.user.nil? then " #{first} doesn't have a CocoScout login, so you'll need to tell them directly, outside of CocoScout."
+        else " #{first} will be notified when you publish the week."
+        end
       end
 
       # Assigning never refuses someone for what they said about their

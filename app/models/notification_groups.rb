@@ -57,6 +57,7 @@ module NotificationGroups
     # Shifts and hours
     "shift_declined_manager" => "shifts", "shift_vacancy_invitation" => "shifts",
     "shift_vacancy_filled" => "shifts", "shift_vacancy_reclaimed" => "shifts",
+    "shift_vacancy_covered_invitee" => "shifts",
     "shift_canceled" => "shifts", "shift_moved" => "shifts",
     "staff_shift_added" => "shifts", "staff_shift_changed" => "shifts", "staff_shift_removed" => "shifts",
     "shift_claim_confirmed" => "shifts", "staff_shift_reminder" => "shifts",

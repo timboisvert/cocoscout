@@ -9,6 +9,31 @@
     [ "buyer", "Buyers pay the fees", "A $20 ticket costs the buyer #{number_to_currency(buyer_total / 100.0)}, and you keep the full $20." ],
     [ "org", "You absorb the fees", "A $20 ticket costs the buyer $20, and you keep #{number_to_currency(absorbed_net / 100.0)}." ]
   ]
+  # How prices are shown, explained with the same $20 ticket under this
+  # organization's own fee and tax settings (a 10% tax when none is set, so
+  # the two choices still read differently).
+  tax_form = TicketTaxSetting.current(Current.organization)
+  tax_set = tax_form.set?
+  tax_on_top = !tax_set || tax_form.mode == "added"
+  tax_percent = tax_set ? tax_form.percent.to_d : 10.to_d
+  example_tax = tax_on_top ? (2_000 * tax_percent / 100).round : 0
+  example_total = TicketPricing.quote(items: [ { price_cents: 2_000, discount_cents: 0, tax_cents: example_tax } ], fee_mode: profile.default_fee_mode).total_cents
+  example_fees = profile.default_fee_mode == "buyer"
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  example_extras = if example_fees && tax_on_top then "taxes & fees"
+  elsif example_fees then "fees"
+  elsif tax_on_top then "tax"
+  end
+  price_choices = [
+    [ "all_in", "All in", "A $20 ticket shows as #{money.(example_total)}#{" incl. #{example_extras}" if example_extras}: the most one ticket can cost." ],
+    [ "base", "Before taxes and fees", example_extras ? "A $20 ticket shows as $20.00 + #{example_extras}. A tap on the price shows #{money.(example_total)} with #{example_extras}." : "A $20 ticket shows as $20.00." ]
+  ]
+  price_display_note = [
+    ("You don't charge tax on tickets yet; the example uses 10%." unless tax_set),
+    ("Your tax is inside your prices, so it's never added on top." if tax_set && !tax_on_top),
+    (example_fees ? "Buyers pay the fees here, so they're named." : "You absorb the fees, so fees are never mentioned."),
+    "The total, and checkout, always show the full amount."
+  ].compact.join(" ")
 %>
 <% unless profile.enabled? %>
   <%# Opening is the organization's own call (Tim, 2026-10-06). Outside the
@@ -61,7 +86,23 @@
             </label>
           <% end %>
         </div>
-        <p class="text-xs text-gray-500 mt-2">Each show can change this. Prices on your pages always include the fees.</p>
+        <p class="text-xs text-gray-500 mt-2">Each show can change this.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend class="block text-sm font-medium text-gray-700 mb-1.5">How prices are shown</legend>
+        <div class="space-y-2">
+          <% price_choices.each do |value, title, explanation| %>
+            <label class="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+              <%= f.radio_button :price_display, value, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
+              <span>
+                <span class="block text-sm font-medium text-gray-900"><%= title %></span>
+                <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
+              </span>
+            </label>
+          <% end %>
+        </div>
+        <p class="text-xs text-gray-500 mt-2"><%= price_display_note %></p>
       </fieldset>
 
       <div>

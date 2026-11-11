@@ -243,6 +243,12 @@ class TicketListing < ApplicationRecord
     effective_fee_mode == "buyer"
   end
 
+  # Whether this date's prices read before taxes and fees ("$20.00 + taxes
+  # & fees"): the box office's choice (Ticketing settings → Box office).
+  def prices_before_extras?
+    profile&.prices_before_extras? || false
+  end
+
   # Selling online right now: put on sale, inside its window, show not cancelled.
   def selling?(at = Time.current)
     status == "on_sale" && !show.canceled &&

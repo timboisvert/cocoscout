@@ -51,4 +51,22 @@ RSpec.describe "My::SubmitAuditionRequest file uploads", type: :request do
 
     expect(response).to have_http_status(:unprocessable_content)
   end
+
+  it "takes no request once requests are closed" do
+    cycle.update!(closes_at: 1.minute.ago)
+
+    expect {
+      post my_submit_submit_audition_request_form_path(token: cycle.token), params: { question: {} }
+    }.not_to change(AuditionRequest, :count)
+    expect(response).to redirect_to(my_submit_audition_request_inactive_path(token: cycle.token))
+  end
+
+  it "takes no request for an archived cycle, even one with no close date" do
+    cycle.update!(active: false)
+
+    expect {
+      post my_submit_submit_audition_request_form_path(token: cycle.token), params: { question: {} }
+    }.not_to change(AuditionRequest, :count)
+    expect(response).to redirect_to(my_submit_audition_request_inactive_path(token: cycle.token))
+  end
 end

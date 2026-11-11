@@ -285,11 +285,7 @@ module My
 
     def notify_producers_of_departure(groups_removed)
       # Get all users with notifications enabled for this production
-      ProductionNotificationSetting.ensure_settings_for(@production)
-      notifiable_users = ProductionNotificationSetting.where(production: @production, enabled: true)
-                                                      .includes(:user)
-                                                      .map(&:user)
-                                                      .compact
+      notifiable_users = ProductionNotificationSetting.users_to_notify(@production)
 
       notifiable_users.each do |user|
         next unless user.person.present?

@@ -25,10 +25,12 @@ class ShiftVacancyNotificationService
     end
 
     # Claimed by the person themself: they're covering it. Put on by a manager
-    # (fill! with accepted: false, fill_from_assignment!): they haven't been
-    # asked yet and hear at the next Notify updates, so the words say "put
-    # on", not "covering". The one who dropped it reads "you", not their own
-    # name.
+    # (fill! with accepted: false, fill_from_assignment!): they haven't said
+    # yes, so the words say "put on", not "covering", and say whether they've
+    # heard: told at once when a manager picked them by hand
+    # (StaffScheduleNotices.tell_new_shift!), otherwise with the week's next
+    # updates, and never "will be told" of someone with no login. The one who
+    # dropped it reads "you", not their own name.
     def notify_filled(vacancy)
       shift = vacancy.shift
       organization = shift.organization
@@ -39,10 +41,14 @@ class ShiftVacancyNotificationService
       role = variables[:role_name]
       subject = claimed ? "#{filled_by&.name} is covering the #{role} shift on #{variables[:shift_date]}" :
                           "#{filled_by&.name} has been put on the #{role} shift on #{variables[:shift_date]}"
+      told = if row&.notified_at.present? then ", and has been notified"
+      elsif filled_by&.user.nil? then ""
+      else ", and will be notified"
+      end
       words = ->(dropper) do
         who = dropper ? "you" : vacancy.vacated_by.name
         claimed ? "#{filled_by&.name} is covering the <strong>#{role}</strong> shift on <strong>#{variables[:shift_time]}</strong> that #{who} couldn't make." :
-                  "#{filled_by&.name} has been put on the <strong>#{role}</strong> shift on <strong>#{variables[:shift_time]}</strong> that #{who} couldn't make, and will be told."
+                  "#{filled_by&.name} has been put on the <strong>#{role}</strong> shift on <strong>#{variables[:shift_time]}</strong> that #{who} couldn't make#{told}."
       end
 
       managers = organization.staffing_notification_recipients
@@ -52,6 +58,24 @@ class ShiftVacancyNotificationService
       end
       deliver("shift_vacancy_filled", [ vacancy.vacated_by ], organization, for_managers: false,
               variables: variables.merge(covering_subject: subject, covering_words: words.call(true), link_url: my_shifts_url, link_text: "My Shifts"))
+      notify_others_asked(vacancy)
+    end
+
+    # Everyone else who was asked and hasn't answered hears it's gone (Tim,
+    # 2026-11-10: "this shift has been covered and is no longer available"),
+    # however it was covered; their claim link alone said so before. A
+    # notification only. Not whoever has the shift, not someone who already
+    # said no, not once the shift is over, and only people with a login.
+    def notify_others_asked(vacancy)
+      shift = vacancy.shift
+      return unless vacancy.filled? && shift.ends_at.future?
+
+      vacancy.invitations.pending.includes(person: :user).map(&:person).uniq.each do |person|
+        next if person.user.nil? || person.id == vacancy.filled_by_id
+
+        deliver("shift_vacancy_covered_invitee", [ person ], shift.organization, for_managers: false,
+                variables: shift_variables(shift).merge(recipient_name: ShiftWords.first_name(person)))
+      end
     end
 
     # They claimed it from an invitation: their confirmation, the moment it

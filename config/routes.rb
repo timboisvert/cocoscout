@@ -928,6 +928,8 @@ Rails.application.routes.draw do
     delete "/signups/auditions/:production_id/:id/destroy_question/:question_id", to: "audition_cycles#destroy_question", as: "destroy_question_signups_auditions_cycle"
     post "/signups/auditions/:production_id/:id/reorder_questions", to: "audition_cycles#reorder_questions", as: "reorder_questions_signups_auditions_cycle"
     patch "/signups/auditions/:production_id/:id/archive", to: "audition_cycles#archive", as: "archive_signups_auditions_cycle"
+    patch "/signups/auditions/:production_id/:id/pause", to: "audition_cycles#pause", as: "pause_signups_auditions_cycle"
+    patch "/signups/auditions/:production_id/:id/resume", to: "audition_cycles#resume", as: "resume_signups_auditions_cycle"
     get "/signups/auditions/:production_id/:id/delete_confirm", to: "audition_cycles#delete_confirm", as: "delete_confirm_signups_auditions_cycle"
     patch "/signups/auditions/:production_id/:id/toggle_voting", to: "audition_cycles#toggle_voting", as: "toggle_voting_signups_auditions_cycle"
     get "/signups/auditions/:production_id/:id/settings", to: "auditions#settings", as: "settings_signups_auditions_cycle"
@@ -1283,7 +1285,6 @@ Rails.application.routes.draw do
         # Production team management
         post :add_team_member
         patch :update_team_permission
-        patch :toggle_production_notification
         delete :remove_team_member
         delete :revoke_production_invite
         # Agreement management
@@ -1627,6 +1628,7 @@ Rails.application.routes.draw do
     post   "staffing/vacancies/:id/send_invitations", to: "staffing/vacancies#send_invitations", as: "send_invitations_staffing_vacancy"
     post   "staffing/vacancies/:id/cancel",       to: "staffing/vacancies#cancel",       as: "cancel_staffing_vacancy"
     post   "staffing/vacancies/:id/reclaim",      to: "staffing/vacancies#reclaim",      as: "reclaim_staffing_vacancy"
+    post   "staffing/vacancies/:id/tell_cover",   to: "staffing/vacancies#tell_cover",   as: "tell_cover_staffing_vacancy"
     # A show canceled, taken away or moved: tell its cast and staff
     # (docs/show_change_notices_plan.md).
     post "show-changes/canceled/:show_id", to: "show_changes#for_canceled_show", as: "tell_canceled_show"

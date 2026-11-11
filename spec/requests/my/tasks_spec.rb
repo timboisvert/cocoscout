@@ -118,4 +118,36 @@ RSpec.describe "My::Tasks", type: :request do
       expect(availability.status).to eq("unavailable")
     end
   end
+
+  describe "POST /my/tasks/signup/:show_id" do
+    let(:show) { create(:show, production: production, date_and_time: 2.weeks.from_now) }
+    let(:form) { create(:sign_up_form, production: production) }
+    let!(:instance) { create(:sign_up_form_instance, sign_up_form: form, show: show, status: "open") }
+    let!(:slots) { create_list(:sign_up_slot, 2, sign_up_form: form, sign_up_form_instance: instance) }
+
+    it "signs the person up while the form is on" do
+      expect {
+        post my_task_sign_up_path(show_id: show.id), params: { person_id: person.id }
+      }.to change(SignUpRegistration, :count).by(1)
+    end
+
+    # Rising Stars' rehearsal sign-ups were paused and this kept taking people.
+    it "takes nobody while the form is paused" do
+      form.update!(active: false)
+
+      expect {
+        post my_task_sign_up_path(show_id: show.id), params: { person_id: person.id }
+      }.not_to change(SignUpRegistration, :count)
+      expect(response).to redirect_to(my_tasks_path)
+      expect(flash[:alert]).to eq("Sign-up is not currently open for this event.")
+    end
+
+    it "doesn't take a second spot for someone already signed up" do
+      post my_task_sign_up_path(show_id: show.id), params: { person_id: person.id }
+
+      expect {
+        post my_task_sign_up_path(show_id: show.id), params: { person_id: person.id }
+      }.not_to change(SignUpRegistration, :count)
+    end
+  end
 end

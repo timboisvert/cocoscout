@@ -102,6 +102,35 @@ class StaffScheduleNotices
       told_role_label: shift.role_label, told_location_name: shift.location_name }
   end
 
+  # One new shift, told the moment it's given instead of with the week's
+  # next updates: a manager put this person on a shift someone couldn't make
+  # (Tim, 2026-11-10: "assigning them directly should notify them directly";
+  # nobody should have to remember Notify updates for it). Only where the
+  # notice is true and can land: the week is published, so the shift is on
+  # their My Shifts, and they have a login. The row is stamped as told first,
+  # so Notify updates has nothing more to say about it and a second call
+  # sends nothing. Returns whether they were told.
+  def self.tell_new_shift!(assignment)
+    shift = assignment.shift
+    person = assignment.person
+    organization = shift.organization
+    return false unless person&.user && StaffingFinalization.published?(organization, shift.starts_at)
+    return false if ShiftAssignment.where(id: assignment.id, notified_at: nil).update_all(told_attributes(shift)).zero?
+
+    ContentTemplateService.deliver(
+      template_key: "staff_shift_added",
+      variables: ShiftWords.variables(shift, person).compact,
+      sender: nil,
+      recipients: [ person ],
+      organization: organization,
+      message_type: :system,
+      visibility: :personal,
+      mailer_class: StaffingNoticeMailer.with(organization_id: organization.id),
+      mailer_method: :notice
+    )
+    true
+  end
+
   private
 
   def pairs_by_person

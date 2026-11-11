@@ -24,7 +24,7 @@
       <div class="text-xs font-medium <%= note == 'Sold out' ? 'text-gray-500' : 'text-pink-600' %>"><%= note %></div>
     <% end %>
     <% if from && note != "Sold out" %>
-      <div class="text-sm font-semibold text-gray-900"><%= from.zero? ? "Free" : "From #{number_to_currency(from / 100.0)}" %></div>
+      <div class="text-sm font-semibold text-gray-900"><%= listing_from_price_text(listing, from) %></div>
     <% end %>
   </div>
 <% end %>

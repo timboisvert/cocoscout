@@ -6,7 +6,8 @@ module Manage
     # the page where a manager finds cover. Who dropped it and why, who to
     # ask (the staff scope of the People Picker, free people first), an
     # editable invitation with a claim link each, assigning someone by hand
-    # instead, not filling it, or putting the person back.
+    # instead, not filling it, or putting the person back. Once settled, one
+    # closure card, with Tell now for cover who hasn't heard.
     class VacanciesController < Manage::ManageController
       before_action :ensure_org_owner_or_manager
       before_action :set_vacancy
@@ -79,6 +80,19 @@ module Manage
                       notice: "#{@vacancy.vacated_by.name} is back on the #{@vacancy.shift.role_label} shift."
         else
           redirect_to manage_staffing_vacancy_path(@vacancy), alert: "This shift has already been covered or closed."
+        end
+      end
+
+      # Whoever was put on by hand before a pick told them at once (or while
+      # nothing could reach them): tell them now, from the closed page, so
+      # nobody has to remember Notify updates for it (Tim, 2026-11-10).
+      def tell_cover
+        cover = @vacancy.filled_by if @vacancy.filled?
+        row = cover && @vacancy.shift.shift_assignments.active.find_by(person_id: cover.id)
+        if row && @vacancy.shift.ends_at.future? && StaffScheduleNotices.tell_new_shift!(row)
+          redirect_to manage_staffing_vacancy_path(@vacancy), notice: "#{cover.name.to_s.split.first} has been notified."
+        else
+          redirect_to manage_staffing_vacancy_path(@vacancy), alert: "Nothing was sent: they've been notified already, or can't be reached yet."
         end
       end
 

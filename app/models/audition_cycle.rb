@@ -23,7 +23,7 @@ class AuditionCycle < ApplicationRecord
   end
 
   scope :listed, -> { where(listed_in_directory: true) }
-  scope :currently_open, -> { where(active: true, form_reviewed: true).where("opens_at <= ?", Time.current).where("closes_at IS NULL OR closes_at > ?", Time.current) }
+  scope :currently_open, -> { where(active: true, form_reviewed: true, paused_at: nil).where("opens_at <= ?", Time.current).where("closes_at IS NULL OR closes_at > ?", Time.current) }
 
   has_rich_text :instruction_text
   has_rich_text :video_field_text
@@ -125,14 +125,30 @@ class AuditionCycle < ApplicationRecord
     end
   end
 
+  # :paused is an open cycle a manager has paused: its dates are untouched
+  # (an open-ended one stays open-ended), and nobody new can send a request
+  # until it's resumed.
   def timeline_status
     if opens_at > Time.current
       :upcoming
     elsif closes_at.present? && closes_at <= Time.current
       :closed
+    elsif paused_at.present?
+      :paused
     else
       :open
     end
+  end
+
+  def paused?
+    timeline_status == :paused
+  end
+
+  # Whether someone can send a request right now: inside the window, not
+  # paused, with the form published, and the cycle not archived (an archived
+  # cycle with no close date used to keep taking requests).
+  def accepting_requests?
+    active && form_reviewed && timeline_status == :open
   end
 
   def editable_by_talent?
