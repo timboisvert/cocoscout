@@ -107,15 +107,11 @@ class TicketPricing
     quote(items: items, fee_mode: listing.effective_fee_mode).total_cents
   end
 
-  # The price a ticket type is shown at before anyone picks it. The all-in
-  # price, unless the box office shows prices before tax: then the tax added
-  # on top is left out (and the page says "+ tax"). Fees a buyer pays stay
-  # in, and tax that's inside the price was never added, so it stays too.
+  # The price a ticket type is shown at before anyone picks it: the all-in
+  # price, or the ticket's own price when the box office shows prices before
+  # taxes and fees (the page then names what's added: "+ taxes & fees").
   def self.shown_price_cents(listing, tier)
-    total = all_in_price_cents(listing, tier)
-    return total unless listing.prices_before_tax?
-
-    total - added_tax_cents(listing, tier)
+    listing.prices_before_extras? ? tier.price_cents : all_in_price_cents(listing, tier)
   end
 
   # The tax added on top of one ticket type (0 when tax is inside the price).

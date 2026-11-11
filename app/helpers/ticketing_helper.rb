@@ -227,7 +227,7 @@ module TicketingHelper
   end
 
   # The lowest price a buyer can see for a show, for "From $21.42": all-in,
-  # or before tax when the box office shows prices that way.
+  # or the ticket's own price when the box office shows prices that way.
   def listing_from_price_cents(listing)
     listing_public_tiers(listing).map { |tier| TicketPricing.shown_price_cents(listing, tier) }.min
   end
@@ -236,24 +236,41 @@ module TicketingHelper
     listing.ticket_tiers.select { |tier| tier.archived_at.nil? && !tier.hidden? && tier.sells_online? }
   end
 
-  # "Free", "From $21.42", or "From $15.00 + tax" when the box office shows
-  # prices before tax and this date's tickets have tax added on top.
+  # "Free", "From $21.42", or "From $20.00 + taxes & fees" when the box
+  # office shows prices before taxes and fees and this date adds any.
   def listing_from_price_text(listing, from, word: "From")
     return (word == "From" ? "Free" : "free") if from.zero?
 
-    plus_tax = listing.prices_before_tax? &&
-               listing_public_tiers(listing).any? { |tier| TicketPricing.added_tax_cents(listing, tier).positive? }
-    "#{word} #{number_to_currency(from / 100.0)}#{' + tax' if plus_tax}"
+    extras = if listing.prices_before_extras?
+      tax_added = listing_public_tiers(listing).any? { |tier| TicketPricing.added_tax_cents(listing, tier).positive? }
+      ticket_price_extras(listing, tax_added: tax_added)
+    end
+    "#{word} #{number_to_currency(from / 100.0)}#{" + #{extras}" if extras}"
   end
 
-  # What a ticket's shown price takes in, beside it: "incl. fees & tax",
-  # "incl. tax", or, before tax, "incl. fees, + tax" and "+ tax".
-  def ticket_price_note(listing, taxed:, tax_added:)
+  # What a buyer pays on top of a ticket's own price, in words: "taxes &
+  # fees", "tax", "fees", or nil. Fees only when the buyer pays them, tax
+  # only when it's added on top.
+  def ticket_price_extras(listing, tax_added:)
     fees = listing.buyer_pays_fees?
-    if tax_added && listing.prices_before_tax?
-      fees ? "incl. fees, + tax" : "+ tax"
-    elsif fees
-      taxed ? "incl. fees & tax" : "incl. fees"
+    if fees && tax_added then "taxes & fees"
+    elsif fees then "fees"
+    elsif tax_added then "tax"
+    end
+  end
+
+  # What stands beside a ticket's shown price: all in, what it includes
+  # ("incl. taxes & fees", "incl. fees", "incl. tax"); before taxes and fees,
+  # what's added ("+ taxes & fees", "+ fees", "+ tax"). Tax that's inside the
+  # price is "incl. tax" either way.
+  def ticket_price_note(listing, taxed:, tax_added:)
+    extras = ticket_price_extras(listing, tax_added: tax_added)
+    if listing.prices_before_extras?
+      return "+ #{extras}" if extras
+
+      taxed ? "incl. tax" : nil
+    elsif extras
+      "incl. #{extras}"
     elsif taxed
       "incl. tax"
     end

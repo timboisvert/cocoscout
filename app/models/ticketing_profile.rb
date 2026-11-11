@@ -16,11 +16,13 @@ class TicketingProfile < ApplicationRecord
   # The box office page's layout (Tim, 2026-10-18): dates first (this
   # weekend's shows, then every date by day) or a poster wall (one tile per
   # production, soonest first).
-  # How prices read on the buyer's pages (Tim, 2026-11-11): the tax already
-  # in ("$16.54 incl. tax"), or before tax ("$15.00 + tax") with the total a
-  # tap away. Only tax added on top can be left out; the fees a buyer pays
-  # are always in the price shown (the FTC's rule on ticket fees).
-  PRICE_DISPLAYS = %w[with_tax before_tax].freeze
+  # How prices read on the buyer's pages (Tim, 2026-11-11): all in ("$23.53
+  # incl. taxes & fees"), or the ticket's own price with what a buyer pays
+  # on top named beside it ("$20.00 + taxes & fees"; only the parts they
+  # really pay: no "fees" when the organization absorbs them, no "tax" when
+  # there's none added). A tap on the price, and the total, are all-in
+  # either way.
+  PRICE_DISPLAYS = %w[all_in base].freeze
   BOX_OFFICE_LAYOUTS = %w[dates posters].freeze
   BOX_OFFICE_LAYOUT_LABELS = { "dates" => "Dates first", "posters" => "Poster wall" }.freeze
   WELCOME_LINE_LIMIT = 160
@@ -143,8 +145,8 @@ class TicketingProfile < ApplicationRecord
     scope.where(slug: slug).or(scope.where("previous_slugs @> ?", [ slug ].to_json)).exists?
   end
 
-  def prices_before_tax?
-    price_display == "before_tax"
+  def prices_before_extras?
+    price_display == "base"
   end
 
   private

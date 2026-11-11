@@ -20,17 +20,20 @@
   example_total = TicketPricing.quote(items: [ { price_cents: 2_000, discount_cents: 0, tax_cents: example_tax } ], fee_mode: profile.default_fee_mode).total_cents
   example_fees = profile.default_fee_mode == "buyer"
   money = ->(cents) { number_to_currency(cents / 100.0) }
-  price_choices = [
-    [ "with_tax", "With tax included", "A $20 ticket shows as #{money.(example_total)} #{example_fees ? 'incl. fees & tax' : 'incl. tax'}: the most one ticket can cost." ],
-    [ "before_tax", "Before tax", "A $20 ticket shows as #{money.(example_total - example_tax)} #{example_fees ? 'incl. fees, + tax' : '+ tax'}. A tap on the price shows #{money.(example_total)} with tax." ]
-  ]
-  price_display_note = if tax_set && !tax_on_top
-    "Your tax is inside your prices, so both read the same until that changes. The total at checkout is always the full amount."
-  elsif tax_set
-    "The fees a buyer pays are in the price either way. The total, and checkout, always show the tax."
-  else
-    "You don't charge tax on tickets yet, so both read the same; the example uses 10%. The fees a buyer pays are in the price either way."
+  example_extras = if example_fees && tax_on_top then "taxes & fees"
+  elsif example_fees then "fees"
+  elsif tax_on_top then "tax"
   end
+  price_choices = [
+    [ "all_in", "All in", "A $20 ticket shows as #{money.(example_total)}#{" incl. #{example_extras}" if example_extras}: the most one ticket can cost." ],
+    [ "base", "Before taxes and fees", example_extras ? "A $20 ticket shows as $20.00 + #{example_extras}. A tap on the price shows #{money.(example_total)} with #{example_extras}." : "A $20 ticket shows as $20.00." ]
+  ]
+  price_display_note = [
+    ("You don't charge tax on tickets yet; the example uses 10%." unless tax_set),
+    ("Your tax is inside your prices, so it's never added on top." if tax_set && !tax_on_top),
+    (example_fees ? "Buyers pay the fees here, so they're named." : "You absorb the fees, so fees are never mentioned."),
+    "The total, and checkout, always show the full amount."
+  ].compact.join(" ")
 %>
 <% unless profile.enabled? %>
   <%# Opening is the organization's own call (Tim, 2026-10-06). Outside the
@@ -83,7 +86,7 @@
             </label>
           <% end %>
         </div>
-        <p class="text-xs text-gray-500 mt-2">Each show can change this. Prices on your pages always include the fees.</p>
+        <p class="text-xs text-gray-500 mt-2">Each show can change this.</p>
       </fieldset>
 
       <fieldset>
