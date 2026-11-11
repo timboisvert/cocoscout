@@ -22,16 +22,14 @@ class Integration < ApplicationRecord
   REGISTER_CATEGORIES = { "bar" => "Bar", "food" => "Food", "merchandise" => "Merch", "other" => "Other" }.freeze
   SKIP = "skip"
 
-  # What Google Calendar carries, each a switch on its page.
-  CALENDAR_INCLUDES = {
-    "shows" => [ "Shows and events", "Every show, rehearsal, class and meeting on the Shows calendar" ],
-    "rentals" => [ "Rentals under contract", "The whole time a renter has the room, load-in to load-out" ]
-  }.freeze
-  # How each event's title reads, each a checkbox.
+  # How each event's title reads and how long its block is, each a checkbox.
+  # A date is one event however it came about: a show made by a contract is
+  # that show, blocked for the whole rental when the last of these is on.
   CALENDAR_TITLE_PARTS = {
     "room" => "Room in the title",
-    "call_time" => "Call time in the title",
-    "start_at_call" => "Start the block at call time"
+    "call_time" => "Call and show times in the title",
+    "start_at_call" => "Start the block at call time",
+    "rental_block" => "Block the whole rental time when a date is under contract"
   }.freeze
   # The colors Google Calendar offers for an event: its id, name and color.
   CALENDAR_COLORS = {
@@ -68,7 +66,10 @@ class Integration < ApplicationRecord
   def calendar_id = settings["calendar_id"].presence
   def calendar_name = settings["calendar_name"].presence
   def account_email = settings["account_email"].presence
-  def calendar_includes?(key) = settings.fetch("include", {}).fetch(key, true) != false
+  # Which kinds of event Google Calendar carries: all of them until someone
+  # switches one off.
+  def calendar_event_type?(type) = settings.fetch("event_types", {}).fetch(type.to_s, true) != false
+  def calendar_event_types = EventTypes.all.select { |type| calendar_event_type?(type) }
   def calendar_title_part?(key) = settings.fetch("title", {}).fetch(key, true) != false
   def other_color = CALENDAR_COLORS.key?(settings["other_color"].to_s) ? settings["other_color"].to_s : DEFAULT_OTHER_COLOR
 

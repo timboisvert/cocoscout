@@ -47,19 +47,26 @@ class GoogleCalendarEntry
   def title
     parts = [ name ]
     parts << room.name if room && integration.calendar_title_part?("room")
-    parts << times_in_title if show? && times_in_title
+    parts << times_in_title if times_in_title
     parts.join(" · ")
   end
 
   def room = record.location_space
 
+  # The block opens at the earliest of: the show's own time, its call time
+  # (when the organization starts blocks there), and the start of the rental
+  # it sits in (when it blocks the whole rental).
   def starts_at
-    start = show? && call_time && integration.calendar_title_part?("start_at_call") ? call_time : (show? ? record.date_and_time : record.starts_at)
-    start.in_time_zone(zone)
+    return record.starts_at.in_time_zone(zone) unless show?
+
+    times = [ record.date_and_time ]
+    times << call_time if call_time && integration.calendar_title_part?("start_at_call")
+    times << rental.starts_at if rental
+    times.min.in_time_zone(zone)
   end
 
   def ends_at
-    finish = show? ? record.ends_at : record.ends_at
+    finish = [ record.ends_at, rental&.ends_at ].compact.max
     [ finish, starts_at + 15.minutes ].max.in_time_zone(zone)
   end
 
@@ -89,12 +96,28 @@ class GoogleCalendarEntry
     record.call_time if show? && record.call_time_enabled && record.call_time.present? && record.call_time < record.date_and_time
   end
 
+  # The rental this show blocks out: the one it sits in, when its contract
+  # is live, it is the rental's only date, and the organization blocks the
+  # whole rental time. Otherwise nil, and the show keeps its own times.
+  def rental
+    return @rental if defined?(@rental)
+
+    rental = show? ? record.space_rental : nil
+    contract = rental&.contract
+    whole = rental && contract && (contract.status_active? || contract.status_completed?) &&
+            integration.calendar_title_part?("rental_block") && rental.shows.where(canceled: false).count == 1
+    @rental = whole ? rental : nil
+  end
+
   def start_word = record.event_type == "show" ? "show" : "start"
 
+  # "call 6:30, show 7:30", or just "show 8:00" when the block opens before
+  # the show for the rental.
   def times_in_title
-    return nil unless call_time && integration.calendar_title_part?("call_time")
+    return nil unless show? && integration.calendar_title_part?("call_time")
+    return "call #{clock(call_time)}, #{start_word} #{clock(record.date_and_time)}" if call_time
 
-    "call #{clock(call_time)}, #{start_word} #{clock(record.date_and_time)}"
+    "#{start_word} #{clock(record.date_and_time)}" if starts_at < record.date_and_time
   end
 
   def place
@@ -126,7 +149,18 @@ class GoogleCalendarEntry
     if (url = ticket_url)
       lines << link("Ticket page", url)
     end
-    lines
+    lines.concat(contract_lines)
+  end
+
+  # A date under contract: who with, the time they have the room, the contract.
+  def contract_lines
+    contract = record.space_rental&.contract
+    return [] unless contract && (contract.status_active? || contract.status_completed?)
+
+    held = record.space_rental
+    [ "Under contract with #{ERB::Util.html_escape(contract.contractor_name)}",
+      "Rental #{clock_long(held.starts_at)} to #{clock_long(held.ends_at)}",
+      link("Open the contract in CocoScout", manage_contract_url(contract)) ]
   end
 
   def rental_lines

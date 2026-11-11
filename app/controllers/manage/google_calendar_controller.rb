@@ -64,7 +64,8 @@ module Manage
       return redirect_to manage_organization_google_calendar_path(@organization), alert: "Connect Google Calendar first." unless @integration&.connected?
 
       settings = @integration.settings.dup
-      settings["include"] = Integration::CALENDAR_INCLUDES.keys.index_with { |key| params.dig(:include, key) == "1" }
+      settings["event_types"] = EventTypes.all.index_with { |type| params.dig(:event_types, type) == "1" }
+      settings.delete("include")
       settings["title"] = Integration::CALENDAR_TITLE_PARTS.keys.index_with { |key| params.dig(:title, key) == "1" }
       room_ids = @organization.calendar_rooms.map { |room| room.id.to_s }
       colors = params.fetch(:room_colors, {}).permit!.to_h

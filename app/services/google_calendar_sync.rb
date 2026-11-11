@@ -4,6 +4,11 @@
 # 2026-11-11). One direction: CocoScout writes, Google shows.
 #
 #   - a show or rental changes  → that one event is written again
+#
+# A date is one event (Tim, 2026-11-11). A contract makes shows, so a date
+# under contract is its show, blocked for the whole rental if the
+# organization wants that; the rental never goes on beside it. Only a rental
+# with no show of its own is written as a block in its own right.
 #   - a show is canceled, deleted, or a contract is cancelled → its event goes
 #   - every night               → every coming event is written again, so
 #     anything edited or deleted in Google is put back
@@ -88,6 +93,8 @@ class GoogleCalendarSync
     elsif row
       remove(row)
     end
+    # A rental's times are its shows' blocks.
+    Show.where(space_rental_id: id).ids.each { |show_id| sync_record!("Show", show_id) } if type == "SpaceRental"
   rescue GoogleCalendarApi::Unauthorized
     integration.record_error!("Google no longer lets CocoScout in. Connect Google Calendar again.")
   end
@@ -98,13 +105,13 @@ class GoogleCalendarSync
     case record
     when Show
       production = record.production
-      integration.calendar_includes?("shows") && !record.canceled && record.date_and_time.present? &&
+      integration.calendar_event_type?(record.event_type) && !record.canceled && record.date_and_time.present? &&
         production.present? && production.organization_id == integration.organization_id &&
         production.production_type != "course" && !production.archived?
     when SpaceRental
       contract = record.contract
-      integration.calendar_includes?("rentals") && contract.present? &&
-        contract.organization_id == integration.organization_id && (contract.status_active? || contract.status_completed?)
+      contract.present? && contract.organization_id == integration.organization_id &&
+        (contract.status_active? || contract.status_completed?) && record.shows.none?
     else
       false
     end
@@ -122,17 +129,13 @@ class GoogleCalendarSync
   def wanted_records
     from = Time.current
     organization = integration.organization
-    records = []
-    if integration.calendar_includes?("shows")
-      records.concat(Show.where(production: organization.productions.schedulable.active, canceled: false)
-                         .where(date_and_time: from..)
-                         .includes(:location, :location_space, :ticket_listing, production: :organization).to_a)
-    end
-    if integration.calendar_includes?("rentals")
-      records.concat(SpaceRental.joins(:contract).where(contracts: { organization_id: organization.id, status: %w[active completed] })
-                                .where(ends_at: from..).includes(:location, :location_space, :contract).to_a)
-    end
-    records
+    shows = Show.where(production: organization.productions.schedulable.active, canceled: false)
+                .where(event_type: integration.calendar_event_types, date_and_time: from..)
+                .includes(:location, :location_space, :ticket_listing, production: :organization, space_rental: :contract).to_a
+    # A rental nobody has put a show in still holds its room.
+    rentals = SpaceRental.joins(:contract).where(contracts: { organization_id: organization.id, status: %w[active completed] })
+                         .where(ends_at: from..).where.missing(:shows).includes(:location, :location_space, :contract).to_a
+    shows + rentals
   end
 
   # Whether Google was called.

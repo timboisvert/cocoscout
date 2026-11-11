@@ -88,7 +88,7 @@ RSpec.describe "Manage::GoogleCalendar", type: :request do
 
       expect(response).to have_http_status(:ok)
       page = Nokogiri::HTML(response.body)
-      expect(response.body).to include("Stars &amp; Garters (CocoScout)", "boxoffice@example.com", "Shows and events", "Rentals under contract",
+      expect(response.body).to include("Stars &amp; Garters (CocoScout)", "boxoffice@example.com", "Rehearsal", "Open Mic", "Block the whole rental time when a date is under contract",
                                        "A canceled date leaves the calendar.", "Mainstage", "Ruse Room", "Everything else")
       expect(page.css("input[name='room_colors[#{ruse.id}]']").size).to eq(11)
       expect(page.css("input[name='other_color']").size).to eq(11)
@@ -98,13 +98,14 @@ RSpec.describe "Manage::GoogleCalendar", type: :request do
     it "saves what goes on it, how titles read and the colors, and brings the calendar up to date" do
       expect {
         patch manage_organization_google_calendar_path(org), params: {
-          include: { shows: "1", rentals: "0" }, title: { room: "1", call_time: "0", start_at_call: "0" },
+          event_types: { show: "1", rehearsal: "0" }, title: { room: "1", call_time: "0", start_at_call: "0" },
           room_colors: { ruse.id => "4", mainstage.id => "7", "999999" => "3" }, other_color: "8"
         }
       }.to have_enqueued_job(GoogleCalendarFullSyncJob).with(org.id)
 
       integration = org.integrations.google_calendar.first
-      expect(integration.calendar_includes?("rentals")).to be(false)
+      expect(integration.calendar_event_type?("show")).to be(true)
+      expect(integration.calendar_event_type?("rehearsal")).to be(false)
       expect(integration.calendar_title_part?("call_time")).to be(false)
       expect(integration.room_color(ruse)).to eq("4")
       expect(integration.room_color(mainstage)).to eq("7")

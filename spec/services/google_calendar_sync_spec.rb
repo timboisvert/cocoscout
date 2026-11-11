@@ -95,7 +95,35 @@ RSpec.describe GoogleCalendarSync do
       expect(without).not_to include("Call time")
     end
 
-    it "shows a rental for the whole time the renter has the room" do
+    # A contract makes shows: the date is that show, never a second event
+    # for the rental (Tim, 2026-11-11).
+    it "blocks the whole rental for a show under contract, and says when the show is" do
+      contract = create(:contract, :active, organization: org, contractor_name: "Kelty Productions")
+      rental = contract.space_rentals.create!(location: location, location_space: ruse, starts_at: showtime - 1.hour, ends_at: showtime + 2.hours, confirmed: true)
+      show = show_at(location_space: ruse, space_rental: rental, duration_minutes: 90)
+
+      expect(entry(show).title).to eq("Rising Stars · Ruse Room · show 7:30")
+      expect(entry(show).starts_at).to eq(showtime - 1.hour)
+      expect(entry(show).ends_at).to eq(showtime + 2.hours)
+      expect(entry(show).payload[:description]).to include("Under contract with Kelty Productions", "Rental 6:30 pm to 9:30 pm", "/manage/contracts/#{contract.id}")
+    end
+
+    it "keeps the show's own times when the whole-rental block is off, or the contract isn't live" do
+      contract = create(:contract, :active, organization: org)
+      rental = contract.space_rentals.create!(location: location, location_space: ruse, starts_at: showtime - 1.hour, ends_at: showtime + 2.hours, confirmed: true)
+      show = show_at(location_space: ruse, space_rental: rental, duration_minutes: 90)
+      integration.update!(settings: integration.settings.merge("title" => { "rental_block" => false }))
+
+      expect(entry(show).starts_at).to eq(showtime)
+      expect(entry(show).ends_at).to eq(showtime + 90.minutes)
+      expect(entry(show).title).to eq("Rising Stars · Ruse Room")
+
+      integration.update!(settings: integration.settings.merge("title" => {}))
+      contract.update_columns(status: "draft")
+      expect(entry(show.reload).starts_at).to eq(showtime)
+    end
+
+    it "shows a rental with no show of its own for the whole time the renter has the room" do
       contract = create(:contract, :active, organization: org, contractor_name: "Kelty Productions")
       rental = contract.space_rentals.create!(location: location, location_space: ruse, starts_at: showtime - 2.hours, ends_at: showtime + 4.hours, confirmed: true)
 
@@ -107,10 +135,12 @@ RSpec.describe GoogleCalendarSync do
   end
 
   describe "#sync_all!" do
-    it "puts every coming show and every rental under contract on the calendar, once" do
+    it "puts every coming date on the calendar once: a show under contract is one event, not two" do
       show = show_at
       contract = create(:contract, :active, organization: org)
       rental = contract.space_rentals.create!(location: location, location_space: ruse, starts_at: showtime + 1.day, ends_at: showtime + 1.day + 3.hours, confirmed: true)
+      held = contract.space_rentals.create!(location: location, location_space: ruse, starts_at: showtime + 5.days, ends_at: showtime + 5.days + 3.hours, confirmed: true)
+      contracted = show_at(showtime + 5.days, location_space: ruse, space_rental: held)
       draft = create(:contract, organization: org)
       draft.space_rentals.create!(location: location, location_space: ruse, starts_at: showtime + 3.days, ends_at: showtime + 3.days + 3.hours)
       show_at(showtime + 2.days, canceled: true)
@@ -118,12 +148,12 @@ RSpec.describe GoogleCalendarSync do
 
       sync.sync_all!
 
-      expect(api).to have_received(:insert_event).twice
-      expect(integration.calendar_sync_events.pluck(:syncable_type, :syncable_id)).to contain_exactly([ "Show", show.id ], [ "SpaceRental", rental.id ])
+      expect(api).to have_received(:insert_event).exactly(3).times
+      expect(integration.calendar_sync_events.pluck(:syncable_type, :syncable_id)).to contain_exactly([ "Show", show.id ], [ "Show", contracted.id ], [ "SpaceRental", rental.id ])
       expect(integration.reload.last_synced_at).to be_present
 
       sync.sync_all!
-      expect(api).to have_received(:insert_event).twice
+      expect(api).to have_received(:insert_event).exactly(3).times
       expect(api).not_to have_received(:update_event)
     end
 
@@ -152,18 +182,26 @@ RSpec.describe GoogleCalendarSync do
       expect(CalendarSyncEvent.where(integration: integration)).to be_empty
     end
 
-    it "takes rentals off when rentals are switched off, and leaves old dates alone" do
+    it "takes a kind of event off when it is switched off, and leaves old dates alone" do
       old = show_at(2.months.ago)
       integration.calendar_sync_events.create!(syncable_type: "Show", syncable_id: old.id, external_id: "old-1", digest: "x", synced_at: 2.months.ago)
-      contract = create(:contract, :active, organization: org)
-      contract.space_rentals.create!(location: location, location_space: ruse, starts_at: showtime, ends_at: showtime + 3.hours, confirmed: true)
+      show_at(showtime + 1.day, event_type: "rehearsal")
+      kept = show_at
       sync.sync_all!
-      integration.update!(settings: integration.settings.merge("include" => { "shows" => true, "rentals" => false }))
+      integration.update!(settings: integration.settings.merge("event_types" => { "rehearsal" => false }))
 
       described_class.new(integration.reload).sync_all!
 
       expect(api).to have_received(:delete_event).once
-      expect(CalendarSyncEvent.where(integration: integration).pluck(:external_id)).to eq([ "old-1" ])
+      expect(CalendarSyncEvent.where(integration: integration).pluck(:syncable_id)).to contain_exactly(old.id, kept.id)
+
+      # A rental's times moving rewrites its show's block.
+      contract = create(:contract, :active, organization: org)
+      rental = contract.space_rentals.create!(location: location, location_space: ruse, starts_at: showtime + 2.days, ends_at: showtime + 2.days + 3.hours, confirmed: true)
+      contracted = show_at(showtime + 2.days, location_space: ruse, space_rental: rental)
+      described_class.new(integration.reload).sync_record!("SpaceRental", rental.id)
+      expect(CalendarSyncEvent.where(integration: integration, syncable_type: "Show", syncable_id: contracted.id)).to exist
+      expect(CalendarSyncEvent.where(integration: integration, syncable_type: "SpaceRental")).to be_empty
     end
 
     # Only from now on (Tim, 2026-11-11).

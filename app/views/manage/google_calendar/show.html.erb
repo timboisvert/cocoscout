@@ -28,12 +28,12 @@
         <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gray-900 text-sm font-bold text-white">Gc</span>
         <div>
           <div class="font-semibold text-gray-900">Connect Google Calendar</div>
-          <div class="text-sm text-gray-600">Your shows, events and rentals on a Google calendar that keeps itself.</div>
+          <div class="text-sm text-gray-600">Your shows and events on a Google calendar that keeps itself.</div>
         </div>
       </div>
       <p class="text-sm text-gray-700">You sign in on Google's own page. CocoScout then makes one new calendar in that account, "<%= @organization.name %> (CocoScout)", and keeps it. It can't see or change any other calendar you have, never sees your Google password, and you can disconnect here any time.</p>
       <ul class="text-sm text-gray-700 space-y-1 list-disc pl-5">
-        <li>Every show and event, and every rental under contract, goes on it, in its room's color.</li>
+        <li>Every show and event goes on it, in its room's color. A date under contract can block the whole rental time.</li>
         <li>A date made, moved, renamed or canceled here changes on the calendar within a minute.</li>
         <li>Each event says CocoScout manages it and links back here. Anything changed in Google is put back overnight.</li>
         <li>Share the calendar with your staff from Google, the way you share any calendar.</li>
@@ -64,16 +64,16 @@
         <section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
           <%= render "shared/section_heading", padding: "px-5 py-3", title: "What goes on the calendar" %>
           <div class="px-5 py-4 space-y-4">
-            <% Integration::CALENDAR_INCLUDES.each do |key, (title, blurb)| %>
-              <div class="flex items-start justify-between gap-4">
-                <div>
-                  <div class="text-sm font-medium text-gray-900"><%= title %></div>
-                  <p class="text-xs text-gray-500 mt-0.5"><%= blurb %></p>
-                </div>
-                <%= render "shared/toggle_switch", name: "include[#{key}]", checked: integration.calendar_includes?(key), hidden_false: true, aria_label: title %>
-              </div>
-            <% end %>
-            <p class="text-xs text-gray-500">A canceled date leaves the calendar.</p>
+            <div class="grid grid-cols-2 gap-x-6 gap-y-3">
+              <% EventTypes.all.each do |type| %>
+                <label class="flex items-center gap-2 text-sm text-gray-800">
+                  <%= hidden_field_tag "event_types[#{type}]", "0", id: nil %>
+                  <%= check_box_tag "event_types[#{type}]", "1", integration.calendar_event_type?(type), id: "event_types_#{type}", class: check %>
+                  <%= EventTypes.labels[type] || type.titleize %>
+                </label>
+              <% end %>
+            </div>
+            <p class="text-xs text-gray-500">Each date is one event, whether you made it or a contract did. A canceled date leaves the calendar.</p>
           </div>
         </section>
 
