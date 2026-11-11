@@ -135,6 +135,13 @@ class AuditionCycle < ApplicationRecord
     end
   end
 
+  # Whether someone can send a request right now: inside the window, with the
+  # form published, and the cycle not archived (an archived cycle with no
+  # close date used to keep taking requests).
+  def accepting_requests?
+    active && form_reviewed && timeline_status == :open
+  end
+
   def editable_by_talent?
     # Can only edit if:
     # - The cycle is active (not archived)

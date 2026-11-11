@@ -46,6 +46,11 @@
                 end
 
   show_form_url = (status == :open || status == :upcoming) && cycle.form_reviewed
+
+  # Close and Reopen, on the cycle's own page only (close_control: true), for
+  # managers of an active cycle that has opened.
+  close_control = local_assigns[:close_control] && cycle.active && status != :upcoming && current_user_can_manage?(@production)
+  requests_word = cycle.signup_mode_open? ? "sign-ups" : "requests"
 %>
 
 <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-4 mb-4">
@@ -57,8 +62,25 @@
       </span>
       <span class="text-gray-700 font-medium"><%= format_label %></span>
     </div>
-    <span class="text-gray-600 text-right flex-shrink-0"><%= date_phrase %></span>
+    <div class="flex items-center gap-3 flex-shrink-0">
+      <span class="text-gray-600 text-right"><%= date_phrase %></span>
+      <% if close_control && status == :open %>
+        <%= render "shared/button", text: "Close #{requests_word}", variant: "primary", size: "small", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-close-cycle-#{cycle.id}" } %>
+      <% elsif close_control %>
+        <%= form_with url: manage_reopen_signups_auditions_cycle_path(@production, cycle), method: :patch do %>
+          <%= render "shared/button", text: "Reopen #{requests_word}", variant: "secondary", size: "small", type: :submit %>
+        <% end %>
+      <% end %>
+    </div>
   </div>
+  <% if close_control && status == :open %>
+    <%= render "shared/confirm_modal", id: "confirm-close-cycle-#{cycle.id}",
+          title: "Close #{requests_word}?",
+          message: "Nobody new can #{cycle.signup_mode_open? ? 'sign up' : 'send a request'} once this is closed. The #{requests_word} you already have stay here, and you can reopen any time.",
+          confirm_text: "Close #{requests_word}",
+          url: manage_close_signups_auditions_cycle_path(@production, cycle), method: :patch %>
+  <% end %>
 
   <%# Form URL %>
   <% if show_form_url %>

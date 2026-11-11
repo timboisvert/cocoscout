@@ -116,6 +116,22 @@ RSpec.describe TaskListService do
       expect(service.counts).to include(signups: 1, availability: 0)
     end
 
+    it "asks nobody to sign up while the form is paused" do
+      form.update!(active: false)
+
+      expect(service.open_signup_items).to be_empty
+      expect(service.open_availability_items).to be_empty
+      expect(service.counts[:signups]).to eq(0)
+    end
+
+    it "keeps a paused form's row for someone already signed up" do
+      slot = create(:sign_up_slot, sign_up_form: form, sign_up_form_instance: instance)
+      create(:sign_up_registration, sign_up_slot: slot, sign_up_form_instance: instance, person: person)
+      form.update!(active: false)
+
+      expect(service.answered_signup_items.map { |i| i[:show] }).to eq([ show ])
+    end
+
     it "moves a registered person to answered_signup_items but keeps the item visible" do
       slot = create(:sign_up_slot, sign_up_form: form, sign_up_form_instance: instance)
       create(:sign_up_registration, sign_up_slot: slot, sign_up_form_instance: instance, person: person)

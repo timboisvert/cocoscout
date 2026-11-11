@@ -6,7 +6,7 @@ module Manage
     before_action :check_production_access
     before_action :set_audition_cycle,
                   only: %i[show form update destroy preview create_question update_question destroy_question reorder_questions
-                           archive delete_confirm toggle_voting]
+                           archive close reopen delete_confirm toggle_voting]
     before_action :set_question, only: %i[update_question destroy_question]
     before_action :ensure_user_is_manager, except: %i[preview show]
 
@@ -214,6 +214,20 @@ module Manage
       end
     end
 
+    # Stop taking requests now (Ronnie couldn't find how, 2026-11-11: the only
+    # way was a Close At date three sections down in Settings). The requests
+    # already in stay; Reopen takes the close date off again.
+    def close
+      @audition_cycle.update!(closes_at: Time.current)
+      redirect_to manage_signups_auditions_path(@production),
+                  notice: "#{requests_word.capitalize} are closed. The ones you have are still here.", status: :see_other
+    end
+
+    def reopen
+      @audition_cycle.update!(closes_at: nil)
+      redirect_to manage_signups_auditions_path(@production), notice: "#{requests_word.capitalize} are open again.", status: :see_other
+    end
+
     # PATCH /audition_cycles/:id/toggle_voting
     def toggle_voting
       voting_type = params[:voting_type] || "request"
@@ -235,6 +249,10 @@ module Manage
     end
 
     private
+
+    def requests_word
+      @audition_cycle.signup_mode_open? ? "sign-ups" : "requests"
+    end
 
     def setup_form_variables
       # Preserve @question if a caller has already loaded it (e.g. an

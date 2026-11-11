@@ -28,7 +28,7 @@
       </div>
     <% end %>
 
-    <%= render partial: "cycle_status_panel", locals: { audition_cycle: @active_audition_cycle } %>
+    <%= render partial: "cycle_status_panel", locals: { audition_cycle: @active_audition_cycle, close_control: true } %>
     <% end %>
 
     <% if current_user_can_manage?(@production) %>
