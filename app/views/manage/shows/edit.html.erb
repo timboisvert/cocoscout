@@ -1,7 +1,7 @@
 <% content_for :title, "#{@show.display_name} · #{@show.date_and_time.strftime("%a, %b %-d")} · Settings" %>
 
 <%
-  location_spaces_map = Current.organization.locations.includes(:location_spaces).each_with_object({}) { |l, h| h[l.id] = l.location_spaces.map { |s| { id: s.id, name: s.name } } }
+  location_spaces_map = Current.organization.locations.pickable(@show.location_id).includes(:location_spaces).each_with_object({}) { |l, h| h[l.id] = l.location_spaces.map { |s| { id: s.id, name: s.name } } }
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   when_words = @show.date_and_time.strftime("%a, %b %-d · %-l:%M %p")
   # Each tab, and whether it has fields to save (Linked Events and the Danger

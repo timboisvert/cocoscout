@@ -117,9 +117,9 @@
 
           <!-- In-Person Location Container -->
           <div data-location-modal-target="inPersonContainer">
-            <% default_location = Current.organization.locations.find_by(default: true) || Current.organization.locations.order(:created_at).first %>
+            <% default_location = Current.organization.locations.active.find_by(default: true) || Current.organization.locations.active.order(:created_at).first %>
             <%= select_tag :location_id,
-                options_from_collection_for_select(Current.organization.locations.order(:created_at), :id, :name, default_location&.id),
+                options_from_collection_for_select(Current.organization.locations.active.order(:created_at), :id, :name, default_location&.id),
                 prompt: "Select a location",
                 class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500",
                 data: { "location-modal-target": "locationSelect", "session-wizard-target": "generateLocationSelect", action: "change->location-modal#handleLocationChange" } %>
@@ -188,9 +188,9 @@
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
                 <input type="hidden" name="is_online" value="false" data-session-wizard-target="addIsOnline">
-                <% default_location = Current.organization.locations.find_by(default: true) || Current.organization.locations.order(:created_at).first %>
+                <% default_location = Current.organization.locations.active.find_by(default: true) || Current.organization.locations.active.order(:created_at).first %>
                 <%= select_tag :location_id,
-                    options_from_collection_for_select(Current.organization.locations.order(:created_at), :id, :name, default_location&.id),
+                    options_from_collection_for_select(Current.organization.locations.active.order(:created_at), :id, :name, default_location&.id),
                     prompt: "Select a location",
                     class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500",
                     data: { "session-wizard-target": "addLocationSelect" } %>
@@ -230,9 +230,9 @@
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                <% default_location = Current.organization.locations.find_by(default: true) || Current.organization.locations.order(:created_at).first %>
+                <% default_location = Current.organization.locations.active.find_by(default: true) || Current.organization.locations.active.order(:created_at).first %>
                 <%= select_tag :location_id,
-                    options_from_collection_for_select(Current.organization.locations.order(:created_at), :id, :name, default_location&.id),
+                    options_from_collection_for_select(Current.organization.locations.active.order(:created_at), :id, :name, default_location&.id),
                     prompt: "Select a location",
                     class: "block w-full shadow-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-pink-500 focus:border-pink-500",
                     data: { "session-wizard-target": "editLocationSelect" } %>

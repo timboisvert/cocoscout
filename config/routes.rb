@@ -1272,6 +1272,8 @@ Rails.application.routes.draw do
     resources :locations do
       member do
         get :cannot_delete
+        patch :archive
+        patch :restore
       end
     end
 

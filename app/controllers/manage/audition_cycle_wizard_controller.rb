@@ -97,7 +97,7 @@ module Manage
         return
       end
 
-      @locations = @production.organization.locations.order(:name)
+      @locations = @production.organization.locations.active.order(:name)
       @wizard_state[:audition_sessions] ||= []
     end
 
@@ -123,25 +123,25 @@ module Manage
 
       if count <= 0 || count > 20
         flash.now[:alert] = "Please enter a valid number of sessions (1-20)"
-        @locations = @production.organization.locations.order(:name)
+        @locations = @production.organization.locations.active.order(:name)
         render :sessions, status: :unprocessable_content and return
       end
 
       if duration <= 0
         flash.now[:alert] = "Please enter a valid session duration"
-        @locations = @production.organization.locations.order(:name)
+        @locations = @production.organization.locations.active.order(:name)
         render :sessions, status: :unprocessable_content and return
       end
 
       if start_at.blank?
         flash.now[:alert] = "Please select a start date/time"
-        @locations = @production.organization.locations.order(:name)
+        @locations = @production.organization.locations.active.order(:name)
         render :sessions, status: :unprocessable_content and return
       end
 
       if !is_online && location_id.blank?
         flash.now[:alert] = "Please select a location"
-        @locations = @production.organization.locations.order(:name)
+        @locations = @production.organization.locations.active.order(:name)
         render :sessions, status: :unprocessable_content and return
       end
 

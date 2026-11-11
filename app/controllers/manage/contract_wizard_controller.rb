@@ -175,7 +175,7 @@ module Manage
     # Step 2: Bookings (space/time reservations)
     def bookings
       @step = 2
-      @locations = Current.organization.locations.includes(:location_spaces)
+      @locations = Current.organization.locations.pickable(Location.ids_named_in(@contract.draft_data)).includes(:location_spaces)
       @existing_rules = @contract.draft_booking_rules || {}
     end
 

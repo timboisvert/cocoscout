@@ -499,7 +499,7 @@ module Manage
     def amend_dates
       @rentals = @contract.space_rentals.includes(:location, :location_space).order(:starts_at)
       @shows_by_rental = @contract.production&.shows&.where(space_rental_id: @rentals.map(&:id))&.index_by(&:space_rental_id) || {}
-      @locations = Current.organization.locations.includes(:location_spaces)
+      @locations = Current.organization.locations.pickable(@rentals.map(&:location_id)).includes(:location_spaces)
     end
 
     # Show the plan before touching anything: the same params apply_amend_dates
@@ -732,8 +732,12 @@ module Manage
 
     # Step 1: Amend Bookings
     def amend_bookings
-      @locations = Current.organization.locations.includes(:location_spaces)
       @existing_rentals = @contract.space_rentals.includes(:location, :location_space).order(:starts_at)
+      # Archived locations are out of the picker, except the ones this
+      # contract's dates already use.
+      @locations = Current.organization.locations
+                          .pickable(@existing_rentals.map(&:location_id), Location.ids_named_in(@contract.draft_data))
+                          .includes(:location_spaces)
 
       # Get amend_data from contract (stored in draft_data["amend"])
       @amend_data = @contract.amend_data

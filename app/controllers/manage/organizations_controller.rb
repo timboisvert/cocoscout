@@ -89,7 +89,7 @@ module Manage
         @is_owner = @organization.owned_by?(Current.user)
         @team_members = @organization.users.includes(:default_person, :organization_roles)
         @team_invitations = @organization.team_invitations.pending_for_team
-        @locations = @organization.locations.order(:created_at)
+        @locations = @organization.locations.active.order(:created_at)
         @team_invitation = TeamInvitation.new
         @productions = @organization.productions.active.order(:name)
         @agreement_templates = @organization.agreement_templates.order(:name)
@@ -183,7 +183,12 @@ module Manage
         @team_invitations = @organization.team_invitations.pending_for_team
         @team_invitation = TeamInvitation.new
       when "locations"
-        @locations = @organization.locations.order(:created_at)
+        # Archived locations sit behind the list's own filter, where they
+        # can be restored.
+        @archived_locations_count = @organization.locations.archived.count
+        @showing_archived_locations = params[:archived] == "1" && @archived_locations_count.positive?
+        scope = @showing_archived_locations ? @organization.locations.archived : @organization.locations.active
+        @locations = scope.includes(:location_spaces).order(:created_at)
       when "services"
         @house_services = @organization.house_services.ordered.includes(:house_roles)
         @house_roles = @organization.house_roles.active.ordered
