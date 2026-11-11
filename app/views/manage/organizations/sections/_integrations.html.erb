@@ -1,7 +1,7 @@
 <%# Organization settings → Integrations (Books V1.3, plan §9.3, §9.10):
     other systems the organization uses, each optional and turned on here.
-    Registers and bars (Square live; Clover and Toast on the roadmap),
-    tickets sold elsewhere (1.5), and your bank. %>
+    Registers and bars (Square), calendars (Google Calendar) and your bank.
+    Only what exists is listed (Tim, 2026-11-11): no roadmap cards. %>
 <%
   square = @square
   square_state = if square.nil? || !square.connected? then [ "Not connected", "bg-gray-100 text-gray-700" ]
@@ -11,10 +11,6 @@
   mapped = square ? square.location_map.values.count { |v| v.present? && v != Integration::SKIP } : 0
   card = "rounded-xl border bg-white p-5 flex flex-col gap-3"
   mark = ->(letters, dark) { "<span class='inline-flex h-8 w-8 flex-none items-center justify-center rounded-lg text-xs font-bold #{dark ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}'>#{letters}</span>".html_safe }
-  roadmap = [
-    [ "Cl", "Clover", "The other register common behind bars. Same pull, same worksheet, once it is built." ],
-    [ "To", "Toast", "For organizations with a kitchen. Toast opens its API through a partner program; we are applying." ]
-  ]
 %>
 <div class="space-y-6">
   <p class="max-w-3xl text-sm text-gray-600">Other systems your organization already uses, connected to CocoScout. Each one is optional, turned on here, and pulls on its own once it is connected. What comes in never goes on the books by itself; it lands on the day's worksheet in Settle up for someone to check.</p>
@@ -44,16 +40,6 @@
           <% end %>
         </div>
       </div>
-      <% roadmap.each do |letters, name, blurb| %>
-        <div class="<%= card %> border-gray-200">
-          <div class="flex items-center justify-between gap-2">
-            <span class="flex items-center gap-2"><%= mark.call(letters, false) %><span class="font-semibold text-gray-900"><%= name %></span></span>
-            <span class="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">On the roadmap</span>
-          </div>
-          <p class="text-sm text-gray-600 flex-1"><%= blurb %></p>
-          <div><%= render "shared/button", text: "Tell us you use it", variant: "secondary", size: "small", path: "mailto:hello@cocoscout.com?subject=#{ERB::Util.url_encode("We use #{name}")}" %></div>
-        </div>
-      <% end %>
     </div>
   </section>
 
@@ -71,7 +57,7 @@
           <span class="flex items-center gap-2"><%= mark.call("Gc", true) %><span class="font-semibold text-gray-900">Google Calendar</span></span>
           <span class="inline-flex rounded-md px-2 py-0.5 text-xs font-medium <%= gcal_state[1] %>"><%= gcal_state[0] %></span>
         </div>
-        <p class="text-sm text-gray-600 flex-1">A calendar in your Google account that CocoScout keeps: every show and event and every rental under contract, in its room's color, changed the moment it changes here.</p>
+        <p class="text-sm text-gray-600 flex-1">A calendar in your Google account that CocoScout keeps: every show and event, in its room's color, changed the moment it changes here.</p>
         <div class="space-y-1.5">
           <% if gcal&.connected? %>
             <div><%= render "shared/button", text: "Settings", variant: "secondary", size: "small", path: manage_organization_google_calendar_path(@organization) %></div>
@@ -81,20 +67,6 @@
             <p class="text-xs text-gray-500">Google's own sign-in; we never see your password.</p>
           <% end %>
         </div>
-      </div>
-    </div>
-  </section>
-
-  <section>
-    <h2 class="text-sm font-semibold text-gray-900 mb-2">Tickets sold elsewhere <span class="font-normal text-gray-500">· coming in 1.5</span></h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-      <div class="<%= card %> border-gray-200 border-dashed">
-        <span class="flex items-center gap-2"><%= mark.call("Eb", false) %><span class="font-semibold text-gray-900">Eventbrite</span></span>
-        <p class="text-sm text-gray-600">Keep selling there from one shared pool of seats, and bring past events, orders and buyers in.</p>
-      </div>
-      <div class="<%= card %> border-gray-200 border-dashed">
-        <span class="flex items-center gap-2"><%= mark.call("TT", false) %><span class="font-semibold text-gray-900">Ticket Tailor</span></span>
-        <p class="text-sm text-gray-600">A one-time move: events, orders, buyers, and upcoming tickets that still scan at our door.</p>
       </div>
     </div>
   </section>
