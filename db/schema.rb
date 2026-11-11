@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_09_190000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_11_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -337,17 +337,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_190000) do
     t.index ["stripe_transfer_id"], name: "index_balance_withdrawals_on_stripe_transfer_id"
   end
 
-  create_table "bank_setup_emails", force: :cascade do |t|
-    t.bigint "organization_id", null: false
-    t.string "payee_type", null: false
-    t.bigint "payee_id", null: false
-    t.string "email", null: false
-    t.bigint "sent_by_id"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["organization_id", "payee_type", "payee_id"], name: "idx_bank_setup_emails_payee"
-  end
-
   create_table "bank_rule_dismissals", force: :cascade do |t|
     t.bigint "organization_id", null: false
     t.string "phrase", null: false
@@ -378,6 +367,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_190000) do
     t.index ["organization_id"], name: "index_bank_rules_on_organization_id"
     t.index ["production_id"], name: "index_bank_rules_on_production_id"
     t.index ["show_id"], name: "index_bank_rules_on_show_id"
+  end
+
+  create_table "bank_setup_emails", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.string "payee_type", null: false
+    t.bigint "payee_id", null: false
+    t.string "email", null: false
+    t.bigint "sent_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "payee_type", "payee_id"], name: "idx_bank_setup_emails_payee"
   end
 
   create_table "bank_sort_passes", force: :cascade do |t|
@@ -549,6 +549,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_190000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["organization_id"], name: "index_books_rollups_on_organization_id", unique: true
+  end
+
+  create_table "calendar_sync_events", force: :cascade do |t|
+    t.bigint "integration_id", null: false
+    t.string "syncable_type", null: false
+    t.bigint "syncable_id", null: false
+    t.string "external_id", null: false
+    t.string "digest", null: false
+    t.datetime "synced_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["integration_id", "syncable_type", "syncable_id"], name: "index_calendar_sync_events_on_what", unique: true
+    t.index ["integration_id"], name: "index_calendar_sync_events_on_integration_id"
   end
 
   create_table "cast_assignment_stages", force: :cascade do |t|
@@ -1075,7 +1088,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_190000) do
     t.bigint "added_by_id"
     t.jsonb "attended_show_ids", default: [], null: false
     t.index ["added_by_id"], name: "index_course_registrations_on_added_by_id"
-    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL ((ARRAY['cancelled'::character varying, 'refunded'::character varying, 'expired'::character varying])::text[]))"
+    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL (ARRAY[('cancelled'::character varying)::text, ('refunded'::character varying)::text, ('expired'::character varying)::text]))"
     t.index ["course_offering_id"], name: "index_course_registrations_on_course_offering_id"
     t.index ["expires_at"], name: "index_course_registrations_on_expires_at", where: "((status)::text = 'pending'::text)"
     t.index ["person_id"], name: "index_course_registrations_on_person_id"
@@ -1549,8 +1562,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_190000) do
     t.index ["organization_id", "cash_date"], name: "index_journal_entries_on_organization_id_and_cash_date"
     t.index ["organization_id", "entry_date"], name: "index_journal_entries_on_organization_id_and_entry_date"
     t.index ["reversal_of_id"], name: "index_journal_entries_on_reversal_of_id"
-    t.index ["source_type", "source_id"], name: "index_journal_entries_on_source"
     t.index ["source_type", "source_id", "kind"], name: "idx_journal_entries_one_live_per_source_kind", unique: true, where: "((reversed_at IS NULL) AND (reversal_of_id IS NULL))"
+    t.index ["source_type", "source_id"], name: "index_journal_entries_on_source"
   end
 
   create_table "journal_lines", force: :cascade do |t|
@@ -3132,6 +3145,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_190000) do
     t.index ["shift_id"], name: "index_shift_assignments_on_shift_id"
   end
 
+  create_table "shift_shows", force: :cascade do |t|
+    t.bigint "shift_id", null: false
+    t.bigint "show_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["shift_id", "show_id"], name: "index_shift_shows_on_shift_id_and_show_id", unique: true
+    t.index ["shift_id"], name: "index_shift_shows_on_shift_id"
+    t.index ["show_id"], name: "index_shift_shows_on_show_id"
+  end
+
   create_table "shift_vacancies", force: :cascade do |t|
     t.bigint "shift_id", null: false
     t.bigint "vacated_by_id", null: false
@@ -3147,7 +3170,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_190000) do
     t.index ["closed_by_id"], name: "index_shift_vacancies_on_closed_by_id"
     t.index ["filled_by_id"], name: "index_shift_vacancies_on_filled_by_id"
     t.index ["shift_id", "status"], name: "index_shift_vacancies_on_shift_id_and_status"
-    t.index ["shift_id", "vacated_by_id"], name: "idx_shift_vacancies_one_active_per_person", unique: true, where: "((status)::text = ANY ((ARRAY['open'::character varying, 'finding_replacement'::character varying])::text[]))"
+    t.index ["shift_id", "vacated_by_id"], name: "idx_shift_vacancies_one_active_per_person", unique: true, where: "((status)::text = ANY (ARRAY[('open'::character varying)::text, ('finding_replacement'::character varying)::text]))"
     t.index ["shift_id"], name: "index_shift_vacancies_on_shift_id"
     t.index ["vacated_by_id"], name: "index_shift_vacancies_on_vacated_by_id"
   end
@@ -3167,16 +3190,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_190000) do
     t.index ["shift_vacancy_id", "person_id"], name: "idx_on_shift_vacancy_id_person_id_058b3428d8", unique: true
     t.index ["shift_vacancy_id"], name: "index_shift_vacancy_invitations_on_shift_vacancy_id"
     t.index ["token"], name: "index_shift_vacancy_invitations_on_token", unique: true
-  end
-
-  create_table "shift_shows", force: :cascade do |t|
-    t.bigint "shift_id", null: false
-    t.bigint "show_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["shift_id", "show_id"], name: "index_shift_shows_on_shift_id_and_show_id", unique: true
-    t.index ["shift_id"], name: "index_shift_shows_on_shift_id"
-    t.index ["show_id"], name: "index_shift_shows_on_show_id"
   end
 
   create_table "shifts", force: :cascade do |t|
@@ -4921,14 +4934,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_190000) do
   add_foreign_key "balance_top_ups", "users", column: "requested_by_id", on_delete: :nullify
   add_foreign_key "balance_withdrawals", "organizations"
   add_foreign_key "balance_withdrawals", "users", column: "requested_by_id", on_delete: :nullify
-  add_foreign_key "bank_setup_emails", "organizations"
-  add_foreign_key "bank_setup_emails", "users", column: "sent_by_id"
   add_foreign_key "bank_rule_dismissals", "organizations"
   add_foreign_key "bank_rule_dismissals", "users", column: "dismissed_by_id"
   add_foreign_key "bank_rules", "organizations"
   add_foreign_key "bank_rules", "productions"
   add_foreign_key "bank_rules", "shows"
   add_foreign_key "bank_rules", "users", column: "created_by_id"
+  add_foreign_key "bank_setup_emails", "organizations"
+  add_foreign_key "bank_setup_emails", "users", column: "sent_by_id"
   add_foreign_key "bank_sort_passes", "organizations"
   add_foreign_key "bank_sort_passes", "users"
   add_foreign_key "bank_statement_imports", "organizations"
@@ -4949,6 +4962,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_190000) do
   add_foreign_key "books_downloads", "organizations"
   add_foreign_key "books_downloads", "users", column: "requested_by_id"
   add_foreign_key "books_rollups", "organizations"
+  add_foreign_key "calendar_sync_events", "integrations"
   add_foreign_key "cast_assignment_stages", "talent_pools"
   add_foreign_key "casting_table_draft_assignments", "casting_tables"
   add_foreign_key "casting_table_draft_assignments", "roles"
@@ -5197,14 +5211,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_190000) do
   add_foreign_key "shift_additional_roles", "shows", on_delete: :cascade
   add_foreign_key "shift_assignments", "people"
   add_foreign_key "shift_assignments", "shifts"
+  add_foreign_key "shift_shows", "shifts"
+  add_foreign_key "shift_shows", "shows"
   add_foreign_key "shift_vacancies", "people", column: "filled_by_id"
   add_foreign_key "shift_vacancies", "people", column: "vacated_by_id"
   add_foreign_key "shift_vacancies", "shifts"
   add_foreign_key "shift_vacancies", "users", column: "closed_by_id"
   add_foreign_key "shift_vacancy_invitations", "people"
   add_foreign_key "shift_vacancy_invitations", "shift_vacancies"
-  add_foreign_key "shift_shows", "shifts"
-  add_foreign_key "shift_shows", "shows"
   add_foreign_key "shifts", "house_roles"
   add_foreign_key "shifts", "organizations"
   add_foreign_key "short_links", "organizations"

@@ -190,6 +190,7 @@ module Manage
       when "integrations"
         @square = @organization.integrations.square.first
         @last_pull = @square&.register_pulls&.recent&.first
+        @google_calendar = @organization.integrations.google_calendar.first
       when "agreements"
         @agreement_templates = @organization.agreement_templates.order(:name)
       when "danger"

@@ -1162,6 +1162,12 @@ Rails.application.routes.draw do
     post   "organizations/:id/integrations/square/pull",    to: "integrations#pull",       as: "pull_organization_square"
     delete "organizations/:id/integrations/square",         to: "integrations#disconnect"
     get    "integrations/square/callback",                  to: "integrations#callback",   as: "square_callback"
+    get    "organizations/:id/integrations/google_calendar",         to: "google_calendar#show",       as: "organization_google_calendar"
+    post   "organizations/:id/integrations/google_calendar/connect", to: "google_calendar#connect",    as: "connect_organization_google_calendar"
+    patch  "organizations/:id/integrations/google_calendar",         to: "google_calendar#update"
+    post   "organizations/:id/integrations/google_calendar/sync",    to: "google_calendar#sync",       as: "sync_organization_google_calendar"
+    delete "organizations/:id/integrations/google_calendar",         to: "google_calendar#disconnect"
+    get    "integrations/google_calendar/callback",                  to: "google_calendar#callback",   as: "google_calendar_callback"
 
     # The organization's services (Organization settings → Services; Pro).
     post   "services",     to: "house_services#create",  as: "house_services"

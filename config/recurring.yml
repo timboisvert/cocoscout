@@ -40,6 +40,11 @@ development:
   square_morning_pull:
     class: SquareMorningPullJob
     schedule: every day at 5am
+  # Google Calendar: every organization's calendar written again, so anything
+  # edited or deleted in Google is put back.
+  google_calendar_nightly:
+    class: GoogleCalendarNightlyJob
+    schedule: every day at 4am
   stripe_balance_import:
     class: StripeBalanceImportJob
     schedule: every hour at minute 20
@@ -156,6 +161,11 @@ production:
   square_morning_pull:
     class: SquareMorningPullJob
     schedule: every day at 5am
+  # Google Calendar: every organization's calendar written again, so anything
+  # edited or deleted in Google is put back.
+  google_calendar_nightly:
+    class: GoogleCalendarNightlyJob
+    schedule: every day at 4am
   stripe_balance_import:
     class: StripeBalanceImportJob
     schedule: every hour at minute 20
