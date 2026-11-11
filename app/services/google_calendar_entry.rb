@@ -8,7 +8,7 @@
 class GoogleCalendarEntry
   include Rails.application.routes.url_helpers
 
-  MANAGED = "Managed by CocoScout. Changes made here are undone. To move or remove this date, open it in CocoScout."
+  MANAGED = "This calendar entry is managed by CocoScout. To change or cancel this date, open it in CocoScout."
 
   attr_reader :integration, :record
 
@@ -111,15 +111,15 @@ class GoogleCalendarEntry
   def link(text, url) = %(<a href="#{ERB::Util.html_escape(url)}">#{ERB::Util.html_escape(text)}</a>)
 
   def description
-    lines = [ "<b>#{MANAGED}</b>", link(show? ? "Manage this date in CocoScout" : "Open the contract in CocoScout", manage_url), "" ]
+    lines = [ "<b>#{MANAGED}</b>", link(show? ? "Manage this event in CocoScout" : "Open the contract in CocoScout", manage_url), "" ]
     lines.concat(show? ? show_lines : rental_lines)
     lines.join("<br>")
   end
 
   def show_lines
     lines = []
-    times = [ "#{start_word.capitalize} #{clock_long(record.date_and_time)}" ]
-    times << "call #{clock_long(call_time)}" if call_time
+    times = [ "#{start_word.capitalize} time #{clock_long(record.date_and_time)}" ]
+    times.unshift("Call time #{clock_long(call_time)}") if call_time
     lines << times.join(" · ")
     team = record.production.production_permissions.includes(user: :default_person).filter_map { |p| p.user.person&.name }.sort
     lines << "Production team: #{ERB::Util.html_escape(team.to_sentence)}" if team.any?

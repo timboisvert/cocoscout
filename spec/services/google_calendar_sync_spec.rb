@@ -80,10 +80,19 @@ RSpec.describe GoogleCalendarSync do
       show = show_at
       payload = entry(show).payload
 
-      expect(payload[:description]).to include("Managed by CocoScout", "open it in CocoScout", "/manage/shows/#{production.id}/#{show.id}", "Production team: Veronica Ortiz")
+      expect(payload[:description]).to include("This calendar entry is managed by CocoScout. To change or cancel this date, open it in CocoScout.", "Manage this event in CocoScout", "/manage/shows/#{production.id}/#{show.id}", "Production team: Veronica Ortiz")
       expect(payload[:location]).to eq("Mainstage, Stars & Garters, 3914 N. Clark St., Chicago, IL 60613")
       expect(payload[:extendedProperties]).to eq({ private: { cocoscout: "Show-#{show.id}" } })
       expect(payload[:status]).to eq("confirmed")
+    end
+
+    it "gives the call time, then the show time, in the description" do
+      with_call = entry(show_at(call_time: showtime - 1.hour, call_time_enabled: true)).payload[:description]
+      without = entry(show_at(showtime + 1.day)).payload[:description]
+
+      expect(with_call).to include("Call time 6:30 pm · Show time 7:30 pm")
+      expect(without).to include("Show time 7:30 pm")
+      expect(without).not_to include("Call time")
     end
 
     it "shows a rental for the whole time the renter has the room" do
