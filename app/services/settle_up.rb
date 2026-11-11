@@ -583,7 +583,7 @@ class SettleUp
   # Where a show's money is entered: its day on Settle up, the card open.
   # A show from before the start date has only its record, which says how
   # to bring it into Settle up (Tim, 2026-11-04: no going backwards).
-  def self.money_entry_path(organization, show)
+  def self.money_entry_href(organization, show)
     routes = Rails.application.routes.url_helpers
     return routes.manage_money_show_financials_path(show) unless in_settle_up?(organization, show)
 

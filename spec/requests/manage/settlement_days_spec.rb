@@ -197,13 +197,13 @@ RSpec.describe "Settle up", type: :request do
     expect(body).to include(%(data-modal-id="tickets-#{show.id}"), "Outside tickets")
     expect(body).not_to include("Enter Financial Data", "Mark as Non-Revenue", "show_financials[ticket_sales_lines_attributes]", "Confirm</span>")
     # A needs-financials row and the payout page send people to the day, the card open.
-    expect(SettleUp.money_entry_path(org, show)).to eq(manage_money_settle_up_day_path(date.iso8601, open: show.id, anchor: "show-#{show.id}"))
+    expect(SettleUp.money_entry_href(org, show)).to eq(manage_money_settle_up_day_path(date.iso8601, open: show.id, anchor: "show-#{show.id}"))
 
     # From before the start date: the record says how to bring it in.
     org.update!(settle_up_starts_on: date + 30)
     get manage_money_show_financials_path(show)
     expect(CGI.unescapeHTML(response.body)).to include("From before Settle up started", "Change the start date")
-    expect(SettleUp.money_entry_path(org, show)).to eq(manage_money_show_financials_path(show))
+    expect(SettleUp.money_entry_href(org, show)).to eq(manage_money_show_financials_path(show))
   end
 
   it "brings days already confirmed in settled when the start date moves earlier, and leaves unfinished ones to settle" do

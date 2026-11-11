@@ -105,7 +105,7 @@
           headline: "Not confirmed yet",
           body: "This show's numbers are in, but nobody has confirmed them, so it still counts as needing financials. That happens on its day in Settle up.",
           actions: [
-            { text: (SettleUp.in_settle_up?(Current.organization, @show) ? "Settle up, #{SettlementDay.day_for(Current.organization, @show.date_and_time).strftime('%b %-d')}" : "The show's money"), path: SettleUp.money_entry_path(Current.organization, @show) }
+            { text: (SettleUp.in_settle_up?(Current.organization, @show) ? "Settle up, #{SettlementDay.day_for(Current.organization, @show.date_and_time).strftime('%b %-d')}" : "The show's money"), path: SettleUp.money_entry_href(Current.organization, @show) }
           ] %>
   <% end %>
 
@@ -1695,7 +1695,7 @@
         <% elsif phone_run && !@show_payout.paid? %>
           <%= render "shared/button", text: "Open the run", variant: "primary", size: "medium", path: manage_payout_batch_path(phone_run) %>
         <% elsif @show_payout.awaiting_financials? %>
-          <%= render "shared/button", text: "Enter financials", variant: "primary", size: "medium", path: SettleUp.money_entry_path(Current.organization, @show) %>
+          <%= render "shared/button", text: "Enter financials", variant: "primary", size: "medium", path: SettleUp.money_entry_href(Current.organization, @show) %>
         <% elsif @show_payout.awaiting_calculation? %>
           <%= form_with url: manage_calculate_money_show_payout_path(@show), method: :post, local: true do %>
             <%= render "shared/button", text: "Calculate", variant: "primary", size: "medium", type: :submit %>

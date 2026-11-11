@@ -70,7 +70,7 @@ module Manage
       # Ensure we have financials — unless the night pays by acts, which never
       # reads revenue and shouldn't wait on ticket numbers.
       unless per_act || @show.show_financials&.complete?
-        redirect_to SettleUp.money_entry_path(Current.organization, @show),
+        redirect_to SettleUp.money_entry_href(Current.organization, @show),
                     alert: "Please enter financial data before calculating payouts."
         return
       end

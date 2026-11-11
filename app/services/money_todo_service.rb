@@ -104,7 +104,7 @@ class MoneyTodoService
         title: "#{show.date_and_time.strftime('%b %-d, %Y')} · #{show.display_name}",
         subtitle: show.production&.name,
         badge: { text: "Needs financials", color: "amber" },
-        href: SettleUp.money_entry_path(organizations[show.production.organization_id], show) }
+        href: SettleUp.money_entry_href(organizations[show.production.organization_id], show) }
     end
 
     offerings = courses.includes(:production).to_a

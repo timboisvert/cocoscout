@@ -63,7 +63,7 @@ module Manage
       elsif params[:return_to].to_s.start_with?("/manage/money/settle-up/")
         redirect_to params[:return_to], alert: "That did not save: #{@show_financials.errors.full_messages.to_sentence}"
       else
-        redirect_to SettleUp.money_entry_path(Current.organization, @show), alert: "That did not save: #{@show_financials.errors.full_messages.to_sentence}"
+        redirect_to SettleUp.money_entry_href(Current.organization, @show), alert: "That did not save: #{@show_financials.errors.full_messages.to_sentence}"
       end
     end
 

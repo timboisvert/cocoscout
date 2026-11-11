@@ -7,9 +7,17 @@ Android and in Apple's review.
 
 ## Where it stands (2026-11-10)
 
-- `v1.3` has main merged in and merges back into main with no conflicts:
-  about 125 commits and 37 migrations.
-- The full suite passes on it (5,620 examples, 0 failures, 2026-11-10).
+- `v1.3` has main merged in (through 07528b87, 2026-11-11) and merges back
+  into main with no conflicts: about 130 commits and 38 migrations.
+- Apple approved Tap to Pay (1.2) on 2026-11-11, which is what 1.3 was
+  waiting for.
+- The pre-deploy route check passes (it failed on `SettleUp`'s
+  `money_entry_path`, a service method the check read as a route helper;
+  it is `money_entry_href` now).
+- Google Calendar is in the integrations catalog (2026-11-11) and ships
+  switched off: until GOOGLE_CALENDAR_CLIENT_ID and
+  GOOGLE_CALENDAR_CLIENT_SECRET are set, its page says it isn't set up.
+- The full suite passes on it (5,676 examples, 0 failures, 2026-11-11).
 - No app build is needed. Books is server only; the apps' page rules ship
   with the deploy.
 
@@ -40,7 +48,7 @@ Android and in Apple's review.
 ## 2. Merge and deploy (Claude merges and pushes on your word; you deploy)
 
 - [ ] Merge `refs/heads/v1.3` into `main`, push.
-- [ ] Deploy. It runs 37 migrations. The ones that move data:
+- [ ] Deploy. It runs 38 migrations. The ones that move data:
       - `MergeContractInvoicesIntoInvoices` copies every contract invoice
         into `invoices` (the old table is left in place, unused).
       - `AddDigestsIgnoredToUsers` counts the digests each person has
@@ -51,20 +59,34 @@ Android and in Apple's review.
 
 ## 3. Right after the deploy (yours, on production)
 
-- [ ] The books backfill, dry run first:
+- [ ] The books backfill, in your `kamal console`, dry run first. Paste
+      this as it is; it keeps nothing:
 
-      ```bash
-      kamal app exec 'bin/rails books:backfill'
+      ```ruby
+      Rails.application.load_tasks if Rake::Task.tasks.empty?
+      begin
+        Rake::Task["books:backfill"].reenable
+        Rake::Task["books:backfill"].invoke
+      rescue SystemExit => e
+        puts e.message
+      end
       ```
 
-      Read it as in step 1. Then keep it:
+      Read it as in step 1. Then keep it, with this one:
 
-      ```bash
-      kamal app exec "bin/rails 'books:backfill[post]'"
+      ```ruby
+      Rails.application.load_tasks if Rake::Task.tasks.empty?
+      begin
+        Rake::Task["books:backfill"].reenable
+        Rake::Task["books:backfill"].invoke("post")
+      rescue SystemExit => e
+        puts e.message
+      end
       ```
 
       It posts one organization at a time. One that fails is rolled back by
-      itself and named, with the `ORG=` to run again.
+      itself and named in a `FAILED` line; send that line back and the block
+      to run again for just that organization comes with the answer.
 - [ ] Open Stars & Garters' Books → Checks. The five checks should agree.
       Financials vs Books will still list a few productions; see "Known
       differences" below.
@@ -88,7 +110,7 @@ Android and in Apple's review.
       `AppAnnouncement.send_test!("you@example.com")`, then
       `AppAnnouncement.announce!(dry_run: true)`, then batches
       (`announce!(limit: 400, seen_since: 90.days.ago)`).
-- [ ] Tap to Pay's launch email, when Apple approves 1.2
+- [ ] Tap to Pay's launch email, now that Apple has approved 1.2
       (`ios/tap_to_pay.md`).
 
 ## Known differences that stay (Stars & Garters, Financials vs Books)
