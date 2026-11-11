@@ -226,7 +226,7 @@ module Manage
 
       @wizard_state[:schedule_type] ||= "single"
       @wizard_state[:shows] ||= []
-      @locations = Current.organization.locations.order(:created_at)
+      @locations = Current.organization.locations.active.order(:created_at)
       @default_location = @locations.find_by(default: true)
     end
 

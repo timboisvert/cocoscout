@@ -181,7 +181,7 @@ module Manage
       else
         Current.organization.contracts.none
       end
-      @locations = Current.organization.locations.order(:name)
+      @locations = Current.organization.locations.pickable(@wizard_state[:location_id]).order(:name)
     end
 
     def save_schedule

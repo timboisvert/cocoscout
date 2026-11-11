@@ -60,7 +60,7 @@ class TapToPay
   def self.location_for(organization)
     return organization.stripe_terminal_location_id if organization.stripe_terminal_location_id.present?
 
-    venue = organization.locations.find_by(default: true) || organization.locations.where.not(address1: [ nil, "" ]).first
+    venue = organization.locations.find_by(default: true) || organization.locations.active.where.not(address1: [ nil, "" ]).first
     if venue.nil? || venue.address1.blank? || venue.city.blank? || venue.state.blank? || venue.postal_code.blank?
       raise Error, "Tap to Pay needs the venue's address first — add it to a location in Manage → Settings → Locations."
     end

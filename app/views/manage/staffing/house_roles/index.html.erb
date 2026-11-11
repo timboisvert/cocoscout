@@ -5,7 +5,8 @@
   # Template containing :id placeholder — the Stimulus controller substitutes
   # in the row's role id when opening the modal in edit mode.
   update_url_template = manage_update_staffing_house_role_path(":id")
-  locations = Current.organization.locations.order(:name)
+  # Archived locations are out, except one a role here is already tied to.
+  locations = Current.organization.locations.pickable(Current.organization.house_roles.pluck(:location_id)).order(:name)
 %>
 
 <div class="w-full mb-10"

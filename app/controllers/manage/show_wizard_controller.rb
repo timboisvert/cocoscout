@@ -134,7 +134,7 @@ module Manage
     # Step 3: Location - Where is the event?
     def location
       @wizard_state[:is_online] ||= false
-      @locations = Current.organization.locations.includes(:location_spaces).order(:created_at)
+      @locations = Current.organization.locations.pickable(@wizard_state[:location_id]).includes(:location_spaces).order(:created_at)
 
       # Set default location if available
       if @wizard_state[:location_id].blank?
@@ -151,7 +151,7 @@ module Manage
 
       if !@wizard_state[:is_online] && @wizard_state[:location_id].blank?
         flash.now[:alert] = "Please select a location or mark as online"
-        @locations = Current.organization.locations.includes(:location_spaces).order(:created_at)
+        @locations = Current.organization.locations.pickable(@wizard_state[:location_id]).includes(:location_spaces).order(:created_at)
         render :location, status: :unprocessable_content and return
       end
 

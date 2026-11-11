@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_11_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1353,6 +1353,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_130000) do
     t.text "notes"
     t.bigint "organization_id"
     t.boolean "default", default: false, null: false
+    t.datetime "archived_at"
     t.index ["organization_id"], name: "index_locations_on_organization_id"
   end
 
