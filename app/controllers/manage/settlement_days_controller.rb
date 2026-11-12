@@ -145,6 +145,9 @@ module Manage
         if tips.unresolved.any?
           return redirect_to manage_money_settle_up_day_path(@date), alert: "Say who gets the tips rung up with nobody on the bar first: Change the split on the register."
         end
+        if tips.undecided?
+          return redirect_to manage_money_settle_up_day_path(@date), alert: "Say who gets the tips first: Change the split on the register."
+        end
       end
       record.register_checked_at = checking ? Time.current : nil
       record.tips_checked_at = record.register_checked_at

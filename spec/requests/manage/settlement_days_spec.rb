@@ -354,8 +354,16 @@ RSpec.describe "Manage::SettlementDays with a register", type: :request do
     get manage_money_settle_up_day_path(date.iso8601)
     expect(response.body).to include("Bar, Lincoln Lodge", "$100.00", "$20.00", "Sales tax collected", "Tips, $15.00", "Pat Bartender", "To your bank from Square", "Pulled in automatically from Square, which sends the money straight to your bank, not through CocoScout.", "Manage Square integration")
 
+    # With no tip rule, nobody is offered a share until someone says who
+    # gets the tips: an even split across everyone on a shift once gave a
+    # bartender's tips to house staff and the booth tech (Tim, 2026-11-11).
+    expect(SettleUp.day(org, date).tips.hand_rows.map { |row| row[:cents] }).to eq([ 0 ])
     patch manage_check_register_money_settle_up_day_path(date.iso8601), params: { checked: "1" }
+    expect(flash[:alert]).to include("Say who gets the tips first")
+    expect(SettlementDay.find_by(organization: org, date: date)&.tip_shares.to_a).to be_blank
+
     patch manage_tips_money_settle_up_day_path(date.iso8601), params: { split: "even", checked: "1", shares: { bartender.id => { amount: "15.00", method: "payout" } } }
+    patch manage_check_register_money_settle_up_day_path(date.iso8601), params: { checked: "1" }
     record = SettlementDay.find_by!(organization: org, date: date)
     expect(record.tip_shares.sum(:amount_cents)).to eq(1_500)
 

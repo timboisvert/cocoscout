@@ -116,6 +116,11 @@ class SettleUp
     def assigned_cents = shares.sum(&:amount_cents)
     def unassigned_cents = cents - assigned_cents
     def share_for(person) = shares.find { |sh| sh.person_id == person.id }
+    # No tip rule, and nobody has said how this day's tips are split. The
+    # page then asks; it never offers an even split across everyone who had
+    # a shift (Tim, 2026-11-11: confirming one gave a bartender's tips to
+    # house staff and the booth tech as well).
+    def undecided? = any? && !rule&.enabled? && record&.tips_split.blank? && shares.empty?
     # With the rule on, only people in a role that shares are listed anywhere
     # (Tim, 2026-11-03: not the door, not the booth). A saved share in any
     # other role, or in none, doesn't put someone on the list.
@@ -164,6 +169,7 @@ class SettleUp
         when "typed" then 0
         else workers.any? ? (cents / workers.size.to_f).round : 0
         end
+        suggested = 0 if undecided?
         { worker: worker, share: share, cents: (share ? share.amount_cents : suggested), method: (share&.method || (worker.staff_member ? "payout" : "cash")) }
       end
     end
@@ -182,7 +188,9 @@ class SettleUp
     def checks
       shows.map { |s| Check.new(key: "show-#{s.show.id}", name: s.show.display_name, short: SettleUp.short_name(s.show), state: s.state, hold_reason: s.hold_reason) } +
         (registers.any? ? [ Check.new(key: "register", name: register_label, short: (registers.size == 1 ? "Bar" : "Registers"), state: registers_state,
-                                      hold_reason: (tips.unresolved.any? ? "Say who gets the tips rung up with nobody on the bar first" : nil)) ] : [])
+                                      hold_reason: (if tips.unresolved.any? then "Say who gets the tips rung up with nobody on the bar first"
+                                                    elsif tips.undecided? then "Say who gets the tips first"
+                                                    end)) ] : [])
     end
     # Each piece and where it stands, for a row in a list. Not from checks:
     # why a show can't be confirmed yet means working out its pay, which a
