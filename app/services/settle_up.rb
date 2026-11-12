@@ -85,6 +85,11 @@ class SettleUp
       taken = SettleUp.contract_deductions(payments)
       payments.sum { |p| SettleUp.contract_net_cents(p, taken) }
     end
+    # What this show pays its people, for the day's "what the house keeps":
+    # the calculated lines, else what the numbers as they stand would pay.
+    def going_out_cents = none? ? 0 : (performers? && rows.empty? ? preview_cents.to_i : total_cents)
+    # What a contract show's people owe that is kept back from their share.
+    def kept_back_cents = contract? ? SettleUp.contract_deductions(payments).values.flatten.sum { |charge| (charge.amount.to_d * 100).round } : 0
     # What settling the day puts on the run, and for how many people.
     def to_run_rows = rows.select { |r| r.stage == :run }
     def to_run_cents
@@ -223,6 +228,15 @@ class SettleUp
     def register_sales_cents = registers.sum { |r| r.gross_cents - r.refunds_cents }
     def in_cents = shows.sum(&:in_cents) + register_sales_cents
     def out_cents = shows.sum(&:expenses_cents) + registers.sum(&:fees_cents)
+    # What the day leaves the house (Tim, 2026-11-11): everything taken in,
+    # less expenses and fees, less what the shows pay their people. What a
+    # contractor owes for services is kept back from their share, so it is
+    # already in here as less going out; it is never an expense. Tips and
+    # sales tax aren't the house's and aren't in it. Staff pay is not either:
+    # hours are paid from Pay People, not from the day.
+    def to_people_cents = shows.sum { |s| s.pay.going_out_cents }
+    def kept_back_cents = shows.sum { |s| s.pay.kept_back_cents }
+    def house_keeps_cents = in_cents - out_cents - to_people_cents
     def any? = shows.any? || door_cash.any? || registers.any?
     def to_settle? = any? && !settled? && ended? && !before_start?
     # Before the organization's Settle up start date: history, read only.
@@ -630,10 +644,11 @@ class SettleUp
     candidates.reject { |s| settled.include?(SettlementDay.day_for(organization, s.date_and_time)) }
   end
 
-  # What a contract settlement still has taken out of it: the charges the
-  # contractor owes that net against this payment and haven't yet (a booth
-  # tech billed per show, taken out of their share), as the contract groups
-  # them. { payment id => [charges] }
+  # What a contract settlement has taken out of it: the charges the
+  # contractor owes that net against this payment (a booth tech billed per
+  # show, taken out of their share), still to come out or already out on
+  # the run that carried it, as the contract groups them and its own page
+  # lists them. { payment id => [charges] }
   def self.contract_deductions(payments)
     payments.group_by(&:contract).each_with_object({}) do |(contract, rows), found|
       next unless contract
@@ -642,8 +657,7 @@ class SettleUp
       contract.payment_schedule_groups.each do |group|
         next unless ids.include?(group[:payment].id)
 
-        pending = group[:deductions].select { |charge| charge.status_pending? && charge.deduct_from_payout? }
-        found[group[:payment].id] = pending if pending.any?
+        found[group[:payment].id] = group[:deductions] if group[:deductions].any?
       end
     end
   end

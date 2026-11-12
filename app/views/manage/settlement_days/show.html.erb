@@ -107,6 +107,20 @@
         </div>
       <% end %>
     </div>
+    <%# What the day actually made (Tim, 2026-11-11): under the takings, what
+        goes to the shows' people and what is left for the house. %>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 -mt-3 mb-6">
+      <div class="rounded-xl border border-gray-200 bg-white px-4 py-3">
+        <div class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Going to the shows' people</div>
+        <div class="mt-0.5 text-lg font-bold tabular-nums text-gray-900"><%= money.call(day.to_people_cents) %></div>
+        <div class="text-xs text-gray-500"><%= day.kept_back_cents.positive? ? "After #{money.call(day.kept_back_cents)} they owe for services is kept back" : "Performers and contractors, from these shows" %></div>
+      </div>
+      <div class="rounded-xl border-2 border-gray-900 bg-white px-4 py-3">
+        <div class="text-[11px] font-medium uppercase tracking-wide text-gray-500">The house keeps</div>
+        <div class="mt-0.5 text-lg font-bold tabular-nums <%= day.house_keeps_cents.negative? ? 'text-red-700' : 'text-gray-900' %>"><%= money.call(day.house_keeps_cents) %></div>
+        <div class="text-xs text-gray-500">Before staff pay. Tips and sales tax aren't in it.</div>
+      </div>
+    </div>
 
     <div class="space-y-4">
       <% day.shows.each do |piece| %>
