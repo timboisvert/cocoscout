@@ -82,6 +82,10 @@ RSpec.describe "Money hub parity", type: :request do
       get manage_money_index_path
       expect(response.body).to include("Parity Revue")
       expect(response.body).to include("$80.00 still unpaid")   # not the $150 gross
+      # The card names stages, never one "unpaid in all" that folds in money
+      # already on a run (Tim, 2026-11-11).
+      expect(response.body).to include("$80.00 due now", "Nothing else is waiting.")
+      expect(response.body).not_to include("unpaid in all")
 
       get manage_money_payouts_path
       expect(response.body).to include("$80.00 still unpaid in total")

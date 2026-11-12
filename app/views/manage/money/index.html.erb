@@ -63,10 +63,15 @@
           actions: [ { text: "Settle up", path: manage_money_settle_up_day_path(oldest.param) } ] %>
   <% end %>
   <% if @todo.payouts.any? && @todo.payouts.due_soon_amount.to_f > 0.004 %>
+    <%# The same stages as the Payouts page, never one "unpaid" sum: money
+        already on a run isn't waiting on anyone (Tim, 2026-11-11). %>
+    <% stages = @todo.payouts.amounts || {} %>
+    <% rest = [ [ :upcoming, "upcoming" ], [ :in_draft, "in a draft run" ], [ :in_flight, "already on its way" ] ]
+                .filter_map { |key, words| "#{number_to_currency(stages[key])} #{words}" if stages[key].to_f > 0.004 } %>
     <%= render "shared/alert_panel", tone: :amber,
           eyebrow: "To pay",
           headline: "#{number_to_currency(@todo.payouts.due_soon_amount)} due now",
-          body: "#{number_to_currency(@todo.payouts.amount)} unpaid in all, across #{pluralize(@todo.payouts.count, 'production, course or contract')}.",
+          body: (rest.any? ? "#{rest.to_sentence.upcase_first}." : "Nothing else is waiting."),
           actions: [ { text: "Payouts", path: manage_money_payouts_path } ] %>
   <% end %>
   <% if @todo.bills.overdue_count.to_i.positive? %>
