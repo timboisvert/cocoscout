@@ -87,7 +87,7 @@ class SettlementPayer
           result = ContractorPayoutRunService.add_contract_payment!(payment, added_by: by)
           if result.added
             count += 1
-            cents += (payment.amount.to_d * 100).round
+            cents += SettleUp.contract_net_cents(payment)
           elsif result.error.present? && result.error != "already_added"
             notes << "#{payment.display_name}: #{result.error}"
           end

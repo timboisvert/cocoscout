@@ -63,6 +63,8 @@
       end
     end
     payee_names = pay.payments.filter_map { |p| p.contract&.contractor&.person&.name || p.contract&.contractor&.name }.uniq
+    # What they owe that comes out of this share (Tim, 2026-11-11).
+    netted_out = SettleUp.contract_deductions(pay.payments)
     # A settlement paid before the day was reopened (Tim, 2026-11-04): what
     # the show owes beyond it, or what was paid over, and where that stands.
     correction_words = lambda do |payment|
@@ -92,7 +94,7 @@
         <span class="min-w-0">
           <span class="block text-sm leading-5">
             <span class="font-semibold text-gray-900">Who gets paid</span>
-            <span class="text-gray-700"><%= pay.payments.any? ? "#{money.call(pay.total_cents)} by contract#{payee_names.any? ? " to #{payee_names.to_sentence}" : ''}" : "by contract" %></span>
+            <span class="text-gray-700"><%= pay.payments.any? ? "#{money.call(pay.total_cents)} by contract#{payee_names.any? ? " to #{payee_names.to_sentence}" : ''}#{netted_out.any? ? ", after #{money.call(netted_out.values.flatten.sum { |c| (c.amount.to_d * 100).round })} they owe comes out" : ''}" : "by contract" %></span>
           </span>
           <% if pay.payments.empty? %><span class="block mt-0.5 text-xs text-gray-500">The contract's share of this show isn't worked out yet; it's set on the contract.</span><% end %>
         </span>
@@ -128,6 +130,16 @@
               <% end %>
             </span>
           </div>
+          <% if (charges = netted_out[payment.id]) %>
+            <div class="pb-2 pl-3 text-sm">
+              <div class="text-xs font-medium text-purple-700">Taken out of their share</div>
+              <% charges.each do |charge| %>
+                <div class="flex items-baseline justify-between gap-3 py-0.5"><span class="min-w-0 text-gray-600"><%= charge.description.presence || charge.display_name %></span><span class="tabular-nums text-gray-900 whitespace-nowrap">−<%= number_to_currency(charge.amount) %></span></div>
+              <% end %>
+              <% net = SettleUp.contract_net_cents(payment, netted_out) %>
+              <div class="mt-1 flex items-baseline justify-between gap-3 border-t border-gray-200 pt-1 font-medium"><span class="text-gray-900"><%= net.zero? ? "Nothing to pay: their share goes toward what they owe" : "We pay them" %></span><span class="tabular-nums text-gray-900 whitespace-nowrap"><%= money.call(net) %></span></div>
+            </div>
+          <% end %>
         <% end %>
       </div>
     </div>

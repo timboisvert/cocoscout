@@ -75,10 +75,24 @@ class SettleUp
     def held? = hold_reason.present?
     def calculated? = performers? && show_payout&.calculated_at.present? && rows.any?
     def can_calculate? = calc.in?(%i[uncalculated stale])
-    def total_cents = performers? ? rows.sum(&:cents) : payments.sum { |p| (p.amount.to_d * 100).round }
+    # On a contract show, what they are paid is their share less what they
+    # owe that comes out of it (a booth tech billed per show), the way the
+    # contract and the Payouts page say it (Tim, 2026-11-11: the day said
+    # $106.00 where $6.00 was going out).
+    def total_cents
+      return rows.sum(&:cents) if performers?
+
+      taken = SettleUp.contract_deductions(payments)
+      payments.sum { |p| SettleUp.contract_net_cents(p, taken) }
+    end
     # What settling the day puts on the run, and for how many people.
     def to_run_rows = rows.select { |r| r.stage == :run }
-    def to_run_cents = performers? ? to_run_rows.sum(&:run_cents) : payments.select { |p| SettlementPayer.stageable?(p) }.sum { |p| (p.amount.to_d * 100).round } + more_owed.sum
+    def to_run_cents
+      return to_run_rows.sum(&:run_cents) if performers?
+
+      taken = SettleUp.contract_deductions(payments)
+      payments.select { |p| SettlementPayer.stageable?(p) }.sum { |p| SettleUp.contract_net_cents(p, taken) } + more_owed.sum
+    end
     def to_run_count = performers? ? to_run_rows.size : payments.count { |p| SettlementPayer.stageable?(p) } + more_owed.size
     # On a contract show: what settling would add for settlements already
     # paid that the show now owes more on (ContractSettlementCorrection).
@@ -614,6 +628,31 @@ class SettleUp
 
     settled = SettlementDay.where(organization: organization, date: candidates.map { |s| SettlementDay.day_for(organization, s.date_and_time) }.uniq).settled.pluck(:date).to_set
     candidates.reject { |s| settled.include?(SettlementDay.day_for(organization, s.date_and_time)) }
+  end
+
+  # What a contract settlement still has taken out of it: the charges the
+  # contractor owes that net against this payment and haven't yet (a booth
+  # tech billed per show, taken out of their share), as the contract groups
+  # them. { payment id => [charges] }
+  def self.contract_deductions(payments)
+    payments.group_by(&:contract).each_with_object({}) do |(contract, rows), found|
+      next unless contract
+
+      ids = rows.map(&:id)
+      contract.payment_schedule_groups.each do |group|
+        next unless ids.include?(group[:payment].id)
+
+        pending = group[:deductions].select { |charge| charge.status_pending? && charge.deduct_from_payout? }
+        found[group[:payment].id] = pending if pending.any?
+      end
+    end
+  end
+
+  # What actually goes to them for a settlement: its amount less what is
+  # still taken out of it. Never less than nothing (then no money moves).
+  def self.contract_net_cents(payment, taken = nil)
+    charges = (taken || contract_deductions([ payment ]))[payment.id] || []
+    [ (payment.amount.to_d * 100).round - charges.sum { |charge| (charge.amount.to_d * 100).round }, 0 ].max
   end
 
   # Cash taken at the door for one show, for its ticket sales on the day's
