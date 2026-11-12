@@ -106,7 +106,7 @@
            data-action="input->pay-accordion#refreshAll change->pay-accordion#refreshAll input->pay-hours#syncAll keydown.esc@window->pay-hours#closeAll pay-hours:commit->pay-hours#commitMembers">
         <%# One click instead of opening every person's modal in turn. %>
         <% if @members_with_approved_hours.any? %>
-          <div class="flex items-center justify-between gap-3 px-3 py-2.5 border-b border-gray-200 bg-gray-50 flex-wrap">
+          <div class="flex items-center justify-between gap-3 px-3 py-2.5 border-b border-gray-200 bg-gray-50 flex-wrap" data-pay-hours-target="pullBar">
             <p class="text-xs text-gray-600">
               <%= pluralize(@members_with_approved_hours.size, "person") %>
               <%= @members_with_approved_hours.size == 1 ? "has" : "have" %>
@@ -126,7 +126,7 @@
               <%= @members_with_tips_waiting.size == 1 ? "has" : "have" %>
               tips waiting from Settle up — <%= number_to_currency(@tips_waiting_cents / 100.0) %> to pay through us<%= ", plus cash tips for the record" if @members_with_tips_waiting.any? { |_, shares| shares.any?(&:cash?) } %>.
             </p>
-            <%= render "shared/button", text: "Pull in tips", variant: "primary", size: "small", type: :button, data: { action: "click->pay-tips#pullAll" } %>
+            <%= render "shared/button", text: "Pull in tips", variant: "primary", size: "small", type: :button, data: { action: "click->pay-tips#openPull" } %>
           </div>
         <% end %>
         <table class="block lg:table min-w-full text-sm">
@@ -326,6 +326,10 @@
           <%= render "manage/staffing/pay/pull_hours_modal",
                 members_with_hours: @members_with_approved_hours,
                 role_rates_by_member: @role_rates_by_member %>
+        <% end %>
+        <%# The same window for tips waiting from settled days (pay-tips, on the page's outer wrapper). %>
+        <% if @members_with_tips_waiting.any? %>
+          <%= render "manage/staffing/pay/pull_tips_modal", members_with_tips: @members_with_tips_waiting %>
         <% end %>
       </div>
 

@@ -78,6 +78,10 @@ export default class extends Controller {
         if (field === "adhoc") return document.getElementById(`pay-adhoc-${id}`)
         if (field === "tips_sheet") return document.getElementById(`pay-tips-sheet-${id}`)
         if (field === "cash_tips_sheet") return document.getElementById(`pay-cashtips-sheet-${id}`)
+        // Which settled days' shares the tips came from: without these a
+        // reopened draft kept the amounts but forgot the shares, so they
+        // stayed waiting after the run and could be pulled in again.
+        if (field === "tip_share_ids") return document.getElementById(`pay-tip-shares-${id}`)
         return null
     }
 
