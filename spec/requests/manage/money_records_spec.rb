@@ -101,7 +101,7 @@ RSpec.describe "Manage::MoneyRecords", type: :request do
 
   it "refuses a move from an account to itself and an amount of nothing" do
     post manage_money_records_path, params: { money_record: { kind: "move", on: "2026-10-25", amount: "0", from_account: "bank", to_account: "bank" } }
-    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response).to have_http_status(:unprocessable_content)
     expect(org.money_records.count).to eq(0)
   end
 

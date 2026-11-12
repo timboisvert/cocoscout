@@ -65,7 +65,7 @@ RSpec.describe "Manage::BankRules", type: :request do
 
     # Recording needs to know income from spending: the page comes back with the mistake.
     post manage_money_bank_rules_path, params: { bank_rule: { contains: "FLOOD BROTHERS", direction: "any", action: "record", category_key: "production" } }
-    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response).to have_http_status(:unprocessable_content)
     expect(response.body).to include("money in or money out")
 
     # The lines already dealt with say whether a rule as typed agrees with them.

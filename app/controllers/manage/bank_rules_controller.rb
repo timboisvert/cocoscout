@@ -44,13 +44,13 @@ module Manage
 
     def create
       @rule = Current.organization.bank_rules.new(rule_params.merge(created_by: Current.user))
-      return render :form, status: :unprocessable_entity unless @rule.save
+      return render :form, status: :unprocessable_content unless @rule.save
 
       run(@rule, "Rule saved.")
     end
 
     def update
-      return render :form, status: :unprocessable_entity unless @rule.update(rule_params)
+      return render :form, status: :unprocessable_content unless @rule.update(rule_params)
 
       run(@rule, "Rule changed.")
     end
