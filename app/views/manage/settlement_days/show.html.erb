@@ -15,6 +15,9 @@
   what = [ (day.shows.empty? ? nil : (day.shows.size == 1 ? "one show" : "#{day.shows.size} shows")),
            (day.registers.any? ? (day.tips.any? ? "the register and its tips" : "the register") : nil) ].compact
   settle_cid = "confirm-settle-day"
+  # When the day ends by the organization's clock: "5 am Thursday".
+  day_ends_at = SettlementDay.window(day.organization, day.date).end
+  day_ends_words = day_ends_at.in_time_zone.then { |t| (t.min.zero? && t.sec.zero? ? t : t + 1.second).strftime("%-l#{':%M' unless (t + 1.second).min.zero?} %P %A").squish }
 %>
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
@@ -153,7 +156,7 @@
     </svg>
     <div class="min-w-0 text-sm">
             <% if day.all_checked? %>
-              <div class="font-semibold text-gray-900">Every piece is confirmed<%= day.ended? ? "" : ", and the day is still going" %></div>
+              <div class="font-semibold text-gray-900">Every piece is confirmed<%= day.ended? ? "" : ". The day runs until #{day_ends_words} by the clock; settle it now if the night is done" %></div>
               <div class="text-xs text-gray-500">Settling puts <%= @date.strftime("%b %-d") %> on the books<%= to_run_words %><%= day.tips.any? ? "; the tip shares wait on Pay People" : "" %>. You can reopen it later; the books keep both versions.</div>
             <% else %>
               <div class="font-semibold text-gray-900"><%= day.checked_count %> of <%= checks.size %> confirmed</div>
@@ -168,11 +171,14 @@
           </div>
         </div>
         <% if can_change %>
-          <% if day.all_checked? && day.ended? %>
+          <%# The clock doesn't know the night is over; the person at the bar
+              does (Tim, 2026-11-11). A day still going can be settled once
+              every piece is confirmed, and the modal says what that means. %>
+          <% if day.all_checked? %>
             <%= render "shared/button", text: "Settle the day", variant: "primary", size: "medium", type: :button,
                   data: { controller: "modal", action: "click->modal#open", modal_id: settle_cid } %>
           <% else %>
-            <span class="inline-flex items-center justify-center px-4 py-2 rounded text-sm font-medium bg-gray-200 text-gray-500 cursor-not-allowed" aria-disabled="true" title="<%= day.ended? ? 'Confirm every piece first' : 'The day is still going' %>">Settle the day</span>
+            <span class="inline-flex items-center justify-center px-4 py-2 rounded text-sm font-medium bg-gray-200 text-gray-500 cursor-not-allowed" aria-disabled="true" title="Confirm every piece first">Settle the day</span>
           <% end %>
         <% end %>
       </div>
@@ -185,7 +191,7 @@
 <% if can_change && !day.settled? %>
   <%= render "shared/confirm_modal", id: settle_cid,
         title: "Settle #{@date.strftime('%A, %b %-d')}?",
-        message: "Every piece is confirmed. This closes the day: its numbers go on the books#{day.to_run_count.positive? ? ", and #{money.call(day.to_run_cents)} for #{pluralize(day.to_run_count, 'person')} goes on the draft payout run, which you fund when it's ready" : ''}. You can reopen it later with a reason.",
+        message: "#{day.ended? ? 'Every piece is confirmed.' : "The day runs until #{day_ends_words} by the clock, so settle now only if the night is done: a sale rung up after this, at the bar or the door, is not in the day until you reopen it."} This closes the day: its numbers go on the books#{day.to_run_count.positive? ? ", and #{money.call(day.to_run_cents)} for #{pluralize(day.to_run_count, 'person')} goes on the draft payout run, which you fund when it's ready" : ''}. You can reopen it later with a reason.",
         confirm_text: "Settle the day",
         url: manage_settle_money_settle_up_day_path(day.param), method: :post %>
 <% end %>

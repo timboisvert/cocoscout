@@ -270,6 +270,24 @@ RSpec.describe "Settle up", type: :request do
     expect(JournalEntry.live.where(organization: org, source: record, kind: "settlement")).not_to exist
   end
 
+  # The clock doesn't know the night is over; the person at the bar does
+  # (Tim, 2026-11-11).
+  it "lets a manager settle a day that is still going, once every piece is confirmed, and says what that means" do
+    travel_to(Time.zone.local(2026, 11, 11, 23, 30)) do
+      tonight = create(:show, production: production, date_and_time: Time.zone.local(2026, 11, 11, 19))
+      today = SettlementDay.day_for(org, tonight.date_and_time)
+      expect(SettlementDay.ended?(org, today)).to be(false)
+
+      patch manage_check_show_money_settle_up_day_path(today.iso8601, show_id: tonight.id), params: { checked: "1" }
+      get manage_money_settle_up_day_path(today.iso8601)
+      expect(response.body).to include("settle it now if the night is done", "settle now only if the night is done", "is not in the day until you reopen it")
+      expect(response.body).not_to include("Confirm every piece first")
+
+      post manage_settle_money_settle_up_day_path(today.iso8601)
+      expect(SettlementDay.find_by!(organization: org, date: today)).to be_settled
+    end
+  end
+
   it "shows days to settle on the Money hub and on Home" do
     get manage_money_index_path
     expect(response).to have_http_status(:ok)
