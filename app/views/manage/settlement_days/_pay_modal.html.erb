@@ -1,0 +1,214 @@
+<%# Who's paid and how, for one show, from the day's page (Tim, 2026-11-04:
+    the show's payout page is on its way out, like its financials page). The
+    calculation the show uses, with a way to pay this one show differently
+    (everyone the same amount, or each their own; back to the calculation);
+    and the people on it, each with Remove, plus Add someone and the cast
+    not yet on it. Every form comes back to the day with this card open.
+    Locals: id, show, pay (SettleUp::Pay), day, return_to, open (arrive with it open) %>
+<%
+  payout = pay.show_payout
+  scheme = pay.scheme
+  production = show.production
+  base_rules = payout.base_rules
+  override = payout.has_overrides? ? payout.override_rules.deep_stringify_keys : {}
+  performer_overrides = override["performer_overrides"] || {}
+  mode = if performer_overrides.any? then "different"
+  elsif override.dig("distribution", "method").to_s == "flat_fee" then "same"
+  end
+  same_amount = if mode == "same" then override.dig("distribution", "flat_amount")
+  elsif base_rules.dig("distribution", "method").to_s == "flat_fee" then base_rules.dig("distribution", "flat_amount")
+  end
+  payees = payout.act_payees
+  current_amounts = payout.current_amounts
+  expected_total = payout.calculated_total
+  amount_value = ->(value) { value.nil? ? "" : format("%.2f", value.to_f) }
+  input_classes = "px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 tabular-nums"
+  row_classes = "flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors hover:border-pink-300"
+  radio_classes = "mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500"
+  lines = payout.line_items.includes(:payee).sort_by { |l| -l.amount.to_f }
+  on_payout_ids = lines.select { |l| l.payee_type == "Person" }.map(&:payee_id)
+  cast_people = show.show_person_role_assignments.includes(:assignable).map(&:assignable).compact.select { |p| p.is_a?(Person) }.uniq
+  missing_cast = cast_people.reject { |p| on_payout_ids.include?(p.id) }
+  # Add someone is the shared People Picker (Tim, 2026-11-09): the talent
+  # pool before anything is typed (the organization's people when there is
+  # none), anyone in the organization by name. Its sheet sits after the modal.
+  picker_id = "pay-picker-#{show.id}"
+  pink = "text-pink-600 hover:text-pink-700"
+  locked = lines.any? { |l| l.paid? || l.in_payout_run? }
+%>
+<div id="<%= id %>" class="<%= local_assigns[:open] ? '' : 'hidden' %> fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-2xl sm:mx-4 overflow-hidden flex flex-col max-h-[92vh]" data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white">Who's paid and how, <%= show.display_name %></h3>
+      <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10" aria-label="Close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="overflow-y-auto divide-y divide-gray-200">
+
+<%# ---- How this show pays: three ways ---------------------------------- %>
+<section class="px-6 py-5 space-y-3">
+  <h4 class="text-sm font-semibold text-gray-900">How this show pays</h4>
+  <% if locked %>
+    <p class="text-sm text-gray-600">Some of this show's lines are paid or on a payout run, so the amounts stay as they are. Undo those first to pay this show differently.</p>
+    <p class="text-sm text-gray-700"><%= scheme.name %><%= payout.has_overrides? ? ", customized: #{payout.customization_summary}" : "" %></p>
+  <% else %>
+    <%= form_with url: manage_save_override_money_show_payout_path(show), method: :patch, data: { turbo_action: "replace" } do %>
+      <%= hidden_field_tag :return_to, return_to, id: nil %>
+      <div class="space-y-2" role="radiogroup" data-controller="payout-customize"
+           data-payout-customize-expected-value="<%= expected_total.to_f %>"
+           data-payout-customize-has-expected-value="<%= expected_total.present? %>"
+           data-payout-customize-fixed-pot-value="<%= payout.fixed_pot? %>">
+        <%# 1. The calculation %>
+        <div>
+          <label class="<%= row_classes %> <%= mode.nil? ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %>" data-payout-customize-target="row" data-mode="calculation">
+            <input type="radio" name="customize[mode]" value="calculation" <%= "checked" if mode.nil? %> data-payout-customize-target="mode" data-action="change->payout-customize#update" class="<%= radio_classes %>">
+            <span class="min-w-0 flex-1">
+              <span class="font-medium text-gray-900 text-sm">Use the calculation: <%= scheme.name %></span>
+              <span class="block text-xs text-gray-500 mt-0.5"><%= scheme.rules_summary.presence || "The production's calculation" %><%= production.asks_calculation_each_show? ? " · chosen for this show" : " · every #{production.name} show" %></span>
+              <span class="block mt-2">
+                <%= render "shared/button", text: "Choose a different calculation", variant: "secondary", size: "xs", type: :button,
+                      data: { controller: "modal", action: "click->modal#open", modal_id: "calculation-#{show.id}", modal_close_id: id } %>
+              </span>
+            </span>
+          </label>
+        </div>
+        <%# 2. Everyone the same %>
+        <div>
+          <label class="<%= row_classes %> <%= mode == 'same' ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %>" data-payout-customize-target="row" data-mode="same">
+            <input type="radio" name="customize[mode]" value="same" <%= "checked" if mode == "same" %> data-payout-customize-target="mode" data-action="change->payout-customize#update" class="<%= radio_classes %>">
+            <span class="min-w-0 flex-1">
+              <span class="font-medium text-gray-900 text-sm">Everyone the same amount</span>
+              <span class="block text-xs text-gray-500 mt-0.5">One amount for each person on this show; the calculation itself doesn't change.</span>
+            </span>
+          </label>
+          <div class="hidden mt-2 ml-8" data-payout-customize-target="samePanel">
+            <div class="flex items-center gap-2">
+              <span class="text-gray-500">$</span>
+              <input type="number" name="customize[amount]" value="<%= amount_value.call(same_amount) %>" min="0" step="0.01" required class="w-32 <%= input_classes %>" aria-label="Amount per person">
+              <span class="text-sm text-gray-600">per person</span>
+            </div>
+          </div>
+        </div>
+        <%# 3. Each their own %>
+        <div>
+          <label class="<%= row_classes %> <%= mode == 'different' ? 'border-pink-500 bg-pink-50' : 'border-gray-200' %>" data-payout-customize-target="row" data-mode="different">
+            <input type="radio" name="customize[mode]" value="different" <%= "checked" if mode == "different" %> data-payout-customize-target="mode" data-action="change->payout-customize#update" class="<%= radio_classes %>">
+            <span class="min-w-0 flex-1">
+              <span class="font-medium text-gray-900 text-sm">Each person their own amount</span>
+              <span class="block text-xs text-gray-500 mt-0.5">Each starts at what the calculation gives them; change whoever you like.</span>
+            </span>
+          </label>
+          <div class="hidden mt-2" data-payout-customize-target="differentPanel">
+            <% if payees.empty? %>
+              <p class="text-sm text-gray-500 px-1">Nobody is cast on this show yet.</p>
+            <% else %>
+              <div class="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
+                <% payees.each do |payee| %>
+                  <%
+                    is_guest = payee.is_a?(ShowPersonRoleAssignment)
+                    key = ShowPayout.act_key(payee)
+                    name = is_guest ? payee.guest_name : payee.name
+                    value = payout.override_amount_for(payee) || current_amounts[key]
+                  %>
+                  <div class="flex items-center gap-3 px-3 py-2 bg-white">
+                    <div class="flex-1 min-w-0 text-sm text-gray-900 truncate"><%= name %><%= is_guest ? " <span class='text-xs text-gray-500'>guest</span>".html_safe : "" %></div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-gray-500">$</span>
+                      <input type="number" name="customize[amounts][<%= key %>]" value="<%= amount_value.call(value) %>" min="0" step="0.01" required
+                             data-payout-customize-target="amount" data-action="input->payout-customize#recalc" class="w-28 <%= input_classes %>" aria-label="Amount for <%= name %>">
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+              <div class="flex items-center justify-between gap-3 px-1 pt-2 text-sm">
+                <span class="font-medium text-gray-700">Total</span>
+                <span class="tabular-nums text-right">
+                  <strong class="text-gray-900" data-payout-customize-target="total"></strong>
+                  <% if expected_total %>
+                    <span class="block text-xs text-gray-500" data-payout-customize-target="difference"></span>
+                    <span class="hidden block text-xs text-amber-700" data-payout-customize-target="warning">This calculation splits a fixed pot of <%= number_to_currency(expected_total) %>; the amounts have to add up to it.</span>
+                  <% end %>
+                </span>
+              </div>
+            <% end %>
+          </div>
+        </div>
+        <div class="flex justify-end pt-1">
+          <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit, data: { payout_customize_target: "submit" } %>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+</section>
+
+      <%# ---- The people ----------------------------------------------------- %>
+      <section class="px-6 py-5 space-y-3">
+        <h4 class="text-sm font-semibold text-gray-900">The people</h4>
+        <% if lines.empty? %>
+          <p class="text-sm text-gray-600">Nobody is on this show's payout yet.</p>
+        <% else %>
+          <div class="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
+            <% lines.each do |line| %>
+              <div class="flex items-center justify-between gap-3 px-3 py-2 bg-white text-sm">
+                <span class="min-w-0 truncate text-gray-900"><%= line.payee_name %><%= line.is_guest? ? " <span class='text-xs text-gray-500'>guest</span>".html_safe : "" %>
+                  <% if line.correction? %><span class="text-xs text-gray-500">· <%= line.overpaid? ? "overpaid" : "more owed" %> since they were paid</span><% end %>
+                  <% if line.calculation_details.is_a?(Hash) && line.calculation_details.dig("inputs", "manual") %><span class="text-xs text-gray-500">· added by hand</span><% end %>
+                </span>
+                <span class="flex items-center gap-3 shrink-0">
+                  <span class="tabular-nums text-gray-900"><%= number_to_currency(line.net_amount) %></span>
+                  <% if line.paid? || line.in_payout_run? %>
+                    <span class="text-xs text-gray-500 w-16 text-right"><%= line.paid? ? "paid" : "on a run" %></span>
+                  <% else %>
+                    <%= form_with url: manage_remove_line_item_money_show_payout_path(show, line_item_id: line.id), method: :delete, data: { turbo_action: "replace" }, class: "w-16 text-right" do %>
+                      <%= hidden_field_tag :return_to, return_to, id: nil %>
+                      <%= render "shared/button", text: "Remove", variant: "ghost", size: "xs", type: :submit %>
+                    <% end %>
+                  <% end %>
+                </span>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+
+        <% if missing_cast.any? %>
+          <%= form_with url: manage_add_missing_cast_money_show_payout_path(show), method: :post, data: { turbo_action: "replace" }, class: "flex flex-wrap items-center gap-2 text-sm" do %>
+            <%= hidden_field_tag :return_to, return_to, id: nil %>
+            <span class="text-gray-700"><%= missing_cast.map(&:name).to_sentence %> <%= missing_cast.one? ? "is" : "are" %> cast but not on the payout.</span>
+            <span class="flex items-center gap-2">
+              <span class="text-gray-500">$</span>
+              <input type="number" name="amount" value="0" min="0" step="0.01" required class="w-24 <%= input_classes %>" aria-label="Amount each">
+              <span class="text-xs text-gray-500">each</span>
+              <%= render "shared/button", text: "Add #{missing_cast.one? ? 'them' : "all #{missing_cast.size}"}", variant: "secondary", size: "small", type: :submit %>
+            </span>
+          <% end %>
+        <% end %>
+
+        <%= form_with url: manage_add_line_item_money_show_payout_path(show), method: :post, class: "flex flex-wrap items-center gap-2 text-sm",
+              data: { turbo_action: "replace", controller: "person-field", person_field_picker_id_value: picker_id,
+                      action: "people-picker:pick@window->person-field#picked submit->person-field#check" } do %>
+          <%= hidden_field_tag :return_to, return_to, id: nil %>
+          <%= hidden_field_tag :payee_type, "Person", id: nil %>
+          <%= hidden_field_tag :payee_id, nil, id: nil, data: { person_field_target: "field" } %>
+          <span class="text-gray-700">Add someone</span>
+          <%= render "shared/button", text: "Pick a person", icon: "search", variant: "secondary", size: "small", type: :button,
+                data: { controller: "people-picker-trigger", action: "click->people-picker-trigger#open",
+                        "people-picker-trigger-id-value": picker_id, person_field_target: "opener" } %>
+          <span class="flex items-center gap-2">
+            <span class="text-gray-500">$</span>
+            <input type="number" name="amount" value="0" min="0" step="0.01" required class="w-24 <%= input_classes %>" aria-label="Amount" data-person-field-target="next">
+            <%= render "shared/button", text: "Add", variant: "secondary", size: "small", type: :submit %>
+          </span>
+        <% end %>
+        <p class="text-xs text-gray-500">Someone added by hand keeps their amount through a recalculation only if the calculation names them; the show's full payout page has act counts and advances.
+          <%= link_to "The show's payout page", manage_money_show_payout_path(show, return_to: return_to), class: pink %></p>
+      </section>
+    </div>
+    <div class="px-6 py-3 bg-gray-50 flex justify-end">
+      <%= render "shared/button", text: "Done", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+    </div>
+  </div>
+</div>
+<%= render "shared/people_picker", id: picker_id, title: "Add to #{show.display_name}'s payout", scope: "people",
+      production_id: production.id, list: (production.effective_talent_pool ? "pool" : "org"),
+      exclude: on_payout_ids, exclude_label: "On the payout" %>

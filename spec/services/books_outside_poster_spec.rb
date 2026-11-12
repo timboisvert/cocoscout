@@ -16,6 +16,40 @@ RSpec.describe BooksOutsidePoster do
     ChartOfAccounts.account(org, key).natural_balance_cents
   end
 
+  it "posts a show once per save, however many lines the save wrote, and not at all when it rolls back" do
+    financials = ShowFinancials.create!(show: show, revenue_type: "ticket_sales")
+    expect(described_class).to receive(:post_financials!).once.and_call_original
+    financials.update!(
+      other_revenue_details: [ { "description" => "Bar", "amount" => 150 } ],
+      ticket_sales_lines_attributes: [ { ticket_source_id: tailor.id, tickets_sold: 40, amount: 800 }, { ticket_source_id: org.ticket_sources.create!(name: "Hot Tix").id, tickets_sold: 5, amount: 50 } ],
+      expense_items_attributes: [ { category: "venue", amount: 300 }, { category: "marketing", amount: 25 }, { category: "venue", amount: 10 } ]
+    )
+    expect(balance(:ticket_income)).to eq(85_000)
+    expect(balance(:venue)).to eq(31_000)
+    expect(balance(:other_income)).to eq(15_000)
+    RSpec::Mocks.space.proxy_for(described_class).reset
+
+    # The $300 venue line, by id: a bare .first reads whichever row the
+    # database hands back first, which changes once rows have been updated.
+    room = financials.expense_items.order(:id).first
+    # A line saved on its own still posts, once.
+    expect(described_class).to receive(:post_financials!).once.and_call_original
+    room.update!(amount: 100)
+    expect(balance(:venue)).to eq(11_000)
+    RSpec::Mocks.space.proxy_for(described_class).reset
+
+    expect(described_class).not_to receive(:post_financials!)
+    ShowFinancials.transaction do
+      room.update!(amount: 999)
+      raise ActiveRecord::Rollback
+    end
+    RSpec::Mocks.space.proxy_for(described_class).reset
+    expect(balance(:venue)).to eq(11_000)
+    # Nothing is left waiting: the next save posts.
+    room.update!(amount: 50)
+    expect(balance(:venue)).to eq(6_000)
+  end
+
   it "posts a show's outside ticket sales, other revenue and expenses, and restates them as the worksheet changes" do
     financials = ShowFinancials.create!(show: show, revenue_type: "ticket_sales")
     financials.ticket_sales_lines.create!(ticket_source: tailor, tickets_sold: 40, amount: 800.00)
@@ -26,10 +60,10 @@ RSpec.describe BooksOutsidePoster do
 
     expect(balance(:ticket_income)).to eq(80_000)
     expect(balance(:other_income)).to eq(15_050)
-    expect(balance(:owed_to_you)).to eq(95_050)
     expect(balance(:venue)).to eq(30_000)
     expect(balance(:marketing)).to eq(2_525)
-    expect(balance(:bank)).to eq(-32_525)
+    # Outside money arrives in the bank; the expenses left it.
+    expect(balance(:bank)).to eq(95_050 - 32_525)
     expect(LedgerPosting.trial_balance(org).values.sum).to eq(0)
     expect(JournalEntry.live.where(organization: org, source: financials).pluck(:kind)).to contain_exactly("outside_tickets", "other_revenue", "expenses")
 
@@ -37,11 +71,42 @@ RSpec.describe BooksOutsidePoster do
     financials.expense_items.destroy_all
     expect(balance(:ticket_income)).to eq(50_000)
     expect(balance(:venue)).to eq(0)
-    expect(balance(:bank)).to eq(0)
+    expect(balance(:bank)).to eq(65_050)
 
     financials.destroy
     expect(balance(:ticket_income)).to eq(0)
-    expect(balance(:owed_to_you)).to eq(0)
+    expect(balance(:bank)).to eq(0)
+  end
+
+  # Who pays the tax on tickets another site sold (Tim, 10/31): a source the
+  # organization owes the tax for carves it out of what arrived, at the
+  # ticket tax rate, into Tax to pay the government; a source that pays its
+  # own tax (Eventbrite in Chicago) posts the whole amount as income.
+  it "sets the tax part of a 'we owe the tax' source's sales aside as owed to the government" do
+    TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")
+    tailor.update!(tax_handling: "we_owe")
+    eventbrite = org.ticket_sources.create!(name: "Eventbrite", tax_handling: "they_pay")
+    financials = ShowFinancials.create!(show: show, revenue_type: "ticket_sales")
+    financials.ticket_sales_lines.create!(ticket_source: tailor, tickets_sold: 10, amount: 220.50)
+    financials.ticket_sales_lines.create!(ticket_source: eventbrite, tickets_sold: 5, amount: 110.25)
+    financials.reload
+
+    # 22050 × 1025 / 11025 = 2050 cents of tax inside Ticket Tailor's money.
+    expect(OutsideTicketTax.tax_cents(org, 22_050)).to eq(2_050)
+    expect(balance(:bank)).to eq(33_075)
+    expect(balance(:tax_to_remit)).to eq(2_050)
+    expect(balance(:ticket_income)).to eq(33_075 - 2_050)
+    expect(LedgerPosting.trial_balance(org).values.sum).to eq(0)
+
+    rows = OutsideTicketTax.rows(org, from: Date.new(2026, 10, 1), to: Date.new(2026, 10, 31))
+    expect(rows.map { |r| [ r.source.name, r.sales_cents, r.tax_cents, r.shows ] }).to eq([ [ "Ticket Tailor", 22_050, 2_050, 1 ] ])
+    expect(BooksReconciliation.check(org)).to eq([])
+
+    # Switching the source to "they pay" restates: no tax owed any more.
+    tailor.update!(tax_handling: "they_pay")
+    financials.reload.post_to_books
+    expect(balance(:tax_to_remit)).to eq(0)
+    expect(balance(:ticket_income)).to eq(33_075)
   end
 
   it "leaves another seller's ticket money out, and the CocoScout row too" do
@@ -62,7 +127,7 @@ RSpec.describe BooksOutsidePoster do
   it "posts ticket revenue typed before sources existed, and stops counting a line once it's deleted" do
     financials = ShowFinancials.create!(show: show, revenue_type: "ticket_sales", ticket_revenue: 640, ticket_count: 32)
     expect(balance(:ticket_income)).to eq(64_000)
-    expect(balance(:owed_to_you)).to eq(64_000)
+    expect(balance(:bank)).to eq(64_000)
 
     line = financials.ticket_sales_lines.create!(ticket_source: tailor, tickets_sold: 10, amount: 200)
     expect(balance(:ticket_income)).to eq(20_000)
@@ -74,7 +139,7 @@ RSpec.describe BooksOutsidePoster do
   it "posts a flat fee only when no contract carries it" do
     financials = ShowFinancials.create!(show: show, revenue_type: "flat_fee", flat_fee: 120, ticket_revenue: 999)
     expect(balance(:contract_income)).to eq(12_000)
-    expect(balance(:owed_to_you)).to eq(12_000)
+    expect(balance(:bank)).to eq(12_000)
     expect(balance(:ticket_income)).to eq(0)
 
     create(:contract, organization: org, production: production)
@@ -177,6 +242,17 @@ RSpec.describe BooksOutsidePoster do
       expect(ContractMoneyRedate.run!).to eq(0)
     end
 
+    it "leaves money in a closed month where it is when only its date would change" do
+      rent = payment("incoming", 350)
+      rent.mark_paid!(paid_on: Date.new(2026, 10, 3), method: "check")
+      old = JournalEntry.live.find_by(source: rent)
+      old.update_columns(entry_date: Date.new(2026, 10, 3)) # as the books used to date it
+      org.update!(books_locked_through: Date.new(2026, 10, 31))
+
+      expect(ContractMoneyRedate.run!).to eq(0)
+      expect(JournalEntry.live.find_by(source: rent)).to eq(old)
+    end
+
     it "re-dates on the old entry's own dates when the payment also gained its show since" do
       rent = payment("incoming", 350)
       rent.mark_paid!(paid_on: Date.new(2026, 11, 3), method: "check")
@@ -221,6 +297,7 @@ RSpec.describe BooksOutsidePoster do
       expect(row.financials).to eq(1)
       expect(row.mismatches).to eq([])
       expect(row.trial_balance_cents).to eq(0)
+      expect(result.failures).to eq([])
 
       JournalLine.where(journal_entry_id: JournalEntry.where(organization: org).select(:id)).delete_all
       JournalEntry.where(organization: org).delete_all
@@ -232,5 +309,48 @@ RSpec.describe BooksOutsidePoster do
       expect(balance(:cocoscout_balance)).to eq(5_000)
       expect(balance(:ticket_income)).to eq(8_000)
     end
+
+    it "posts each organization by itself: one that fails is rolled back and named, and the rest still post" do
+      other = create(:organization)
+      [ org, other ].each { |o| OrgCashEntry.post!(organization: o, entry_type: "opening_balance", amount_cents: 5_000, source: o, description: "Opening", occurred_at: Time.current) }
+      JournalLine.where(organization_id: [ org.id, other.id ]).delete_all
+      JournalEntry.where(organization_id: [ org.id, other.id ]).delete_all
+      allow(BooksPoster).to receive(:post!).and_wrap_original do |original, entry|
+        original.call(entry)
+        raise "a row that can't be posted" if entry.organization_id == other.id
+      end
+
+      result = BooksBackfill.run!(dry_run: false, organization_ids: [ org.id, other.id ])
+      expect(result.rows.map(&:organization)).to eq([ org ])
+      expect(result.failures.map { |f| [ f.organization, f.error ] }).to eq([ [ other, "RuntimeError: a row that can't be posted" ] ])
+      expect(balance(:cocoscout_balance)).to eq(5_000)
+      # What the failed one had posted before it failed went with it.
+      expect(JournalEntry.where(organization: other)).to be_empty
+    end
+  end
+
+  it "reads old category keys as the category they meant, and an organization's own category as its account" do
+    financials = ShowFinancials.create!(show: show, revenue_type: "ticket_sales")
+    financials.expense_items.create!(category: "talent", amount: 100)
+    financials.expense_items.create!(category: "tech", amount: 50)
+    own = org.ledger_accounts.create!(name: "Costume shop", account_type: "expense", code: "5800", system: false, active: true)
+    financials.expense_items.create!(category: "account_#{own.id}", amount: 20)
+    financials.reload
+    expect(balance(:performer_pay)).to eq(10_000)
+    expect(balance(:equipment)).to eq(5_000)
+    expect(own.natural_balance_cents).to eq(2_000)
+    expect(MoneyCategories.label_for("talent")).to eq("Performer pay")
+    expect(MoneyCategories.label_for("account_#{own.id}", organization: org)).to eq("Costume shop")
+    expect(MoneyCategories.spending_options(org).map(&:first)).to include("Costume shop")
+    expect(MoneyCategories.spending_options(org).last.last).to eq("other")
+  end
+
+  it "puts a paid CocoScout bill on the books as software spending" do
+    bill = BillingInvoice.create!(organization: org, stripe_invoice_id: "in_1", status: "open", kind: "pro", amount_due_cents: 2_000)
+    expect(balance(:software)).to eq(0)
+    bill.update!(status: "paid", amount_paid_cents: 2_000, paid_at: Time.current)
+    expect(balance(:software)).to eq(2_000)
+    expect(balance(:bank)).to eq(-2_000)
+    expect(JournalEntry.live.find_by(organization: org, source: bill, kind: "cocoscout_bill").memo).to include("CocoScout")
   end
 end

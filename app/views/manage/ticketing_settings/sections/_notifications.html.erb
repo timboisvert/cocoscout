@@ -13,7 +13,7 @@
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
     <div class="px-6 py-4 border-b border-gray-200">
       <h2 class="text-lg font-semibold text-gray-900">Ticketing emails</h2>
-      <p class="text-sm text-gray-600 mt-1">Who gets which emails as tickets sell and money moves. Each person has a plan, and a plan takes in new kinds of email on its own.</p>
+      <p class="text-sm text-gray-600 mt-1">Who gets which emails as tickets sell and money moves. Each person has a plan, and a plan takes in new kinds of email on its own. Each sale, comp and pass as it happens reaches a manager as a notification, not an email.</p>
     </div>
     <ul class="divide-y divide-gray-100" data-notification-recipients>
       <% people.each_with_index do |r, i| %>
@@ -33,7 +33,7 @@
             <div class="text-sm text-gray-600 truncate"><%= r.address? ? "Not a manager here" : r.email %></div>
           </div>
           <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs whitespace-nowrap <%= case r.plan when "everything" then "bg-pink-100 text-pink-800" when "nothing" then "bg-white border border-gray-200 text-gray-500" else "bg-gray-100 text-gray-700" end %>">
-            <span class="font-semibold"><%= plan_labels.fetch(r.plan) %></span><% if r.kinds.any? %> · <%= pluralize(r.kinds.size, "email") %><% end %>
+            <span class="font-semibold"><%= plan_labels.fetch(r.plan) %></span><% if r.emailed_kinds.any? %> · <%= pluralize(r.emailed_kinds.size, "email") %><% end %><% if r.notified_kinds.any? %> · <%= pluralize(r.notified_kinds.size, "notification") %><% end %>
           </span>
           <%= render "shared/button", text: "Edit", variant: "secondary", size: "small", type: :button,
                 data: { controller: "modal", action: "click->modal#open", modal_id: "notification-plan-#{i}" } %>

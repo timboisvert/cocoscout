@@ -2,18 +2,21 @@ class ExpenseItem < ApplicationRecord
   belongs_to :show_financials
 
   has_one_attached :receipt
+  include HierarchicalStorageKey # after the attachment, so the key moves once the file is up
 
   validates :category, presence: true
   validates :amount, presence: true, numericality: { greater_than: 0 }
 
   validate :acceptable_receipt
 
-  # Categories matching existing expense_details structure
-  CATEGORIES = %w[venue production marketing talent other].freeze
+  # The one list (config/money_categories.yml); older rows keep their old
+  # keys and MoneyCategories reads them as what they meant.
+  CATEGORIES = MoneyCategories.spending_keys
 
   scope :ordered, -> { order(:position) }
 
-  after_commit { show_financials&.reload&.post_to_books }
+  after_save { ShowFinancials.post_to_books_after_commit(show_financials_id) }
+  after_destroy { ShowFinancials.post_to_books_after_commit(show_financials_id) }
 
   private
 

@@ -97,6 +97,18 @@ def seed_content_templates
       subject: "Your {{organization_name}} contract has expired",
       body: "<p>Hi {{recipient_name}}, the contract for {{production_name}} expired.</p>",
       category: "contracts", channel: "both" },
+    { key: "bank_rules_applied", name: "Bank rules applied",
+      subject: "Your bank rules dealt with {{dealt_with}} lines; {{to_deal_with}} left",
+      body: "<p>Hi {{recipient_name}}, {{recorded}} recorded, {{ignored}} ignored. <a href=\"{{bank_url}}\">Books → Bank</a>.</p>",
+      category: "books", channel: "message" },
+    { key: "books_download_ready", name: "Books download ready",
+      subject: "{{download}} is ready to download",
+      body: "<p>Hi {{recipient_name}}, {{download}} for {{organization_name}} is ready: {{lines}} lines. <a href=\"{{statements_url}}\">Books → Statements</a>.</p>",
+      category: "books", channel: "message" },
+    { key: "bank_statement_ready", name: "Bank statement ready",
+      subject: "{{statement}} is in: {{matched}} matched the books, {{to_deal_with}} to deal with",
+      body: "<p>Hi {{recipient_name}}, {{lines}} lines checked: {{matched}} matched, {{suggested}} to confirm, {{to_deal_with}} to deal with. <a href=\"{{bank_url}}\">Books → Bank</a>.</p>",
+      category: "books", channel: "message" },
     { key: "contract_countersigned_to_signer", name: "Contract Fully Signed (counterparty copy)",
       subject: "Signed: your {{organization_name}} contract for {{production_name}}",
       body: "<p>Hi {{recipient_name}}, signed by both of you on {{signed_on}}. A copy is attached. <a href=\"{{contracts_url}}\">Your contracts</a>.</p>",
@@ -176,7 +188,7 @@ def seed_content_templates
     { key: "staff_hours_approved", name: "Hours approved (staff)", subject: "Hours approved: {{hours_words}}{{#amount}} · {{amount}}{{/amount}}",
       push_body: "{{organization_name}} approved {{hours_words}}{{#amount}} · {{amount}}{{/amount}}",
       body: "<p>Hi {{recipient_name}}, {{organization_name}} approved your hours:</p><ul>{{entries_list}}</ul><p>{{next_line}}</p><p><a href=\"{{my_payments_link}}\">See your pay</a></p>",
-      category: "shows", channel: "both" },
+      category: "shows", channel: "message" },
     { key: "staff_shift_added", name: "Shift added (staff)", subject: "New shift: {{role_label}}, {{shift_day}}",
       push_body: "New shift: {{role_label}}, {{shift_date_short}}, {{shift_hours}}{{#location_name}} at {{location_name}}{{/location_name}}",
       body: "<p>Hi {{recipient_name}}, {{organization_name}} put you on {{role_label}}, {{shift_day}}, {{shift_hours}}{{#location_name}} at {{location_name}}{{/location_name}}.</p>{{#shows_line}}<p>{{shows_line}}</p>{{/shows_line}}<p><a href=\"{{shift_url}}\">See this shift</a></p><p>If you can't make it, say so on My Shifts so the team can sort out cover.</p>",
@@ -224,8 +236,9 @@ def seed_content_templates
   TicketingTemplates.ensure!(overwrite: true)
   CourseTemplates.ensure!(overwrite: true)
   PlatformTemplates.ensure!(overwrite: true)
-  ContractInvoiceTemplates.ensure!(overwrite: true)
   ContractPeopleTemplates.ensure!(overwrite: true)
   TapToPayTemplates.ensure!(overwrite: true)
   FollowerTemplates.ensure!(overwrite: true)
+  InvoiceTemplates.ensure!(overwrite: true)
+  BooksTemplates.ensure!(overwrite: true)
 end

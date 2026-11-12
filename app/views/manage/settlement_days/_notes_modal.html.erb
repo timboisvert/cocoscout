@@ -1,0 +1,25 @@
+<%# A note on a show's money, from the day's worksheet (Tim, 2026-11-04).
+    It changes no numbers, so saving it leaves the confirm mark as it is.
+    Locals: id, show, financials, return_to %>
+<div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end justify-center sm:items-center sm:p-4"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[85vh]" data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-5 sm:px-6 py-4 flex-shrink-0">
+      <h3 class="text-lg font-semibold text-white">Notes, <%= show.display_name %></h3>
+      <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" aria-label="Close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <%= form_with url: manage_update_money_show_financials_path(show), method: :patch, class: "flex flex-col min-h-0 flex-1", data: { turbo_action: "replace" } do %>
+      <%= hidden_field_tag :return_to, return_to, id: nil %>
+      <div class="px-5 sm:px-6 py-5 overflow-y-auto min-h-0">
+        <%= text_area_tag "show_financials[notes]", financials&.notes, id: nil, rows: 5, placeholder: "Anything worth remembering about this show's money", "aria-label": "Notes",
+              class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors" %>
+      </div>
+      <div class="px-5 sm:px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2 flex-shrink-0">
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+        <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+</div>

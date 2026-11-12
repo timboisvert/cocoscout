@@ -8,6 +8,7 @@
         box smaller than 16px when it's tapped, and in the app that zoom
         stuck to every page after (Tim, 2026-10-12). %>
     <meta name="viewport" content="<%= native_viewport %>">
+    <meta name="turbo-refresh-scroll" content="preserve">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
@@ -45,7 +46,7 @@
     <% end %>
 
     <%= render "shared/native/production_strip" %>
-    <main class="px-4 pt-3 <%= page_bottom %> overflow-x-hidden" data-controller="bridge--form">
+    <main class="px-4 pt-3 <%= page_bottom %> min-w-0 overflow-x-clip" data-controller="bridge--form">
       <div id="flash-messages"></div>
       <%= render "shared/navigation/mode_switch_notice" %>
       <%= render "shared/navigation/show_changes_notice" %>

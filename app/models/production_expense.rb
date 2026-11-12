@@ -19,7 +19,9 @@ class ProductionExpense < ApplicationRecord
     "specific_events" => "Select specific shows"
   }.freeze
 
-  CATEGORIES = %w[venue production marketing equipment costumes props licensing insurance other].freeze
+  # The one list (config/money_categories.yml); older rows keep their old
+  # keys and MoneyCategories reads them as what they meant.
+  CATEGORIES = MoneyCategories.spending_keys
 
   after_commit :post_to_books, on: %i[create update]
   after_commit -> { BooksOutsidePoster.remove_production_expense!(self) }, on: :destroy

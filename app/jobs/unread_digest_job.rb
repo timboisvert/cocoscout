@@ -10,7 +10,11 @@
 #   2026-10-12; lengthened 2026-10-28 now that the apps are out: fewer emails)
 # - Start with 1 day throttle (baseline frequency)
 # - If user checks inbox after digest: reset to 1 day (they're engaged)
-# - If user ignores digest: double the throttle (1 → 2 → 4 → 8 → 14 days max)
+# - If user ignores digest: double the throttle (1 → 2 → 4 days)
+# - After three in a row that were ignored, stop, until they come back to
+#   the site or their inbox (Tim, 2026-11-09: fewer emails; in a month, a
+#   third of all digests went to people not seen in thirty days). Coming
+#   back starts it again at the baseline.
 # - Only send if user actually has unread messages
 #
 # Run this job every 15 minutes via cron/recurring schedule
@@ -23,6 +27,10 @@ class UnreadDigestJob < ApplicationJob
 
   # Maximum throttle period for unresponsive users
   MAX_THROTTLE_DAYS = 14
+
+  # Digests in a row nobody came back for, after which they stop.
+  STOP_AFTER_IGNORED = 3
+  CAME_BACK = "users.last_seen_at > users.last_unread_digest_sent_at OR users.last_inbox_visit_at > users.last_unread_digest_sent_at"
 
   def perform
     users_needing_digest.find_each do |user|
@@ -49,6 +57,8 @@ class UnreadDigestJob < ApplicationJob
         "users.last_unread_digest_sent_at IS NULL OR " \
         "users.last_unread_digest_sent_at < NOW() - (users.digest_throttle_days || ' days')::interval"
       )
+      # 5. Haven't ignored three in a row, or have come back since the last one.
+      .where("users.digests_ignored < ? OR #{CAME_BACK}", STOP_AFTER_IGNORED)
   end
 
   def send_digest_to(user)
@@ -61,8 +71,9 @@ class UnreadDigestJob < ApplicationJob
     delay = user.push_enabled? ? INITIAL_DELAY_WITH_PUSH : INITIAL_DELAY
     return if oldest_unread_at.nil? || oldest_unread_at > delay.ago
 
-    # Adjust throttle based on whether user checked inbox after last digest
-    adjust_throttle(user)
+    # Adjust throttle based on whether they came back after the last digest;
+    # the third one ignored in a row is the last until they do.
+    return unless adjust_throttle(user)
 
     # Send the digest
     MessageNotificationMailer.unread_digest(user: user, unread_threads: unread_threads, notifications: notifications).deliver_later
@@ -74,18 +85,22 @@ class UnreadDigestJob < ApplicationJob
     Rails.logger.info "[UnreadDigestJob] Sent digest to #{user.email_address} with #{unread_threads.size} threads (throttle: #{user.digest_throttle_days} days)"
   end
 
+  # Whether to send this one.
   def adjust_throttle(user)
     # If this is the first digest ever, keep baseline
-    return if user.last_unread_digest_sent_at.nil?
+    return true if user.last_unread_digest_sent_at.nil?
 
-    # Check if user visited inbox since last digest was sent
-    if user.last_inbox_visit_at.present? && user.last_inbox_visit_at > user.last_unread_digest_sent_at
+    # Came back to the site or the inbox since the last digest was sent
+    # (the Notifications list isn't the inbox, so being seen at all counts).
+    if [ user.last_seen_at, user.last_inbox_visit_at ].compact.any? { |at| at > user.last_unread_digest_sent_at }
       # User is engaged - reset to baseline frequency
-      user.update!(digest_throttle_days: 1)
+      user.update!(digest_throttle_days: 1, digests_ignored: 0)
+      true
     else
-      # User didn't check - back off by doubling, up to max
-      new_throttle = [ user.digest_throttle_days * 2, MAX_THROTTLE_DAYS ].min
-      user.update!(digest_throttle_days: new_throttle)
+      # User didn't check - back off by doubling, up to max, and count it
+      ignored = user.digests_ignored + 1
+      user.update!(digest_throttle_days: [ user.digest_throttle_days * 2, MAX_THROTTLE_DAYS ].min, digests_ignored: ignored)
+      ignored < STOP_AFTER_IGNORED
     end
   end
 

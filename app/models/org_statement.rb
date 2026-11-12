@@ -5,6 +5,7 @@
 class OrgStatement < ApplicationRecord
   belongs_to :organization
   has_one_attached :pdf
+  include HierarchicalStorageKey # after the attachment, so the key moves once the file is up
 
   validates :month, presence: true, uniqueness: { scope: :organization_id }
 

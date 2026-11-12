@@ -1,0 +1,2 @@
+<%# The count beside "To deal with"; swapped with each row. %>
+<span id="bank-open-count" class="text-xs text-gray-500"><%= summary.open_count.zero? ? "Nothing" : pluralize(summary.open_count, "line") %></span>

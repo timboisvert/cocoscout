@@ -348,6 +348,11 @@
           <% elsif !amount_set %>
             <%= render "shared/button", text: "Set amount", variant: "secondary", size: "xs",
                   icon: "pencil", type: :button, data: { action: "click->payment-modal#open" } %>
+          <% elsif payable && payment.show && SettleUp.in_settle_up?(Current.organization, payment.show) %>
+            <%# Paid from the day (Tim, 2026-11-04): the share rides the run when the show's day settles. %>
+            <% day_date, _settled = SettleUp.day_state_for(Current.organization, payment.show) %>
+            <%= link_to "Settles with #{day_date.strftime('%b %-d')}", manage_money_settle_up_day_path(day_date.iso8601),
+                  class: "inline-flex items-center rounded-md bg-pink-50 px-2 py-1 text-xs font-medium text-pink-700 hover:bg-pink-100 transition-colors" %>
           <% elsif payable %>
             <%# A wash never joins a run (nothing moves, no bank needed), so the
                 button says what actually happens: the share settles as an

@@ -61,6 +61,12 @@ class FinancialSummaryService
     new(productions).summaries_by_period(period_key)
   end
 
+  # The same for any date range (nil = all time): the Checks page compares
+  # Financials with Books through today.
+  def self.summaries_by_production_in(productions, range)
+    new(productions).calculate_summary(range, by_production: true)
+  end
+
   def all_period_summaries
     PERIODS.keys.index_with { |period| summary_for_period(period) }
   end
@@ -283,4 +289,5 @@ class FinancialSummaryService
       retained: net_income
     }
   end
+  public :calculate_summary
 end

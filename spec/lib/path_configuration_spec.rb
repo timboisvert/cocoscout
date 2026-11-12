@@ -61,6 +61,32 @@ RSpec.describe "The apps' page rules" do
                                              "/tax-forms/[0-9]+/w9/copy$", "/tax-forms/[0-9]+/1099/[0-9]+$")
   end
 
+  # Books' files (Tim, 2026-11-09): a link the rules don't name is tried as a
+  # web page, which a PDF or a CSV isn't. Checked against the addresses the
+  # pages really link to, format and query included.
+  it "hands Books' files to the phone's viewer too" do
+    documents = rule(nav2, "^/rails/active_storage/")["patterns"].map { |pattern| Regexp.new(pattern) }
+    routes = Rails.application.routes.url_helpers
+    files = [
+      routes.manage_money_statements_path(format: :pdf, kind: "pnl", period: "this_month"),
+      routes.manage_money_statements_path(format: :csv, kind: "pnl", period: "this_month"),
+      routes.manage_money_taxes_path(format: :csv, year: 2026),
+      routes.manage_ticket_taxes_path(format: :csv, period: "this_month"),
+      routes.manage_pdf_money_invoice_path(12, format: :pdf),
+      routes.manage_money_file_path(34, download: 1),
+      routes.manage_export_money_bank_rules_path,
+      routes.pay_invoice_pdf_path(token: "abc", format: :pdf),
+      routes.pay_contract_invoice_path(token: "abc", format: :pdf)
+    ]
+    files.each do |address|
+      with_query, path_only = address, address.split("?").first
+      expect(documents.any? { |pattern| pattern.match?(with_query) && pattern.match?(path_only) }).to be(true), "no document rule for #{address}"
+    end
+    pages = [ routes.manage_money_statements_path(kind: "pnl"), routes.manage_money_taxes_path, routes.manage_ticket_taxes_path,
+              routes.manage_money_bank_rules_path, "/manage/money/invoices/12", "/pay/invoice/abc" ]
+    pages.each { |address| expect(documents.none? { |pattern| pattern.match?(address) }).to be(true), "#{address} is a page, not a file" }
+  end
+
   it "is what the Android app bundles" do
     gradle = Rails.root.join("android/app/build.gradle.kts").read
     expect(gradle).to include('assets.srcDir("../../public/hotwire-native")')

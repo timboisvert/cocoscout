@@ -96,12 +96,15 @@ class MoneyTodoService
     shows = shows_awaiting_financials(productions, as_of: as_of)
     courses = courses_awaiting_financials(productions, as_of: as_of)
 
-    show_rows = shows.includes(:production).order(date_and_time: :desc).limit(limit).map do |show|
+    listed = shows.includes(:production).order(date_and_time: :desc).limit(limit).to_a
+    # One look-up for the organizations, so a row's link (its day on Settle up) costs no query.
+    organizations = Organization.where(id: listed.filter_map { |show| show.production&.organization_id }.uniq).index_by(&:id)
+    show_rows = listed.map do |show|
       { at: show.date_and_time,
         title: "#{show.date_and_time.strftime('%b %-d, %Y')} · #{show.display_name}",
         subtitle: show.production&.name,
         badge: { text: "Needs financials", color: "amber" },
-        href: Rails.application.routes.url_helpers.manage_money_show_financials_path(show) }
+        href: SettleUp.money_entry_href(organizations[show.production.organization_id], show) }
     end
 
     offerings = courses.includes(:production).to_a
@@ -174,6 +177,27 @@ class MoneyTodoService
     @financials ||= self.class.financials_section(productions, limit: row_limit)
   end
 
+  # Days to settle (Books V1.3, plan §9.2): the days that are over, had money
+  # in them, and nobody has settled. Oldest first; count covers them all.
+  def settle_days
+    @settle_days ||= Section.new(count: settle_dates.size, items: row_limit == 0 ? [] : SettleUp.to_settle(organization, limit: row_limit))
+  end
+
+  # The dates of those days alone: Home says how many and links the oldest.
+  def settle_dates
+    @settle_dates ||= SettleUp.open_dates(organization)
+  end
+
+  # Course runs still to settle, apart from the days: a course's money is its
+  # registrations, settled on the course's own page.
+  def courses
+    @courses ||= begin
+      section = self.class.financials_section(productions, limit: nil)
+      rows = section.items.select { |row| row[:badge][:text] == "Course" }
+      Section.new(count: rows.size, items: row_limit ? rows.first(row_limit) : rows)
+    end
+  end
+
   # Productions, courses and contracts with money still to move, oldest debt
   # first. Each row carries a per-status breakdown (to pay / in a draft run /
   # in flight / paid) so it answers "what have I done about this?"
@@ -203,17 +227,33 @@ class MoneyTodoService
 
   # Money owed to us that's late or lands inside the horizon. TBD amounts count
   # as rows but contribute nothing to the dollar totals — there's no figure yet.
+  # Money owed to you in the next 30 days: contract payments and invoices to
+  # anyone, together, by when they are due. Overdue always counts.
   def incoming
     @incoming ||= begin
       horizon = Date.current + INCOMING_HORIZON
       base = self.class.collectable_incoming(organization).where(due_date: ..horizon)
-      rows = base.by_due_date.includes(contract: [ :contractor, :production ]).to_a
+      payments = base.by_due_date.includes(contract: [ :contractor, :production ]).to_a
+      invoices = organization.invoices.open.where(due_on: ..horizon).includes(:production, :invoice_lines).to_a
+      rows = (payments + invoices).sort_by { |r| [ r.is_a?(Invoice) ? r.due_on : (r.due_date || UNDATED), r.id ] }
       overdue = rows.select(&:overdue?)
 
       Section.new(count: rows.size,
                   amount: sum_amounts(rows),
                   overdue_count: overdue.size,
                   overdue_amount: sum_amounts(overdue),
+                  items: row_limit ? rows.first(row_limit) : rows)
+    end
+  end
+
+  # Bills to pay (Books V1.3, plan D1): open bills by due date; overdue
+  # always counts, and the rest within the horizon.
+  def bills
+    @bills ||= begin
+      rows = organization.bills.open.where(due_on: ..(Date.current + INCOMING_HORIZON)).includes(:production).by_due.to_a
+      overdue = rows.select(&:overdue?)
+      Section.new(count: rows.size, amount: rows.sum(&:unpaid_cents) / 100.0,
+                  overdue_count: overdue.size, overdue_amount: overdue.sum(&:unpaid_cents) / 100.0,
                   items: row_limit ? rows.first(row_limit) : rows)
     end
   end
@@ -228,8 +268,8 @@ class MoneyTodoService
     @productions ||= user.accessible_productions.to_a
   end
 
-  def sum_amounts(payments)
-    payments.reject(&:amount_tbd?).sum { |p| p.amount.to_f }
+  def sum_amounts(rows)
+    rows.sum { |r| r.is_a?(Invoice) ? r.unpaid_cents / 100.0 : (r.amount_tbd? ? 0.0 : r.amount.to_f) }
   end
 
   # A row with no date sorts to the end rather than to the front.
@@ -268,10 +308,14 @@ class MoneyTodoService
       .unpaid.distinct.pluck(:show_payout_id)
     return {} if unpaid_payout_ids.empty?
 
-    Show.where(id: ShowPayout.where(id: unpaid_payout_ids).select(:show_id))
-        .includes(show_payout: { line_items: { payout_contribution: :payout_batch } })
-        .order(date_and_time: :desc)
-        .group_by(&:production_id)
+    shows = Show.where(id: ShowPayout.where(id: unpaid_payout_ids).select(:show_id))
+                .includes(show_payout: { line_items: { payout_contribution: :payout_batch } })
+                .order(date_and_time: :desc).to_a
+    # A show whose day is in Settle up and not settled yet pays from the day
+    # (Tim, 2026-11-04): its lines ride the run when the day settles, so
+    # they aren't money to pay by hand. The day is on the to-settle list.
+    waiting = SettleUp.awaiting_settlement(organization, shows).map(&:id).to_set
+    shows.reject { |s| waiting.include?(s.id) }.group_by(&:production_id)
   end
 
   def production_payout_items
@@ -314,9 +358,11 @@ class MoneyTodoService
   end
 
   def course_payout_items
-    courses = user.accessible_productions.courses
-                  .includes(course_offerings: { course_offering_payout: { line_items: { payout_contribution: :payout_batch } } }).to_a
-    offerings = courses.flat_map(&:course_offerings)
+    # Only the runs with an instructor line still unpaid: a run paid in full
+    # has nothing to say here, and after a few years most runs are.
+    unpaid = CourseOfferingPayout.where(id: CourseOfferingPayoutLineItem.unpaid.select(:course_offering_payout_id)).select(:course_offering_id)
+    offerings = CourseOffering.where(production_id: user.accessible_productions.courses.pluck(:id), id: unpaid).order(:id)
+                              .includes(course_offering_payout: { line_items: { payout_contribution: :payout_batch } }).to_a
     return [] if offerings.empty?
 
     # First session per offering, in one query — the course's own "when", so it
@@ -358,7 +404,10 @@ class MoneyTodoService
 
   def contract_payout_items
     items = []
-    organization.contracts
+    # Only the contracts with a payment to them still pending: every other
+    # one comes to nothing below, and finished contracts pile up.
+    owing = ContractPayment.where(direction: "outgoing", status: "pending").select(:contract_id)
+    organization.contracts.where(id: owing).order(:id)
                 .includes({ contract_payments: [ :show, { payout_contribution: :payout_batch } ] }, :contractor).each do |contract|
       outgoing = contract.contract_payments.select(&:direction_outgoing?)
       pending = outgoing.select(&:status_pending?)

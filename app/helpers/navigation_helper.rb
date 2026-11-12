@@ -107,54 +107,67 @@ module NavigationHelper
     end
 
     on_paid_plan = Current.organization&.on_paid_plan?
+    # Access by module: someone whose access is a grid (a bookkeeper, a box
+    # office) sees only the modules their grid opens; everyone else sees
+    # what their role always has.
+    governed = OrganizationAccess.governed?(Current.user, Current.organization)
+    can_see = lambda do |mod|
+      next true unless governed
+
+      OrganizationAccess.allows?(Current.user, Current.organization, mod, :view)
+    end
+    pro_access = Current.user&.superadmin? || Current.organization&.manageable_by?(Current.user) || governed
 
     free_items = [
       { label: "Home", path: manage_path, icon: "home", active: controller_name == "manage" && action_name == "index" },
       { label: "Messages", path: manage_messages_path, icon: "messages", active: controller_name == "messages",
         badge: Current.user&.unread_message_count.to_i },
-      { label: "Shows & Events", path: manage_shows_path, icon: "shows",
+      { label: "Shows & Events", path: manage_shows_path, icon: "shows", module: "shows",
         active: %w[shows org_shows vacancies show_wizard].include?(controller_name) },
-      { label: "Casting", path: manage_casting_path, icon: "casting",
+      { label: "Casting", path: manage_casting_path, icon: "casting", module: "casting",
         active: %w[casting casting_availability roles talent_pools casting_tables org_roles org_talent_pools org_availability].include?(controller_name) },
-      { label: "Sign-ups", path: manage_signups_path, icon: "signups",
+      { label: "Sign-ups", path: manage_signups_path, icon: "signups", module: "signups",
         active: %w[signups org_signups sign_up_forms auditions audition_cycles audition_requests audition_sessions sign_up_form_wizard audition_cycle_wizard org_auditions org_forms].include?(controller_name) },
-      { label: "Courses", path: manage_course_offerings_path, icon: "courses",
+      { label: "Courses", path: manage_course_offerings_path, icon: "courses", module: "courses",
         active: %w[course_offerings course_offering_wizard].include?(controller_name) },
-      { label: "Documents", path: manage_org_documents_path, icon: "documents",
+      { label: "Documents", path: manage_org_documents_path, icon: "documents", module: "documents",
         active: %w[org_documents documents].include?(controller_name) },
-      { label: "Contacts", path: manage_contacts_path, icon: "contacts",
+      { label: "Contacts", path: manage_contacts_path, icon: "contacts", module: "contacts",
         active: %w[directory people groups questionnaires].include?(controller_name) }
     ]
+    free_items.select! { |item| item[:module].nil? || can_see.call(item[:module]) }
 
     # The Pro-tier modules, grouped under a small "Pro" heading so the whole set
     # reads as Pro without a badge on each one.
     pro_items = []
-    # Ticketing, like Staffing, is for org owners and managers.
-    if Current.user&.superadmin? || Current.organization&.manageable_by?(Current.user)
-      pro_items << { label: "Ticketing", path: manage_ticketing_path, icon: "ticketing", locked: !on_paid_plan, feature: :ticketing,
-                     active: %w[ticketing ticketing_settings ticket_listings ticket_orders ticket_balance ticket_taxes ticket_comps ticket_products
-                                production_ticketings ticket_passes ticket_offers ticket_offer_wizard ticket_sales_viewers short_links].include?(controller_name) }
-    end
-    # Mailing lists follows Ticketing: its lists fill from ticket checkout.
-    if Current.user&.superadmin? || Current.organization&.manageable_by?(Current.user)
-      pro_items << { label: "Mailing lists", path: manage_mailing_lists_path, icon: "mailing_lists", locked: !on_paid_plan, feature: :mailing_lists,
-                     active: %w[mailing_lists mailing_list_settings list_followers segments follower_emails].include?(controller_name) }
-    end
     # The whole Pro group is for the organization's owners and managers
-    # (PaidFeatureGate::MANAGER_ONLY_FEATURES); a production-team member sees
-    # the free modules only. Staffing leads the group.
-    if Current.user&.superadmin? || Current.organization&.manageable_by?(Current.user)
-      pro_items << { label: "Staffing", path: manage_staffing_index_path, icon: "staffing", locked: !on_paid_plan, feature: :staffing,
-                     active: controller_path.to_s.start_with?("manage/staffing") }
+    # (PaidFeatureGate::MANAGER_ONLY_FEATURES), plus whoever a grid lets in
+    # (OrganizationAccess); a production-team member sees the free modules
+    # only. Ticketing leads, Mailing lists follows it (its lists fill from
+    # ticket checkout), then Staffing, Money, Contracts, Reports.
+    if pro_access
       pro_items += [
-        { label: "Money", path: manage_money_index_path, icon: "money", locked: !on_paid_plan, feature: :money,
-          active: %w[money money_financials money_payouts show_payouts show_financials money_settings books ticket_balance].include?(controller_name) },
+        { label: "Ticketing", path: manage_ticketing_path, icon: "ticketing", locked: !on_paid_plan, feature: :ticketing, module: "ticketing",
+          active: %w[ticketing ticketing_settings ticket_listings ticket_orders ticket_taxes ticket_comps ticket_products ticket_gift_certificates
+                     production_ticketings ticket_passes ticket_offers ticket_offer_wizard ticket_sales_viewers short_links].include?(controller_name) },
+        { label: "Mailing lists", path: manage_mailing_lists_path, icon: "mailing_lists", locked: !on_paid_plan, feature: :mailing_lists, module: "mailing_lists",
+          active: %w[mailing_lists mailing_list_settings list_followers segments follower_emails].include?(controller_name) },
+        { label: "Staffing", path: manage_staffing_index_path, icon: "staffing", locked: !on_paid_plan, feature: :staffing, module: "staffing",
+          active: controller_path.to_s.start_with?("manage/staffing") },
+        { label: "Money", path: manage_money_index_path, icon: "money", locked: !on_paid_plan, feature: :money, module: "money",
+          active: %w[money money_financials money_payouts show_payouts show_financials money_settings books ticket_balance money_incoming
+                     settlement_days ticket_outside_sales money_records bank_statements bills invoices payout_calculations payout_batches advances].include?(controller_name) },
         # Contracts is its own Pro module — a deal with someone doesn't require Money.
-        { label: "Contracts", path: manage_contracts_path, icon: "documents", locked: !on_paid_plan, feature: :contracts,
+        { label: "Contracts", path: manage_contracts_path, icon: "documents", locked: !on_paid_plan, feature: :contracts, module: "contracts",
           active: %w[contracts contract_wizard contract_payments contract_documents contractors contract_settings].include?(controller_name) },
-        { label: "Reports", path: manage_reports_path, icon: "reports", locked: !on_paid_plan, feature: :reports,
+        { label: "Reports", path: manage_reports_path, icon: "reports", locked: !on_paid_plan, feature: :reports, module: "reports",
           active: controller_name == "reports" }
       ]
+      if governed
+        pro_items.select! do |item|
+          item[:module] == "money" ? OrganizationAccess.money_level(Current.user, Current.organization) != "none" : can_see.call(item[:module])
+        end
+      end
     end
 
     # No Pro heading for someone with nothing under it (a producer on a team).

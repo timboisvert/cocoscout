@@ -1,0 +1,132 @@
+<% content_for :title, "Bank" %>
+<%# Books → Bank: the transactions as the bank knows them, full width, each
+    one matched to the books, recorded, or ignored without leaving the page
+    (Tim, 2026-11-02): an action on a row answers with a Turbo Stream that
+    swaps the row, and Record it fills a modal here. A statement comes in
+    through the modal the top-right button opens. Rules and Sort are pages
+    of their own (2026-11-03); with a lot waiting, the panel at the top
+    points there. %>
+<%
+  can_change = module_change?(:books)
+  filters = { month: @month, kind: @kind }.compact
+  open_button = ->(text, variant = "primary", size = "small") { render "shared/button", text: text, variant: variant, size: size, type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "bank-import-modal" } }
+  links = if can_change
+    [ ({ text: "Sort", variant: "secondary", path: manage_money_bank_sort_path } if @summary.open_count.positive?),
+      { text: "Rules", variant: "secondary", path: manage_money_bank_rules_path },
+      { text: "Bring a statement in", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "bank-import-modal" } } ].compact
+  else
+    [ { text: "Rules", variant: "secondary", path: manage_money_bank_rules_path } ]
+  end
+%>
+<div class="w-full mb-10" data-controller="bank-record">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: books_breadcrumbs, text: "Bank", links: links } %>
+
+  <% if @summary.last.nil? %>
+    <%# First visit: nothing to compare yet, so no balances, only the way in.
+        The books can't know what's in the bank until a statement says so. %>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      <div class="space-y-4">
+        <div class="text-sm text-gray-600 space-y-2">
+          <p>Bring in a statement from your bank to check the books against it. Download a month as CSV or OFX from your bank's website.</p>
+          <p>Each line on it either matches something already on the books, gets recorded as money you hadn't written down, or is ignored. This is optional: the books stand on their own without it.</p>
+        </div>
+        <% if can_change %>
+          <div><%= open_button.call("Bring your first statement in", "primary", "medium") %></div>
+        <% else %>
+          <p class="text-sm text-gray-500">No statement has been brought in yet.</p>
+        <% end %>
+      </div>
+      <%= render "shared/file_promises" %>
+    </div>
+  <% else %>
+    <% if @summary.matching? %>
+      <div class="mb-4 flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm text-blue-900" data-controller="auto-refresh" data-auto-refresh-interval-value="15000">
+        <svg class="w-5 h-5 flex-none animate-spin text-blue-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
+        <span>Matching the statement to the books. This takes a minute or two; you'll get a notification when it's done, and this page refreshes on its own.</span>
+      </div>
+    <% elsif @summary.applying_rules? %>
+      <div class="mb-4 flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm text-blue-900" data-controller="auto-refresh" data-auto-refresh-interval-value="15000">
+        <svg class="w-5 h-5 flex-none animate-spin text-blue-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
+        <span>Your rules are going through the lines waiting. You'll get a notification when that's done, and this page refreshes on its own.</span>
+      </div>
+    <% elsif @summary.failed %>
+      <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900">The matching for <b><%= @summary.failed.title %></b> didn't finish. Its lines are here to deal with by hand; remove the statement and bring it in again to try the matching once more.</div>
+    <% end %>
+
+    <% if @payees %>
+      <%# A lot to sort (BankSort::THRESHOLD lines waiting): the way through it, before the tiles. %>
+      <%= render "shared/alert_panel", eyebrow: "A lot to sort",
+            headline: "#{number_with_delimiter(@summary.open_count)} lines waiting#{@payees.any? ? " · #{@payees.size} payees you see again and again" : ''}",
+            body: "Let's go through it together. First the payees that keep coming back, one at a time; say what each one is and a rule takes care of every line from them, now and every statement after. Then the rest, one line at a time, with the usual answers a tap away.#{" On this statement the first #{[ @payees.size, 10 ].min} payees alone cover #{@payees.first(10).sum(&:count)} lines." if @payees.size > 1}",
+            actions: [ { text: "Sort them with me", path: manage_money_bank_sort_path }, { text: "Rules", path: manage_money_bank_rules_path } ] %>
+    <% end %>
+    <%= render "manage/bank_statements/tiles", summary: @summary %>
+
+    <section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+      <%= render "shared/section_heading", padding: "px-5 py-3", title: "To deal with" do %>
+        <%= render "manage/bank_statements/open_count", summary: @summary %>
+      <% end %>
+      <% if @summary.open_count.zero? %>
+        <div class="px-5 py-6 text-sm text-gray-500 flex items-center gap-2"><span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-50 text-green-600 flex-none"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></span>Every line is dealt with.</div>
+        <%= render "manage/bank_statements/yes_to_all", summary: @summary, filters: filters %>
+      <% else %>
+        <div class="px-5 py-3 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <%= render "shared/filters/filter_bar", bare: true, no_container: true, filter_groups: [
+                ({ partial: "shared/filters/dropdown_filter", locals: { label: "Month", name: "month", selected: @month.to_s,
+                     options: [ { value: "", text: "Every month" } ] + @summary.months.map { |m| { value: m.strftime("%Y-%m"), text: m.strftime("%B %Y") } },
+                     extra_url_params: { kind: @kind } } } if @summary.months.size > 1),
+                { label: "Show", filters: [
+                  { text: "All", path: manage_money_bank_path(filters.except(:kind)), active: @kind.nil? },
+                  { text: "Money in", path: manage_money_bank_path(filters.merge(kind: "in")), active: @kind == "in" },
+                  { text: "Money out", path: manage_money_bank_path(filters.merge(kind: "out")), active: @kind == "out" }
+                ] }
+              ].compact %>
+          <%= render "manage/bank_statements/yes_to_all", summary: @summary, filters: filters %>
+        </div>
+        <% if @lines.empty? %>
+          <div class="px-5 py-6 text-sm text-gray-500">Nothing in this month<%= @kind ? " going #{@kind}" : "" %>.</div>
+        <% else %>
+          <ul class="divide-y divide-gray-100">
+            <% @lines.each do |line| %>
+              <%= render "manage/bank_statements/line", line: line, looks_like: @candidates[line.id], hint: (line.description_key && @hints[line.description_key]), filters: filters %>
+            <% end %>
+          </ul>
+          <% if @pagy.pages > 1 %>
+            <div class="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
+              <div class="text-sm text-gray-500">Page <%= @pagy.page %> of <%= @pagy.pages %> · <%= pluralize(@pagy.count, "line") %></div>
+              <div class="flex gap-2">
+                <% if @pagy.previous %><%= render "shared/button", text: "Previous", variant: "secondary", size: "small", path: manage_money_bank_path(filters.merge(page: @pagy.previous)) %><% end %>
+                <% if @pagy.next %><%= render "shared/button", text: "Next", variant: "secondary", size: "small", path: manage_money_bank_path(filters.merge(page: @pagy.next)) %><% end %>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+        <p class="px-5 py-3 border-t border-gray-100 text-xs text-gray-500">A match is a line the books already have. Record it when they don't. Ignore a transfer between your own accounts or a personal charge.</p>
+      <% end %>
+    </section>
+
+    <% if @recent_done.any? %>
+      <section class="mt-6 rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <%= render "shared/section_heading", padding: "px-5 py-3", title: "Dealt with" do %>
+          <span class="text-xs text-gray-500"><%= pluralize(@done_count, "line") %> in all; the latest below</span>
+        <% end %>
+        <ul class="divide-y divide-gray-100">
+          <% @recent_done.each do |line| %>
+            <%= render "manage/bank_statements/line", line: line, filters: filters %>
+          <% end %>
+        </ul>
+      </section>
+    <% end %>
+  <% end %>
+
+  <% if can_change %>
+    <%= render "manage/bank_statements/import_modal", title: (@summary.last.nil? ? "Bring your first statement in" : "Bring a statement in"), imports: @summary.imports %>
+    <% @summary.imports.each do |imp| %>
+      <%= render "shared/confirm_modal", id: "remove-statement-#{imp.id}", title: "Remove #{imp.title}?",
+            message: "Its #{pluralize(imp.new_lines_count, 'line')} leave this page, the ones you dealt with too. Money you recorded from them stays on the books.",
+            confirm_text: "Remove", url: manage_money_bank_statement_path(imp), method: :delete, form_data: { turbo: false } %>
+    <% end %>
+    <% if @summary.last %><%= render "manage/bank_statements/record_modal", **@modal %><% end %>
+  <% end %>
+</div>

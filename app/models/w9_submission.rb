@@ -54,6 +54,7 @@ class W9Submission < ApplicationRecord
   belongs_to :uploaded_by, class_name: "User", optional: true
   has_many :tax_document_accesses, dependent: :destroy
   has_one_attached :document
+  include HierarchicalStorageKey # after the attachment, so the key moves once the file is up
 
   encrypts :tin
 

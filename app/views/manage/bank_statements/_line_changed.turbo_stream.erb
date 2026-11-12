@@ -1,0 +1,20 @@
+<%# A line changed (matched, ignored, recorded, reopened): its row swaps in
+    place, the tiles and counts follow. reset_modal: the Record this line
+    modal goes back to blank and closes (a record was just saved). %>
+<%= turbo_stream.replace dom_id(line) do %>
+  <%= render "manage/bank_statements/line", line: line, looks_like: looks_like, hint: hint, filters: filters %>
+<% end %>
+<%= turbo_stream.replace "bank-tiles" do %>
+  <%= render "manage/bank_statements/tiles", summary: summary %>
+<% end %>
+<%= turbo_stream.replace "bank-open-count" do %>
+  <%= render "manage/bank_statements/open_count", summary: summary %>
+<% end %>
+<%= turbo_stream.replace "bank-yes-to-all" do %>
+  <%= render "manage/bank_statements/yes_to_all", summary: summary, filters: filters %>
+<% end %>
+<% if local_assigns[:reset_modal] %>
+  <%= turbo_stream.replace "bank-record-modal" do %>
+    <%= render "manage/bank_statements/record_modal", records: records, productions: productions, shows: shows %>
+  <% end %>
+<% end %>

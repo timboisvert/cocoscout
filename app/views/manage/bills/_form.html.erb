@@ -1,0 +1,51 @@
+<%# Add or change a bill. Locals: bill, productions, shows %>
+<%
+  input = "mt-1 block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  label = "block text-sm font-medium text-gray-700"
+  url = bill.persisted? ? manage_money_bill_path(bill) : manage_money_bills_path
+%>
+<%= form_with model: bill, url: url, method: (bill.persisted? ? :patch : :post), data: { turbo: false, controller: "record-money" } do |f| %>
+  <div class="px-6 pt-5 pb-6 space-y-5">
+    <% if bill.errors.any? %>
+      <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"><%= bill.errors.full_messages.to_sentence %></div>
+    <% end %>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <label class="<%= label %>"><span>Who you owe</span><%= f.text_field :vendor_name, placeholder: "Chicago Lumber Co.", class: input %></label>
+      <label class="<%= label %>"><span>Their number <span class="font-normal text-gray-500">(optional)</span></span><%= f.text_field :vendor_reference, placeholder: "Invoice 4471", class: input %></label>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <label class="<%= label %>"><span>Amount</span>
+        <span class="relative block"><span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 pt-1 text-gray-500">$</span>
+        <%= f.text_field :amount, value: (bill.amount_cents.to_i.positive? ? number_with_precision(bill.amount, precision: 2, delimiter: ",") : nil), inputmode: "decimal", placeholder: "0.00", class: "#{input} pl-7 tabular-nums", data: { record_money_target: "amount", action: "input->record-money#updateSubmit" } %></span></label>
+      <label class="<%= label %>"><span>Arrived</span><%= f.date_field :issued_on, class: input %></label>
+      <label class="<%= label %>"><span>Due</span><%= f.date_field :due_on, class: input %></label>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <label class="<%= label %>"><span>Category</span><%= render "shared/category_picker", name: "bill[category_key]", kind: :spending, organization: bill.organization, value: bill.category_key, id: "bill_category_key" %></label>
+      <label class="<%= label %>"><span>What for</span><%= f.text_field :memo, placeholder: "Set lumber", class: input %></label>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <label class="<%= label %>"><span>For</span><%= f.select :production_id, productions.map { |pr| [ pr.name, pr.id ] }, { include_blank: "Nothing in particular" }, class: input, data: { record_money_target: "production", action: "change->record-money#filterShows" } %></label>
+      <label class="<%= label %>"><span>A particular date <span class="font-normal text-gray-500">(optional)</span></span>
+        <%= f.select :show_id, options_for_select([ [ "The whole production", "" ] ] + shows.map { |s| [ "#{s.date_and_time.strftime('%b %-d, %Y')}#{" · #{s.secondary_name}" if s.secondary_name.present?}", s.id, { data: { production: s.production_id } } ] }, bill.show_id), {}, class: input, data: { record_money_target: "show" } %></label>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <label class="<%= label %>"><span>Repeats</span><%= f.select :repeats, Bill::REPEATS.map { |k, v| [ v, k ] }, {}, class: input %><span class="block mt-1 text-xs text-gray-500">When this one is paid, the next appears with the same amount.</span></label>
+      <label class="<%= label %>"><span>Their email <span class="font-normal text-gray-500">(optional)</span></span><%= f.email_field :vendor_email, class: input %></label>
+    </div>
+    <label class="<%= label %>"><span>The bill itself <span class="font-normal text-gray-500">(optional)</span></span>
+      <span class="mt-1 flex items-center gap-3 rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-3">
+        <svg class="w-5 h-5 text-gray-500 flex-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 3h8l4 4v14H7zM15 3v4h4"/></svg>
+        <span class="min-w-0 flex-1"><span class="block text-sm text-gray-900"><%= bill.document.attached? ? bill.document.filename : "Add the PDF or a photo" %></span><span class="block text-xs text-gray-500">Up to 10 MB</span></span>
+        <%= f.file_field :document, accept: "image/jpeg,image/png,application/pdf", class: "text-sm text-gray-700 max-w-[12rem]" %>
+      </span>
+    </label>
+  </div>
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4">
+    <span class="text-xs text-gray-500">Goes on the books the day it arrived, as money you owe, and again the day you pay it.</span>
+    <span class="flex items-center gap-2 justify-end">
+      <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :link, path: (bill.persisted? ? manage_money_bill_path(bill) : manage_money_bills_path) %>
+      <%= render "shared/button", text: (bill.persisted? ? "Save" : "Add the bill"), variant: "primary", size: "medium", type: :submit %>
+    </span>
+  </div>
+<% end %>

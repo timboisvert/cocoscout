@@ -10,6 +10,8 @@ class Organization < ApplicationRecord
   include Monogram
 
   belongs_to :owner, class_name: "User"
+  belongs_to :books_locked_by, class_name: "User", optional: true
+  belongs_to :books_categories_set_up_by, class_name: "User", optional: true
   # CocoScout's bills to it, and its monthly statements. CocoScout's own
   # records of money it earned keep their amounts if the org is ever deleted.
   has_many :billing_invoices, dependent: :destroy
@@ -60,8 +62,25 @@ class Organization < ApplicationRecord
   has_many :payout_batches, dependent: :destroy
   # The books (see LedgerPosting). Entries are permanent, so deleting an org
   # clears them in bulk, lines first — the order these are declared in.
+  has_many :ledger_month_balances, dependent: :delete_all
+  has_one :books_rollup, dependent: :delete
   has_many :journal_lines, dependent: :delete_all
   has_many :journal_entries, dependent: :delete_all
+  has_many :money_records, dependent: :destroy
+  has_many :integrations, dependent: :destroy
+  has_many :bills, dependent: :destroy
+  # The invoices it wrote to anyone. A contract payment's invoice is a row in
+  # the same table (Invoice, kind "contract") that reads everything from its
+  # payment, so it belongs in none of the lists and totals these feed.
+  has_many :invoices, -> { standalone }, dependent: :destroy
+  has_many :contract_invoices, -> { for_contracts }, class_name: "Invoice", dependent: :destroy
+  has_many :bank_statement_imports, dependent: :destroy
+  has_many :books_downloads, dependent: :destroy
+  has_many :bank_statement_lines, dependent: :destroy
+  has_many :bank_rules, dependent: :destroy
+  has_many :bank_rule_dismissals, dependent: :destroy
+  has_many :register_days, dependent: :destroy
+  has_one :tip_rule, dependent: :destroy
   has_many :ledger_accounts, dependent: :delete_all
   # Ticketing. Orders go before listings (a listing with orders refuses to be
   # destroyed on its own), and tax lines before the rates they name.
@@ -124,6 +143,8 @@ class Organization < ApplicationRecord
   FREE_PRODUCTION_LIMIT = 1
 
   validates :name, presence: true
+  validates :settlement_day_mode, inclusion: { in: %w[smart calendar] }
+  validates :settlement_day_starts_at, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than: 24 }
   # The clock the organization's pages, forms, notices and reminders read in
   # (TimeZones). Central unless it picked another.
   validates :time_zone, inclusion: { in: ->(_) { ActiveSupport::TimeZone.all.map(&:name) }, message: "isn't a time zone we know" }
@@ -488,6 +509,13 @@ class Organization < ApplicationRecord
       people_count: person_ids.size,
       groups_count: group_ids.size
     }
+  end
+
+  # The rooms a calendar colors by: every room of every location, by
+  # location then name.
+  def calendar_rooms
+    @calendar_rooms ||= LocationSpace.joins(:location).where(locations: { organization_id: id, archived_at: nil })
+                                     .order("locations.name, location_spaces.name").includes(:location).to_a
   end
 
   private

@@ -1,0 +1,77 @@
+<%#
+  A money category, picked from a sheet of our own (Tim, 2026-11-02): the
+  name of each with what goes in it underneath, alphabetical, so "Bar
+  purchases" and "Food and drink" tell themselves apart. A hidden input
+  carries the key; the button shows the choice and its line.
+  category_picker_controller.js runs it.
+
+  Locals:
+    name          (required) the input's name, e.g. "money_record[category_key]"
+    kind          :income or :spending (default :spending)
+    organization  whose categories (hidden ones left out, its own included)
+    value         the key chosen now (nil for none)
+    id            the hidden input's id (optional)
+    prompt        the button's words before a choice (default "Choose one")
+    title         the sheet's title (default by kind)
+    disabled      true to start disabled (the input sends nothing)
+    data          extra data attributes for the wrapper (e.g. another controller's target)
+%>
+<%
+  name = local_assigns.fetch(:name)
+  kind = local_assigns.fetch(:kind, :spending).to_sym
+  organization = local_assigns[:organization]
+  value = local_assigns[:value].to_s
+  prompt = local_assigns.fetch(:prompt, "Choose one")
+  title = local_assigns[:title] || (kind == :income ? "What kind of money is it?" : "What is it for?")
+  disabled = local_assigns.fetch(:disabled, false)
+  choices = kind == :income ? MoneyCategories.income_choices(organization) : MoneyCategories.spending_choices(organization)
+  chosen = choices.find { |c| c.key == value }
+  wrapper_data = { controller: "category-picker" }.merge(local_assigns.fetch(:data, {}))
+%>
+<%= tag.div class: "block", data: wrapper_data do %>
+  <input type="hidden" name="<%= name %>" value="<%= chosen&.key %>" <%= "id=\"#{local_assigns[:id]}\"".html_safe if local_assigns[:id] %> <%= "disabled" if disabled %> data-prompt="<%= prompt %>" data-category-picker-target="input">
+  <button type="button" <%= "disabled" if disabled %> data-category-picker-target="button" data-action="click->category-picker#open"
+          class="mt-1 flex w-full items-center justify-between gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-left shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 disabled:bg-gray-50 disabled:text-gray-400 cursor-pointer">
+    <span class="min-w-0">
+      <span class="block truncate text-sm <%= chosen ? 'text-gray-900' : 'text-gray-500' %>" data-category-picker-target="label"><%= chosen ? chosen.label : prompt %></span>
+      <span class="block truncate text-xs text-gray-500 <%= 'hidden' unless chosen&.description %>" data-category-picker-target="hint"><%= chosen&.description %></span>
+    </span>
+    <svg class="h-4 w-4 flex-none text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg>
+  </button>
+
+  <div class="hidden fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 sm:p-4" data-category-picker-target="modal" data-action="click->category-picker#closeOnBackdrop" role="dialog" aria-modal="true" aria-label="<%= title %>">
+    <%# A long list gets a box to find one and a steady height, so the sheet doesn't jump as the list shrinks. %>
+    <div class="flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:mx-4 sm:max-w-md sm:rounded-xl <%= 'h-[85vh] sm:h-[34rem]' if choices.size > 8 %>" data-action="click->category-picker#stopPropagation">
+      <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+        <h3 class="text-lg font-semibold text-white"><%= title %></h3>
+        <button type="button" data-action="click->category-picker#close" aria-label="Close"
+                class="rounded-full p-1 text-white/80 transition-colors hover:bg-white/10 hover:text-white cursor-pointer">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <% if choices.size > 8 %>
+        <div class="border-b border-gray-200 px-4 py-3">
+          <input type="search" placeholder="Find one" aria-label="Find a category" autocomplete="off"
+                 class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                 data-category-picker-target="search" data-action="input->category-picker#filter">
+        </div>
+      <% end %>
+      <ul class="min-h-0 flex-1 divide-y divide-gray-100 overflow-y-auto" role="listbox" data-category-picker-target="list">
+        <% choices.each do |choice| %>
+          <li>
+            <button type="button" role="option" aria-selected="<%= choice.key == value %>" data-key="<%= choice.key %>" data-label="<%= choice.label %>" data-description="<%= choice.description %>"
+                    data-category-picker-target="option" data-action="click->category-picker#choose"
+                    class="flex w-full items-center justify-between gap-3 px-5 py-3 text-left transition-colors hover:bg-pink-50 aria-selected:bg-pink-50 cursor-pointer">
+              <span class="min-w-0">
+                <span class="block text-sm font-medium text-gray-900"><%= choice.label %><% if choice.custom %> <span class="text-xs font-normal text-pink-600">yours</span><% end %></span>
+                <% if choice.description %><span class="block text-xs text-gray-500"><%= choice.description %></span><% end %>
+              </span>
+              <svg class="h-5 w-5 flex-none text-pink-600 <%= 'invisible' unless choice.key == value %>" data-category-picker-target="check" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            </button>
+          </li>
+        <% end %>
+        <li class="hidden px-5 py-6 text-center text-sm text-gray-500" data-category-picker-target="empty">Nothing by that name. Add your own on Money settings → Books.</li>
+      </ul>
+    </div>
+  </div>
+<% end %>

@@ -81,19 +81,26 @@ class StaffPayRunService
         payable_total = parts.reject { |p| p[:excluded] }.sum { |p| p[:amount] }
         next if payable_total <= 0
 
+        # Tips they were paid over (a day reopened after it was paid, Tim
+        # 2026-11-04) come out of this pay, as a line of their own.
+        overpaid = overpaid_tips(organization, payee, payable_total)
+        parts << overpaid[:part] if overpaid
+
         item = batch.items.find_by(payee: payee) ||
                batch.items.create!(payee: payee, amount_cents: payable_total, status: "pending")
 
-        parts.each do |part|
-          add_contribution!(batch, item, payee, label: part[:label], amount_cents: part[:amount],
-                            description: line[:notes], excluded_from_payout: part[:excluded],
-                            worksheet: part[:worksheet], details: part[:details])
+        contributions = parts.to_h do |part|
+          [ part[:label], add_contribution!(batch, item, payee, label: part[:label], amount_cents: part[:amount],
+                                            description: line[:notes], excluded_from_payout: part[:excluded],
+                                            worksheet: part[:worksheet], details: part[:details]) ]
         end
         # The same item may already carry this person's show pay — settle both
         # kinds together (staff as entered, performer netted).
         item.settle_amount!
 
         tie_time_entries!(organization, payee, line[:time_entry_ids], batch)
+        tie_tip_shares!(organization, payee, line[:tip_share_ids], contributions)
+        overpaid[:shares].each { |share| share.update!(payout_contribution: contributions[OVERPAID_TIPS_LABEL]) } if overpaid
         added += 1
       end
 
@@ -119,6 +126,28 @@ class StaffPayRunService
       { label: "Tips", amount: line[:tips_cents].to_i, excluded: false, worksheet: line[:tips_worksheet] },
       { label: "Cash tips (recorded)", amount: line[:cash_tips_cents].to_i, excluded: true, worksheet: line[:cash_tips_worksheet] }
     ].select { |p| p[:amount].positive? }
+  end
+
+  OVERPAID_TIPS_LABEL = "Tips paid over"
+
+  # What this person was overpaid in tips, as a negative line for this pay,
+  # with the shares it settles: all of it or none. A pay too small to cover
+  # it is left whole, and it waits for the next one that can (nothing here
+  # pays anyone nothing).
+  def self.overpaid_tips(organization, payee, payable_cents)
+    shares = TipShare.overpaid_for(organization).where(person: payee).to_a
+    over = shares.sum { |share| -share.owed_cents }
+    return nil unless over.positive? && over < payable_cents
+
+    { shares: shares,
+      part: { label: OVERPAID_TIPS_LABEL, amount: -over, excluded: false,
+              worksheet: shares.map { |share| { "date" => share.day_label, "amount_cents" => share.owed_cents } } } }
+  end
+
+  # What comes out of each person's next pay for tips paid over, by person
+  # id: what Pay People shows beside their row.
+  def self.overpaid_tips_by_person(organization)
+    TipShare.overpaid_for(organization).group_by(&:person_id)
   end
 
   def self.normalize_adhoc(line)
@@ -157,6 +186,18 @@ class StaffPayRunService
       )
     end
     contribution
+  end
+
+  # The tip shares pulled in from settled days (Settle up) ride the Tips
+  # line, cash ones the recorded cash-tips line, and leave the waiting pool.
+  def self.tie_tip_shares!(organization, payee, ids, contributions)
+    ids = Array(ids).map(&:to_i).reject(&:zero?)
+    return if ids.empty?
+
+    TipShare.waiting_for(organization).where(person: payee, id: ids).each do |share|
+      contribution = contributions[share.payout? ? "Tips" : "Cash tips (recorded)"]
+      share.update!(payout_contribution: contribution) if contribution
+    end
   end
 
   # Attach the pulled-in worked-time entries to this batch so they leave the

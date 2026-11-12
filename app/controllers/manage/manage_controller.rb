@@ -33,6 +33,7 @@ module Manage
                   except: %i[index]
     # Pro-tier gate — runs after the org is loaded and access is confirmed.
     before_action :require_paid_feature!, if: -> { Current.user.present? }
+    before_action :require_module_access!
 
     before_action :note_mode_switch
     # A show canceled, taken away or moved by this request: the next page
@@ -109,7 +110,7 @@ module Manage
         # Only what can be paid now: money already in a run, or for a show
         # that hasn't happened, isn't anything to do (Tim, 2026-11-02).
         payable = todo.payouts.amounts[:to_pay].to_f
-        @home_attention = { financials: todo.financials.count.to_i, payouts: payable > 0.004 ? 1 : 0, payouts_amount: payable,
+        @home_attention = { days: todo.settle_days.count.to_i, oldest_day: todo.settle_dates.first&.iso8601, payouts: payable > 0.004 ? 1 : 0, payouts_amount: payable,
                             hours: Current.organization.staff_time_entries.pending.distinct.count(:person_id) }
       end
       @home_status = home_status_items(pro_manager)
@@ -171,7 +172,7 @@ module Manage
       end
       if @home_attention
         a = @home_attention
-        items << { key: "financials", topic: "Money", tone: :gray, text: "#{a[:financials]} #{'show'.pluralize(a[:financials])} that need financials", action: { path: manage_money_financials_path } } if a[:financials].positive?
+        items << { key: "settle", topic: "Money", tone: :gray, text: "#{a[:days]} #{'day'.pluralize(a[:days])} to settle up", action: { path: (a[:oldest_day] ? manage_money_settle_up_day_path(a[:oldest_day]) : manage_money_settle_up_path) } } if a[:days].positive?
         items << { key: "pay", topic: "Money", tone: :pink, text: "#{helpers.number_to_currency(a[:payouts_amount])} to pay", action: { path: manage_money_payouts_path } } if a[:payouts].positive?
       end
       if pro_manager && Current.organization.feature_available?(:contracts)

@@ -13,6 +13,9 @@ class Contract < ApplicationRecord
   has_many :contract_documents, dependent: :destroy
   has_many :contract_payments, dependent: :destroy
   has_many :space_rentals, dependent: :destroy
+  # A contract going live, or being cancelled, puts its rentals on the
+  # organization's Google Calendar or takes them off.
+  after_commit :keep_google_calendar, if: :saved_change_to_status?
   has_many :ticket_listings, dependent: :nullify
   # A contract is FOR one production (the real-world show). A production can be the
   # subject of many contracts over time — see Production#contracts.
@@ -2450,6 +2453,10 @@ class Contract < ApplicationRecord
                                 .where(course_offering_payouts: { course_offering_id: course_offerings.select(:id) })
                                 .where(manually_paid: true).includes(course_offering_payout: :course_offering)
                                 .find_each { |item| item.course_offering_payout.settle_contract_payments!(item) }
+  end
+
+  def keep_google_calendar
+    GoogleCalendarFullSyncJob.perform_later(organization_id) if GoogleCalendarSync.on_for?(organization_id)
   end
 
   private

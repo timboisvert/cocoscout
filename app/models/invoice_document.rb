@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 # One invoice, as both its web page and its PDF (InvoicePdf) render it, so the
-# two can never disagree. Built by ContractInvoice#document (money someone owes
-# an organization) and CocoScoutInvoice.document (what CocoScout billed an
-# organization).
+# two can never disagree. Built by Invoice#document (money someone owes an
+# organization, either kind) and CocoScoutInvoice.document (what CocoScout
+# billed an organization).
 class InvoiceDocument
   # Who it's from or to: a name, address lines, email and phone.
   Party = Data.define(:name, :lines, :email, :phone) do

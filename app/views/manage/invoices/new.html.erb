@@ -1,0 +1,91 @@
+<% content_for :title, "Send an invoice" %>
+<%
+  input = "mt-1 block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  label = "block text-sm font-medium text-gray-700"
+  check = "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+  seller = Current.organization.invoice_seller
+%>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Money", manage_money_index_path ], [ "Incoming Payments", manage_money_incoming_path ] ], text: "Send an invoice", links: [] } %>
+
+  <div class="max-w-3xl -mx-4 sm:mx-auto bg-white sm:rounded-xl sm:border sm:border-gray-200 sm:shadow-sm overflow-hidden">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <div><h2 class="text-lg font-semibold text-white">Send an invoice</h2><p class="text-xs text-pink-100">From <%= seller.name %>, numbered <%= Current.organization.invoice_prefix_or_default %>-<%= Current.organization.invoice_next_number.to_s.rjust(4, "0") %></p></div>
+      <%= link_to manage_money_incoming_path, class: "rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors", aria: { label: "Close" } do %>
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      <% end %>
+    </div>
+
+    <%= form_with model: @invoice, url: manage_money_invoices_path, method: :post, data: { turbo: false, controller: "record-money invoice-lines" } do |f| %>
+      <div class="px-6 pt-5 pb-6 space-y-6">
+        <% if @invoice.errors.any? %>
+          <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"><%= @invoice.errors.full_messages.to_sentence %></div>
+        <% end %>
+
+        <fieldset class="space-y-4">
+          <legend class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Who it is to</legend>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label class="<%= label %>"><span>Name</span><%= f.text_field :bill_to_name, placeholder: "Acme Bank, or Jane Smith", class: input %></label>
+            <label class="<%= label %>"><span>Email</span><%= f.email_field :bill_to_email, placeholder: "They get the invoice here", class: input %></label>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label class="<%= label %>"><span>Attention <span class="font-normal text-gray-500">(optional)</span></span><%= f.text_field :bill_to_attention, placeholder: "Accounts payable", class: input %></label>
+            <label class="<%= label %>"><span>Address <span class="font-normal text-gray-500">(optional)</span></span><%= f.text_area :bill_to_address, rows: 2, class: input %></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="space-y-4">
+          <legend class="text-[11px] font-medium uppercase tracking-wide text-gray-500">What it is for</legend>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <label class="<%= label %>"><span>Production</span><%= f.select :production_id, @productions.map { |pr| [ pr.name, pr.id ] }, { include_blank: "Nothing in particular" }, class: input, data: { record_money_target: "production", action: "change->record-money#filterShows" } %></label>
+            <label class="<%= label %>"><span>A particular date <span class="font-normal text-gray-500">(optional)</span></span>
+              <%= f.select :show_id, options_for_select([ [ "The whole production", "" ] ] + @shows.map { |s| [ "#{s.date_and_time.strftime('%b %-d, %Y')}#{" · #{s.secondary_name}" if s.secondary_name.present?}", s.id, { data: { production: s.production_id } } ] }, @invoice.show_id), {}, class: input, data: { record_money_target: "show" } %></label>
+            <label class="<%= label %>"><span>Kind of income</span><%= render "shared/category_picker", name: "invoice[category_key]", kind: :income, organization: Current.organization, value: @invoice.category_key, id: "invoice_category_key" %></label>
+          </div>
+
+          <div class="rounded-lg border border-gray-200 overflow-hidden">
+            <div class="hidden sm:grid grid-cols-[1fr_5rem_7rem_7rem_2rem] gap-2 px-3 py-1.5 bg-gray-50 text-[11px] font-medium uppercase tracking-wide text-gray-500"><span>Description</span><span>Qty</span><span>Each</span><span class="text-right">Amount</span><span></span></div>
+            <div data-invoice-lines-target="lines" class="divide-y divide-gray-100">
+              <%= f.fields_for :invoice_lines do |lf| %>
+                <%= render "manage/invoices/line_fields", lf: lf, input: input %>
+              <% end %>
+            </div>
+            <template data-invoice-lines-target="template">
+              <%= f.fields_for :invoice_lines, InvoiceLine.new(quantity: 1), child_index: "NEW_LINE" do |lf| %>
+                <%= render "manage/invoices/line_fields", lf: lf, input: input %>
+              <% end %>
+            </template>
+            <div class="flex items-center justify-between px-3 py-2 bg-gray-50 border-t border-gray-200">
+              <button type="button" data-action="invoice-lines#add" class="text-sm text-pink-600 hover:text-pink-700 cursor-pointer">+ Add a line</button>
+              <span class="text-sm text-gray-700">Total <b class="font-semibold text-gray-900 tabular-nums" data-invoice-lines-target="total">$0.00</b></span>
+            </div>
+          </div>
+          <label class="<%= label %>"><span>A message on the invoice <span class="font-normal text-gray-500">(optional)</span></span><%= f.text_area :memo, rows: 2, placeholder: "Thank you for sponsoring the 2026 season.", class: input %></label>
+        </fieldset>
+
+        <fieldset class="space-y-4">
+          <legend class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Paying it</legend>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label class="<%= label %>"><span>Due</span><%= f.date_field :due_on, class: input %></label>
+            <label class="<%= label %>"><span>Reminders</span><%= f.select :reminders, Invoice::REMINDERS.map { |k, v| [ v, k ] }, {}, class: input %></label>
+          </div>
+          <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-700">
+            <label class="inline-flex items-center gap-2"><%= f.check_box :pay_by_card, class: check %> By card online</label>
+            <label class="inline-flex items-center gap-2"><%= f.check_box :pay_by_bank, class: check %> By bank transfer online <span class="text-gray-500">($500 and up)</span></label>
+            <label class="inline-flex items-center gap-2"><%= f.check_box :pay_by_check, class: check %> By check <span class="text-gray-500">(the invoice says where to send it)</span></label>
+          </div>
+          <p class="text-xs text-gray-500">Online payments land in your CocoScout balance, less the card or bank fee. Checks you record yourself when they come.</p>
+        </fieldset>
+      </div>
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4">
+        <span class="text-xs text-gray-500">Goes on the books today as money owed to you.</span>
+        <span class="flex items-center gap-2 justify-end">
+          <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :link, path: manage_money_incoming_path %>
+          <%= render "shared/button", text: "Save for now", variant: "secondary", size: "medium", type: :submit %>
+          <%= render "shared/button", text: "Save and send", variant: "primary", size: "medium", type: :submit, name: "send_now", value: "1" %>
+        </span>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,9 @@
+<%# One bill in a list. Locals: bill, can_change %>
+<% money = ->(cents) { number_to_currency(cents / 100.0) } %>
+<%= link_to manage_money_bill_path(bill), class: "grid grid-cols-2 sm:grid-cols-[1.4fr_1.2fr_1fr_6rem_7rem] gap-x-3 gap-y-1 items-center px-5 py-2.5 text-sm hover:bg-gray-50" do %>
+  <span class="min-w-0 col-span-2 sm:col-span-1"><span class="block font-medium text-gray-900 truncate"><%= bill.vendor_name %></span><% if bill.vendor_reference.present? %><span class="block text-xs text-gray-500"><%= bill.vendor_reference %></span><% end %></span>
+  <span class="text-gray-700 truncate"><%= bill.memo.presence || bill.category_label %></span>
+  <span class="text-gray-500 truncate hidden sm:block"><%= bill.production&.name || "Nothing in particular" %></span>
+  <span class="<%= bill.overdue? ? 'text-red-700 font-medium' : 'text-gray-700' %>"><%= bill.paid? ? "Paid #{bill.paid_on&.strftime('%b %-d')}" : bill.due_on.strftime("%b %-d") %></span>
+  <span class="text-right tabular-nums font-medium text-gray-900"><%= money.call(bill.paid? ? bill.amount_cents : bill.unpaid_cents) %></span>
+<% end %>

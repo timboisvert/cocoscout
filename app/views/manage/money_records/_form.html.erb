@@ -1,0 +1,169 @@
+<%#
+  One tab of the Record money sheet: a form for money in, money out, or a
+  move between the organization's own accounts.
+    record:       the MoneyRecord (new, or the one being changed)
+    productions:  the organization's active productions
+    shows:        their shows (id, production_id, date_and_time, secondary_name)
+    panel:        true when the form is a tabs panel (hidden until chosen)
+    return_to:    in the Record money modal, the page to come back to; Cancel
+                  then closes the modal instead of leaving the page
+    turbo:        true when the form submits through Turbo and the answer is
+                  a Turbo Stream (the bank page's Record this line modal)
+    bank_line:    the bank line this record settles (the bank page's modal;
+                  the field is there for the page's script to fill)
+%>
+<%
+  panel = local_assigns.fetch(:panel, false)
+  return_to = local_assigns[:return_to]
+  turbo = local_assigns.fetch(:turbo, false)
+  kind = record.kind
+  input = "mt-1 block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  label = "block text-sm font-medium text-gray-700"
+  intro = {
+    "out" => "Spending that happened outside CocoScout: a receipt, a check you wrote, a card charge. Vendors you will pay later go on a bill instead.",
+    "in" => "Income that did not come through CocoScout: a sponsor's check, bar money, a grant. Money someone still owes you goes on an invoice instead.",
+    "move" => "Door cash you deposited, or money between your own accounts. Nothing is earned or spent; it just changes where it sits. Taking money out of your CocoScout balance happens on the balance page."
+  }[kind]
+  verb = record.persisted? ? "Save" : (kind == "move" ? "Record the move" : "Record")
+  url = record.persisted? ? manage_money_record_path(record) : manage_money_records_path
+%>
+<%= form_with model: record, url: url, method: (record.persisted? ? :patch : :post), id: "record-#{kind}",
+      data: { turbo: (turbo ? nil : false), tabs_target: (panel ? "panel" : nil), controller: "record-money", record_money_verb_value: verb }.compact do |f| %>
+  <%= f.hidden_field :kind %>
+  <% if return_to.present? %><%= hidden_field_tag :return_to, return_to, id: "return-to-#{kind}" %><% end %>
+  <% if local_assigns.key?(:bank_line) %><%= hidden_field_tag :bank_line, local_assigns[:bank_line], id: "bank-line-field-#{kind}" %>
+  <% elsif params[:bank_line].present? %><%= hidden_field_tag :bank_line, params[:bank_line], id: "bank-line-field-#{kind}" %><% end %>
+  <div class="px-6 pt-5 pb-6 space-y-5">
+    <p class="text-sm text-gray-600"><%= intro %></p>
+    <% if record.errors.any? %>
+      <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700" data-bank-record-errors>
+        <%= record.errors.full_messages.to_sentence %>
+      </div>
+    <% end %>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <label class="<%= label %>">
+        <span>Amount</span>
+        <span class="relative block">
+          <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 pt-1 text-gray-500">$</span>
+          <%= f.text_field :amount, value: (record.amount_cents.present? && record.amount_cents.positive? ? number_with_precision(record.amount, precision: 2, delimiter: ",") : nil),
+                inputmode: "decimal", placeholder: "0.00", class: "#{input} pl-7 tabular-nums", data: { record_money_target: "amount", action: "input->record-money#updateSubmit" } %>
+        </span>
+      </label>
+      <label class="<%= label %>">
+        <span>Date</span>
+        <%= f.date_field :on, class: input %>
+      </label>
+    </div>
+
+    <% if kind == "move" %>
+      <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-3 sm:items-end">
+        <label class="<%= label %>">
+          <span>From</span>
+          <%= f.select :from_account, MoneyRecord::MOVE_ACCOUNTS.map { |k, (name, _)| [ name, k ] }, {}, class: input %>
+        </label>
+        <span class="hidden sm:flex items-center justify-center pb-3 text-gray-400">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </span>
+        <label class="<%= label %>">
+          <span>To</span>
+          <%= f.select :to_account, MoneyRecord::MOVE_ACCOUNTS.map { |k, (name, _)| [ name, k ] }, {}, class: input %>
+        </label>
+      </div>
+    <% else %>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <label class="<%= label %>">
+          <span><%= kind == "in" ? "Kind" : "Category" %></span>
+          <%= render "shared/category_picker", name: "money_record[category_key]", kind: (kind == "in" ? :income : :spending), organization: record.organization,
+                value: record.category_key, id: "money_record_category_key_#{kind}" %>
+        </label>
+        <label class="<%= label %>">
+          <span><%= kind == "in" ? "From" : "Paid to" %></span>
+          <%= f.text_field :counterparty, placeholder: (kind == "in" ? "Who paid you" : "Who you paid"), class: input %>
+        </label>
+      </div>
+
+      <%# A production and a date, each behind a switch (Tim, 2026-11-02):
+          most money is for nothing in particular, so the menus only show
+          when asked for. %>
+      <div class="space-y-3">
+        <label class="flex items-center gap-3 text-sm text-gray-700">
+          <%= render "shared/toggle_switch", checked: record.production_id.present?, aria_label: "For a specific production",
+                data: { record_money_target: "forProduction", action: "change->record-money#toggleProduction" } %>
+          <span>For a specific production</span>
+        </label>
+        <div class="<%= 'hidden' if record.production_id.blank? %> space-y-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3" data-record-money-target="productionFields">
+          <label class="<%= label %>">
+            <span>Which production</span>
+            <%= f.select :production_id, productions.map { |pr| [ pr.name, pr.id ] }, { prompt: "Choose one" }, class: input,
+                  data: { record_money_target: "production", action: "change->record-money#filterShows" } %>
+          </label>
+          <label class="flex items-center gap-3 text-sm text-gray-700">
+            <%= render "shared/toggle_switch", checked: record.show_id.present?, aria_label: "For one of its dates",
+                  data: { record_money_target: "forShow", action: "change->record-money#toggleShow" } %>
+            <span>For one of its dates</span>
+          </label>
+          <div class="<%= 'hidden' if record.show_id.blank? %>" data-record-money-target="showFields">
+            <label class="<%= label %>">
+              <span>Which date</span>
+              <%= f.select :show_id, options_for_select([ [ "Choose one", "" ] ] + shows.map { |s| [ "#{s.date_and_time.strftime('%b %-d, %Y')}#{" · #{s.secondary_name}" if s.secondary_name.present?}", s.id, { data: { production: s.production_id } } ] }, record.show_id),
+                    {}, class: input, data: { record_money_target: "show" } %>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <fieldset>
+        <legend class="<%= label %>"><%= kind == "in" ? "Paid into" : "Paid from" %></legend>
+        <div class="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+          <% MoneyRecord::VIA.fetch(kind).each do |key, (name, _)| %>
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+              <%= f.radio_button :via, key, class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
+              <%= name %>
+            </label>
+          <% end %>
+        </div>
+        <% if kind == "in" %>
+          <p class="mt-2 text-xs text-gray-500">A gift certificate sold here waits as "Gift certificates outstanding" until someone uses it on a ticket.</p>
+        <% end %>
+      </fieldset>
+
+      <label class="<%= label %>">
+        <span><%= kind == "in" ? "Document" : "Receipt" %> <span class="font-normal text-gray-500">(optional)</span></span>
+        <span class="mt-1 flex items-center gap-3 rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-3">
+          <svg class="w-5 h-5 text-gray-500 flex-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 3h8l4 4v14H7zM15 3v4h4"/></svg>
+          <span class="min-w-0 flex-1">
+            <% if record.receipt.attached? %>
+              <span class="block text-sm text-gray-900 truncate"><%= record.receipt.filename %></span>
+              <span class="block text-xs text-gray-500">Pick another to replace it</span>
+            <% else %>
+              <span class="block text-sm text-gray-900"><%= kind == "in" ? "Add the check or letter" : "Add the receipt" %></span>
+              <span class="block text-xs text-gray-500">A photo or PDF, up to 10 MB</span>
+            <% end %>
+          </span>
+          <%= f.file_field :receipt, accept: "image/jpeg,image/png,application/pdf", capture: "environment", class: "text-sm text-gray-700 file:mr-2 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700 file:border file:border-gray-300 max-w-[12rem]" %>
+        </span>
+      </label>
+    <% end %>
+
+    <label class="<%= label %>">
+      <span>Note <span class="font-normal text-gray-500">(optional)</span></span>
+      <%= f.text_area :memo, rows: 2, class: input %>
+    </label>
+    <% if kind == "move" %>
+      <p class="text-xs text-gray-500">The bank page will match this to the deposit when your statement comes in.</p>
+    <% end %>
+  </div>
+
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4 sticky bottom-0">
+    <span class="text-xs text-gray-500"><%= record.persisted? ? "Changing it reverses the earlier entry and writes a new one." : "Goes on the books dated as above. You can change or remove it later." %></span>
+    <span class="flex items-center gap-2 justify-end">
+      <% if return_to.present? %>
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+      <% else %>
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :link, path: (record.persisted? ? manage_money_record_path(record) : manage_money_books_path) %>
+      <% end %>
+      <%= render "shared/button", text: verb, variant: "primary", size: "medium", type: :submit, data: { record_money_target: "submit" } %>
+    </span>
+  </div>
+<% end %>

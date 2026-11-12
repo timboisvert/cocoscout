@@ -232,6 +232,22 @@ module Manage
       end
     end
 
+    # Access by module (OrganizationAccess): a template, or Custom with a
+    # grid of grants[module] = none|view|manage. Managers carry no grid.
+    def update_access
+      user = Current.organization.users.find(params[:id])
+      organization_role = OrganizationRole.find_by(user: user, organization: Current.organization)
+      template = params[:template].to_s
+      if organization_role.nil? || user == Current.user || user.id == Current.organization.owner_id ||
+         !OrganizationAccess::TEMPLATES.key?(template)
+        return render json: { success: false }, status: :unprocessable_content
+      end
+
+      organization_role.apply_access!(template: template, grants: params[:grants]&.to_unsafe_h)
+      expire_team_cache
+      render json: { success: true, label: organization_role.access_label, template: organization_role.access_template || "manager" }
+    end
+
     def update_global_role
       user = Current.organization.users.find(params[:id])
       role = params[:global_role]

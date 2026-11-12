@@ -4,6 +4,7 @@ class ContractDocument < ApplicationRecord
   belongs_to :contract
 
   has_one_attached :file
+  include HierarchicalStorageKey # after the attachment, so the key moves once the file is up
 
   # Document types
   DOCUMENT_TYPES = %w[

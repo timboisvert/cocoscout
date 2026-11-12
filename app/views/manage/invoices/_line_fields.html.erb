@@ -1,0 +1,9 @@
+<%# One line of the invoice form. Locals: lf (fields_for builder), input %>
+<div class="grid grid-cols-[1fr_4rem_6rem_2rem] sm:grid-cols-[1fr_5rem_7rem_7rem_2rem] gap-2 items-center px-3 py-2" data-invoice-line>
+  <%= lf.text_field :description, placeholder: "Season sponsorship", class: "#{input} mt-0 col-span-4 sm:col-span-1", data: { action: "input->invoice-lines#recalculate" } %>
+  <%= lf.text_field :quantity, value: (lf.object.quantity.to_d == lf.object.quantity.to_d.floor ? lf.object.quantity.to_i : lf.object.quantity), inputmode: "decimal", class: "#{input} mt-0 tabular-nums", data: { qty: true, action: "input->invoice-lines#recalculate" } %>
+  <%= lf.text_field :unit, value: (lf.object.unit_cents.to_i.positive? ? format("%.2f", lf.object.unit_cents / 100.0) : nil), inputmode: "decimal", placeholder: "0.00", class: "#{input} mt-0 tabular-nums", data: { unit: true, action: "input->invoice-lines#recalculate" } %>
+  <span class="hidden sm:block text-right text-sm tabular-nums text-gray-900" data-amount>$0.00</span>
+  <%= lf.hidden_field :_destroy, value: "0" %>
+  <button type="button" data-action="invoice-lines#remove" class="text-gray-400 hover:text-red-600 cursor-pointer justify-self-end" aria-label="Remove line"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+</div>

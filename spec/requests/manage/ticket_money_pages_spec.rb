@@ -250,8 +250,9 @@ RSpec.describe "Manage ticketing money", type: :request do
       get manage_money_index_path
       expect(response.body).to include(manage_money_books_path)
       expect(response.body).not_to include("Your CocoScout balance")
+      # Books V1.3: the balance is the first tile of the Overview strip.
       get manage_money_books_path
-      expect(response.body).to include("Your CocoScout balance", "$60.00", manage_ticket_balance_path)
+      expect(response.body).to include("CocoScout balance", "$60.00", manage_ticket_balance_path)
       expect(manage_ticket_balance_path).to start_with("/manage/money/books/")
     end
 

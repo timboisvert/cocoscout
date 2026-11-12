@@ -39,9 +39,6 @@ module Manage
       @guest_filter = params[:guests].presence_in(GUEST_FILTERS) || "all"
       @query = params[:q].to_s.strip
       @guest_orders = guest_orders(@guest_filter, @query)
-      # The Sold elsewhere modal: the organization's other sites and what each sold here, by type.
-      @outside_sources = Current.organization.ticket_sources.hand_made.active.ordered.to_a
-      @outside_rows = @listing.ticket_outside_sales.index_by { |row| [ row.ticket_source_id, row.ticket_tier_id ] }
     end
 
     # Everyone holding tickets, as a spreadsheet.
@@ -107,7 +104,12 @@ module Manage
       end
       TicketOutsideSales.record!(@listing, rows)
       total = @listing.inventory.outside_sold
-      redirect_to manage_ticket_listing_path(@listing),
+      # The day's worksheet (Settle up) opens the same modal and comes back to
+      # itself; the show's money changed, so its confirm mark goes dark again.
+      from_day = params[:return_to].to_s.start_with?("/manage/money/settle-up/")
+      @listing.show.show_financials&.update!(data_confirmed: false) if from_day && @listing.show.show_financials&.data_confirmed?
+      back = from_day ? params[:return_to] : manage_ticket_listing_path(@listing)
+      redirect_to back,
                   notice: total.positive? ? "#{helpers.pluralize(total, 'ticket')} sold elsewhere, off this show's seats." : "No tickets sold elsewhere."
     rescue ActiveRecord::RecordInvalid => e
       redirect_to manage_ticket_listing_path(@listing), alert: e.record.errors.full_messages.to_sentence

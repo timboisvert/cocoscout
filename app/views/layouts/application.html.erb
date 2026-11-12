@@ -3,6 +3,8 @@
   <head>
     <title><%= dev_title_prefix %><%= content_for(:title) || "CocoScout" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=5">
+    <%# A form that lands back on the same page (Looks right, a count, a modal save) keeps the reader where they were (Tim, 2026-11-03): its visit is a page refresh (data-turbo-action="replace"), and a refresh preserves the scroll. %>
+    <meta name="turbo-refresh-scroll" content="preserve">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <%= csrf_meta_tags %>
@@ -54,48 +56,48 @@
 
       <% if turbo_native_app? %>
 
-        <main class="flex-1 px-4 pt-4 <%= page_bottom %> overflow-x-hidden">
+        <main class="flex-1 px-4 pt-4 <%= page_bottom %> min-w-0 overflow-x-clip">
 
       <% elsif @show_manage_sidebar %>
 
         <%= render "shared/navigation/manage_mobile" %>
         <%= render "shared/navigation/panel", production_mode: true %>
-        <main class="flex-1 px-5 pt-14 pb-8 lg:pt-6 lg:ml-[272px] overflow-x-hidden">
+        <main class="flex-1 px-5 pt-14 pb-8 lg:pt-6 lg:ml-[272px] min-w-0 overflow-x-clip">
 
       <% elsif @show_manage_header_only %>
 
         <%= render "shared/navigation/manage_header" %>
         <%= render "shared/navigation/manage_mobile" %>
-        <main class="flex-1 px-5 pt-14 pb-8 lg:pt-20 overflow-x-hidden">
+        <main class="flex-1 px-5 pt-14 pb-8 lg:pt-20 min-w-0 overflow-x-clip">
 
       <% elsif @show_group_sidebar %>
 
         <%= render "shared/navigation/group_header" %>
         <%= render "shared/navigation/group_mobile" %>
         <%= render "shared/navigation/group" %>
-        <main class="flex-1 px-5 pt-14 pb-8 lg:pt-20 lg:ml-64 overflow-x-hidden">
+        <main class="flex-1 px-5 pt-14 pb-8 lg:pt-20 lg:ml-64 min-w-0 overflow-x-clip">
 
       <% elsif @show_my_sidebar %>
 
         <%= render "shared/navigation/my_mobile" %>
         <%= render "shared/navigation/panel", production_mode: false %>
-        <main class="flex-1 px-5 pt-14 pb-8 lg:pt-6 lg:ml-[272px] overflow-x-hidden">
+        <main class="flex-1 px-5 pt-14 pb-8 lg:pt-6 lg:ml-[272px] min-w-0 overflow-x-clip">
 
       <% elsif @show_superadmin_sidebar %>
 
         <%= render "shared/navigation/superadmin_mobile" %>
         <%= render "shared/navigation/superadmin" %>
-        <main class="flex-1 px-5 pt-14 pb-8 lg:pt-6 lg:ml-[272px] overflow-x-hidden">
+        <main class="flex-1 px-5 pt-14 pb-8 lg:pt-6 lg:ml-[272px] min-w-0 overflow-x-clip">
 
       <% elsif @show_account_sidebar %>
 
         <%= render "shared/navigation/account_mobile" %>
         <%= render "shared/navigation/account" %>
-        <main class="flex-1 px-5 pt-14 pb-8 lg:pt-6 lg:ml-[272px] overflow-x-hidden">
+        <main class="flex-1 px-5 pt-14 pb-8 lg:pt-6 lg:ml-[272px] min-w-0 overflow-x-clip">
 
       <% else %>
 
-        <main class="flex-1 pb-8 overflow-x-hidden">
+        <main class="flex-1 pb-8 min-w-0 overflow-x-clip">
 
       <% end %>
 

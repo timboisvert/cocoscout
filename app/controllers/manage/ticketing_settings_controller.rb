@@ -37,7 +37,10 @@ module Manage
       saved = notifications.save_plan!(key, plan: params[:plan].to_s, kinds: Array(params[:kinds]).compact_blank, email: params[:email])
       plan = TicketingNotifications::PLANS.find { |p| p.key == saved.plan }
       what = saved.plan == "custom" ? "their own pick" : plan.label.downcase_first
-      notice = saved.kinds.empty? ? "Saved. #{saved.name} gets no Ticketing email." : "Saved. #{saved.name} gets #{what}: #{helpers.pluralize(saved.kinds.size, 'email')}."
+      # A manager's sales as they happen are notifications, not emails.
+      sends = [ (helpers.pluralize(saved.emailed_kinds.size, "email") if saved.emailed_kinds.any?),
+                ("#{helpers.pluralize(saved.notified_kinds.size, 'kind')} as notifications" if saved.notified_kinds.any?) ].compact
+      notice = sends.empty? ? "Saved. #{saved.name} gets no Ticketing email." : "Saved. #{saved.name} gets #{what}: #{sends.to_sentence}."
       redirect_to section_path("notifications"), notice: notice
     rescue ArgumentError => e
       redirect_to section_path("notifications"), alert: e.message

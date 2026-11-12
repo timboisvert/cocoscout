@@ -1,31 +1,13 @@
 # frozen_string_literal: true
 
+# Show Financials' name for the spending half of MoneyCategories (the one
+# list, config/money_categories.yml). Kept so older views read the same.
 class ExpenseCategories
   class << self
-    def all
-      @all ||= config["expense_categories"]
-    end
-
-    def keys
-      all.keys
-    end
-
-    def options_for_select
-      all.map { |key, data| [ data["label"], key ] }
-    end
-
-    def label_for(key)
-      all.dig(key.to_s, "label") || key.to_s.titleize
-    end
-
-    def icon_for(key)
-      all.dig(key.to_s, "icon") || "ellipsis-horizontal-circle"
-    end
-
-    private
-
-    def config
-      @config ||= YAML.load_file(Rails.root.join("config", "expense_categories.yml"))
-    end
+    def all = MoneyCategories.spending
+    def keys = MoneyCategories.spending_keys
+    def options_for_select(organization = nil) = MoneyCategories.spending_options(organization)
+    def label_for(key, organization: nil) = MoneyCategories.label_for(key, :spending, organization: organization)
+    def icon_for(key) = MoneyCategories.icon_for(key)
   end
 end

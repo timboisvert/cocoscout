@@ -1,0 +1,84 @@
+<% content_for :title, "Bills" %>
+<%
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  can_change = module_change?(:bills_invoices)
+  filter_path = ->(f, extra = {}) { manage_money_bills_path({ filter: (f unless f == "to_pay"), production: @production_id }.merge(extra).compact) }
+%>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Money", manage_money_index_path ] ],
+    text: "Bills",
+    links: (can_change ? [ { text: "Add a bill", path: manage_new_money_bill_path } ] : [])
+  } %>
+
+  <p class="max-w-3xl text-sm text-gray-600 mb-4">Money you owe someone and have not paid yet: the venue's rent, the lumber yard, the insurance. A bill goes on the books the day it arrives, and again the day you pay it. People you pay for their work are on the payout run, not here.</p>
+
+  <div class="mb-4">
+    <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
+      { label: "Show", filters: [
+        { text: "To pay", path: filter_path.call("to_pay"), active: @filter == "to_pay" },
+        { text: "Paid", path: filter_path.call("paid"), active: @filter == "paid" },
+        { text: "All", path: filter_path.call("all"), active: @filter == "all" }
+      ] },
+      { partial: "shared/filters/production_dropdown_filter", locals: {
+        label: "Production", name: "production", selected: @production_id.to_s,
+        options: [ { value: "", text: "Any production" } ] + @productions.map { |pr| { value: pr.id, text: pr.name, type: pr.production_type } },
+        extra_url_params: { filter: (@filter unless @filter == "to_pay") }.compact } }
+    ] %>
+  </div>
+
+  <% if @filter != "paid" %>
+    <div class="flex items-baseline justify-between gap-3 mb-3">
+      <span class="text-sm text-gray-600">Owed in all: <b class="font-semibold text-gray-900 tabular-nums"><%= money.call(@owed_cents) %></b></span>
+    </div>
+    <% if @groups.empty? %>
+      <%= render "shared/empty_state", icon: "check", title: "Nothing to pay", body: "Bills you add show up here by when they are due.", actions: (can_change ? [ { text: "Add a bill", path: manage_new_money_bill_path } ] : []) %>
+    <% else %>
+      <div class="space-y-4 mb-6">
+        <% @groups.each do |title, rows, tone| %>
+          <section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <%= render "shared/section_heading", padding: "px-5 py-3", title: title do %>
+              <span class="text-xs font-medium <%= tone %>"><%= pluralize(rows.size, "bill") %> · <%= money.call(rows.sum(&:unpaid_cents)) %></span>
+            <% end %>
+            <div class="hidden sm:grid grid-cols-[1.4fr_1.2fr_1fr_6rem_7rem] gap-3 px-5 py-1.5 bg-gray-50 text-[11px] font-medium uppercase tracking-wide text-gray-500 border-b border-gray-100"><span>Who</span><span>What for</span><span>Production</span><span>Due</span><span class="text-right">Amount</span></div>
+            <div class="divide-y divide-gray-100">
+              <% rows.each do |bill| %><%= render "manage/bills/bill_row", bill: bill, can_change: can_change %><% end %>
+            </div>
+          </section>
+        <% end %>
+      </div>
+    <% end %>
+    <% if @repeats.any? %>
+      <section class="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6">
+        <%= render "shared/section_heading", padding: "px-5 py-3", title: "Repeats" do %>
+          <span class="text-xs text-gray-500">A new bill appears on each date, with the last one's amount filled in.</span>
+        <% end %>
+        <ul class="divide-y divide-gray-100">
+          <% @repeats.each do |bill| %>
+            <li class="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-2.5 text-sm">
+              <span class="font-medium text-gray-900"><%= bill.vendor_name %></span>
+              <span class="text-gray-600"><%= bill.memo.presence || bill.category_label %></span>
+              <span class="text-gray-500"><%= Bill::REPEATS[bill.repeats] %>, next <%= bill.due_on.strftime("%b %-d") %></span>
+              <span class="ml-auto tabular-nums text-gray-900"><%= money.call(bill.amount_cents) %></span>
+              <% if can_change %><%= link_to "Change", manage_edit_money_bill_path(bill), class: "text-pink-600 hover:text-pink-700" %><% end %>
+            </li>
+          <% end %>
+        </ul>
+      </section>
+    <% end %>
+  <% end %>
+
+  <section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <%= render "shared/section_heading", padding: "px-5 py-3", title: (@filter == "to_pay" ? "Paid in #{Date.current.strftime('%B')}" : "Paid") do %>
+      <%= link_to "Every paid bill is in Books → Entries", manage_money_books_section_path(section: "entries", kind: "bill_payment"), class: "text-xs text-pink-600 hover:text-pink-700" %>
+    <% end %>
+    <% if @paid.empty? %>
+      <p class="px-5 py-4 text-sm text-gray-500">Nothing paid <%= @filter == "to_pay" ? "this month" : "yet" %>.</p>
+    <% else %>
+      <div class="divide-y divide-gray-100">
+        <% @paid.each do |bill| %><%= render "manage/bills/bill_row", bill: bill, can_change: can_change %><% end %>
+      </div>
+    <% end %>
+  </section>
+</div>

@@ -149,10 +149,10 @@ RSpec.describe "Phase 3 pages on a phone", type: :request do
       order = TicketCheckout.start!(listing: listing, quantities: { general.id.to_s => "1" })
       TicketOrderSettlement.settle!(order)
 
-      get manage_money_books_path(tab: "entries")
+      get manage_money_books_section_path(section: "entries")
       expect(doc.at_css("[data-books-month]").text).to eq(Date.current.strftime("%B %Y"))
 
-      get manage_money_books_path(tab: "shows")
+      get manage_money_books_section_path(section: "shows")
       expect(doc.at_css("[data-books-show-cards]")["class"]).to include("sm:hidden")
       expect(doc.at_css("[data-books-show-table]")["class"]).to include("max-sm:hidden")
     end

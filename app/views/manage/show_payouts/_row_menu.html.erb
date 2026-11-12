@@ -1,7 +1,7 @@
 <%# The ⋮ menu on a payee's row on a show's payout page: the row keeps its
     status chip and puts everything you can do about it here (Tim,
     2026-10-11: links under every row). Locals: entries ([{ text:, icon:,
-    data:, title: }], nils skipped), extra (optional html: modals the entries
+    data:, title:, form: (a form id the entry submits) }], nils skipped), extra (optional html: modals the entries
     open, kept inside so their close buttons work), qr_link (optional: the
     payment setup link, for a "Show payment QR" entry). %>
 <% entries = Array(local_assigns[:entries]).compact %>
@@ -19,7 +19,7 @@
     </button>
     <div data-dropdown-target="menu" class="hidden absolute right-0 top-full mt-1 w-60 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
       <% entries.each do |entry| %>
-        <%= tag.button(type: "button", class: item_classes, title: entry[:title], data: entry[:data]) do %>
+        <%= tag.button(type: (entry[:form] ? "submit" : "button"), form: entry[:form], class: item_classes, title: entry[:title], data: entry[:data]) do %>
           <%= icon(entry[:icon] || "arrow-right", class: "w-4 h-4 text-gray-400") %><span><%= entry[:text] %></span>
         <% end %>
       <% end %>

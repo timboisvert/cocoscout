@@ -4,25 +4,42 @@
 # financials, every production expense and every paid contract payment,
 # posted to the books. Idempotent (LedgerPosting restates), so it can run
 # again after a
-# posting rule changes. Dry run by default: everything is posted inside a
-# transaction, the reconciliation is read, and then it's rolled back.
+# posting rule changes. Dry run by default: an organization is posted inside
+# a transaction, the reconciliation is read, and then it's rolled back.
+#
+# One organization, one transaction (Tim, 2026-11-09, from the 1.3 review):
+# it used to be one transaction for all of them, which held every
+# organization's rows until the last was done and lost the lot when one
+# failed. Now an organization that fails is rolled back by itself and named
+# in failures, and the rest still post. Run it again for the ones named.
 class BooksBackfill
-  Row = Data.define(:organization, :cash_rows, :owed_rows, :financials, :expenses, :contract_payments, :mismatches, :trial_balance_cents)
-  Result = Data.define(:rows, :dry_run)
+  Row = Data.define(:organization, :cash_rows, :owed_rows, :financials, :expenses, :contract_payments, :bills, :mismatches, :trial_balance_cents, :hand_paid)
+  Failure = Data.define(:organization, :error)
+  Result = Data.define(:rows, :failures, :dry_run)
 
   def self.run!(dry_run: true, organization_ids: nil)
     rows = []
-    ActiveRecord::Base.transaction do
-      scope = organization_ids ? Organization.where(id: organization_ids) : Organization.all
-      scope.find_each { |organization| rows << post_organization!(organization) }
-      raise ActiveRecord::Rollback if dry_run
+    failures = []
+    scope = organization_ids ? Organization.where(id: organization_ids) : Organization.all
+    scope.find_each do |organization|
+      # requires_new: rolled back by itself wherever this is called from.
+      ActiveRecord::Base.transaction(requires_new: true) do
+        rows << post_organization!(organization)
+        raise ActiveRecord::Rollback if dry_run
+      end
+    rescue StandardError => e
+      failures << Failure.new(organization: organization, error: "#{e.class}: #{e.message}")
     end
-    Result.new(rows: rows, dry_run: dry_run)
+    Result.new(rows: rows, failures: failures, dry_run: dry_run)
   end
 
   def self.post_organization!(organization)
+    ChartOfAccounts.rename!(organization)
     cash = OrgCashEntry.where(organization: organization)
     cash.find_each { |entry| BooksPoster.post!(entry) }
+    # Payouts paid by hand before the payout ledger existed go on it first
+    # (HandPaidPayouts), so the pass over the ledger below posts them too.
+    hand_paid = HandPaidPayouts.post!(organization)
     owed = PayoutLedgerEntry.where(organization: organization)
     owed.find_each { |entry| BooksPoster.post!(entry) }
     financials = ShowFinancials.joins(show: :production).where(productions: { organization_id: organization.id })
@@ -33,8 +50,11 @@ class BooksBackfill
     payments = ContractPayment.joins(:contract).where(contracts: { organization_id: organization.id })
                               .where("contract_payments.status = 'paid' OR (contract_payments.status = 'pending' AND NOT contract_payments.amount_tbd AND contract_payments.amount > 0 AND contract_payments.due_date <= ?)", Date.current)
     payments.find_each { |payment| BooksOutsidePoster.post_contract_payment!(payment) }
+    bills = BillingInvoice.where(organization: organization)
+    bills.find_each { |bill| BooksOutsidePoster.post_billing_invoice!(bill) }
     Row.new(organization: organization, cash_rows: cash.count, owed_rows: owed.count, financials: financials.count, expenses: expenses.count,
-            contract_payments: payments.count,
-            mismatches: BooksReconciliation.check(organization), trial_balance_cents: LedgerPosting.trial_balance(organization).values.sum)
+            contract_payments: payments.count, bills: bills.count,
+            mismatches: BooksReconciliation.check(organization), trial_balance_cents: LedgerPosting.trial_balance(organization).values.sum,
+            hand_paid: hand_paid)
   end
 end

@@ -19,6 +19,8 @@ class SpaceRental < ApplicationRecord
 
   # The room's time moved: the staff on shifts made for the booking are told
   # (ShowChanges). A show moving inside it records its own change.
+  include KeptOnGoogleCalendar
+
   after_update :record_booking_move, if: -> { saved_change_to_starts_at? || saved_change_to_ends_at? }
 
   scope :upcoming, -> { where("starts_at >= ?", Time.current).order(:starts_at) }
@@ -65,6 +67,8 @@ class SpaceRental < ApplicationRecord
   def time_range_display
     "#{starts_at.strftime('%l:%M %p')} - #{ends_at.strftime('%l:%M %p')}".strip
   end
+
+  def google_calendar_organization_id = contract&.organization_id
 
   private
 

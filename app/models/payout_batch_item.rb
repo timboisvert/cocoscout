@@ -54,9 +54,18 @@ class PayoutBatchItem < ApplicationRecord
     return expected_deposit_on if expected_deposit_on
     return nil unless paid_at
 
-    first_payment = !PayoutBatchItem.where(payee_type: payee_type, payee_id: payee_id, status: "paid")
-                                    .where(paid_at: ...paid_at).exists?
-    payout_batch.expected_deposit_range(first_payout: first_payment, from: paid_at.to_date).first
+    payout_batch.expected_deposit_range(first_payout: first_payment?, from: paid_at.to_date).first
+  end
+
+  # Their very first payment, which the provider holds longer. A page that
+  # reads many at once (My payments) says so itself, to save asking per item.
+  attr_writer :first_payment
+
+  def first_payment?
+    return @first_payment unless @first_payment.nil?
+
+    @first_payment = !PayoutBatchItem.where(payee_type: payee_type, payee_id: payee_id, status: "paid")
+                                     .where(paid_at: ...paid_at).exists?
   end
 
   # Mark paid and post the debiting ledger entry (idempotent per item).

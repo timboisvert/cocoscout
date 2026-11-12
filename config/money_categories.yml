@@ -1,0 +1,203 @@
+# The one list of money categories (Books V1.3, plan C1): what money in
+# is called, and what money out is for. Every place that picks a category
+# (Show Financials' expense lines, a production's spread expenses, Record
+# money, Bills, Invoices) reads this list, and each entry names the account
+# it posts to in ChartOfAccounts::SYSTEM. An organization adds its own on
+# Money settings → Books, which become accounts of their own.
+#
+# Books starts by setting these up (BooksCategorySetup, Tim, 2026-11-02):
+# a few questions, then a recommended list. `for:` names the answers a
+# category is recommended for (any of them); no `for:` means everyone.
+# A category the organization said no to is hidden from the pickers
+# (Organization#money_categories_hidden), never gone: what's in it stays.
+# `always: true` can't be hidden.
+#
+# legacy: older keys that meant the same thing, so old rows keep posting.
+income:
+  tickets:
+    label: "Tickets"
+    account: ticket_income
+    always: true
+  products:
+    label: "Products"
+    description: "Bottles, merch and add-ons sold with tickets"
+    account: product_income
+    for: [bar, merch]
+  courses:
+    label: "Courses"
+    description: "Classes, workshops, camps"
+    account: course_income
+    for: [classes]
+  contract:
+    label: "Rental and contract"
+    description: "A renter's share, a flat fee, a rental"
+    account: contract_income
+    for: [rent_out, company]
+  sponsorship:
+    label: "Sponsorship"
+    account: sponsorship_income
+  donation:
+    label: "Donation"
+    description: "A tip jar, a patron, a gift"
+    account: donation_income
+  grant:
+    label: "Grant"
+    account: grant_income
+    for: [nonprofit]
+  membership:
+    label: "Memberships"
+    description: "Dues, member passes, a season"
+    account: membership_income
+    for: [nonprofit]
+  fundraising:
+    label: "Fundraising events"
+    description: "A gala, a raffle, a benefit night"
+    account: fundraising_income
+    for: [nonprofit]
+  bar:
+    label: "Bar and concessions"
+    account: bar_income
+    for: [bar]
+  food:
+    label: "Food"
+    description: "Snacks and food sold at the bar or a register"
+    account: bar_income
+    for: [bar]
+  merchandise:
+    label: "Merchandise"
+    account: merchandise_income
+    for: [merch]
+  gift_certificate:
+    label: "Gift certificate"
+    description: "Sold now, spent on tickets later"
+    account: gift_certificates_outstanding
+  other:
+    label: "Other"
+    account: other_income
+    always: true
+
+spending:
+  venue:
+    label: "Venue"
+    description: "Space rental, theater fees"
+    icon: "building-office"
+    account: venue
+    for: [pay_rent, company]
+  utilities:
+    label: "Utilities"
+    description: "Electric, gas, water, internet, trash"
+    icon: "building-office"
+    account: utilities
+    for: [venue, school]
+  repairs:
+    label: "Repairs and maintenance"
+    description: "Fixing the space and what's in it"
+    icon: "building-office"
+    account: repairs
+    for: [venue, school]
+  performer_pay:
+    label: "Performer pay"
+    icon: "users"
+    account: performer_pay
+    legacy: [talent]
+  staff_pay:
+    label: "Staff pay"
+    description: "Crew, door, bar, box office"
+    icon: "users"
+    account: staff_pay
+    legacy: [staff]
+    for: [staff, venue]
+  contractors:
+    label: "Contractors"
+    description: "Designers, directors, anyone with a contract"
+    icon: "users"
+    account: contractor_pay
+  instructors:
+    label: "Instructor pay"
+    description: "Whoever teaches a class or a workshop"
+    icon: "users"
+    account: instructor_pay
+    for: [classes]
+  production:
+    label: "Production"
+    description: "Sets, costumes, props, royalties for one show"
+    icon: "sparkles"
+    account: production_costs
+    legacy: [costumes, props]
+  tech:
+    label: "Tech and equipment"
+    description: "Sound, lighting, AV, rentals"
+    icon: "speaker-wave"
+    account: equipment
+    legacy: [equipment]
+  bar_purchases:
+    label: "Bar purchases"
+    description: "Beer, wine, liquor, mixers, cups: what you buy to sell"
+    icon: "shopping-bag"
+    account: bar_purchases
+    for: [bar]
+  merchandise_purchases:
+    label: "Merchandise purchases"
+    description: "Shirts, posters, anything bought to sell"
+    icon: "shopping-bag"
+    account: merchandise_purchases
+    for: [merch]
+  supplies:
+    label: "Supplies"
+    description: "Consumables, office, cleaning"
+    icon: "shopping-bag"
+    account: supplies
+  marketing:
+    label: "Marketing"
+    description: "Ads, flyers, promotion"
+    icon: "megaphone"
+    account: marketing
+  travel:
+    label: "Travel"
+    description: "Transportation, parking, lodging"
+    icon: "truck"
+    account: travel
+  food:
+    label: "Food and drink"
+    description: "Catering, the green room, a cast party"
+    icon: "cake"
+    account: food_and_drink
+  licensing:
+    label: "Licensing and rights"
+    description: "Music, script and performance rights"
+    icon: "document-text"
+    account: licensing
+  insurance:
+    label: "Insurance"
+    icon: "shield-check"
+    account: insurance
+  professional:
+    label: "Accounting and legal"
+    description: "The accountant, the lawyer, the bookkeeper"
+    icon: "document-text"
+    account: professional_services
+  software:
+    label: "Software and subscriptions"
+    description: "CocoScout, your website, the tools you pay for monthly"
+    icon: "computer-desktop"
+    account: software
+  fees:
+    label: "Ticketing and card fees"
+    icon: "credit-card"
+    account: ticketing_fees
+  bank_fees:
+    label: "Bank fees"
+    description: "Monthly charges, wires, overdrafts"
+    icon: "credit-card"
+    account: bank_fees
+  fundraising:
+    label: "Fundraising costs"
+    description: "What a benefit night or a campaign costs to put on"
+    icon: "megaphone"
+    account: fundraising_costs
+    for: [nonprofit]
+  other:
+    label: "Other"
+    icon: "ellipsis-horizontal-circle"
+    account: other_expenses
+    always: true

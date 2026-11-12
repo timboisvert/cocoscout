@@ -6,11 +6,14 @@ module Manage
   # people outside CocoScout's Stripe rail, who hears about payout runs, and
   # where the org sells tickets.
   class MoneySettingsController < Manage::ManageController
-    SECTIONS = %w[offline_methods notifications ticket_sources].freeze
+    SECTIONS = %w[settle_up tips offline_methods notifications ticket_sources books].freeze
     SECTION_LABELS = {
+      "settle_up" => "Settle up",
+      "tips" => "Tips",
       "offline_methods" => "Offline Methods",
       "notifications" => "Notifications",
-      "ticket_sources" => "Ticket Sources"
+      "ticket_sources" => "Ticket Sources",
+      "books" => "Books"
     }.freeze
     DEFAULT_SECTION = "offline_methods"
 
@@ -19,6 +22,9 @@ module Manage
 
     def show
       case @section
+      when "tips"
+        @tip_rule = Current.organization.tip_rule || Current.organization.build_tip_rule
+        @house_roles = Current.organization.house_roles.active.order(:position, :name).to_a
       when "offline_methods"
         @enabled_offline_payout_methods = Current.organization.enabled_offline_payout_methods
       when "notifications"
@@ -27,7 +33,41 @@ module Manage
       when "ticket_sources"
         @ticket_sources = Current.organization.ticket_sources.hand_made.active.ordered.to_a
         @archived_ticket_sources = Current.organization.ticket_sources.hand_made.archived.ordered.to_a
+      when "books"
+        custom = Current.organization.ledger_accounts.where(system: false).order(:name)
+        @custom_income = custom.active.where(account_type: "income").to_a
+        @custom_spending = custom.active.where(account_type: "expense").to_a
+        @archived_categories = custom.where(active: false).to_a
       end
+    end
+
+    # --- Books: the organization's own categories -------------------------------
+    # A category of their own is a non-system account under income or spending
+    # (MoneyCategories offers it everywhere a category is picked, as
+    # "account_<id>"). Archived, never destroyed: lines already posted to it stay.
+
+    def create_category
+      type = params[:kind] == "income" ? "income" : "expense"
+      name = params[:name].to_s.strip
+      account = Current.organization.ledger_accounts.new(name: name, description: params[:description].to_s.strip.presence,
+                                                         account_type: type, system: false, active: true, code: next_custom_code(type))
+      if name.present? && account.save
+        redirect_to section_path("books"), notice: "Added #{account.name}."
+      else
+        redirect_to section_path("books"), alert: (name.blank? ? "Give the category a name." : account.errors.full_messages.to_sentence)
+      end
+    end
+
+    def archive_category
+      account = Current.organization.ledger_accounts.where(system: false).find(params[:id])
+      account.update!(active: false)
+      redirect_to section_path("books"), notice: "#{account.name} won't be offered on new entries. What's already in it stays."
+    end
+
+    def restore_category
+      account = Current.organization.ledger_accounts.where(system: false).find(params[:id])
+      account.update!(active: true)
+      redirect_to section_path("books"), notice: "#{account.name} is back on the list."
     end
 
     # --- Ticket sources ---------------------------------------------------------
@@ -77,6 +117,49 @@ module Manage
 
     # The "other ways" this org sometimes pays people (cash/check/Zelle/Venmo/other).
     # Stripe is always the default rail, so only these opt-in methods are stored.
+    # When a day ends (plan §9.6): smart days or calendar days, and the hour
+    # mornings start.
+    def update_settle_up
+      mode = params[:settlement_day_mode].presence_in(SettlementDay::MODES) || "smart"
+      hour = params[:settlement_day_starts_at].to_i.clamp(3, 9)
+      starts_on = begin
+        params[:settle_up_starts_on].present? ? [ Date.iso8601(params[:settle_up_starts_on]), Date.current ].min : Current.organization.settle_up_starts_on
+      rescue Date::Error
+        Current.organization.settle_up_starts_on
+      end
+      previous = Current.organization.settle_up_starts_on
+      Current.organization.update!(settlement_day_mode: mode, settlement_day_starts_at: hour, settle_up_starts_on: starts_on)
+      notice = "Settle up settings saved."
+      # Moved earlier, to change an older day (Tim, 2026-11-04: no going
+      # backwards to the old pages): the days that just came in and were
+      # already confirmed count as settled, so only unfinished ones wait.
+      if previous && starts_on && starts_on < previous
+        settled = SettleUpStart.convert!(Current.organization, starts_on: starts_on, before: previous)
+        waiting = SettleUp.open_dates(Current.organization).count { |date| date < previous }
+        notice = "Settle up now starts #{starts_on.strftime('%B %-d, %Y')}. #{settled} #{'day'.pluralize(settled)} already confirmed came in settled#{waiting.positive? ? "; #{waiting} #{waiting == 1 ? 'is' : 'are'} waiting to settle" : ''}. Reopen a settled day to change it."
+      end
+      redirect_to section_path("settle_up"), notice: notice
+    end
+
+    # Tips go to whoever was working (plan §9.14): the switch, and a share per
+    # Staffing role: out, equal by the clock, or a percent off the top.
+    def update_tips
+      rule = Current.organization.tip_rule || Current.organization.build_tip_rule
+      roles = Current.organization.house_roles.active.to_a
+      rule.enabled = params[:enabled] == "1"
+      rule.role_shares = TipRule.role_shares_from(params.fetch(:roles, {}).to_unsafe_h.with_indifferent_access, roles)
+      if rule.save
+        redirect_to section_path("tips"), notice: (rule.enabled? ? "Tips settings saved. Days with the clock to read open already split." : "Tips settings saved.")
+      else
+        redirect_to section_path("tips"), alert: rule.errors.full_messages.to_sentence
+      end
+    end
+
+    def update_books
+      Current.organization.update!(books_nonprofit: params[:books_nonprofit] == "1")
+      redirect_to section_path("books"), notice: "Saved."
+    end
+
     def update_offline_methods
       methods = Array(params[:offline_payout_methods]) & ShowPayoutLineItem::MANUAL_PAYMENT_METHODS
       Current.organization.update!(enabled_offline_payout_methods: methods)
@@ -94,6 +177,13 @@ module Manage
     end
     helper_method :sections
 
+    # Custom income sits in 48xx, custom spending in 58xx, after the system codes.
+    def next_custom_code(type)
+      base = type == "income" ? 4800 : 5800
+      taken = Current.organization.ledger_accounts.where("code >= ? AND code < ?", base.to_s, (base + 100).to_s).pluck(:code).map(&:to_i)
+      ((base..(base + 99)).to_a - taken).first.to_s
+    end
+
     def section_path(key)
       manage_money_settings_section_path(section: key)
     end
@@ -109,7 +199,7 @@ module Manage
     end
 
     def ticket_source_params
-      params.require(:ticket_source).permit(:name, :position)
+      params.require(:ticket_source).permit(:name, :position, :tax_handling)
     end
   end
 end

@@ -59,7 +59,7 @@
 
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
       <%= render "shared/section_heading", padding: "px-4 py-3 sm:px-6 sm:py-4", title: "Notifications" %>
-      <p class="px-4 sm:px-6 pt-3 text-sm text-gray-600">What CocoScout tells you about as things happen. Every one shows in Notifications; choose which also reach your phone or your inbox.</p>
+      <p class="px-4 sm:px-6 pt-3 text-sm text-gray-600">What CocoScout tells you about as things happen. Every one shows in Notifications, and Push sends it to your phone. Email is for your shifts, a show canceled or moved and being asked to cover, and for whether the rest is in the email about what's still unread.</p>
       <%= render "account/notification_switch_header" %>
       <% NotificationGroups::ALL.select { |g| g.section == :yours }.each do |group| %>
         <%= render "account/notification_switch_row", label: group.label, description: group.description,
@@ -75,10 +75,10 @@
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
         <%= render "shared/section_heading", padding: "px-4 py-3 sm:px-6 sm:py-4",
               title: @ticketing_plans.one? ? "Ticketing at #{@ticketing_plans.first.first.name}" : "Ticketing" %>
-        <p class="px-4 sm:px-6 pt-3 text-sm text-gray-600">Push is yours to choose here. Ticketing emails come by the plan your organization gives you on Ticketing settings.</p>
+        <p class="px-4 sm:px-6 pt-3 text-sm text-gray-600">Push is yours to choose here. Ticketing emails come by the plan your organization gives you on Ticketing settings. Each sale as it happens is a notification, never an email.</p>
         <% @ticketing_plans.each do |organization, recipient| %>
           <p class="px-4 sm:px-6 pt-2 text-sm text-gray-600">
-            <% unless @ticketing_plans.one? %><%= organization.name %>: <% end %>your plan is <strong class="text-gray-900"><%= TicketingNotifications::PLANS.find { |plan| plan.key == recipient.plan }&.label || "Your own pick" %></strong>, <%= pluralize(recipient.kinds.size, "email") %>.
+            <% unless @ticketing_plans.one? %><%= organization.name %>: <% end %>your plan is <strong class="text-gray-900"><%= TicketingNotifications::PLANS.find { |plan| plan.key == recipient.plan }&.label || "Your own pick" %></strong>, <%= pluralize(recipient.emailed_kinds.size, "email") %>.
             <% if organization.manageable_by?(Current.user) %>
               <%= link_to "Change it", manage_ticketing_settings_section_path(section: "notifications"), class: "text-pink-600 hover:text-pink-700 font-medium" %>
             <% end %>
@@ -88,7 +88,7 @@
         <% NotificationGroups::ALL.select(&:ticketing?).each do |group| %>
           <%= render "account/notification_switch_row", label: group.label, description: group.description,
                 push_name: "push[#{group.key}]", push_on: Current.user.notification_push?(group.key),
-                email_name: nil, email_note: "By plan" %>
+                email_name: nil, email_note: (group.key == "ticketing_sales" ? "None" : "By plan") %>
         <% end %>
       </div>
     <% end %>

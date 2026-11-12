@@ -51,7 +51,7 @@ RSpec.describe "Contract payment checkout", type: :request do
     it "is the invoice: numbered, with a PDF to download" do
       get pay_contract_path(token: payment.payment_token!)
 
-      invoice = payment.reload.contract_invoice
+      invoice = payment.reload.invoice
       expect(invoice.display_number).to eq("#{org.invoice_prefix_or_default}-0001")
       expect(response.body).to include("Invoice from", invoice.display_number, "Download invoice (PDF)")
 
@@ -90,7 +90,7 @@ RSpec.describe "Contract payment checkout", type: :request do
       get pay_contract_path(token: payment.payment_token!)
 
       expect(response.body).to include("isn't ready to be paid yet")
-      expect(payment.reload.contract_invoice).to be_nil
+      expect(payment.reload.invoice).to be_nil
     end
 
     it "shows the payer only CocoScout when the contract is online-only" do

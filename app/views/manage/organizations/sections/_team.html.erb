@@ -62,9 +62,9 @@
       <%# Right Section: Role %>
       <div class="w-1/2 border-l border-gray-200 pl-4 flex items-center justify-between">
         <div>
-          <div class="text-[10px] text-gray-400 uppercase tracking-wide">Global Role</div>
+          <div class="text-[10px] text-gray-400 uppercase tracking-wide">Access</div>
           <div class="text-sm font-medium text-pink-500">
-            <% if member.id == @organization.owner_id %>Owner, <% end %><%= organization_role&.company_role&.capitalize %>
+            <% if member.id == @organization.owner_id %>Owner<% else %><%= organization_role.access_label %><% end %>
           </div>
         </div>
         <% if (@is_owner || @role == "manager") && member != Current.user && member.id != @organization.owner_id %>
@@ -207,8 +207,11 @@
   <!-- Manage Permissions Modal -->
   <div data-org-team-modals-target="permissionsModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-action="click->org-team-modals#closePermissionsModal">
     <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col" data-action="click->org-team-modals#stopPropagation">
-      <div class="px-6 py-4 border-b border-gray-200 flex-shrink-0">
-        <h2 data-org-team-modals-target="permissionsTitle" class="text-xl font-semibold text-gray-900 coustard-regular">Manage Permissions</h2>
+      <div class="px-6 py-4 bg-gradient-to-r from-pink-500 to-pink-600 rounded-t-lg flex items-center justify-between flex-shrink-0">
+        <h2 data-org-team-modals-target="permissionsTitle" class="text-xl font-semibold text-white coustard-regular">Access</h2>
+        <button type="button" class="text-white/80 hover:text-white" aria-label="Close" data-action="click->org-team-modals#closePermissionsModal">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
       </div>
       <div data-org-team-modals-target="permissionsContent" class="p-6 overflow-y-auto">
         <p class="text-gray-500 text-center py-8">Loading...</p>

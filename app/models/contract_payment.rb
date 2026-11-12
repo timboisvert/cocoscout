@@ -8,9 +8,15 @@ class ContractPayment < ApplicationRecord
   # :destroy so removing it detaches from the run (see PayoutContribution).
   has_one :payout_contribution, as: :source, dependent: :destroy
 
-  # Its invoice, once anyone has opened it (ContractInvoice.for!). The invoice
+  # A correction to a settlement that was already paid when its day was
+  # reopened (ContractSettlementCorrection): the difference, as a payment of
+  # its own beside the one that stays as it was paid.
+  belongs_to :correction_of, class_name: "ContractPayment", optional: true
+  has_many :corrections, class_name: "ContractPayment", foreign_key: :correction_of_id, dependent: :nullify, inverse_of: :correction_of
+
+  # Its invoice, once anyone has opened it (Invoice.for!). The invoice
   # outlives the payment, void, so its number is never reused.
-  has_one :contract_invoice, inverse_of: :contract_payment
+  has_one :invoice, inverse_of: :contract_payment
 
   # Direction: whether they pay us or we pay them
   enum :direction, {
@@ -72,7 +78,7 @@ class ContractPayment < ApplicationRecord
   # recorded by hand. Netting it out of their payout isn't a payment from them.
   after_commit -> { ContractPaymentReceiptJob.perform_later(id) }, on: :update,
                if: -> { saved_change_to_status?(to: "paid") && direction_incoming? && payment_method != "payout_deduction" }
-  before_destroy -> { contract_invoice&.void!("Removed from the contract") }
+  before_destroy -> { invoice&.void!("Removed from the contract") }
 
   scope :upcoming, -> { status_pending.where("due_date >= ?", Date.current).order(:due_date) }
   scope :overdue, -> { status_pending.where("due_date < ?", Date.current).order(:due_date) }
@@ -209,9 +215,7 @@ class ContractPayment < ApplicationRecord
                 components: Array(components) + other.service_components + [ merged ])
         # Its invoice, if anyone opened it, now points at this one: an old
         # link to it shows this payment's invoice.
-        if other.contract_invoice
-          other.contract_invoice.void!("Combined into #{ContractInvoice.for!(self).display_number}", combined_into: self)
-        end
+        other.invoice&.void!("Combined into #{Invoice.for!(self).display_number}", combined_into: self)
         other.destroy!
       end
     end
@@ -305,6 +309,17 @@ class ContractPayment < ApplicationRecord
   # Whether this payment has been added to a payout run.
   def in_payout_run?
     payout_contribution.present?
+  end
+
+  def correction? = correction_of_id.present?
+
+  # Paid as Tim means it (2026-11-04): settled, or on a payout run that was
+  # submitted. Only a draft run can still change.
+  def paid_or_submitted?
+    return true if status_paid?
+
+    batch = payout_contribution&.payout_batch
+    batch.present? && !batch.open?
   end
 
   # A settlement whose amount is still waiting on ticket sales.

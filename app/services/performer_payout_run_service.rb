@@ -37,7 +37,7 @@ class PerformerPayoutRunService
 
           item = batch.items.find_by(payee: line.payee) ||
                  batch.items.create!(payee: line.payee, amount_cents: cents, status: "pending")
-          add_contribution(batch, item, line, cents, label)
+          add_contribution(batch, item, line, cents, line.correction? ? "#{label} (correction)" : label)
           # Item pays the payee's net performer balance, so advances net against
           # earnings automatically.
           item.settle_amount!

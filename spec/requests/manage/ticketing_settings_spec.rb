@@ -220,18 +220,22 @@ RSpec.describe "Manage ticketing settings", type: :request do
       fresh = -> { TicketingNotifications.new(Organization.find(org.id)) }
       patch manage_ticketing_settings_notifications_path, params: { recipient: "user:#{superadmin.id}", plan: "everything", kinds: [ "" ] }
       expect(response).to redirect_to(manage_ticketing_settings_section_path(section: "notifications"))
-      expect(flash[:notice]).to include("gets everything: 15 emails")
-      expect(fresh.call.emails_for("sale")).to eq([ superadmin.email_address ])
+      # A manager's sales as they happen are notifications, not emails (Tim, 2026-11-09).
+      expect(flash[:notice]).to include("gets everything: 11 emails and 4 kinds as notifications.")
+      expect(fresh.call.emails_for("sale")).to eq([])
+      expect(fresh.call.emails_for("daily_summary")).to eq([ superadmin.email_address ])
+      expect(page.at_css("[data-recipient='user:#{superadmin.id}']").text.squish).to include("Everything · 11 emails · 4 notifications")
 
       patch manage_ticketing_settings_notifications_path,
             params: { recipient: "new", email: "box@starsandgarters.com", plan: "custom", kinds: [ "", "sale", "door_sale" ] }
       expect(flash[:notice]).to eq("Saved. box@starsandgarters.com gets their own pick: 2 emails.")
-      expect(fresh.call.emails_for("door_sale")).to contain_exactly(superadmin.email_address, "box@starsandgarters.com")
+      # An address with no account still gets each sale by email: it's all it can get.
+      expect(fresh.call.emails_for("door_sale")).to contain_exactly("box@starsandgarters.com")
       expect(page.at_css("[data-recipient='email:box@starsandgarters.com']").text.squish).to include("Their own pick · 2 emails", "Not a manager here")
 
       patch manage_ticketing_settings_notifications_path, params: { recipient: "email:box@starsandgarters.com", remove: "1", plan: "custom" }
       expect(flash[:notice]).to eq("box@starsandgarters.com won't get Ticketing email any more.")
-      expect(fresh.call.emails_for("sale")).to eq([ superadmin.email_address ])
+      expect(fresh.call.emails_for("sale")).to eq([])
 
       patch manage_ticketing_settings_notifications_path, params: { recipient: "user:#{superadmin.id}", plan: "nothing" }
       expect(flash[:notice]).to end_with("gets no Ticketing email.")

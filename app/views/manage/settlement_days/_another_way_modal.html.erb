@@ -1,0 +1,33 @@
+<%# One person's line paid another way (cash at the door, a check): recorded
+    on the line, so it never rides the run. Locals: line, show, return_to %>
+<% id = "another-way-#{line.id}" %>
+<div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-md sm:mx-4 overflow-hidden" data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white"><%= line.payee_name %>, paid another way</h3>
+      <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10" aria-label="Close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <%= form_with url: manage_mark_line_item_paid_money_show_payout_path(show, line_item_id: line.id), method: :post, data: { turbo_action: "replace" } do %>
+      <%= hidden_field_tag :return_to, return_to, id: nil %>
+      <div class="px-6 py-5 space-y-3 text-sm text-gray-700">
+        <p><%= number_to_currency(line.net_amount) %> for <%= show.display_name %>, paid outside CocoScout. It stays off the payout run.</p>
+        <label class="block"><span class="font-medium text-gray-900">How</span>
+          <select name="payment_method" class="mt-1 block w-full pl-3 pr-8 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+            <% ShowPayoutLineItem::MANUAL_PAYMENT_METHODS.each do |method| %>
+              <option value="<%= method %>"><%= method == "historical" ? "Before CocoScout" : method.titleize %></option>
+            <% end %>
+          </select></label>
+        <label class="block"><span class="font-medium text-gray-900">When</span>
+          <input type="date" name="paid_date" value="<%= show.date_and_time.to_date.iso8601 %>" class="mt-1 block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"></label>
+        <label class="block"><span class="font-medium text-gray-900">Note <span class="text-xs font-normal text-gray-500">(optional)</span></span>
+          <input type="text" name="payment_notes" placeholder="e.g. Cash at the door" class="mt-1 block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"></label>
+      </div>
+      <div class="px-6 py-4 bg-gray-50 flex justify-end gap-2">
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+        <%= render "shared/button", text: "Paid another way", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+</div>

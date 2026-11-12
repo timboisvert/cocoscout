@@ -47,10 +47,18 @@ RSpec.describe "Ticketing notifications" do
       settings.save_plan!("user:#{manager.id}", plan: "everything")
       settings.save_plan!("new", plan: "custom", kinds: %w[sale door_sale bogus], email: " Box@SG.example ")
       fresh = TicketingNotifications.new(org)
-      expect(TicketingNotifications::KEYS.map { |key| fresh.emails_for(key).include?("manager@sg.example") }).to all(be(true))
+      # Everything is every kind; a manager's sales as they happen are
+      # notifications, not emails (Tim, 2026-11-09), and the rest are emails.
+      everything = fresh.recipient("user:#{manager.id}")
+      expect(everything.kinds).to eq(TicketingNotifications::KEYS)
+      expect(everything.notified_kinds).to eq(%w[sale door_sale comp_issued pass_redeemed])
+      emailed = TicketingNotifications::KEYS - TicketingNotifications::AS_THEY_HAPPEN
+      expect(emailed.map { |key| fresh.emails_for(key).include?("manager@sg.example") }).to all(be(true))
+      expect(TicketingNotifications::AS_THEY_HAPPEN.map { |key| fresh.emails_for(key).include?("manager@sg.example") }).to all(be(false))
       box = fresh.recipient("email:box@sg.example")
-      expect(box).to have_attributes(plan: "custom", kinds: %w[sale door_sale], address?: true)
-      expect(fresh.emails_for("door_sale")).to contain_exactly("manager@sg.example", "box@sg.example")
+      expect(box).to have_attributes(plan: "custom", kinds: %w[sale door_sale], emailed_kinds: %w[sale door_sale], address?: true)
+      # An address with no account still gets each sale by email.
+      expect(fresh.emails_for("door_sale")).to contain_exactly("box@sg.example")
       expect(fresh.emails_for("daily_summary")).to contain_exactly("owner@sg.example", "manager@sg.example")
       expect(TicketingProfile.for(org).notification_emails).to eq([ "box@sg.example" ])
     end

@@ -18,7 +18,7 @@
     n = local_assigns[:audition_signups].to_i
     rows << { key: "signups", tone: :pink, text: "#{n} audition #{'sign-up'.pluralize(n)} to review", action: { path: manage_signups_path } } if n.positive?
     if (a = local_assigns[:attention])
-      rows << { key: "financials", tone: :gray, text: "#{a[:financials]} #{'show'.pluralize(a[:financials])} that need financials", action: { path: manage_money_financials_path } } if a[:financials].to_i.positive?
+      rows << { key: "settle", tone: :gray, text: "#{a[:days]} #{'day'.pluralize(a[:days])} to settle up", action: { path: (a[:oldest_day] ? manage_money_settle_up_day_path(a[:oldest_day]) : manage_money_settle_up_path) } } if a[:days].to_i.positive?
       rows << { key: "pay", tone: :pink, text: "#{number_to_currency(a[:payouts_amount])} to pay", action: { path: manage_money_payouts_path } } if a[:payouts].to_i.positive?
       rows << { key: "hours", tone: :gray, text: hours_to_approve_words(a[:hours]), action: { path: manage_staffing_timesheets_path } } if a[:hours].to_i.positive?
     end

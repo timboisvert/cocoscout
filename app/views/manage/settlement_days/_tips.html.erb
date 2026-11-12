@@ -1,0 +1,136 @@
+<%# The tips block inside the register card (plan §9.3, §9.14; Tim,
+    2026-11-03: tips from Square belong in the Square card): the register's
+    tips and who gets them, as a summary to read. With the organization's
+    tip rule on and the clock to read, the split is worked out from who was
+    on: a row per person with the span they worked, their share and how it
+    was worked out; then each stretch with nobody on the bar, which is the
+    manager's call (the house keeps it, split it, or one person), asked by
+    stretch rather than by order. Otherwise it is the by-hand split (evenly,
+    by hours, or as typed). The card's "Looks right" covers it; "Change the
+    split" opens the modal where anything can be changed. Settled shares
+    then wait on Pay People with the approved hours.
+    Locals: day, tips, can_change %>
+<%
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  editable = can_change && !day.settled?
+  by_rule = tips.by_rule?
+  rule = tips.rule
+  roles_by_id = rule&.enabled? ? Current.organization.house_roles.index_by(&:id) : {}
+  modal_id = "tips-split-#{day.param}"
+  math_id = "tips-math-#{day.param}"
+  how_paid = { "payout" => "on their next pay", "cash" => "in cash at close" }
+  workers = tips.sharers
+  split = tips.split
+  hand_rows = tips.hand_rows
+  rows_by_person = by_rule ? tips.rows.index_by { |r| r.person.id } : {}
+  choice_words = lambda do |stretch|
+    if stretch.house? then "the house keeps it"
+    elsif stretch.split? then "split between everyone listed"
+    elsif (row = rows_by_person[stretch.person_id]) then "to #{row.person.name}"
+    end
+  end
+  # Nobody who shares tips was on: one short line and the way in, nothing else (Tim, 2026-11-04: the full block read badly with no one).
+  nobody = !by_rule && workers.empty?
+  # On a settled day, one pill says where the tip money went, the way the
+  # payout lines say it (Tim, 2026-11-04): waiting on Pay People, on the
+  # draft payout run, on its way, paid. Mixed, it counts each.
+  tip_pill = nil
+  if day.settled? && tips.cents.positive?
+    tones = { overpaid: "border-amber-200 text-amber-700 bg-amber-50", waiting: "border-blue-200 text-blue-700 bg-blue-50", in_draft: "border-blue-200 text-blue-700 bg-blue-50", in_flight: "border-blue-200 text-blue-700 bg-blue-50", paid: "border-gray-200 text-gray-600 bg-gray-50" }
+    stages = tips.shares.select { |share| share.amount_cents.positive? || share.paid_before? }.map { |share| tips.share_stage(share) }
+    tip_pill = if stages.empty? then [ "Kept by the house", tones[:paid] ]
+    elsif stages.map(&:last).uniq.size == 1 then [ stages.first.last, tones[stages.first.first] ]
+    else [ stages.sort_by { |stage, _| tones.keys.index(stage) }.map(&:last).tally.map { |words, n| "#{n} #{words.sub(/\A./, &:downcase)}" }.join(" · "), "border-gray-200 text-gray-600 bg-white" ]
+    end
+  end
+  # Each row says its own only while the pill can't say it for everyone.
+  row_tags = tip_pill.nil? || stages.map(&:last).uniq.size > 1
+  # Someone paid before the day was reopened (Tim, 2026-11-04): what they
+  # were paid, and where the difference from what the day gives them now
+  # stands. Nothing for anyone else.
+  paid_words = lambda do |share, now_cents|
+    next nil unless share&.paid_before?
+
+    difference = now_cents - share.paid_cents
+    on_run = share.payout_contribution_id.present?
+    if difference.zero? then "Paid #{money.call(share.paid_cents)}."
+    elsif difference.positive? then "Paid #{money.call(share.paid_cents)}. #{money.call(difference)} more #{on_run ? 'is on a payout run' : 'waits on Pay People'}."
+    else "Paid #{money.call(share.paid_cents)}. The #{money.call(-difference)} over #{on_run ? 'is coming out of their pay on a payout run' : 'comes out of their next pay'}."
+    end
+  end
+  # Paid, and no longer in the split at all: still said, so it adds up.
+  listed = by_rule ? tips.rows.map { |r| r.person.id } : hand_rows.map { |r| r[:worker].person.id }
+  paid_and_out = tips.shares.select { |share| share.paid_before? && !listed.include?(share.person_id) }
+  line = ->(label, note, value) { "<div class='flex items-baseline justify-between gap-3 py-1.5 text-sm'><span class='text-gray-700'>#{ERB::Util.html_escape(label)}#{note.present? ? " <span class='text-xs text-gray-500'>#{ERB::Util.html_escape(note)}</span>" : ''}</span><span class='tabular-nums text-gray-900'>#{value}</span></div>".html_safe }
+%>
+<div class="border-t border-gray-200 px-5 py-3 space-y-2" id="tips">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h3 class="text-sm font-semibold text-gray-900">Tips, <%= money.call(tips.cents) %><% if nobody %> <span class="ml-1 text-xs font-normal text-amber-700">nobody on the clock</span><% end %></h3>
+    <% if editable %>
+      <%= render "shared/button", text: (nobody ? "Assign tips" : "Change the split"), variant: "secondary", size: "small", type: :button,
+            data: { controller: "modal", action: "click->modal#open", modal_id: modal_id } %>
+    <% elsif tip_pill %>
+      <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap <%= tip_pill.last %>"><%= tip_pill.first %></span>
+    <% end %>
+  </div>
+  <% if by_rule %>
+    <%# One small way into the math, here and nowhere else (Tim, 2026-11-04). %>
+    <p class="text-sm text-gray-600">Worked out from who was on when each sale rang up: <%= rule.summary(roles_by_id) %>.
+      <a href="#<%= math_id %>" class="ml-1 text-xs text-pink-600 hover:text-pink-700 whitespace-nowrap" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= math_id %>">View share calculation</a></p>
+    <div class="divide-y divide-gray-100">
+      <% tips.rows.each do |row| %>
+        <div class="flex items-baseline justify-between gap-3 py-1.5 text-sm">
+          <span class="min-w-0">
+            <span class="text-gray-900"><%= row.person.name %></span>
+            <% if row.house_role %><span class="ml-1 text-xs text-gray-500"><%= row.house_role.name %></span><% end %>
+            <% if row.span_words %><span class="ml-1 text-xs text-gray-500">· <%= row.span_words %></span><% end %>
+            <% if row.locked? && row_tags %><span class="ml-1 text-xs text-gray-500">· on a payout run</span><% end %>
+            <span class="block text-xs text-gray-500"><%= row.how %> <%= how_paid[row.method].capitalize %>.</span>
+            <% if (words = paid_words.call(row.share, row.cents)) %><span class="block text-xs text-gray-500"><%= words %></span><% end %>
+          </span>
+          <span class="tabular-nums text-gray-900 whitespace-nowrap"><%= money.call(row.cents) %></span>
+        </div>
+      <% end %>
+    </div>
+    <% tips.stretches.each do |stretch| %>
+      <% if stretch.resolved? && choice_words.call(stretch) %>
+        <p class="text-xs text-gray-500">Nobody on the bar <%= stretch.words %>: <%= money.call(stretch.cents) %><%= stretch.orders.positive? ? " from #{pluralize(stretch.orders, 'order')}" : "" %>, <%= choice_words.call(stretch) %>.</p>
+      <% else %>
+        <p class="text-sm text-amber-700">Nobody on the bar <%= stretch.words %>: <%= money.call(stretch.cents) %><%= stretch.orders.positive? ? " from #{pluralize(stretch.orders, 'order')}" : "" %>. Say who gets it<%= editable ? " under Change the split" : "" %>.</p>
+      <% end %>
+    <% end %>
+    <%# What the house keeps, when the stretches above don't already say it all (Tim, 2026-11-04: no saying it twice). %>
+    <% house_said = tips.stretches.select { |st| st.resolved? && st.house? }.sum(&:cents) %>
+    <% if tips.house_cents.positive? && tips.unresolved.empty? && tips.house_cents != house_said %>
+      <p class="text-xs text-gray-500">The house keeps <%= money.call(tips.house_cents) %><%= house_said.positive? ? " in all" : "" %>.</p>
+    <% end %>
+  <% elsif nobody %>
+    <p class="text-xs text-gray-500">The house keeps them until someone was on<%= rule&.enabled? ? "; add who was on and when, and the clock splits them" : "; add who was on, or their shift or hours in Staffing" %>.</p>
+  <% else %>
+    <p class="text-sm text-gray-600">
+      Split <%= { "even" => "evenly", "hours" => "by hours worked", "typed" => "as typed" }.fetch(split) %> between <%= workers.size == 1 ? workers.first.person.name : pluralize(workers.size, "person") %>.
+      <% if rule&.enabled? && tips.by_time.empty? %>This register day has no order times to read, so the rule can't work it out; Pull now on the Square page reads them in.<% end %>
+    </p>
+    <div class="divide-y divide-gray-100">
+      <% hand_rows.each do |row| %>
+        <%= line.call(row[:worker].person.name, [ (row[:worker].hours.positive? ? "#{row[:worker].hours} h" : nil), how_paid[row[:method]], (row[:share]&.payout_contribution_id.present? && row_tags ? "on a payout run" : nil) ].compact.join(" · "), money.call(row[:cents])) %>
+        <% if (words = paid_words.call(row[:share], row[:cents])) %><p class="pb-1.5 text-xs text-gray-500"><%= words %></p><% end %>
+      <% end %>
+    </div>
+    <% if tips.shares.any? && tips.unassigned_cents != 0 %>
+      <p class="text-xs text-amber-700"><%= tips.unassigned_cents.positive? ? "#{money.call(tips.unassigned_cents)} not given to anyone, so the house keeps it." : "#{money.call(-tips.unassigned_cents)} more than the register took in tips." %></p>
+    <% end %>
+  <% end %>
+  <% paid_and_out.each do |share| %>
+    <p class="text-xs text-gray-500"><%= share.person.name %> is no longer in the split. <%= paid_words.call(share, 0) %></p>
+  <% end %>
+  <% unless nobody || tip_pill %>
+    <p class="text-xs text-gray-500">Shares go on each person's next pay from Pay People, with their hours; cash shares came out of the door cash at close.</p>
+  <% end %>
+</div>
+<% if by_rule %>
+  <%= render "manage/settlement_days/tips_math_modal", id: math_id, tips: tips, roles_by_id: roles_by_id %>
+<% end %>
+<% if editable %>
+  <%= render "manage/settlement_days/tips_modal", id: modal_id, day: day, tips: tips, hand_rows: hand_rows, roles_by_id: roles_by_id %>
+<% end %>

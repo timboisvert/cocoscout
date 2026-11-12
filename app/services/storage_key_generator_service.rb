@@ -54,9 +54,19 @@ class StorageKeyGeneratorService
       when QuestionnaireAnswer
         build_questionnaire_answer_key(record, blob_key)
       else
-        # Generic fallback for other record types
-        build_generic_key(record, attachment_name, blob_key)
+        # Anything that belongs to an organization lives under it (money
+        # documents: bills, receipts, W-9s, statements); the rest generic.
+        build_organization_key(record, attachment_name, blob_key) || build_generic_key(record, attachment_name, blob_key)
       end
+    end
+
+    def build_organization_key(record, attachment_name, blob_key)
+      org_id = record.try(:organization_id) || record.try(:organization)&.id
+      org_id ||= record.show_financials&.show&.production&.organization_id if record.is_a?(ExpenseItem)
+      org_id ||= record.contract&.organization_id if record.is_a?(ContractDocument)
+      return nil unless org_id
+
+      "organizations/#{org_id}/#{record.class.name.underscore.pluralize}/#{record.id}/#{attachment_name.to_s.pluralize}/#{blob_key}"
     end
 
     def build_profile_headshot_key(profile_headshot, blob_key)

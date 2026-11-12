@@ -119,6 +119,18 @@ class BooksPoster
     when "contract_payment"
       production = source.try(:contract)&.production
       [ balance, { account: :contract_income, amount_cents: -cents, production: production } ]
+    when "invoice_payment"
+      # An invoice paid on its page: the payer's gross is income, the card
+      # fee is ours to bear, the net is the balance's.
+      payment = source.is_a?(InvoicePayment) ? source : nil
+      invoice = payment&.invoice
+      if invoice
+        fee = payment.amount_cents - cents
+        [ balance, { account: :ticketing_fees, amount_cents: fee, production: invoice.production },
+          { account: invoice.category_account, amount_cents: -payment.amount_cents, production: invoice.production, show: invoice.show } ]
+      else
+        [ balance, { account: :other_income, amount_cents: -cents } ]
+      end
     when "funding"
       [ balance, { account: :bank, amount_cents: -cents } ]
     when "transfer"

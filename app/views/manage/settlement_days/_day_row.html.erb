@@ -1,0 +1,21 @@
+<%# One day in the Settle up list. Locals: day (SettleUp::Day) %>
+<% money = ->(cents) { cents.negative? ? "−#{number_to_currency(-cents / 100.0)}" : number_to_currency(cents / 100.0) } %>
+<div class="grid grid-cols-1 sm:grid-cols-[150px_1fr_130px_110px] gap-x-4 gap-y-2 items-center px-5 py-3 border-t border-gray-100">
+  <span>
+    <span class="block text-sm font-semibold text-gray-900"><%= day.date.strftime("%A") %></span>
+    <span class="block text-xs text-gray-500"><%= day.date.strftime("%b %-d") %><% if day.before_start? && !day.settled? %> · before Settle up<% end %><% if day.settled? %> · settled <%= day.record.settled_at.strftime("%b %-d") %><% if day.record.settled_by %> by <%= day.record.settled_by.default_person&.first_name || day.record.settled_by.email_address %><% end %><% end %></span>
+  </span>
+  <span class="flex flex-wrap gap-1.5">
+    <% day.pieces.each do |label, state| %>
+      <%= render "manage/settlement_days/piece_chip", label: label, state: state %>
+    <% end %>
+  </span>
+  <span class="text-sm tabular-nums text-gray-900 sm:text-right"><%= money.call(day.in_cents) %><% unless day.settled? || day.before_start? %> <span class="text-xs text-gray-500">so far</span><% end %></span>
+  <span class="sm:text-right">
+    <% if day.settled? || day.before_start? %>
+      <%= render "shared/button", text: "Open", variant: "secondary", size: "small", path: manage_money_settle_up_day_path(day.param) %>
+    <% else %>
+      <%= render "shared/button", text: "Settle up", variant: "primary", size: "small", path: manage_money_settle_up_day_path(day.param) %>
+    <% end %>
+  </span>
+</div>

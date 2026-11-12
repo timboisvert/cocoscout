@@ -1,0 +1,7 @@
+<%# One thing owed to you, whichever kind: an invoice to anyone or a contract
+    payment. Locals: item, show_production %>
+<% if item.is_a?(Invoice) %>
+  <%= render "manage/invoices/invoice_slim_row", invoice: item, show_production: local_assigns.fetch(:show_production, false) %>
+<% else %>
+  <%= render "manage/money_incoming/payment_slim_row", payment: item, show_production: local_assigns.fetch(:show_production, false) %>
+<% end %>

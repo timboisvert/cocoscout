@@ -15,6 +15,7 @@ Rails.application.routes.draw do
   post "/webhooks/stripe", to: "stripe_webhooks#create", as: "stripe_webhook"
   # Emails to followers: what Mailgun saw happen to them (Mailing lists, V1.1).
   post "/webhooks/mailgun", to: "mailgun_webhooks#create", as: "mailgun_webhook"
+  post "/webhooks/square", to: "square_webhooks#create", as: "square_webhook"
 
   # The unsubscribe link on every email to followers.
   get  "/followers/unsubscribe/:token",             to: "follower_unsubscribes#show",        as: "follower_unsubscribe"
@@ -102,6 +103,12 @@ Rails.application.routes.draw do
   post "/pay/contract/:token/checkout", to: "contract_payment_checkout#checkout", as: "pay_contract_checkout"
   get  "/pay/contract/:token/success",  to: "contract_payment_checkout#success",  as: "pay_contract_success"
   get  "/pay/contract/:token/invoice",  to: "contract_payment_checkout#invoice",  as: "pay_contract_invoice", defaults: { format: "pdf" }
+
+  # Public, no-login invoice link (an invoice to anyone, plan D2). The token names one invoice.
+  get  "/pay/invoice/:token",          to: "invoice_checkout#show",     as: "pay_invoice"
+  post "/pay/invoice/:token/checkout", to: "invoice_checkout#checkout", as: "pay_invoice_checkout"
+  get  "/pay/invoice/:token/success",  to: "invoice_checkout#success",  as: "pay_invoice_success"
+  get  "/pay/invoice/:token/invoice",  to: "invoice_checkout#pdf",      as: "pay_invoice_pdf", defaults: { format: "pdf" }
 
   # Public, no-login contract signing link. The token names one contract.
   get  "/sign/contract/:token",      to: "contract_signing#show",    as: "sign_contract"
@@ -1150,6 +1157,20 @@ Rails.application.routes.draw do
       end
     end
 
+    # Organization settings → Integrations → Square (Books V1.3, plan §9.3).
+    get    "organizations/:id/integrations/square",         to: "integrations#square",     as: "organization_square"
+    post   "organizations/:id/integrations/square/connect", to: "integrations#connect",    as: "connect_organization_square"
+    patch  "organizations/:id/integrations/square",         to: "integrations#update"
+    post   "organizations/:id/integrations/square/pull",    to: "integrations#pull",       as: "pull_organization_square"
+    delete "organizations/:id/integrations/square",         to: "integrations#disconnect"
+    get    "integrations/square/callback",                  to: "integrations#callback",   as: "square_callback"
+    get    "organizations/:id/integrations/google_calendar",         to: "google_calendar#show",       as: "organization_google_calendar"
+    post   "organizations/:id/integrations/google_calendar/connect", to: "google_calendar#connect",    as: "connect_organization_google_calendar"
+    patch  "organizations/:id/integrations/google_calendar",         to: "google_calendar#update"
+    post   "organizations/:id/integrations/google_calendar/sync",    to: "google_calendar#sync",       as: "sync_organization_google_calendar"
+    delete "organizations/:id/integrations/google_calendar",         to: "google_calendar#disconnect"
+    get    "integrations/google_calendar/callback",                  to: "google_calendar#callback",   as: "google_calendar_callback"
+
     # The organization's services (Organization settings → Services; Pro).
     post   "services",     to: "house_services#create",  as: "house_services"
     patch  "services/:id", to: "house_services#update",  as: "house_service"
@@ -1203,6 +1224,7 @@ Rails.application.routes.draw do
         get :permissions
         patch :update_production_permission
         patch :update_global_role
+        patch :update_access
       end
     end
 
@@ -1628,15 +1650,79 @@ Rails.application.routes.draw do
     # Money / Payouts section - org-level
     get "money", to: "money#index", as: "money_index"
     get "money/books", to: "books#show", as: "money_books"
+    get "money/books/download", to: "books#download", as: "money_books_download"
+    # Books starts with its categories: a few questions, a recommended list, an acknowledgment.
+    get   "money/books/setup", to: "books_setup#show",   as: "money_books_setup"
+    patch "money/books/setup", to: "books_setup#update"
+    # Books' sections, each its own page under the Books landing page
+    # (Tim, 2026-11-02: sections, the way Money has them, not tabs).
+    get "money/books/:section", to: "books#show", as: "money_books_section", constraints: { section: /accounts|entries|shows|checks/ }
+    get  "money/books/statements", to: "books_statements#show", as: "money_statements"
+    get  "money/books/statements/ledger", to: "books_statements#ledger", as: "money_statements_ledger"
+    post "money/books/statements/lock", to: "books_statements#lock", as: "money_statements_lock"
+    post "money/books/statements/unlock", to: "books_statements#unlock", as: "money_statements_unlock"
+    get  "money/books/taxes", to: "books_taxes#show", as: "money_taxes"
+    get  "money/files/:id", to: "money_files#show", as: "money_file"
+    get  "money/books/bank", to: "bank_statements#show", as: "money_bank"
+    post "money/books/bank", to: "bank_statements#create", as: "money_bank_import"
+    post "money/books/bank/lines/:id/match",  to: "bank_statements#match",  as: "match_money_bank_line"
+    post "money/books/bank/lines/:id/ignore", to: "bank_statements#ignore", as: "ignore_money_bank_line"
+    post "money/books/bank/lines/:id/reopen", to: "bank_statements#reopen", as: "reopen_money_bank_line"
+    post "money/books/bank/lines/match-all", to: "bank_statements#match_all", as: "match_all_money_bank_lines"
+    delete "money/books/bank/statements/:id", to: "bank_statements#destroy", as: "money_bank_statement"
+    # Bank rules (a page of their own, Tim 2026-11-03): a phrase in the
+    # bank's description records or ignores the line. Sorting takes what's
+    # waiting one payee, then one line, at a time.
+    get    "money/books/bank/rules",         to: "bank_rules#index",   as: "money_bank_rules"
+    get    "money/books/bank/rules/new",     to: "bank_rules#new",     as: "new_money_bank_rule"
+    get    "money/books/bank/rules/preview", to: "bank_rules#preview", as: "preview_money_bank_rules"
+    get    "money/books/bank/rules/export",  to: "bank_rules#export",  as: "export_money_bank_rules"
+    post   "money/books/bank/rules/import",  to: "bank_rules#import",  as: "import_money_bank_rules"
+    post   "money/books/bank/rules/apply",   to: "bank_rules#apply",   as: "apply_money_bank_rules"
+    post   "money/books/bank/rules/dismiss", to: "bank_rules#dismiss", as: "dismiss_money_bank_payee"
+    post   "money/books/bank/rules",         to: "bank_rules#create"
+    get    "money/books/bank/rules/:id/edit", to: "bank_rules#edit",   as: "edit_money_bank_rule"
+    patch  "money/books/bank/rules/:id",     to: "bank_rules#update",  as: "money_bank_rule"
+    delete "money/books/bank/rules/:id",     to: "bank_rules#destroy"
+    get    "money/books/bank/sort",          to: "bank_sort#show",     as: "money_bank_sort"
+    post   "money/books/bank/sort/payee",    to: "bank_sort#payee",    as: "money_bank_sort_payee"
+    post   "money/books/bank/sort/line",     to: "bank_sort#line",     as: "money_bank_sort_line"
+    delete "money/books/bank/sort",          to: "bank_sort#stop"
+    # Money recorded by hand: the sheet, a recorded entry's page, change, remove.
+    get    "money/books/record",            to: "money_records#new",     as: "new_money_record"
+    post   "money/books/record",            to: "money_records#create",  as: "money_records"
+    get    "money/books/records/:id",       to: "money_records#show",    as: "money_record"
+    get    "money/books/records/:id/edit",  to: "money_records#edit",    as: "edit_money_record"
+    patch  "money/books/records/:id",       to: "money_records#update"
+    delete "money/books/records/:id",       to: "money_records#destroy"
+    # Settle up: one worksheet per day that had money in it (Books V1.3).
+    get   "money/settle-up", to: "settlement_days#index", as: "money_settle_up"
+    get   "money/settle-up/:date", to: "settlement_days#show", as: "money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    post  "money/settle-up/:date/settle", to: "settlement_days#settle", as: "settle_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    post  "money/settle-up/:date/reopen", to: "settlement_days#reopen", as: "reopen_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    patch "money/settle-up/:date/door-cash", to: "settlement_days#door_cash", as: "door_cash_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    patch "money/settle-up/:date/shows/:show_id/check", to: "settlement_days#check_show", as: "check_show_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    patch "money/settle-up/:date/register/check", to: "settlement_days#check_register", as: "check_register_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    patch "money/settle-up/:date/tips", to: "settlement_days#tips", as: "tips_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    # Paying people from the day (Tim, 2026-11-04): a show's calculation, and each line's choice.
+    patch "money/settle-up/:date/shows/:show_id/calculation", to: "settlement_days#choose_calculation", as: "choose_calculation_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    patch "money/settle-up/:date/shows/:show_id/calculate", to: "settlement_days#calculate_show", as: "calculate_show_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    patch "money/settle-up/:date/shows/:show_id/lines/:line_id", to: "settlement_days#pay_line", as: "pay_line_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     post "money/refresh", to: "money#refresh", as: "refresh_money"
     # Money settings — org-level config. Fixed sub-paths before the :section catch-all.
     get    "money/settings", to: "money_settings#show", as: "money_settings"
     patch  "money/settings/offline-methods", to: "money_settings#update_offline_methods", as: "money_settings_offline_methods"
     patch  "money/settings/notifications", to: "money_settings#update_notifications", as: "money_settings_notifications"
+    patch  "money/settings/settle-up", to: "money_settings#update_settle_up", as: "money_settings_settle_up"
+    patch  "money/settings/tips", to: "money_settings#update_tips", as: "money_settings_tips"
+    patch  "money/settings/books", to: "money_settings#update_books", as: "money_settings_books"
     post   "money/settings/ticket-sources", to: "money_settings#create_ticket_source", as: "money_settings_ticket_sources"
     patch  "money/settings/ticket-sources/:id", to: "money_settings#update_ticket_source", as: "money_settings_ticket_source"
     delete "money/settings/ticket-sources/:id", to: "money_settings#archive_ticket_source"
     patch  "money/settings/ticket-sources/:id/restore", to: "money_settings#restore_ticket_source", as: "money_settings_restore_ticket_source"
+    post   "money/settings/categories", to: "money_settings#create_category", as: "money_settings_categories"
+    delete "money/settings/categories/:id", to: "money_settings#archive_category", as: "money_settings_category"
+    patch  "money/settings/categories/:id/restore", to: "money_settings#restore_category", as: "money_settings_restore_category"
     get    "money/settings/:section", to: "money_settings#show", as: "money_settings_section"
     get "money/financials", to: "money_financials#index", as: "money_financials"
     # Must precede the :production_id routes so "all" isn't eaten as an id.
@@ -1667,6 +1753,22 @@ Rails.application.routes.draw do
     # Incoming payments: the receivables mirror of Payouts. Money owed TO the org,
     # almost all of it from contracts. Detail route before :production_id so the
     # literal "payment" segment isn't captured as a production id.
+    # Bills (money you owe) and invoices to anyone (money owed to you), plan D1 and D2.
+    get    "money/bills",              to: "bills#index",   as: "money_bills"
+    get    "money/bills/new",          to: "bills#new",     as: "new_money_bill"
+    post   "money/bills",              to: "bills#create"
+    get    "money/bills/:id",          to: "bills#show",    as: "money_bill"
+    get    "money/bills/:id/edit",     to: "bills#edit",    as: "edit_money_bill"
+    patch  "money/bills/:id",          to: "bills#update"
+    post   "money/bills/:id/pay",      to: "bills#pay",     as: "pay_money_bill"
+    post   "money/bills/:id/void",     to: "bills#void",    as: "void_money_bill"
+    get    "money/invoices/new",       to: "invoices#new",    as: "new_money_invoice"
+    post   "money/invoices",           to: "invoices#create", as: "money_invoices"
+    get    "money/invoices/:id",       to: "invoices#show",   as: "money_invoice"
+    get    "money/invoices/:id/pdf",   to: "invoices#pdf",    as: "pdf_money_invoice", defaults: { format: "pdf" }
+    post   "money/invoices/:id/send",  to: "invoices#send_invoice", as: "send_money_invoice"
+    post   "money/invoices/:id/payments", to: "invoices#record_payment", as: "payments_money_invoice"
+    post   "money/invoices/:id/void",  to: "invoices#void",   as: "void_money_invoice"
     get  "money/incoming", to: "money_incoming#index", as: "money_incoming"
     get  "money/incoming/received", to: "money_incoming#received", as: "money_incoming_received"
     get  "money/incoming/payment/:id", to: "money_incoming#show", as: "money_incoming_payment"
@@ -1703,7 +1805,6 @@ Rails.application.routes.draw do
 
     # Show financials - the main financial data view for a show
     get "money/shows/:id/financials", to: "show_financials#show", as: "money_show_financials"
-    get "money/shows/:id/financials/edit", to: "show_financials#edit", as: "edit_money_show_financials"
     patch "money/shows/:id/financials", to: "show_financials#update", as: "update_money_show_financials"
     post "money/shows/:id/financials/mark_non_revenue", to: "show_financials#mark_non_revenue", as: "mark_non_revenue_money_show_financials"
     post "money/shows/:id/financials/unmark_non_revenue", to: "show_financials#unmark_non_revenue", as: "unmark_non_revenue_money_show_financials"

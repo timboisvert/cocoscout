@@ -1,0 +1,5 @@
+<%# One piece of a day as a chip: green checked, amber came in but nobody
+    looked, red missing. Locals: label, state (:ok / :wait / :miss) %>
+<% tone = { ok: "bg-green-50 border-green-200 text-green-700", wait: "bg-amber-50 border-amber-200 text-amber-700", miss: "bg-red-50 border-red-200 text-red-700" }.fetch(state) %>
+<% dot = { ok: "bg-green-500", wait: "bg-amber-500", miss: "bg-red-500" }.fetch(state) %>
+<span class="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium <%= tone %>"><span class="w-1.5 h-1.5 rounded-full <%= dot %>"></span><%= label %></span>

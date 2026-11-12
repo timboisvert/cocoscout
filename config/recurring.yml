@@ -36,6 +36,15 @@ development:
     schedule: every hour
 
   # CocoScout's money: Stripe's balance lines, every bill, the morning check.
+  # Square: yesterday's business day for every connected account.
+  square_morning_pull:
+    class: SquareMorningPullJob
+    schedule: every day at 5am
+  # Google Calendar: every organization's calendar written again, so anything
+  # edited or deleted in Google is put back.
+  google_calendar_nightly:
+    class: GoogleCalendarNightlyJob
+    schedule: every day at 4am
   stripe_balance_import:
     class: StripeBalanceImportJob
     schedule: every hour at minute 20
@@ -92,6 +101,12 @@ development:
     class: CourseRemindersJob
     schedule: at 10am every day America/Chicago
 
+  # Invoices set to remind by themselves: three days before they're due, and
+  # once when they're overdue.
+  invoice_reminders:
+    class: InvoiceRemindersJob
+    schedule: at 9am every day America/Chicago
+
   staff_shift_reminders:
     class: StaffShiftRemindersJob
     schedule: every hour at minute 15
@@ -142,6 +157,15 @@ production:
     schedule: every hour
 
   # CocoScout's money: Stripe's balance lines, every bill, the morning check.
+  # Square: yesterday's business day for every connected account.
+  square_morning_pull:
+    class: SquareMorningPullJob
+    schedule: every day at 5am
+  # Google Calendar: every organization's calendar written again, so anything
+  # edited or deleted in Google is put back.
+  google_calendar_nightly:
+    class: GoogleCalendarNightlyJob
+    schedule: every day at 4am
   stripe_balance_import:
     class: StripeBalanceImportJob
     schedule: every hour at minute 20
@@ -239,6 +263,12 @@ production:
   course_reminders:
     class: CourseRemindersJob
     schedule: at 10am every day America/Chicago
+
+  # Invoices set to remind by themselves: three days before they're due, and
+  # once when they're overdue.
+  invoice_reminders:
+    class: InvoiceRemindersJob
+    schedule: at 9am every day America/Chicago
 
   staff_shift_reminders:
     class: StaffShiftRemindersJob

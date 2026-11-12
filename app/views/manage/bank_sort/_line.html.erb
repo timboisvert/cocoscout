@@ -1,0 +1,121 @@
+<%# Part 2, one line: the answers used most as chips, a category sheet for
+    the rest, ignore with a note, the match when the matcher found one.
+    Any answer can become a rule for the payee when the bank names one.
+      line:       the BankStatementLine
+      reading:    its BankPayees::Reading
+      looks_like: what it looks like on the books, or nil
+      hint:       what was recorded for the same payee last time, or nil
+      kind:       "in" or "out"
+      chips:      the quick categories (MoneyCategories::Choice)
+      productions, shows: the choices for the production menus %>
+<%
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  org = Current.organization
+  input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  label = "block text-sm font-medium text-gray-700"
+  own = BankPayees::KIND_NAMES.key?(reading.kind)
+  start = hint&.dig(:category_key)
+%>
+<div class="max-w-3xl" data-controller="bank-sort">
+  <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100">
+      <div class="flex items-baseline justify-between gap-4">
+        <div class="min-w-0">
+          <div class="text-xs text-gray-500"><%= reading.kind_label %></div>
+          <div class="text-xl font-bold text-gray-900"><%= reading.name %></div>
+          <div class="text-sm text-gray-600 mt-0.5 tabular-nums"><%= line.on.strftime("%b %-d, %Y") %> · money <%= kind %></div>
+        </div>
+        <div class="text-2xl font-bold tabular-nums <%= line.deposit? ? 'text-green-700' : 'text-gray-900' %>"><%= line.deposit? ? "+" : "−" %><%= money.call(line.amount_cents.abs) %></div>
+      </div>
+      <div class="mt-2 text-xs text-gray-500 font-mono truncate" title="<%= line.description %>"><%= line.description %></div>
+    </div>
+
+    <% if looks_like %>
+      <div class="px-5 py-3 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+        <p class="text-sm text-blue-900 min-w-0">
+          <% if looks_like.size == 1 %>Looks like <b><%= looks_like.first[:memo] %></b> on the books, <%= looks_like.first[:on].strftime("%b %-d") %>, the same amount.
+          <% else %>Looks like <%= looks_like.size %> entries on the books that add up to it: <%= looks_like.map { |c| "#{c[:memo]} (#{money.call(c[:amount_cents].abs)}, #{c[:on].strftime('%b %-d')})" }.join("; ") %>.<% end %>
+        </p>
+        <%= form_with url: manage_money_bank_sort_line_path, method: :post, data: { turbo: false } do %>
+          <input type="hidden" name="line_id" value="<%= line.id %>">
+          <input type="hidden" name="answer" value="match">
+          <%= render "shared/button", text: "Yes, that's it", variant: "primary", size: "small", type: :submit %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <%= form_with url: manage_money_bank_sort_line_path, method: :post, id: "bank-sort-line", data: { turbo: false } do %>
+      <input type="hidden" name="line_id" value="<%= line.id %>">
+      <input type="hidden" name="answer" value="record" data-bank-sort-target="answer">
+      <div class="px-5 py-4 space-y-4 text-sm">
+        <div>
+          <div class="text-[11px] font-medium uppercase tracking-wide text-gray-500 mb-1.5"><%= looks_like ? "Or, what is it?" : "What is it?" %> Your usual answers</div>
+          <div class="flex flex-wrap gap-1.5">
+            <% chips.each do |c| %>
+              <button type="button" class="inline-flex items-center rounded-full border border-gray-300 bg-white px-3 py-1 text-sm text-gray-700 hover:border-pink-400 hover:text-pink-700 cursor-pointer data-[on]:border-pink-500 data-[on]:bg-pink-500 data-[on]:text-white"
+                      data-bank-sort-target="chip" data-key="<%= c.key %>" data-action="click->bank-sort#pick" <%= "data-on" if start == c.key %>><%= c.label %></button>
+            <% end %>
+            <button type="button" class="inline-flex items-center rounded-full border border-gray-300 bg-white px-3 py-1 text-sm text-gray-700 hover:border-pink-400 hover:text-pink-700 cursor-pointer data-[on]:border-pink-500 data-[on]:bg-pink-500 data-[on]:text-white"
+                    data-bank-sort-target="chip" data-key="" data-answer="ignore" data-action="click->bank-sort#pick">Ignore</button>
+            <button type="button" class="inline-flex items-center rounded-full border border-gray-300 bg-white px-3 py-1 text-sm text-gray-700 hover:border-pink-400 hover:text-pink-700 cursor-pointer"
+                    data-action="click->bank-sort#other">Something else…</button>
+          </div>
+          <% if hint %><p class="mt-1.5 text-xs text-gray-500">Last time, <%= hint[:label] %>.</p><% end %>
+        </div>
+
+        <div class="space-y-3" data-bank-sort-target="recordFields">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <span class="block">
+              <span class="<%= label %> mb-1"><%= kind == "in" ? "Kind" : "Category" %></span>
+              <%= render "shared/category_picker", name: "category_key", kind: (kind == "in" ? :income : :spending), organization: org, value: start, id: "bank-sort-category", data: { bank_sort_target: "picker", action: "change->bank-sort#pickerChanged" } %>
+            </span>
+            <label class="block">
+              <span class="<%= label %> mb-1"><%= kind == "in" ? "From" : "Paid to" %></span>
+              <input type="text" name="counterparty" value="<%= hint&.dig(:counterparty).presence || (own ? '' : reading.name) %>" placeholder="<%= own ? 'Optional' : reading.name %>" class="<%= input %>">
+            </label>
+          </div>
+          <div class="space-y-3" data-controller="record-money">
+            <label class="flex items-center gap-3 text-sm text-gray-700">
+              <%= render "shared/toggle_switch", checked: false, aria_label: "For a specific production", data: { record_money_target: "forProduction", action: "change->record-money#toggleProduction" } %>
+              <span>For a specific production</span>
+            </label>
+            <div class="hidden space-y-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3" data-record-money-target="productionFields">
+              <label class="<%= label %>">
+                <span>Which production</span>
+                <%= select_tag "production_id", options_for_select(productions.map { |pr| [ pr.name, pr.id ] }), prompt: "Choose one", class: "#{input} mt-1", data: { record_money_target: "production", action: "change->record-money#filterShows" } %>
+              </label>
+              <label class="flex items-center gap-3 text-sm text-gray-700">
+                <%= render "shared/toggle_switch", checked: false, aria_label: "For one of its dates", data: { record_money_target: "forShow", action: "change->record-money#toggleShow" } %>
+                <span>For one of its dates</span>
+              </label>
+              <div class="hidden" data-record-money-target="showFields">
+                <label class="<%= label %>">
+                  <span>Which date</span>
+                  <%= select_tag "show_id", options_for_select([ [ "Choose one", "" ] ] + shows.map { |s| [ "#{s.date_and_time.strftime('%b %-d, %Y')}#{" · #{s.secondary_name}" if s.secondary_name.present?}", s.id, { data: { production: s.production_id } } ] }), class: "#{input} mt-1", data: { record_money_target: "show" } %>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hidden rounded-lg border border-gray-200 bg-gray-50 px-4 py-3" data-bank-sort-target="ignoreFields">
+          <div class="text-gray-900 font-medium">Ignored: not the organization's money</div>
+          <div class="text-gray-600 text-xs mt-0.5">A cash swap, a refund of something personal, money passing through. It stays in Dealt with, marked Ignored, in case you change your mind.</div>
+          <label class="block mt-2"><span class="block text-xs font-medium text-gray-700 mb-1">A note, if you like</span><input type="text" name="note" placeholder="Swapped a $20 bill for $20 on Zelle" class="<%= input %>"></label>
+        </div>
+
+        <% if reading.rule? %>
+          <label class="flex items-center gap-3 text-gray-700">
+            <%= render "shared/toggle_switch", name: "make_rule", checked: false, aria_label: "Every time from this payee, make it a rule" %>
+            <span>Every time <%= kind == "in" ? "from" : "to" %> <%= reading.name %>, make it a rule</span>
+          </label>
+        <% end %>
+      </div>
+      <div class="px-5 py-4 bg-gray-50 border-t border-gray-200 flex flex-col-reverse sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-2">
+        <%= render "shared/button", text: "Skip", variant: "secondary", size: "medium", type: :submit, name: "answer", value: "skip" %>
+        <span class="flex items-center gap-3"><span class="text-xs text-gray-500 hidden sm:inline">Enter saves</span>
+          <%= render "shared/button", text: "Record it and go on", variant: "primary", size: "medium", type: :submit, data: { bank_sort_target: "submit", bank_sort_record_text_param: "Record it and go on", bank_sort_ignore_text_param: "Ignore it and go on" } %></span>
+      </div>
+    <% end %>
+  </div>
+</div>

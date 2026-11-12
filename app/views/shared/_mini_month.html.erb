@@ -16,12 +16,18 @@
     day_path       lambda(Date) => path                 (pick: :day)
     selected_day   the chosen Date                      (pick: :day)
     show_dates     a Set of Dates with shows, optional
+    day_statuses   { Date => :settled | :to_settle | :waiting }, optional: the
+                   dot says where the day stands (green done, amber work to
+                   do, gray not over yet) instead of just that it has shows
 %>
 <%
   first = month.beginning_of_month
   weeks = (first.beginning_of_week..first.end_of_month.end_of_week).each_slice(7).to_a
   statuses = local_assigns[:week_statuses] || {}
   dates = local_assigns[:show_dates] || Set.new
+  day_statuses = local_assigns[:day_statuses]
+  day_dot = { settled: "bg-green-500", to_settle: "bg-amber-400", waiting: "bg-gray-300" }
+  day_word = { settled: "settled", to_settle: "to settle", waiting: "not over yet" }
   status_dot = { open: "bg-red-500", draft: "bg-amber-400", published: "bg-green-500" }
   status_word = { open: "open slots", draft: "draft", published: "published" }
 %>
@@ -56,11 +62,16 @@
           <span></span>
         <% else %>
           <% chosen = d == selected_day %>
+          <% day_status = day_statuses && day_statuses[d] %>
           <%= link_to day_path.call(d),
                 class: "mx-auto w-10 h-10 rounded-full flex flex-col items-center justify-center text-sm tabular-nums #{chosen ? 'bg-pink-500 text-white font-semibold' : 'text-gray-800 hover:bg-pink-50'} #{'ring-2 ring-pink-300' if d == Date.current && !chosen}",
-                aria: { label: d.strftime("%A, %B %-d") }, data: { jump_day: d.iso8601 } do %>
+                aria: { label: "#{d.strftime("%A, %B %-d")}#{" · #{day_word[day_status]}" if day_status}" }, data: { jump_day: d.iso8601 } do %>
             <span class="leading-none"><%= d.day %></span>
-            <span class="w-1 h-1 mt-0.5 rounded-full <%= dates.include?(d) ? (chosen ? 'bg-white' : 'bg-pink-500') : 'bg-transparent' %>"></span>
+            <% if day_statuses %>
+              <span class="w-1.5 h-1.5 mt-0.5 rounded-full <%= day_status ? (chosen ? 'bg-white' : day_dot[day_status]) : 'bg-transparent' %>"></span>
+            <% else %>
+              <span class="w-1 h-1 mt-0.5 rounded-full <%= dates.include?(d) ? (chosen ? 'bg-white' : 'bg-pink-500') : 'bg-transparent' %>"></span>
+            <% end %>
           <% end %>
         <% end %>
       <% end %>

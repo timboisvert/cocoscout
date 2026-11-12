@@ -14,6 +14,9 @@
     week_statuses  { monday => status }, optional                 (pick: :week)
     day_path       lambda(date) => path, selected_day, show_dates (pick: :day)
     legend         true (default) draws the status legend         (pick: :week)
+    dot_text       what a dotted day means, default "Days with shows" (pick: :day)
+    day_statuses   { Date => :settled | :to_settle | :waiting }, optional (pick: :day):
+                   the dot's color says where the day stands, with its own legend
 %>
 <%
   pick = local_assigns.fetch(:pick, :week)
@@ -50,7 +53,7 @@
           <% if pick == :week %>
             <%= render "shared/mini_month", month: month, pick: :week, week_path: week_path, selected_week: selected_week, week_statuses: local_assigns[:week_statuses] %>
           <% else %>
-            <%= render "shared/mini_month", month: month, pick: :day, day_path: day_path, selected_day: selected_day, show_dates: local_assigns[:show_dates] %>
+            <%= render "shared/mini_month", month: month, pick: :day, day_path: day_path, selected_day: selected_day, show_dates: local_assigns[:show_dates], day_statuses: local_assigns[:day_statuses] %>
           <% end %>
         <% end %>
       </div>
@@ -60,8 +63,14 @@
           <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400"></span>Draft</span>
           <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-red-500"></span>Open slots</span>
         </div>
+      <% elsif pick == :day && local_assigns[:day_statuses] %>
+        <div class="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 text-[11px] text-gray-500">
+          <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-green-500"></span>Settled</span>
+          <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400"></span>To settle</span>
+          <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-gray-300"></span>Not over yet, or history</span>
+        </div>
       <% elsif pick == :day %>
-        <p class="mt-3 pt-3 border-t border-gray-100 text-[11px] text-gray-500 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-pink-500"></span>Days with shows</p>
+        <p class="mt-3 pt-3 border-t border-gray-100 text-[11px] text-gray-500 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-pink-500"></span><%= local_assigns.fetch(:dot_text, "Days with shows") %></p>
       <% end %>
     </div>
   </div>

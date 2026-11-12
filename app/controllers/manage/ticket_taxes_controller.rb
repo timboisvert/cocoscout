@@ -19,6 +19,9 @@ module Manage
           @set_aside_months = SalesTaxSetAside.by_month(Current.organization)
           @chicago = Current.organization.locations.where("city ILIKE ?", "chicago").exists?
           @ticket_tax = TicketTaxSetting.current(Current.organization)
+          @outside_rows = OutsideTicketTax.rows(Current.organization, from: @period[:from], to: @period[:to])
+          @outside_sources_unset = Current.organization.ticket_sources.hand_made.active.where(tax_handling: "none").exists?
+          @register_rows = RegisterSalesTax.rows(Current.organization, from: @period[:from], to: @period[:to])
         end
         format.csv do
           send_data @report.to_csv, type: "text/csv",

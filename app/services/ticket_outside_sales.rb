@@ -10,6 +10,19 @@
 #   fed_source_ids the sites whose financials line comes from here, which
 #                 the worksheet shows but doesn't let anyone type over.
 class TicketOutsideSales
+  # The ticket types another site gets a line for (Tim, 2026-11-04: a show
+  # with "Reserve a spot" online and "Reserve a spot" at the door, at the
+  # door's price, listed it twice for every site). A type sold only at our
+  # door that shares its name with one sold online is that same ticket at
+  # the door's price, which no other site sells, so it gets no line; unless
+  # numbers were already saved against it, which stay in sight.
+  def self.tiers_for(listing)
+    tiers = listing.ticket_tiers.active.reject(&:bundle?)
+    online = tiers.select(&:sells_online?).map { |tier| tier.name.to_s.downcase }
+    saved = listing.ticket_outside_sales.pluck(:ticket_tier_id)
+    tiers.reject { |tier| !tier.sells_online? && online.include?(tier.name.to_s.downcase) && saved.exclude?(tier.id) }
+  end
+
   # rows: { source_id => { tier_id => { "tickets" => "6", "amount" => "$120" } } }.
   # A site in the form is the whole truth for that site: a type it leaves out
   # sold nothing there. Sites not in the form are left alone.

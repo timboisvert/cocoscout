@@ -1,0 +1,38 @@
+<%#
+  Record money as a modal on the page you're on (Tim, 2026-11-02), opened by
+  the Record money button (Manage::BooksHelper#record_money_link). The same
+  three forms as the Record money page; saving comes back here. A mistake in
+  the form shows on the page version, with what was typed kept.
+    productions, shows: the choices for the production and show menus
+%>
+<%
+  tabs = [ [ "out", "Money out" ], [ "in", "Money in" ], [ "move", "Moved between your accounts" ] ]
+  tab_class = "py-2 px-1 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap"
+  return_to = request.fullpath
+%>
+<div id="record-money-modal"
+     class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+     data-controller="modal"
+     data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-2xl sm:mx-4 max-h-[92vh] overflow-y-auto"
+       data-action="click->modal#stopPropagation">
+    <div class="sticky top-0 z-10 flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white">Record money</h3>
+      <button type="button" data-action="click->modal#close" aria-label="Close"
+              class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div data-controller="tabs" data-tabs-plain-value="true" data-tabs-url-value="false" data-tabs-initial-tab-value="0">
+      <nav class="flex gap-4 border-b border-gray-200 px-6 overflow-x-auto" aria-label="What happened">
+        <% tabs.each_with_index do |(key, name), i| %>
+          <%= tag.button name, type: "button", class: "#{tab_class} #{i.zero? ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700'}",
+                data: { tabs_target: "tab", index: i, key: key, action: "tabs#select" } %>
+        <% end %>
+      </nav>
+      <% tabs.each do |key, _| %>
+        <%= render "manage/money_records/form", record: MoneyRecord.blank_for(Current.organization, key), productions: productions, shows: shows, panel: true, return_to: return_to %>
+      <% end %>
+    </div>
+  </div>
+</div>

@@ -40,7 +40,7 @@ RSpec.describe "Sending a contract invoice", type: :request do
 
     perform_enqueued_jobs { post manage_send_invoice_money_incoming_payment_path(payment) }
     expect(ActionMailer::Base.deliveries.last.subject).to start_with("Reminder: invoice SG-0001")
-    expect(payment.reload.contract_invoice.sent_count).to eq(2)
+    expect(payment.reload.invoice.sent_count).to eq(2)
   end
 
   it "says so when the payer has no email, and sends nothing" do
@@ -59,6 +59,6 @@ RSpec.describe "Sending a contract invoice", type: :request do
   end
 
   it "never queues an invoice email when payments are created or come due" do
-    expect { payment; travel_to(Date.new(2026, 10, 11)) { payment.touch } }.not_to have_enqueued_mail(ContractInvoiceMailer)
+    expect { payment; travel_to(Date.new(2026, 10, 11)) { payment.touch } }.not_to have_enqueued_mail(InvoiceMailer)
   end
 end

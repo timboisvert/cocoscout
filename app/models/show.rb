@@ -192,6 +192,7 @@ class Show < ApplicationRecord
 
   # Cache invalidation - invalidate production dashboard when show changes
   after_commit :invalidate_production_caches
+  include KeptOnGoogleCalendar
 
   # Contract payment sync - update revenue-share contract payments when show or its financials change
   after_commit :sync_contract_payments, on: [ :create, :update ]
@@ -748,6 +749,8 @@ class Show < ApplicationRecord
       unknown: total_people - records.count + records.unknown.count
     }
   end
+
+  def google_calendar_organization_id = production&.organization_id
 
   private
 

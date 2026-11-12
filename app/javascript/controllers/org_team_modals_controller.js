@@ -38,7 +38,7 @@ export default class extends Controller {
         const memberName = event.currentTarget.dataset.memberName
         const permissionsUrl = event.currentTarget.dataset.permissionsUrl
 
-        this.permissionsTitleTarget.textContent = `Permissions for ${memberName}`
+        this.permissionsTitleTarget.textContent = `${memberName}'s access`
         this.permissionsContentTarget.innerHTML = '<p class="text-gray-500 text-center py-8">Loading...</p>'
         this.permissionsModalTarget.classList.remove("hidden")
 

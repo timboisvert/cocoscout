@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_11_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -338,6 +338,38 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.index ["stripe_transfer_id"], name: "index_balance_withdrawals_on_stripe_transfer_id"
   end
 
+  create_table "bank_rule_dismissals", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.string "phrase", null: false
+    t.string "direction", default: "any", null: false
+    t.bigint "dismissed_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["dismissed_by_id"], name: "index_bank_rule_dismissals_on_dismissed_by_id"
+    t.index ["organization_id", "phrase", "direction"], name: "index_bank_rule_dismissals_on_org_phrase_direction", unique: true
+    t.index ["organization_id"], name: "index_bank_rule_dismissals_on_organization_id"
+  end
+
+  create_table "bank_rules", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.string "contains", null: false
+    t.string "direction", default: "any", null: false
+    t.string "action", default: "record", null: false
+    t.string "category_key"
+    t.string "counterparty"
+    t.bigint "production_id"
+    t.boolean "on_import", default: true, null: false
+    t.integer "applied_count", default: 0, null: false
+    t.bigint "created_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "show_id"
+    t.index ["created_by_id"], name: "index_bank_rules_on_created_by_id"
+    t.index ["organization_id"], name: "index_bank_rules_on_organization_id"
+    t.index ["production_id"], name: "index_bank_rules_on_production_id"
+    t.index ["show_id"], name: "index_bank_rules_on_show_id"
+  end
+
   create_table "bank_setup_emails", force: :cascade do |t|
     t.bigint "organization_id", null: false
     t.string "payee_type", null: false
@@ -347,6 +379,85 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["organization_id", "payee_type", "payee_id"], name: "idx_bank_setup_emails_payee"
+  end
+
+  create_table "bank_sort_passes", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "user_id", null: false
+    t.integer "total", default: 0, null: false
+    t.integer "rules_made", default: 0, null: false
+    t.string "skipped_payees", default: [], null: false, array: true
+    t.bigint "skipped_lines", default: [], null: false, array: true
+    t.boolean "revisited", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "user_id"], name: "index_bank_sort_passes_on_organization_id_and_user_id", unique: true
+    t.index ["organization_id"], name: "index_bank_sort_passes_on_organization_id"
+    t.index ["user_id"], name: "index_bank_sort_passes_on_user_id"
+  end
+
+  create_table "bank_statement_imports", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "imported_by_id"
+    t.string "filename"
+    t.string "format", default: "csv", null: false
+    t.date "from_on"
+    t.date "to_on"
+    t.integer "lines_count", default: 0, null: false
+    t.integer "new_lines_count", default: 0, null: false
+    t.bigint "closing_balance_cents"
+    t.date "closing_on"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "status", default: "ready", null: false
+    t.integer "matched_count", default: 0, null: false
+    t.integer "suggested_count", default: 0, null: false
+    t.bigint "opening_balance_cents"
+    t.date "opening_on"
+    t.string "error"
+    t.datetime "matched_at"
+    t.index ["imported_by_id"], name: "index_bank_statement_imports_on_imported_by_id"
+    t.index ["organization_id"], name: "index_bank_statement_imports_on_organization_id"
+  end
+
+  create_table "bank_statement_lines", force: :cascade do |t|
+    t.bigint "bank_statement_import_id", null: false
+    t.bigint "organization_id", null: false
+    t.date "on", null: false
+    t.bigint "amount_cents", null: false
+    t.string "description", default: "", null: false
+    t.string "fingerprint", null: false
+    t.string "state", default: "open", null: false
+    t.bigint "journal_line_id"
+    t.bigint "money_record_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "journal_line_ids", default: [], null: false, array: true
+    t.string "description_key"
+    t.string "note"
+    t.index ["bank_statement_import_id"], name: "index_bank_statement_lines_on_bank_statement_import_id"
+    t.index ["journal_line_id"], name: "index_bank_statement_lines_on_journal_line_id"
+    t.index ["money_record_id"], name: "index_bank_statement_lines_on_money_record_id"
+    t.index ["organization_id", "description_key"], name: "index_bank_statement_lines_on_org_and_description_key"
+    t.index ["organization_id", "fingerprint"], name: "index_bank_statement_lines_on_organization_id_and_fingerprint", unique: true
+    t.index ["organization_id", "state", "on"], name: "index_bank_statement_lines_on_organization_id_and_state_and_on"
+    t.index ["organization_id"], name: "index_bank_statement_lines_on_organization_id"
+  end
+
+  create_table "bill_payments", force: :cascade do |t|
+    t.bigint "bill_id", null: false
+    t.bigint "organization_id", null: false
+    t.date "on", null: false
+    t.integer "amount_cents", null: false
+    t.string "via", default: "bank", null: false
+    t.string "reference"
+    t.text "memo"
+    t.bigint "recorded_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["bill_id"], name: "index_bill_payments_on_bill_id"
+    t.index ["organization_id"], name: "index_bill_payments_on_organization_id"
+    t.index ["recorded_by_id"], name: "index_bill_payments_on_recorded_by_id"
   end
 
   create_table "billing_invoices", force: :cascade do |t|
@@ -386,6 +497,72 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.index ["organization_id"], name: "index_billing_invoices_on_organization_id"
     t.index ["stripe_invoice_id"], name: "index_billing_invoices_on_stripe_invoice_id", unique: true
     t.index ["stripe_payment_intent_id"], name: "index_billing_invoices_on_stripe_payment_intent_id"
+  end
+
+  create_table "bills", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.string "vendor_name", null: false
+    t.string "vendor_email"
+    t.string "vendor_reference"
+    t.integer "amount_cents", null: false
+    t.date "issued_on", null: false
+    t.date "due_on", null: false
+    t.string "category_key", null: false
+    t.bigint "production_id"
+    t.bigint "show_id"
+    t.text "memo"
+    t.string "repeats", default: "none", null: false
+    t.string "status", default: "open", null: false
+    t.integer "paid_cents", default: 0, null: false
+    t.date "paid_on"
+    t.datetime "voided_at"
+    t.string "void_reason"
+    t.bigint "repeated_from_id"
+    t.bigint "created_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_bills_on_created_by_id"
+    t.index ["organization_id", "status", "due_on"], name: "index_bills_on_organization_id_and_status_and_due_on"
+    t.index ["organization_id"], name: "index_bills_on_organization_id"
+    t.index ["production_id"], name: "index_bills_on_production_id"
+    t.index ["repeated_from_id"], name: "index_bills_on_repeated_from_id"
+    t.index ["show_id"], name: "index_bills_on_show_id"
+  end
+
+  create_table "books_downloads", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "requested_by_id"
+    t.string "kind", null: false
+    t.jsonb "options", default: {}, null: false
+    t.string "status", default: "pending", null: false
+    t.integer "lines_count"
+    t.string "error"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "created_at"], name: "index_books_downloads_on_organization_id_and_created_at"
+    t.index ["organization_id"], name: "index_books_downloads_on_organization_id"
+    t.index ["requested_by_id"], name: "index_books_downloads_on_requested_by_id"
+  end
+
+  create_table "books_rollups", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.date "rolled_through", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_books_rollups_on_organization_id", unique: true
+  end
+
+  create_table "calendar_sync_events", force: :cascade do |t|
+    t.bigint "integration_id", null: false
+    t.string "syncable_type", null: false
+    t.bigint "syncable_id", null: false
+    t.string "external_id", null: false
+    t.string "digest", null: false
+    t.datetime "synced_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["integration_id", "syncable_type", "syncable_id"], name: "index_calendar_sync_events_on_what", unique: true
+    t.index ["integration_id"], name: "index_calendar_sync_events_on_integration_id"
   end
 
   create_table "cast_assignment_stages", force: :cascade do |t|
@@ -634,8 +811,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.string "settlement_method", default: "direct", null: false
     t.boolean "auto_shortfall", default: false, null: false
     t.jsonb "components", default: [], null: false
+    t.bigint "correction_of_id"
     t.index ["contract_id", "status"], name: "index_contract_payments_on_contract_id_and_status"
     t.index ["contract_id"], name: "index_contract_payments_on_contract_id"
+    t.index ["correction_of_id"], name: "index_contract_payments_on_correction_of_id"
     t.index ["due_date"], name: "index_contract_payments_on_due_date"
     t.index ["payment_token"], name: "index_contract_payments_on_payment_token", unique: true
     t.index ["show_id"], name: "index_contract_payments_on_show_id"
@@ -910,7 +1089,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.bigint "added_by_id"
     t.jsonb "attended_show_ids", default: [], null: false
     t.index ["added_by_id"], name: "index_course_registrations_on_added_by_id"
-    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL ((ARRAY['cancelled'::character varying, 'refunded'::character varying, 'expired'::character varying])::text[]))"
+    t.index ["course_offering_id", "person_id"], name: "idx_course_registrations_active_unique", unique: true, where: "((status)::text <> ALL (ARRAY[('cancelled'::character varying)::text, ('refunded'::character varying)::text, ('expired'::character varying)::text]))"
     t.index ["course_offering_id"], name: "index_course_registrations_on_course_offering_id"
     t.index ["expires_at"], name: "index_course_registrations_on_expires_at", where: "((status)::text = 'pending'::text)"
     t.index ["person_id"], name: "index_course_registrations_on_person_id"
@@ -1273,6 +1452,101 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.index ["organization_id"], name: "index_house_services_on_organization_id"
   end
 
+  create_table "integrations", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.string "provider", null: false
+    t.string "status", default: "connected", null: false
+    t.text "credentials"
+    t.jsonb "settings", default: {}, null: false
+    t.bigint "connected_by_id"
+    t.datetime "connected_at"
+    t.datetime "last_synced_at"
+    t.text "last_error"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["connected_by_id"], name: "index_integrations_on_connected_by_id"
+    t.index ["organization_id", "provider"], name: "index_integrations_on_organization_id_and_provider", unique: true
+    t.index ["organization_id"], name: "index_integrations_on_organization_id"
+  end
+
+  create_table "invoice_lines", force: :cascade do |t|
+    t.bigint "invoice_id", null: false
+    t.string "description", null: false
+    t.decimal "quantity", precision: 10, scale: 2, default: "1.0", null: false
+    t.integer "unit_cents", default: 0, null: false
+    t.integer "amount_cents", default: 0, null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["invoice_id"], name: "index_invoice_lines_on_invoice_id"
+  end
+
+  create_table "invoice_payments", force: :cascade do |t|
+    t.bigint "invoice_id", null: false
+    t.bigint "organization_id", null: false
+    t.date "on", null: false
+    t.integer "amount_cents", null: false
+    t.string "via", default: "check", null: false
+    t.string "reference"
+    t.text "memo"
+    t.bigint "recorded_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["invoice_id"], name: "index_invoice_payments_on_invoice_id"
+    t.index ["organization_id"], name: "index_invoice_payments_on_organization_id"
+    t.index ["recorded_by_id"], name: "index_invoice_payments_on_recorded_by_id"
+  end
+
+  create_table "invoices", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.integer "number", null: false
+    t.string "prefix", null: false
+    t.string "status", default: "open", null: false
+    t.string "bill_to_name"
+    t.string "bill_to_email"
+    t.string "bill_to_attention"
+    t.text "bill_to_address"
+    t.date "issued_on", null: false
+    t.date "due_on"
+    t.string "category_key"
+    t.bigint "production_id"
+    t.bigint "show_id"
+    t.text "memo"
+    t.integer "total_cents", default: 0, null: false
+    t.integer "paid_cents", default: 0, null: false
+    t.date "paid_on"
+    t.string "payment_token"
+    t.boolean "pay_by_card", default: true, null: false
+    t.boolean "pay_by_bank", default: true, null: false
+    t.boolean "pay_by_check", default: true, null: false
+    t.string "reminders", default: "before_and_overdue", null: false
+    t.datetime "sent_at"
+    t.integer "sent_count", default: 0, null: false
+    t.datetime "opened_at"
+    t.datetime "voided_at"
+    t.string "void_reason"
+    t.string "stripe_checkout_session_id"
+    t.string "stripe_payment_intent_id"
+    t.integer "stripe_fee_cents"
+    t.datetime "receipt_emailed_at"
+    t.bigint "created_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "kind", default: "standalone", null: false
+    t.bigint "contract_payment_id"
+    t.bigint "combined_into_payment_id"
+    t.index ["contract_payment_id"], name: "index_invoices_on_contract_payment_id", unique: true
+    t.index ["created_by_id"], name: "index_invoices_on_created_by_id"
+    t.index ["organization_id", "kind"], name: "index_invoices_on_organization_id_and_kind"
+    t.index ["organization_id", "number"], name: "index_invoices_on_organization_id_and_number", unique: true
+    t.index ["organization_id", "status", "due_on"], name: "index_invoices_on_organization_id_and_status_and_due_on"
+    t.index ["organization_id"], name: "index_invoices_on_organization_id"
+    t.index ["payment_token"], name: "index_invoices_on_contract_payment_token", where: "((kind)::text = 'contract'::text)"
+    t.index ["payment_token"], name: "index_invoices_on_payment_token", unique: true, where: "((kind)::text = 'standalone'::text)"
+    t.index ["production_id"], name: "index_invoices_on_production_id"
+    t.index ["show_id"], name: "index_invoices_on_show_id"
+  end
+
   create_table "journal_entries", force: :cascade do |t|
     t.bigint "organization_id", null: false
     t.string "source_type"
@@ -1290,6 +1564,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.index ["organization_id", "entry_date"], name: "index_journal_entries_on_organization_id_and_entry_date"
     t.index ["reversal_of_id"], name: "index_journal_entries_on_reversal_of_id"
     t.index ["source_type", "source_id", "kind"], name: "idx_journal_entries_one_live_per_source_kind", unique: true, where: "((reversed_at IS NULL) AND (reversal_of_id IS NULL))"
+    t.index ["source_type", "source_id"], name: "index_journal_entries_on_source"
   end
 
   create_table "journal_lines", force: :cascade do |t|
@@ -1325,8 +1600,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "description"
     t.index ["organization_id", "code"], name: "index_ledger_accounts_on_organization_id_and_code", unique: true
     t.index ["organization_id", "key"], name: "index_ledger_accounts_on_organization_id_and_key", unique: true, where: "(key IS NOT NULL)"
+  end
+
+  create_table "ledger_month_balances", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "ledger_account_id", null: false
+    t.date "month", null: false
+    t.bigint "accrual_cents", default: 0, null: false
+    t.bigint "cash_cents", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ledger_account_id", "month"], name: "index_ledger_month_balances_on_ledger_account_id_and_month", unique: true
+    t.index ["organization_id", "month"], name: "index_ledger_month_balances_on_organization_id_and_month"
   end
 
   create_table "location_spaces", force: :cascade do |t|
@@ -1703,6 +1991,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.index ["venue_id"], name: "index_mics_on_venue_id"
   end
 
+  create_table "money_records", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.string "kind", null: false
+    t.date "on", null: false
+    t.integer "amount_cents", null: false
+    t.string "category_key"
+    t.string "counterparty"
+    t.bigint "production_id"
+    t.bigint "show_id"
+    t.string "via"
+    t.string "from_account"
+    t.string "to_account"
+    t.text "memo"
+    t.bigint "recorded_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "on"], name: "index_money_records_on_organization_id_and_on"
+    t.index ["organization_id"], name: "index_money_records_on_organization_id"
+    t.index ["production_id"], name: "index_money_records_on_production_id"
+    t.index ["recorded_by_id"], name: "index_money_records_on_recorded_by_id"
+    t.index ["show_id"], name: "index_money_records_on_show_id"
+  end
+
   create_table "notifications", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "organization_id"
@@ -1784,6 +2095,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "person_id"
+    t.jsonb "module_grants", default: {}, null: false
+    t.string "access_template"
     t.index ["organization_id"], name: "index_organization_roles_on_organization_id"
     t.index ["user_id", "organization_id"], name: "index_organization_roles_on_user_id_and_organization_id", unique: true
     t.index ["user_id"], name: "index_organization_roles_on_user_id"
@@ -1896,10 +2209,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.string "email_instagram"
     t.string "email_mailing_address"
     t.datetime "balance_pooled_at"
+    t.string "settlement_day_mode", default: "smart", null: false
+    t.integer "settlement_day_starts_at", default: 6, null: false
+    t.date "books_locked_through"
+    t.datetime "books_locked_at"
+    t.bigint "books_locked_by_id"
+    t.boolean "books_nonprofit", default: false, null: false
+    t.jsonb "books_profile", default: {}, null: false
+    t.jsonb "books_check", default: {}, null: false
+    t.jsonb "money_categories_hidden", default: [], null: false
+    t.datetime "books_categories_set_up_at"
+    t.bigint "books_categories_set_up_by_id"
+    t.date "settle_up_starts_on"
     t.datetime "pro_monthly_from"
     t.datetime "pro_monthly_until"
     t.jsonb "comp_reminders", default: {}, null: false
     t.string "time_zone", default: "Central Time (US & Canada)", null: false
+    t.index ["books_categories_set_up_by_id"], name: "index_organizations_on_books_categories_set_up_by_id"
+    t.index ["books_locked_by_id"], name: "index_organizations_on_books_locked_by_id"
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
     t.index ["organization_talent_pool_id"], name: "index_organizations_on_organization_talent_pool_id"
     t.index ["owner_id"], name: "index_organizations_on_owner_id"
@@ -2384,6 +2711,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.string "genre"
     t.string "casting_mode", default: "role_based", null: false
     t.boolean "pays_performers", default: true, null: false
+    t.string "payout_calculation_mode", default: "production", null: false
     t.string "tickets_mode", default: "unset", null: false
     t.string "tickets_url"
     t.index ["agreement_template_id"], name: "index_productions_on_agreement_template_id"
@@ -2518,6 +2846,46 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.boolean "required", default: false, null: false
     t.index ["questionable_type", "questionable_id", "position"], name: "idx_qstnbl_type_id_pos"
     t.index ["questionable_type", "questionable_id"], name: "index_questions_on_questionable"
+  end
+
+  create_table "register_days", force: :cascade do |t|
+    t.bigint "integration_id", null: false
+    t.bigint "organization_id", null: false
+    t.bigint "location_id"
+    t.string "external_location_id", null: false
+    t.date "business_date", null: false
+    t.jsonb "sales_by_category", default: {}, null: false
+    t.integer "gross_cents", default: 0, null: false
+    t.integer "tips_cents", default: 0, null: false
+    t.integer "tax_cents", default: 0, null: false
+    t.integer "refunds_cents", default: 0, null: false
+    t.integer "fees_cents", default: 0, null: false
+    t.integer "net_cents", default: 0, null: false
+    t.integer "orders_count", default: 0, null: false
+    t.datetime "pulled_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.jsonb "tips_by_time", default: {}, null: false
+    t.index ["integration_id", "external_location_id", "business_date"], name: "index_register_days_on_location_and_date", unique: true
+    t.index ["integration_id"], name: "index_register_days_on_integration_id"
+    t.index ["location_id"], name: "index_register_days_on_location_id"
+    t.index ["organization_id", "business_date"], name: "index_register_days_on_organization_id_and_business_date"
+    t.index ["organization_id"], name: "index_register_days_on_organization_id"
+  end
+
+  create_table "register_pulls", force: :cascade do |t|
+    t.bigint "integration_id", null: false
+    t.string "trigger", default: "manual", null: false
+    t.string "status", default: "running", null: false
+    t.date "from_date", null: false
+    t.date "to_date", null: false
+    t.integer "orders_count", default: 0, null: false
+    t.text "error"
+    t.datetime "started_at", null: false
+    t.datetime "finished_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["integration_id"], name: "index_register_pulls_on_integration_id"
   end
 
   create_table "role_eligibilities", force: :cascade do |t|
@@ -2723,6 +3091,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.index ["user_id"], name: "index_sessions_on_user_id"
   end
 
+  create_table "settlement_days", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.date "date", null: false
+    t.string "status", default: "open", null: false
+    t.datetime "settled_at"
+    t.bigint "settled_by_id"
+    t.datetime "reopened_at"
+    t.bigint "reopened_by_id"
+    t.text "reopen_reason"
+    t.jsonb "door_cash", default: {}, null: false
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.datetime "register_checked_at"
+    t.string "tips_split"
+    t.datetime "tips_checked_at"
+    t.jsonb "tips_unstaffed", default: {}, null: false
+    t.index ["organization_id", "date"], name: "index_settlement_days_on_organization_id_and_date", unique: true
+    t.index ["organization_id"], name: "index_settlement_days_on_organization_id"
+    t.index ["reopened_by_id"], name: "index_settlement_days_on_reopened_by_id"
+    t.index ["settled_by_id"], name: "index_settlement_days_on_settled_by_id"
+  end
+
   create_table "shift_additional_roles", force: :cascade do |t|
     t.bigint "shift_id", null: false
     t.bigint "house_role_id", null: false
@@ -2756,6 +3147,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.index ["shift_id"], name: "index_shift_assignments_on_shift_id"
   end
 
+  create_table "shift_shows", force: :cascade do |t|
+    t.bigint "shift_id", null: false
+    t.bigint "show_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["shift_id", "show_id"], name: "index_shift_shows_on_shift_id_and_show_id", unique: true
+    t.index ["shift_id"], name: "index_shift_shows_on_shift_id"
+    t.index ["show_id"], name: "index_shift_shows_on_show_id"
+  end
+
   create_table "shift_vacancies", force: :cascade do |t|
     t.bigint "shift_id", null: false
     t.bigint "vacated_by_id", null: false
@@ -2771,7 +3172,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.index ["closed_by_id"], name: "index_shift_vacancies_on_closed_by_id"
     t.index ["filled_by_id"], name: "index_shift_vacancies_on_filled_by_id"
     t.index ["shift_id", "status"], name: "index_shift_vacancies_on_shift_id_and_status"
-    t.index ["shift_id", "vacated_by_id"], name: "idx_shift_vacancies_one_active_per_person", unique: true, where: "((status)::text = ANY ((ARRAY['open'::character varying, 'finding_replacement'::character varying])::text[]))"
+    t.index ["shift_id", "vacated_by_id"], name: "idx_shift_vacancies_one_active_per_person", unique: true, where: "((status)::text = ANY (ARRAY[('open'::character varying)::text, ('finding_replacement'::character varying)::text]))"
     t.index ["shift_id"], name: "index_shift_vacancies_on_shift_id"
     t.index ["vacated_by_id"], name: "index_shift_vacancies_on_vacated_by_id"
   end
@@ -2791,16 +3192,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.index ["shift_vacancy_id", "person_id"], name: "idx_on_shift_vacancy_id_person_id_058b3428d8", unique: true
     t.index ["shift_vacancy_id"], name: "index_shift_vacancy_invitations_on_shift_vacancy_id"
     t.index ["token"], name: "index_shift_vacancy_invitations_on_token", unique: true
-  end
-
-  create_table "shift_shows", force: :cascade do |t|
-    t.bigint "shift_id", null: false
-    t.bigint "show_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["shift_id", "show_id"], name: "index_shift_shows_on_shift_id_and_show_id", unique: true
-    t.index ["shift_id"], name: "index_shift_shows_on_shift_id"
-    t.index ["show_id"], name: "index_shift_shows_on_show_id"
   end
 
   create_table "shifts", force: :cascade do |t|
@@ -2993,12 +3384,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.decimal "advance_deduction", precision: 10, scale: 2, default: "0.0"
     t.boolean "paid_independently", default: false
     t.boolean "is_individual_allocation", default: false, null: false
+    t.string "pay_choice", default: "run", null: false
+    t.bigint "correction_of_id"
+    t.index ["correction_of_id"], name: "index_show_payout_line_items_on_correction_of_id"
     t.index ["manually_paid_by_id"], name: "index_show_payout_line_items_on_manually_paid_by_id"
     t.index ["payee_type", "payee_id"], name: "index_show_payout_line_items_on_payee"
     t.index ["payment_method"], name: "index_show_payout_line_items_on_payment_method"
     t.index ["payout_reference_id"], name: "index_show_payout_line_items_on_payout_reference_id", where: "(payout_reference_id IS NOT NULL)"
     t.index ["payout_status"], name: "index_show_payout_line_items_on_payout_status"
-    t.index ["show_payout_id", "payee_type", "payee_id", "is_individual_allocation"], name: "idx_payout_line_items_unique_payee", unique: true
+    t.index ["show_payout_id", "payee_type", "payee_id", "is_individual_allocation"], name: "idx_payout_line_items_unique_payee", unique: true, where: "(correction_of_id IS NULL)"
     t.index ["show_payout_id"], name: "index_show_payout_line_items_on_show_payout_id"
   end
 
@@ -4169,6 +4563,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.integer "position", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "ticket_type"
     t.index ["show_financials_id", "position"], name: "index_ticket_sales_lines_on_show_financials_id_and_position"
     t.index ["show_financials_id"], name: "index_ticket_sales_lines_on_show_financials_id"
     t.index ["ticket_source_id"], name: "index_ticket_sales_lines_on_ticket_source_id"
@@ -4207,6 +4602,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "system_key"
+    t.string "tax_handling", default: "none", null: false
     t.index ["organization_id", "position"], name: "index_ticket_sources_on_organization_id_and_position"
     t.index ["organization_id", "system_key"], name: "index_ticket_sources_on_organization_id_and_system_key", unique: true, where: "(system_key IS NOT NULL)"
     t.index ["organization_id"], name: "index_ticket_sources_on_organization_id"
@@ -4351,6 +4747,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.index ["ticket_tier_id"], name: "index_tickets_on_ticket_tier_id"
   end
 
+  create_table "tip_rules", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.boolean "enabled", default: false, null: false
+    t.jsonb "role_shares", default: {}, null: false
+    t.string "nobody_on", default: "pool", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_tip_rules_on_organization_id", unique: true
+  end
+
+  create_table "tip_shares", force: :cascade do |t|
+    t.bigint "settlement_day_id", null: false
+    t.bigint "person_id", null: false
+    t.integer "amount_cents", default: 0, null: false
+    t.string "method", default: "payout", null: false
+    t.bigint "payout_contribution_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.datetime "worked_from"
+    t.datetime "worked_to"
+    t.string "source", default: "typed", null: false
+    t.bigint "house_role_id"
+    t.integer "paid_cents"
+    t.index ["house_role_id"], name: "index_tip_shares_on_house_role_id"
+    t.index ["payout_contribution_id"], name: "index_tip_shares_on_payout_contribution_id"
+    t.index ["person_id"], name: "index_tip_shares_on_person_id"
+    t.index ["settlement_day_id", "person_id"], name: "index_tip_shares_on_settlement_day_id_and_person_id", unique: true
+    t.index ["settlement_day_id"], name: "index_tip_shares_on_settlement_day_id"
+  end
+
   create_table "training_credits", force: :cascade do |t|
     t.bigint "person_id", null: false
     t.string "institution", limit: 200, null: false
@@ -4385,6 +4811,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
     t.boolean "message_digest_enabled", default: true
     t.datetime "last_message_digest_sent_at"
     t.integer "digest_throttle_days", default: 1, null: false
+    t.integer "digests_ignored", default: 0, null: false
+    t.datetime "app_announced_at"
     t.jsonb "dismissed_guides", default: {}, null: false
     t.jsonb "recent_production_ids", default: [], null: false
     t.datetime "deletion_requested_at"
@@ -4509,9 +4937,35 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
   add_foreign_key "balance_top_ups", "users", column: "requested_by_id", on_delete: :nullify
   add_foreign_key "balance_withdrawals", "organizations"
   add_foreign_key "balance_withdrawals", "users", column: "requested_by_id", on_delete: :nullify
+  add_foreign_key "bank_rule_dismissals", "organizations"
+  add_foreign_key "bank_rule_dismissals", "users", column: "dismissed_by_id"
+  add_foreign_key "bank_rules", "organizations"
+  add_foreign_key "bank_rules", "productions"
+  add_foreign_key "bank_rules", "shows"
+  add_foreign_key "bank_rules", "users", column: "created_by_id"
   add_foreign_key "bank_setup_emails", "organizations"
   add_foreign_key "bank_setup_emails", "users", column: "sent_by_id"
+  add_foreign_key "bank_sort_passes", "organizations"
+  add_foreign_key "bank_sort_passes", "users"
+  add_foreign_key "bank_statement_imports", "organizations"
+  add_foreign_key "bank_statement_imports", "users", column: "imported_by_id"
+  add_foreign_key "bank_statement_lines", "bank_statement_imports"
+  add_foreign_key "bank_statement_lines", "journal_lines"
+  add_foreign_key "bank_statement_lines", "money_records"
+  add_foreign_key "bank_statement_lines", "organizations"
+  add_foreign_key "bill_payments", "bills"
+  add_foreign_key "bill_payments", "organizations"
+  add_foreign_key "bill_payments", "users", column: "recorded_by_id"
   add_foreign_key "billing_invoices", "organizations"
+  add_foreign_key "bills", "bills", column: "repeated_from_id"
+  add_foreign_key "bills", "organizations"
+  add_foreign_key "bills", "productions"
+  add_foreign_key "bills", "shows"
+  add_foreign_key "bills", "users", column: "created_by_id"
+  add_foreign_key "books_downloads", "organizations"
+  add_foreign_key "books_downloads", "users", column: "requested_by_id"
+  add_foreign_key "books_rollups", "organizations"
+  add_foreign_key "calendar_sync_events", "integrations"
   add_foreign_key "cast_assignment_stages", "talent_pools"
   add_foreign_key "casting_table_draft_assignments", "casting_tables"
   add_foreign_key "casting_table_draft_assignments", "roles"
@@ -4531,6 +4985,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
   add_foreign_key "contract_documents", "contracts"
   add_foreign_key "contract_invoices", "contract_payments", on_delete: :nullify
   add_foreign_key "contract_invoices", "organizations"
+  add_foreign_key "contract_payments", "contract_payments", column: "correction_of_id", on_delete: :nullify
   add_foreign_key "contract_payments", "contracts"
   add_foreign_key "contract_payments", "shows"
   add_foreign_key "contract_people", "contracts"
@@ -4605,12 +5060,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
   add_foreign_key "house_service_roles", "house_roles"
   add_foreign_key "house_service_roles", "house_services"
   add_foreign_key "house_services", "organizations"
+  add_foreign_key "integrations", "organizations"
+  add_foreign_key "integrations", "users", column: "connected_by_id"
+  add_foreign_key "invoice_lines", "invoices"
+  add_foreign_key "invoice_payments", "invoices"
+  add_foreign_key "invoice_payments", "organizations"
+  add_foreign_key "invoice_payments", "users", column: "recorded_by_id"
+  add_foreign_key "invoices", "contract_payments", on_delete: :nullify
+  add_foreign_key "invoices", "organizations"
+  add_foreign_key "invoices", "productions"
+  add_foreign_key "invoices", "shows"
+  add_foreign_key "invoices", "users", column: "created_by_id"
   add_foreign_key "journal_entries", "journal_entries", column: "reversal_of_id"
   add_foreign_key "journal_entries", "organizations"
   add_foreign_key "journal_lines", "journal_entries"
   add_foreign_key "journal_lines", "ledger_accounts"
   add_foreign_key "journal_lines", "organizations"
   add_foreign_key "ledger_accounts", "organizations"
+  add_foreign_key "ledger_month_balances", "ledger_accounts"
+  add_foreign_key "ledger_month_balances", "organizations"
   add_foreign_key "location_spaces", "locations"
   add_foreign_key "locations", "organizations"
   add_foreign_key "mailing_list_memberships", "followers"
@@ -4644,6 +5112,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
   add_foreign_key "mic_taggings", "mics"
   add_foreign_key "mics", "productions"
   add_foreign_key "mics", "venues"
+  add_foreign_key "money_records", "organizations"
+  add_foreign_key "money_records", "productions"
+  add_foreign_key "money_records", "shows"
+  add_foreign_key "money_records", "users", column: "recorded_by_id"
   add_foreign_key "notifications", "messages", on_delete: :nullify
   add_foreign_key "notifications", "organizations"
   add_foreign_key "notifications", "users"
@@ -4660,6 +5132,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
   add_foreign_key "organization_staff_members", "staff_agreement_templates"
   add_foreign_key "organization_tax_settings", "organizations"
   add_foreign_key "organizations", "talent_pools", column: "organization_talent_pool_id"
+  add_foreign_key "organizations", "users", column: "books_categories_set_up_by_id"
+  add_foreign_key "organizations", "users", column: "books_locked_by_id"
   add_foreign_key "organizations", "users", column: "owner_id"
   add_foreign_key "payout_batch_items", "payout_batches"
   add_foreign_key "payout_batches", "organizations"
@@ -4711,6 +5185,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
   add_foreign_key "questionnaire_responses", "questionnaires"
   add_foreign_key "questionnaires", "organizations"
   add_foreign_key "questionnaires", "productions"
+  add_foreign_key "register_days", "integrations"
+  add_foreign_key "register_days", "locations"
+  add_foreign_key "register_days", "organizations"
+  add_foreign_key "register_pulls", "integrations"
   add_foreign_key "role_eligibilities", "roles"
   add_foreign_key "role_vacancies", "roles"
   add_foreign_key "role_vacancies", "shows"
@@ -4728,19 +5206,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
   add_foreign_key "scheduling_rules", "productions"
   add_foreign_key "segments", "organizations"
   add_foreign_key "sessions", "users"
+  add_foreign_key "settlement_days", "organizations"
+  add_foreign_key "settlement_days", "users", column: "reopened_by_id"
+  add_foreign_key "settlement_days", "users", column: "settled_by_id"
   add_foreign_key "shift_additional_roles", "house_roles"
   add_foreign_key "shift_additional_roles", "shifts"
   add_foreign_key "shift_additional_roles", "shows", on_delete: :cascade
   add_foreign_key "shift_assignments", "people"
   add_foreign_key "shift_assignments", "shifts"
+  add_foreign_key "shift_shows", "shifts"
+  add_foreign_key "shift_shows", "shows"
   add_foreign_key "shift_vacancies", "people", column: "filled_by_id"
   add_foreign_key "shift_vacancies", "people", column: "vacated_by_id"
   add_foreign_key "shift_vacancies", "shifts"
   add_foreign_key "shift_vacancies", "users", column: "closed_by_id"
   add_foreign_key "shift_vacancy_invitations", "people"
   add_foreign_key "shift_vacancy_invitations", "shift_vacancies"
-  add_foreign_key "shift_shows", "shifts"
-  add_foreign_key "shift_shows", "shows"
   add_foreign_key "shifts", "house_roles"
   add_foreign_key "shifts", "organizations"
   add_foreign_key "short_links", "organizations"
@@ -4764,6 +5245,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
   add_foreign_key "show_changes", "shows", on_delete: :nullify
   add_foreign_key "show_changes", "users", column: "changed_by_user_id", on_delete: :nullify
   add_foreign_key "show_financials", "shows"
+  add_foreign_key "show_payout_line_items", "show_payout_line_items", column: "correction_of_id", on_delete: :nullify
   add_foreign_key "show_payout_line_items", "show_payouts"
   add_foreign_key "show_payout_line_items", "users", column: "manually_paid_by_id"
   add_foreign_key "show_payouts", "payout_schemes"
@@ -4928,6 +5410,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_133000) do
   add_foreign_key "tickets", "ticket_tiers"
   add_foreign_key "tickets", "ticket_tiers", column: "bundle_tier_id"
   add_foreign_key "tickets", "users", column: "checked_in_by_id", on_delete: :nullify
+  add_foreign_key "tip_rules", "organizations"
+  add_foreign_key "tip_shares", "house_roles"
+  add_foreign_key "tip_shares", "payout_contributions"
+  add_foreign_key "tip_shares", "people"
+  add_foreign_key "tip_shares", "settlement_days"
   add_foreign_key "training_credits", "people"
   add_foreign_key "users", "people"
   add_foreign_key "users", "people", column: "default_person_id"

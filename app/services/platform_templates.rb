@@ -67,7 +67,17 @@ class PlatformTemplates
                    { "name" => "value_lines", "description" => "What Pro did for them in the last three months, as a list (empty when nothing happened)" },
                    { "name" => "price_line", "description" => "What Pro costs: the plan and the usage" },
                    { "name" => "lose_lines", "description" => "What they'd lose on Producer, as a list" },
-                   { "name" => "keep_url", "description" => "Their Billing & Plan page, where Keep Pro is" } ] }
+                   { "name" => "keep_url", "description" => "Their Billing & Plan page, where Keep Pro is" } ] },
+    # One email, once, to everyone with an account who hasn't opened the app
+    # (AppAnnouncement). Its own links, so the layout leaves its footer line
+    # about the app off.
+    { key: "get_the_app_announcement", name: "CocoScout has an app", channel: "email",
+      subject: "New: CocoScout app for iPhone and Android",
+      body: %(<p>Hi {{first_name}},</p><p><strong>The CocoScout app just launched</strong>, for iPhone and Android. It's a real app from the App Store or Google Play, not the website on your phone. It's free, and you sign in with the account you already have.</p><p>Everything you do on the website is in it: your shows and shifts, your messages, your sign-ups and your pay. If you allow notifications, it tells you as things happen, such as being cast, a shift added or changed, someone needing cover, or your pay being on its way.</p><p>We're sending fewer emails than we used to, so the app is the quickest way to hear.</p><p><a href="{{app_url}}" class="button" style="#{EmailButton::STYLE}">Get the app</a></p><p>Or go straight to it: <a href="{{ios_url}}">iPhone, on the App Store</a> or <a href="{{android_url}}">Android, on Google Play</a>.</p><p>Thanks,<br>Andie and Tim</p>),
+      variables: [ { "name" => "first_name", "description" => "Their first name" },
+                   { "name" => "app_url", "description" => "cocoscout.com/app: a phone goes to its own store" },
+                   { "name" => "ios_url", "description" => "The App Store page" },
+                   { "name" => "android_url", "description" => "The Google Play page" } ] }
   ].freeze
 
   def self.ensure!(keys: nil, overwrite: false)

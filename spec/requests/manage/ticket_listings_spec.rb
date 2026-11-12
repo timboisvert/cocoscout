@@ -136,16 +136,18 @@ RSpec.describe "Manage ticket listings", type: :request do
       get manage_ticket_listing_path(listing)
       # Sold counts every ticket sold, here or elsewhere, and says where.
       # Here and elsewhere, each with its money; the whole picture under Sold here.
-      expect(response.body).to include("6 on Ticket Tailor", "4 on Eventbrite", "Sold here", "10 of 70 sold in all", "Add a ticket type", 'data-tier-chip="')
+      expect(response.body).to include("6 on Ticket Tailor", "4 on Eventbrite", "Sold here", "10 of 70 sold in all", "Ticket type", "Add another site")
       expect(response.body).to include("Ticket sales elsewhere", "$80.00", "$80 on Eventbrite", "$0 here")
       expect(response.body).not_to include("$0 on Ticket Tailor")
-      # Only the rows a site has are drawn; the rest come from the template on Add.
-      expect(response.body.scan(/name="sales\[#{eventbrite.id}\]\[\d+\]\[tickets\]"/).size).to eq(1)
+      # The same table as the show's day in Settle up: a line for every site and ticket type, and a new site's lines last.
+      expect(response.body.scan(/name="sales\[#{eventbrite.id}\]\[\d+\]\[tickets\]"/).size).to eq(2)
+      expect(response.body.scan(/name="sales\[new\]\[\d+\]\[tickets\]"/).size).to eq(2)
+      expect(response.body).not_to include("Add a ticket type", "data-tier-chip")
 
-      # The worksheet shows those rows but doesn't let anyone type over them,
-      # and links back to the ticketing page where they're changed.
+      # The show's record shows those rows but doesn't let anyone type over
+      # them; they're changed on the ticketing page or the show's day.
       get manage_money_show_financials_path(friday)
-      expect(response.body).to match(%r{<a [^>]*href="#{manage_ticket_listing_path(listing)}"[^>]*>imported from the ticketing page</a>})
+      expect(response.body).to include("Outside tickets", "4 General</span>", "", "6 VIP</span>", "")
       expect(response.body).not_to match(/ticket_sales_lines_attributes\]\[\d+\]\[ticket_source_id\]"[^>]*value="#{eventbrite.id}"/)
     end
 

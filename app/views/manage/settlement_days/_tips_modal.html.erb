@@ -1,0 +1,213 @@
+<%# Change the split: everything about the day's tips that can be changed,
+    in one modal (plan §9.14). With the rule on: a row per person with the
+    span they worked, their share and how it goes; change a span and the
+    others are worked out again; type a share and it stays; add a person
+    and the span they worked; take someone off; say who gets each stretch
+    with nobody on the bar; or hand it all back to the clock. By hand:
+    evenly, by hours or as typed, and each share.
+    Laid out as one table (Tim, 2026-11-04): a line per person with the
+    same columns, read across (who, when they were on, their share, how
+    it's paid, take off); adding someone is the table's last line, in the
+    same columns; the stretches with nobody on sit under it, each beside
+    its answer.
+    Locals: id, day, tips, hand_rows, roles_by_id %>
+<%
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  by_rule = tips.by_rule?
+  rule = tips.rule
+  input = "block w-full pl-7 pr-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 disabled:bg-gray-50"
+  plain = "block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 disabled:bg-gray-50"
+  clock = "block w-full px-2 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 disabled:bg-gray-50"
+  method_select = lambda do |name, chosen, staff_member, disabled|
+    options = [ [ "Next pay", "payout", staff_member.nil? ], [ "Cash at close", "cash", false ] ]
+    content_tag(:select, name: name, disabled: disabled, class: plain) do
+      options.map { |label, value, off| content_tag(:option, label, value: value, selected: chosen == value, disabled: off) }.join.html_safe
+    end
+  end
+  label = "text-[11px] font-semibold uppercase tracking-wide text-gray-500"
+  # A select only as wide as its words (plain is full width).
+  pick = plain.sub("block w-full ", "")
+  rule_columns = "md:grid-cols-[minmax(0,1fr)_15.5rem_7rem_9.5rem_4.5rem]"
+  hand_columns = "md:grid-cols-[minmax(0,1fr)_7rem_9.5rem]"
+  # Adding a person makes sense whenever the rule could read the clock.
+  can_add = rule&.enabled? && tips.by_time.any?
+  sharing_roles = rule ? rule.sharing_role_ids.filter_map { |rid| roles_by_id[rid] } : []
+  listed = (by_rule ? tips.rows.map { |r| r.person.id } : hand_rows.map { |r| r[:worker].person.id }).to_set
+  addable = []
+  if can_add
+    members = Current.organization.organization_staff_members.active.includes(:person, :staff_role_qualifications)
+    qualified = members.select { |m| (m.staff_role_qualifications.map(&:house_role_id) & rule.sharing_role_ids).any? }
+    addable = (qualified.presence || members).map(&:person).reject { |p| listed.include?(p.id) }.sort_by(&:name)
+  end
+%>
+<div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end justify-center sm:items-center sm:p-4"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[85vh]" data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-5 sm:px-6 py-4 flex-shrink-0">
+      <h3 class="text-lg font-semibold text-white">Tips, <%= money.call(tips.cents) %></h3>
+      <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" aria-label="Close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <%= form_with url: manage_tips_money_settle_up_day_path(day.param), method: :patch, class: "flex flex-col min-h-0 flex-1", data: { turbo_action: "replace" } do %>
+      <%
+        # The table's last line: someone who worked and isn't listed, in the same columns.
+        add_line = capture do
+      %>
+        <% if can_add && addable.any? %>
+          <div class="grid grid-cols-1 <%= rule_columns %> items-center gap-x-3 gap-y-2 px-4 py-3 bg-gray-50/70 border-t border-dashed border-gray-300">
+            <div class="flex flex-wrap items-center gap-2 min-w-0">
+              <select name="new_share[person_id]" class="<%= plain %>" aria-label="Add someone who worked">
+                <option value="">Add someone</option>
+                <% addable.each do |person| %><option value="<%= person.id %>"><%= person.name %></option><% end %>
+              </select>
+              <% if sharing_roles.size > 1 %>
+                <select name="new_share[house_role_id]" class="<%= pick %>" aria-label="Their role">
+                  <% sharing_roles.each do |role| %><option value="<%= role.id %>"><%= role.name %></option><% end %>
+                </select>
+              <% elsif sharing_roles.any? %>
+                <%= hidden_field_tag "new_share[house_role_id]", sharing_roles.first.id, id: nil %>
+                <span class="text-xs text-gray-500"><%= sharing_roles.first.name %></span>
+              <% end %>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <input type="time" name="new_share[from]" value="18:00" class="<%= clock %> w-auto" aria-label="On from">
+              <span class="text-xs text-gray-500">to</span>
+              <input type="time" name="new_share[to]" value="23:00" class="<%= clock %> w-auto" aria-label="On until">
+            </div>
+            <span class="md:col-span-3 text-xs text-gray-500">Their share is worked out when you save.</span>
+          </div>
+        <% end %>
+      <% end %>
+      <div class="px-5 sm:px-6 py-5 overflow-y-auto space-y-5">
+        <% if by_rule %>
+          <%= hidden_field_tag :mode, "rule", id: nil %>
+          <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <p class="text-sm text-gray-600">By the clock: <%= rule.summary(roles_by_id) %>.</p>
+            <%= link_to "Change the rule", manage_money_settings_section_path(section: "tips"), class: "text-xs text-pink-600 hover:text-pink-700 whitespace-nowrap" %>
+          </div>
+
+          <div>
+            <div class="border border-gray-200 rounded-lg overflow-hidden">
+              <div class="hidden md:grid <%= rule_columns %> gap-3 px-4 py-2 bg-gray-50 border-b border-gray-200 <%= label %>">
+                <span>Who</span><span>On the bar</span><span>Share</span><span>Paid</span><span class="text-center">Take off</span>
+              </div>
+              <div class="divide-y divide-gray-100">
+                <% tips.rows.each do |row| %>
+                  <% pid = row.person.id %>
+                  <% locked = row.locked? %>
+                  <% from_text = row.worked_from&.in_time_zone&.strftime("%H:%M") %>
+                  <% to_text = row.worked_to&.in_time_zone&.strftime("%H:%M") %>
+                  <%# Ticked to come off: the line dims, so it's plain what Save will do. %>
+                  <div class="grid grid-cols-1 <%= rule_columns %> items-center gap-x-3 gap-y-2 px-4 py-3 text-sm has-[.tip-off:checked]:bg-gray-50 has-[.tip-off:checked]:opacity-60">
+                    <%= hidden_field_tag "shares[#{pid}][house_role_id]", row.house_role&.id, id: nil %>
+                    <%= hidden_field_tag "shares[#{pid}][shown]", format("%.2f", row.cents / 100.0), id: nil %>
+                    <%= hidden_field_tag "shares[#{pid}][span_shown]", [ from_text, to_text ].join("-"), id: nil %>
+                    <div class="min-w-0">
+                      <span class="font-medium text-gray-900"><%= row.person.name %></span>
+                      <% if row.house_role %><span class="ml-1 text-xs text-gray-500"><%= row.house_role.name %></span><% end %>
+                      <span class="block text-xs text-gray-500"><%= row.how %><%= " On a payout run already, so it stands." if locked %></span>
+                      <% unless row.staff_member %><span class="block text-xs text-amber-700">Not on Staffing, so cash only</span><% end %>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                      <input type="time" name="shares[<%= pid %>][from]" value="<%= from_text %>" <%= "disabled" if locked %> class="<%= clock %> w-auto" aria-label="<%= row.person.name %> on from">
+                      <span class="text-xs text-gray-500">to</span>
+                      <input type="time" name="shares[<%= pid %>][to]" value="<%= to_text %>" <%= "disabled" if locked %> class="<%= clock %> w-auto" aria-label="<%= row.person.name %> on until">
+                    </div>
+                    <span class="relative block w-28 md:w-full"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                      <input type="text" name="shares[<%= pid %>][amount]" inputmode="decimal" value="<%= format('%.2f', row.cents / 100.0) %>" <%= "disabled" if locked %> class="<%= input %>" aria-label="<%= row.person.name %>'s share"></span>
+                    <div><%= method_select.call("shares[#{pid}][method]", row.method, row.staff_member, locked) %></div>
+                    <div class="md:text-center">
+                      <% unless locked %>
+                        <label class="inline-flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer">
+                          <input type="checkbox" name="shares[<%= pid %>][remove]" value="1" class="tip-off h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" aria-label="Take <%= row.person.name %> off the split">
+                          <span class="md:hidden">Take off</span>
+                        </label>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+              <%= add_line %>
+            </div>
+            <p class="mt-1.5 text-xs text-gray-500">Change when someone was on and the shares are worked out again. A share you type stays as typed.</p>
+          </div>
+
+          <% if tips.stretches.any? %>
+            <% takers = tips.rows.reject { |r| r.typed? || r.locked? } %>
+            <div>
+              <div class="<%= label %> mb-1.5">Nobody on the bar</div>
+              <div class="border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100">
+                <% tips.stretches.each do |stretch| %>
+                  <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5 text-sm <%= 'bg-amber-50/60' unless stretch.resolved? %>">
+                    <span class="text-gray-900"><%= stretch.words.sub(/\A./, &:upcase) %> <span class="text-xs text-gray-500">· <%= money.call(stretch.cents) %><%= stretch.orders.positive? ? " from #{pluralize(stretch.orders, 'order')}" : "" %></span></span>
+                    <select name="unstaffed[<%= stretch.key %>]" class="<%= pick %>" aria-label="Who gets <%= stretch.words %>">
+                      <option value="" <%= "selected" unless stretch.resolved? %>>Who gets it?</option>
+                      <option value="house" <%= "selected" if stretch.house? %>>The house keeps it</option>
+                      <% if takers.size > 1 %><option value="split" <%= "selected" if stretch.split? %>>Split between everyone listed</option><% end %>
+                      <% takers.each do |row| %><option value="<%= row.person.id %>" <%= "selected" if stretch.person_id == row.person.id %>><%= row.person.name %></option><% end %>
+                    </select>
+                  </div>
+                <% end %>
+              </div>
+              <p class="mt-1.5 text-xs text-gray-500">Tips that rang up while nobody who shares was on. The house holds each until you say who gets it.</p>
+            </div>
+          <% end %>
+        <% else %>
+          <% workers = hand_rows.map { |r| r[:worker] } %>
+          <% if workers.empty? && !can_add %>
+            <p class="text-sm text-gray-600">Nobody is on Staffing's schedule or hours for this day, so there is no one to split <%= money.call(tips.cents) %> between. Add their shift or hours in Staffing and come back.</p>
+          <% else %>
+            <% if workers.any? %>
+              <div class="flex flex-wrap items-center gap-2 text-sm">
+                <span class="text-gray-700 mr-1">Split</span>
+                <% { "even" => "Evenly", "hours" => "By hours worked", "typed" => "As typed" }.each do |key, text| %>
+                  <label class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 has-[:checked]:text-pink-700 has-[:checked]:font-medium">
+                    <input type="radio" name="split" value="<%= key %>" <%= "checked" if tips.split == key %> onchange="this.form.requestSubmit()" class="h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
+                    <%= text %>
+                  </label>
+                <% end %>
+              </div>
+            <% end %>
+            <div class="border border-gray-200 rounded-lg overflow-hidden">
+              <% if workers.any? %>
+                <div class="hidden md:grid <%= hand_columns %> gap-3 px-4 py-2 bg-gray-50 border-b border-gray-200 <%= label %>">
+                  <span>Who</span><span>Share</span><span>Paid</span>
+                </div>
+                <div class="divide-y divide-gray-100">
+                  <% hand_rows.each do |row| %>
+                    <% worker = row[:worker] %>
+                    <% locked = row[:share]&.payout_contribution_id.present? %>
+                    <div class="grid grid-cols-1 <%= hand_columns %> items-center gap-x-3 gap-y-2 px-4 py-3 text-sm">
+                      <div class="min-w-0">
+                        <span class="font-medium text-gray-900"><%= worker.person.name %></span>
+                        <% if worker.hours.positive? %><span class="ml-1 text-xs text-gray-500"><%= worker.hours %> h</span><% end %>
+                        <% if locked %><span class="block text-xs text-gray-500">On a payout run already, so it stands.</span><% end %>
+                        <% unless worker.staff_member %><span class="block text-xs text-amber-700">Not on Staffing, so cash only</span><% end %>
+                      </div>
+                      <span class="relative block w-28 md:w-full"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                        <input type="text" name="shares[<%= worker.person.id %>][amount]" inputmode="decimal" value="<%= format('%.2f', row[:cents] / 100.0) %>" <%= "disabled" if locked %> class="<%= input %>" aria-label="<%= worker.person.name %>'s share"></span>
+                      <div><%= method_select.call("shares[#{worker.person.id}][method]", row[:method], worker.staff_member, locked) %></div>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+              <%= add_line %>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-3 px-5 sm:px-6 py-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+        <span>
+          <% if by_rule && tips.rows.any?(&:typed?) %>
+            <%= render "shared/button", text: "Work it all out again", variant: "ghost", size: "small", type: :submit, name: "recompute", value: "1" %>
+          <% end %>
+        </span>
+        <span class="flex items-center gap-2">
+          <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+          <%= render "shared/button", text: "Save the split", variant: "primary", size: "medium", type: :submit %>
+        </span>
+      </div>
+    <% end %>
+  </div>
+</div>

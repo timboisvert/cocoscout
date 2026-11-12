@@ -27,7 +27,7 @@ RSpec.describe "Manage::Organizations settings sections", type: :request do
 
     it "renders each section on its own URL" do
       {
-        "team" => "Team Members",
+        "team" => "People",
         "locations" => "Locations",
         "agreements" => "Agreements",
         "billing" => "Billing &amp; Plan",

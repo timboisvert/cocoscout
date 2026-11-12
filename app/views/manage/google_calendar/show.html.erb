@@ -1,0 +1,136 @@
+<% content_for :title, "Google Calendar" %>
+<%
+  integration = @integration
+  connected = integration&.connected?
+  check = "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+  links = connected ? [ { text: "Sync now", path: manage_sync_organization_google_calendar_path(@organization), method: :post } ] : []
+  # One row of Google's eleven event colors, as radio swatches.
+  swatches = lambda do |name, chosen|
+    safe_join(Integration::CALENDAR_COLORS.map do |id, (label, hex)|
+      tag.label(class: "cursor-pointer", title: label) do
+        radio_button_tag(name, id, chosen == id, id: nil, class: "sr-only peer", "aria-label": label) +
+          tag.span("", class: "block h-6 w-6 rounded-full ring-offset-2 ring-offset-white peer-checked:ring-2 peer-checked:ring-gray-900 peer-focus-visible:ring-2 peer-focus-visible:ring-pink-500", style: "background-color: #{hex}")
+      end
+    end)
+  end
+%>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Organizations", manage_organizations_path ], [ @organization.name, manage_organization_path(@organization) ], [ "Integrations", section_manage_organization_path(@organization, section: "integrations") ] ],
+    text: "Google Calendar",
+    links: links
+  } %>
+
+  <% unless connected %>
+    <div class="max-w-2xl rounded-xl border border-gray-200 bg-white p-6 space-y-4">
+      <div class="flex items-center gap-3">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gray-900 text-sm font-bold text-white">Gc</span>
+        <div>
+          <div class="font-semibold text-gray-900">Connect Google Calendar</div>
+          <div class="text-sm text-gray-600">Your shows and events on a Google calendar that keeps itself.</div>
+        </div>
+      </div>
+      <p class="text-sm text-gray-700">You sign in on Google's own page. CocoScout then makes one new calendar in that account, "<%= @organization.name %> (CocoScout)", and keeps it. It can't see or change any other calendar you have, never sees your Google password, and you can disconnect here any time.</p>
+      <ul class="text-sm text-gray-700 space-y-1 list-disc pl-5">
+        <li>Every show and event goes on it, in its room's color. A date under contract can block the whole rental time.</li>
+        <li>A date made, moved, renamed or canceled here changes on the calendar within a minute.</li>
+        <li>Each event says CocoScout manages it and links back here. Anything changed in Google is put back overnight.</li>
+        <li>Share the calendar with your staff from Google, the way you share any calendar.</li>
+      </ul>
+      <% if (problem = GoogleCalendarApi.setup_problem) %>
+        <p class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2"><%= problem %></p>
+      <% else %>
+        <%= form_with url: manage_connect_organization_google_calendar_path(@organization), method: :post, data: { turbo: false } do %>
+          <%= render "shared/button", text: "Connect Google Calendar", variant: "primary", size: "medium", type: :submit %>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="rounded-xl border <%= integration.status == 'error' ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50' %> px-5 py-4 mb-5 flex flex-wrap items-start gap-4">
+      <span class="inline-flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-gray-900 text-sm font-bold text-white">Gc</span>
+      <div class="flex-1 min-w-[16rem] text-sm text-gray-800">
+        <b>Connected:</b> <%= integration.calendar_name || "a calendar CocoScout made" %><% if integration.account_email %>, in <%= integration.account_email %><% end %><% if integration.connected_by %>, by <%= integration.connected_by.default_person&.name || integration.connected_by.email_address %><% end %><% if integration.connected_at %> on <%= integration.connected_at.strftime("%b %-d, %Y") %><% end %>. CocoScout keeps this one calendar and can't see any other. Share it with your staff from Google Calendar.
+        <% if integration.status == "error" %><div class="mt-1 text-amber-900">The calendar is not up to date: <%= integration.last_error %></div><% end %>
+      </div>
+      <div class="text-xs text-gray-600 sm:text-right">
+        <% if integration.last_synced_at %>Up to date <%= integration.last_synced_at.strftime("%-l:%M %P, %b %-d") %><% else %>Not written yet<% end %><br>
+        <%= pluralize(@event_count, "event") %> on it
+      </div>
+    </div>
+
+    <%= form_with url: manage_organization_google_calendar_path(@organization), method: :patch, data: { turbo: false } do %>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <%= render "shared/section_heading", padding: "px-5 py-3", title: "What goes on the calendar" %>
+          <div class="px-5 py-4 space-y-4">
+            <div class="grid grid-cols-2 gap-x-6 gap-y-3">
+              <% EventTypes.all.each do |type| %>
+                <label class="flex items-center gap-2 text-sm text-gray-800">
+                  <%= hidden_field_tag "event_types[#{type}]", "0", id: nil %>
+                  <%= check_box_tag "event_types[#{type}]", "1", integration.calendar_event_type?(type), id: "event_types_#{type}", class: check %>
+                  <%= EventTypes.labels[type] || type.titleize %>
+                </label>
+              <% end %>
+            </div>
+            <p class="text-xs text-gray-500">Each date is one event, whether you made it or a contract did. A canceled date leaves the calendar.</p>
+          </div>
+        </section>
+
+        <section class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <%= render "shared/section_heading", padding: "px-5 py-3", title: "How each event reads" %>
+          <div class="px-5 py-4 space-y-3">
+            <% Integration::CALENDAR_TITLE_PARTS.each do |key, title| %>
+              <label class="flex items-center gap-2 text-sm text-gray-800">
+                <%= hidden_field_tag "title[#{key}]", "0", id: nil %>
+                <%= check_box_tag "title[#{key}]", "1", integration.calendar_title_part?(key), id: "title_#{key}", class: check %>
+                <%= title %>
+              </label>
+            <% end %>
+            <% if @preview %>
+              <div>
+                <div class="text-xs text-gray-500 mb-1">Your next date, as saved</div>
+                <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 flex items-center gap-2">
+                  <span class="h-3 w-3 flex-none rounded-full" style="background-color: <%= Integration::CALENDAR_COLORS[integration.room_color(@preview.room)][1] %>"></span>
+                  <span class="min-w-0 truncate"><%= @preview.title %></span>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </section>
+
+        <section class="rounded-xl border border-gray-200 bg-white overflow-hidden lg:col-span-2">
+          <%= render "shared/section_heading", padding: "px-5 py-3", title: "Colors", intro: "An event takes its room's color. These are the colors Google Calendar offers for an event." %>
+          <div class="px-5 py-4 space-y-4">
+            <% @rooms.each do |room| %>
+              <div class="flex flex-wrap items-center gap-x-6 gap-y-2">
+                <div class="w-48 min-w-0">
+                  <div class="text-sm font-medium text-gray-900 truncate"><%= room.name %></div>
+                  <% if @rooms.map(&:location_id).uniq.size > 1 %><div class="text-xs text-gray-500 truncate"><%= room.location.name %></div><% end %>
+                </div>
+                <div class="flex flex-wrap gap-2"><%= swatches.call("room_colors[#{room.id}]", integration.room_color(room)) %></div>
+              </div>
+            <% end %>
+            <div class="flex flex-wrap items-center gap-x-6 gap-y-2 <%= 'border-t border-gray-100 pt-4' if @rooms.any? %>">
+              <div class="w-48 min-w-0">
+                <div class="text-sm font-medium text-gray-900">Everything else</div>
+                <div class="text-xs text-gray-500">Anything without a room</div>
+              </div>
+              <div class="flex flex-wrap gap-2"><%= swatches.call("other_color", integration.other_color) %></div>
+            </div>
+          </div>
+        </section>
+      </div>
+      <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+        <%= render "shared/button", text: "Disconnect", variant: "secondary", size: "medium", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-disconnect-google-calendar" } %>
+      </div>
+    <% end %>
+    <%= render "shared/confirm_modal", id: "confirm-disconnect-google-calendar",
+          title: "Disconnect Google Calendar?",
+          message: "CocoScout stops keeping the calendar. It stays in your Google account as it is now, for you to keep or delete there.",
+          confirm_text: "Disconnect",
+          url: manage_organization_google_calendar_path(@organization), method: :delete %>
+  <% end %>
+</div>

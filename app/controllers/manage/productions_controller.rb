@@ -168,6 +168,9 @@ module Manage
       if paid
         was_off = !@production.pays_performers?
         @production.update!(pays_performers: true)
+        if (mode = params[:payout_calculation_mode].presence_in(Production::PAYOUT_CALCULATION_MODES))
+          @production.update!(payout_calculation_mode: mode)
+        end
         current = PayoutScheme.current_default_for_production(@production)
         if calculation && current != calculation
           # Only THIS production's rows are touched (never the calculation's
