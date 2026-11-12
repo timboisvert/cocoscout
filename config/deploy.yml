@@ -122,6 +122,10 @@ env:
     - APNS_PRIVATE_KEY
     # ...and to the Android app (FcmClient): base64 of the Firebase key file.
     - FCM_SERVICE_ACCOUNT_JSON
+    # Google Calendar (Organization settings → Integrations): CocoScout's
+    # OAuth client. The jobs server needs them too: it writes the events.
+    - GOOGLE_CALENDAR_CLIENT_ID
+    - GOOGLE_CALENDAR_CLIENT_SECRET
   clear:
     # Job processing is handled by the dedicated job server (bin/jobs)
     SOLID_QUEUE_IN_PUMA: false
