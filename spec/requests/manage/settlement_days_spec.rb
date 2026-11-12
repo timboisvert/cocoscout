@@ -598,7 +598,10 @@ RSpec.describe "Manage::SettlementDays tips by the clock", type: :request do
       expect(CGI.unescapeHTML(response.body)).to include("Its tips, $240.00 for 3 people, stop waiting on Pay People until the day settles again.")
 
       # Pay People offers them like approved hours, and ties each share to the
-      # run's Tips line when the week's pay goes on.
+      # run's Tips line when the week's pay goes on. Someone left off the pay
+      # grid (an owner who tended bar) is on it while their tips wait (Tim,
+      # 2026-11-11: his and a manager's tips waited where nobody could see).
+      org.organization_staff_members.find_by!(person: camille).update!(excluded_from_pay: true)
       get manage_staffing_pay_path
       expect(response.body).to include("3 people", "tips waiting from Settle up — $240.00 to pay through us", "Pull in tips")
       miles_share = record.tip_shares.find_by!(person: miles)

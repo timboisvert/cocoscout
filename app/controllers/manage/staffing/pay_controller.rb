@@ -14,7 +14,15 @@ module Manage
         # (e.g. salaried managers) and inactive members. Both stay revealable
         # one-by-one from the list at the bottom for one-off payments — and go
         # back to hidden on the next visit.
-        @hidden_staff_members = all_members.select { |m| m.inactive? || m.excluded_from_pay? }
+        # Tips from settled days (Settle up, plan §9.14), waiting here the way
+        # approved hours do: each share is pulled onto the grid as a day on the
+        # person's tips worksheet, and goes onto the run with everything else.
+        @tips_waiting_by_person = TipShare.waiting_for(Current.organization).group_by(&:person_id)
+        # Someone left off the grid who has tips waiting is on it for this
+        # visit (Tim, 2026-11-11: an owner and a manager, both excluded from
+        # pay, tended bar; their tips waited where nobody could see them).
+        # Tips are owed whether or not the person is paid by the hour.
+        @hidden_staff_members = all_members.select { |m| (m.inactive? || m.excluded_from_pay?) && @tips_waiting_by_person[m.person_id].blank? }
         @staff_members = all_members - @hidden_staff_members
         # People on the grid who still owe a W-9. Paying them isn't blocked —
         # payroll never stalls on paperwork — but it's flagged so it gets chased.
@@ -61,10 +69,6 @@ module Manage
           h[member.id] = hours if hours.positive?
         end
         @inactive_with_approved_hours = @hidden_staff_members.select { |m| m.inactive? && @hidden_hours_by_member_id[m.id] }
-        # Tips from settled days (Settle up, plan §9.14), waiting here the way
-        # approved hours do: each share is pulled onto the grid as a day on the
-        # person's tips worksheet, and goes onto the run with everything else.
-        @tips_waiting_by_person = TipShare.waiting_for(Current.organization).group_by(&:person_id)
         @members_with_tips_waiting = @staff_members.filter_map do |member|
           shares = @tips_waiting_by_person[member.person_id]
           [ member, shares ] if shares.present?
