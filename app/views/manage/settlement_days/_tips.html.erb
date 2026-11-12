@@ -29,10 +29,7 @@
 
     difference = now_cents - typed
     base = "Already paid #{money.call(typed)} in tips for this day on a payout run."
-    if difference.zero? then "#{base} Nothing more goes on their pay."
-    elsif difference.positive? then "#{base} Only the #{money.call(difference)} more goes on their next pay."
-    else "#{base} The #{money.call(-difference)} over comes out of their next pay."
-    end
+    difference.positive? ? "#{base} Only the #{money.call(difference)} more goes on their next pay." : "#{base} Nothing more goes on their pay."
   end
   workers = tips.sharers
   split = tips.split

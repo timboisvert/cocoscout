@@ -28,6 +28,9 @@ class TipShare < ApplicationRecord
   # register to split (Tim, 2026-11-11: the week Settle up started, the run
   # already in flight carried that week's tips), count as paid: the share
   # waits only for any difference, so nobody is paid a day's tips twice.
+  # Never more than the share itself: a hand-typed line is too loose a
+  # record (one line often covered two nights, or went to one person where
+  # the register splits three ways) to take money back from anyone on.
   before_save :count_tips_typed_on_a_run, if: -> { payout? && payout_contribution_id.nil? }
 
   # { person id => cents } typed as Tips for a date on the organization's
@@ -84,7 +87,7 @@ class TipShare < ApplicationRecord
 
   def count_tips_typed_on_a_run
     typed = self.class.typed_on_runs(settlement_day.organization, settlement_day.date)[person_id].to_i
-    self.paid_cents = [ paid_cents.to_i, typed ].max if typed.positive?
+    self.paid_cents = [ paid_cents.to_i, [ typed, amount_cents.to_i ].min ].max if typed.positive?
   end
   private :count_tips_typed_on_a_run
 

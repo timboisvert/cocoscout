@@ -31,15 +31,23 @@ RSpec.describe TipShare do
     expect(described_class.overpaid_for(org)).to be_empty
   end
 
-  it "leaves only the difference waiting, or coming back, when the amounts differ" do
+  it "leaves only the difference waiting when the register gives more than was typed" do
     typed_tips!(bartender, [ [ "2026-11-06", 5_000 ] ])
     more = day.tip_shares.create!(person: bartender, amount_cents: 6_329)
     expect(more.owed_cents).to eq(1_329)
     expect(described_class.waiting_for(org)).to eq([ more ])
+  end
 
-    more.update!(amount_cents: 4_000)
-    expect(more.owed_cents).to eq(-1_000)
-    expect(described_class.overpaid_for(org)).to eq([ more ])
+  # Production, Nov 4: $38.32 typed for one bartender, and the register
+  # split the same $38.32 three ways. A typed line never takes money back.
+  it "never counts more than the share, so a typed line takes nothing back from anyone" do
+    typed_tips!(bartender, [ [ "2026-11-06", 3_832 ] ])
+    share = day.tip_shares.create!(person: bartender, amount_cents: 1_277)
+
+    expect(share.paid_cents).to eq(1_277)
+    expect(share.owed_cents).to eq(0)
+    expect(described_class.overpaid_for(org)).to be_empty
+    expect(described_class.waiting_for(org)).to be_empty
   end
 
   it "counts nothing typed for another day, another person, a canceled run, or cash tips" do
