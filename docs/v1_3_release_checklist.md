@@ -5,6 +5,15 @@ code is on branch `v1.3` (`docs/books_v1_3_plan.md` §10 is the log). Written
 2026-11-10, when Tim said to get it ready: Tap to Pay (1.2) was live on
 Android and in Apple's review.
 
+## Done (2026-11-11)
+
+Merged into main (18a0c193), deployed, and the backfill posted the same
+evening: all 16 organizations at `trial balance: $0.00`, the books agreeing.
+One repair followed in production: 15 corrections from before Nov 3 were
+dated the day they were made, not the day they correct, which put $675 of
+September and $300 of October into November; they were moved onto the dates
+they correct. What follows is the checklist as it was worked.
+
 ## Where it stands (2026-11-10)
 
 - `v1.3` has main merged in (through c4a8266a, 2026-11-11) and merges back
