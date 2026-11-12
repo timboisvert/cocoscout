@@ -24,6 +24,27 @@ class TipShare < ApplicationRecord
   validates :method, inclusion: { in: METHODS }
   validates :source, inclusion: { in: SOURCES }
 
+  # Tips typed straight onto a payout run for this day, before the day had a
+  # register to split (Tim, 2026-11-11: the week Settle up started, the run
+  # already in flight carried that week's tips), count as paid: the share
+  # waits only for any difference, so nobody is paid a day's tips twice.
+  before_save :count_tips_typed_on_a_run, if: -> { payout? && payout_contribution_id.nil? }
+
+  # { person id => cents } typed as Tips for a date on the organization's
+  # payout runs (any run not canceled or failed), by the date on each
+  # worksheet line. Lines that came from a share are not typed.
+  def self.typed_on_runs(organization, date)
+    iso = date.iso8601
+    from_shares = where.not(payout_contribution_id: nil).select(:payout_contribution_id)
+    PayoutContribution.joins(:payout_batch)
+                      .where(payout_batches: { organization_id: organization.id }).where.not(payout_batches: { status: %w[canceled failed] })
+                      .where(label: "Tips", payee_type: "Person").where.not(id: from_shares)
+                      .where("payout_contributions.worksheet @> ?", [ { date: iso } ].to_json)
+                      .each_with_object(Hash.new(0)) do |line, sums|
+      sums[line.payee_id] += line.worksheet_entries.select { |entry| entry["date"].to_s == iso }.sum { |entry| entry["amount_cents"].to_i }
+    end
+  end
+
   # Shares from settled days that nobody has pulled onto a payout run yet:
   # what Pay People offers, the way it offers approved hours. A share paid
   # before its day was reopened waits only for what it's still owed.
@@ -60,6 +81,12 @@ class TipShare < ApplicationRecord
   def keep_paid!
     update!(paid_cents: amount_cents, payout_contribution: nil)
   end
+
+  def count_tips_typed_on_a_run
+    typed = self.class.typed_on_runs(settlement_day.organization, settlement_day.date)[person_id].to_i
+    self.paid_cents = [ paid_cents.to_i, typed ].max if typed.positive?
+  end
+  private :count_tips_typed_on_a_run
 
   def payout? = method == "payout"
   def cash? = method == "cash"

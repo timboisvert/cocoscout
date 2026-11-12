@@ -19,6 +19,21 @@
   modal_id = "tips-split-#{day.param}"
   math_id = "tips-math-#{day.param}"
   how_paid = { "payout" => "on their next pay", "cash" => "in cash at close" }
+  # Tips already typed onto a payout run for this day (the week Settle up
+  # started): said on the person's row before anyone confirms, so it's plain
+  # they aren't paid twice (Tim, 2026-11-11).
+  typed_before = tips.cents.positive? ? TipShare.typed_on_runs(day.organization, day.date) : {}
+  typed_words = lambda do |person, share, now_cents|
+    typed = typed_before[person.id].to_i
+    next nil if typed.zero? || share&.paid_before?
+
+    difference = now_cents - typed
+    base = "Already paid #{money.call(typed)} in tips for this day on a payout run."
+    if difference.zero? then "#{base} Nothing more goes on their pay."
+    elsif difference.positive? then "#{base} Only the #{money.call(difference)} more goes on their next pay."
+    else "#{base} The #{money.call(-difference)} over comes out of their next pay."
+    end
+  end
   workers = tips.sharers
   split = tips.split
   hand_rows = tips.hand_rows
@@ -87,6 +102,7 @@
             <% if row.locked? && row_tags %><span class="ml-1 text-xs text-gray-500">· on a payout run</span><% end %>
             <span class="block text-xs text-gray-500"><%= row.how %> <%= how_paid[row.method].capitalize %>.</span>
             <% if (words = paid_words.call(row.share, row.cents)) %><span class="block text-xs text-gray-500"><%= words %></span><% end %>
+            <% if (words = typed_words.call(row.person, row.share, row.cents)) %><span class="block text-xs font-medium text-amber-700"><%= words %></span><% end %>
           </span>
           <span class="tabular-nums text-gray-900 whitespace-nowrap"><%= money.call(row.cents) %></span>
         </div>
@@ -115,6 +131,7 @@
       <% hand_rows.each do |row| %>
         <%= line.call(row[:worker].person.name, [ (row[:worker].hours.positive? ? "#{row[:worker].hours} h" : nil), how_paid[row[:method]], (row[:share]&.payout_contribution_id.present? && row_tags ? "on a payout run" : nil) ].compact.join(" · "), money.call(row[:cents])) %>
         <% if (words = paid_words.call(row[:share], row[:cents])) %><p class="pb-1.5 text-xs text-gray-500"><%= words %></p><% end %>
+        <% if (words = typed_words.call(row[:worker].person, row[:share], row[:cents])) %><p class="pb-1.5 text-xs font-medium text-amber-700"><%= words %></p><% end %>
       <% end %>
     </div>
     <% if tips.shares.any? && tips.unassigned_cents != 0 %>
