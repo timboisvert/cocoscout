@@ -1,6 +1,29 @@
 {
   "ignored_warnings": [
     {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
+      "fingerprint": "0e66e3964591b3f31d635a8afc1dec133cc588fd4068b42bae65ab7a6a89f24d",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/manage/integrations_controller.rb",
+      "line": 53,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.fetch(:category_map, {}).permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Manage::IntegrationsController",
+        "method": "update"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "cwe_id": [
+        915
+      ],
+      "note": ""
+    },
+    {
       "warning_type": "Cross-Site Scripting",
       "warning_code": 2,
       "fingerprint": "3bd5a4b359e7801db4fc45e599847cb0d1fd2055a4738c30b01069a66e6b415f",
@@ -197,6 +220,29 @@
       "note": ""
     },
     {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "4f23f18779de09269b82f6d1645c01ca96dd9142311fbe0611217ba9a6fcfa7a",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/services/books_balances.rb",
+      "line": 143,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "JournalLine.where(:organization_id => organization.id).joins(:journal_entry).where(\"journal_entries.#{column} BETWEEN ? AND ?\", start, target)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "BooksBalances",
+        "method": "self.monthly"
+      },
+      "user_input": "column",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": ""
+    },
+    {
       "warning_type": "Mass Assignment",
       "warning_code": 70,
       "fingerprint": "56759a8ee47169a943d2105e51ca314d1e038dff88bda0d274d0d0f3f319cd4d",
@@ -347,6 +393,29 @@
     {
       "warning_type": "Mass Assignment",
       "warning_code": 70,
+      "fingerprint": "9b1cb586ddda7234af2876d63ae3fefe1d19143335195bf5f3574719202669d5",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/manage/google_calendar_controller.rb",
+      "line": 71,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.fetch(:room_colors, {}).permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Manage::GoogleCalendarController",
+        "method": "update"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "cwe_id": [
+        915
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
       "fingerprint": "9dd4a05c6600af4b68addfbec620f700240cd4a3ce9ad5d6c5907f3245925601",
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
@@ -359,6 +428,29 @@
         "type": "method",
         "class": "Manage::CourseOfferingsController",
         "method": "save_attendance"
+      },
+      "user_input": null,
+      "confidence": "Medium",
+      "cwe_id": [
+        915
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 70,
+      "fingerprint": "a4fe39d48469c4cf7757d3de97d0a8e2a6eab2d3ae56172a772da2d62009d517",
+      "check_name": "MassAssignment",
+      "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
+      "file": "app/controllers/manage/integrations_controller.rb",
+      "line": 52,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.fetch(:location_map, {}).permit!",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Manage::IntegrationsController",
+        "method": "update"
       },
       "user_input": null,
       "confidence": "Medium",
@@ -382,7 +474,7 @@
           "type": "controller",
           "class": "Manage::MoneySettingsController",
           "method": "show",
-          "line": 22,
+          "line": 25,
           "file": "app/controllers/manage/money_settings_controller.rb",
           "rendered": {
             "name": "manage/money_settings/show",
