@@ -11,7 +11,8 @@
 # with no show of its own is written as a block in its own right.
 #   - a show is canceled, deleted, or a contract is cancelled → its event goes
 #   - every night               → every coming event is written again, so
-#     anything edited or deleted in Google is put back
+#     anything edited or deleted in Google is put back, and any event of ours
+#     that no longer stands for anything is taken off
 #
 # Only from now on (Tim, 2026-11-11): a date that has already happened is
 # never written, written again, or taken off. Whatever the calendar says
@@ -41,11 +42,27 @@ class GoogleCalendarSync
     @integration = integration
   end
 
-  # The calendar CocoScout makes on connecting.
+  # On connecting: the calendar CocoScout made the last time, if this Google
+  # account still has it, or else a new one. Every connect used to make a new
+  # one, and the old one stayed in the account under the same name with dates
+  # nothing would ever change again (Tim, 2026-11-12). :kept or :made.
+  def take_calendar!(previous_id)
+    calendar = previous_id && earlier_calendar(previous_id)
+    unless calendar
+      create_calendar!
+      return :made
+    end
+
+    integration.update!(settings: integration.settings.merge("calendar_id" => calendar["id"], "calendar_name" => calendar["summary"]))
+    :kept
+  end
+
+  # The calendar CocoScout makes on connecting. Development's says so, so a
+  # test connection is never taken for the organization's real one.
   def create_calendar!
     organization = integration.organization
     zone = ActiveSupport::TimeZone[organization.time_zone.presence || TimeZones.default] || Time.zone
-    name = "#{organization.name} (CocoScout)"
+    name = "#{organization.name} (CocoScout#{' dev' if Rails.env.development?})"
     calendar = api.create_calendar(summary: name, time_zone: zone.tzinfo.name,
                                    description: "Kept by CocoScout. To change a date, change it in CocoScout.")
     integration.update!(settings: integration.settings.merge("calendar_id" => calendar["id"], "calendar_name" => name))
@@ -67,6 +84,7 @@ class GoogleCalendarSync
       remove(rows[key])
       pause(PACE)
     end
+    sweep_strays!(wanted.values)
     integration.record_success!
   rescue GoogleCalendarApi::Unauthorized
     integration.record_error!("Google no longer lets CocoScout in. Connect Google Calendar again.")
@@ -136,6 +154,39 @@ class GoogleCalendarSync
     rentals = SpaceRental.joins(:contract).where(contracts: { organization_id: organization.id, status: %w[active completed] })
                          .where(ends_at: from..).where.missing(:shows).includes(:location, :location_space, :contract).to_a
     shows + rentals
+  end
+
+  # Our own events on Google that nothing in CocoScout stands behind any
+  # more: written before a disconnect (which forgets every row), or on this
+  # calendar when it was kept from an earlier connection. Without this they
+  # stay forever. Only CocoScout's ids, and only dates that haven't started.
+  def sweep_strays!(records)
+    keep = records.map { |record| GoogleCalendarEntry.new(integration, record).event_id }.to_set
+    keep.merge(integration.calendar_sync_events.pluck(:external_id))
+    page = nil
+    loop do
+      body = patiently { api.list_events(integration.calendar_id, time_min: Time.current, page_token: page) }
+      Array(body["items"]).each do |event|
+        id = event["id"].to_s
+        next unless id.start_with?("cocoevent", "cocorental") && !keep.include?(id) && event["status"] != "cancelled"
+        next unless (starts = event.dig("start", "dateTime")) && Time.zone.parse(starts) > Time.current
+
+        patiently { api.delete_event(integration.calendar_id, id) }
+        pause(PACE)
+      end
+      break if (page = body["nextPageToken"].presence).nil?
+    end
+  end
+
+  # The earlier calendar, if Google still lets this account at it: another
+  # account, or a calendar deleted since, is no calendar.
+  def earlier_calendar(id)
+    calendar = api.get_calendar(id)
+    calendar if calendar["id"].present?
+  rescue GoogleCalendarApi::RateLimited
+    raise
+  rescue GoogleCalendarApi::Error
+    nil
   end
 
   # Whether Google was called.

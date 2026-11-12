@@ -133,6 +133,18 @@ class GoogleCalendarApi
     post("/calendar/v3/calendars", { summary: summary, timeZone: time_zone, description: description }.compact)
   end
 
+  # A calendar this app made, if the signed-in account still has it.
+  def get_calendar(calendar_id)
+    self.class.perform(API_HOST, Net::HTTP::Get.new("/calendar/v3/calendars/#{ERB::Util.url_encode(calendar_id)}", headers))
+  end
+
+  # One page of the calendar's events still going on or coming, deleted ones
+  # left out; nextPageToken asks for the next.
+  def list_events(calendar_id, time_min:, page_token: nil)
+    query = { timeMin: time_min.utc.iso8601, singleEvents: true, maxResults: 2500, pageToken: page_token }.compact.to_query
+    self.class.perform(API_HOST, Net::HTTP::Get.new("#{events_path(calendar_id)}?#{query}", headers))
+  end
+
   def insert_event(calendar_id, event)
     post("#{events_path(calendar_id)}", event)
   end

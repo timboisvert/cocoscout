@@ -61,6 +61,25 @@ RSpec.describe "Manage::GoogleCalendar", type: :request do
       expect(api).to have_received(:create_calendar).with(hash_including(summary: "Stars & Garters (CocoScout)"))
     end
 
+    it "picks the same calendar back up on connecting again" do
+      org.integrations.create!(provider: "google_calendar", status: "disconnected",
+                               settings: { "calendar_id" => "cal-old", "calendar_name" => "Stars & Garters (CocoScout)" })
+      post manage_connect_organization_google_calendar_path(org)
+      state = Rack::Utils.parse_query(URI(response.location).query)["state"]
+      allow(GoogleCalendarApi).to receive(:exchange_code)
+        .and_return({ "access_token" => "tok", "refresh_token" => "ref", "expires_at" => 1.hour.from_now.iso8601, "email" => "boxoffice@example.com" })
+      api = instance_double(GoogleCalendarApi)
+      allow(GoogleCalendarApi).to receive(:new).with("tok").and_return(api)
+      allow(api).to receive(:get_calendar).with("cal-old").and_return({ "id" => "cal-old", "summary" => "Stars & Garters (CocoScout)" })
+      allow(api).to receive(:create_calendar)
+
+      get manage_google_calendar_callback_path, params: { code: "the-code", state: state }
+
+      expect(org.integrations.google_calendar.sole.calendar_id).to eq("cal-old")
+      expect(api).not_to have_received(:create_calendar)
+      expect(flash[:notice]).to include("keeping the same calendar")
+    end
+
     it "refuses a callback whose state doesn't match" do
       post manage_connect_organization_google_calendar_path(org)
       allow(GoogleCalendarApi).to receive(:exchange_code)

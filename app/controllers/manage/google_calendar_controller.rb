@@ -47,15 +47,20 @@ module Manage
       end
 
       integration = organization.integrations.find_or_initialize_by(provider: "google_calendar")
-      # A new calendar each time someone connects: the last one, if any, was
-      # in whatever account they used then.
+      # The calendar from the last connection is kept if this account still
+      # has it (GoogleCalendarSync#take_calendar!); otherwise a new one.
+      previous_calendar_id = integration.calendar_id
       integration.settings = integration.settings.except("calendar_id", "calendar_name").merge("account_email" => tokens["email"])
       integration.connect!(tokens: tokens.slice("access_token", "refresh_token", "expires_at"), by: Current.user)
       integration.calendar_sync_events.delete_all
-      GoogleCalendarSync.new(integration).create_calendar!
+      kept = GoogleCalendarSync.new(integration).take_calendar!(previous_calendar_id) == :kept
       GoogleCalendarFullSyncJob.perform_later(organization.id)
-      redirect_to manage_organization_google_calendar_path(organization),
-                  notice: "Connected. CocoScout made the calendar \"#{integration.calendar_name}\" in your Google account, and your dates are on their way to it."
+      notice = if kept
+        "Connected again. CocoScout is keeping the same calendar, \"#{integration.calendar_name}\", and bringing it up to date."
+      else
+        "Connected. CocoScout made the calendar \"#{integration.calendar_name}\" in your Google account, and your dates are on their way to it."
+      end
+      redirect_to manage_organization_google_calendar_path(organization), notice: notice
     rescue GoogleCalendarApi::Error => e
       redirect_to manage_organization_google_calendar_path(organization), alert: "Google Calendar did not connect: #{e.message}"
     end

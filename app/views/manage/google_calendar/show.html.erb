@@ -31,7 +31,7 @@
           <div class="text-sm text-gray-600">Your shows and events on a Google calendar that keeps itself.</div>
         </div>
       </div>
-      <p class="text-sm text-gray-700">You sign in on Google's own page. CocoScout then makes one new calendar in that account, "<%= @organization.name %> (CocoScout)", and keeps it. It can't see or change any other calendar you have, never sees your Google password, and you can disconnect here any time.</p>
+      <p class="text-sm text-gray-700">You sign in on Google's own page. CocoScout then makes one calendar in that account, "<%= @organization.name %> (CocoScout)", and keeps it. Connecting again later picks the same calendar back up. It can't see or change any other calendar you have, never sees your Google password, and you can disconnect here any time.</p>
       <ul class="text-sm text-gray-700 space-y-1 list-disc pl-5">
         <li>Every show and event goes on it, in its room's color. A date under contract can block the whole rental time.</li>
         <li>A date made, moved, renamed or canceled here changes on the calendar within a minute.</li>
@@ -129,7 +129,7 @@
     <% end %>
     <%= render "shared/confirm_modal", id: "confirm-disconnect-google-calendar",
           title: "Disconnect Google Calendar?",
-          message: "CocoScout stops keeping the calendar. It stays in your Google account as it is now, for you to keep or delete there.",
+          message: "CocoScout stops keeping the calendar. It stays in your Google account as it is now, for you to keep or delete there. Connect the same Google account again and CocoScout picks it back up and brings it up to date.",
           confirm_text: "Disconnect",
           url: manage_organization_google_calendar_path(@organization), method: :delete %>
   <% end %>

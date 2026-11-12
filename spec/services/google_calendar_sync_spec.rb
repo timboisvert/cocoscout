@@ -33,6 +33,7 @@ RSpec.describe GoogleCalendarSync do
     allow(api).to receive(:insert_event) { { "id" => "g#{next_id += 1}" } }
     allow(api).to receive(:update_event) { |_cal, id, _event| { "id" => id } }
     allow(api).to receive(:delete_event).and_return({})
+    allow(api).to receive(:list_events).and_return({ "items" => [] })
     allow_any_instance_of(GoogleCalendarSync).to receive(:pause) { |_sync, seconds| pauses << seconds }
   end
   let(:pauses) { [] }
@@ -143,6 +144,34 @@ RSpec.describe GoogleCalendarSync do
     end
   end
 
+  describe "#take_calendar!" do
+    it "keeps the calendar from the last connection when this account still has it" do
+      allow(api).to receive(:get_calendar).with("cal-old").and_return({ "id" => "cal-old", "summary" => "Stars & Garters (CocoScout)" })
+      allow(api).to receive(:create_calendar)
+
+      expect(sync.take_calendar!("cal-old")).to eq(:kept)
+      expect(integration.reload.calendar_id).to eq("cal-old")
+      expect(api).not_to have_received(:create_calendar)
+    end
+
+    it "makes a new one when the old one is gone or in another account" do
+      allow(api).to receive(:get_calendar).and_raise(GoogleCalendarApi::NotFound, "Not Found")
+      allow(api).to receive(:create_calendar).and_return({ "id" => "cal-new" })
+
+      expect(sync.take_calendar!("cal-old")).to eq(:made)
+      expect(integration.reload.calendar_id).to eq("cal-new")
+    end
+
+    it "says dev on a calendar made from development" do
+      allow(Rails.env).to receive(:development?).and_return(true)
+      allow(api).to receive(:create_calendar).and_return({ "id" => "cal-new" })
+
+      sync.take_calendar!(nil)
+
+      expect(api).to have_received(:create_calendar).with(hash_including(summary: "Stars & Garters (CocoScout dev)"))
+    end
+  end
+
   describe "#sync_all!" do
     it "puts every coming date on the calendar once: a show under contract is one event, not two" do
       show = show_at
@@ -211,6 +240,30 @@ RSpec.describe GoogleCalendarSync do
       described_class.new(integration.reload).sync_record!("SpaceRental", rental.id)
       expect(CalendarSyncEvent.where(integration: integration, syncable_type: "Show", syncable_id: contracted.id)).to exist
       expect(CalendarSyncEvent.where(integration: integration, syncable_type: "SpaceRental")).to be_empty
+    end
+
+    # A disconnect forgets every row, and a calendar kept from an earlier
+    # connection still holds what was on it then (Tim, 2026-11-12): an event
+    # of ours with nothing behind it any more comes off.
+    it "takes off our own events that nothing in CocoScout stands behind, and nothing else" do
+      show = show_at
+      at = ->(time) { { "dateTime" => time.iso8601 } }
+      allow(api).to receive(:list_events).with("cal-1", time_min: anything, page_token: nil)
+        .and_return({ "items" => [ { "id" => "cocoevent#{show.id}", "start" => at.(showtime) },
+                                   { "id" => "cocoevent999999", "start" => at.(showtime + 1.day) },
+                                   { "id" => "cocorental999999", "start" => at.(showtime + 2.days) },
+                                   { "id" => "cocoevent888888", "start" => at.(10.minutes.ago) },
+                                   { "id" => "someonesown", "start" => at.(showtime) } ],
+                      "nextPageToken" => "p2" })
+      allow(api).to receive(:list_events).with("cal-1", time_min: anything, page_token: "p2")
+        .and_return({ "items" => [ { "id" => "cocoevent777777", "start" => at.(showtime + 3.days) } ] })
+
+      sync.sync_all!
+
+      expect(api).to have_received(:delete_event).with("cal-1", "cocoevent999999")
+      expect(api).to have_received(:delete_event).with("cal-1", "cocorental999999")
+      expect(api).to have_received(:delete_event).with("cal-1", "cocoevent777777")
+      expect(api).to have_received(:delete_event).exactly(3).times
     end
 
     # Only from now on (Tim, 2026-11-11).
