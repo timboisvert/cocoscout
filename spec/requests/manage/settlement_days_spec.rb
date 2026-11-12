@@ -250,24 +250,24 @@ RSpec.describe "Settle up", type: :request do
     expect(fin.reload.expense_items).to be_empty
   end
 
-  it "counts the door cash, and puts an over or short on the books when the day settles" do
-    patch manage_door_cash_money_settle_up_day_path(date.iso8601), params: { counted: "5.00", float_kept: "0", note: "Found a five in the box" }
-    record = SettlementDay.find_by!(organization: org, date: date)
-    expect(record.counted_cents).to eq(500)
+  # Cash taken at the door is part of its show's ticket sales: said on the
+  # show, never a piece of its own to count or confirm (Tim, 2026-11-11).
+  it "shows cash taken at the door on its show, with nothing to count, and settles without it" do
+    listing = create(:ticket_listing, show: show)
+    create(:ticket_order, ticket_listing: listing, status: "paid", channel: "door_cash", money_path: "cash",
+                          subtotal_cents: 4_000, total_cents: 4_410, paid_at: show.date_and_time)
+
     get manage_money_settle_up_day_path(date.iso8601)
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("over", "Found a five in the box")
+    expect(response.body).to include("Paid in cash at the door", "1 sale, already in the tickets", "$44.10", "0 of 1 confirmed")
+    expect(response.body).not_to include("Door cash", "Counted at close", "Kept as float", "Should be in the box")
+    expect(SettleUp.day(org, date).checks.map(&:key)).to eq([ "show-#{show.id}" ])
 
     patch manage_check_show_money_settle_up_day_path(date.iso8601, show_id: show.id), params: { checked: "1" }
     post manage_settle_money_settle_up_day_path(date.iso8601)
-    expect(record.reload).to be_settled
-    entry = JournalEntry.live.find_by(organization: org, source: record, kind: "settlement")
-    expect(entry).to be_present
-    expect(ChartOfAccounts.account(org, :other_income).natural_balance_cents).to eq(500)
-
-    post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "Counted again" }
+    record = SettlementDay.find_by!(organization: org, date: date)
+    expect(record).to be_settled
     expect(JournalEntry.live.where(organization: org, source: record, kind: "settlement")).not_to exist
-    expect(ChartOfAccounts.account(org, :other_income).natural_balance_cents).to eq(0)
   end
 
   it "shows days to settle on the Money hub and on Home" do

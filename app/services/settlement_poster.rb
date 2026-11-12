@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 # What settling a day puts on the books, in one entry (kind "settlement",
-# plan §9.2): today, the door cash over or short (a short is a cost, an over
-# is other income; the cash itself is already counted sale by sale). The
-# shows' own money posts from their financials as it always has. Reopening
-# withdraws the entry; settling again restates it, dated the original day.
+# plan §9.2). The shows' own money posts from their financials as it always
+# has, and cash taken at the door posts sale by sale; nobody counts a box
+# here (Tim, 2026-11-11), so there is no over or short. Reopening withdraws
+# the entry; settling again restates it, dated the original day.
 #
 # A register's day (Square, plan §9.3) posts here too, and only here: sales
 # to income by category, the register's fees to card fees, sales tax to tax
@@ -20,7 +20,7 @@ class SettlementPoster
   def self.post!(record)
     organization = record.organization
     day = SettleUp.day(organization, record.date)
-    lines = door_cash_lines(day) + register_lines(day) + tip_lines(day, record)
+    lines = register_lines(day) + tip_lines(day, record)
     LedgerPosting.post!(organization: organization, source: record, kind: "settlement", entry_date: record.date, cash_date: record.date,
                         memo: "Settled #{record.date.strftime('%b %-d, %Y')}", lines: lines)
   rescue StandardError => e
@@ -32,17 +32,6 @@ class SettlementPoster
   def self.unpost!(record)
     LedgerPosting.unpost!(source: record, kind: "settlement")
     unpay_tips!(record)
-  end
-
-  def self.door_cash_lines(day)
-    diff = day.door_cash.over_short_cents.to_i
-    if diff.negative?
-      [ { account: :other_expenses, amount_cents: -diff, memo: "Door cash short" }, { account: :door_cash, amount_cents: diff } ]
-    elsif diff.positive?
-      [ { account: :door_cash, amount_cents: diff }, { account: :other_income, amount_cents: -diff, memo: "Door cash over" } ]
-    else
-      []
-    end
   end
 
   def self.register_lines(day)

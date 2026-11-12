@@ -91,13 +91,10 @@ class SettleUp
     def held? = !ok? && hold_reason.present?
   end
 
+  # Cash taken at the door on the day, across its shows: what and how many
+  # sales. Nothing is counted against it.
   DoorCash = Data.define(:expected_cents, :cash_orders_count, :record) do
-    def counted? = record&.door_cash_counted? == true
-    def counted_cents = record&.counted_cents
-    def over_short_cents = counted? ? counted_cents - expected_cents : nil
-    def to_deposit_cents = counted? ? counted_cents - record.float_kept_cents : nil
-    def state = counted? ? :ok : :miss
-    def any? = cash_orders_count.positive? || counted?
+    def any? = cash_orders_count.positive?
   end
 
   # Someone who worked the day, for splitting tips: from Staffing's shifts
@@ -179,10 +176,11 @@ class SettleUp
     def registers_state = record&.register_checked? ? :ok : :wait
     def register_label = registers.size == 1 ? "Bar, #{registers.first.location_name}" : "Registers"
     # Every piece to confirm, in page order, with why it can't be yet when it
-    # can't: the rail at the bottom draws one dot per check.
+    # can't: the rail at the bottom draws one dot per check. Cash taken at
+    # the door is not a piece (Tim, 2026-11-11): it is part of its show's
+    # ticket sales, shown there, with nothing to count or confirm.
     def checks
       shows.map { |s| Check.new(key: "show-#{s.show.id}", name: s.show.display_name, short: SettleUp.short_name(s.show), state: s.state, hold_reason: s.hold_reason) } +
-        (door_cash.any? ? [ Check.new(key: "door-cash", name: "Door cash", short: "Door cash", state: door_cash.state, hold_reason: nil) ] : []) +
         (registers.any? ? [ Check.new(key: "register", name: register_label, short: (registers.size == 1 ? "Bar" : "Registers"), state: registers_state,
                                       hold_reason: (tips.unresolved.any? ? "Say who gets the tips rung up with nobody on the bar first" : nil)) ] : [])
     end
@@ -191,7 +189,6 @@ class SettleUp
     # list of days has no use for.
     def pieces
       shows.map { |s| [ s.show.display_name, s.state ] } +
-        (door_cash.any? ? [ [ "Door cash", door_cash.state ] ] : []) +
         (registers.any? ? [ [ register_label, registers_state ] ] : [])
     end
     def checked_count = checks.count(&:ok?)
@@ -298,8 +295,9 @@ class SettleUp
   end
 
   # Cash at the door by listing, for many days at once: [taken, refunded, orders].
-  def self.door_cash_by_listing(shows)
-    ids = shows.filter_map { |s| s.ticket_listing&.id }
+  def self.door_cash_by_listing(shows) = door_cash_by_listing_ids(shows.filter_map { |s| s.ticket_listing&.id })
+
+  def self.door_cash_by_listing_ids(ids)
     return {} if ids.empty?
 
     TicketOrder.where(ticket_listing_id: ids, money_path: "cash", status: TicketOrder::WAS_PAID).group(:ticket_listing_id)
@@ -610,8 +608,17 @@ class SettleUp
     candidates.reject { |s| settled.include?(SettlementDay.day_for(organization, s.date_and_time)) }
   end
 
+  # Cash taken at the door for one show, for its ticket sales on the day's
+  # page: [what was taken less refunds, how many sales].
+  def self.door_cash_for(listing)
+    return [ 0, 0 ] unless listing
+
+    taken, refunded, count = door_cash_by_listing_ids([ listing.id ]).fetch(listing.id, [ 0, 0, 0 ])
+    [ taken - refunded, count ]
+  end
+
   # Cash taken at the door for the day's shows (tickets and products paid
-  # in cash), which should be in the box at close.
+  # in cash).
   def self.door_cash(organization, date, shows, record, cash: nil)
     listing_ids = shows.filter_map { |s| s.ticket_listing&.id }
     if cash

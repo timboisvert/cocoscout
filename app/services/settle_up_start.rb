@@ -29,7 +29,7 @@ class SettleUpStart
     SettleUp.to_settle(organization).each do |day|
       next if before && day.date >= before
       next if day.record
-      next unless day.shows.any? && day.shows.all?(&:confirmed?) && !day.door_cash.any? && day.registers.empty?
+      next unless day.shows.any? && day.shows.all?(&:confirmed?) && day.registers.empty?
 
       SettlementDay.create!(organization: organization, date: day.date, status: "settled", settled_at: Time.current, notes: NOTE)
       settled += 1

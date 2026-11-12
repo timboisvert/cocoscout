@@ -67,6 +67,11 @@
         <% ours = sold.call([ l ]) %>
         <%= sold_line.call("Sold through CocoScout", ours[:words], (piece.listing ? link_to(ours[:money], manage_ticket_listing_path(piece.listing), class: pink) : ours[:money])) %>
       <% end %>
+      <%# Cash at the door is part of this show's sales, said here and nowhere else (Tim, 2026-11-11). %>
+      <% door_cents, door_sales = SettleUp.door_cash_for(piece.listing) %>
+      <% if door_sales.positive? %>
+        <%= line.call("Paid in cash at the door", "#{pluralize(door_sales, 'sale')}, already in the tickets", money.call(door_cents)) %>
+      <% end %>
       <% by_site.each do |site| %>
         <%= sold_line.call(site[:label], site[:sold][:words], typed.call(site[:sold][:money])) %>
       <% end %>

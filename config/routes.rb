@@ -1700,7 +1700,6 @@ Rails.application.routes.draw do
     get   "money/settle-up/:date", to: "settlement_days#show", as: "money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     post  "money/settle-up/:date/settle", to: "settlement_days#settle", as: "settle_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     post  "money/settle-up/:date/reopen", to: "settlement_days#reopen", as: "reopen_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
-    patch "money/settle-up/:date/door-cash", to: "settlement_days#door_cash", as: "door_cash_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     patch "money/settle-up/:date/shows/:show_id/check", to: "settlement_days#check_show", as: "check_show_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     patch "money/settle-up/:date/register/check", to: "settlement_days#check_register", as: "check_register_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     patch "money/settle-up/:date/tips", to: "settlement_days#tips", as: "tips_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }

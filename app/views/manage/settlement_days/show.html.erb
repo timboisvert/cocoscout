@@ -10,11 +10,9 @@
     [ "Tickets", money.call(day.shows.sum(&:tickets_cents)), "text-gray-900" ],
     [ "Products and other", money.call(day.shows.sum { |s| s.products_cents + s.other_revenue_cents + s.flat_fee_cents }), "text-gray-900" ],
     [ "Expenses", money.call(day.out_cents), "text-gray-900" ],
-    (day.registers.any? ? [ "Bar and register", money.call(day.register_sales_cents), "text-gray-900" ] : nil),
-    [ "Door cash", (day.door_cash.counted? ? (day.door_cash.over_short_cents.zero? ? "Counted, exact" : (day.door_cash.over_short_cents.negative? ? "#{money.call(day.door_cash.over_short_cents)} short" : "#{money.call(day.door_cash.over_short_cents)} over")) : (day.door_cash.any? ? "Not counted" : "None")),
-      (day.door_cash.counted? && !day.door_cash.over_short_cents.zero? ? "text-red-700" : "text-gray-900") ]
+    (day.registers.any? ? [ "Bar and register", money.call(day.register_sales_cents), "text-gray-900" ] : nil)
   ].compact
-  what = [ (day.shows.empty? ? nil : (day.shows.size == 1 ? "one show" : "#{day.shows.size} shows")), (day.door_cash.any? ? "door cash" : nil),
+  what = [ (day.shows.empty? ? nil : (day.shows.size == 1 ? "one show" : "#{day.shows.size} shows")),
            (day.registers.any? ? (day.tips.any? ? "the register and its tips" : "the register") : nil) ].compact
   settle_cid = "confirm-settle-day"
 %>
@@ -110,46 +108,6 @@
     <div class="space-y-4">
       <% day.shows.each do |piece| %>
         <%= render "manage/settlement_days/show_piece", piece: piece, day: day, can_change: can_change, open_show_id: @open_show_id, open_modal_id: @open_modal_id %>
-      <% end %>
-
-      <% if day.door_cash.any? %>
-        <% dc = day.door_cash %>
-        <section class="bg-white border border-gray-200 rounded-xl overflow-hidden" id="door-cash">
-          <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-gray-200">
-            <h2 class="text-base font-semibold text-gray-900">Door cash
-              <span class="ml-2 text-xs font-medium <%= dc.counted? ? (dc.over_short_cents.zero? ? 'text-green-700' : 'text-amber-700') : 'text-red-700' %>">
-                <%= dc.counted? ? (dc.over_short_cents.zero? ? "Counted" : (dc.over_short_cents.negative? ? "Counted, short #{money.call(-dc.over_short_cents)}" : "Counted, over #{money.call(dc.over_short_cents)}")) : "Not counted" %>
-              </span>
-            </h2>
-          </div>
-          <%= form_with url: manage_door_cash_money_settle_up_day_path(day.param), method: :patch, class: "px-5 py-3 grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-2", data: { turbo_action: "replace" } do %>
-            <div>
-              <div class="flex items-baseline justify-between gap-3 py-1.5 text-sm"><span class="text-gray-700">Cash taken at the door <span class="text-xs text-gray-500"><%= pluralize(dc.cash_orders_count, "sale") %>, tickets and products</span></span><span class="tabular-nums text-gray-900"><%= money.call(dc.expected_cents) %></span></div>
-              <div class="flex items-baseline justify-between gap-3 py-1.5 text-sm font-medium"><span class="text-gray-900">Should be in the box</span><span class="tabular-nums text-gray-900"><%= money.call(dc.expected_cents) %></span></div>
-              <p class="text-xs text-gray-500 mt-1">Plus whatever float the box started with, which you keep for next time below.</p>
-            </div>
-            <div class="space-y-2">
-              <label class="flex items-center justify-between gap-3 text-sm"><span class="text-gray-700">Counted at close</span>
-                <span class="relative w-36"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
-                <input type="text" name="counted" inputmode="decimal" value="<%= dc.counted? ? format('%.2f', dc.counted_cents / 100.0) : '' %>" <%= 'disabled' unless can_change && !day.settled? %>
-                       class="block w-full pl-7 pr-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 disabled:bg-gray-50"></span></label>
-              <label class="flex items-center justify-between gap-3 text-sm"><span class="text-gray-700">Kept as float for next time</span>
-                <span class="relative w-36"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
-                <input type="text" name="float_kept" inputmode="decimal" value="<%= format('%.2f', (record&.float_kept_cents || 0) / 100.0) %>" <%= 'disabled' unless can_change && !day.settled? %>
-                       class="block w-full pl-7 pr-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 disabled:bg-gray-50"></span></label>
-              <% if dc.counted? %>
-                <div class="flex items-baseline justify-between gap-3 py-1 text-sm"><span class="text-gray-700">Over or short</span><span class="tabular-nums <%= dc.over_short_cents.zero? ? 'text-green-700' : 'text-red-700' %>"><%= dc.over_short_cents.zero? ? "Exact" : (dc.over_short_cents.negative? ? "#{money.call(dc.over_short_cents)} short" : "+#{money.call(dc.over_short_cents)} over") %></span></div>
-                <div class="flex items-baseline justify-between gap-3 py-1 text-sm"><span class="text-gray-700">To deposit <span class="text-xs text-gray-500">then record it on the Bank page</span></span><span class="tabular-nums text-gray-900"><%= money.call(dc.to_deposit_cents) %></span></div>
-              <% end %>
-              <label class="block text-sm"><span class="text-gray-700">Why over or short <span class="text-xs text-gray-500">(if it is)</span></span>
-                <input type="text" name="note" value="<%= record&.door_cash_note %>" <%= 'disabled' unless can_change && !day.settled? %>
-                       class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 disabled:bg-gray-50"></label>
-              <% if can_change && !day.settled? %>
-                <div class="pt-1 text-right"><%= render "shared/button", text: (dc.counted? ? "Save the count" : "Counted"), variant: "primary", size: "small", type: :submit %></div>
-              <% end %>
-            </div>
-          <% end %>
-        </section>
       <% end %>
 
       <% if day.registers.any? %>

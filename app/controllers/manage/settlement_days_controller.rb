@@ -7,7 +7,7 @@ module Manage
   # every piece is checked, and can be reopened with a reason (§9.7).
   class SettlementDaysController < Manage::ManageController
     before_action :set_date, except: :index
-    before_action :require_change!, only: %i[settle reopen door_cash check_show check_register tips choose_calculation calculate_show pay_line]
+    before_action :require_change!, only: %i[settle reopen check_show check_register tips choose_calculation calculate_show pay_line]
 
     LISTED = 60
 
@@ -131,18 +131,6 @@ module Manage
 
       line.update!(pay_choice: params[:pay_choice].presence_in(ShowPayoutLineItem::PAY_CHOICES) || "run")
       redirect_to manage_money_settle_up_day_path(@date, open: show.id), notice: "#{line.payee_name}: #{line.held? ? 'held for now' : 'on the run when the day settles'}."
-    end
-
-    def door_cash
-      record = SettlementDay.find_or_initialize_by(organization: Current.organization, date: @date)
-      counted = params[:counted].to_s.strip
-      record.door_cash = {
-        "counted_cents" => (counted.present? ? (counted.delete("$,").to_f * 100).round : nil),
-        "float_kept_cents" => (params[:float_kept].to_s.delete("$,").to_f * 100).round,
-        "note" => params[:note].to_s.strip
-      }.compact
-      record.save!
-      redirect_to manage_money_settle_up_day_path(@date), notice: "Door cash saved."
     end
 
     # "Looks right" on the register card covers the tips on it too (Tim,
