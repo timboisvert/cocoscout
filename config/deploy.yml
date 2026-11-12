@@ -126,6 +126,12 @@ env:
     # OAuth client. The jobs server needs them too: it writes the events.
     - GOOGLE_CALENDAR_CLIENT_ID
     - GOOGLE_CALENDAR_CLIENT_SECRET
+    # Square (Organization settings → Integrations): CocoScout's production
+    # application and its webhook signature key. No SQUARE_ENVIRONMENT here:
+    # only "sandbox" points anywhere but real Square.
+    - SQUARE_APPLICATION_ID
+    - SQUARE_APPLICATION_SECRET
+    - SQUARE_WEBHOOK_SIGNATURE_KEY
   clear:
     # Job processing is handled by the dedicated job server (bin/jobs)
     SOLID_QUEUE_IN_PUMA: false
