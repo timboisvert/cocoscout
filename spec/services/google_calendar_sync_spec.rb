@@ -49,6 +49,15 @@ RSpec.describe GoogleCalendarSync do
       expect(entry(show).payload[:start][:timeZone]).to eq("America/Chicago")
     end
 
+    # A moved or copied show keeps the date its call time was typed on.
+    it "reads a call time as a clock on the show's own day, whatever date it carries" do
+      show = show_at(call_time: showtime - 3.weeks - 30.minutes, call_time_enabled: true)
+
+      expect(entry(show).starts_at).to eq(showtime - 30.minutes)
+      expect(entry(show).ends_at - entry(show).starts_at).to eq(2.hours + 30.minutes)
+      expect(entry(show).title).to eq("Rising Stars · Mainstage · call 7:00, show 7:30")
+    end
+
     it "leaves out what the organization switched off" do
       show = show_at(call_time: showtime - 1.hour, call_time_enabled: true)
       integration.update!(settings: integration.settings.merge("title" => { "room" => false, "call_time" => false, "start_at_call" => false }))

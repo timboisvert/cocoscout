@@ -92,8 +92,22 @@ class GoogleCalendarEntry
     custom.downcase.include?(production.downcase) ? custom : "#{production}: #{custom}"
   end
 
+  # The call time, on the show's own day. Only its clock is trusted: a show
+  # that was moved or copied keeps the date its call time was typed on, and
+  # read whole that drew blocks weeks long (Tim, 2026-11-11). A clock later
+  # than the show's (a call at 11:30pm for a show past midnight) is the
+  # night before. Nothing more than twelve hours ahead of the show counts.
   def call_time
-    record.call_time if show? && record.call_time_enabled && record.call_time.present? && record.call_time < record.date_and_time
+    return @call_time if defined?(@call_time)
+
+    @call_time = nil
+    return nil unless show? && record.call_time_enabled && record.call_time.present? && record.date_and_time.present?
+
+    starts = record.date_and_time.in_time_zone(zone)
+    typed = record.call_time.in_time_zone(zone)
+    call = starts.change(hour: typed.hour, min: typed.min)
+    call -= 1.day if call > starts
+    @call_time = call if call < starts && starts - call <= 12.hours
   end
 
   # The rental this show blocks out: the one it sits in, when its contract
