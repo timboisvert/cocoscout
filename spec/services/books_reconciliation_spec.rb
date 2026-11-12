@@ -51,6 +51,28 @@ RSpec.describe BooksReconciliation do
     end
   end
 
+  # Tonight's show is in the period, and its presales wait on the books
+  # until 4am tomorrow: not a disagreement (Tim, 2026-11-11).
+  it "doesn't list a show whose ticket money is still waiting to be counted" do
+    travel_to(Time.zone.local(2026, 11, 15, 12)) do
+      listing.show.update!(date_and_time: Time.current.change(hour: 19))
+      sold(2)
+      expect(described_class.financials_vs_books(org, period_key: "this_month")).to be_empty
+    end
+
+    # The show has started: Financials count its $40, the books still hold it.
+    travel_to(Time.zone.local(2026, 11, 15, 21)) do
+      expect(described_class.financials_vs_books(org, period_key: "this_month")).to be_empty
+      expect(described_class.waiting_on_shows_in(org, BooksReport.period_range("this_month"))).to eq(listing.production.id => 4_000)
+    end
+
+    travel_to(Time.zone.local(2026, 11, 16, 12)) do
+      TicketMoneyReleaseJob.perform_now
+      expect(described_class.financials_vs_books(org, period_key: "this_month")).to be_empty
+      expect(described_class.waiting_on_shows_in(org, BooksReport.period_range("this_month"))).to be_empty
+    end
+  end
+
   it "notices a sale that never reached the books" do
     order = sold(1)
     LedgerPosting.unpost!(source: order, kind: "sale")

@@ -33,23 +33,44 @@ class BooksReconciliation
 
     # Compared through today: a show still ahead this month has presales
     # Financials already count, which the books hold as tickets sold for
-    # upcoming shows until the day after the show (2026-11-02).
+    # upcoming shows until the day after the show (2026-11-02). Today's
+    # shows are in the period with their money still held: see
+    # waiting_on_shows_in.
     range = BooksReport.period_range(period_key)
     range = range.begin..[ range.end, Time.current.end_of_day ].min if range && range.end > Time.current
     hub = FinancialSummaryService.summaries_by_production_in(productions, range)[:by_production]
     books = BooksReport.new(organization).overview(range: range).productions.index_by { |r| r.production&.id }
+    waiting = waiting_on_shows_in(organization, range)
     productions.filter_map do |production|
       h = hub[production.id]
       b = books[production.id]
-      next if h.nil? && b.nil?
+      next if h.nil? && b.nil? && waiting[production.id].to_i.zero?
 
       fin_in = ((h&.dig(:gross_revenue) || 0) * 100).round
       fin_out = ((h&.dig(:cost_of_shows) || 0) * 100).round
-      next if fin_in == b&.in_cents.to_i && fin_out == b&.out_cents.to_i
+      books_in = b&.in_cents.to_i + waiting[production.id].to_i
+      next if fin_in == books_in && fin_out == b&.out_cents.to_i
 
-      Disagreement.new(production: production, financials_in_cents: fin_in, books_in_cents: b&.in_cents.to_i,
+      Disagreement.new(production: production, financials_in_cents: fin_in, books_in_cents: books_in,
                        financials_out_cents: fin_out, books_out_cents: b&.out_cents.to_i)
     end
+  end
+
+  # Ticket and product money the books still hold as sold for an upcoming
+  # show, for shows inside the period, by production. A show's presales turn
+  # into income at 4am the day after it (TicketMoneyRelease), so from
+  # tonight's curtain until then the show is in the period with its money
+  # still waiting: Financials already count it, and without this the show
+  # is listed as disagreeing until the morning (Tim, 2026-11-11). It counts
+  # toward the books' side here.
+  def self.waiting_on_shows_in(organization, range)
+    accounts = %i[advance_ticket_sales advance_product_sales].map { |key| ChartOfAccounts.account(organization, key).id }
+    # Financials count a show once it has started (FinancialSummaryService),
+    # so the same shows here: started, not canceled, inside the period.
+    lines = JournalLine.where(organization_id: organization.id, ledger_account_id: accounts).joins(:show)
+                       .where(shows: { canceled: false }).where("shows.date_and_time < ?", Time.current)
+    lines = lines.where(shows: { date_and_time: range }) if range
+    lines.group("shows.production_id").sum(:amount_cents).transform_values { |cents| -cents }.reject { |_, cents| cents.zero? }
   end
 
   # The checks, run now and kept on the organization, so a page can say how
