@@ -97,7 +97,9 @@
             <% if row.house_role %><span class="ml-1 text-xs text-gray-500"><%= row.house_role.name %></span><% end %>
             <% if row.span_words %><span class="ml-1 text-xs text-gray-500">· <%= row.span_words %></span><% end %>
             <% if row.locked? && row_tags %><span class="ml-1 text-xs text-gray-500">· on a payout run</span><% end %>
-            <span class="block text-xs text-gray-500"><%= row.how %> <%= how_paid[row.method].capitalize %>.</span>
+            <%# Already paid in full: it doesn't also say "on their next pay" (Tim, 2026-11-11). %>
+            <% covered = row.method == "payout" && row.cents.positive? && [ row.share&.paid_cents.to_i, typed_before[row.person.id].to_i ].max >= row.cents %>
+            <span class="block text-xs text-gray-500"><%= row.how %><% unless covered %> <%= how_paid[row.method].capitalize %>.<% end %></span>
             <% if (words = paid_words.call(row.share, row.cents)) %><span class="block text-xs text-gray-500"><%= words %></span><% end %>
             <% if (words = typed_words.call(row.person, row.share, row.cents)) %><span class="block text-xs font-medium text-amber-700"><%= words %></span><% end %>
           </span>
@@ -139,7 +141,7 @@
     <p class="text-xs text-gray-500"><%= share.person.name %> is no longer in the split. <%= paid_words.call(share, 0) %></p>
   <% end %>
   <% unless nobody || tip_pill %>
-    <p class="text-xs text-gray-500">Shares go on each person's next pay from Pay People, with their hours; cash shares came out of the door cash at close.</p>
+    <p class="text-xs text-gray-500">Shares go on each person's next pay from Pay People, with their hours; cash shares were handed over at close.</p>
   <% end %>
 </div>
 <% if by_rule %>
