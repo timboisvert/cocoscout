@@ -22,6 +22,15 @@ class AppMailer < ApplicationMailer
     # An email that is itself about the app leaves the footer's line about it off.
     @hide_app_note = params[:hide_app_note]
 
+    # Images attached to the email itself, as { "variable" => path }: each is
+    # attached inline and its cid: address handed to the template as
+    # "<variable>_src" (the app email's store badges).
+    Hash(params[:inline_images]).each do |name, path|
+      filename = File.basename(path.to_s)
+      attachments.inline[filename] = File.binread(path)
+      @variables = @variables.merge("#{name}_src" => attachments[filename].url)
+    end
+
     # Render the template
     rendered = ContentTemplateService.render(@template_key, @variables)
     @subject = rendered[:subject]

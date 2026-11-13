@@ -46,10 +46,14 @@ RSpec.describe AppAnnouncement do
     perform_enqueued_jobs { described_class.announce!(limit: 1) }
     mail = ActionMailer::Base.deliveries.last
     expect(mail.to).to eq([ ada.email_address ])
-    expect(mail.subject).to eq("New: CocoScout app for iPhone and Android")
+    expect(mail.subject).to eq("New: CocoScout app for iOS and Android")
     body = mail.html_part ? mail.html_part.body.to_s : mail.body.to_s
-    expect(body).to include("Hi Ada,", "The CocoScout app just launched", "you sign in with the account you already have", "/app", AppStores::APP_STORE_URL, AppStores::PLAY_STORE_URL,
-                            "Andie and Tim")
+    expect(body).to include("Hello Ada!", "Your pleas have been heard", AppStores::APP_STORE_URL, AppStores::PLAY_STORE_URL,
+                            "Andie and Tim and Coco")
+    # The store badges are attached, and the email shows them from there.
+    badges = mail.attachments.select(&:inline?).index_by(&:filename)
+    expect(badges.keys).to include("app_store_badge_email.png", "google_play_badge_email.png")
+    expect(body).to include(badges["app_store_badge_email.png"].url, badges["google_play_badge_email.png"].url)
     expect(body).not_to include("with a buzz when something changes", "one-time note")
     # Every other email keeps that line.
     AppMailer.with(template_key: "cocoscout_bill_paid", to: "x@example.com", variables: {}).send_template.deliver_now

@@ -54,8 +54,16 @@ class AppAnnouncement
 
   # The email itself (also what the dev preview at /rails/mailers shows).
   def self.mail(to:, user: nil)
-    AppMailer.with(template_key: TEMPLATE, to: to, variables: variables_for(user), hide_app_note: true).send_template
+    AppMailer.with(template_key: TEMPLATE, to: to, variables: variables_for(user), hide_app_note: true,
+                   inline_images: BADGES.transform_values(&:to_s)).send_template
   end
+
+  # The two store badges, drawn as PNGs to match the site's (email apps show
+  # neither SVG nor web fonts). 3x, shown at 120×40 and 135×40.
+  BADGES = {
+    "app_store_badge" => Rails.root.join("app", "assets", "images", "app_store_badge_email.png"),
+    "google_play_badge" => Rails.root.join("app", "assets", "images", "google_play_badge_email.png")
+  }.freeze
 
   def self.variables_for(user)
     {
