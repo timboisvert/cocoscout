@@ -1,0 +1,5 @@
+<span class="text-xs text-gray-500">
+  <% if report.platforms.include?("ios") %><span class="inline-block w-2.5 h-2.5 rounded-sm bg-pink-500 align-middle"></span> iPhone<% end %>
+  <% if report.platforms.size > 1 %> · <% end %>
+  <% if report.platforms.include?("android") %><span class="inline-block w-2.5 h-2.5 rounded-sm bg-gray-400 align-middle"></span> Android<% end %>
+</span>

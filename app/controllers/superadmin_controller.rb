@@ -1542,8 +1542,14 @@ class SuperadminController < ApplicationController
   # =========================================================================
 
   # How the iPhone and Android apps are used (AppUsageReport).
+  # The App page's screens (Tim, 2026-11-13: "a nice set of screens about app
+  # usage, app growth, downloads, active users", filterable by platform).
+  APP_SECTIONS = { "overview" => "Overview", "growth" => "Growth", "people" => "Active people",
+                   "screens" => "Screens", "builds" => "Builds" }.freeze
+
   def app_usage
-    @report = AppUsageReport.new
+    @section = params[:section].presence_in(APP_SECTIONS.keys) || "overview"
+    @report = AppUsageReport.new(platform: params[:platform], days: params[:days])
   end
 
   def keys
