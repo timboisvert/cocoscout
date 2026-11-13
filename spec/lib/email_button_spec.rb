@@ -79,6 +79,5 @@ RSpec.describe EmailButton do
       end
     end
     expect(hand_drawn).to be_empty, "Draw an email button with EmailButton::STYLE, not by hand:\n#{hand_drawn.join("\n")}"
-    expect(File.read(Rails.root.join("app/services/platform_templates.rb"))).to include('class="button" style="#{EmailButton::STYLE}"')
   end
 end

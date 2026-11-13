@@ -19,7 +19,7 @@ RSpec.describe "Manage::Bills", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Add a bill", "Who you owe", "Holiday Revue")
 
-    post manage_money_bills_path, params: { bill: { vendor_name: "Chicago Lumber Co.", amount: "1,240.00", issued_on: "2026-10-20", due_on: "2026-11-19",
+    post manage_money_bills_path, params: { bill: { vendor_name: "Chicago Lumber Co.", amount: "1,240.00", issued_on: (Date.current - 3).iso8601, due_on: (Date.current + 30).iso8601,
                                                     category_key: "production", production_id: production.id, memo: "Set lumber", repeats: "none" } }
     bill = org.bills.last
     expect(response).to redirect_to(manage_money_bill_path(bill))
