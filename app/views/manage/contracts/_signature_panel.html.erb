@@ -58,7 +58,9 @@
         <% end %>
       </dl>
 
-      <%# Shareable signing link — copy it or show a QR to send however you like. %>
+      <%# Shareable signing link — copy it or show a QR to send however you like.
+          A development copy of production has no tokens, so no link. %>
+      <% if @contract.signing_token.present? %>
       <% share_url = sign_contract_url(token: @contract.signing_token) %>
       <div class="mt-4 pt-3 border-t border-gray-100" data-controller="qr-code clipboard" data-qr-code-url-value="<%= share_url %>">
         <p class="text-xs font-medium text-gray-600 mb-2">Signing link</p>
@@ -89,6 +91,7 @@
           </div>
         </div>
       </div>
+      <% end %>
 
       <div class="mt-4 pt-3 border-t border-gray-100">
         <% rid = "confirm-revoke-signature-#{@contract.id}" %>
