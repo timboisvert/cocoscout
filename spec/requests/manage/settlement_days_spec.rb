@@ -549,6 +549,41 @@ RSpec.describe "Manage::SettlementDays tips by the clock", type: :request do
       expect(ChartOfAccounts.account(org, :other_income).natural_balance_cents).to eq(4_000)
     end
 
+    it "works the split out again with someone added or taken off, saving nothing until Save the split" do
+      miles_row = { amount: "120.00", shown: "120.00", method: "payout", from: "18:00", to: "22:00", span_shown: "18:00-22:00", house_role_id: bartender.id }
+      camille_row = { amount: "120.00", shown: "120.00", method: "payout", from: "20:00", to: "00:00", span_shown: "20:00-00:00", house_role_id: bartender.id }
+
+      # Jo added on the bar back from 8 to 10: $12 off the top, shown at once, saved nowhere.
+      post manage_tips_preview_money_settle_up_day_path(date.iso8601), params: { mode: "rule", modal_id: "tips-split-x",
+        shares: { miles.id => miles_row, camille.id => camille_row },
+        new_share: { person_id: jo.id, house_role_id: bar_back.id, from: "20:00", to: "22:00" } }
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(%(id="tips-split-x"), "Jo Back", %(name="shares[#{jo.id}][amount]" inputmode="decimal" value="12.00"))
+      expect(response.body).to include(%(name="shares[#{miles.id}][span_shown]" value="18:00-22:00"), %(name="shares[#{jo.id}][span_shown]" value=""))
+      expect(TipShare.joins(:settlement_day).where(settlement_days: { organization_id: org.id }).count).to eq(0)
+
+      # Save the split with what the preview showed: Jo is kept, with the span.
+      patch manage_tips_money_settle_up_day_path(date.iso8601), params: { mode: "rule",
+        shares: { miles.id => miles_row.merge(amount: "114.00", shown: "114.00"), camille.id => camille_row.merge(amount: "114.00", shown: "114.00"),
+                  jo.id => { amount: "12.00", shown: "12.00", method: "payout", from: "20:00", to: "22:00", span_shown: "", house_role_id: bar_back.id } } }
+      record = SettlementDay.find_by!(organization: org, date: date)
+      expect(record.tip_shares.find_by!(person: jo)).to have_attributes(amount_cents: 1_200, worked_from: night.change(hour: 20), worked_to: night.change(hour: 22))
+      expect(record.tip_shares.sum(:amount_cents)).to eq(24_000)
+
+      # Taken off again in the modal: gone from the rows, carried to Save, still saved until then.
+      post manage_tips_preview_money_settle_up_day_path(date.iso8601), params: { mode: "rule",
+        shares: { jo.id => { amount: "12.00", shown: "12.00", method: "payout", from: "20:00", to: "22:00", span_shown: "20:00-22:00", house_role_id: bar_back.id, remove: "1" } } }
+      expect(response.body).not_to include(%(name="shares[#{jo.id}][amount]"))
+      expect(response.body).to include(%(name="shares[#{jo.id}][remove]" value="1"), %(name="shares[#{miles.id}][amount]" inputmode="decimal" value="120.00"))
+      expect(record.tip_shares.reload.find_by(person: jo)).to be_present
+    end
+
+    it "keeps a share typed before the preview as typed on Save" do
+      post manage_tips_preview_money_settle_up_day_path(date.iso8601), params: { mode: "rule",
+        shares: { camille.id => { amount: "100.00", shown: "120.00", method: "payout" } } }
+      expect(response.body).to include(%(name="shares[#{camille.id}][typed]" value="1"))
+    end
+
     it "saves the split, adds a bar back with a span, keeps a typed share, and sends the shares to the run on settle" do
       # Saved as worked out: $120 each.
       patch manage_tips_money_settle_up_day_path(date.iso8601), params: { mode: "rule", checked: "0",

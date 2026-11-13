@@ -7,7 +7,7 @@ module Manage
   # every piece is checked, and can be reopened with a reason (§9.7).
   class SettlementDaysController < Manage::ManageController
     before_action :set_date, except: :index
-    before_action :require_change!, only: %i[settle reopen check_show check_register tips choose_calculation calculate_show pay_line]
+    before_action :require_change!, only: %i[settle reopen check_show check_register tips tips_preview choose_calculation calculate_show pay_line]
 
     LISTED = 60
 
@@ -159,36 +159,27 @@ module Manage
     # The day's tips: how they're split, each person's share and how it's
     # paid, and who gets each stretch with nobody on the bar.
     def tips
-      record = SettlementDay.find_or_initialize_by(organization: Current.organization, date: @date)
-      by_rule = params[:mode] == "rule"
-      record.tips_split = by_rule ? "rule" : (params[:split].presence_in(%w[even hours typed]) || "even")
-      record.tips_unstaffed = unstaffed_choices(record) if params[:unstaffed].present?
-      record.save!
-      given = params.fetch(:shares, {}).to_unsafe_h
-      people = Person.where(id: given.keys.map(&:to_i)).index_by(&:id)
-      given.each do |person_id, attrs|
-        person = people[person_id.to_i]
-        next unless person
-
-        share = record.tip_shares.find_or_initialize_by(person: person)
-        next if share.payout_contribution_id.present?
-
-        cents = cents_from(attrs["amount"])
-        if by_rule
-          save_rule_share(share, attrs, cents)
-        elsif cents.positive?
-          # Only a split the manager chose to type is "typed"; an even or
-          # by-hours split the page suggested is the page's own, so a rule
-          # turned on later works it out again instead of keeping it.
-          share.update!(amount_cents: cents, method: attrs["method"].presence_in(TipShare::METHODS) || "payout",
-                        source: record.tips_split == "typed" ? "typed" : "computed")
-        elsif share.persisted?
-          share.drop!
-        end
-      end
-      add_person_to_tips(record, params[:new_share]) if params.dig(:new_share, :person_id).present?
-      write_tip_shares(record) if by_rule || record.tip_shares.where.not(worked_from: nil).exists?
+      apply_tip_changes!
       redirect_to manage_money_settle_up_day_path(@date), notice: "Tips saved."
+    end
+
+    # The tips modal, worked out again with what it holds now, and nothing
+    # saved (Tim, 2026-11-13): add someone or take someone off and the
+    # shares change in front of you; Save the split is what keeps them. The
+    # same changes Save makes, run and rolled back, so the two never differ.
+    def tips_preview
+      html = nil
+      ActiveRecord::Base.transaction do
+        apply_tip_changes!
+        day = SettleUp.day(Current.organization, @date)
+        tips = day.tips
+        roles_by_id = tips.rule&.enabled? ? Current.organization.house_roles.index_by(&:id) : {}
+        html = render_to_string(partial: "manage/settlement_days/tips_modal", formats: [ :html ],
+                                locals: { id: params[:modal_id].presence || "tips-split-#{day.param}", day: day, tips: tips,
+                                          hand_rows: tips.hand_rows, roles_by_id: roles_by_id, carried: tip_carry_over })
+        raise ActiveRecord::Rollback
+      end
+      render html: html
     end
 
     def settle
@@ -238,6 +229,52 @@ module Manage
 
     private
 
+    # What the preview's form has to carry to Save, since the preview saved
+    # nothing: who was taken off, whose share was typed, and each span as the
+    # page first showed it (so Save still tells a changed span from one left
+    # alone).
+    def tip_carry_over
+      given = params.fetch(:shares, {}).to_unsafe_h
+      removed = given.select { |_, attrs| attrs["remove"] == "1" }.keys.map(&:to_i)
+      typed = given.select { |_, attrs| attrs["typed"] == "1" || (attrs["shown"].present? && cents_from(attrs["amount"]) != cents_from(attrs["shown"])) }.keys.map(&:to_i)
+      spans = given.to_h { |pid, attrs| [ pid.to_i, attrs["span_shown"].to_s ] }
+      { removed: removed, typed: params[:recompute] == "1" ? [] : typed, spans: spans, added: params.dig(:new_share, :person_id).presence&.to_i }
+    end
+
+    # Everything the modal changes, from what it sent: the split, the
+    # stretches with nobody on, each share, and someone added.
+    def apply_tip_changes!
+      record = SettlementDay.find_or_initialize_by(organization: Current.organization, date: @date)
+      by_rule = params[:mode] == "rule"
+      record.tips_split = by_rule ? "rule" : (params[:split].presence_in(%w[even hours typed]) || "even")
+      record.tips_unstaffed = unstaffed_choices(record) if params[:unstaffed].present?
+      record.save!
+      given = params.fetch(:shares, {}).to_unsafe_h
+      people = Person.where(id: given.keys.map(&:to_i)).index_by(&:id)
+      given.each do |person_id, attrs|
+        person = people[person_id.to_i]
+        next unless person
+
+        share = record.tip_shares.find_or_initialize_by(person: person)
+        next if share.payout_contribution_id.present?
+
+        cents = cents_from(attrs["amount"])
+        if by_rule
+          save_rule_share(share, attrs, cents)
+        elsif cents.positive?
+          # Only a split the manager chose to type is "typed"; an even or
+          # by-hours split the page suggested is the page's own, so a rule
+          # turned on later works it out again instead of keeping it.
+          share.update!(amount_cents: cents, method: attrs["method"].presence_in(TipShare::METHODS) || "payout",
+                        source: record.tips_split == "typed" ? "typed" : "computed")
+        elsif share.persisted?
+          share.drop!
+        end
+      end
+      add_person_to_tips(record, params[:new_share]) if params.dig(:new_share, :person_id).present?
+      write_tip_shares(record) if by_rule || record.tip_shares.where.not(worked_from: nil).exists?
+    end
+
     # One row of the worked-out split, as the worksheet sent it back (§9.14):
     # taken off, a span changed, a share typed over, or left as worked out.
     def save_rule_share(share, attrs, cents)
@@ -257,7 +294,7 @@ module Manage
       end
       if params[:recompute] == "1"
         share.source = "computed"
-      elsif attrs["shown"].present? && cents != cents_from(attrs["shown"])
+      elsif attrs["typed"] == "1" || (attrs["shown"].present? && cents != cents_from(attrs["shown"]))
         share.source = "typed"
       end
       share.amount_cents = cents
