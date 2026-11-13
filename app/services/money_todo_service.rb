@@ -431,8 +431,12 @@ class MoneyTodoService
       # over (sales so far, ContractPayment#settles_after_show?), or a payment
       # dated past the horizon — a payment for a show next spring is owed,
       # not to pay.
+      # A payment for a show whose day is in Settle up and not settled yet
+      # isn't due (Tim, 2026-11-12: "it's not real until I settle it"): the
+      # day puts it on the run, as it does the show's own payees. Until then
+      # it is upcoming, whatever its date says.
       by_col = pending.group_by do |p|
-        upcoming = p.settles_after_show? || !due_soon?(p.due_date)
+        upcoming = p.settles_after_show? || !due_soon?(p.due_date) || waits_on_settle_up?(contract, p)
         self.class.payout_bucket(p.payout_contribution&.payout_batch, paid: false, upcoming: upcoming)
       end
       paid_payments = outgoing.select(&:status_paid?)
@@ -529,6 +533,19 @@ class MoneyTodoService
         subtitle: parts.join(" · "),
         due_on: payments.filter_map(&:paid_date).min,
         href: href } ]
+  end
+
+  # Is this payment for a show (or a week or month of shows) on a day Settle
+  # up hasn't settled? One already on a run is past that question.
+  def waits_on_settle_up?(contract, payment)
+    return false if payment.payout_contribution
+
+    shows = if contract.period_settlement?(payment)
+      contract.settlement_shows_for(payment)
+    else
+      [ payment.show ].compact
+    end
+    shows.any? && SettleUp.awaiting_settlement(organization, shows).any?
   end
 
   # A dateless payment is due now — better to headline it than to hide it.
