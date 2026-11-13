@@ -7,7 +7,7 @@ app? Are there any free options these days?"
 `app_activity_days` and `app_page_days` (migration CreateAppUsageTables,
 which also backfills each person's app sign-in days from `sessions`), the
 `AppUsageTracking` concern on ApplicationController, `AppUsageReport`, and
-superadmin → App usage (`/superadmin/app_usage`). `PrivacyInfo.xcprivacy`
+superadmin → Business → App (`/superadmin/app_usage`). `PrivacyInfo.xcprivacy`
 and both submission docs now declare it. Left for Tim: the two store
 dashboards, and the two stores' privacy answers (steps below).
 
