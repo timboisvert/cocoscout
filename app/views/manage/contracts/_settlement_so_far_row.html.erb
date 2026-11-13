@@ -1,0 +1,51 @@
+<%#
+  A settlement still in progress, on the contract's Payments list (Tim,
+  2026-11-13): a week with a night still to come, or one waiting on its days
+  being settled. One row for the whole stretch, where it stands from ticket
+  sales today, with the contracted fee and charges already in it, whichever
+  way it faces. No Collect, no "overdue", no Add to payout run: it can't be
+  paid or collected until it's over and settled.
+
+  Locals: payment, deductions (the charges that ride it)
+%>
+<%
+  contract = payment.contract
+  working = ContractSettlementWorking.for(payment, charges: deductions)
+  net = working.net_cents
+  to_come = working.nights_to_come.any?
+  badge = to_come ? "Settles after #{working.last_show.date_and_time.strftime('%b %-d')}" : "Waiting on Settle up"
+  words = if net.zero? then "nothing moves so far"
+          elsif net.positive? then "we pay them, so far"
+          else "they pay us, so far"
+          end
+%>
+<div class="px-3 py-2 border rounded-lg bg-white border-gray-200" data-settlement-so-far="<%= payment.id %>">
+  <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-0 w-full">
+    <div class="w-full md:w-1/2 flex items-center gap-4">
+      <div class="flex-shrink-0 w-14 text-center">
+        <div class="text-xs font-semibold text-pink-600 uppercase"><%= payment.due_date.strftime("%b") %></div>
+        <div class="text-2xl font-bold text-gray-900"><%= payment.due_date.strftime("%-d") %></div>
+        <div class="text-xs text-gray-500"><%= payment.due_date.strftime("%a") %></div>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="font-medium text-gray-900"><%= link_to (contract.production_name.presence || contract.contractor_name), manage_contract_path(contract), class: "hover:text-pink-600" %></div>
+        <% if contract.production_name.present? %><div class="text-sm text-gray-600"><%= contract.contractor_name %></div><% end %>
+      </div>
+    </div>
+    <div class="w-full md:w-1/2 flex items-center justify-between border-t border-gray-100 md:border-t-0 md:border-l md:border-gray-200 mt-2 md:mt-0 pt-2 md:pt-0 md:pl-4">
+      <div class="flex-1">
+        <div class="text-2xl font-bold text-gray-900"><%= number_to_currency(net.abs / 100.0) %></div>
+        <div class="text-xs text-gray-500"><%= words %></div>
+      </div>
+      <% if to_come || working.unsettled_days.empty? %>
+        <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600"><%= badge %></span>
+      <% else %>
+        <%= link_to badge, manage_money_settle_up_day_path(working.unsettled_days.first.iso8601),
+              class: "inline-flex items-center rounded-md bg-pink-50 px-2 py-1 text-xs font-medium text-pink-700 hover:bg-pink-100 transition-colors" %>
+      <% end %>
+    </div>
+  </div>
+  <div class="mt-2 pt-2 border-t border-gray-100 md:pl-[4.5rem]">
+    <%= render "manage/contracts/settlement_working", working: working %>
+  </div>
+</div>

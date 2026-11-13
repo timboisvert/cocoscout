@@ -161,4 +161,81 @@ RSpec.describe "Manage::Contracts weekly settlement rows", type: :request do
       expect(html).to match(%r{We keep</dt> <dd[^>]*>\$900\.00</dd>})
     end
   end
+
+  # The week being played (Tim, 2026-11-13): one night in, sales under the
+  # week's fee, so the settlement faces us for now. It's still the week's one
+  # settlement: its booth tech rides it, the row says where it stands so far,
+  # and nothing is collected or called overdue until the week is over.
+  describe "a week in progress" do
+    let(:now) { Time.zone.local(2026, 11, 13, 10) }
+
+    before do
+      sell!(12, 560.0)
+      post handle_signin_path, params: { email_address: owner.email_address, password: password }
+    end
+
+    # The other nights' sheets open at nothing sold, as production had them:
+    # the week's whole fee counts and the settlement turns to face us.
+    def open_the_other_nights!
+      sell!(13, 0.0)
+      sell!(14, 0.0)
+    end
+
+    it "keeps the week's charges on its settlement while it faces us" do
+      open_the_other_nights!
+      expect(week_two.reload).to have_attributes(direction: "incoming", auto_shortfall: true, amount: 190.0)
+      expect(contract.settlement_in_progress?(week_two)).to be(true)
+
+      group = contract.reload.payment_schedule_groups.detect { |g| g[:payment].id == week_two.id }
+      expect(group[:deductions].map(&:description)).to eq([ 12, 13, 14 ].map { |d| "Booth Tech — Nov #{d}, 2026" })
+      expect(contract.payment_schedule_groups.map { |g| g[:payment].description }).not_to include(a_string_matching(/Booth Tech — Nov 1[234]/))
+      expect(ContractSettlementWorking.for(week_two).net_cents).to eq(-34_000)
+    end
+
+    it "works out where the week stands, line by line" do
+      working = ContractSettlementWorking.for(week_two.reload)
+
+      expect(working.lines.map { |l| [ l.label, l.cents ] }).to eq([
+        [ "Ticket sales — Nov 12", 56_000 ], [ "Ticket sales — Nov 13 (so far)", 0 ], [ "Ticket sales — Nov 14 (so far)", 0 ],
+        [ "Our fee — Nov 12", -25_000 ], [ "Our fee — Nov 13", -25_000 ], [ "Our fee — Nov 14", -25_000 ],
+        [ "Booth Tech — Nov 12, 2026", -5_000 ], [ "Booth Tech — Nov 13, 2026", -5_000 ], [ "Booth Tech — Nov 14, 2026", -5_000 ]
+      ])
+      expect(working.net_cents).to eq(-34_000)
+      expect(working.when_words).to eq("after Sat, Nov 14's show, together with the week's other shows")
+    end
+
+    it "shows one row for the week on the contract page, with nothing to collect" do
+      open_the_other_nights!
+      get manage_contract_path(contract)
+
+      doc = Nokogiri::HTML(response.body)
+      row = doc.at_css("[data-settlement-so-far='#{week_two.id}']")
+      text = row.text.squish
+      expect(text).to include("$340.00", "they pay us, so far", "Settles after Nov 14", "Ticket sales — Nov 12", "$560.00",
+                              "What they owe for services", "Booth Tech — Nov 13, 2026", "nothing is paid or collected before then")
+      expect(row.text).not_to include("Collect", "overdue")
+      expect(doc.css("[data-settlement-so-far]").size).to eq(1)
+      expect(doc.text).not_to include("1 day overdue")
+    end
+
+    it "is an ordinary row again once the week is over" do
+      travel_to Time.zone.local(2026, 11, 15, 12)
+      expect(contract.settlement_in_progress?(week_two.reload)).to be(false)
+    end
+
+    it "says on the Settle up day when it's paid, with the calculation a click away" do
+      org.update!(settle_up_starts_on: Date.new(2026, 11, 1))
+      get manage_money_settle_up_day_path("2026-11-12")
+      expect(response).to have_http_status(:ok)
+
+      doc = Nokogiri::HTML(response.body)
+      block = doc.at_css("#pay-#{shows[12].id}")
+      expect(block.text.squish).to include("This contract settles weekly", "paid after Sat, Nov 14's show, together with the week's other shows",
+                                           "View calculation", "They owe $340.00")
+      expect(block.text).not_to include("View contract", "it's set on the contract")
+      modal = doc.at_css("#contract-calculation-#{shows[12].id}")
+      expect(modal.text.squish).to include("Ticket sales — Nov 12", "$560.00", "Our fee — Nov 14", "Booth Tech — Nov 14, 2026",
+                                           "They pay us, so far", "$340.00", "Open the contract")
+    end
+  end
 end

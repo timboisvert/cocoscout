@@ -19,6 +19,14 @@
       (see Contract#payment_schedule_groups). They're folded in here rather
       than listed as peers, because they're not money anyone has to collect.
 %>
+<%# A week (or month, or run) still being played or settled, and a night's
+    settlement that faces us for now: one row that says where it stands so
+    far, with nothing to pay or collect yet (Tim, 2026-11-13). %>
+<%# A stretch with no sales in yet keeps its plain row: our fee and the
+    charges are ours however it sells, and there's no "so far" to show. %>
+<% if !payment.awaiting_amount? && payment.contract.settlement_in_progress?(payment) && (payment.auto_shortfall? || payment.contract.settlement_shows_for(payment).many?) %>
+  <%= render "manage/contracts/settlement_so_far_row", payment: payment, deductions: local_assigns.fetch(:deductions, []) %>
+<% else %>
 <%
   show_actions = local_assigns.fetch(:show_actions) { local_assigns.fetch(:show_mark_received, true) }
   deductions = local_assigns.fetch(:deductions, [])
@@ -768,3 +776,4 @@
   </div>
 <% end %>
 </div>
+<% end %>

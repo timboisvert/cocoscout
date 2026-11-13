@@ -68,7 +68,9 @@ class SettleUp
   #   :current      worked out from these numbers
   # preview_cents / preview_count: what the numbers as they stand would pay
   # (an :uncalculated or :stale show), nil otherwise.
-  Pay = Data.define(:kind, :show, :show_payout, :scheme, :rows, :payments, :hold_reason, :calc, :preview_cents, :preview_count) do
+  # settlement: on a contract show, the contract's settlement that covers it
+  # (the night's, or its week's or month's), whichever way it faces just now.
+  Pay = Data.define(:kind, :show, :show_payout, :scheme, :rows, :payments, :hold_reason, :calc, :preview_cents, :preview_count, :settlement) do
     def performers? = kind == :performers
     def contract? = kind == :contract
     def none? = kind == :none
@@ -103,6 +105,20 @@ class SettleUp
     # paid that the show now owes more on (ContractSettlementCorrection).
     def more_owed = contract? ? payments.filter_map { |p| ContractSettlementCorrection.outstanding_cents(p) }.select(&:positive?) : []
     def count_by_stage = rows.group_by(&:stage).transform_values(&:size)
+
+    # How each of the contract's payments for this show gets to its number
+    # (ContractSettlementWorking), the settlement first: what the block says
+    # and what View calculation lists. A payment that isn't a settlement (a
+    # flat amount due that day) has no working; it's listed as it is.
+    def workings
+      return [] unless contract?
+
+      ([ settlement ].compact + payments).uniq(&:id)
+                                         .select { |p| p.contract.settlement_payment?(p) }
+                                         .map { |p| ContractSettlementWorking.for(p) }
+    end
+    # The settlement still being played or settled, if that's where it stands.
+    def working_in_progress = workings.detect(&:in_progress?)
   end
 
   Check = Data.define(:key, :name, :short, :state, :hold_reason) do
@@ -474,9 +490,9 @@ class SettleUp
     production = show.production
     contract = show.space_rental&.contract || production.contract || show.contract_payments.first&.contract
     payments = contract ? contract_payments_for(show, contract).select(&:direction_outgoing?) : []
-    blank = { rows: [], payments: [], hold_reason: nil, calc: :none, preview_cents: nil, preview_count: nil }
+    blank = { rows: [], payments: [], hold_reason: nil, calc: :none, preview_cents: nil, preview_count: nil, settlement: nil }
     if contract && (payments.any? || production.third_party? || contract.revenue_share?)
-      return Pay.new(**blank, kind: :contract, show: show, show_payout: nil, scheme: nil, payments: payments)
+      return Pay.new(**blank, kind: :contract, show: show, show_payout: nil, scheme: nil, payments: payments, settlement: contract.find_payment_for_show(show))
     end
     return Pay.new(**blank, kind: :none, show: show, show_payout: nil, scheme: nil) unless production.pays_performers?
     # A show with no revenue pays nobody (Tim, 2026-11-04).
@@ -518,7 +534,7 @@ class SettleUp
     end
     hold = { needs_numbers: "Enter the tickets or a flat fee first", uncalculated: "Calculate the payout first", stale: "The numbers changed; recalculate first" }[calc]
     Pay.new(kind: :performers, show: show, show_payout: show_payout, scheme: scheme, rows: rows, payments: [], hold_reason: hold, calc: calc,
-            preview_cents: (calc.in?(%i[uncalculated stale]) ? preview.sum(&:cents) : nil), preview_count: (calc.in?(%i[uncalculated stale]) ? preview.size : nil))
+            preview_cents: (calc.in?(%i[uncalculated stale]) ? preview.sum(&:cents) : nil), preview_count: (calc.in?(%i[uncalculated stale]) ? preview.size : nil), settlement: nil)
   end
 
   # Whether the show's money or its cast moved after the payout was worked

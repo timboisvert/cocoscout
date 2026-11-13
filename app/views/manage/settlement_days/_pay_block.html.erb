@@ -49,12 +49,33 @@
   </div>
 <% elsif pay.contract? %>
   <%
-    contract = pay.payments.first&.contract || show.space_rental&.contract || production.contract
+    contract = pay.payments.first&.contract || pay.settlement&.contract || show.space_rental&.contract || production.contract
+    # How each settlement gets to its number (Tim, 2026-11-13): the block
+    # says where it stands and when it's paid, and View calculation lists
+    # all of it, so nothing here sends anyone to the contract for a number.
+    workings = pay.workings
+    working_for = workings.index_by { |w| w.payment.id }
+    # In progress beyond this page: a night still to come, or another day of
+    # it not settled. A night waiting only on this day says nothing extra;
+    # settling this day is what the page is for.
+    beyond_today = ->(w) { w.in_progress? && (w.nights_to_come.any? || (w.unsettled_days - [ day.date ]).any?) }
+    in_progress = workings.detect { |w| beyond_today.call(w) }
+    # Settlements that get one summary line in place of a payment's row: one
+    # still in progress (its number is the stretch so far, not the payment's
+    # amount), and one that faces us.
+    summarized = workings.select { |w| beyond_today.call(w) || w.payment.direction_incoming? }
+    summarized_ids = summarized.map { |w| w.payment.id }
+    # The settlement while it faces us (sales so far under our fee): not one
+    # of the payments to them, and still what this show settles on.
+    facing_us = pay.settlement if pay.settlement && !pay.payments.include?(pay.settlement)
+    calculation_id = "contract-calculation-#{show.id}"
     stages = pay.payments.map do |payment|
       contractor = payment.contract&.contractor
+      progress = working_for[payment.id]
       if payment.status_paid? then [ :paid, "Paid#{payment.paid_date ? " #{payment.paid_date.strftime('%b %-d')}" : ''}#{payment.offline_payment_method_label ? " · #{payment.offline_payment_method_label}" : ''}" ]
       elsif payment.payout_stage == :in_draft then [ :in_draft, "On the draft payout run" ]
       elsif payment.payout_stage == :in_flight then [ :in_flight, "On its way" ]
+      elsif progress && beyond_today.call(progress) then [ :preview, "Paid #{progress.when_words}" ]
       elsif payment.settles_after_show? then [ :preview, "Settles after the show" ]
       elsif payment.amount_tbd? && payment.amount.to_f.zero? then [ :preview, "Waiting on ticket sales" ]
       elsif contractor && contractor.person.nil? then [ :hold, "Link a person to #{contractor.name} first" ]
@@ -94,27 +115,59 @@
         <span class="min-w-0">
           <span class="block text-sm leading-5">
             <span class="font-semibold text-gray-900">Who gets paid</span>
-            <span class="text-gray-700"><%= pay.payments.any? ? "#{money.call(pay.total_cents)} by contract#{payee_names.any? ? " to #{payee_names.to_sentence}" : ''}#{netted_out.any? ? ", after #{money.call(netted_out.values.flatten.sum { |c| (c.amount.to_d * 100).round })} they owe comes out" : ''}" : "by contract" %></span>
+            <% if in_progress %>
+              <span class="text-gray-700"><%= in_progress.net_cents.negative? ? "nobody yet: #{contract&.contractor_name || 'they'} would owe #{money.call(-in_progress.net_cents)} as it stands" : "#{money.call(in_progress.net_cents)} so far by contract#{payee_names.any? ? " to #{payee_names.to_sentence}" : ''}" %></span>
+            <% elsif pay.payments.any? %>
+              <span class="text-gray-700"><%= "#{money.call(pay.total_cents)} by contract#{payee_names.any? ? " to #{payee_names.to_sentence}" : ''}#{netted_out.any? ? ", after #{money.call(netted_out.values.flatten.sum { |c| (c.amount.to_d * 100).round })} they owe comes out" : ''}" %></span>
+            <% elsif facing_us %>
+              <% owing = ContractSettlementWorking.for(facing_us) %>
+              <span class="text-gray-700"><%= owing.net_cents.negative? ? "nobody yet: #{contract&.contractor_name || 'they'} would owe #{money.call(-owing.net_cents)} as it stands" : "#{money.call(owing.net_cents)} so far by contract" %></span>
+            <% else %>
+              <span class="text-gray-700">by contract</span>
+            <% end %>
           </span>
-          <% if pay.payments.empty? %><span class="block mt-0.5 text-xs text-gray-500">The contract's share of this show isn't worked out yet; it's set on the contract.</span><% end %>
+          <% if in_progress %>
+            <span class="block mt-0.5 text-xs text-gray-500" data-pay-when="<%= show.id %>">
+              <% if in_progress.nights_to_come.any? %>
+                <%= in_progress.period? ? "This contract settles #{contract.settlement_cadence_label.downcase}: " : "" %>it's paid <%= in_progress.when_words %>. The amount is where it stands from ticket sales today.
+              <% else %>
+                Nothing is paid until every day it covers is settled: it goes ahead <%= in_progress.when_words %>.
+              <% end %>
+            </span>
+          <% elsif pay.payments.empty? && facing_us.nil? %>
+            <span class="block mt-0.5 text-xs text-gray-500">The contract has no payment for this show yet.</span>
+          <% end %>
         </span>
       </button>
       <div class="flex items-center gap-2 shrink-0 ml-auto">
         <% if summary %>
           <span class="<%= open ? 'hidden' : '' %>" data-disclosure-target="closedOnly"><span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap <%= summary_tone %>"><%= summary %></span></span>
         <% end %>
-        <% if contract %>
-          <span data-action="click->disclosure#keep:stop">
-            <%= link_to manage_contract_path(contract) do %>
-              <%= render "shared/button", text: "View contract", variant: "secondary", size: "small", type: :button %>
-            <% end %>
-          </span>
-        <% end %>
+        <span data-action="click->disclosure#keep:stop">
+          <%= render "shared/button", text: "View calculation", variant: "secondary", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: calculation_id } %>
+        </span>
       </div>
     </div>
     <div id="pay-people-<%= show.id %>" class="<%= content_classes %> <%= open ? '' : 'hidden' %>" data-disclosure-target="content">
       <div class="divide-y divide-gray-100 border-t border-gray-100">
+        <% summarized.each do |owing| %>
+          <div class="flex items-center justify-between gap-3 py-2 text-sm" data-pay-so-far="<%= owing.payment.id %>">
+            <span class="min-w-0">
+              <span class="text-gray-900"><%= contract&.contractor_name || owing.payment.display_name %></span>
+              <span class="block text-xs text-gray-500">
+                <%= number_to_currency(owing.sales_cents / 100.0) %> in ticket sales<%= owing.in_progress? ? " so far" : "" %><%= owing.fee_cents.positive? ? ", less our #{number_to_currency(owing.fee_cents / 100.0)} in fees" : "" %><%= owing.charges_cents.positive? ? " and #{number_to_currency(owing.charges_cents / 100.0)} they owe for services" : "" %>.
+                <%= owing.nights_to_come.any? ? "Sales still to come count toward it." : "" %>
+              </span>
+            </span>
+            <span class="flex items-center gap-2 shrink-0">
+              <span class="tabular-nums text-gray-900 whitespace-nowrap"><%= owing.net_cents.negative? ? "They owe #{number_to_currency(-owing.net_cents / 100.0)}" : number_to_currency(owing.net_cents / 100.0) %></span>
+              <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap border-gray-200 text-gray-500 bg-white"><%= !owing.in_progress? ? "They pay us" : (owing.nights_to_come.any? ? "Settles after #{owing.last_show.date_and_time.strftime('%b %-d')}" : "Waiting on Settle up") %></span>
+            </span>
+          </div>
+        <% end %>
         <% pay.payments.each_with_index do |payment, i| %>
+          <% next if summarized_ids.include?(payment.id) %>
           <% contractor = payment.contract&.contractor %>
           <% stage, words = stages[i] %>
           <div class="flex items-center justify-between gap-3 py-2 text-sm">
@@ -144,6 +197,8 @@
       </div>
     </div>
   </div>
+  <%= render "manage/contracts/settlement_calculation_modal", id: calculation_id, title: "How #{show.display_name} pays",
+        workings: workings, other_payments: pay.payments.reject { |p| working_for.key?(p.id) }, contract: contract %>
 <% else %>
   <%
     counts = pay.count_by_stage

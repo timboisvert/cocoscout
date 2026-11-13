@@ -994,6 +994,10 @@ class Contract < ApplicationRecord
     # the run netted what was due by then and its amount is fixed. A charge
     # added afterwards (an amendment's new rehearsal) can't ride it.
     open_settlements = settlements.select { |s| s.status_pending? && !s.in_payout_run? }
+    # A week still being played whose sales so far sit under our fee faces us
+    # for now (a shortfall), and is still the week's one settlement: its
+    # booth tech rides it, never a row to collect on its own (Tim, 2026-11-13).
+    open_settlements = (open_settlements + rest.select { |p| shortfall_in_progress?(p) }).sort_by(&:due_date)
     run_hosts = settlements.each_with_object({}) do |s, h|
       batch_id = s.payout_contribution&.payout_batch_id
       h[batch_id] ||= s if batch_id
@@ -1021,6 +1025,31 @@ class Contract < ApplicationRecord
       charges = attached[payment.id].sort_by(&:due_date)
       { payment: payment, deductions: charges, deduction_total: charges.sum { |c| c.amount.to_f } }
     end
+  end
+
+  # A settlement whose stretch of shows isn't finished: a night still to come,
+  # or (for an organization that settles up) a day of it not settled yet.
+  # Until then its amount is "so far": sales can still land, and nothing is
+  # paid or collected (Tim, 2026-11-13).
+  def settlement_in_progress?(payment)
+    return false unless payment.status_pending? && !payment.in_payout_run?
+    return false unless (revenue_share? || ticket_revenue_minus_fee?) && settlement_payment?(payment)
+
+    shows = settlement_shows_for(payment).select(&:date_and_time)
+    return false if shows.empty?
+
+    shows.map(&:date_and_time).max > Time.current || SettleUp.awaiting_settlement(organization, shows).any?
+  end
+
+  # The same settlement while it faces us: sales so far are under our fee.
+  def shortfall_in_progress?(payment)
+    payment.direction_incoming? && payment.auto_shortfall? && settlement_in_progress?(payment)
+  end
+
+  # Does a charge they owe have a week in progress to ride, though that week
+  # faces us for now? (ContractPayment#deduct_from_payout?)
+  def shortfall_in_progress_for?(charge)
+    contract_payments.any? { |p| p.id != charge.id && p.due_date && charge.due_date && p.due_date >= charge.due_date && shortfall_in_progress?(p) }
   end
 
   # --- Versions ---------------------------------------------------------------

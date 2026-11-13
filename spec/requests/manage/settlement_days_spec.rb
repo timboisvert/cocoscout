@@ -273,8 +273,11 @@ RSpec.describe "Settle up", type: :request do
   # The clock doesn't know the night is over; the person at the bar does
   # (Tim, 2026-11-11).
   it "lets a manager settle a day that is still going, once every piece is confirmed, and says what that means" do
-    travel_to(Time.zone.local(2026, 11, 11, 23, 30)) do
-      tonight = create(:show, production: production, date_and_time: Time.zone.local(2026, 11, 11, 19))
+    # A fixed night well away from the file's other show (two days before the
+    # real today), which landed on this same day on 2026-11-13 and left the
+    # day with a piece unconfirmed.
+    travel_to(Time.zone.local(2027, 3, 3, 23, 30)) do
+      tonight = create(:show, production: production, date_and_time: Time.zone.local(2027, 3, 3, 19))
       today = SettlementDay.day_for(org, tonight.date_and_time)
       expect(SettlementDay.ended?(org, today)).to be(false)
 

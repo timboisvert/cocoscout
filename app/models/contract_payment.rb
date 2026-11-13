@@ -387,7 +387,9 @@ class ContractPayment < ApplicationRecord
   def deduct_from_payout?
     return false unless direction_incoming? && settlement_method == "payout_deduction"
 
-    contract.outgoing_settlement?
+    # A week in progress that faces us for now still carries its charges:
+    # they settle with the week, whichever way it ends up facing.
+    contract.outgoing_settlement? || contract.shortfall_in_progress_for?(self)
   end
 
   # Settled by being netted out of the counterparty's payout run. Display-only
