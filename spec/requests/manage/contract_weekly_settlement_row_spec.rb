@@ -238,4 +238,24 @@ RSpec.describe "Manage::Contracts weekly settlement rows", type: :request do
                                            "They pay us, so far", "$340.00", "Open the contract")
     end
   end
+
+  # On a phone the page is one section at a time, from the shared row and
+  # sheet, opening on Payments (Tim, 2026-11-13). Every card is a panel, so
+  # the sheet lists exactly the cards this contract has.
+  describe "the page's sections on a phone" do
+    before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
+
+    it "lists the cards in the sheet, Payments first and showing" do
+      get manage_contract_path(contract)
+
+      doc = Nokogiri::HTML(response.body)
+      wrapper = doc.at_css("[data-contract-sections]")
+      names = wrapper.css("#contract-sections-sheet [data-section-name]").map { |n| n.text.squish }
+      expect(names.first(3)).to eq([ "Payments", "Dates", "Terms and services" ])
+      panels = wrapper.css("[data-tabs-target='panel']")
+      expect(wrapper.css("[data-tabs-target='sectionItem']").map { |b| b["data-index"].to_i }).to all(be < panels.size)
+      expect(panels[wrapper["data-tabs-initial-tab-value"].to_i].text).to include("Payments")
+      expect(panels.map { |panel| panel["class"] }).to all(include("sm:!block"))
+    end
+  end
 end

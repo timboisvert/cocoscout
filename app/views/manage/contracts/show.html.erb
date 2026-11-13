@@ -89,7 +89,7 @@
       </div>
 
       <%# Middle: Contract Info %>
-      <div class="w-full md:w-1/3 md:border-l md:border-gray-200 md:pl-4 mt-2 md:mt-0 pt-2 md:pt-0 border-t md:border-t-0">
+      <div class="hidden md:block w-full md:w-1/3 md:border-l md:border-gray-200 md:pl-4">
         <div class="text-xs text-gray-400 uppercase tracking-wide">Contract Period</div>
         <div class="text-sm text-gray-700 mt-1">
           <% if @contract.contract_start_date && @contract.contract_end_date %>
@@ -104,13 +104,15 @@
           rev-share where we sell, "made" is the ticket revenue on its shows and
           "cost" is the contractor's share; a rental just shows the rent in). %>
       <% money = @contract.money_display %>
-      <div class="w-full md:w-1/3 md:border-l md:border-gray-200 md:pl-4 mt-2 md:mt-0 pt-2 md:pt-0 border-t md:border-t-0">
-        <div class="text-xs text-gray-400 uppercase tracking-wide">This Contract</div>
-        <div class="mt-1 flex items-baseline gap-3 flex-wrap">
+      <%# On a phone: one line of made, cost and net under the dates, no
+          heading and no rules between (they stacked into stray lines). %>
+      <div class="w-full md:w-1/3 md:border-l md:border-gray-200 md:pl-4 max-md:flex max-md:flex-wrap max-md:items-baseline max-md:gap-x-3">
+        <div class="hidden md:block text-xs text-gray-400 uppercase tracking-wide">This Contract</div>
+        <div class="md:mt-1 flex items-baseline gap-3 flex-wrap">
           <span class="text-sm"><span class="text-gray-500">Made</span> <span class="font-bold text-green-600 tabular-nums"><%= number_to_currency(money[:made]) %></span></span>
           <span class="text-sm"><span class="text-gray-500">Cost</span> <span class="font-bold <%= money[:cost] > 0 ? 'text-red-600' : 'text-gray-400' %> tabular-nums"><%= number_to_currency(money[:cost]) %></span></span>
         </div>
-        <div class="text-sm mt-0.5">
+        <div class="text-sm md:mt-0.5">
           <span class="text-gray-500">Net</span>
           <span class="font-bold <%= money[:net] >= 0 ? 'text-green-600' : 'text-red-600' %> tabular-nums"><%= number_to_currency(money[:net]) %></span>
           <% if money[:pending_shows] > 0 %>
@@ -124,11 +126,21 @@
   <%# On a phone the two columns become one list, in the order a phone needs
       (V1.1 plan §4): signing, money, what to do next, payments, bookings,
       documents, then the details and terms. %>
+  <%# On a phone, one section at a time (Tim, 2026-11-13: "tons of waste of
+      real estate on mobile"): the page's cards are the tabs controller's
+      panels, picked from shared/section_picker's row and sheet, opening on
+      Payments. From sm up every card shows, as before (sm:!block beats the
+      controller's hidden). The cards are drawn first so the sheet can list
+      exactly the ones this contract has. %>
+  <% phone_sections = [] %>
+  <% panel_index = -1 %>
+  <% contract_cards = capture do %>
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <%# Main content %>
     <div class="lg:col-span-2 space-y-6 max-lg:space-y-0 max-lg:contents">
       <%# Contractor Info %>
-      <div class="max-lg:order-8 border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <% phone_sections << { label: "Contractor", index: (panel_index += 1), show: (true) } %>
+      <div data-tabs-target="panel" class="sm:!block max-lg:order-8 border border-gray-200 rounded-lg overflow-hidden bg-white">
         <%= render "shared/section_heading", padding: "px-4 py-3", title: "Contractor Information" %>
         <div class="p-4">
           <dl class="grid grid-cols-2 gap-4">
@@ -189,10 +201,12 @@
       </div>
 
       <%# The deal as written — direction, pricing, ticketing, services %>
-      <div class="max-lg:order-9"><%= render "contract_terms", contract: @contract %></div>
+      <% phone_sections << { label: "Terms and services", index: (panel_index += 1), show: (true) } %>
+      <div data-tabs-target="panel" class="sm:!block max-lg:order-9"><%= render "contract_terms", contract: @contract %></div>
 
       <%# Bookings %>
-      <div class="max-lg:order-5 border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <% phone_sections << { label: "Dates", index: (panel_index += 1), show: (true) } %>
+      <div data-tabs-target="panel" class="sm:!block max-lg:order-5 border border-gray-200 rounded-lg overflow-hidden bg-white">
         <%= render "shared/section_heading", padding: "px-4 py-3", title: "Space Bookings" %>
         <div class="p-4">
           <% if @rentals.any? %>
@@ -210,7 +224,8 @@
       <%# Payments. No overflow-hidden here: the rows' kebab menus are
           absolutely positioned and would be clipped at the card edge — the
           header rounds its own top corners instead. %>
-      <div class="max-lg:order-4 border border-gray-200 rounded-lg bg-white">
+      <% phone_sections << { label: "Payments", index: (panel_index += 1), show: (true) } %>
+      <div data-tabs-target="panel" class="sm:!block max-lg:order-4 border border-gray-200 rounded-lg bg-white">
         <%= render "shared/section_heading", padding: "px-4 py-3", title: "Payments" %>
         <div class="p-4">
           <% if @payments.any? %>
@@ -230,7 +245,8 @@
       <%# Course Offering Payouts - show if contract has course offerings with payouts %>
       <% course_payouts = @contract.course_offerings.includes(:course_offering_payout).filter_map(&:course_offering_payout) %>
       <% if course_payouts.any? %>
-        <div class="max-lg:order-6 border border-gray-200 rounded-lg overflow-hidden bg-white">
+        <% phone_sections << { label: "Course payouts", index: (panel_index += 1), show: (true) } %>
+        <div data-tabs-target="panel" class="sm:!block max-lg:order-6 border border-gray-200 rounded-lg overflow-hidden bg-white">
           <%= render "shared/section_heading", padding: "px-4 py-3", title: "Course Payouts" %>
           <div class="p-4 space-y-2">
             <% course_payouts.each do |payout| %>
@@ -266,7 +282,8 @@
 
       <%# Associated Productions %>
       <% if @productions.any? %>
-        <div class="max-lg:order-10 border border-gray-200 rounded-lg overflow-hidden bg-white">
+        <% phone_sections << { label: "Productions", index: (panel_index += 1), show: (true) } %>
+        <div data-tabs-target="panel" class="sm:!block max-lg:order-10 border border-gray-200 rounded-lg overflow-hidden bg-white">
           <%= render "shared/section_heading", padding: "px-4 py-3", title: "Associated Productions" %>
           <div class="p-4 space-y-2">
             <% @productions.each do |production| %>
@@ -299,13 +316,15 @@
     <div class="space-y-6 max-lg:space-y-0 max-lg:contents">
       <%# E-signature status (only for contracts set up for native signing) %>
       <% if @contract.signing_mode_esign? %>
-        <div class="max-lg:order-1"><%= render "signature_panel" %></div>
+        <% phone_sections << { label: "Signature", index: (panel_index += 1), show: (true) } %>
+        <div data-tabs-target="panel" class="sm:!block max-lg:order-1"><%= render "signature_panel" %></div>
       <% end %>
 
       <%# Financial Summary — the gross picture first (what the deal made vs
           cost us, ticket revenue included), then plain payment cash-flow. %>
       <% money ||= @contract.money_display %>
-      <div class="max-lg:order-2 border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <% phone_sections << { label: "Money summary", index: (panel_index += 1), show: (true) } %>
+      <div data-tabs-target="panel" class="sm:!block max-lg:order-2 border border-gray-200 rounded-lg overflow-hidden bg-white">
         <%= render "shared/section_heading", padding: "px-4 py-3", title: "Financial Summary" %>
         <div class="p-4">
           <dl class="space-y-3">
@@ -352,7 +371,8 @@
       </div>
 
       <%# Documents %>
-      <div class="max-lg:order-7 border border-gray-200 rounded-lg overflow-hidden bg-white" data-controller="modal">
+      <% phone_sections << { label: "Documents", index: (panel_index += 1), show: (true) } %>
+      <div data-tabs-target="panel" class="sm:!block max-lg:order-7 border border-gray-200 rounded-lg overflow-hidden bg-white" data-controller="modal">
         <%= render "shared/section_heading", padding: "px-4 py-3", title: "Documents" do %>
           <%= render "shared/button", text: "Upload", variant: "secondary", size: "small", icon: "plus", type: :button,
                 data: { action: "click->modal#open", modal_id: "document-upload-modal" } %>
@@ -456,7 +476,8 @@
 
       <%# Notes %>
       <% if @contract.notes.present? || @contract.terms.present? %>
-        <div class="max-lg:order-11 border border-gray-200 rounded-lg overflow-hidden bg-white">
+        <% phone_sections << { label: "Notes", index: (panel_index += 1), show: (true) } %>
+        <div data-tabs-target="panel" class="sm:!block max-lg:order-11 border border-gray-200 rounded-lg overflow-hidden bg-white">
           <%= render "shared/section_heading", padding: "px-4 py-3", title: "Notes & Terms" %>
           <div class="p-4">
             <% if @contract.notes.present? %>
@@ -475,7 +496,8 @@
         </div>
       <% end %>
 
-      <div class="max-lg:order-3 space-y-6">
+      <% phone_sections << { label: "Actions", index: (panel_index += 1), show: (@contract.status_active? || @contract.status_completed? || @contract.status_cancelled?) } %>
+      <div data-tabs-target="panel" class="sm:!block max-lg:order-3 space-y-6">
       <%# Actions %>
       <% if @contract.status_active? %>
         <%= render "manage/contracts/version_history" %>
@@ -537,6 +559,19 @@
       <% end %>
       </div>
     </div>
+  </div>
+  <% end %>
+  <%
+    sheet_order = [ "Payments", "Dates", "Terms and services", "Money summary", "Actions", "Documents", "Signature", "Contractor", "Course payouts", "Productions", "Notes" ]
+    # A contract still out for signature opens on that; any other on Payments.
+    first_label = @contract.signing_mode_esign? && !(@contract.status_active? || @contract.status_completed? || @contract.status_cancelled?) ? "Signature" : "Payments"
+    first_section = phone_sections.find { |section| section[:label] == first_label } || phone_sections.find { |section| section[:label] == "Payments" }
+    picker_sections = phone_sections.select { |section| section[:show] }.sort_by { |section| sheet_order.index(section[:label]) || 99 }
+                                    .map { |section| { label: section[:label], index: section[:index], active: section == first_section } }
+  %>
+  <div data-controller="tabs" data-tabs-initial-tab-value="<%= first_section[:index] %>" data-tabs-url-value="false" data-contract-sections>
+    <%= render "shared/section_picker", id: "contract-sections-sheet", sections: picker_sections %>
+    <%= contract_cards %>
   </div>
 
   <%# Reopen contract confirmation modal %>
