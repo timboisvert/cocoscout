@@ -17,7 +17,12 @@ module Manage
       @counts = MailingListMembership.joins(:follower).where(mailing_list_id: @lists.map(&:id), followers: { status: "subscribed" })
                                      .group(:mailing_list_id).count
       @collects = MailingListProduction.where(mailing_list_id: @lists.map(&:id)).group(:mailing_list_id).count
-      @follower_total = Current.organization.followers.subscribed.count
+      # Following means on a list. A buyer who ticked nothing at checkout
+      # still has a follower row (what they bought, for segments) and is on
+      # no list, so nothing is ever sent to them: counting those said "143
+      # following you in all" over one list of 71 (Tim, 2026-11-13).
+      @follower_total = Current.organization.followers.subscribed
+                               .where(id: MailingListMembership.where(mailing_list_id: @lists.map(&:id)).select(:follower_id)).count
       @segments = Current.organization.segments.order(:name).to_a
       @drafts = Current.organization.follower_emails.drafts.limit(10).to_a
       @sent = Current.organization.follower_emails.sent_or_sending.limit(20).to_a

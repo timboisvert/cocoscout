@@ -22,6 +22,18 @@ RSpec.describe "Mailing lists", type: :request do
 
   before { sign_in(owner) }
 
+  # Following means on a list (Tim, 2026-11-13: "143 following you in all"
+  # over one list of 71). A buyer who ticked nothing at checkout keeps a
+  # follower row for what they bought and is on no list.
+  it "counts only people on a list as following" do
+    on_list = Follower.for!(org, "on@example.com", name: "On List")
+    main.mailing_list_memberships.create!(follower: on_list)
+    Follower.for!(org, "buyer@example.com", name: "Ticked Nothing", consented: false)
+
+    get manage_mailing_lists_path
+    expect(response.body).to include("1 following you in all")
+  end
+
   it "has a home with the main list, segments and emails, and Mailing lists in the Pro nav after Ticketing" do
     get manage_mailing_lists_path
     expect(response).to have_http_status(:ok)
