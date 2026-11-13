@@ -2655,9 +2655,28 @@ class Contract < ApplicationRecord
         start: starts_at.strftime("%-l:%M %p"),
         end: ends_at ? ends_at.strftime("%-l:%M %p") : "—",
         stage: space_id ? (space_names[space_id] || "Stage") : "Entire venue",
-        rent: rent_by_date[starts_at.to_date] || rent_label
+        rent: license_rated_rent(b) || rent_by_date[starts_at.to_date] || rent_label
       }
     end
+  end
+
+  # A rehearsal (any kind of date with its own rate) is outside the deal: it
+  # has no payment row of its own on the draft, so the deal's rent would land
+  # on it. It costs its own rate, or that date's own terms: four hours at an
+  # hourly rate, two of them included, read $300 (the per-show fee) on the
+  # signed document instead of $60 (Tim, 2026-11-13).
+  def license_rated_rent(booking)
+    event_type = booking["event_type"].presence || "show"
+    rate = event_rate_for_type(event_type)
+    return nil unless rate
+
+    terms = date_terms_for_booking(booking["starts_at"])
+    cost = if hourly_rated?(event_type)
+      hourly_date_cost(event_type, terms, booking_hours(booking))
+    else
+      terms.key?("amount") ? terms["amount"].to_f : rate["amount"].to_f
+    end
+    deal_money(cost)
   end
 
   def parse_booking_time(value)
