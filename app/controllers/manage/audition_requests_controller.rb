@@ -342,7 +342,12 @@ module Manage
         end
       end
 
-      count = requests.update_all(archived_at: Time.current)
+      # updated_at too: the counts on Home and the production's page are
+      # cached by the sign-ups' latest change, and an archive that left it
+      # alone kept "18 audition sign-ups to review" after 11 were archived
+      # (Tim, 2026-11-13).
+      now = Time.current
+      count = requests.update_all(archived_at: now, updated_at: now)
       redirect_to manage_signups_auditions_cycle_requests_path(@production, @audition_cycle),
                   notice: "#{count} #{'sign-up'.pluralize(count)} archived successfully"
     end
