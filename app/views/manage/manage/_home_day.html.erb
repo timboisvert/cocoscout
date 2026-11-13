@@ -8,6 +8,7 @@
   day = @selected_day
   rows = @home.rows_by_day[day] || []
   staffing = @home.staffing_days[day] || []
+  auditions = @home.audition_days[day] || []
   busy_day = ->(d) { @range.cover?(d) ? @home.busy?(d) : @show_dates.include?(d) }
 %>
 <div class="sm:hidden space-y-3" data-home-day="<%= day.iso8601 %>"
@@ -20,10 +21,12 @@
 
   <%# Straight to the day's shows: a line counting them, and how many need
       something, said what the rows under it already show (Tim, 2026-11-09). %>
-  <% if rows.any? %>
+  <% if rows.any? || auditions.any? %>
     <% @home.day_entries(day).each do |entry| %>
       <% if entry.is_a?(HomeWeek::Row) %>
         <%= render "manage/manage/show_row", row: entry, size: :phone %>
+      <% elsif entry.is_a?(HomeWeek::Auditions) %>
+        <%= render "manage/manage/audition_row", auditions: entry, size: :phone %>
       <% else %>
         <%= render "manage/manage/staffing_row", day: day, staffing: entry, size: :phone %>
       <% end %>

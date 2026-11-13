@@ -58,16 +58,31 @@ class HomeWeek
     def complete? = uncast.zero? && vacancies.empty?
   end
 
+  # A day's audition sessions for one audition cycle, as one row (Tim,
+  # 2026-11-12: a Saturday of nine sessions showed "Nothing yet"). Nine
+  # fifteen-minute slots are one thing on the calendar, not nine.
+  Auditions = Data.define(:cycle, :sessions) do
+    def production = cycle.production
+    def starts_at = sessions.map(&:start_at).min
+    def ends_at = sessions.filter_map(&:end_at).max
+    def booked = sessions.sum { |s| s.auditions.size }
+    def location_names = sessions.filter_map { |s| s.location&.name }.uniq
+  end
+
   attr_reader :days, :shows, :shifts, :week_finalized, :declined_this_range
 
-  def initialize(organization:, user:, days:, shows:, show_cast:, pro_manager:)
+  # productions: the ones the person can see; their audition sessions in the
+  # range get rows of their own. Left out (a production's own page), none do.
+  def initialize(organization:, user:, days:, shows:, show_cast:, pro_manager:, productions: nil)
     @organization = organization
     @user = user
     @days = days
     @shows = shows
     @show_cast = show_cast
     @pro_manager = pro_manager
+    @productions = productions
     load_shifts
+    load_auditions
     load_listings
     load_signups
     load_cast
@@ -120,15 +135,20 @@ class HomeWeek
     end
   end
 
-  # The day's show rows and staffing rows, in order of start time.
+  # { Date => [Auditions] }: each audition cycle's sessions that day.
+  def audition_days = @audition_days
+
+  # The day's show rows, staffing rows and audition rows, in order of start
+  # time.
   def day_entries(day)
     shows = rows_by_day.fetch(day, []).map { |row| [ row.show.date_and_time, 0, row ] }
     staffing = staffing_days.fetch(day, []).map { |s| [ s.starts_at, 1, s ] }
-    (staffing + shows).sort_by { |at, kind, _| [ at, -kind ] }.map(&:last)
+    auditions = audition_days.fetch(day, []).map { |a| [ a.starts_at, 0, a ] }
+    (staffing + shows + auditions).sort_by { |at, kind, _| [ at, -kind ] }.map(&:last)
   end
 
-  # A day with a show, or with staffing.
-  def busy?(day) = rows_by_day[day].any? || staffing_days.key?(day)
+  # A day with a show, with staffing, or with auditions.
+  def busy?(day) = rows_by_day[day].any? || staffing_days.key?(day) || audition_days.key?(day)
 
   # The range's slots: staffed of needed, and how many can't make it.
   def week_stats
@@ -153,6 +173,24 @@ class HomeWeek
   def row_for(show)
     Row.new(show: show, signups: signups_for(show), tickets: tickets_for(show), staffing: staffing_for(show), cast: cast_for(show),
             told: told_for(show))
+  end
+
+  # --- Auditions ----------------------------------------------------------
+
+  def load_auditions
+    ids = @productions&.map(&:id)
+    sessions = if ids.present?
+      AuditionSession.joins(:audition_cycle)
+                     .where(audition_cycles: { production_id: ids })
+                     .where(start_at: days.first.beginning_of_day..days.last.end_of_day)
+                     .includes(:location, :auditions, audition_cycle: :production)
+                     .order(:start_at).to_a
+    else
+      []
+    end
+    @audition_days = sessions.group_by { |s| s.start_at.to_date }.transform_values do |on_day|
+      on_day.group_by(&:audition_cycle).map { |cycle, rows| Auditions.new(cycle: cycle, sessions: rows) }
+    end
   end
 
   # --- Sign-ups -----------------------------------------------------------

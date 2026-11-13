@@ -54,6 +54,8 @@
           <div class="text-[11px] text-gray-500 truncate">
             <% if rows.any? %>
               <%= pluralize(rows.size, "show") %><% if (sold = home_sold_count(rows)).positive? %> · <%= sold %> sold<% end %>
+            <% elsif @home.audition_days[day] %>
+              Auditions
             <% elsif staffing_days[day] %>
               Staffing only
             <% else %>
@@ -75,6 +77,8 @@
           <% @home.day_entries(day).each do |entry| %>
             <% if entry.is_a?(HomeWeek::Row) %>
               <%= render "manage/manage/show_row", row: entry, size: :grid %>
+            <% elsif entry.is_a?(HomeWeek::Auditions) %>
+              <%= render "manage/manage/audition_row", auditions: entry, size: :grid %>
             <% else %>
               <%= render "manage/manage/staffing_row", day: day, staffing: entry, size: :grid %>
             <% end %>

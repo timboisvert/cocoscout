@@ -98,9 +98,15 @@ module Manage
         shows.first&.date_and_time&.to_date || @range.first
       pro_manager = Current.organization.on_paid_plan? && (Current.user.superadmin? || Current.organization.manageable_by?(Current.user))
       @home = HomeWeek.new(organization: Current.organization, user: Current.user, days: @range.to_a,
-                           shows: shows, show_cast: build_show_cast(shows), pro_manager: pro_manager)
+                           shows: shows, show_cast: build_show_cast(shows), pro_manager: pro_manager,
+                           productions: @productions)
       @calendar_months = calendar_months_around(@week_start)
       @show_dates = calendar_show_dates(@calendar_months.first.beginning_of_week, @calendar_months.last.end_of_month.end_of_week, productions: @productions)
+      # A day of auditions is a day with something on it, in the pickers too.
+      @show_dates |= AuditionSession.joins(:audition_cycle)
+                                    .where(audition_cycles: { production_id: @productions.map(&:id) })
+                                    .where(start_at: @calendar_months.first.beginning_of_week.beginning_of_day..@calendar_months.last.end_of_month.end_of_week.end_of_day)
+                                    .pluck(:start_at).map { |t| t.in_time_zone.to_date }.to_set
       @week_statuses = @home.staffing_on? ? calendar_week_statuses(@calendar_months.first.beginning_of_week, @calendar_months.last.end_of_month.end_of_week) : {}
 
 

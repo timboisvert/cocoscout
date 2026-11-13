@@ -1,0 +1,43 @@
+<%#
+  A day's audition sessions on Home, one row per audition cycle (Tim,
+  2026-11-12): a Saturday of nine sessions is one row saying so, among the
+  day's shows by its first start. The whole row goes to the cycle's Sessions.
+
+  Locals:
+    auditions  a HomeWeek::Auditions (the cycle and that day's sessions)
+    size       :grid (the desktop week; short words) or :phone (long words)
+%>
+<%
+  phone = local_assigns[:size] == :phone
+  from = auditions.starts_at
+  to = auditions.ends_at
+  count = auditions.sessions.size
+  booked = auditions.booked
+  name = "Auditions: #{auditions.production.name}"
+  hours = to && to > from ? "#{from.strftime('%-l:%M %p')}–#{to.strftime('%-l:%M %p')}" : from.strftime("%-l:%M %p")
+  sessions_words = pluralize(count, "session")
+  booked_words = booked.positive? ? "#{booked} booked" : "nobody booked yet"
+  tone = booked.positive? ? :ok : :none
+%>
+<%= link_to manage_signups_auditions_cycle_sessions_path(auditions.production, auditions.cycle),
+      class: "w-full text-left rounded-lg border border-gray-200 bg-white hover:border-pink-200 #{phone ? 'px-3 py-2.5' : 'px-1.5 py-1'} flex flex-col gap-1",
+      data: { home_auditions: auditions.cycle.id },
+      aria: { label: "#{name}, #{from.strftime('%A, %b %-d')}, #{hours}: open its sessions" },
+      title: [ hours, name, auditions.location_names.join(", ").presence, sessions_words, booked_words ].compact.join(" · ") do %>
+  <span class="flex items-baseline gap-1.5 min-w-0 w-full <%= phone ? 'text-sm' : 'text-[11.5px]' %>">
+    <span class="font-bold tabular-nums flex-shrink-0 text-gray-900"><%= from.strftime("%-l:%M") %></span>
+    <span class="font-semibold truncate min-w-0 text-gray-900"><%= name %></span>
+    <% if phone && to && to > from %>
+      <span class="flex-shrink-0 ml-auto text-[11px] text-gray-500 tabular-nums">until <%= to.strftime("%-l:%M %p") %></span>
+    <% end %>
+  </span>
+  <span class="flex flex-wrap gap-1">
+    <span class="inline-flex items-center gap-1 rounded-full border px-1.5 py-px font-semibold whitespace-nowrap <%= phone ? 'text-[11px]' : 'text-[10.5px]' %> <%= HomeHelper::CHIP_TONES[tone] %>" data-chip="auditions" data-tone="<%= tone %>">
+      <svg class="<%= phone ? 'w-3.5 h-3.5' : 'w-3 h-3' %> flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 12h6M9 16h4"/></svg>
+      <%= phone ? "#{sessions_words} · #{booked_words}" : "#{sessions_words} · #{booked.positive? ? "#{booked} booked" : 'none booked'}" %>
+    </span>
+  </span>
+  <% if phone && auditions.location_names.any? %>
+    <span class="text-xs text-gray-500 truncate"><%= auditions.location_names.to_sentence %></span>
+  <% end %>
+<% end %>
