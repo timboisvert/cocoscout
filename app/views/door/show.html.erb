@@ -21,7 +21,7 @@
   <div class="min-w-0 flex-1">
     <div class="text-lg font-bold text-gray-900 leading-tight truncate"><%= @listing.display_title %></div>
     <div class="text-sm text-gray-600 truncate">
-      <%= show.date_and_time.to_date == Date.current ? "Tonight" : show.date_and_time.strftime("%a %b %-d") %>
+      <%= show.date_and_time.to_date == Date.current ? today_or_tonight(show.date_and_time) : show.date_and_time.strftime("%a %b %-d") %>
       · <%= show.date_and_time.strftime("%-l:%M %p") %><%= " · #{room}" if room.present? %>
     </div>
     <div class="text-xs text-gray-500 truncate">
@@ -50,7 +50,7 @@
                   door-scanner:code->door#nativeCode door-scanner:undo->door#nativeUndo
                   door-scanner:fulfill->door#nativeFulfill door-scanner:closed->door#nativeClosed"
      data-bridge--door-scanner-title-value="<%= @listing.display_title %>"
-     data-bridge--door-scanner-subtitle-value="<%= show.date_and_time.to_date == Date.current ? "Tonight" : show.date_and_time.strftime("%a %b %-d") %> · <%= show.date_and_time.strftime("%-l:%M %p") %>"
+     data-bridge--door-scanner-subtitle-value="<%= show.date_and_time.to_date == Date.current ? today_or_tonight(show.date_and_time) : show.date_and_time.strftime("%a %b %-d") %> · <%= show.date_and_time.strftime("%-l:%M %p") %>"
      <% end %>
      data-door-in-app-value="<%= turbo_native_app? %>"
      data-door-ahead-value="<%= @ahead %>"

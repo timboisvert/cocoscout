@@ -11,7 +11,7 @@ module ProductionPageHelper
   # "Tonight", "Today", "Tomorrow", else "Sat, Nov 28".
   def production_page_day(time)
     date = time.to_date
-    if date == Date.current then time.hour >= 17 ? "Tonight" : "Today"
+    if date == Date.current then today_or_tonight(time)
     elsif date == Date.current + 1 then "Tomorrow"
     else time.strftime("%a, %b %-d")
     end

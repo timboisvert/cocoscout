@@ -26,4 +26,14 @@ RSpec.describe ApplicationHelper, type: :helper do
       expect(pending_attachment?(profile_headshot.image)).to be(false)
     end
   end
+
+  describe "#today_or_tonight" do
+    it "says Today before 5 PM and Tonight from 5 PM" do
+      day = Time.zone.local(2026, 11, 14)
+      expect(helper.today_or_tonight(day.change(hour: 11))).to eq("Today")
+      expect(helper.today_or_tonight(day.change(hour: 16, min: 59))).to eq("Today")
+      expect(helper.today_or_tonight(day.change(hour: 17))).to eq("Tonight")
+      expect(helper.today_or_tonight(day.change(hour: 21))).to eq("Tonight")
+    end
+  end
 end

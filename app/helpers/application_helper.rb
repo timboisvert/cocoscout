@@ -3,6 +3,14 @@
 module ApplicationHelper
   CANONICAL_HOST = "https://cocoscout.com"
 
+  # A show today says "Tonight" from 5 PM, when evening starts, and "Today"
+  # before (Tim, 2026-11-14: an 11 AM matinee said "Tonight").
+  EVENING_STARTS_AT_HOUR = 17
+
+  def today_or_tonight(time)
+    time.hour >= EVENING_STARTS_AT_HOUR ? "Tonight" : "Today"
+  end
+
   # Every page names its one address for search engines: cocoscout.com (the
   # apps' host), not www, and no query string. Google listed the same pages
   # under both hosts as duplicates (Search Console, 2026-10-22). A page that

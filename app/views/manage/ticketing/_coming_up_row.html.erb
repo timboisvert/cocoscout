@@ -10,7 +10,7 @@
     Locals: listing, stats. %>
 <%
   starts = listing.show.date_and_time
-  when_words = starts.to_date == Date.current ? "Tonight · #{starts.strftime('%-l:%M %p')}" : starts.strftime("%a, %b %-d · %-l:%M %p")
+  when_words = starts.to_date == Date.current ? "#{today_or_tonight(starts)} · #{starts.strftime('%-l:%M %p')}" : starts.strftime("%a, %b %-d · %-l:%M %p")
   label, badge_classes = ticket_listing_status_badge(listing, stats.inventory)
   door_open = DoorTonight.door_open?(listing)
   # A mini bar under the sold words (Tim, 2026-10-16), the same math as the
