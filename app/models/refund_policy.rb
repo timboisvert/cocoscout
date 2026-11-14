@@ -21,9 +21,10 @@ class RefundPolicy
 
   # The settings form (Tim, 2026-11-07: one row, not a column of eight):
   # three cards side by side, and under the first its cutoff as pills.
+  # No refunds first (Tim, 2026-11-13).
   KIND_CHOICES = [
-    [ "window", "Up to a cutoff", "Refunds until a point before the show." ],
     [ "none", "No refunds", "All sales final. A show you cancel is still refunded in full." ],
+    [ "window", "Up to a cutoff", "Refunds until a point before the show." ],
     [ "case_by_case", "Case by case", "No window: buyers are told to ask you, and every refund is your call." ]
   ].freeze
   WINDOW_CHOICES = [

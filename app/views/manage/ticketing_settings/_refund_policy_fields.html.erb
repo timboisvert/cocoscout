@@ -43,7 +43,8 @@
     half-width switch beside a text box read badly): the fees switch, then
     the note at full width. %>
 <div class="pt-2 space-y-4">
-  <div class="flex items-start gap-3">
+  <%# With no refunds there are no fees to give back, so the switch is gone. %>
+  <div class="flex items-start gap-3 <%= 'hidden' if kind == 'none' %>" data-radio-card-target="extras" data-hide-for="none" data-refund-fees>
     <%= render "shared/toggle_switch", name: "#{scope}[refund_fees]", checked: policy.fees, hidden_false: true, id: "#{scope}_refund_fees", aria_label: "Refund the fees too" %>
     <label for="<%= scope %>_refund_fees" class="min-w-0 cursor-pointer">
       <span class="block text-sm font-medium text-gray-900">Refund the fees too</span>

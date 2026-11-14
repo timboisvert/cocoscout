@@ -20,8 +20,12 @@ export default class extends Controller {
         })
 
         // Show/hide extras (like production dropdowns)
+        // An extra with data-hide-for shows for every choice but that one
+        // (the refund policy's fees switch, gone under "No refunds").
         this.extrasTargets.forEach(el => {
-            if (el.dataset.for === selectedValue) {
+            if (el.dataset.hideFor) {
+                el.classList.toggle("hidden", el.dataset.hideFor === selectedValue)
+            } else if (el.dataset.for === selectedValue) {
                 el.classList.remove("hidden")
             } else {
                 el.classList.add("hidden")

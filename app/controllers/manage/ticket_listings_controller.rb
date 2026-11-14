@@ -210,7 +210,7 @@ module Manage
       raw = params.require(:ticket_listing)
       attrs = if raw[:own_refund_policy] == "1"
         chosen = RefundPolicy.attributes_for(RefundPolicy.choice_from(raw), raw[:refund_days]) || {}
-        chosen.reverse_merge(refund_window_hours: nil).merge(refund_fees: raw[:refund_fees] == "1", refund_policy_note: raw[:refund_policy_note].to_s.strip.presence)
+        chosen.reverse_merge(refund_window_hours: nil).merge(refund_fees: raw[:refund_fees] == "1" && RefundPolicy.choice_from(raw).to_s != "none", refund_policy_note: raw[:refund_policy_note].to_s.strip.presence)
       else
         { refund_policy: nil, refund_window_hours: nil, refund_fees: nil, refund_policy_note: nil }
       end
