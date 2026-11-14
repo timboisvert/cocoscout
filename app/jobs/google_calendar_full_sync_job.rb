@@ -6,8 +6,11 @@
 class GoogleCalendarFullSyncJob < ApplicationJob
   queue_as :background
   # One pass at a time for an organization: two at once would each write the
-  # same dates, and together trip Google's limit.
-  limits_concurrency to: 1, key: ->(organization_id, *) { "google-calendar-#{organization_id}" }, duration: 30.minutes
+  # same dates, and together trip Google's limit. The group is shared with
+  # GoogleCalendarSyncJob: Solid Queue puts the job's class name in front of
+  # the key otherwise, and the two ran side by side (Sentry COCOSCOUT-79).
+  limits_concurrency to: 1, key: ->(organization_id, *) { "google-calendar-#{organization_id}" },
+                     group: "GoogleCalendar", duration: 30.minutes
   # Google said slow down even after the pass waited: come back in a few
   # minutes. What was written is kept, so the next try starts from there.
   retry_on GoogleCalendarApi::RateLimited, wait: 5.minutes, attempts: 6

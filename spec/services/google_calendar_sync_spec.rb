@@ -323,6 +323,31 @@ RSpec.describe GoogleCalendarSync do
       expect(CalendarSyncEvent.where(integration: integration).sole.external_id).to eq("cocoevent#{show.id}")
     end
 
+    it "takes up a row written while the pass was running, instead of making a second" do
+      show = show_at
+      allow(api).to receive(:insert_event) do |_cal, event|
+        # A one-show sync writes the row while this pass is between reading
+        # its rows and writing this date.
+        CalendarSyncEvent.create!(integration: integration, syncable_type: "Show", syncable_id: show.id,
+                                  external_id: event[:id], digest: "old", synced_at: Time.current)
+        { "id" => event[:id] }
+      end
+
+      sync.sync_all!
+
+      row = CalendarSyncEvent.where(integration: integration).sole
+      expect(row.external_id).to eq("cocoevent#{show.id}")
+      expect(row.digest).not_to eq("old")
+    end
+
+    it "never runs a one-date sync beside a full pass for the same organization" do
+      full = GoogleCalendarFullSyncJob.new(org.id, force: true)
+      one = GoogleCalendarSyncJob.new(org.id, "Show", 1)
+
+      expect(one.concurrency_key).to eq(full.concurrency_key)
+      expect(GoogleCalendarSyncJob.new(org.id + 1, "Show", 1).concurrency_key).not_to eq(full.concurrency_key)
+    end
+
     it "writes every coming date again at night, and makes anew one Google no longer has" do
       show_at
       sync.sync_all!

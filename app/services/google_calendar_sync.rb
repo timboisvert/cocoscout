@@ -190,12 +190,17 @@ class GoogleCalendarSync
   end
 
   # Whether Google was called.
+  #
+  # A full pass reads every row once at the start and then takes minutes.
+  # If a show's row was written in the meantime (Sentry COCOSCOUT-79,
+  # 2026-11-14: a one-show sync ran beside the full pass), the pass still
+  # holds nil for it, so the row is looked up again before a new one is made.
   def write(entry, row, force: false)
     digest = entry.digest
     return false if row && row.digest == digest && !force
 
     event = patiently { row ? update_or_insert(row, entry) : insert(entry) }
-    row ||= integration.calendar_sync_events.new(syncable_type: entry.record.class.name, syncable_id: entry.record.id)
+    row ||= integration.calendar_sync_events.find_or_initialize_by(syncable_type: entry.record.class.name, syncable_id: entry.record.id)
     row.update!(external_id: event["id"], digest: digest, synced_at: Time.current)
     true
   end
