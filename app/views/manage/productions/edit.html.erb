@@ -34,27 +34,27 @@
             } %>
     </div>
     <nav class="hidden sm:flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto">
-      <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 text-pink-600 cursor-pointer whitespace-nowrap">Basic Information</button>
-      <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Visual Assets</button>
-      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Documents</button>
+      <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 border-pink-500 text-pink-600 cursor-pointer whitespace-nowrap">Basic Information</button>
+      <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap">Visual Assets</button>
+      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap">Documents</button>
       <% unless @production.type_third_party? %>
-        <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Production Team</button>
-        <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
+        <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap">Production Team</button>
+        <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
           Agreement
           <%= render "shared/pro_marker" %>
           <% unless @production.organization.feature_available?(:agreements) %>
             <%= render "shared/pro_marker", kind: :lock %>
           <% end %>
         </button>
-        <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Public Listing</button>
-        <button type="button" data-tabs-target="tab" data-index="6" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
+        <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap">Public Listing</button>
+        <button type="button" data-tabs-target="tab" data-index="6" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
           Pay
           <%= render "shared/pro_marker" %>
           <% unless @production.organization.feature_available?(:money) %>
             <%= render "shared/pro_marker", kind: :lock %>
           <% end %>
         </button>
-        <button type="button" data-tabs-target="tab" data-index="7" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
+        <button type="button" data-tabs-target="tab" data-index="7" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
           Tickets
           <%= render "shared/pro_marker" %>
           <% unless @production.organization.feature_available?(:ticketing) %>
@@ -62,7 +62,7 @@
           <% end %>
         </button>
         <% if services_on %>
-          <button type="button" data-tabs-target="tab" data-index="8" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
+          <button type="button" data-tabs-target="tab" data-index="8" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
             Services
             <%= render "shared/pro_marker" %>
           </button>
@@ -73,8 +73,8 @@
       <% else %>
         <%# A production booked by a contract still has a team (Tim, 2026-10-16):
             the people who signed can be given access to it. %>
-        <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap">Production Team</button>
-        <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
+        <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap">Production Team</button>
+        <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
           Tickets
           <%= render "shared/pro_marker" %>
           <% unless @production.organization.feature_available?(:ticketing) %>
@@ -82,7 +82,7 @@
           <% end %>
         </button>
         <% if services_on %>
-          <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
+          <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
             Services
             <%= render "shared/pro_marker" %>
           </button>
@@ -203,6 +203,10 @@
             <%= render "shared/button", text: "Save Changes", variant: "primary", size: "medium", type: :submit %>
           </div>
         <% end %>
+      <% end %>
+      <%# Money in: a form of its own, after the details' Save. %>
+      <% if org_manager %>
+        <div class="mt-6"><%= render "manage/productions/money_in_card" %></div>
       <% end %>
     </div>
 

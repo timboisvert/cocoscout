@@ -205,7 +205,7 @@ module Manage
       none = params[:no_revenue] == "1"
       @production.update!(no_revenue: none)
       notice = none ? "#{@production.name} takes no money: its shows settle up as no revenue by themselves." : "#{@production.name} takes money again: its shows settle up as usual."
-      redirect_to pay_return_path, notice: notice
+      redirect_to edit_manage_production_path(@production, tab: 0), notice: notice
     end
 
     def update_public_key

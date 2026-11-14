@@ -61,8 +61,17 @@ RSpec.describe "Settle up", type: :request do
     end
   end
 
-  it "lets a manager switch a production to taking no money from its Pay tab" do
+  # On Basic Information, which every production has: a contract production
+  # has no Pay tab (Tim, 2026-11-14: "I don't see a pay tab").
+  it "lets a manager switch a production to taking no money from Basic Information, a contract production too" do
+    contracted = create(:production, organization: org, name: "A Random Memory", production_type: "third_party")
+    get edit_manage_production_path(contracted)
+    expect(Nokogiri::HTML(response.body).at_css("[data-no-revenue-card]").text.squish).to include("Money in", "This production never takes money")
+    get edit_manage_production_path(production)
+    expect(Nokogiri::HTML(response.body).css("[data-no-revenue-card]").size).to eq(1)
+
     patch update_no_revenue_manage_production_path(production), params: { no_revenue: "1" }
+    expect(response).to redirect_to(edit_manage_production_path(production, tab: 0))
     expect(production.reload.no_revenue).to be(true)
     patch update_no_revenue_manage_production_path(production), params: { no_revenue: "0" }
     expect(production.reload.no_revenue).to be(false)
