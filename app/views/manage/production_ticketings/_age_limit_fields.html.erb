@@ -5,18 +5,23 @@
     where the first card follows the production. Brings its own radio-card
     controller.
     Locals: scope (the param prefix), age (what's stored), note, input_class,
-    inherit (a date: true), inherited_age (the production's), note_placeholder. %>
+    inherit (a date: true), inherited_age (the production's), note_placeholder,
+    bare (true inside a box that already has its heading: a date's own ages,
+    under the one override switch). %>
 <%
   inherit = local_assigns[:inherit] || false
   choice = AgeLimit.choice_for(age, inherit: inherit)
   choices = AgeLimit.choices(inherit: inherit, inherited_age: local_assigns[:inherited_age])
   columns = inherit ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6" : "grid-cols-2 sm:grid-cols-5"
 %>
-<div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4" data-controller="radio-card">
-  <div>
-    <h3 class="font-semibold text-gray-900">Ages</h3>
-    <p class="text-sm text-gray-600 mt-1">Buyers see it on the ticket page, at checkout, with their tickets and in their emails, and the door sees it too.</p>
-  </div>
+<div class="<%= local_assigns[:bare] ? '' : 'bg-white border border-gray-200 rounded-xl overflow-hidden' %>" data-controller="radio-card" data-settings-card="ages">
+  <% unless local_assigns[:bare] %>
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Ages</h2>
+      <p class="text-sm text-gray-600 mt-1">Buyers see it on the ticket page, at checkout, with their tickets and in their emails, and the door sees it too.</p>
+    </div>
+  <% end %>
+  <div class="px-6 py-5 space-y-4">
   <div>
     <div class="grid <%= columns %> gap-2">
       <% choices.each do |value, title, hint| %>
@@ -36,4 +41,5 @@
     <%= text_field_tag "#{scope}[age_note]", note, id: "#{scope}_age_note", maxlength: 200,
           placeholder: local_assigns[:note_placeholder].presence || "Under 21 welcome with a parent", class: input_class %>
   </div>
+</div>
 </div>

@@ -11,27 +11,20 @@
   rows = [ TicketTier.new(position: 0) ] if rows.empty?
   bases = rows.select { |t| t.persisted? && !t.bundle? }.map { |t| [ t.name, t.id ] }
 %>
-<%= form_with model: listing, url: manage_ticket_listing_path(listing), method: :patch, class: "space-y-6",
-      data: { controller: "fieldset-toggle" } do |f| %>
+<%= form_with model: listing, url: manage_ticket_listing_path(listing), method: :patch do |f| %>
   <%= hidden_field_tag :section, "tickets" %>
-
-  <% if setup %>
-    <div class="pb-5 border-b border-gray-200 flex items-center justify-between gap-4">
-      <div>
-        <div class="text-sm font-medium text-gray-900">Set tickets and prices for this date only</div>
-        <div class="text-xs text-gray-600 mt-0.5">
-          Off, this date sells <%= possessive(listing.production.name) %> ticket types at its prices.
-          On, you change them here for this date, and changes to the production's won't reach it.
-          Switching off again goes back to the production's; tickets already sold keep theirs.
-        </div>
-      </div>
-      <%= render "shared/toggle_switch", form: f, field: :own_prices, checked: own,
-            data: { fieldset_toggle_target: "switch", action: "change->fieldset-toggle#toggle" } %>
-    </div>
-  <% end %>
-
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="fieldset-toggle" data-settings-card="tickets">
+    <% if setup %>
+      <%# The one override control (manage/ticketing/own_switch): off, the
+          production's types and prices show greyed; on, they're this date's. %>
+      <%= render "manage/ticketing/own_switch", title: "Ticket types and prices", follows: listing.production.name, followed: "its ticket types at its prices",
+            intro: "On, changes to the production's won't reach this date. Switching off again goes back to the production's; tickets already sold keep theirs.",
+            only: "this date", name: "ticket_listing[own_prices]", id: "ticket_listing_own_prices", checked: own %>
+    <% else %>
+      <%= render "shared/section_heading", title: "Ticket types and prices", intro: "This date's own." %>
+    <% end %>
   <fieldset <%= "disabled" unless own %> data-fieldset-toggle-target="fields"
-            class="min-w-0 space-y-3 disabled:opacity-50 disabled:pointer-events-none transition-opacity"
+            class="min-w-0 px-6 py-5 space-y-3 disabled:opacity-50 disabled:pointer-events-none transition-opacity"
             data-controller="reorderable nested-form" data-reorderable-handle-value=".tier-drag-handle" data-reorderable-auto-save-value="false">
     <div class="space-y-3" data-reorderable-target="list" data-nested-form-target="children">
       <%= f.fields_for :ticket_tiers, rows do |tf| %>
@@ -58,6 +51,8 @@
       <p class="text-xs text-gray-500">A type that has sold is kept for its buyers when you remove it. Leave seats blank for no limit.</p>
     </div>
   </fieldset>
-
-  <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
+  </div>
 <% end %>

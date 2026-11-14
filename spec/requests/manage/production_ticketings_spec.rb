@@ -158,21 +158,25 @@ RSpec.describe "Production ticketing", type: :request do
   # office's, unless the production says, unless the date says.
   it "lets a production, then a date, say how cash is taxed" do
     get manage_edit_production_ticketing_path(production, section: "sales")
-    expect(response.body).to include("Cash at the door", "Use your default (the same as any other sale)")
+    # The one override switch: off, the production follows the box office.
+    expect(response.body).to include("Cash at the door", "Off, it follows your box office:", "cash is the same as any other sale", "Set for Rising Stars only")
 
-    patch manage_update_production_ticketing_path(production, section: "sales"), params: { production_ticketing: { cash_tax: "included" } }
+    patch manage_update_production_ticketing_path(production, section: "sales"), params: { production_ticketing: { own_fees: "1", cash_tax: "included" } }
     expect(production.reload.production_ticketing.cash_tax).to eq("included")
     listing = production.production_ticketing.listings.first
     if listing
       expect(listing.effective_cash_tax).to eq("included")
-      patch manage_ticket_listing_path(listing), params: { section: "sales", ticket_listing: { cash_tax: "same" } }
+      patch manage_ticket_listing_path(listing), params: { section: "sales", ticket_listing: { own_fees: "1", cash_tax: "same", fee_mode: "org", max_per_order: "4" } }
       expect(listing.reload.effective_cash_tax).to eq("same")
-      patch manage_ticket_listing_path(listing), params: { section: "sales", ticket_listing: { cash_tax: "" } }
-      expect(listing.reload.effective_cash_tax).to eq("included")
+      expect([ listing.fee_mode, listing.max_per_order ]).to eq([ "org", 4 ])
+      # Switched off, every one of them follows the production again.
+      patch manage_ticket_listing_path(listing), params: { section: "sales", ticket_listing: { own_fees: "0" } }
+      expect(listing.reload.attributes.slice("fee_mode", "cash_tax", "max_per_order", "low_stock_threshold").values).to all(be_nil)
+      expect(listing.effective_cash_tax).to eq("included")
     end
 
-    patch manage_update_production_ticketing_path(production, section: "sales"), params: { production_ticketing: { cash_tax: "" } }
-    expect(production.reload.production_ticketing.cash_tax).to be_nil
+    patch manage_update_production_ticketing_path(production, section: "sales"), params: { production_ticketing: { own_fees: "0" } }
+    expect(production.reload.production_ticketing.attributes.slice("fee_mode", "cash_tax", "max_per_order").values).to all(be_nil)
   end
 
   it "saves seats, fees and words for every date, and production-wide codes" do
@@ -258,7 +262,7 @@ RSpec.describe "Production ticketing", type: :request do
 
       get manage_edit_ticket_listing_path(listing)
       expect(response.body).to include("Settings for #{listing.show.date_and_time.strftime('%a, %b %-d')}", "only.",
-                                       "uses Rising Stars&#39; ticketing", "Set tickets and prices for this date only",
+                                       "uses Rising Stars&#39; ticketing", "Off, it follows Rising Stars:", "Set for this date only",
                                        "<fieldset disabled", 'value="General"', "Discount codes")
 
       # The switch on, with a price of this date's own.
@@ -283,11 +287,26 @@ RSpec.describe "Production ticketing", type: :request do
       expect(listing.ticket_tiers.map(&:price_cents)).to eq([ 2_500 ])
     end
 
+    # One way to override (Tim, 2026-11-13): a box's switch. On, the date has
+    # its own; off, what the box covers is cleared and it follows again.
+    it "gives a date its own page words by the box's switch, and clears them when it's switched off" do
+      get manage_edit_ticket_listing_path(listing, section: "page")
+      doc = Nokogiri::HTML(response.body)
+      expect(doc.css("[data-own-switch]").map { |n| n["data-own-switch"] }).to eq(%w[ticket_listing_own_page ticket_listing_own_ages])
+      expect(doc.css("[data-own-switch]").map { |n| n.text.squish }).to all(include("Off, it follows Rising Stars", "Set for this date only"))
+
+      patch manage_ticket_listing_path(listing), params: { section: "page", ticket_listing: { own_page: "1", title: "Closing night", door_note: "Doors at 7" } }
+      expect(listing.reload.attributes.slice("title", "door_note")).to eq("title" => "Closing night", "door_note" => "Doors at 7")
+
+      patch manage_ticket_listing_path(listing), params: { section: "page", ticket_listing: { own_page: "0" } }
+      expect(listing.reload.attributes.slice("title", "door_note", "accessibility_note").values).to all(be_nil)
+    end
+
     it "keeps each tab's form to itself" do
       get manage_edit_ticket_listing_path(listing, section: "sales")
       expect(response.body).to include("When sales open and close", "Who pays the fees")
       get manage_edit_ticket_listing_path(listing, section: "codes")
-      expect(response.body).to include("good for this date")
+      expect(response.body).to include("This date's own codes", "Set for this date only")
     end
   end
 end

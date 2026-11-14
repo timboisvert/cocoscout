@@ -63,7 +63,9 @@ RSpec.describe "Ticketing ages", type: :request do
     expect(setup.reload.minimum_age).to eq(21)
 
     get manage_edit_ticket_listing_path(listing, section: "page")
-    expect(response.body).to include("Same as the production", "Ages 21 and over")
+    # The one override switch: off, the date follows the production's ages.
+    expect(response.body).to include("Off, it follows Boylesque:", "ages 21 and over", "Set for this date only")
+    expect(response.body).not_to include("Same as the production")
 
     patch manage_ticket_listing_path(listing), params: { section: "page", ticket_listing: { age_choice: "all", age_note: "" } }
     expect(listing.reload.minimum_age).to eq(0)
@@ -72,7 +74,7 @@ RSpec.describe "Ticketing ages", type: :request do
     patch manage_ticket_listing_path(listing), params: { section: "page", ticket_listing: { age_choice: "other", age_other: "16", age_note: "Under 16 with a parent" } }
     expect(fresh_listing.age_words).to eq("Ages 16 and over · Under 16 with a parent")
 
-    patch manage_ticket_listing_path(listing), params: { section: "page", ticket_listing: { age_choice: "production", age_note: "" } }
+    patch manage_ticket_listing_path(listing), params: { section: "page", ticket_listing: { own_ages: "0" } }
     expect(listing.reload.minimum_age).to be_nil
     expect(fresh_listing.effective_minimum_age).to eq(21)
 

@@ -3,20 +3,22 @@
     setup, production. %>
 <%
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
-  default_fee_words = ticketing_profile.default_fee_mode == "buyer" ? "Buyers pay" : "You absorb"
-  fee_options = [ [ "Use your default (#{default_fee_words})", "" ], [ "Buyers pay the fees", "buyer" ], [ "You absorb the fees", "org" ] ]
-  cash_words = { "same" => "the same as any other sale", "included" => "tax included in the price" }
-  cash_options = [ [ "Use your default (#{cash_words[ticketing_profile.cash_tax]})", "" ], [ "The same as any other sale", "same" ], [ "Tax is included in the price", "included" ] ]
+  fee_words = { "buyer" => "buyers pay the fees", "org" => "you absorb the fees" }
+  cash_words = { "same" => "cash is the same as any other sale", "included" => "cash has tax included in the price" }
+  # Its own fees, cash and order limit, or the box office's (one switch).
+  own_fees = setup.fee_mode.present? || setup.cash_tax.present? || setup.max_per_order.present?
+  box_office_words = "#{fee_words[ticketing_profile.default_fee_mode]}, #{cash_words[ticketing_profile.cash_tax]}, and up to #{ticketing_profile.default_max_per_order} tickets an order"
   tax = TicketTaxSetting.current(production.organization)
   poster = production.safe_poster_variant(:small)
   wide = production.wide_image.attached? ? production.safe_wide_image_variant : nil
 %>
 <%= form_with model: setup, scope: :production_ticketing, url: manage_update_production_ticketing_path(production, section: "sales"), method: :patch, class: "space-y-6" do |f| %>
-  <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
-    <div>
-      <h3 class="font-semibold text-gray-900">The ticket page</h3>
-      <p class="text-sm text-gray-600 mt-1">What buyers read. Blank means the production's own name and description.</p>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="page">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">The ticket page</h2>
+      <p class="text-sm text-gray-600 mt-1">What buyers read. A box left empty shows the production's own name and description.</p>
     </div>
+    <div class="px-6 py-5 space-y-4">
     <div>
       <label for="production_ticketing_title" class="block text-sm font-medium text-gray-700 mb-1.5">Title</label>
       <%= f.text_field :title, placeholder: production.name, class: input_class %>
@@ -53,25 +55,40 @@
         <%= link_to "Open Visual Assets", edit_manage_production_path(production, tab: 1), class: "font-medium text-pink-600 hover:text-pink-700" %>
       </p>
     </div>
+    </div>
   </div>
 
   <%= render "manage/production_ticketings/age_limit_fields", scope: "production_ticketing", age: setup.minimum_age, note: setup.age_note, input_class: input_class %>
 
-  <div class="bg-white border border-gray-200 rounded-lg p-5 space-y-4">
-    <h3 class="font-semibold text-gray-900">Orders and fees</h3>
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div>
-        <label for="production_ticketing_max_per_order" class="block text-sm font-medium text-gray-700 mb-1.5">Most tickets in one order</label>
-        <%= f.number_field :max_per_order, min: 1, max: 100, placeholder: ticketing_profile.default_max_per_order.to_s, class: input_class %>
+  <%# Fees, cash and the order limit: the box office's, or (switch on) this
+      production's own, by the one override control (manage/ticketing/own_switch). %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="fieldset-toggle" data-settings-card="fees">
+    <%= render "manage/ticketing/own_switch", title: "Fees, cash, and order limit", follows: "your box office", followed: box_office_words,
+          only: production.name, name: "production_ticketing[own_fees]", id: "production_ticketing_own_fees", checked: own_fees %>
+    <fieldset <%= "disabled" unless own_fees %> data-fieldset-toggle-target="fields" class="px-6 py-5 disabled:opacity-50">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+          <label for="production_ticketing_fee_mode" class="block text-sm font-medium text-gray-700 mb-1.5">Who pays the fees</label>
+          <%= f.select :fee_mode, options_for_select([ [ "Buyers pay the fees", "buyer" ], [ "You absorb the fees", "org" ] ], setup.fee_mode.presence || ticketing_profile.default_fee_mode), {}, class: input_class %>
+        </div>
+        <div>
+          <label for="production_ticketing_cash_tax" class="block text-sm font-medium text-gray-700 mb-1.5">Cash at the door</label>
+          <%= f.select :cash_tax, options_for_select([ [ "The same as any other sale", "same" ], [ "Tax is included in the price", "included" ] ], setup.cash_tax.presence || ticketing_profile.cash_tax), {}, class: input_class %>
+        </div>
+        <div>
+          <label for="production_ticketing_max_per_order" class="block text-sm font-medium text-gray-700 mb-1.5">Most tickets in one order</label>
+          <%= f.number_field :max_per_order, min: 1, max: 100, value: setup.max_per_order || ticketing_profile.default_max_per_order, class: input_class %>
+        </div>
       </div>
-      <div>
-        <label for="production_ticketing_fee_mode" class="block text-sm font-medium text-gray-700 mb-1.5">Who pays the fees</label>
-        <%= f.select :fee_mode, options_for_select(fee_options, setup.fee_mode.to_s), {}, class: input_class %>
-      </div>
-      <div>
-        <label for="production_ticketing_cash_tax" class="block text-sm font-medium text-gray-700 mb-1.5">Cash at the door</label>
-        <%= f.select :cash_tax, options_for_select(cash_options, setup.cash_tax.to_s), {}, class: input_class %>
-      </div>
+    </fieldset>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="low-seats">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Low seats and tax</h2>
+      <p class="text-sm text-gray-600 mt-1">The "Only N left" note appears beside a ticket type on your ticket page once that few seats remain, for example "Only 3 left". You also get one email when a date gets that low.</p>
+    </div>
+    <div class="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
         <label for="production_ticketing_low_stock_threshold" class="block text-sm font-medium text-gray-700 mb-1.5">Show an "Only N left" note</label>
         <%= f.select :low_stock_threshold, options_for_select(low_stock_choices(setup.low_stock_threshold), setup.low_stock_threshold || TicketListing::LOW_STOCK_DEFAULT), {}, class: input_class %>
@@ -83,7 +100,6 @@
         </p>
       </div>
     </div>
-    <p class="text-xs text-gray-500">The "Only N left" note appears beside a ticket type on your ticket page once that few seats remain, for example "Only 3 left". You also get one email when a date gets that low.</p>
   </div>
 
   <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>

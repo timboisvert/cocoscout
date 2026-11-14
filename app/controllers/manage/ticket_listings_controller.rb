@@ -14,7 +14,7 @@ module Manage
 
     GUEST_FILTERS = %w[all waiting in comps refunded].freeze
     # A date's Settings, a tab each with its own Save.
-    SETTINGS = { "tickets" => "Tickets", "products" => "Products", "sales" => "Sales", "page" => "Page", "codes" => "Discount codes", "comps" => "Comps" }.freeze
+    SETTINGS = { "tickets" => "Tickets", "products" => "Products", "sales" => "Sales", "page" => "Page", "comps" => "Comps", "codes" => "Discount codes" }.freeze
 
     before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code destroy_code export_codes import_codes cancel
                                            change_review tell_change mark_change_told outside_sales tier_availability]
@@ -353,7 +353,16 @@ module Manage
       permitted[:max_per_order] = permitted[:max_per_order].presence if permitted.key?(:max_per_order)
       permitted[:low_stock_threshold] = permitted[:low_stock_threshold].presence if permitted.key?(:low_stock_threshold)
       # The Page tab's ages: the production's, all ages here, or an age.
-      if (choice = params.dig(:ticket_listing, :age_choice))
+      # The one override switch on each box (manage/ticketing/own_switch): off,
+      # the date follows its production again, so what the box covers is
+      # cleared. (A disabled box sends none of its fields.)
+      raw = params[:ticket_listing]
+      permitted.merge!(fee_mode: nil, cash_tax: nil, max_per_order: nil, low_stock_threshold: nil) if raw[:own_fees] == "0"
+      permitted.merge!(title: nil, description: nil, door_note: nil, accessibility_note: nil) if raw[:own_page] == "0"
+      if raw[:own_ages] == "0"
+        permitted.merge!(minimum_age: nil, age_note: nil)
+      elsif (choice = params.dig(:ticket_listing, :age_choice))
+        permitted[:age_note] = raw[:age_note].to_s.strip.presence if raw.key?(:age_note)
         permitted[:minimum_age] = AgeLimit.value_for(choice, params.dig(:ticket_listing, :age_other), inherit: true)
       end
       if permitted[:ticket_tiers_attributes]

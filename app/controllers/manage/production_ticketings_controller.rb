@@ -7,8 +7,9 @@ module Manage
   # Which dates are included works the way sign-ups' repeating events do: all
   # performances, some event types, or dates picked by hand.
   class ProductionTicketingsController < Manage::TicketingBaseController
-    SECTIONS = { "dates" => "Dates", "tickets" => "Tickets", "products" => "Products", "sales" => "Sales & page", "refunds" => "Refunds",
-                 "codes" => "Discount codes", "comps" => "Comps" }.freeze
+    # Comps sits left of Refunds here too, as on the box office's tabs (Tim, 2026-11-13).
+    SECTIONS = { "dates" => "Dates", "tickets" => "Tickets", "products" => "Products", "sales" => "Sales and page", "comps" => "Comps",
+                 "refunds" => "Refunds", "codes" => "Discount codes" }.freeze
     CLOSE_CHOICES = [ [ "At showtime", 0 ], [ "15 minutes before", 15 ], [ "30 minutes before", 30 ], [ "1 hour before", 60 ],
                       [ "2 hours before", 120 ], [ "The day before", 1440 ] ].freeze
 
@@ -165,6 +166,9 @@ module Manage
 
         permitted[:minimum_age] = age
       end
+      # The one switch over fees, cash and the order limit: off, the box
+      # office's (all three cleared); on, the three as chosen.
+      permitted.merge!(fee_mode: nil, cash_tax: nil, max_per_order: nil) if raw[:own_fees] == "0"
       unless @setup.update(permitted)
         return redirect_to(section_path("sales"), alert: @setup.errors.full_messages.first.sub(/\APage key/, "The address"))
       end

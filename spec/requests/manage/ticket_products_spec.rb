@@ -58,7 +58,7 @@ RSpec.describe "Ticket products", type: :request do
     setup = ProductionTicketing.for(production)
 
     get manage_edit_production_ticketing_path(production, section: "products")
-    expect(response.body).to include("can add these at checkout", "Set prices for this production only", "Sell them at the door too", "Champagne bottle", "Program")
+    expect(response.body).to include("can add the ones you tick", "Set for #{production.name} only", "Off, it follows each product:", "Sell them at the door too", "Champagne bottle", "Program")
 
     # Standard prices: the switch is off, so typed prices are ignored.
     patch manage_update_production_ticketing_path(production, section: "products"),

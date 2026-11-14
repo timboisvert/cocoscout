@@ -1,7 +1,7 @@
-<%# This date's discount codes on the follow-or-own pattern (Tim,
-    2026-10-17): a strip names the production's codes, which work on this
-    date; the switch gives the date its own instead (TicketListing#own_codes),
-    and the card below lists them, with a pink modal to add one.
+<%# This date's discount codes: the production's work on it, or (switch on)
+    it has its own instead (TicketListing#own_codes), listed below with a
+    pink modal to add one. The one override control
+    (manage/ticketing/own_switch); the switch saves as it's flipped.
     Locals: listing, setup. %>
 <%
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
@@ -11,41 +11,34 @@
   followed = production_codes.any? ? production_codes.map { |c| "#{c.code} (#{c.off_words})" }.to_sentence : "none yet"
   modal_id = "add-code-modal"
 %>
-<div class="space-y-4" data-controller="fieldset-toggle">
-  <div class="rounded-lg border border-pink-200 bg-pink-50 px-5 py-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-    <p class="text-sm text-pink-900 min-w-0 flex-1">
-      <span class="font-medium"><%= possessive(listing.production.name) %> codes:</span> <%= followed %>. Switch on to give this date its own instead.
-    </p>
-    <%= form_with url: manage_ticket_listing_path(listing, section: "codes"), method: :patch, data: { controller: "auto-submit" } do %>
-      <label class="flex items-center gap-3 text-sm font-medium text-gray-900 whitespace-nowrap">
-        This date's own codes
-        <%= render "shared/toggle_switch", name: "ticket_listing[own_codes]", checked: own, hidden_false: true,
-              id: "ticket_listing_own_codes", aria_label: "This date's own discount codes",
-              data: { fieldset_toggle_target: "switch", action: "change->fieldset-toggle#toggle change->auto-submit#submit" } %>
-      </label>
-    <% end %>
-  </div>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="fieldset-toggle" data-settings-card="codes">
+  <%= form_with url: manage_ticket_listing_path(listing, section: "codes"), method: :patch, data: { controller: "auto-submit" } do %>
+    <%= render "manage/ticketing/own_switch", title: "Discount codes", follows: listing.production.name, followed: "its codes work on this date (#{followed})",
+          intro: "Codes buyers can enter at checkout.",
+          only: "this date", name: "ticket_listing[own_codes]", id: "ticket_listing_own_codes", checked: own,
+          data: { action: "change->auto-submit#submit" } %>
+  <% end %>
   <fieldset <%= "disabled" unless own %> data-fieldset-toggle-target="fields" class="disabled:opacity-50">
-    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <%= render "shared/section_heading", title: "Discount codes",
-            intro: "Codes buyers can enter at checkout, good for this date (#{ticket_listing_date_label(listing)}) only." do %>
+    <div class="px-6 py-3 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+      <span class="text-sm font-medium text-gray-900">This date's own codes <span class="font-normal text-gray-500">· good for <%= ticket_listing_date_label(listing) %> only</span></span>
+      <span class="flex items-center gap-2">
         <%= render "shared/button", text: "Add code", variant: "primary", size: "small", type: :button,
               data: { controller: "modal", action: "click->modal#open", modal_id: modal_id } %>
         <%= render "shared/action_menu", id: "codes-actions", title: "Discount codes", items: [
               { text: "Export codes", path: "#", icon: "M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2", data: { controller: "modal", action: "click->modal#open click->dropdown#close", modal_id: "export-codes-modal" } },
               { text: "Import codes", path: "#", icon: "M12 15V3m0 0L8 7m4-4l4 4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2", data: { controller: "modal", action: "click->modal#open click->dropdown#close", modal_id: "import-codes-modal" } }
             ] %>
-      <% end %>
-      <% if codes.any? %>
-        <ul class="divide-y divide-gray-100">
-          <% codes.each do |code| %>
-            <%= render "manage/ticketing/code_row", code: code, share_form: manage_ticket_listing_code_path(listing, code_id: code.id), remove_modal_id: "confirm-remove-code-#{code.id}" %>
-          <% end %>
-        </ul>
-      <% else %>
-        <p class="px-6 py-5 text-sm text-gray-500">No codes of its own yet.</p>
-      <% end %>
+      </span>
     </div>
+    <% if codes.any? %>
+      <ul class="divide-y divide-gray-100">
+        <% codes.each do |code| %>
+          <%= render "manage/ticketing/code_row", code: code, share_form: manage_ticket_listing_code_path(listing, code_id: code.id), remove_modal_id: "confirm-remove-code-#{code.id}" %>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="px-6 py-5 text-sm text-gray-500">No codes of its own yet.</p>
+    <% end %>
   </fieldset>
 </div>
 <%= render "manage/ticketing/code_modal", id: modal_id, url: manage_ticket_listing_codes_path(listing), what: "this date only", input_class: input_class %>
