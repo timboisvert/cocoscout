@@ -164,7 +164,7 @@ RSpec.describe "Manage ticket listings", type: :request do
 
     it "edits prices in place: changes, additions, and removing an unsold one" do
       vip = listing.ticket_tiers.create!(name: "VIP", price_cents: 3_500)
-      patch manage_ticket_listing_path(listing), params: { ticket_listing: {
+      patch manage_ticket_listing_path(listing), params: { section: "tickets", ticket_listing: {
         fee_mode: "org",
         ticket_tiers_attributes: {
           "0" => { id: general.id, name: "General", price: "22.50", quantity: "50" },

@@ -14,7 +14,11 @@ module Manage
 
     GUEST_FILTERS = %w[all waiting in comps refunded].freeze
     # A date's Settings, a tab each with its own Save.
-    SETTINGS = { "tickets" => "Tickets", "products" => "Products", "sales" => "Sales", "page" => "Page", "comps" => "Comps", "codes" => "Discount codes" }.freeze
+    # A date's tabs, laid out as its production's are (Tim, 2026-11-13).
+    # "sales" is Basic info (when it sells, the order limit) and "page" the
+    # ticket page; the keys stay as they were so old links keep working.
+    SETTINGS = { "sales" => "Basic info", "tickets" => "Tickets", "fees" => "Fees and taxes", "comps" => "Comps", "refunds" => "Refunds",
+                 "codes" => "Discount codes", "products" => "Products", "page" => "Ticket page" }.freeze
 
     before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code destroy_code export_codes import_codes cancel
                                            change_review tell_change mark_change_told outside_sales tier_availability]
@@ -118,6 +122,7 @@ module Manage
     def update
       return update_comps if @section == "comps"
       return update_own_codes if @section == "codes"
+      return update_refunds if @section == "refunds"
 
       attrs = listing_params
       notice = "Saved."
@@ -199,6 +204,21 @@ module Manage
     end
 
     # The Codes tab's switch: this date's own codes instead of the production's.
+    # The Refunds tab: this date's own refund policy (the override on), or
+    # the one above it (off: every field cleared), as a production's does.
+    def update_refunds
+      raw = params.require(:ticket_listing)
+      attrs = if raw[:own_refund_policy] == "1"
+        chosen = RefundPolicy.attributes_for(RefundPolicy.choice_from(raw), raw[:refund_days]) || {}
+        chosen.reverse_merge(refund_window_hours: nil).merge(refund_fees: raw[:refund_fees] == "1", refund_policy_note: raw[:refund_policy_note].to_s.strip.presence)
+      else
+        { refund_policy: nil, refund_window_hours: nil, refund_fees: nil, refund_policy_note: nil }
+      end
+      @listing.update!(attrs)
+      notice = @listing.refund_policy.present? ? "Saved. This date has its own refund policy." : "Saved. This date follows the refund policy above it."
+      redirect_to settings_path("refunds"), notice: notice
+    end
+
     def update_own_codes
       own = params.dig(:ticket_listing, :own_codes) == "1"
       @listing.update!(own_codes: own)
@@ -325,8 +345,8 @@ module Manage
     end
 
     def set_settings_section
-      @section = params[:section].presence || "tickets"
-      redirect_to settings_path("tickets") unless SETTINGS.key?(@section)
+      @section = params[:section].presence || "sales"
+      redirect_to settings_path("sales") unless SETTINGS.key?(@section)
     end
 
     def settings_path(section)

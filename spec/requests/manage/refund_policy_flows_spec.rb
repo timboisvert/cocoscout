@@ -80,6 +80,33 @@ RSpec.describe "Refund policy", type: :request do
     expect(RefundPolicy.for(TicketListing.find(listing.id)).kind).to eq("window")
   end
 
+  # A date can have its own again (Tim, 2026-11-13: something a date
+  # couldn't override before), by the same override line, linked to the
+  # settings it overrides.
+  it "lets a date set its own, over its production's or the box office's, and go back" do
+    setup = ProductionTicketing.for(production)
+    sign_in
+
+    get manage_edit_ticket_listing_path(listing, section: "refunds")
+    expect(response.body).to include("Refund policy", "your box office&#39;s refund policy settings</a>", "for this date",
+                                     manage_ticketing_settings_section_path(section: "refunds"))
+
+    patch manage_ticket_listing_path(listing, section: "refunds"), params: { ticket_listing: { own_refund_policy: "1", refund_choice: "none", refund_fees: "0" } }
+    expect(flash[:notice]).to eq("Saved. This date has its own refund policy.")
+    expect(RefundPolicy.for(TicketListing.find(listing.id)).kind).to eq("none")
+    # Its production's other dates are untouched.
+    expect(RefundPolicy.of_setup(setup.reload, profile).kind).to eq("window")
+
+    # With a production policy above it, the line names the production.
+    setup.update!(refund_policy: "case_by_case")
+    get manage_edit_ticket_listing_path(listing, section: "refunds")
+    expect(response.body).to include("Boylesque&#39;s refund policy settings</a>", manage_edit_production_ticketing_path(production, section: "refunds"))
+
+    patch manage_ticket_listing_path(listing, section: "refunds"), params: { ticket_listing: { own_refund_policy: "0" } }
+    expect(TicketListing.find(listing.id).attributes.slice("refund_policy", "refund_window_hours", "refund_fees", "refund_policy_note").values).to all(be_nil)
+    expect(RefundPolicy.for(TicketListing.find(listing.id)).kind).to eq("case_by_case")
+  end
+
   describe "the check" do
     it "is within the window until it ends, then outside, and holds the order to the more generous policy" do
       order = travel_to(show_at - 3.days) { sold }

@@ -42,6 +42,12 @@ class TicketListing < ApplicationRecord
   validates :fee_mode, inclusion: { in: TicketingProfile::FEE_MODES }, allow_nil: true
   validates :cash_tax, inclusion: { in: TicketingProfile::CASH_TAXES }, allow_nil: true
   validates :price_display, inclusion: { in: TicketingProfile::PRICE_DISPLAYS }, allow_nil: true
+  # Its own refund policy, or (blank) its production's, then the box
+  # office's (RefundPolicy.for).
+  normalizes :refund_policy, with: ->(value) { value.to_s.strip.presence }
+  validates :refund_policy, inclusion: { in: RefundPolicy::KINDS }, allow_nil: true
+  validates :refund_window_hours, numericality: { only_integer: true, in: 0..RefundPolicy::MAX_HOURS }, allow_nil: true
+  validates :refund_policy_note, length: { maximum: RefundPolicy::NOTE_LIMIT }
   validates :max_per_order, numericality: { only_integer: true, in: 1..100 }, allow_nil: true
   # Blank follows the production; 0 is all ages for this date (AgeLimit).
   validates :minimum_age, numericality: { only_integer: true, in: 0..AgeLimit::AGES.max }, allow_nil: true

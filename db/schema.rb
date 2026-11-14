@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_13_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_13_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -4223,6 +4223,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_140000) do
     t.string "cash_tax"
     t.bigint "organization_id", null: false
     t.string "price_display"
+    t.boolean "refund_fees"
+    t.string "refund_policy"
+    t.text "refund_policy_note"
+    t.integer "refund_window_hours"
     t.bigint "show_id", null: false
     t.bigint "production_id", null: false
     t.bigint "contract_id"

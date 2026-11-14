@@ -279,7 +279,14 @@ RSpec.describe "Production ticketing", type: :request do
       get manage_ticket_listing_path(listing)
       expect(response.body).to include(manage_production_ticketing_path(production), ">Rising Stars<")
 
+      # A date's tabs run as its production's do, and open on Basic info.
       get manage_edit_ticket_listing_path(listing)
+      tabs = Nokogiri::HTML(response.body).css("nav[aria-label='Settings sections'] a").map { |a| a.text.squish }
+      expect(tabs).to eq([ "Basic info", "Tickets", "Fees and taxes", "Comps", "Refunds", "Discount codes", "Products", "Ticket page" ])
+      expect(tabs).to eq(Manage::ProductionTicketingsController::SECTIONS.values)
+      expect(response.body).to include("When sales open and close")
+
+      get manage_edit_ticket_listing_path(listing, section: "tickets")
       expect(response.body).to include("Settings for #{listing.show.date_and_time.strftime('%a, %b %-d')}", "only.",
                                        "uses Rising Stars&#39; ticketing", "Rising Stars&#39; ticket types and prices</a>", "for this date",
                                        "<fieldset disabled", 'value="General"', "Discount codes")
@@ -327,7 +334,10 @@ RSpec.describe "Production ticketing", type: :request do
 
     it "keeps each tab's form to itself" do
       get manage_edit_ticket_listing_path(listing, section: "sales")
-      expect(response.body).to include("When sales open and close", "Who pays the fees")
+      expect(response.body).to include("When sales open and close", "Most tickets in one order")
+      expect(response.body).not_to include("Who pays our 50¢")
+      get manage_edit_ticket_listing_path(listing, section: "fees")
+      expect(response.body).to include("Fees, prices, and cash", "Who pays our 50¢", "How prices are shown", "Cash at the door", "Tax on tickets")
       get manage_edit_ticket_listing_path(listing, section: "codes")
       expect(response.body).to include("This date's own codes", "Rising Stars&#39; discount codes</a>")
     end

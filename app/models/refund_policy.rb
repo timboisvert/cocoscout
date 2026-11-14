@@ -7,8 +7,8 @@
 # the organization cancels is always refunded in full, whatever this says.
 #
 # The box office sets it (TicketingProfile); a production can set its own
-# (ProductionTicketing, blank fields follow the box office), and its dates
-# follow it. Each order keeps the policy it was sold under (to_snapshot);
+# (ProductionTicketing, blank fields follow the box office); its dates
+# follow it, and a date can set its own again (TicketListing). Each order keeps the policy it was sold under (to_snapshot);
 # TicketOrderRefund.policy_check holds a refund to the more generous of that
 # and today's.
 class RefundPolicy
@@ -81,8 +81,20 @@ class RefundPolicy
     @contact = contact
   end
 
-  # The policy a date sells under: its production's, else the box office's.
+  # The policy a date sells under: its own when it has one (blank fields
+  # follow the one above), else its production's, else the box office's.
   def self.for(listing)
+    profile = TicketingProfile.for(listing.organization)
+    above = of_setup(listing.production_ticketing, profile)
+    return above unless listing.refund_policy.present?
+
+    new(kind: listing.refund_policy, hours: listing.refund_window_hours || above.hours,
+        fees: listing.refund_fees.nil? ? above.fees : listing.refund_fees, note: listing.refund_policy_note,
+        contact: above.contact)
+  end
+
+  # What a date follows while it has none of its own.
+  def self.above(listing)
     of_setup(listing.production_ticketing, TicketingProfile.for(listing.organization))
   end
 

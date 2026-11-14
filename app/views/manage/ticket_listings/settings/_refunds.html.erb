@@ -1,0 +1,26 @@
+<%# This date's own refund policy, or (override off) the one above it: its
+    production's own, else the box office's (RefundPolicy.for). The one
+    override control (manage/ticketing/own_switch). Locals: listing, setup. %>
+<%
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  own = listing.refund_policy.present?
+  from_production = setup&.refund_policy.present?
+  policy = RefundPolicy.for(listing)
+%>
+<%= form_with url: manage_ticket_listing_path(listing, section: "refunds"), method: :patch do %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="fieldset-toggle radio-card" data-settings-card="refunds">
+    <%= render "manage/ticketing/own_switch", title: "Refund policy", follows: (from_production ? listing.production.name : "your box office"),
+          settings_path: (from_production ? manage_edit_production_ticketing_path(listing.production, section: "refunds") : manage_ticketing_settings_section_path(section: "refunds")),
+          intro: "Buyers see it on the ticket page, at checkout and in their emails. An order keeps the policy it was bought under.",
+          only: "this date", name: "ticket_listing[own_refund_policy]", id: "ticket_listing_own_refund_policy", checked: own %>
+    <div class="px-6 py-5 space-y-4">
+      <fieldset <%= "disabled" unless own %> data-fieldset-toggle-target="fields" class="space-y-3 disabled:opacity-50">
+        <%= render "manage/ticketing_settings/refund_policy_fields", scope: "ticket_listing", policy: policy, input_class: input_class %>
+      </fieldset>
+      <p class="text-sm text-gray-600 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2"><span class="font-medium text-gray-900">Buyers see:</span> <%= policy.words %></p>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
+  </div>
+<% end %>

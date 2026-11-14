@@ -21,10 +21,14 @@
   banner: banner
 } do %>
   <% case @section %>
+  <% when "tickets" %>
+    <%= render "manage/ticket_listings/settings/tickets", listing: @listing, setup: setup %>
+  <% when "fees" %>
+    <%= render "manage/ticket_listings/settings/fees", listing: @listing, setup: setup %>
+  <% when "refunds" %>
+    <%= render "manage/ticket_listings/settings/refunds", listing: @listing, setup: setup %>
   <% when "products" %>
     <%= render "manage/ticket_listings/settings/products", listing: @listing, setup: setup %>
-  <% when "sales" %>
-    <%= render "manage/ticket_listings/settings/sales", listing: @listing, setup: setup %>
   <% when "page" %>
     <%= render "manage/ticket_listings/settings/page", listing: @listing, setup: setup %>
   <% when "codes" %>
@@ -32,6 +36,6 @@
   <% when "comps" %>
     <%= render "manage/ticket_listings/settings/comps", listing: @listing, setup: setup %>
   <% else %>
-    <%= render "manage/ticket_listings/settings/tickets", listing: @listing, setup: setup %>
+    <%= render "manage/ticket_listings/settings/sales", listing: @listing, setup: setup %>
   <% end %>
 <% end %>
