@@ -3,9 +3,9 @@
 module ApplicationHelper
   CANONICAL_HOST = "https://cocoscout.com"
 
-  # A show today says "Tonight" from 5 PM, when evening starts, and "Today"
-  # before (Tim, 2026-11-14: an 11 AM matinee said "Tonight").
-  EVENING_STARTS_AT_HOUR = 17
+  # A show today says "Tonight" from 6 PM and "Today"
+  # before (Tim, 2026-11-14: an 11 AM matinee said "Tonight"; he set 6 PM).
+  EVENING_STARTS_AT_HOUR = 18
 
   def today_or_tonight(time)
     time.hour >= EVENING_STARTS_AT_HOUR ? "Tonight" : "Today"
