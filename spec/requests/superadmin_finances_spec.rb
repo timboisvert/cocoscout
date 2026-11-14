@@ -229,6 +229,16 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
       expect(response.body).not_to include("Ended Pro Players")
     end
 
+    it "says a part-month Pro on the next bill is Pro, not usage" do
+      travel_to Time.zone.local(2026, 11, 14, 12) do
+        organization.update!(pro_monthly_from: Time.zone.local(2026, 11, 13, 9))
+        get finances_org_detail_path(org_id: organization.id)
+        expect(response.body).to include("0 staff members and 0 others paid",
+                                         "Next month's bill so far: $17.40, Pro $17.40 for part of the month and usage $0.00")
+        expect(response.body).not_to include("next month's usage bill")
+      end
+    end
+
     it "shows plans, comps and bills" do
       organization.update!(comped_indefinitely: true, comped_usage: false, stripe_customer_id: "cus_1")
       BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_1", kind: "usage", status: "open", amount_due_cents: 3_500,
