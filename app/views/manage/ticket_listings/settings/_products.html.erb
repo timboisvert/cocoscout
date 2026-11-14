@@ -19,7 +19,7 @@
       <div class="px-6 py-4 flex items-center justify-between gap-4">
         <div>
           <div class="text-sm font-medium text-gray-900">Sell products for this date</div>
-          <div class="text-xs text-gray-600 mt-0.5">Off, buyers of <%= ticket_listing_date_label(listing) %> see tickets only, online and at the door. Orders that already bought a product keep it.</div>
+          <div class="text-xs text-gray-600 mt-0.5">Turn this off and buyers of <%= ticket_listing_date_label(listing) %> see tickets only, online and at the door. Orders that already bought a product keep it.</div>
         </div>
         <%= render "shared/toggle_switch", form: f, field: :sell_products %>
       </div>

@@ -7,7 +7,7 @@
     Locals: scope (the param prefix), age (what's stored), note, input_class,
     inherit (a date: true), inherited_age (the production's), note_placeholder,
     bare (true inside a box that already has its heading: a date's own ages,
-    under the one override switch). %>
+    under the one override switch), save (true: a Save in the box's foot). %>
 <%
   inherit = local_assigns[:inherit] || false
   choice = AgeLimit.choice_for(age, inherit: inherit)
@@ -42,4 +42,9 @@
           placeholder: local_assigns[:note_placeholder].presence || "Under 21 welcome with a parent", class: input_class %>
   </div>
 </div>
+<% if local_assigns[:save] %>
+  <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+    <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+  </div>
+<% end %>
 </div>

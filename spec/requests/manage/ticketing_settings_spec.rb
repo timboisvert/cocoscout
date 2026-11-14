@@ -40,16 +40,20 @@ RSpec.describe "Manage ticketing settings", type: :request do
       get manage_ticketing_path
       expect(response).to have_http_status(:ok)
 
+      # Selling tickets: the switch itself, and Save.
       get manage_ticketing_settings_section_path(section: "box_office")
-      expect(response.body).to include("Open your box office?", manage_ticketing_open_box_office_path)
+      expect(response.body).to include("Selling tickets", "Your box office is closed.", "ticketing_profile[enabled]")
+      expect(response.body).not_to include("data-live-dot")
       expect(TicketingProfile.for(org).enabled?).to be(false)
       # A Pro organization's money already pools, box office open or not.
       expect(CocoScoutBalance.pooled?(org)).to be(true)
 
-      post manage_ticketing_open_box_office_path
-      expect(response).to redirect_to(manage_ticketing_path)
+      # Switching it on and saving opens it; the box then shows it's live.
+      patch manage_ticketing_settings_path, params: { ticketing_profile: { enabled: "1" } }
       expect(TicketingProfile.for(org).reload.enabled?).to be(true)
       expect(CocoScoutBalance.pooled?(org)).to be(true)
+      get manage_ticketing_settings_section_path(section: "box_office")
+      expect(response.body).to include("data-live-dot", "Your box office is open.")
 
       # Closing it again isn't theirs to do.
       patch manage_ticketing_settings_path, params: { ticketing_profile: { enabled: "0", default_fee_mode: "buyer" } }

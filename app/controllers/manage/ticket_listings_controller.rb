@@ -344,12 +344,13 @@ module Manage
 
     def listing_params
       permitted = params.require(:ticket_listing).permit(
-        :title, :description, :on_sale_at, :off_sale_at, :max_per_order, :fee_mode, :cash_tax, :low_stock_threshold,
+        :title, :description, :on_sale_at, :off_sale_at, :max_per_order, :fee_mode, :cash_tax, :price_display, :low_stock_threshold,
         :door_note, :age_note, :accessibility_note, :sell_products,
         ticket_tiers_attributes: %i[id name price quantity admits bundle_of_tier_id description position sells_at _destroy]
       )
       permitted[:fee_mode] = permitted[:fee_mode].presence if permitted.key?(:fee_mode)
       permitted[:cash_tax] = permitted[:cash_tax].presence if permitted.key?(:cash_tax)
+      permitted[:price_display] = permitted[:price_display].presence if permitted.key?(:price_display)
       permitted[:max_per_order] = permitted[:max_per_order].presence if permitted.key?(:max_per_order)
       permitted[:low_stock_threshold] = permitted[:low_stock_threshold].presence if permitted.key?(:low_stock_threshold)
       # The Page tab's ages: the production's, all ages here, or an age.
@@ -357,7 +358,8 @@ module Manage
       # the date follows its production again, so what the box covers is
       # cleared. (A disabled box sends none of its fields.)
       raw = params[:ticket_listing]
-      permitted.merge!(fee_mode: nil, cash_tax: nil, max_per_order: nil, low_stock_threshold: nil) if raw[:own_fees] == "0"
+      permitted.merge!(fee_mode: nil, cash_tax: nil, price_display: nil) if raw[:own_fees] == "0"
+      permitted.merge!(max_per_order: nil, low_stock_threshold: nil) if raw[:own_orders] == "0"
       permitted.merge!(title: nil, description: nil, door_note: nil, accessibility_note: nil) if raw[:own_page] == "0"
       if raw[:own_ages] == "0"
         permitted.merge!(minimum_age: nil, age_note: nil)

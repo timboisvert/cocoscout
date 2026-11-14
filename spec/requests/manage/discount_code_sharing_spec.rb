@@ -56,7 +56,7 @@ RSpec.describe "Discount codes shared with the team and the cast", type: :reques
     expect(response.body).to include('id="add-code-modal"', "Add a discount code", "every date of Stargazers", "EVERYONE", 'data-modal-id="add-code-modal"')
 
     get manage_edit_ticket_listing_path(listing, section: "codes")
-    expect(response.body).to include("Off, it follows Stargazers:", "EVERYONE (20% off)", "Set for this date only", "This date's own codes", "No codes of its own yet", "<fieldset disabled", 'id="add-code-modal"')
+    expect(response.body).to include("Stargazers&#39; discount codes</a>", "EVERYONE (20% off)", "for this date", "This date's own codes", "No codes of its own yet", "<fieldset disabled", 'id="add-code-modal"')
     expect(TicketCheckout.find_discount(listing, "EVERYONE")).to be_present
 
     patch manage_ticket_listing_path(listing, section: "codes"), params: { ticket_listing: { own_codes: "1" } }

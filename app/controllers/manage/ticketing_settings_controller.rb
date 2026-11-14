@@ -128,7 +128,9 @@ module Manage
                             :reminder_days_before, :attach_pdf_tickets, :enabled)
       # Closing a box office (or reopening it from here) is a superadmin's call;
       # managers open theirs with open_box_office.
-      attrs.delete(:enabled) unless Current.user.superadmin?
+      # (The Selling tickets switch: a manager can switch a closed one on.)
+      opening = attrs[:enabled] == "1" && !ticketing_profile.enabled?
+      attrs.delete(:enabled) unless Current.user.superadmin? || opening
 
       if ticketing_profile.update(attrs)
         # The fees box sits on the Fees and taxes tab and comes back to it.

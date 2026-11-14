@@ -59,7 +59,7 @@ RSpec.describe "Ticketing settings: Comps", type: :request do
 
     get manage_edit_production_ticketing_path(production, section: "comps")
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Off, it follows your box office:", "comps on · no limit per date · production team managers may give any of them", "Set for Stargazers only")
+    expect(response.body).to include("Override", "your box office&#39;s comps settings</a>", "for Stargazers", manage_ticketing_settings_section_path(section: "comps"))
 
     patch manage_update_production_ticketing_path(production, section: "comps"), params: { production_ticketing: {
       own_comps: "1", comps_enabled: "1", comps_limit: "per_performer", team_comps: "1", team_comps_limit: "per_performer"
@@ -72,7 +72,7 @@ RSpec.describe "Ticketing settings: Comps", type: :request do
 
     get manage_edit_ticket_listing_path(listing, section: "comps")
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Off, it follows Stargazers:", "one per performer cast", "Set for this date only")
+    expect(response.body).to include("Stargazers&#39; comps settings</a>", "for this date", manage_edit_production_ticketing_path(production, section: "comps"))
 
     patch manage_ticket_listing_path(listing, section: "comps"), params: { ticket_listing: { own_comps: "1", comps_enabled: "0" } }
     expect(response).to redirect_to(manage_edit_ticket_listing_path(listing, section: "comps"))

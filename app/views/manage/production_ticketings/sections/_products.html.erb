@@ -29,8 +29,7 @@
         (manage/ticketing/own_switch): off, each sells at its standard price
         and follows its own revenue rule; on, both are set here. %>
     <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="fieldset-toggle" data-settings-card="products">
-      <%= render "manage/ticketing/own_switch", title: "Products at checkout", follows: "each product",
-            followed: "its standard price, counted as ticket revenue only if the product says so",
+      <%= render "manage/ticketing/own_switch", title: "Products at checkout", what: "standard price", follows: "each product", settings_path: manage_ticket_products_path,
             intro: "After picking their tickets, buyers of any date of #{production.name} can add the ones you tick. What they buy shows on their order, on the guest list and at the door.",
             only: production.name, name: "production_ticketing[own_product_prices]", id: "production_ticketing_own_product_prices", checked: own %>
       <ul class="divide-y divide-gray-100">
@@ -72,7 +71,7 @@
         <div>
           <div class="text-sm font-medium text-gray-900">Sell them at the door too</div>
           <div class="text-xs text-gray-600 mt-0.5">
-            Off, products are sold online only, ahead of the show. On, the door can add them to a cash or card sale as well.
+            Products are sold online only, ahead of the show, unless you turn this on. Then the door can add them to a cash or card sale as well.
           </div>
         </div>
         <%= render "shared/toggle_switch", form: f, field: :products_at_door, checked: setup.products_at_door %>

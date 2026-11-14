@@ -12,7 +12,9 @@
   inherited_max = setup&.max_per_order || ticketing_profile.default_max_per_order
   inherited_low = setup&.low_stock_threshold || TicketListing::LOW_STOCK_DEFAULT
   low_words = inherited_low.zero? ? "no low seats note" : "a note at #{inherited_low} seats left"
-  own_fees = listing.fee_mode.present? || listing.cash_tax.present? || listing.max_per_order.present? || !listing.low_stock_threshold.nil?
+  inherited_display = setup&.price_display.presence || ticketing_profile.price_display
+  own_fees = listing.fee_mode.present? || listing.cash_tax.present? || listing.price_display.present?
+  own_orders = listing.max_per_order.present? || !listing.low_stock_threshold.nil?
   followed = "#{fee_words[inherited_fee]}, #{cash_words[inherited_cash]}, up to #{inherited_max} tickets an order, and #{low_words}"
 %>
 <%= form_with model: listing, url: manage_ticket_listing_path(listing), method: :patch, class: "space-y-6" do |f| %>
@@ -31,23 +33,34 @@
         <p class="text-xs text-gray-500 mt-1">After that it's door sales.</p>
       </div>
     </div>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
   </div>
 
-  <%# Fees, cash, the order limit and the low seats note: what the date
-      follows, or (switch on) its own, by the one override control. %>
+  <%# Fees and cash, then the order limit and low seats note: what the date
+      follows, or (each box's switch on) its own, by the one override control. %>
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="fieldset-toggle" data-settings-card="fees">
-    <%= render "manage/ticketing/own_switch", title: "Fees, cash, and order limit", follows: (setup ? listing.production.name : "your box office"), followed: followed,
+    <%= render "manage/ticketing/own_switch", title: "Fees, prices, and cash", what: "fees, prices, and cash settings", follows: (setup ? listing.production.name : "your box office"),
+          settings_path: (setup ? manage_edit_production_ticketing_path(listing.production, section: "fees") : manage_ticketing_settings_section_path(section: "tax")),
+          intro: "Who pays the fees, how a price reads to a buyer, and what cash comes to at the door.",
           only: "this date", name: "ticket_listing[own_fees]", id: "ticket_listing_own_fees", checked: own_fees %>
     <fieldset <%= "disabled" unless own_fees %> data-fieldset-toggle-target="fields" class="px-6 py-5 disabled:opacity-50">
+      <%= render "manage/ticketing/fees_fields", scope: "ticket_listing", fee_mode: listing.fee_mode.presence || inherited_fee,
+            price_display: listing.price_display.presence || inherited_display, cash_tax: listing.cash_tax.presence || inherited_cash %>
+    </fieldset>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="fieldset-toggle" data-settings-card="orders">
+    <%= render "manage/ticketing/own_switch", title: "Orders", what: "order limit and low seats note", follows: (setup ? listing.production.name : "your box office"),
+          settings_path: (setup ? manage_edit_production_ticketing_path(listing.production, section: "dates") : manage_ticketing_settings_section_path(section: "box_office")),
+          intro: "How much one buyer can take at once, and when the \"Only N left\" note shows.",
+          only: "this date", name: "ticket_listing[own_orders]", id: "ticket_listing_own_orders", checked: own_orders %>
+    <fieldset <%= "disabled" unless own_orders %> data-fieldset-toggle-target="fields" class="px-6 py-5 disabled:opacity-50">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label for="ticket_listing_fee_mode" class="block text-sm font-medium text-gray-700 mb-1.5">Who pays the fees</label>
-          <%= f.select :fee_mode, options_for_select([ [ "Buyers pay the fees", "buyer" ], [ "You absorb the fees", "org" ] ], listing.fee_mode.presence || inherited_fee), {}, class: input_class %>
-        </div>
-        <div>
-          <label for="ticket_listing_cash_tax" class="block text-sm font-medium text-gray-700 mb-1.5">Cash at the door</label>
-          <%= f.select :cash_tax, options_for_select([ [ "The same as any other sale", "same" ], [ "Tax is included in the price", "included" ] ], listing.cash_tax.presence || inherited_cash), {}, class: input_class %>
-        </div>
         <div>
           <label for="ticket_listing_max_per_order" class="block text-sm font-medium text-gray-700 mb-1.5">Most tickets in one order</label>
           <%= f.number_field :max_per_order, min: 1, max: 100, value: listing.max_per_order || inherited_max, class: input_class %>
@@ -58,9 +71,10 @@
         </div>
       </div>
     </fieldset>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
   </div>
-
-  <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
 <% end %>
 
 <% if listing.status == "draft" && !listing.worth_keeping? %>

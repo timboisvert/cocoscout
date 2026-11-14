@@ -8,8 +8,12 @@ module Manage
   # performances, some event types, or dates picked by hand.
   class ProductionTicketingsController < Manage::TicketingBaseController
     # Comps sits left of Refunds here too, as on the box office's tabs (Tim, 2026-11-13).
-    SECTIONS = { "dates" => "Dates", "tickets" => "Tickets", "products" => "Products", "sales" => "Sales and page", "comps" => "Comps",
-                 "refunds" => "Refunds", "codes" => "Discount codes" }.freeze
+    # The tabs, as the box office's run (Tim, 2026-11-13): Basic info (which
+    # dates, and whether it's selling), Tickets, Fees and taxes, Comps,
+    # Refunds, Discount codes, Products, and the ticket page last. "fees" has
+    # no save of its own: its box saves through "sales" and comes back.
+    SECTIONS = { "dates" => "Basic info", "tickets" => "Tickets", "fees" => "Fees and taxes", "comps" => "Comps",
+                 "refunds" => "Refunds", "codes" => "Discount codes", "products" => "Products", "sales" => "Ticket page" }.freeze
     CLOSE_CHOICES = [ [ "At showtime", 0 ], [ "15 minutes before", 15 ], [ "30 minutes before", 30 ], [ "1 hour before", 60 ],
                       [ "2 hours before", 120 ], [ "The day before", 1440 ] ].freeze
 
@@ -158,7 +162,7 @@ module Manage
 
     def update_sales
       raw = params.require(:production_ticketing)
-      permitted = raw.permit(:max_per_order, :fee_mode, :cash_tax, :low_stock_threshold, :title, :description, :page_key,
+      permitted = raw.permit(:max_per_order, :fee_mode, :cash_tax, :price_display, :low_stock_threshold, :title, :description, :page_key,
                              :door_note, :age_note, :accessibility_note).to_h.transform_values(&:presence)
       if raw.key?(:age_choice)
         age = AgeLimit.value_for(raw[:age_choice], raw[:age_other])
@@ -166,14 +170,18 @@ module Manage
 
         permitted[:minimum_age] = age
       end
-      # The one switch over fees, cash and the order limit: off, the box
-      # office's (all three cleared); on, the three as chosen.
-      permitted.merge!(fee_mode: nil, cash_tax: nil, max_per_order: nil) if raw[:own_fees] == "0"
+      # The override switches (manage/ticketing/own_switch): off, the box
+      # office's again, so what the box covers is cleared.
+      permitted.merge!(fee_mode: nil, cash_tax: nil, price_display: nil) if raw[:own_fees] == "0"
+      permitted[:max_per_order] = nil if raw[:own_orders] == "0"
+      # The fees box lives on Fees and taxes, the orders boxes on Basic info;
+      # each comes back to its own tab.
+      back = params[:from].to_s.presence_in(%w[fees dates]) || "sales"
       unless @setup.update(permitted)
-        return redirect_to(section_path("sales"), alert: @setup.errors.full_messages.first.sub(/\APage key/, "The address"))
+        return redirect_to(section_path(back), alert: @setup.errors.full_messages.first.sub(/\APage key/, "The address"))
       end
 
-      redirect_to section_path("sales"), notice: "Saved. Dates without their own settings use these."
+      redirect_to section_path(back), notice: "Saved. Dates without their own settings use these."
     end
 
     # The Refunds tab: its own refund policy (the switch on), or the box

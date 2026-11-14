@@ -13,6 +13,8 @@
   <% case @section %>
   <% when "tickets" %>
     <%= render "manage/production_ticketings/sections/tickets", setup: @setup, production: @production %>
+  <% when "fees" %>
+    <%= render "manage/production_ticketings/sections/fees", setup: @setup, production: @production %>
   <% when "products" %>
     <%= render "manage/production_ticketings/sections/products", setup: @setup, production: @production %>
   <% when "sales" %>

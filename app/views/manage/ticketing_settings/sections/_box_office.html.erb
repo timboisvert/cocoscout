@@ -8,41 +8,42 @@
     superadmin's. The confirm modal carries its own form. %>
 <div class="space-y-6">
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="status">
-    <div class="px-6 py-4 border-b border-gray-200">
-      <h2 class="text-lg font-semibold text-gray-900">Selling tickets</h2>
-      <p class="text-sm text-gray-600 mt-1">Whether your box office is open to buyers.</p>
-    </div>
-    <% if profile.enabled? %>
-      <%= form_with model: profile, url: manage_ticketing_settings_path, method: :patch do |f| %>
-        <div class="px-6 py-4 flex flex-wrap items-center justify-between gap-3">
-          <div class="min-w-0 flex items-start gap-2 text-sm">
-            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium flex-shrink-0 bg-green-100 text-green-800">Open</span>
-            <span class="text-gray-600"><span class="font-medium text-gray-900">Your box office is open.</span> Buyers can find your shows and check out. Course and contract money you collect online joins your CocoScout balance.</span>
-          </div>
-          <% if Current.user.superadmin? %>
-            <span class="flex items-center gap-3">
-              <%= render "shared/toggle_switch", form: f, field: :enabled, aria_label: "Box office open" %>
-              <%= render "shared/button", text: "Save", variant: "secondary", size: "small", type: :submit %>
-            </span>
-          <% end %>
-        </div>
+    <%# A green dot, throbbing, beside the title while it's live; then the
+        switch itself and Save (Tim, 2026-11-13: "just put the toggle
+        there"). Opening is the organization's own call; closing one that's
+        open stays a superadmin's, so a manager's switch is greyed then. %>
+    <div class="px-6 py-4 border-b border-gray-200 flex items-start justify-between gap-4">
+      <div>
+        <h2 class="text-lg font-semibold text-gray-900">Selling tickets</h2>
+        <p class="text-sm text-gray-600 mt-1">Whether your box office is open to buyers.</p>
+      </div>
+      <% if profile.enabled? %>
+        <span class="inline-flex items-center gap-2 text-sm font-medium text-green-700" data-live-dot>
+          <span class="relative flex h-2.5 w-2.5" aria-hidden="true">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+            <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500"></span>
+          </span>
+          Live
+        </span>
       <% end %>
-    <% else %>
-      <div class="px-6 py-4 flex flex-wrap items-center justify-between gap-3">
-        <div class="min-w-0 flex items-start gap-2 text-sm">
-          <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium flex-shrink-0 bg-gray-100 text-gray-700">Closed</span>
-          <span class="text-gray-600"><span class="font-medium text-gray-900">Open your box office.</span> Until you do, buyers see nothing: set your shows up and preview their pages as you like. Opening makes your box office page and checkout live, charges 50¢ a paid ticket (card processing passed through at cost), and from then on course and contract money you collect online joins your CocoScout balance, where payout runs spend it first.</span>
-        </div>
-        <%= render "shared/button", text: "Open your box office", variant: "primary", size: "small", type: :button,
-              data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-open-box-office" } %>
+    </div>
+    <%= form_with model: profile, url: manage_ticketing_settings_path, method: :patch do |f| %>
+      <div class="px-6 py-4 flex items-start gap-3">
+        <%= render "shared/toggle_switch", form: f, field: :enabled, aria_label: "Box office open",
+              disabled: (profile.enabled? && !Current.user.superadmin?) %>
+        <p class="text-sm text-gray-600 min-w-0">
+          <% if profile.enabled? %>
+            <span class="font-medium text-gray-900">Your box office is open.</span> Buyers can find your shows and check out. Course and contract money you collect online joins your CocoScout balance.
+          <% else %>
+            <span class="font-medium text-gray-900">Your box office is closed.</span> Buyers see nothing: set your shows up and preview their pages as you like. Opening makes your box office page and checkout live, and course and contract money you collect online joins your CocoScout balance from then on.
+          <% end %>
+        </p>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
       </div>
     <% end %>
   </div>
-  <% unless profile.enabled? %>
-    <%= render "shared/confirm_modal", id: "confirm-open-box-office", title: "Open your box office?",
-          message: "Your box office page and checkout go live for every date on sale. Course and contract money you collect online joins your CocoScout balance from now on.",
-          confirm_text: "Open it", cancel_text: "Not yet", url: manage_ticketing_open_box_office_path, method: :post %>
-  <% end %>
   <%# The rest in titled white boxes, each saved on its own, as the Door and
       Comps tabs are (Tim, 2026-11-13: "really just busy and doesn't have
       clear sections"). %>

@@ -13,8 +13,8 @@
 %>
 <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="fieldset-toggle" data-settings-card="codes">
   <%= form_with url: manage_ticket_listing_path(listing, section: "codes"), method: :patch, data: { controller: "auto-submit" } do %>
-    <%= render "manage/ticketing/own_switch", title: "Discount codes", follows: listing.production.name, followed: "its codes work on this date (#{followed})",
-          intro: "Codes buyers can enter at checkout.",
+    <%= render "manage/ticketing/own_switch", title: "Discount codes", what: "discount codes", follows: listing.production.name, settings_path: manage_edit_production_ticketing_path(listing.production, section: "codes"),
+          intro: "Codes buyers can enter at checkout. #{possessive(listing.production.name)} codes work on this date: #{followed}.",
           only: "this date", name: "ticket_listing[own_codes]", id: "ticket_listing_own_codes", checked: own,
           data: { action: "change->auto-submit#submit" } %>
   <% end %>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_13_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_13_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2644,6 +2644,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_130000) do
   create_table "production_ticketings", force: :cascade do |t|
     t.string "cash_tax"
     t.bigint "organization_id", null: false
+    t.string "price_display"
     t.bigint "production_id", null: false
     t.boolean "enabled", default: false, null: false
     t.string "event_matching", default: "all", null: false
@@ -4221,6 +4222,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_130000) do
   create_table "ticket_listings", force: :cascade do |t|
     t.string "cash_tax"
     t.bigint "organization_id", null: false
+    t.string "price_display"
     t.bigint "show_id", null: false
     t.bigint "production_id", null: false
     t.bigint "contract_id"

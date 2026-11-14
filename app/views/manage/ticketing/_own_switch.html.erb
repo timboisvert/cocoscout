@@ -2,10 +2,12 @@
   The one way a production's or a date's ticketing says "my own, not the one
   above" (Tim, 2026-11-13: "we only have one way for toggling an override...
   I still feel like we have multiple ways of doing that"). The head of a
-  titled white box: the title, what it follows while the switch is off, and
-  the switch. Put it first inside a box that carries
-  data-controller="fieldset-toggle", with the settings in a
-  <fieldset data-fieldset-toggle-target="fields"> that's disabled while off.
+  titled white box: the title, then the override on a line of its own (Tim,
+  the same day: "bolted onto the top right... it should be its own line"):
+  the switch first, then "Override your box office's comps for Sophomoric
+  Songs", the overridden settings a link to where they're set. Put it first inside
+  a box that carries data-controller="fieldset-toggle", with the settings in
+  a <fieldset data-fieldset-toggle-target="fields"> that's disabled while off.
 
   It replaced: a pink strip with "own rules", a bordered row with "for this
   date only", a switch in a box's corner, lists that began "Use your
@@ -14,9 +16,11 @@
 
   Locals:
     title      the box's heading
-    follows    whose it is while off: "your box office" or "Laugh-Along, Live!"
-    followed   what that one says, in a few words (optional)
-    only       who the switch is for: the production's name, or "this date"
+    what       what's overridden, in the line's words (default: the title,
+               lower case, and "settings": "comps settings")
+    follows    whose settings they are: "your box office" or "Laugh-Along, Live!"
+    settings_path  where those settings are set (the line links there)
+    only       who the override is for: the production's name, or "this date"
     name, id   the switch's param name and DOM id
     checked    on (its own) or off
     intro      an optional sentence under the title
@@ -25,19 +29,24 @@
 <%
   switch_data = { fieldset_toggle_target: "switch", action: [ "change->fieldset-toggle#toggle", local_assigns.dig(:data, :action) ].compact.join(" ") }
   switch_data = (local_assigns[:data] || {}).merge(switch_data)
-  label = "Set for #{only} only"
+  what = local_assigns[:what].presence || "#{title.to_s.downcase_first} settings"
+  whose = follows == "your box office" ? "your box office's" : possessive(follows)
+  overridden = "#{whose} #{what}"
+  label = "Override #{overridden} for #{only}"
 %>
-<div class="px-6 py-4 border-b border-gray-200 flex flex-wrap items-start justify-between gap-x-6 gap-y-3" data-own-switch="<%= id %>">
-  <div class="min-w-0 flex-1">
+<div data-own-switch="<%= id %>">
+  <div class="px-6 py-4 border-b border-gray-200">
     <h2 class="text-lg font-semibold text-gray-900"><%= title %></h2>
     <% if local_assigns[:intro].present? %><p class="text-sm text-gray-600 mt-1"><%= intro %></p><% end %>
-    <p class="text-sm text-gray-600 mt-1">
-      <span class="font-medium text-gray-900">Off, it follows <%= follows %><%= local_assigns[:followed].present? ? ":" : "." %></span>
-      <% if local_assigns[:followed].present? %><%= followed.to_s.sub(/\.\z/, "") %>.<% end %>
-    </p>
   </div>
-  <label class="flex items-center gap-3 text-sm font-medium text-gray-900 whitespace-nowrap pt-0.5">
-    <%= label %>
+  <%# The switch, then the words; the settings being overridden are a link
+      to where they're set. Nothing under the line: the box says the rest. %>
+  <div class="px-6 py-3.5 border-b border-gray-200 bg-gray-50 flex items-center gap-3" data-override-line>
     <%= render "shared/toggle_switch", name: name, checked: checked, hidden_false: true, id: id, aria_label: label, data: switch_data %>
-  </label>
+    <span class="text-sm font-medium text-gray-900">
+      <label for="<%= id %>" class="cursor-pointer">Override</label>
+      <% if local_assigns[:settings_path].present? %><%= link_to overridden, settings_path, class: "text-pink-600 hover:text-pink-700 underline" %><% else %><%= overridden %><% end %>
+      <label for="<%= id %>" class="cursor-pointer">for <%= only %></label>
+    </span>
+  </div>
 </div>

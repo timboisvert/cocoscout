@@ -102,7 +102,7 @@
             <div class="flex items-center justify-between gap-4">
               <div>
                 <div class="text-sm font-medium text-gray-900">Email them their tickets</div>
-                <div class="text-xs text-gray-600 mt-0.5">The usual email with their QR codes. Off, you hand them over yourself.</div>
+                <div class="text-xs text-gray-600 mt-0.5">The usual email with their QR codes. Turn this off to hand them over yourself.</div>
               </div>
               <%= render "shared/toggle_switch", name: "email_them", checked: false, hidden_false: true, id: "comp_email_them", aria_label: "Email them their tickets",
                     data: { toggle_section_target: "toggle", fieldset_toggle_target: "switch", action: "change->toggle-section#toggle change->fieldset-toggle#toggle" } %>
@@ -138,7 +138,7 @@
           <div class="pt-5 border-t border-gray-200 flex items-center justify-between gap-4">
             <div>
               <div class="text-sm font-medium text-gray-900">Email them their tickets</div>
-              <div class="text-xs text-gray-600 mt-0.5">Everyone on the list, so every line needs an email. Off, you hand them over yourself.</div>
+              <div class="text-xs text-gray-600 mt-0.5">Everyone on the list, so every line needs an email. Turn this off to hand them over yourself.</div>
             </div>
             <%= render "shared/toggle_switch", name: "email_them", checked: false, hidden_false: true, id: "comp_paste_email_them", aria_label: "Email them all their tickets",
                   data: { action: "change->comps-paste#edited" } %>

@@ -17,8 +17,8 @@
     <% if setup %>
       <%# The one override control (manage/ticketing/own_switch): off, the
           production's types and prices show greyed; on, they're this date's. %>
-      <%= render "manage/ticketing/own_switch", title: "Ticket types and prices", follows: listing.production.name, followed: "its ticket types at its prices",
-            intro: "On, changes to the production's won't reach this date. Switching off again goes back to the production's; tickets already sold keep theirs.",
+      <%= render "manage/ticketing/own_switch", title: "Ticket types and prices", what: "ticket types and prices", follows: listing.production.name, settings_path: manage_edit_production_ticketing_path(listing.production, section: "tickets"),
+            intro: "Once this date has its own, changes to the production's won't reach it. Stop overriding and it goes back to the production's; tickets already sold keep theirs.",
             only: "this date", name: "ticket_listing[own_prices]", id: "ticket_listing_own_prices", checked: own %>
     <% else %>
       <%= render "shared/section_heading", title: "Ticket types and prices", intro: "This date's own." %>

@@ -41,6 +41,7 @@ class TicketListing < ApplicationRecord
                    format: { with: /\A[a-z0-9][a-z0-9-]*\z/ }
   validates :fee_mode, inclusion: { in: TicketingProfile::FEE_MODES }, allow_nil: true
   validates :cash_tax, inclusion: { in: TicketingProfile::CASH_TAXES }, allow_nil: true
+  validates :price_display, inclusion: { in: TicketingProfile::PRICE_DISPLAYS }, allow_nil: true
   validates :max_per_order, numericality: { only_integer: true, in: 1..100 }, allow_nil: true
   # Blank follows the production; 0 is all ages for this date (AgeLimit).
   validates :minimum_age, numericality: { only_integer: true, in: 0..AgeLimit::AGES.max }, allow_nil: true
@@ -258,8 +259,14 @@ class TicketListing < ApplicationRecord
 
   # Whether this date's prices read before taxes and fees ("$20.00 + taxes
   # & fees"): the box office's choice (Ticketing settings → Box office).
+  # How prices are shown: this date's say, else its production's, else the
+  # box office's.
+  def effective_price_display
+    price_display.presence || production_ticketing&.price_display.presence || profile&.price_display || "all_in"
+  end
+
   def prices_before_extras?
-    profile&.prices_before_extras? || false
+    effective_price_display == "base"
   end
 
   # Selling online right now: put on sale, inside its window, show not cancelled.

@@ -66,7 +66,7 @@ RSpec.describe "Refund policy", type: :request do
 
     # The one override switch: what it follows while off, and who it's for.
     get manage_edit_production_ticketing_path(production, section: "refunds")
-    expect(response.body).to include("Refund policy", "Off, it follows your box office:", "refunds up to 24 hours before the show", "Set for Boylesque only")
+    expect(response.body).to include("Refund policy", "your box office&#39;s refund policy settings</a>", "for Boylesque", manage_ticketing_settings_section_path(section: "refunds"))
 
     patch manage_update_production_ticketing_path(production, section: "refunds"),
           params: { production_ticketing: { own_refund_policy: "1", refund_choice: "none", refund_fees: "0" } }

@@ -9,7 +9,7 @@
 %>
 <%= form_with url: manage_update_production_ticketing_path(production, section: "refunds"), method: :patch do %>
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="fieldset-toggle radio-card" data-settings-card="refunds">
-    <%= render "manage/ticketing/own_switch", title: "Refund policy", follows: "your box office", followed: box_office_policy.short_words.downcase_first,
+    <%= render "manage/ticketing/own_switch", title: "Refund policy", follows: "your box office", settings_path: manage_ticketing_settings_section_path(section: "refunds"),
           intro: "Buyers see it on the ticket page, at checkout and in their emails. Every date of #{production.name} follows it.",
           only: production.name, name: "production_ticketing[own_refund_policy]", id: "production_ticketing_own_refund_policy", checked: own %>
     <div class="px-6 py-5 space-y-4">

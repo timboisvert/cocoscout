@@ -1,0 +1,40 @@
+<%# A production's Fees and taxes tab (Tim, 2026-11-13: "it should feel like
+    the box office page, but with the ability to override"): who pays the
+    fees and what cash comes to, the box office's or (the one override
+    control) its own, then the tax, which is the organization's. Saved by
+    the ticket page's action, which comes back here (from: "fees").
+    Locals: setup, production. %>
+<%
+  own_fees = setup.fee_mode.present? || setup.cash_tax.present? || setup.price_display.present?
+  tax = TicketTaxSetting.current(production.organization)
+%>
+<div class="space-y-6">
+  <%= form_with model: setup, scope: :production_ticketing, url: manage_update_production_ticketing_path(production, section: "sales"), method: :patch do %>
+    <%= hidden_field_tag :from, "fees", id: nil %>
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="fieldset-toggle" data-settings-card="fees">
+      <%= render "manage/ticketing/own_switch", title: "Fees, prices, and cash", what: "fees, prices, and cash settings", follows: "your box office",
+            settings_path: manage_ticketing_settings_section_path(section: "tax"),
+            intro: "Who pays the fees, how a price reads to a buyer, and what cash comes to at the door, for every date of #{production.name}.",
+            only: production.name, name: "production_ticketing[own_fees]", id: "production_ticketing_own_fees", checked: own_fees %>
+      <fieldset <%= "disabled" unless own_fees %> data-fieldset-toggle-target="fields" class="px-6 py-5 disabled:opacity-50">
+        <%= render "manage/ticketing/fees_fields", scope: "production_ticketing",
+              fee_mode: setup.fee_mode.presence || ticketing_profile.default_fee_mode,
+              price_display: setup.price_display.presence || ticketing_profile.price_display, cash_tax: setup.cash_tax.presence || ticketing_profile.cash_tax %>
+      </fieldset>
+      <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="tax">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Tax on tickets</h2>
+      <p class="text-sm text-gray-600 mt-1">One tax setting covers every production.</p>
+    </div>
+    <p class="px-6 py-4 text-sm text-gray-600">
+      <%= tax.set? ? "#{tax.percent}% #{tax.name.downcase}, #{tax.mode == 'included' ? 'included in prices' : 'added at checkout'}" : "No tax on tickets" %>.
+      <%= link_to "Change it in Ticketing settings", manage_ticketing_settings_section_path(section: "tax"), class: "font-medium text-pink-600 hover:text-pink-700" %>
+    </p>
+  </div>
+</div>

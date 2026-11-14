@@ -13,8 +13,8 @@
 <%= form_with model: listing, url: manage_ticket_listing_path(listing), method: :patch, class: "space-y-6" do |f| %>
   <%= hidden_field_tag :section, "page" %>
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="fieldset-toggle" data-settings-card="page">
-    <%= render "manage/ticketing/own_switch", title: "The ticket page", follows: production.name, followed: "its title, description, doors and accessibility words",
-          intro: "What buyers read about this date. On, a box left empty still shows the production's.",
+    <%= render "manage/ticketing/own_switch", title: "The ticket page", what: "ticket page words", follows: production.name, settings_path: manage_edit_production_ticketing_path(production, section: "sales"),
+          intro: "What buyers read about this date. Any box you leave empty still shows the production's.",
           only: "this date", name: "ticket_listing[own_page]", id: "ticket_listing_own_page", checked: own_page %>
     <fieldset <%= "disabled" unless own_page %> data-fieldset-toggle-target="fields" class="px-6 py-5 space-y-4 disabled:opacity-50">
       <div>
@@ -38,19 +38,23 @@
         </div>
       </div>
     </fieldset>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
   </div>
 
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="fieldset-toggle" data-settings-card="ages">
-    <%= render "manage/ticketing/own_switch", title: "Ages", follows: production.name, followed: (AgeLimit.words(setup&.minimum_age) || "All ages").downcase_first,
+    <%= render "manage/ticketing/own_switch", title: "Ages", follows: production.name, settings_path: manage_edit_production_ticketing_path(production, section: "sales"),
           intro: "Buyers see it on the ticket page, at checkout, with their tickets and in their emails, and the door sees it too.",
           only: "this date", name: "ticket_listing[own_ages]", id: "ticket_listing_own_ages", checked: own_ages %>
     <fieldset <%= "disabled" unless own_ages %> data-fieldset-toggle-target="fields" class="disabled:opacity-50">
       <%= render "manage/production_ticketings/age_limit_fields", scope: "ticket_listing", age: (shown_age.to_i.zero? ? nil : shown_age), note: listing.age_note, input_class: input_class,
             bare: true, note_placeholder: setup&.age_note.presence %>
     </fieldset>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
   </div>
-
-  <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
 <% end %>
 
 <%= render "manage/ticket_listings/page_image", listing: listing %>

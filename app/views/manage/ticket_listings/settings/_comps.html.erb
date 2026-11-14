@@ -9,11 +9,12 @@
 %>
 <%= form_with url: manage_ticket_listing_path(listing, section: "comps"), method: :patch do %>
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="fieldset-toggle" data-settings-card="comps">
-    <%= render "manage/ticketing/own_switch", title: "Comps", follows: (setup&.own_comps ? listing.production.name : "your box office"), followed: followed.comp_rules_words,
+    <%= render "manage/ticketing/own_switch", title: "Comps", follows: (setup&.own_comps ? listing.production.name : "your box office"),
+          settings_path: (setup&.own_comps ? manage_edit_production_ticketing_path(listing.production, section: "comps") : manage_ticketing_settings_section_path(section: "comps")),
           only: "this date", name: "ticket_listing[own_comps]", id: "ticket_listing_own_comps", checked: own %>
     <fieldset <%= "disabled" unless own %> data-fieldset-toggle-target="fields" class="disabled:opacity-50">
       <%= render "manage/ticketing_settings/comp_rules_fields", scope: "ticket_listing", rules: rules, bare: true,
-            heading: "Giving comps", off_words: "Off, nobody gives comps on this date.", example: example %>
+            heading: "Giving comps", off_words: "Turn them off and nobody gives comps on this date.", example: example %>
     </fieldset>
     <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
       <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>

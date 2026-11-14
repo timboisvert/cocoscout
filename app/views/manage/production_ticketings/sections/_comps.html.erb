@@ -9,11 +9,11 @@
 %>
 <%= form_with url: manage_update_production_ticketing_path(production, section: "comps"), method: :patch do %>
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="fieldset-toggle" data-settings-card="comps">
-    <%= render "manage/ticketing/own_switch", title: "Comps", follows: "your box office", followed: profile.comp_rules_words,
+    <%= render "manage/ticketing/own_switch", title: "Comps", follows: "your box office", settings_path: manage_ticketing_settings_section_path(section: "comps"),
           only: production.name, name: "production_ticketing[own_comps]", id: "production_ticketing_own_comps", checked: own %>
     <fieldset <%= "disabled" unless own %> data-fieldset-toggle-target="fields" class="disabled:opacity-50">
       <%= render "manage/ticketing_settings/comp_rules_fields", scope: "production_ticketing", rules: rules, bare: true,
-            heading: "Giving comps", off_words: "Off, nobody gives comps on #{production.name}.", example: example %>
+            heading: "Giving comps", off_words: "Turn them off and nobody gives comps on #{production.name}.", example: example %>
     </fieldset>
     <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
       <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>

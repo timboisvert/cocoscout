@@ -48,6 +48,7 @@ class ProductionTicketing < ApplicationRecord
   validates :refund_policy_note, length: { maximum: RefundPolicy::NOTE_LIMIT }
   validates :fee_mode, inclusion: { in: TicketingProfile::FEE_MODES }, allow_nil: true
   validates :cash_tax, inclusion: { in: TicketingProfile::CASH_TAXES }, allow_nil: true
+  validates :price_display, inclusion: { in: TicketingProfile::PRICE_DISPLAYS }, allow_nil: true
   validates :max_per_order, numericality: { only_integer: true, in: 1..100 }, allow_nil: true
   # Its own comp rules (own_comps on), or the box office's (CompRules).
   include CompRules
