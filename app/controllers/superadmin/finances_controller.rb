@@ -99,7 +99,8 @@ module Superadmin
       ids = (OrgCashEntry.distinct.pluck(:organization_id) + BillingInvoice.distinct.pluck(:organization_id) +
              CocoScoutLedgerEntry.where.not(organization_id: nil).distinct.pluck(:organization_id) +
              Organization.where(comped_indefinitely: true).or(Organization.where(comped_until: Time.current..))
-                         .or(Organization.where(subscription_status: SubscriptionSyncService::ACCESS_STATUSES)).pluck(:id)).uniq
+                         .or(Organization.where(subscription_status: SubscriptionSyncService::ACCESS_STATUSES)).pluck(:id) +
+             pro_on_monthly_bill_ids).uniq
       paid_us = CocoScoutLedgerEntry.where(organization_id: ids, occurred_at: month, entry_type: CocoScoutLedgerEntry.types_in(:income))
                                     .group(:organization_id).sum(:amount_cents)
       unpaid = BillingInvoice.unpaid.where(organization_id: ids).group(:organization_id).sum(:amount_remaining_cents)
@@ -196,6 +197,17 @@ module Superadmin
     end
 
     private
+
+    # Organizations on Pro through the monthly bill (the other way onto Pro,
+    # besides a Pro subscription of its own). Without these, a paying Pro
+    # organization stayed off Organizations until money first moved for it
+    # (Tim, 2026-11-14: The Holly Problem).
+    def pro_on_monthly_bill_ids
+      now = Time.current
+      Organization.where(pro_monthly_from: ..now)
+                  .merge(Organization.where(pro_monthly_until: nil).or(Organization.where(pro_monthly_until: now..)))
+                  .pluck(:id)
+    end
 
     def give_back_how
       params[:how] == "credit" ? "credit" : "refund"

@@ -219,6 +219,16 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
       expect(response.body).to include("Course Breakdown")
     end
 
+    it "lists an organization on Pro through the monthly bill before any money has moved for it" do
+      on_bill = create(:organization, name: "On The Bill Players")
+      on_bill.update!(pro_monthly_from: 1.day.ago)
+      ended = create(:organization, name: "Ended Pro Players")
+      ended.update!(pro_monthly_from: 2.months.ago, pro_monthly_until: 1.month.ago)
+      get finances_organizations_path
+      expect(response.body).to include("On The Bill Players")
+      expect(response.body).not_to include("Ended Pro Players")
+    end
+
     it "shows plans, comps and bills" do
       organization.update!(comped_indefinitely: true, comped_usage: false, stripe_customer_id: "cus_1")
       BillingInvoice.create!(organization: organization, stripe_invoice_id: "in_1", kind: "usage", status: "open", amount_due_cents: 3_500,
