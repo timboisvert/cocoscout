@@ -34,8 +34,20 @@
     ].compact %>
   </div>
 
+  <%# Today, still going: its own box above the days that are over. %>
+  <% if @today %>
+    <div class="mb-4 bg-white border border-gray-200 rounded-xl overflow-hidden" data-settle-today>
+      <%= render "shared/section_heading", padding: "px-5 py-3", title: "Today" do %>
+        <span class="text-xs text-gray-500">Still going. Confirm each piece as it finishes; the day can be settled once every piece is confirmed.</span>
+      <% end %>
+      <%= render "manage/settlement_days/day_row", day: @today, start: true %>
+    </div>
+  <% end %>
+
   <% if listed.empty? %>
-    <% if @filter == "to_settle" %>
+    <% if @filter == "to_settle" && @today %>
+      <p class="px-1 text-sm text-gray-600">Every earlier day is settled.</p>
+    <% elsif @filter == "to_settle" %>
       <%= render "shared/empty_state", icon: "check", title: "Every day is settled", body: "The next show that happens will put its day here." %>
     <% else %>
       <%= render "shared/empty_state", icon: "calendar", title: "No #{@filter == 'settled' ? 'settled ' : ''}days in #{month_label}", body: "Days with nothing in them never appear." %>

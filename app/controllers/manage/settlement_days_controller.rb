@@ -19,6 +19,15 @@ module Manage
       @open_dates = SettleUp.open_dates(Current.organization)
       @to_settle = @filter == "to_settle" ? SettleUp.to_settle(Current.organization, limit: LISTED) : []
       @month_days = @filter == "to_settle" ? [] : SettleUp.days(Current.organization, @month..@month.end_of_month)
+      # Today, while it's still going (Tim, 2026-11-13: "I should be able to
+      # start with settling today up. Not just if it's in the past"): at the
+      # top of To settle from the moment it has a show or a register day, so
+      # nobody goes to All days to find it. It isn't counted as a day to
+      # settle anywhere (Home, the Money hub) until it's over.
+      if @filter == "to_settle"
+        today = SettleUp.day(Current.organization, SettlementDay.day_for(Current.organization, Time.current))
+        @today = today if today.any? && !today.settled? && !today.ended? && !today.before_start?
+      end
     rescue ArgumentError
       redirect_to manage_money_settle_up_path
     end

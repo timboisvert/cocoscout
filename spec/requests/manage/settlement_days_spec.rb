@@ -291,6 +291,34 @@ RSpec.describe "Settle up", type: :request do
     end
   end
 
+  # Today is on the list while it's still going (Tim, 2026-11-13), in a box
+  # of its own; it isn't a "day to settle" for Home or the hub until it's over.
+  it "puts today at the top of To settle while it's still going, without counting it as a day to settle" do
+    travel_to(Time.zone.local(2027, 3, 3, 21, 0)) do
+      tonight = create(:show, production: production, date_and_time: Time.zone.local(2027, 3, 3, 19))
+      today = SettlementDay.day_for(org, tonight.date_and_time)
+
+      get manage_money_settle_up_path
+      box = Nokogiri::HTML(response.body).at_css("[data-settle-today]")
+      expect(box.text.squish).to include("Today", "Still going", "Start settling")
+      expect(box.at_css("a[href='#{manage_money_settle_up_day_path(today.iso8601)}']")).to be_present
+      expect(SettleUp.open_dates(org)).not_to include(today)
+
+      # Once it's settled it's gone from the top.
+      patch manage_check_show_money_settle_up_day_path(today.iso8601, show_id: tonight.id), params: { checked: "1" }
+      post manage_settle_money_settle_up_day_path(today.iso8601)
+      get manage_money_settle_up_path
+      expect(Nokogiri::HTML(response.body).at_css("[data-settle-today]")).to be_nil
+    end
+  end
+
+  it "has no Today box on a day with nothing in it" do
+    travel_to(Time.zone.local(2027, 3, 9, 12, 0)) do
+      get manage_money_settle_up_path
+      expect(Nokogiri::HTML(response.body).at_css("[data-settle-today]")).to be_nil
+    end
+  end
+
   it "shows days to settle on the Money hub and on Home" do
     get manage_money_index_path
     expect(response).to have_http_status(:ok)
