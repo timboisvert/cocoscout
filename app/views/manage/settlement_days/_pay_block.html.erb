@@ -31,7 +31,11 @@
   # line however many lines follow; the open part starts where the title does
   # (20px gutter + 16px chevron + 8px gap = pl-11).
   chevron = ->(open_now) { %(<span class="h-5 inline-flex items-center shrink-0"><svg class="w-4 h-4 text-gray-400 transition-transform #{open_now ? 'rotate-180' : ''}" data-disclosure-target="icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg></span>).html_safe }
-  header_classes = "flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-5 py-3 cursor-pointer hover:bg-gray-50/60 transition-colors"
+  # On a phone the words take the row and the status and buttons sit on a
+  # line of their own under them, lined up with the words (Tim, 2026-11-14);
+  # from sm up they share the row, the buttons at the right.
+  header_classes = "flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-x-3 gap-y-2 px-5 py-3 cursor-pointer hover:bg-gray-50/60 transition-colors"
+  actions_classes = "flex flex-wrap items-center gap-2 pl-6 sm:pl-0 sm:shrink-0 sm:ml-auto"
   content_classes = "pl-11 pr-5 pb-3"
 %>
 <% if pay.none? %>
@@ -110,7 +114,7 @@
   %>
   <div class="border-t border-gray-200" id="pay-<%= show.id %>" data-controller="disclosure">
     <div class="<%= header_classes %>" data-action="click->disclosure#toggle">
-      <button type="button" class="min-w-0 flex items-start gap-2 text-left" data-action="click->disclosure#toggle:stop" aria-controls="pay-people-<%= show.id %>">
+      <button type="button" class="min-w-0 flex items-start gap-2 text-left sm:flex-1" data-action="click->disclosure#toggle:stop" aria-controls="pay-people-<%= show.id %>">
         <%= chevron.call(open) %>
         <span class="min-w-0">
           <span class="block text-sm leading-5">
@@ -139,7 +143,7 @@
           <% end %>
         </span>
       </button>
-      <div class="flex items-center gap-2 shrink-0 ml-auto">
+      <div class="<%= actions_classes %>">
         <% if summary %>
           <span class="<%= open ? 'hidden' : '' %>" data-disclosure-target="closedOnly"><span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap <%= summary_tone %>"><%= summary %></span></span>
         <% end %>
@@ -242,7 +246,7 @@
   %>
   <div class="border-t border-gray-200" id="pay-<%= show.id %>" data-controller="disclosure">
     <div class="<%= header_classes %>" data-action="click->disclosure#toggle">
-      <button type="button" class="min-w-0 flex items-start gap-2 text-left" data-action="click->disclosure#toggle:stop" aria-controls="pay-people-<%= show.id %>">
+      <button type="button" class="min-w-0 flex items-start gap-2 text-left sm:flex-1" data-action="click->disclosure#toggle:stop" aria-controls="pay-people-<%= show.id %>">
         <%= chevron.call(open) %>
         <span class="min-w-0">
           <span class="block text-sm leading-5">
@@ -253,7 +257,7 @@
           <% if sub.present? %><span class="block mt-0.5 text-xs <%= sub_amber ? 'text-amber-700' : 'text-gray-500' %>"><%= sub %></span><% end %>
         </span>
       </button>
-      <div class="flex items-center gap-2 shrink-0 ml-auto">
+      <div class="<%= actions_classes %>">
         <% if summary %>
           <span class="<%= open ? 'hidden' : '' %>" data-disclosure-target="closedOnly"><span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap <%= summary_tone %>"><%= summary %></span></span>
         <% end %>

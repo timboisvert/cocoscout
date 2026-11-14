@@ -10,10 +10,15 @@
   provider = registers.first.integration.provider.capitalize
 %>
 <section class="bg-white border border-gray-200 rounded-xl overflow-hidden" id="register">
-  <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-gray-200">
-    <h2 class="text-base font-semibold text-gray-900"><%= registers.size == 1 ? "Bar, #{registers.first.location_name}" : "Registers" %>
-      <span class="ml-2 text-xs font-medium <%= tone %>"><%= state_words %></span>
-    </h2>
+  <%# The same head as a show's: the name, its state under it, the confirm mark at the right. %>
+  <div class="flex items-start justify-between gap-3 px-5 py-3 border-b border-gray-200">
+    <div class="min-w-0">
+      <h2 class="text-base font-semibold text-gray-900 leading-snug"><%= registers.size == 1 ? "Bar, #{registers.first.location_name}" : "Registers" %></h2>
+      <div class="mt-0.5 text-xs font-medium <%= tone %>"><%= state_words %><% if day.record&.register_checked? == true && day.record.register_checked_at && can_change && !day.settled? %><span class="sm:hidden font-normal text-gray-500"> · <%= day.record.register_checked_at.strftime("%b %-d, %-l:%M %P") %></span><% end %></div>
+      <% if can_change && !day.settled? && day.record&.register_checked? != true && day.tips.unresolved.any? %>
+        <div class="sm:hidden mt-0.5 text-xs text-amber-700">Say who gets the tips rung up with nobody on the bar first</div>
+      <% end %>
+    </div>
     <% if can_change && !day.settled? %>
       <%= render "manage/settlement_days/confirm_mark", url: manage_check_register_money_settle_up_day_path(day.param),
             checked: day.record&.register_checked? == true, at: day.record&.register_checked_at,

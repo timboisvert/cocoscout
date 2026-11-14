@@ -12,12 +12,16 @@
   else "bg-white border-gray-300 text-gray-300 hover:border-pink-500 hover:text-pink-500 cursor-pointer"
   end
 %>
-<%= form_with url: url, method: :patch, data: { turbo_action: "replace" }, class: "flex items-center gap-2.5" do %>
-  <span class="text-sm font-medium text-gray-700 text-right leading-tight">
+<%= form_with url: url, method: :patch, data: { turbo_action: "replace" }, class: "flex items-center gap-2.5 shrink-0" do %>
+  <%# Beside a title on a phone: the words keep to a narrow column so the title has the room. %>
+  <%# Once confirmed, a phone shows the mark alone: the card's head already
+      says "Confirmed" and when, under the title. %>
+  <span class="text-sm font-medium text-gray-700 text-right leading-tight whitespace-nowrap sm:whitespace-normal <%= 'hidden sm:block' if checked %>">
     <% if checked %>
-      Confirmed<% if at %><span class="block text-[11px] font-normal text-gray-500"><%= at.strftime("%b %-d, %-l:%M %P") %></span><% end %>
+      Confirmed<% if at %><span class="hidden sm:block text-[11px] font-normal text-gray-500"><%= at.strftime("%b %-d, %-l:%M %P") %></span><% end %>
     <% elsif held %>
-      Confirm<span class="block text-[11px] font-normal text-amber-700"><%= hold_reason %></span>
+      <%# On a phone the reason is under the title instead (the card's head), where it has the width. %>
+      Confirm<span class="hidden sm:block text-[11px] font-normal text-amber-700"><%= hold_reason %></span>
     <% else %>
       Confirm
     <% end %>

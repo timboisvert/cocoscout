@@ -40,11 +40,18 @@
   notes = fin&.notes.to_s.strip
 %>
 <section class="bg-white border border-gray-200 rounded-xl overflow-hidden" id="show-<%= show.id %>">
-  <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-gray-200">
-    <h2 class="text-base font-semibold text-gray-900">
-      <%= show.display_name %>, <%= show.date_and_time.strftime("%-l:%M %p").sub(":00", "").downcase %>
-      <span class="ml-2 text-xs font-medium <%= state_tone %>"><%= state_words %></span>
-    </h2>
+  <%# The head: the show and its time, where it stands on a line of its own
+      under them, and the confirm mark held at the right. Nothing wraps
+      around anything else on a phone (Tim, 2026-11-14: the name, the state
+      and Confirm ran into each other and broke over three lines). %>
+  <div class="flex items-start justify-between gap-3 px-5 py-3 border-b border-gray-200">
+    <div class="min-w-0">
+      <h2 class="text-base font-semibold text-gray-900 leading-snug"><%= show.display_name %> <span class="font-normal text-gray-500 whitespace-nowrap"><%= show.date_and_time.strftime("%-l:%M %p").sub(":00", "").downcase %></span></h2>
+      <div class="mt-0.5 text-xs font-medium <%= state_tone %>"><%= state_words %><% if piece.confirmed? && fin&.updated_at && can_change && !day.settled? %><span class="sm:hidden font-normal text-gray-500"> · <%= fin.updated_at.strftime("%b %-d, %-l:%M %P") %></span><% end %></div>
+      <% if can_change && !day.settled? && !piece.confirmed? && piece.hold_reason.present? %>
+        <div class="sm:hidden mt-0.5 text-xs text-amber-700"><%= piece.hold_reason %></div>
+      <% end %>
+    </div>
     <% if can_change && !day.settled? %>
       <%= render "manage/settlement_days/confirm_mark", url: manage_check_show_money_settle_up_day_path(day.param, show_id: show.id),
             checked: piece.confirmed?, at: (piece.confirmed? ? fin&.updated_at : nil), hold_reason: piece.hold_reason %>
