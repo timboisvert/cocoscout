@@ -1,60 +1,58 @@
 <%
   profile = ticketing_profile
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
-  # The fee switch explained with a real ticket, so the choice isn't abstract.
-  example = [ { price_cents: 2_000 } ]
-  buyer_total = TicketPricing.quote(items: example, fee_mode: "buyer").total_cents
-  absorbed_net = TicketPricing.quote(items: example, fee_mode: "org").org_net_cents
-  fee_choices = [
-    [ "buyer", "Buyers pay the fees", "A $20 ticket costs the buyer #{number_to_currency(buyer_total / 100.0)}, and you keep the full $20." ],
-    [ "org", "You absorb the fees", "A $20 ticket costs the buyer $20, and you keep #{number_to_currency(absorbed_net / 100.0)}." ]
-  ]
-  # How prices are shown, explained with the same $20 ticket under this
-  # organization's own fee and tax settings (a 10% tax when none is set, so
-  # the two choices still read differently).
-  tax_form = TicketTaxSetting.current(Current.organization)
-  tax_set = tax_form.set?
-  tax_on_top = !tax_set || tax_form.mode == "added"
-  tax_percent = tax_set ? tax_form.percent.to_d : 10.to_d
-  example_tax = tax_on_top ? (2_000 * tax_percent / 100).round : 0
-  example_total = TicketPricing.quote(items: [ { price_cents: 2_000, discount_cents: 0, tax_cents: example_tax } ], fee_mode: profile.default_fee_mode).total_cents
-  example_fees = profile.default_fee_mode == "buyer"
-  money = ->(cents) { number_to_currency(cents / 100.0) }
-  example_extras = if example_fees && tax_on_top then "taxes & fees"
-  elsif example_fees then "fees"
-  elsif tax_on_top then "tax"
-  end
-  price_choices = [
-    [ "all_in", "All in", "A $20 ticket shows as #{money.(example_total)}#{" incl. #{example_extras}" if example_extras}: the most one ticket can cost." ],
-    [ "base", "Before taxes and fees", example_extras ? "A $20 ticket shows as $20.00 + #{example_extras}. A tap on the price shows #{money.(example_total)} with #{example_extras}." : "A $20 ticket shows as $20.00." ]
-  ]
-  price_display_note = [
-    ("You don't charge tax on tickets yet; the example uses 10%." unless tax_set),
-    ("Your tax is inside your prices, so it's never added on top." if tax_set && !tax_on_top),
-    (example_fees ? "Buyers pay the fees here, so they're named." : "You absorb the fees, so fees are never mentioned."),
-    "The total, and checkout, always show the full amount."
-  ].compact.join(" ")
 %>
-<% unless profile.enabled? %>
-  <%# Opening is the organization's own call (Tim, 2026-10-06). Outside the
-      settings form: the confirm modal carries its own form. %>
-  <div class="mb-6 rounded-xl border border-pink-200 bg-pink-50 px-5 py-4 flex flex-wrap items-center justify-between gap-4">
-    <div class="min-w-0">
-      <div class="text-base font-semibold text-gray-900">Open your box office</div>
-      <p class="text-sm text-gray-700 mt-1">Until you do, buyers see nothing: set your shows up and preview their pages as you like. Opening makes your box office page and checkout live, charges 50¢ a paid ticket (card processing passed through at cost), and from then on course and contract money you collect online joins your CocoScout balance, where payout runs spend it first.</p>
+<%# Is the box office open: its own box at the top (Tim, 2026-11-13: "Is the
+    box office enabled? Are you selling tickets?"). Opening is the
+    organization's own call (Tim, 2026-10-06); closing one is a
+    superadmin's. The confirm modal carries its own form. %>
+<div class="space-y-6">
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="status">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Selling tickets</h2>
+      <p class="text-sm text-gray-600 mt-1">Whether your box office is open to buyers.</p>
     </div>
-    <%= render "shared/button", text: "Open your box office", variant: "primary", size: "medium", type: :button,
-          data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-open-box-office" } %>
+    <% if profile.enabled? %>
+      <%= form_with model: profile, url: manage_ticketing_settings_path, method: :patch do |f| %>
+        <div class="px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+          <div class="min-w-0 flex items-start gap-2 text-sm">
+            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium flex-shrink-0 bg-green-100 text-green-800">Open</span>
+            <span class="text-gray-600"><span class="font-medium text-gray-900">Your box office is open.</span> Buyers can find your shows and check out. Course and contract money you collect online joins your CocoScout balance.</span>
+          </div>
+          <% if Current.user.superadmin? %>
+            <span class="flex items-center gap-3">
+              <%= render "shared/toggle_switch", form: f, field: :enabled, aria_label: "Box office open" %>
+              <%= render "shared/button", text: "Save", variant: "secondary", size: "small", type: :submit %>
+            </span>
+          <% end %>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="min-w-0 flex items-start gap-2 text-sm">
+          <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium flex-shrink-0 bg-gray-100 text-gray-700">Closed</span>
+          <span class="text-gray-600"><span class="font-medium text-gray-900">Open your box office.</span> Until you do, buyers see nothing: set your shows up and preview their pages as you like. Opening makes your box office page and checkout live, charges 50¢ a paid ticket (card processing passed through at cost), and from then on course and contract money you collect online joins your CocoScout balance, where payout runs spend it first.</span>
+        </div>
+        <%= render "shared/button", text: "Open your box office", variant: "primary", size: "small", type: :button,
+              data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-open-box-office" } %>
+      </div>
+    <% end %>
   </div>
-  <%= render "shared/confirm_modal", id: "confirm-open-box-office", title: "Open your box office?",
-        message: "Your box office page and checkout go live for every date on sale. Course and contract money you collect online joins your CocoScout balance from now on.",
-        confirm_text: "Open it", cancel_text: "Not yet", url: manage_ticketing_open_box_office_path, method: :post %>
-<% end %>
-<%= form_with model: profile, url: manage_ticketing_settings_path, method: :patch do |f| %>
-  <div class="space-y-6">
-    <p class="text-sm text-gray-600">Where buyers find your shows and how checkout works. Every organization gets the same page design.</p>
-
-    <div class="space-y-6">
+  <% unless profile.enabled? %>
+    <%= render "shared/confirm_modal", id: "confirm-open-box-office", title: "Open your box office?",
+          message: "Your box office page and checkout go live for every date on sale. Course and contract money you collect online joins your CocoScout balance from now on.",
+          confirm_text: "Open it", cancel_text: "Not yet", url: manage_ticketing_open_box_office_path, method: :post %>
+  <% end %>
+  <%# The rest in titled white boxes, each saved on its own, as the Door and
+      Comps tabs are (Tim, 2026-11-13: "really just busy and doesn't have
+      clear sections"). %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="box-office">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Your box office's address</h2>
+      <p class="text-sm text-gray-600 mt-1">Where buyers find your shows, and where their questions go.</p>
+    </div>
+    <%= form_with model: profile, url: manage_ticketing_settings_path, method: :patch do |f| %>
+      <div class="px-6 py-5 space-y-6">
       <div>
         <label for="ticketing_profile_slug" class="block text-sm font-medium text-gray-700 mb-1.5">Your box office's name in addresses</label>
         <div class="flex items-stretch">
@@ -72,93 +70,27 @@
         <%= f.email_field :support_email, placeholder: "boxoffice@yourtheater.com", class: input_class %>
         <p class="text-xs text-gray-500 mt-1">Replies to ticket emails go here.</p>
       </div>
-
-      <fieldset>
-        <legend class="block text-sm font-medium text-gray-700 mb-1.5">Who pays our 50¢ and card processing</legend>
-        <div class="space-y-2">
-          <% fee_choices.each do |value, title, explanation| %>
-            <label class="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
-              <%= f.radio_button :default_fee_mode, value, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
-              <span>
-                <span class="block text-sm font-medium text-gray-900"><%= title %></span>
-                <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
-              </span>
-            </label>
-          <% end %>
-        </div>
-        <p class="text-xs text-gray-500 mt-2">Each show can change this.</p>
-      </fieldset>
-
-      <fieldset>
-        <legend class="block text-sm font-medium text-gray-700 mb-1.5">How prices are shown</legend>
-        <div class="space-y-2">
-          <% price_choices.each do |value, title, explanation| %>
-            <label class="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
-              <%= f.radio_button :price_display, value, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
-              <span>
-                <span class="block text-sm font-medium text-gray-900"><%= title %></span>
-                <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
-              </span>
-            </label>
-          <% end %>
-        </div>
-        <p class="text-xs text-gray-500 mt-2"><%= price_display_note %></p>
-      </fieldset>
-
-      <%# Cash at the door (Tim, 2026-11-13): the same as every other sale
-          unless you say cash holds its tax, so nobody makes change in coins. %>
-      <fieldset data-cash-tax>
-        <legend class="block text-sm font-medium text-gray-700 mb-1.5">Cash at the door</legend>
-        <div class="space-y-2">
-          <% [ [ "same", "The same as any other sale", (tax_on_top ? "Tax is added on top: a $20 ticket is #{money.(2_000 + example_tax)} in cash." : "A $20 ticket is $20.00 in cash.") ],
-               [ "included", "Tax is inside the price", "A $20 ticket is $20.00 in cash, and the tax comes out of that $20. Cards and online sales aren't changed." ] ].each do |value, title, explanation| %>
-            <label class="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
-              <%= f.radio_button :cash_tax, value, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
-              <span>
-                <span class="block text-sm font-medium text-gray-900"><%= title %></span>
-                <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
-              </span>
-            </label>
-          <% end %>
-        </div>
-        <p class="text-xs text-gray-500 mt-2">Cash never carries fees. Each production and date can change this.</p>
-      </fieldset>
-
+      </div>
+      <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+      </div>
+    <% end %>
+  </div>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="orders">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Orders</h2>
+      <p class="text-sm text-gray-600 mt-1">How much one buyer can take at once.</p>
+    </div>
+    <%= form_with model: profile, url: manage_ticketing_settings_path, method: :patch do |f| %>
+      <div class="px-6 py-5 space-y-6">
       <div>
         <label for="ticketing_profile_default_max_per_order" class="block text-sm font-medium text-gray-700 mb-1.5">Most tickets in one order</label>
         <%= f.number_field :default_max_per_order, min: 1, max: 100, class: "#{input_class} max-w-[8rem]" %>
       </div>
-
-
-      <div>
-        <label for="ticketing_profile_reminder_days_before" class="block text-sm font-medium text-gray-700 mb-1.5">Reminder email</label>
-        <%= f.select :reminder_days_before,
-              [ [ "Off", "" ] ] + (1..30).map { |days| [ "#{pluralize(days, 'day')} before the show", days ] },
-              {}, class: "#{input_class} max-w-xs" %>
-        <p class="text-xs text-gray-500 mt-1">Buyers get the time, the place and their tickets again. Each order gets one reminder, sent at 10am.</p>
       </div>
-
-      <div class="flex items-start justify-between gap-4">
-        <div>
-          <div class="text-sm font-medium text-gray-700">Attach PDF tickets</div>
-          <p class="text-xs text-gray-500 mt-1">Off, buyers get their QR codes in the email. On, the email also carries a PDF with a page per ticket, for people who like to print. Either way, they can download the PDF from their order page.</p>
-        </div>
-        <%= render "shared/toggle_switch", form: f, field: :attach_pdf_tickets, aria_label: "Attach PDF tickets" %>
+      <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
       </div>
-
-      <% if profile.enabled? %>
-        <div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 flex items-center justify-between gap-4">
-          <div>
-            <div class="text-sm font-medium text-gray-900">Your box office is open</div>
-            <div class="text-xs text-gray-600 mt-0.5">Buyers can find your shows and check out. Course and contract money you collect online joins your CocoScout balance.</div>
-          </div>
-          <% if Current.user.superadmin? %>
-            <%= render "shared/toggle_switch", form: f, field: :enabled, aria_label: "Box office open" %>
-          <% end %>
-        </div>
-      <% end %>
-    </div>
-
-    <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+    <% end %>
   </div>
-<% end %>
+</div>

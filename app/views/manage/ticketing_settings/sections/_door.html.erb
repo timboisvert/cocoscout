@@ -19,12 +19,15 @@
         a modal. It's also where a new organization finishing its door
         setup learns how to turn it on (Apple 3.4). %>
     <% tap_on = ticketing_profile.tap_to_pay? %>
-    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-tap-to-pay-card>
+    <%# iPhone and Android side by side, half each (Tim, 2026-11-13); one
+        under the other on a phone. Each card's words are as they were. %>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch" data-tap-to-pay-cards>
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col" data-tap-to-pay-card>
       <div class="px-6 py-4 border-b border-gray-200">
         <h2 class="text-lg font-semibold text-gray-900">Tap to Pay on iPhone</h2>
         <p class="text-sm text-gray-600 mt-1">Accept physical debit and credit cards as well as Apple Pay and other digital wallets at your door, right on an iPhone.</p>
       </div>
-      <div class="px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+      <div class="px-6 py-4 mt-auto flex flex-wrap items-center justify-between gap-3">
         <div class="min-w-0 flex items-center gap-2 text-sm">
           <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium flex-shrink-0 <%= tap_on ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-700" %>"><%= tap_on ? "On" : "Off" %></span>
           <span class="text-gray-600">
@@ -41,18 +44,16 @@
               data: { controller: "modal", action: "click->modal#open", modal_id: "tap-to-pay-settings" } %>
       </div>
     </div>
-    <%= render "manage/ticketing_settings/tap_to_pay_modal", id: "tap-to-pay-settings" %>
-
     <%# Tap to Pay on Android (2026-10-19): the same switch as the card above
         (TicketingProfile#tap_to_pay), in a card of its own so Apple's card
         and modal stay exactly as Apple reviews them, with Apple's name never
         shortened. %>
-    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-tap-to-pay-android-card>
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col" data-tap-to-pay-android-card>
       <div class="px-6 py-4 border-b border-gray-200">
         <h2 class="text-lg font-semibold text-gray-900">Tap to Pay on Android</h2>
-        <p class="text-sm text-gray-600 mt-1">Contactless debit and credit cards and phone wallets at your door, right on an Android phone, in the CocoScout app. It's on and off with Tap to Pay on iPhone, above.</p>
+        <p class="text-sm text-gray-600 mt-1">Contactless debit and credit cards and phone wallets at your door, right on an Android phone, in the CocoScout app. It's on and off with Tap to Pay on iPhone.</p>
       </div>
-      <div class="px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+      <div class="px-6 py-4 mt-auto flex flex-wrap items-center justify-between gap-3">
         <div class="min-w-0 flex items-center gap-2 text-sm">
           <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium flex-shrink-0 <%= tap_on ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-700" %>"><%= tap_on ? "On" : "Off" %></span>
           <span class="text-gray-600">
@@ -69,6 +70,8 @@
               data: { controller: "modal", action: "click->modal#open", modal_id: "tap-to-pay-android-setup" } %>
       </div>
     </div>
+    </div>
+    <%= render "manage/ticketing_settings/tap_to_pay_modal", id: "tap-to-pay-settings" %>
     <div id="tap-to-pay-android-setup" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
          data-controller="modal" data-action="click->modal#closeOnBackdrop">
       <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden" data-action="click->modal#stopPropagation">
@@ -102,7 +105,7 @@
   <%# When the Door shows in the app's menu (DoorTonight). %>
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
     <div class="px-6 py-4 border-b border-gray-200">
-      <h2 class="text-lg font-semibold text-gray-900">In the CocoScout app</h2>
+      <h2 class="text-lg font-semibold text-gray-900">In the CocoScout Mobile App</h2>
       <p class="text-sm text-gray-600 mt-1">Door people find the Door at the bottom of the app's menu. Choose when it's there. In a phone's browser, cocoscout.com/door always works.</p>
     </div>
     <%= form_with model: ticketing_profile, url: manage_ticketing_door_in_app_path, method: :patch do |f| %>
@@ -186,14 +189,14 @@
         <% end %>
       </ul>
     <% else %>
-      <p class="px-6 py-5 text-sm text-gray-500">Nobody else yet. Add staff or anyone on CocoScout below.</p>
+      <p class="px-6 py-5 text-sm text-gray-500">Nobody else yet. Select staff or allow someone else below.</p>
     <% end %>
   </div>
 
   <%# Staff: tick several at once. %>
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
     <div class="px-6 py-4 border-b border-gray-200">
-      <h2 class="text-lg font-semibold text-gray-900">Add staff</h2>
+      <h2 class="text-lg font-semibold text-gray-900">Select staff that can work the door</h2>
       <p class="text-sm text-gray-600 mt-1">Your staff with CocoScout accounts. Tick who, pick what they can do, and they're in.</p>
     </div>
     <% if staff_with_accounts.any? %>
@@ -234,7 +237,7 @@
        data-door-access-search-grant-text-value="Give door access" data-door-access-search-invite-text-value="Send invitation"
        data-action="people-picker:pick@window->door-access-search#picked">
     <div class="px-6 py-4 border-b border-gray-200">
-      <h2 class="text-lg font-semibold text-gray-900">Add someone else</h2>
+      <h2 class="text-lg font-semibold text-gray-900">Allow someone else to work the door</h2>
       <p class="text-sm text-gray-600 mt-1">A volunteer or a friend of your organization: anyone with a CocoScout account, or an email to invite.</p>
     </div>
     <div class="px-6 py-4" data-door-access-search-target="searchSection">

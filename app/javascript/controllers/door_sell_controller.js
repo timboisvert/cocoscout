@@ -3,7 +3,7 @@ import { orderTotalCents, money } from "controllers/lib/ticket_pricing"
 
 // Selling at the door (door/show): − / + per ticket type, and what each way
 // of paying comes to. Cash is the tickets and their tax (no tax on top when
-// the box office holds cash's tax inside the price: each row's cash-tax says);
+// the box office holds cash's tax included in the price: each row's cash-tax says);
 // card or phone pay is the online price, fees and all (the buyer pays on
 // their own phone).
 export default class extends Controller {

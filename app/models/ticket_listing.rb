@@ -173,7 +173,7 @@ class TicketListing < ApplicationRecord
   end
 
   # Cash at the door: this date's say, else its production's, else the box
-  # office's. "included" holds the tax inside the price paid in cash.
+  # office's. "included" holds the tax included in the price paid in cash.
   def effective_cash_tax
     cash_tax.presence || production_ticketing&.cash_tax.presence || profile&.cash_tax || "same"
   end

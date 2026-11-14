@@ -18,7 +18,7 @@ RSpec.describe "Ticketing settings: the box office page", type: :request do
   it "shows the section and saves the layout, the welcome line, the address switch and a wide image" do
     get manage_ticketing_settings_section_path(section: "page")
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Box office page", "Dates first", "Poster wall", "A line of welcome", "Wide image")
+    expect(response.body).to include("Landing page", "Dates first", "Poster wall", "A line of welcome", "Wide image")
 
     patch manage_ticketing_settings_page_path, params: { ticketing_profile: {
       box_office_layout: "posters", welcome_line: "  Chicago's home for the strange  ", show_address: "0",

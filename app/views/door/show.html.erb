@@ -126,7 +126,7 @@
           <% left = tier.units_for(@listing.inventory.remaining(tier: tier)) %>
           <% most = [ left || tier.units_for(max_per_order), tier.units_for(max_per_order) ].min %>
           <% added_tax = tier.seat_prices.sum { |cents| TaxCalculator.for_ticket(@listing, tier.base_tier, cents).added_cents } %>
-          <%# What cash adds: nothing when the box office holds cash's tax inside the price. %>
+          <%# What cash adds: nothing when the box office holds cash's tax included in the price. %>
           <% cash_tax = tier.seat_prices.sum { |cents| TaxCalculator.for_ticket(@listing, tier.base_tier, cents, mode: @listing.cash_tax_mode).added_cents } %>
           <li class="flex items-center gap-3 py-3" data-door-sell-target="row"
               data-price="<%= tier.price_cents %>" data-tax="<%= added_tax %>" data-cash-tax="<%= cash_tax %>" data-max="<%= [ most, 0 ].max %>" data-admits="<%= tier.admits %>">

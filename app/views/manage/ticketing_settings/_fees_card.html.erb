@@ -1,0 +1,102 @@
+<%# Who pays the fees, how a price reads and what cash comes to: the first
+    box on the Fees and taxes tab (Tim, 2026-11-13: everything about the
+    price that isn't the box office itself, with the tax under it). Saved
+    by the Box office action, which comes back here (from: "tax"). %>
+<%
+  profile = ticketing_profile
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  # The fee switch explained with a real ticket, so the choice isn't abstract.
+  example = [ { price_cents: 2_000 } ]
+  buyer_total = TicketPricing.quote(items: example, fee_mode: "buyer").total_cents
+  absorbed_net = TicketPricing.quote(items: example, fee_mode: "org").org_net_cents
+  fee_choices = [
+    [ "buyer", "Buyers pay the fees", "A $20 ticket costs the buyer #{number_to_currency(buyer_total / 100.0)}, and you keep the full $20." ],
+    [ "org", "You absorb the fees", "A $20 ticket costs the buyer $20, and you keep #{number_to_currency(absorbed_net / 100.0)}." ]
+  ]
+  # How prices are shown, explained with the same $20 ticket under this
+  # organization's own fee and tax settings (a 10% tax when none is set, so
+  # the two choices still read differently).
+  tax_form = TicketTaxSetting.current(Current.organization)
+  tax_set = tax_form.set?
+  tax_on_top = !tax_set || tax_form.mode == "added"
+  tax_percent = tax_set ? tax_form.percent.to_d : 10.to_d
+  example_tax = tax_on_top ? (2_000 * tax_percent / 100).round : 0
+  example_total = TicketPricing.quote(items: [ { price_cents: 2_000, discount_cents: 0, tax_cents: example_tax } ], fee_mode: profile.default_fee_mode).total_cents
+  example_fees = profile.default_fee_mode == "buyer"
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  example_extras = if example_fees && tax_on_top then "taxes & fees"
+  elsif example_fees then "fees"
+  elsif tax_on_top then "tax"
+  end
+  price_choices = [
+    [ "all_in", "All in", "A $20 ticket shows as #{money.(example_total)}#{" incl. #{example_extras}" if example_extras}: the most one ticket can cost." ],
+    [ "base", "Before taxes and fees", example_extras ? "A $20 ticket shows as $20.00 + #{example_extras}. A tap on the price shows #{money.(example_total)} with #{example_extras}." : "A $20 ticket shows as $20.00." ]
+  ]
+  price_display_note = [
+    ("You don't charge tax on tickets yet; the example uses 10%." unless tax_set),
+    ("Your tax is inside your prices, so it's never added on top." if tax_set && !tax_on_top)
+  ].compact.join(" ")
+%>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="prices">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Fees, prices, and cash</h2>
+      <p class="text-sm text-gray-600 mt-1">Who pays the fees, how a price reads to a buyer, and what cash comes to at the door. Each production and date can change the fees and the cash.</p>
+    </div>
+    <%= form_with model: profile, url: manage_ticketing_settings_path, method: :patch do |f| %>
+      <%= hidden_field_tag :from, "tax", id: nil %>
+      <div class="px-6 py-5 space-y-6">
+      <fieldset>
+        <legend class="block text-sm font-medium text-gray-700 mb-1.5">Who pays our 50¢ and card processing</legend>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <% fee_choices.each do |value, title, explanation| %>
+            <label class="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+              <%= f.radio_button :default_fee_mode, value, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
+              <span>
+                <span class="block text-sm font-medium text-gray-900"><%= title %></span>
+                <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
+              </span>
+            </label>
+          <% end %>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend class="block text-sm font-medium text-gray-700 mb-1.5">How prices are shown</legend>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <% price_choices.each do |value, title, explanation| %>
+            <label class="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+              <%= f.radio_button :price_display, value, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
+              <span>
+                <span class="block text-sm font-medium text-gray-900"><%= title %></span>
+                <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
+              </span>
+            </label>
+          <% end %>
+        </div>
+        <% if price_display_note.present? %><p class="text-xs text-gray-500 mt-2"><%= price_display_note %></p><% end %>
+      </fieldset>
+
+      <%# Cash at the door (Tim, 2026-11-13): the same as every other sale
+          unless you say cash holds its tax, so nobody makes change in coins. %>
+      <fieldset data-cash-tax>
+        <legend class="block text-sm font-medium text-gray-700 mb-1.5">Cash at the door</legend>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <% [ [ "same", "The same as any other sale", (tax_on_top ? "Tax is added on top: a $20 ticket is #{money.(2_000 + example_tax)} in cash." : "A $20 ticket is $20.00 in cash.") ],
+               [ "included", "Tax is included in the price", "A $20 ticket is $20.00 in cash, and the tax comes out of that $20. Cards and online sales aren't changed." ] ].each do |value, title, explanation| %>
+            <label class="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+              <%= f.radio_button :cash_tax, value, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
+              <span>
+                <span class="block text-sm font-medium text-gray-900"><%= title %></span>
+                <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
+              </span>
+            </label>
+          <% end %>
+        </div>
+        <p class="text-xs text-gray-500 mt-2">CocoScout doesn't charge any fees for cash sales.</p>
+      </fieldset>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+      </div>
+    <% end %>
+  </div>

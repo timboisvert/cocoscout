@@ -134,7 +134,7 @@ RSpec.describe TicketDoor do
     # Cash that holds its tax (Tim, 2026-11-13): nobody makes change in
     # coins. The box office says so once; a production and a date can each
     # say otherwise. Cards and online sales are never changed by it.
-    context "when the box office holds cash's tax inside the price" do
+    context "when the box office holds cash's tax included in the price" do
       before do
         TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")
         TicketingProfile.for(org).update!(cash_tax: "included")

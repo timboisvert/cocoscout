@@ -8,7 +8,7 @@
 # org's default. A rule names rates (they add up) or marks the sale exempt.
 #
 #   added    — tax on top of the price: $20 at 10.25% → $2.05 more.
-#   included — tax inside the price: $20 at 10.25% holds $1.86 of tax.
+#   included — tax included in the price: $20 at 10.25% holds $1.86 of tax.
 #
 # Rounding is half up, per unit, per rate, so a refund of one ticket returns
 # exactly the tax that ticket carried.
@@ -39,7 +39,7 @@ class TaxCalculator
   end
 
   # mode: "included" or "added" to say which for this sale whatever the
-  # rule says (a cash sale that holds its tax inside the price); nil leaves
+  # rule says (a cash sale that holds its tax included in the price); nil leaves
   # it to the rule.
   def self.for_ticket(listing, tier, base_cents, mode: nil)
     rule = rule_for(listing.organization, "tickets",

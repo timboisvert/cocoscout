@@ -84,7 +84,6 @@
                 <%= render "manage/ticketing/played_row", listing: listing, stats: stats %>
               <% end %>
             </div>
-            <%= link_to "Every date, with totals", manage_ticketing_attendance_path(filter: "this_month"), class: "mt-2 inline-block text-sm font-medium text-pink-600 hover:text-pink-700" %>
           <% else %>
             <div class="mt-2 bg-white border border-gray-200 rounded-xl px-5 py-6 text-sm text-gray-600">No dates have played yet.</div>
           <% end %>
@@ -109,7 +108,6 @@
         <section>
           <div class="flex items-baseline justify-between mb-2">
             <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Just played</h2>
-            <%= link_to "Every date, with totals", manage_ticketing_attendance_path(filter: "last_7_days"), class: "text-xs text-pink-600 hover:text-pink-700" %>
           </div>
           <div class="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
             <% just_played.each do |listing, stats| %>
@@ -133,8 +131,6 @@
       </div>
 
       <%= render "shared/action_list", items: [
-        { text: "Attendance", description: "Everyone holding a ticket, date by date, for any week", path: manage_ticketing_attendance_path,
-          icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" },
         { text: "Reports", description: "Ticket sales by show, type and channel, in Reports", path: manage_reports_path,
           icon: "M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
         { text: "Sales tax", description: "What you collected, what's set aside, and how to pay it", path: manage_ticket_taxes_path,

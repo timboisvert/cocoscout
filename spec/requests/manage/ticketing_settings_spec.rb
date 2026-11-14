@@ -97,17 +97,19 @@ RSpec.describe "Manage ticketing settings", type: :request do
     # Cash at the door (Tim, 2026-11-13): the same as any other sale until
     # the box office says cash holds its tax.
     it "saves how cash is taxed, the same as any other sale by default" do
-      get manage_ticketing_settings_section_path(section: "box_office")
+      get manage_ticketing_settings_section_path(section: "tax")
       doc = Nokogiri::HTML(response.body)
       expect(doc.at_css("[data-cash-tax] input[checked]")["value"]).to eq("same")
 
-      patch manage_ticketing_settings_path, params: { ticketing_profile: { cash_tax: "included" } }
+      # The fees box saves through the Basic info action and comes back to its own tab.
+      patch manage_ticketing_settings_path, params: { from: "tax", ticketing_profile: { cash_tax: "included" } }
+      expect(response).to redirect_to(manage_ticketing_settings_section_path(section: "tax"))
       expect(TicketingProfile.for(org).reload.cash_tax).to eq("included")
     end
 
     it "sets how many days ahead buyers get their reminder, or turns it off" do
-      get manage_ticketing_settings_section_path(section: "box_office")
-      expect(response.body).to include("Reminder email", "1 day before the show", "30 days before the show")
+      get manage_ticketing_settings_section_path(section: "notifications")
+      expect(response.body).to include("Buyer emails", "Reminder email", "1 day before the show", "30 days before the show")
 
       patch manage_ticketing_settings_path, params: { ticketing_profile: { reminder_days_before: "3" } }
       expect(org.reload.ticketing_profile.reminder_days_before).to eq(3)
@@ -119,7 +121,7 @@ RSpec.describe "Manage ticketing settings", type: :request do
 
     it "attaches PDF tickets to the confirmation only once it's turned on" do
       expect(TicketingProfile.for(org).attach_pdf_tickets?).to be(false)
-      get manage_ticketing_settings_section_path(section: "box_office")
+      get manage_ticketing_settings_section_path(section: "notifications")
       expect(response.body).to include("Attach PDF tickets", "ticketing_profile[attach_pdf_tickets]")
 
       patch manage_ticketing_settings_path, params: { ticketing_profile: { attach_pdf_tickets: "1" } }
@@ -129,7 +131,7 @@ RSpec.describe "Manage ticketing settings", type: :request do
     end
 
     it "explains the fee switch with a real $20 ticket; the refund policy's fees are a toggle on its own tab" do
-      get manage_ticketing_settings_section_path(section: "box_office")
+      get manage_ticketing_settings_section_path(section: "tax")
       expect(response.body).to include("$21.42").and include("$18.62")
       expect(response.body).not_to include("refunds_after_show", "refund_fees")
       # Saved settings are toggles, never plain checkboxes (Tim, 2026-10-06).

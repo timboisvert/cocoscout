@@ -10,9 +10,11 @@ module Manage
   # organization's own site) is off the list until embeds are ready to offer
   # (Tim, 2026-10-19); the embed pages themselves still work.
   class TicketingSettingsController < Manage::TicketingBaseController
-    SECTIONS = %w[box_office page refunds tax notifications door sharing comps].freeze
-    SECTION_LABELS = { "box_office" => "Box office", "page" => "Box office page", "refunds" => "Refunds", "tax" => "Tax", "notifications" => "Notifications",
-                       "door" => "Door", "sharing" => "Who sees sales", "comps" => "Comps" }.freeze
+    # The tabs' order (Tim, 2026-11-13): fees and taxes beside the box office,
+    # comps left of refunds, the landing page just left of sales visibility.
+    SECTIONS = %w[box_office tax comps refunds notifications door page sharing].freeze
+    SECTION_LABELS = { "box_office" => "Basic info", "page" => "Landing page", "refunds" => "Refunds", "tax" => "Fees and taxes", "notifications" => "Notifications and emails",
+                       "door" => "Door", "sharing" => "Sales visibility", "comps" => "Comps" }.freeze
     DEFAULT_SECTION = "box_office"
 
     before_action :set_section, only: %i[show]
@@ -129,7 +131,9 @@ module Manage
       attrs.delete(:enabled) unless Current.user.superadmin?
 
       if ticketing_profile.update(attrs)
-        redirect_to section_path("box_office"), notice: "Box office settings saved."
+        # The fees box sits on the Fees and taxes tab and comes back to it.
+        back = params[:from].to_s.presence_in(SECTIONS) || "box_office"
+        redirect_to section_path(back), notice: { "tax" => "Fees and prices saved.", "notifications" => "Buyer emails saved." }.fetch(back, "Basic info saved.")
       else
         @section = "box_office"
         flash.now[:alert] = ticketing_profile.errors.full_messages.to_sentence

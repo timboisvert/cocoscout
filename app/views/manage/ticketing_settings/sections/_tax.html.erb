@@ -1,1 +1,14 @@
-<%= render "shared/one_tax_setting", tax: @tax, url: manage_ticketing_settings_tax_path, what: "tickets", example_cents: 2_000, set_aside: Current.organization %>
+<%# Fees and taxes (Tim, 2026-11-13): who pays the fees, how prices read and
+    what cash comes to, then the tax on tickets, each in its own box. %>
+<div class="space-y-6">
+  <%= render "manage/ticketing_settings/fees_card" %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="tax">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Tax on tickets</h2>
+      <p class="text-sm text-gray-600 mt-1">What you charge, and whether it sits on top of a price or inside it.</p>
+    </div>
+    <div class="px-6 py-5">
+      <%= render "shared/one_tax_setting", tax: @tax, url: manage_ticketing_settings_tax_path, what: "tickets", example_cents: 2_000, set_aside: Current.organization %>
+    </div>
+  </div>
+</div>

@@ -50,7 +50,7 @@ RSpec.describe "Ticketing dashboard", type: :request do
     # Past (Tim, 2026-10-19): every date that has played, newest first, each
     # with its numbers, no drawers and no Just played beside it.
     get manage_ticketing_path(period: "all_time", dates: "past")
-    expect(response.body).to include(manage_ticket_listing_path(played), "4 sold", "Every date, with totals")
+    expect(response.body).to include(manage_ticket_listing_path(played), "4 sold")
     expect(response.body).not_to include(manage_ticket_listing_path(upcoming), "Just played", "more date")
   end
 

@@ -12,7 +12,7 @@
 <div class="space-y-6">
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
     <div class="px-6 py-4 border-b border-gray-200">
-      <h2 class="text-lg font-semibold text-gray-900">Ticketing emails</h2>
+      <h2 class="text-lg font-semibold text-gray-900">Management notifications and emails</h2>
       <p class="text-sm text-gray-600 mt-1">Who gets which emails as tickets sell and money moves. Each person has a plan, and a plan takes in new kinds of email on its own. Each sale, comp and pass as it happens reaches a manager as a notification, not an email.</p>
     </div>
     <ul class="divide-y divide-gray-100" data-notification-recipients>
@@ -46,6 +46,7 @@
       <span class="text-sm text-gray-600">For an inbox, or someone who isn't a manager here. Your managers are listed on their own.</span>
     </div>
   </div>
+  <%= render "manage/ticketing_settings/buyer_emails_card" %>
 </div>
 
 <% people.each_with_index do |r, i| %>

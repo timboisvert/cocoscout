@@ -34,7 +34,7 @@ RSpec.describe "Door", type: :request do
 
   # The Cash button's total follows the box office's cash setting (Tim,
   # 2026-11-13): each row says what cash adds in tax, which is nothing when
-  # cash holds its tax inside the price.
+  # cash holds its tax included in the price.
   it "tells the sell screen what cash adds in tax" do
     TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")
     sign_in(owner)
