@@ -31,7 +31,9 @@ RSpec.describe NativeAppVersion do
     safari = ->(config) { config["rules"].select { |r| r.dig("properties", "open_in") == "safari" }.flat_map { |r| r["patterns"] } }
     expect(safari.(v1)).to include("^/manage")
     expect(safari.(v2)).not_to include("^/manage")
-    expect(safari.(v2)).to include("^/superadmin", "^/manage/billing")
+    expect(safari.(v2)).to include("^/manage/billing")
+    # Superadmin opens in the app from generation 2 (Tim, 2026-11-14); V1 keeps sending it out.
+    expect(safari.(v2)).not_to include("^/superadmin")
     # Pro isn't sold in the apps (Tim, 2026-10-20): billing opens the website.
     billing = Rails.application.routes.url_helpers.section_manage_organization_path(7, section: "billing")
     expect(safari.(v2).any? { |pattern| billing.match?(Regexp.new(pattern)) }).to be(true)
