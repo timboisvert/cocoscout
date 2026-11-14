@@ -8,7 +8,7 @@
   ]
   staff_with_accounts, staff_without_accounts = @door_staff.partition { |member| member.person&.user_id.present? }
   in_app_choices = [
-    [ "smart", "On show days", "From the morning of a show with tickets until an hour after it ends, or 2 AM when it has no end time." ],
+    [ "smart", "On show days", "From the morning of a show with tickets until an hour after it ends. With no end time: 4 hours after a daytime show starts, or 2 AM for an evening show." ],
     [ "always", "All the time", "For selling ahead or trying the door out. When nothing's on, it opens the list of your coming shows." ]
   ]
 %>

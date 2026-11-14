@@ -26,6 +26,14 @@ RSpec.describe DoorTonight do
       expect(described_class.door_open?(listing, at: friday.change(hour: 17))).to be(true)
     end
 
+    it "ends 4 hours after a daytime show with no end time starts (Tim, 2026-11-14)" do
+      show.update!(date_and_time: friday.change(hour: 13))
+      expect(described_class.phase(listing, at: friday.change(hour: 16, min: 45))).to eq(:door)
+      expect(described_class.phase(listing, at: friday.change(hour: 17, min: 15))).to eq(:after)
+      show.update!(date_and_time: friday.change(hour: 18))
+      expect(described_class.phase(listing, at: friday.tomorrow.change(hour: 1, min: 30))).to eq(:door)
+    end
+
     it "ends an hour after a show with an end time" do
       show.update!(duration_minutes: 60)
       expect(described_class.phase(listing, at: friday + 2.hours)).to eq(:door)
