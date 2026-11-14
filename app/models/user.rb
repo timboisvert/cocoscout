@@ -93,6 +93,7 @@ class User < ApplicationRecord
                        if: -> { password.present? }
   validate :password_complexity, if: -> { password.present? }
   validate :email_not_malicious
+  validate :email_dots_valid, if: :will_save_change_to_email_address?
 
   SUPERADMIN_EMAILS = [ "boisvert@gmail.com", "andiewonnacott@gmail.com" ].freeze
 
@@ -132,6 +133,19 @@ class User < ApplicationRecord
     return unless email_address.match?(/\b(bin|cat|etc|passwd|wget|curl|bash|exec|eval)\b/i)
 
     errors.add(:email_address, "is not valid")
+  end
+
+  # Two dots in a row, or a dot at either end of the name before the @,
+  # isn't a real address: no mail provider accepts it (Tim, 2026-11-13). The
+  # bot sign-ups ("j.u.s.ti.n..t.g9@gmail.com") all looked like this, and
+  # Mailgun refused every one. Only checked when the address changes, so
+  # accounts that already have one can still be saved.
+  def email_dots_valid
+    local, domain = email_address.to_s.split("@", 2)
+    return if local.blank? || domain.blank?
+    return unless local.include?("..") || local.start_with?(".") || local.end_with?(".") || domain.include?("..")
+
+    errors.add(:email_address, "must be a valid email address")
   end
 
   # Returns the role for the current organization (default role)
