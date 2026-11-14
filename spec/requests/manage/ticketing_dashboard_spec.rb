@@ -130,6 +130,27 @@ RSpec.describe "Ticketing dashboard", type: :request do
     end
   end
 
+  it "takes a morning show off coming up once its door closes, into just played (Tim, 2026-11-14)" do
+    saturday = Time.zone.local(2026, 11, 14)
+    matinee = listing_at(saturday.change(hour: 11)).tap { |l| l.show.update!(duration_minutes: 60) } # door shuts 1 PM
+    evening = listing_at(saturday.change(hour: 19, min: 30))
+    next_week = listing_at(saturday.change(hour: 11) + 7.days).tap { |l| l.show.update!(duration_minutes: 60) }
+
+    travel_to(saturday.change(hour: 12, min: 30)) do # still on
+      dashboard = TicketingDashboard.new(org)
+      expect(dashboard.coming_up.flat_map { |row| row.dates.map(&:first) }).to eq([ matinee, evening, next_week ])
+      expect(dashboard.just_played).to be_empty
+    end
+
+    travel_to(saturday.change(hour: 17)) do
+      dashboard = TicketingDashboard.new(org)
+      expect(dashboard.coming_up.flat_map { |row| row.dates.map(&:first) }).to eq([ evening, next_week ])
+      expect(dashboard.tonight.map(&:first)).to eq([ evening ])
+      expect(dashboard.just_played.map(&:first)).to eq([ matinee ])
+      expect(dashboard.past.map(&:first)).to eq([ matinee ])
+    end
+  end
+
   it "leads with every show whose door is open, each with its Work the door, and the row says it too" do
     tonight = listing_at(Time.zone.local(2026, 11, 6, 19, 30))
     later = listing_at(Time.zone.local(2026, 11, 13, 19, 30))

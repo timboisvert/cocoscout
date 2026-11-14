@@ -72,8 +72,8 @@ class TicketingDashboard
     @upcoming_production_count ||= upcoming.distinct.count("ticket_listings.production_id")
   end
 
-  # Today's shows, and last night's until its door closes (a show running
-  # past midnight is still tonight's).
+  # Today's shows still on, and last night's until its door closes (a show
+  # running past midnight is still tonight's).
   def tonight
     @tonight ||= with_stats(DoorTonight.still_on(listings.where.not(status: %w[canceled draft]).where(shows: { canceled: false }))
                                        .where("shows.date_and_time <= ?", Time.current.end_of_day)
@@ -86,21 +86,22 @@ class TicketingDashboard
     @door_open ||= tonight.select { |listing, _| DoorTonight.door_open?(listing) }
   end
 
-  # Before today, but not one that's still on tonight.
+  # Started and no longer on (a matinee once its door closes, Tim,
+  # 2026-11-14), so it's here the moment it leaves the upcoming list.
   # Every date that has played, newest first, with its numbers: the Past
   # view of the Ticketing page (Tim, 2026-10-19: a played show's total was
   # hard to find once it fell off Just played).
   PAST = 60
   def past
     @past ||= with_stats(listings.where.not(status: %w[canceled draft])
-                                 .where("shows.date_and_time < ?", Time.current.beginning_of_day)
+                                 .where("shows.date_and_time < ?", Time.current)
                                  .where.not(id: tonight.map { |listing, _| listing.id })
                                  .order("shows.date_and_time DESC").limit(PAST))
   end
 
   def just_played
     @just_played ||= with_stats(listings.where.not(status: %w[canceled draft])
-                                        .where("shows.date_and_time < ?", Time.current.beginning_of_day)
+                                        .where("shows.date_and_time < ?", Time.current)
                                         .where.not(id: tonight.map { |listing, _| listing.id })
                                         .order("shows.date_and_time DESC").limit(JUST_PLAYED))
   end
