@@ -144,4 +144,43 @@ RSpec.describe CompanyBillReader do
     expect(result.attributes).to include(vendor: "apple developer 2026", category: "other")
     expect(described_class.read(StringIO.new("not a pdf"), filename: "x.pdf")).not_to be_complete
   end
+
+  # Mailgun's invoice (Tim, 2026-11-14): CocoScout's email, paid by Coco
+  # Runs Everything. Read from the real November invoice's text.
+  describe "a Mailgun invoice" do
+    let(:mailgun) do
+      <<~TEXT
+        Invoice
+        Mailgun Technologies, Inc.                                                 Account: CocoScout
+        112 E. Pecan St.
+                                                                                 Account ID: A00005268
+        San Antonio, TX, 78205                                              Invoice Number: INV00010056
+        USA                                                                      Issue Date: 11/13/2026
+                                                                                  Due Date: 11/13/2026
+        Invoice Charges
+               Rate Plan             Charge Name             Service Date             Quantity                Amount
+          Basic_10k               Subscription Fee -         11/13/2026 -                 1                     $9.00
+                                  Mailgun Basic 10k --        11/30/2026
+                                  Proration
+                                                            Invoice Total
+                                                                  Sub total:                                       $9.00 USD
+                                                               Subtotal Tax:                                       $1.35 USD
+                                                                Grand Total:                                      $10.35 USD
+                                                                 Payments:                                      ($10.35) USD
+                                                       Invoice Balance Due:                                        $0.00 USD
+                                                           Date of Payment:                                        11/13/2026
+      TEXT
+    end
+
+    it "reads its number, its total with tax, the month, the day paid and the plan" do
+      result = described_class.from_text(mailgun)
+      expect(result).to be_complete
+      expect(result.attributes).to include(
+        vendor: "Mailgun", category: "software", description: "Mailgun Basic 10k", bill_number: "INV00010056",
+        bill_total_cents: 1_035, period_month: Date.new(2026, 11, 1), billed_on: Date.new(2026, 11, 13),
+        paid_on: Date.new(2026, 11, 13), note: "A first month, prorated."
+      )
+      expect(result.attributes[:breakdown]).to eq([ [ "Mailgun Basic 10k", 900 ], [ "Tax", 135 ] ])
+    end
+  end
 end

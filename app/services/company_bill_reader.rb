@@ -6,10 +6,10 @@
 # that stays "to check" until someone confirms it against the PDF, so a
 # misread never reaches Spent on its own.
 #
-# Knows three layouts: Amazon Web Services' monthly invoice, Anthropic's
-# receipt (Stripe's standard receipt) and GitHub's payment receipt
-# (Copilot). Anything else gets a best guess at the total and the date,
-# and the rest is typed in.
+# Knows four layouts: Amazon Web Services' monthly invoice, Anthropic's
+# receipt (Stripe's standard receipt), GitHub's payment receipt (Copilot)
+# and Mailgun's invoice (sending CocoScout's email). Anything else gets a
+# best guess at the total and the date, and the rest is typed in.
 class CompanyBillReader
   # "$1,284.37", "-$12.00", and Amazon's "USD 139.46" and "-USD 50.00".
   MONEY = /(-)?(?:USD\s?|\$\s?)(-)?([\d,]+\.\d{2})/
@@ -17,6 +17,8 @@ class CompanyBillReader
   # GitHub writes its dates "2026-01-15" or "15 Jan 2026".
   ISO_DATE = /(\d{4})-(\d{2})-(\d{2})/
   DAY_FIRST_DATE = /(\d{1,2})\s+([A-Z][a-z]+)\.?,?\s+(\d{4})/
+  # Mailgun writes its dates "11/13/2026", month first.
+  US_DATE = %r{(\d{1,2})/(\d{1,2})/(\d{4})}
   # Lines in an Amazon invoice's Detail that are parts of a service, not one.
   NOT_A_SERVICE = /\A(charges|credits?|tax|vat|gst|ct|total|net charges|subtotal|discounts?|estimated|usage|summary|detail|aws service charges|savings plan \()/i
 
@@ -48,6 +50,7 @@ class CompanyBillReader
     attrs = if @flat.match?(/Amazon Web Services/i) then amazon
     elsif @flat.match?(/Anthropic/i) then anthropic
     elsif @flat.match?(/GitHub/i) then github
+    elsif @flat.match?(/Mailgun/i) then mailgun
     else other
     end
     found = []
@@ -126,6 +129,36 @@ class CompanyBillReader
       period_month: paid&.beginning_of_month,
       billed_on: paid, paid_on: paid
     }
+  end
+
+  # Mailgun's invoice (Tim, 2026-11-14: Basic 10k since Nov 13, paid by Coco
+  # Runs Everything): "Invoice Number: INV00010056", "Issue Date:
+  # 11/13/2026", "Grand Total: $10.35 USD" (the plan plus Chicago's lease
+  # tax), "Date of Payment: 11/13/2026". The plan's line and the tax are
+  # its breakdown; a first month is prorated, and says so.
+  def mailgun
+    issued = us_date_after(/Issue Date:?/i)
+    paid = us_date_after(/Date of Payment:?/i)
+    plan = @flat[/Mailgun\s+(?:Basic|Foundation|Scale|Flex|Growth|Enterprise)(?:\s+\d+k)?/i]&.squish
+    subtotal = money_after(/Sub ?total:/i)
+    tax = money_after(/Subtotal Tax:/i)
+    breakdown = [ ([ plan || "Mailgun plan", subtotal ] if subtotal), ([ "Tax", tax ] if tax.to_i.positive?) ].compact
+    {
+      vendor: "Mailgun", category: "software", description: plan || "Mailgun",
+      bill_number: @flat[/Invoice Number:?\s*([A-Z0-9-]+)/i, 1],
+      bill_total_cents: money_after(/Grand Total:/i) || money_after(/Invoice Total/i),
+      period_month: (issued || paid)&.beginning_of_month,
+      billed_on: issued, paid_on: paid,
+      breakdown: breakdown,
+      note: ("A first month, prorated." if @flat.match?(/Proration/i))
+    }
+  end
+
+  # The first month-first date after a label on its line ("11/13/2026").
+  def us_date_after(label)
+    rest = @flat[Regexp.new("(?i:#{label.source})([^\\n]{0,40})"), 1]
+    match = rest&.match(US_DATE)
+    match && to_date(match[1].to_i, match[2], match[3])
   end
 
   def other
