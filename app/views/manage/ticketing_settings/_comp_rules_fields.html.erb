@@ -7,7 +7,8 @@
     default), off_words (what "off" means here), intro_tail (optional, one
     more sentence for the intro), example (optional, the closing sentence),
     heading (optional, default "Comps"), bare (optional: true inside a box
-    that already has its border, a production's or a date's own rules). %>
+    that already has its border, a production's or a date's own rules),
+    save (true: a Save in the box's foot). %>
 <%
   input_class = "block w-20 px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   radio_class = "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500 flex-shrink-0"
@@ -105,4 +106,9 @@
       <p class="px-6 py-3 text-sm text-gray-600 bg-gray-50"><%= local_assigns[:example] %></p>
     <% end %>
   </div>
+<% if local_assigns[:save] %>
+  <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+    <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+  </div>
+<% end %>
 </div>

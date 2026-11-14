@@ -332,6 +332,29 @@ RSpec.describe "Production ticketing", type: :request do
       expect(listing.reload.attributes.slice("title", "door_note", "accessibility_note").values).to all(be_nil)
     end
 
+    # The date's own Fees and taxes tab: all three choices follow one
+    # override, and each falls back a level at a time.
+    it "overrides fees, how prices show and cash on the date's Fees and taxes tab, and clears all three when switched off" do
+      profile = TicketingProfile.for(org)
+      expect([ listing.effective_fee_mode, listing.effective_price_display, listing.effective_cash_tax ])
+        .to eq([ profile.default_fee_mode, profile.price_display, profile.cash_tax ])
+
+      patch manage_ticket_listing_path(listing), params: { section: "fees", ticket_listing: { own_fees: "1", fee_mode: "org", price_display: "base", cash_tax: "included" } }
+      expect(response).to redirect_to(manage_edit_ticket_listing_path(listing, section: "fees"))
+      fresh = TicketListing.find(listing.id)
+      expect([ fresh.effective_fee_mode, fresh.effective_price_display, fresh.effective_cash_tax ]).to eq(%w[org base included])
+      expect(fresh.prices_before_extras?).to be(true)
+      expect(fresh.cash_tax_mode).to eq("included")
+
+      # The production's own sit between the date and the box office.
+      patch manage_ticket_listing_path(listing), params: { section: "fees", ticket_listing: { own_fees: "0" } }
+      production.reload.production_ticketing.update!(price_display: "base")
+      fresh = TicketListing.find(listing.id)
+      expect(fresh.attributes.slice("fee_mode", "price_display", "cash_tax").values).to all(be_nil)
+      expect(fresh.effective_price_display).to eq("base")
+      expect(fresh.effective_fee_mode).to eq(profile.default_fee_mode)
+    end
+
     it "keeps each tab's form to itself" do
       get manage_edit_ticket_listing_path(listing, section: "sales")
       expect(response.body).to include("When sales open and close", "Most tickets in one order")

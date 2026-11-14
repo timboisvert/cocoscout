@@ -102,7 +102,7 @@ module Manage
       attrs[:welcome_line] = attrs[:welcome_line].to_s.squish.presence if attrs.key?(:welcome_line)
       ticketing_profile.wide_image.purge_later if params[:remove_wide_image] == "1" && ticketing_profile.wide_image.attached?
       if ticketing_profile.update(attrs)
-        redirect_to section_path("page"), notice: "Box office page saved."
+        redirect_to section_path("page"), notice: "Landing page saved."
       else
         @section = "page"
         flash.now[:alert] = ticketing_profile.errors.full_messages.to_sentence
