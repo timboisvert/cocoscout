@@ -292,8 +292,8 @@ module My
 
         # Build the message
         groups_text = groups_removed.any? ? groups_removed.join(", ") : "the production"
-        talent_pool_url = Rails.application.routes.url_helpers.manage_auditions_url(
-          production_id: @production.id,
+        talent_pool_url = Rails.application.routes.url_helpers.manage_casting_talent_pool_url(
+          @production,
           **Rails.application.config.action_mailer.default_url_options
         )
         rendered = ContentTemplateService.render("talent_left_production", {
