@@ -24,10 +24,7 @@ module Manage
       # top of To settle from the moment it has a show or a register day, so
       # nobody goes to All days to find it. It isn't counted as a day to
       # settle anywhere (Home, the Money hub) until it's over.
-      if @filter == "to_settle"
-        today = SettleUp.day(Current.organization, SettlementDay.day_for(Current.organization, Time.current))
-        @today = today if today.any? && !today.settled? && !today.ended? && !today.before_start?
-      end
+      @today = SettleUp.today_in_progress(Current.organization) if @filter == "to_settle"
     rescue ArgumentError
       redirect_to manage_money_settle_up_path
     end

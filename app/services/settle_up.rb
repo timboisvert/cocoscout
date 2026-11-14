@@ -301,6 +301,20 @@ class SettleUp
     end
   end
 
+  # Today, while it's still going, once a show of its has started or it has
+  # a register day, and nobody has settled it (Tim, 2026-11-13: "I should be
+  # able to start with settling today up"); nil otherwise. A day whose shows
+  # are all still to come has nothing to confirm yet. Settle up and the
+  # Money hub put it above the days that are over. It is never one of the
+  # days to settle that Home counts.
+  def self.today_in_progress(organization, now: Time.current)
+    today = day(organization, SettlementDay.day_for(organization, now))
+    return nil if today.settled? || today.ended? || today.before_start?
+
+    started = today.shows.any? { |piece| piece.show.date_and_time <= now } || today.registers.any?
+    today if started
+  end
+
   # Days that are over, had money in them, and nobody has settled, from the
   # organization's Settle up start date on (SettleUpStart): earlier days are
   # history.

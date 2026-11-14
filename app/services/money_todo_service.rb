@@ -183,6 +183,17 @@ class MoneyTodoService
     @settle_days ||= Section.new(count: settle_dates.size, items: row_limit == 0 ? [] : SettleUp.to_settle(organization, limit: row_limit))
   end
 
+  # The hub's Days to settle list: today first while it's still going (so the
+  # hub never says "Every day is settled" over a night in progress; Tim,
+  # 2026-11-13), then the days that are over. settle_days stays the days
+  # that are over, which is what the hub's alert and Home count.
+  def settle_days_listed
+    @settle_days_listed ||= begin
+      today = row_limit == 0 ? nil : SettleUp.today_in_progress(organization)
+      Section.new(count: settle_days.count.to_i + (today ? 1 : 0), items: [ today ].compact + settle_days.items)
+    end
+  end
+
   # The dates of those days alone: Home says how many and links the oldest.
   def settle_dates
     @settle_dates ||= SettleUp.open_dates(organization)

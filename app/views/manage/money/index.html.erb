@@ -94,13 +94,14 @@
       window onto its own page and links there for the rest. %>
 
   <%= render layout: "manage/money/todo_section",
-        locals: { title: "Days to settle", section: @todo.settle_days, label: "Day",
+        locals: { title: "Days to settle", section: @todo.settle_days_listed, label: "Day",
                   columns: [ "Pieces", "So far" ], min_width: "min-w-[420px]",
                   path: manage_money_settle_up_path, link_text: "Settle up",
                   empty: "Every day is settled." } do %>
-    <% @todo.settle_days.items.each do |day| %>
-      <%= link_to manage_money_settle_up_day_path(day.param), class: "grid grid-cols-[1fr_auto_auto] gap-3 items-center px-4 py-2.5 text-sm hover:bg-gray-50" do %>
-        <span class="min-w-0"><span class="block font-medium text-gray-900"><%= day.date.strftime("%a, %b %-d") %></span><span class="block text-xs text-gray-500 truncate"><%= day.shows.map { |s| s.show.display_name }.to_sentence %></span></span>
+    <% @todo.settle_days_listed.items.each do |day| %>
+      <%# Today, still going, is first and says so; the rest are over. %>
+      <%= link_to manage_money_settle_up_day_path(day.param), class: "grid grid-cols-[1fr_auto_auto] gap-3 items-center px-4 py-2.5 text-sm hover:bg-gray-50", data: ({ settle_today: true } unless day.ended?) do %>
+        <span class="min-w-0"><span class="block font-medium text-gray-900"><%= day.date.strftime("%a, %b %-d") %><% unless day.ended? %> <span class="font-normal text-gray-500">· today, still going</span><% end %></span><span class="block text-xs text-gray-500 truncate"><%= day.shows.map { |s| s.show.display_name }.to_sentence %></span></span>
         <span class="flex flex-wrap gap-1 justify-end">
           <% day.pieces.each do |label, state| %>
             <% dot = { ok: "bg-green-500", wait: "bg-amber-500", miss: "bg-red-500" }.fetch(state) %>

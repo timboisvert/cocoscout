@@ -48,30 +48,40 @@ RSpec.describe "Money hub parity", type: :request do
       settle!(overdue_a)
       settle!(overdue_b)
 
+      # (The show later today hasn't started, so today isn't on the list yet.)
       get manage_money_index_path
       expect(response.body).to include("Every day is settled.")
       expect(links_to(day_path(overdue_a))).to be(false)
 
-      # Settle up says so too. A show later today puts today on the page in
-      # its own box (still going, not a day to settle), and then the line
-      # is about the days before it; late at night that show is tomorrow's.
-      get manage_money_settle_up_path
-      if SettlementDay.day_for(org, starts_soon.date_and_time) == SettlementDay.day_for(org, Time.current)
-        expect(response.body).to include("data-settle-today", "Every earlier day is settled.")
-      else
-        expect(response.body).to include("Every day is settled", "The next show that happens will put its day here.")
-      end
-      expect(links_to(day_path(overdue_a))).to be(false)
-    end
-
-    it "says every day is settled, plainly, when nothing is on today" do
-      starts_soon.destroy!
-      settle!(overdue_a)
-      settle!(overdue_b)
-
       get manage_money_settle_up_path
       expect(response.body).to include("Every day is settled", "The next show that happens will put its day here.")
       expect(response.body).not_to include("data-settle-today")
+      expect(links_to(day_path(overdue_a))).to be(false)
+    end
+
+    # Once a show of today's has started, Settle up has its Today box and the
+    # line is about the days before it.
+    it "says every earlier day is settled once today is under way" do
+      settle!(overdue_a)
+      settle!(overdue_b)
+      create(:show, production: production, event_type: :show, date_and_time: 1.minute.ago)
+
+      get manage_money_settle_up_path
+      expect(response.body).to include("data-settle-today", "Every earlier day is settled.")
+    end
+
+    # The hub lists today while it's still going (Tim, 2026-11-13: it said
+    # "Every day is settled" with a night in progress), first and marked,
+    # without calling it a day to settle up.
+    it "lists today first on the hub while it's still going, and never says every day is settled over it" do
+      settle!(overdue_a)
+      settle!(overdue_b)
+      tonight = create(:show, production: production, event_type: :show, date_and_time: 1.minute.ago)
+
+      get manage_money_index_path
+      expect(links_to(day_path(tonight))).to be(true)
+      expect(response.body).to include("today, still going")
+      expect(response.body).not_to include("Every day is settled.", "day to settle up", "days to settle up")
     end
 
     it "drops a day from the hub as soon as it is settled" do
