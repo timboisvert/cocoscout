@@ -397,7 +397,7 @@
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
       "file": "app/controllers/manage/google_calendar_controller.rb",
-      "line": 71,
+      "line": 76,
       "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
       "code": "params.fetch(:room_colors, {}).permit!",
       "render_path": null,
@@ -456,6 +456,40 @@
       "confidence": "Medium",
       "cwe_id": [
         915
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Dynamic Render Path",
+      "warning_code": 15,
+      "fingerprint": "a78968956de047f6362c11a620a8ad63ad4d10d31f676448c5431cecd15e9890",
+      "check_name": "Render",
+      "message": "Render path contains parameter value",
+      "file": "app/views/superadmin/app_usage.html.erb",
+      "line": 37,
+      "link": "https://brakemanscanner.org/docs/warning_types/dynamic_render_path/",
+      "code": "render(action => \"superadmin/app/#{(params[:section].presence_in({ \"overview\" => \"Overview\", \"growth\" => \"Growth\", \"people\" => \"Active people\", \"screens\" => \"Screens\", \"builds\" => \"Builds\" }.keys) or \"overview\")}\", { :report => AppUsageReport.new(:platform => params[:platform], :days => params[:days]) })",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "SuperadminController",
+          "method": "app_usage",
+          "line": 1553,
+          "file": "app/controllers/superadmin_controller.rb",
+          "rendered": {
+            "name": "superadmin/app_usage",
+            "file": "app/views/superadmin/app_usage.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "superadmin/app_usage"
+      },
+      "user_input": "params[:section].presence_in({ \"overview\" => \"Overview\", \"growth\" => \"Growth\", \"people\" => \"Active people\", \"screens\" => \"Screens\", \"builds\" => \"Builds\" }.keys)",
+      "confidence": "Medium",
+      "cwe_id": [
+        22
       ],
       "note": ""
     },
