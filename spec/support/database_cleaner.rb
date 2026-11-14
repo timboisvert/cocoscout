@@ -241,4 +241,5 @@ def seed_content_templates
   FollowerTemplates.ensure!(overwrite: true)
   InvoiceTemplates.ensure!(overwrite: true)
   BooksTemplates.ensure!(overwrite: true)
+  SuperadminTemplates.ensure!(overwrite: true)
 end

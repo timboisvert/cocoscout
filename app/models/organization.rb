@@ -293,6 +293,8 @@ class Organization < ApplicationRecord
   end
 
   before_create :generate_invite_token
+  # CocoScout's superadmins hear about every new organization (SuperadminNotices).
+  after_create_commit { SuperadminNotices.organization_created(self) }
 
   # Generate or ensure invite token exists
   def ensure_invite_token!
@@ -371,9 +373,24 @@ class Organization < ApplicationRecord
   # Start Pro on the monthly bill: the month's bill carries the plan from
   # today, and the subscription that sends that bill is made if it isn't
   # there yet.
+  #
+  # Superadmins hear when this is an upgrade: the organization wasn't paying
+  # for Pro already (a canceled monthly plan still running out its month, or
+  # a Pro subscription of its own, is paying). Starting twice, from the
+  # success page and the webhook at once, tells them once: the row lock.
   def start_pro_on_monthly_bill!(at: Time.current)
-    update!(pro_monthly_from: at, pro_monthly_until: nil)
+    upgraded = false
+    with_lock do
+      upgraded = !paying_for_pro?(at)
+      update!(pro_monthly_from: at, pro_monthly_until: nil)
+    end
     StaffMeterService.ensure_staffing_subscription!(self)
+    SuperadminNotices.pro_started(self, via: :monthly_bill) if upgraded
+  end
+
+  # Paying CocoScout for Pro, one way or the other (a comp is not paying).
+  def paying_for_pro?(at = Time.current)
+    pro_on_monthly_bill?(at) || subscription_status.in?(SubscriptionSyncService::ACCESS_STATUSES)
   end
 
   # Cancel it: Pro lasts to the end of the month, which the last bill carries.

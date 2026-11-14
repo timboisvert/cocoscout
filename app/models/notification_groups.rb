@@ -32,7 +32,12 @@ module NotificationGroups
     Group.new("ticketing_sales", "Sales as they happen", "Each online sale, door sale, comp and pass.", :ticketing, true, :plan, false, true, [], "Ticketing"),
     Group.new("ticketing_reports", "Reports", "Daily summary, show day, after the show.", :ticketing, false, :plan, false, true, [], "Ticketing"),
     Group.new("ticketing_milestones", "Milestones", "Sales opened, almost sold out, sold out.", :ticketing, true, :plan, false, true, [], "Ticketing"),
-    Group.new("ticketing_money", "Money", "Refunds, disputes, withdrawals, canceled shows.", :ticketing, true, :plan, false, true, [], "Ticketing")
+    Group.new("ticketing_money", "Money", "Refunds, disputes, withdrawals, canceled shows.", :ticketing, true, :plan, false, true, [], "Ticketing"),
+    # CocoScout's superadmins only (SuperadminNotices; Tim, 2026-11-14: "I
+    # get no notification when someone signs up for Pro"): a new organization,
+    # and an organization starting to pay for Pro. Push and the list, never an
+    # email. Only a superadmin sees its switch (Account settings).
+    Group.new("platform", "New organizations and Pro", "An organization made, and an organization starting to pay for Pro. Superadmins only.", :platform, true, nil, false, true, [], nil)
   ].freeze
 
   # The automated notices that became Notifications (V1.1 plan §9), by their
@@ -129,6 +134,10 @@ module NotificationGroups
   module_function
 
   def keys = ALL.map(&:key)
+
+  # The groups this person sets switches for in Account settings: their own,
+  # and CocoScout's for a superadmin.
+  def for_settings(user) = ALL.select { |g| g.section == :yours || (g.section == :platform && user&.superadmin?) }
 
   def find(key) = ALL.find { |g| g.key == key.to_s } || raise(ArgumentError, "No notification group #{key}")
 

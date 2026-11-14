@@ -187,7 +187,7 @@ module NativeAppHelper
       mode: production ? "production" : "my",
       sections: panel_nav_sections(context).map do |section|
         { label: section[:label], items: section[:items].reject { |item| item[:web_only] }.map { |item| native_nav_item(item) } }
-      end,
+      end + native_superadmin_sections(user),
       icons: {
         messages: { path: icons[:messages][:path], count: icons[:messages][:count] },
         notifications: { path: icons[:notifications][:path], count: icons[:notifications][:count] }
@@ -299,6 +299,34 @@ module NativeAppHelper
       tile = native_menu_item(item)
       tile = tile.merge(title: { "home" => "Home", "shows" => "My Shows & Events" }.fetch(tile[:id], tile[:title]))
       tile.merge(locked: false)
+    end
+  end
+
+  # Superadmin in the app (Tim, 2026-11-14: its notifications have to land
+  # somewhere), for a superadmin only, after the mode's own sections: one
+  # tile to reach it from anywhere, and on its pages its whole nav, which
+  # the website draws as the Superadmin sidebar and the app's layout doesn't.
+  # Symbols both apps have where there is one (Android draws a circle for
+  # the rest).
+  NATIVE_SUPERADMIN_SYMBOLS = {
+    "overview" => "chart.bar", "people" => "person.2", "organizations" => "building.2", "mics" => "music.mic",
+    "money" => "dollarsign.circle", "promo" => "ticket", "profiles" => "person.crop.circle", "messages" => "envelope",
+    "documents" => "doc.text", "agreements" => "signature", "keys" => "key", "data" => "cylinder",
+    "bolt" => "bolt", "storage" => "archivebox", "queue" => "list.bullet.clipboard"
+  }.freeze
+
+  def native_superadmin_sections(user)
+    return [] unless user&.superadmin?
+    unless @show_superadmin_sidebar
+      return [ { label: "Superadmin", items: [ { id: "superadmin", title: "Superadmin", path: superadmin_path, icon: "chart.bar", badge: 0, locked: false } ] } ]
+    end
+
+    superadmin_nav_sections.each_with_index.map do |section, index|
+      { label: index.zero? ? "Superadmin" : section[:label],
+        items: section[:items].map do |item|
+          { id: "superadmin-#{item[:label].parameterize}", title: item[:label], path: item[:path],
+            icon: NATIVE_SUPERADMIN_SYMBOLS.fetch(item[:icon].to_s, "circle"), badge: 0, locked: false }
+        end }
     end
   end
 

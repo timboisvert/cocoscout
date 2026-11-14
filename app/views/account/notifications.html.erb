@@ -61,11 +61,11 @@
       <%= render "shared/section_heading", padding: "px-4 py-3 sm:px-6 sm:py-4", title: "Notifications" %>
       <p class="px-4 sm:px-6 pt-3 text-sm text-gray-600">What CocoScout tells you about as things happen. Every one shows in Notifications, and Push sends it to your phone. Email is for your shifts, a show canceled or moved and being asked to cover, and for whether the rest is in the email about what's still unread.</p>
       <%= render "account/notification_switch_header" %>
-      <% NotificationGroups::ALL.select { |g| g.section == :yours }.each do |group| %>
+      <% NotificationGroups.for_settings(Current.user).each do |group| %>
         <%= render "account/notification_switch_row", label: group.label, description: group.description,
               push_name: (group.live ? "push[#{group.key}]" : nil), push_on: Current.user.notification_push?(group.key),
               email_name: (group.email == :person ? "email[#{group.key}]" : nil), email_on: Current.user.notification_email?(group.key),
-              email_note: (group.email == :always ? "Always" : nil) %>
+              email_note: { always: "Always", nil => "None" }.fetch(group.email, nil) %>
       <% end %>
     </div>
 

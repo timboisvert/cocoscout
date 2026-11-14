@@ -105,7 +105,6 @@
     },
     {
       "patterns": [
-        "^/superadmin",
         "^/$",
         "^/for-performers",
         "^/for-producers",
@@ -135,7 +134,12 @@
         "/manage/money/books/statements\\.(pdf|csv)",
         "/manage/money/books/taxes\\.csv",
         "/manage/money/books/bank/rules/export",
-        "/manage/ticketing/taxes\\.csv"
+        "/manage/ticketing/taxes\\.csv",
+        "^/superadmin/finances\\.csv",
+        "^/superadmin/finances/costs/(export|receipts)",
+        "^/superadmin/finances/costs/[0-9]+/documents/",
+        "^/superadmin/finances/(statements|invoices)/",
+        "^/superadmin/content_templates/export"
       ],
       "properties": {
         "open_in": "document"

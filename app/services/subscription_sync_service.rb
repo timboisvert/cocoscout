@@ -7,6 +7,8 @@
 class SubscriptionSyncService
   # Stripe subscription statuses that grant Pro access.
   ACCESS_STATUSES = %w[active trialing past_due].freeze
+  # The statuses a new Pro subscription starts in (past_due is never a start).
+  UPGRADE_STATUSES = %w[active trialing].freeze
 
   def initialize(organization, stripe_subscription)
     @organization = organization
@@ -41,15 +43,27 @@ class SubscriptionSyncService
     status = @subscription.status
     item = @subscription.items&.data&.first
 
-    @organization.update!(
-      stripe_subscription_id: @subscription.id,
-      stripe_customer_id: @subscription.customer,
-      subscription_status: status,
-      subscription_interval: item&.price&.recurring&.interval,
-      subscription_current_period_end: unix_to_time(period_end(item)),
-      subscription_canceled_at: unix_to_time(@subscription["canceled_at"]),
-      subscription_tier: status.in?(ACCESS_STATUSES) ? "paid" : "free"
-    )
+    # The webhook and the checkout success page sync the same subscription,
+    # often at once: the row lock makes one of them see the other's write, so
+    # an upgrade is told once.
+    upgraded = false
+    @organization.with_lock do
+      upgraded = status.in?(UPGRADE_STATUSES) && !@organization.paying_for_pro?
+      @organization.update!(
+        stripe_subscription_id: @subscription.id,
+        stripe_customer_id: @subscription.customer,
+        subscription_status: status,
+        subscription_interval: item&.price&.recurring&.interval,
+        subscription_current_period_end: unix_to_time(period_end(item)),
+        subscription_canceled_at: unix_to_time(@subscription["canceled_at"]),
+        subscription_tier: status.in?(ACCESS_STATUSES) ? "paid" : "free"
+      )
+    end
+    # Superadmins hear when an organization starts paying for Pro: a Pro
+    # subscription of its own becomes active or trialing while it wasn't
+    # paying already. A renewal, a repeat sync, a trial turning paid or a
+    # past-due one recovering is not an upgrade.
+    SuperadminNotices.pro_started(@organization, via: :subscription) if upgraded
     # Pro ended: usage stops billing with it.
     UsageSubscriptionSyncJob.perform_later(@organization.id) if @organization.staffing_subscription_id.present? && !@organization.bills_usage?
     @organization
