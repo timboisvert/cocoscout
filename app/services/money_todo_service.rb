@@ -60,6 +60,7 @@ class MoneyTodoService
         .where.not(production_id: Production.courses.where(id: ids).select(:id))
         .where(canceled: false)
         .where("date_and_time <= ?", as_of)
+        .where.not(production_id: Production.where(no_revenue: true).select(:id))
         .left_joins(:show_financials)
         .where("show_financials.id IS NULL OR show_financials.data_confirmed = FALSE OR show_financials.data_confirmed IS NULL")
   end
@@ -130,6 +131,8 @@ class MoneyTodoService
   # in-memory list without a second round trip.
   def self.awaiting_financials?(show, as_of: Time.current)
     return false unless EventTypes.revenue_event_types.include?(show.event_type)
+    # A production that takes no money has nothing to enter.
+    return false if show.production&.no_revenue? && SettleUp.show_took_nothing?(show)
     return false if show.production&.type_course?
     return false if show.canceled?
     return false if show.date_and_time > as_of

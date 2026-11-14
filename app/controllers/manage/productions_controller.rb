@@ -2,13 +2,13 @@
 
 module Manage
   class ProductionsController < Manage::ManageController
-    before_action :set_production, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_services]
-    before_action :check_production_access, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_services]
-    before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders update_pay update_services]
+    before_action :set_production, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_no_revenue update_services]
+    before_action :check_production_access, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_no_revenue update_services]
+    before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders update_pay update_no_revenue update_services]
     # Performer pay and agreements are Pro, and Pro is the organization's
     # managers' — a production's own manager (a producer) doesn't get them.
     # Archiving is the organization's call too: a production's own producer can't shelve it.
-    before_action :ensure_org_owner_or_manager, only: %i[agreement_status send_agreement_reminders update_pay update_services archive unarchive destroy confirm_delete]
+    before_action :ensure_org_owner_or_manager, only: %i[agreement_status send_agreement_reminders update_pay update_no_revenue update_services archive unarchive destroy confirm_delete]
 
     def index
       @filter = params[:filter] || "all"
@@ -196,6 +196,15 @@ module Manage
         notice = "Performers aren't paid on #{@production.name}."
       end
 
+      redirect_to pay_return_path, notice: notice
+    end
+
+    # Whether the production takes money at all (Tim, 2026-11-14): its shows
+    # settle up as no revenue by themselves (SettleUp.show_piece).
+    def update_no_revenue
+      none = params[:no_revenue] == "1"
+      @production.update!(no_revenue: none)
+      notice = none ? "#{@production.name} takes no money: its shows settle up as no revenue by themselves." : "#{@production.name} takes money again: its shows settle up as usual."
       redirect_to pay_return_path, notice: notice
     end
 

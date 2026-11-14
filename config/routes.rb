@@ -1294,6 +1294,7 @@ Rails.application.routes.draw do
         post :send_agreement_reminders
         # Performer pay (Pay tab): paid or not, and which payout scheme is the default
         patch :update_pay
+        patch :update_no_revenue
         # What every show needs (Services tab; Pro)
         patch :update_services
       end
@@ -1700,6 +1701,7 @@ Rails.application.routes.draw do
     post  "money/settle-up/:date/settle", to: "settlement_days#settle", as: "settle_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     post  "money/settle-up/:date/reopen", to: "settlement_days#reopen", as: "reopen_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     patch "money/settle-up/:date/shows/:show_id/check", to: "settlement_days#check_show", as: "check_show_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    patch "money/settle-up/:date/shows/:show_id/no-revenue", to: "settlement_days#no_revenue", as: "no_revenue_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     patch "money/settle-up/:date/register/check", to: "settlement_days#check_register", as: "check_register_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     patch "money/settle-up/:date/tips", to: "settlement_days#tips", as: "tips_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     post  "money/settle-up/:date/tips/preview", to: "settlement_days#tips_preview", as: "tips_preview_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }

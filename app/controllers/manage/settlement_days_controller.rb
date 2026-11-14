@@ -7,7 +7,7 @@ module Manage
   # every piece is checked, and can be reopened with a reason (§9.7).
   class SettlementDaysController < Manage::ManageController
     before_action :set_date, except: :index
-    before_action :require_change!, only: %i[settle reopen check_show check_register tips tips_preview choose_calculation calculate_show pay_line]
+    before_action :require_change!, only: %i[settle reopen check_show no_revenue check_register tips tips_preview choose_calculation calculate_show pay_line]
 
     LISTED = 60
 
@@ -64,6 +64,21 @@ module Manage
       financials.update!(data_confirmed: checking)
       pay.show_payout.update_column(:calculated_at, Time.current) if pay.calc == :current
       redirect_to manage_money_settle_up_day_path(@date), notice: (checking ? "#{show.display_name} confirmed." : "#{show.display_name} unconfirmed.")
+    end
+
+    # No revenue (Tim, 2026-11-14): a show that wasn't canceled and took
+    # nothing is marked so from its card, and confirmed; nobody is paid from
+    # it. Taking it back leaves it unconfirmed, to enter its money.
+    def no_revenue
+      show = find_show
+      financials = show.show_financials || show.create_show_financials!(revenue_type: "ticket_sales")
+      if params[:undo] == "1"
+        financials.update!(non_revenue_override: false, data_confirmed: false)
+        return redirect_to manage_money_settle_up_day_path(@date), notice: "#{show.display_name} counts its money again."
+      end
+
+      financials.update!(non_revenue_override: true, data_confirmed: true)
+      redirect_to manage_money_settle_up_day_path(@date), notice: "#{show.display_name} marked as no revenue and confirmed."
     end
 
     # The Calculate step (Tim, 2026-11-04): work out who gets paid from the

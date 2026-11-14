@@ -16,14 +16,20 @@ class SettleUp
     def value = (@value ||= @block.call)
   end
 
-  ShowPiece = Data.define(:show, :financials, :listing, :ticket_lines, :outside_sources, :products_cents, :other_revenue_cents, :expenses_cents, :flat_fee_cents, :pay_cell) do
-    def confirmed? = financials&.data_confirmed? == true
+  # auto_non_revenue: a show of a production that takes no money
+  # (Production#no_revenue) that took none: it settles as no revenue,
+  # confirmed, with nothing for anyone to do (Tim, 2026-11-14).
+  ShowPiece = Data.define(:show, :financials, :listing, :ticket_lines, :outside_sources, :products_cents, :other_revenue_cents, :expenses_cents, :flat_fee_cents, :pay_cell, :auto_non_revenue) do
+    def confirmed? = financials&.data_confirmed? == true || auto_non_revenue
     def tickets_count = ticket_lines.sum { |l| l[:count] }
     def tickets_cents = ticket_lines.sum { |l| l[:cents] }
     def in_cents = tickets_cents + products_cents + other_revenue_cents + flat_fee_cents
     # A show marked as having no revenue: nothing to count, nobody paid
     # from it, still confirmed like any other.
-    def non_revenue? = financials&.non_revenue_override? == true
+    def non_revenue? = financials&.non_revenue_override? == true || auto_non_revenue
+    # Nothing came in and nobody has said why: the card offers "No revenue"
+    # (Tim, 2026-11-14: a show that wasn't canceled and sold nothing).
+    def offer_no_revenue? = !non_revenue? && !confirmed? && in_cents.zero?
     def state = confirmed? ? :ok : (financials&.has_data? || non_revenue? ? :wait : :miss)
     # Who gets paid from this show (Pay), worked out when first asked.
     def pay = pay_cell.value
@@ -490,9 +496,13 @@ class SettleUp
       lines = []
       fee = 0
     end
+    # A production that takes no money: a show of it that took none settles
+    # as no revenue on its own. One that did take money is an ordinary show.
+    took_nothing = lines.sum { |l| l[:cents] } + products + other + fee == 0
+    auto = show.production.no_revenue? && took_nothing && !financials&.data_confirmed?
     ShowPiece.new(show: show, financials: financials, listing: listing, ticket_lines: lines, outside_sources: outside,
                   products_cents: products, other_revenue_cents: other, expenses_cents: expenses, flat_fee_cents: fee,
-                  pay_cell: Cell.new { pay_for(organization, show) })
+                  pay_cell: Cell.new { pay_for(organization, show) }, auto_non_revenue: auto)
   end
 
   # Who gets paid from a show, as it stands (Tim, 2026-11-04): a show on a
@@ -509,7 +519,9 @@ class SettleUp
       return Pay.new(**blank, kind: :contract, show: show, show_payout: nil, scheme: nil, payments: payments, settlement: contract.find_payment_for_show(show))
     end
     return Pay.new(**blank, kind: :none, show: show, show_payout: nil, scheme: nil) unless production.pays_performers?
-    # A show with no revenue pays nobody (Tim, 2026-11-04).
+    # A show with no revenue pays nobody (Tim, 2026-11-04), and so does a
+    # show of a production that takes no money that took none.
+    return Pay.new(**blank, kind: :none, show: show, show_payout: nil, scheme: nil) if production.no_revenue? && show_took_nothing?(show)
     return Pay.new(**blank, kind: :none, show: show, show_payout: nil, scheme: nil) if show.show_financials&.non_revenue_override?
 
     show_payout = show.show_payout
@@ -617,6 +629,15 @@ class SettleUp
 
       PayRow.new(line: nil, payee: payee, name: (payee.respond_to?(:display_name) ? payee.display_name : payee.name), cents: cents, stage: :preview, note: nil, detail: nil, run_cents: cents)
     end
+  end
+
+  # Did no money come in for this show at all (tickets here or elsewhere, a
+  # flat fee, products, other revenue)?
+  def self.show_took_nothing?(show)
+    fin = show.show_financials
+    return true if fin.nil?
+
+    fin.total_revenue.to_f.zero? && fin.ticket_sales_lines.sum { |l| l.amount.to_f }.zero? && (!fin.flat_fee? || fin.flat_fee.to_f.zero?)
   end
 
   # The contract payments a show settles on (the same pick the show's payouts

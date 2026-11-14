@@ -3,7 +3,8 @@
   money = ->(cents) { cents.negative? ? "−#{number_to_currency(-cents / 100.0)}" : number_to_currency(cents / 100.0) }
   show = piece.show
   fin = piece.financials
-  state_words = { ok: "Confirmed", wait: (piece.non_revenue? ? "No revenue, not confirmed" : "Automatically pulled in, not confirmed"), miss: "Nothing entered" }.fetch(piece.state)
+  state_words = { ok: (piece.non_revenue? ? "No revenue" : "Confirmed"), wait: (piece.non_revenue? ? "No revenue, not confirmed" : "Automatically pulled in, not confirmed"), miss: "Nothing entered" }.fetch(piece.state)
+  state_words += ": #{show.production.name} takes no money" if piece.auto_non_revenue
   state_tone = { ok: "text-green-700", wait: "text-amber-700", miss: "text-red-700" }.fetch(piece.state)
   outside_lines = piece.ticket_lines.reject { |l| l[:built_in] }
   online_lines = piece.ticket_lines.select { |l| l[:built_in] }
@@ -50,11 +51,24 @@
       <% if can_change && !day.settled? && !piece.confirmed? && piece.hold_reason.present? %>
         <div class="sm:hidden mt-0.5 text-xs text-amber-700"><%= piece.hold_reason %></div>
       <% end %>
+      <%# No revenue (Tim, 2026-11-14): a show that sold nothing can say so here
+          and be done; one marked so by hand can take it back. %>
+      <% if editable && piece.offer_no_revenue? %>
+        <%= form_with url: manage_no_revenue_money_settle_up_day_path(day.param, show_id: show.id), method: :patch, data: { turbo_action: "replace" }, class: "mt-2" do %>
+          <%= render "shared/button", text: "No revenue", variant: "secondary", size: "xs", type: :submit,
+                title: "Nothing came in for this show: mark it as no revenue, and confirmed" %>
+        <% end %>
+      <% elsif editable && piece.non_revenue? && !piece.auto_non_revenue %>
+        <%= form_with url: manage_no_revenue_money_settle_up_day_path(day.param, show_id: show.id, undo: 1), method: :patch, data: { turbo_action: "replace" }, class: "mt-1" do %>
+          <%= render "shared/button", text: "It had revenue after all", variant: "ghost", size: "xs", type: :submit, classes: "!px-0 text-pink-600 hover:text-pink-700" %>
+        <% end %>
+      <% end %>
     </div>
     <% if can_change && !day.settled? %>
       <div class="flex items-center justify-center border-l border-gray-200 w-16 sm:w-56 sm:justify-end sm:px-5 shrink-0">
         <%= render "manage/settlement_days/confirm_mark", url: manage_check_show_money_settle_up_day_path(day.param, show_id: show.id),
-            checked: piece.confirmed?, at: (piece.confirmed? ? fin&.updated_at : nil), hold_reason: piece.hold_reason %>
+            checked: piece.confirmed?, at: (piece.confirmed? && !piece.auto_non_revenue ? fin&.updated_at : nil), hold_reason: piece.hold_reason,
+            locked: (piece.auto_non_revenue ? "#{show.production.name} takes no money, so this show settles on its own" : nil) %>
       </div>
     <% end %>
   </div>

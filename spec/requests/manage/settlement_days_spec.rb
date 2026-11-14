@@ -18,6 +18,56 @@ RSpec.describe "Settle up", type: :request do
     get manage_path
   end
 
+  # No revenue (Tim, 2026-11-14): a show that sold nothing says so from its
+  # card and is confirmed; one marked so by mistake can take it back.
+  describe "a show that took no money" do
+    it "offers No revenue on its card, which confirms it, and takes it back" do
+      get manage_money_settle_up_day_path(date.iso8601)
+      doc = Nokogiri::HTML(response.body)
+      expect(doc.at_css("#show-#{show.id} form[action='#{manage_no_revenue_money_settle_up_day_path(date.iso8601, show_id: show.id)}']")).to be_present
+
+      patch manage_no_revenue_money_settle_up_day_path(date.iso8601, show_id: show.id)
+      expect(show.reload.show_financials.attributes.slice("non_revenue_override", "data_confirmed")).to eq("non_revenue_override" => true, "data_confirmed" => true)
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body).to include("No revenue", "It had revenue after all", "Every piece is confirmed")
+
+      patch manage_no_revenue_money_settle_up_day_path(date.iso8601, show_id: show.id, undo: 1)
+      expect(show.reload.show_financials.attributes.slice("non_revenue_override", "data_confirmed")).to eq("non_revenue_override" => false, "data_confirmed" => false)
+    end
+
+    it "doesn't offer No revenue once money came in" do
+      create(:show_financials, show: show, ticket_revenue: 40.0, ticket_count: 2)
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body).not_to include(manage_no_revenue_money_settle_up_day_path(date.iso8601, show_id: show.id))
+    end
+
+    # A production that takes no money settles its shows on its own.
+    it "settles a no-money production's show as no revenue by itself, unless money came in" do
+      production.update!(no_revenue: true)
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body).to include("No revenue: Halloween Show takes no money", "Every piece is confirmed")
+      expect(MoneyTodoService.shows_awaiting_financials([ production ])).to be_empty
+
+      post manage_settle_money_settle_up_day_path(date.iso8601)
+      expect(SettlementDay.find_by!(organization: org, date: date)).to be_settled
+    end
+
+    it "treats a no-money production's show that did take money as an ordinary show" do
+      production.update!(no_revenue: true)
+      create(:show_financials, show: show, ticket_revenue: 40.0, ticket_count: 2)
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body).to include("0 of 1 confirmed")
+      expect(response.body).not_to include("takes no money")
+    end
+  end
+
+  it "lets a manager switch a production to taking no money from its Pay tab" do
+    patch update_no_revenue_manage_production_path(production), params: { no_revenue: "1" }
+    expect(production.reload.no_revenue).to be(true)
+    patch update_no_revenue_manage_production_path(production), params: { no_revenue: "0" }
+    expect(production.reload.no_revenue).to be(false)
+  end
+
   it "lists the day to settle, shows its worksheet, checks the show, settles and reopens the day" do
     get manage_money_settle_up_path
     expect(response).to have_http_status(:ok)
