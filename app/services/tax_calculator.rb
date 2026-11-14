@@ -38,10 +38,13 @@ class TaxCalculator
     rules.find_by(scope_type: nil)
   end
 
-  def self.for_ticket(listing, tier, base_cents)
+  # mode: "included" or "added" to say which for this sale whatever the
+  # rule says (a cash sale that holds its tax inside the price); nil leaves
+  # it to the rule.
+  def self.for_ticket(listing, tier, base_cents, mode: nil)
     rule = rule_for(listing.organization, "tickets",
                     scopes: [ tier, listing, listing.production, listing.show.location ])
-    quote(rule, base_cents)
+    quote(rule, base_cents, mode: mode)
   end
 
   # A credit pass (punch card, season pass) is admission paid in advance, so
@@ -61,14 +64,14 @@ class TaxCalculator
 
   # A product sold with the tickets is taxed as the tickets are (the one
   # ticket tax setting), unless the product is marked not taxable.
-  def self.for_product(listing, offer, base_cents)
+  def self.for_product(listing, offer, base_cents, mode: nil)
     return NONE unless offer.taxable
 
     rule = rule_for(listing.organization, "tickets", scopes: [ listing, listing.production, listing.show.location ])
-    quote(rule, base_cents)
+    quote(rule, base_cents, mode: mode)
   end
 
-  def self.quote(rule, base_cents)
+  def self.quote(rule, base_cents, mode: nil)
     return NONE if rule.nil?
 
     if rule.exempt?
@@ -82,7 +85,8 @@ class TaxCalculator
     rates = rule.tax_rates.current.order(:id).to_a
     return NONE if rates.empty?
 
-    rule.included? ? included_lines(rule, rates, base_cents) : added_lines(rule, rates, base_cents)
+    included = mode ? mode == "included" : rule.included?
+    included ? included_lines(rule, rates, base_cents) : added_lines(rule, rates, base_cents)
   end
 
   def self.added_lines(rule, rates, base_cents)

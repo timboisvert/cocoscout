@@ -157,7 +157,7 @@ module Manage
 
     def update_sales
       raw = params.require(:production_ticketing)
-      permitted = raw.permit(:max_per_order, :fee_mode, :low_stock_threshold, :title, :description, :page_key,
+      permitted = raw.permit(:max_per_order, :fee_mode, :cash_tax, :low_stock_threshold, :title, :description, :page_key,
                              :door_note, :age_note, :accessibility_note).to_h.transform_values(&:presence)
       if raw.key?(:age_choice)
         age = AgeLimit.value_for(raw[:age_choice], raw[:age_other])

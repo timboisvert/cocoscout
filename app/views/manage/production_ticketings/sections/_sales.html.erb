@@ -5,6 +5,8 @@
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   default_fee_words = ticketing_profile.default_fee_mode == "buyer" ? "Buyers pay" : "You absorb"
   fee_options = [ [ "Use your default (#{default_fee_words})", "" ], [ "Buyers pay the fees", "buyer" ], [ "You absorb the fees", "org" ] ]
+  cash_words = { "same" => "the same as any other sale", "included" => "tax inside the price" }
+  cash_options = [ [ "Use your default (#{cash_words[ticketing_profile.cash_tax]})", "" ], [ "The same as any other sale", "same" ], [ "Tax is inside the price", "included" ] ]
   tax = TicketTaxSetting.current(production.organization)
   poster = production.safe_poster_variant(:small)
   wide = production.wide_image.attached? ? production.safe_wide_image_variant : nil
@@ -65,6 +67,10 @@
       <div>
         <label for="production_ticketing_fee_mode" class="block text-sm font-medium text-gray-700 mb-1.5">Who pays the fees</label>
         <%= f.select :fee_mode, options_for_select(fee_options, setup.fee_mode.to_s), {}, class: input_class %>
+      </div>
+      <div>
+        <label for="production_ticketing_cash_tax" class="block text-sm font-medium text-gray-700 mb-1.5">Cash at the door</label>
+        <%= f.select :cash_tax, options_for_select(cash_options, setup.cash_tax.to_s), {}, class: input_class %>
       </div>
       <div>
         <label for="production_ticketing_low_stock_threshold" class="block text-sm font-medium text-gray-700 mb-1.5">Show an "Only N left" note</label>

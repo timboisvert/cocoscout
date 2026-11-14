@@ -154,6 +154,27 @@ RSpec.describe "Production ticketing", type: :request do
     expect(response.body.scan("No longer in your selection").size).to eq(1)
   end
 
+  # Cash at the door cascades like the fees (Tim, 2026-11-13): the box
+  # office's, unless the production says, unless the date says.
+  it "lets a production, then a date, say how cash is taxed" do
+    get manage_edit_production_ticketing_path(production, section: "sales")
+    expect(response.body).to include("Cash at the door", "Use your default (the same as any other sale)")
+
+    patch manage_update_production_ticketing_path(production, section: "sales"), params: { production_ticketing: { cash_tax: "included" } }
+    expect(production.reload.production_ticketing.cash_tax).to eq("included")
+    listing = production.production_ticketing.listings.first
+    if listing
+      expect(listing.effective_cash_tax).to eq("included")
+      patch manage_ticket_listing_path(listing), params: { section: "sales", ticket_listing: { cash_tax: "same" } }
+      expect(listing.reload.effective_cash_tax).to eq("same")
+      patch manage_ticket_listing_path(listing), params: { section: "sales", ticket_listing: { cash_tax: "" } }
+      expect(listing.reload.effective_cash_tax).to eq("included")
+    end
+
+    patch manage_update_production_ticketing_path(production, section: "sales"), params: { production_ticketing: { cash_tax: "" } }
+    expect(production.reload.production_ticketing.cash_tax).to be_nil
+  end
+
   it "saves seats, fees and words for every date, and production-wide codes" do
     patch manage_update_production_ticketing_path(production, section: "sales"),
           params: { production_ticketing: { max_per_order: "6", fee_mode: "org", title: "Rising Stars Showcase", door_note: "" } }

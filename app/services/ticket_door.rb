@@ -146,7 +146,7 @@ class TicketDoor
           tier.seat_prices.each do |cents|
             ticket = order.tickets.create!(ticket_tier: tier.base_tier, bundle_tier: (tier if tier.bundle?), ticket_listing: @listing,
                                            **checked_in, price_cents: cents, discount_cents: kind == "comp" ? cents : 0)
-            record_tax(order, ticket) if kind == "cash"
+            record_tax(order, ticket, mode: @listing.cash_tax_mode) if kind == "cash"
           end
         end
       end
@@ -190,8 +190,10 @@ class TicketDoor
     Result.new(kind: kind, ticket: ticket, message: message)
   end
 
-  def record_tax(order, ticket)
-    tax = TaxCalculator.for_ticket(@listing, ticket.ticket_tier, ticket.price_cents)
+  # mode: the box office's say for cash ("included": the tax is inside the
+  # price they hand over), nil for the organization's tax setting.
+  def record_tax(order, ticket, mode: nil)
+    tax = TaxCalculator.for_ticket(@listing, ticket.ticket_tier, ticket.price_cents, mode: mode)
     tax.lines.each do |line|
       TaxLine.create!(organization_id: order.organization_id, taxable: ticket, tax_rate: line.tax_rate, name: line.name,
                       rate_bps: line.rate_bps, jurisdiction: line.jurisdiction, remitter: line.remitter, included: line.included,

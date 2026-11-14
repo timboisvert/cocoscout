@@ -126,8 +126,10 @@
           <% left = tier.units_for(@listing.inventory.remaining(tier: tier)) %>
           <% most = [ left || tier.units_for(max_per_order), tier.units_for(max_per_order) ].min %>
           <% added_tax = tier.seat_prices.sum { |cents| TaxCalculator.for_ticket(@listing, tier.base_tier, cents).added_cents } %>
+          <%# What cash adds: nothing when the box office holds cash's tax inside the price. %>
+          <% cash_tax = tier.seat_prices.sum { |cents| TaxCalculator.for_ticket(@listing, tier.base_tier, cents, mode: @listing.cash_tax_mode).added_cents } %>
           <li class="flex items-center gap-3 py-3" data-door-sell-target="row"
-              data-price="<%= tier.price_cents %>" data-tax="<%= added_tax %>" data-max="<%= [ most, 0 ].max %>" data-admits="<%= tier.admits %>">
+              data-price="<%= tier.price_cents %>" data-tax="<%= added_tax %>" data-cash-tax="<%= cash_tax %>" data-max="<%= [ most, 0 ].max %>" data-admits="<%= tier.admits %>">
             <%# How many of this type are left, kept current by the stats poll. %>
             <div class="min-w-0 flex-1">
               <div class="font-medium text-gray-900"><%= tier.name %></div>
@@ -151,8 +153,9 @@
         <ul class="divide-y divide-gray-100">
           <% @offers.each do |offer| %>
             <% added_tax = TaxCalculator.for_product(@listing, offer, offer.price_cents).added_cents %>
+            <% cash_tax = TaxCalculator.for_product(@listing, offer, offer.price_cents, mode: @listing.cash_tax_mode).added_cents %>
             <li class="flex items-center gap-3 py-3" data-door-sell-target="row" data-product="1"
-                data-price="<%= offer.price_cents %>" data-tax="<%= added_tax %>" data-max="<%= TicketCheckout::MAX_PER_PRODUCT %>">
+                data-price="<%= offer.price_cents %>" data-tax="<%= added_tax %>" data-cash-tax="<%= cash_tax %>" data-max="<%= TicketCheckout::MAX_PER_PRODUCT %>">
               <div class="min-w-0 flex-1">
                 <div class="font-medium text-gray-900"><%= offer.name %></div>
                 <div class="text-sm text-gray-500"><%= ticket_price(offer.price_cents) %><%= " · #{offer.description}" if offer.description.present? %></div>

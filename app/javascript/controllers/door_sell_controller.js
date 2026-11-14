@@ -2,8 +2,10 @@ import { Controller } from "@hotwired/stimulus"
 import { orderTotalCents, money } from "controllers/lib/ticket_pricing"
 
 // Selling at the door (door/show): − / + per ticket type, and what each way
-// of paying comes to. Cash is the tickets and their tax; card or phone pay is
-// the online price, fees and all (the buyer pays on their own phone).
+// of paying comes to. Cash is the tickets and their tax (no tax on top when
+// the box office holds cash's tax inside the price: each row's cash-tax says);
+// card or phone pay is the online price, fees and all (the buyer pays on
+// their own phone).
 export default class extends Controller {
     static targets = ["row", "input", "count", "minus", "plus", "cardButton", "cashButton", "compButton", "tapButton", "buyerName", "buyerEmail", "buyerError"]
     static values = { feeMode: String, platformFee: Number, perMille: Number, fixed: Number, tapPerMille: Number, tapFixed: Number,
@@ -56,6 +58,7 @@ export default class extends Controller {
     render() {
         let count = 0
         let base = 0
+        let cash = 0
         let paid = 0
         let products = 0
         this.rowTargets.forEach((row) => {
@@ -69,6 +72,7 @@ export default class extends Controller {
             if (product) products += n
             else count += n * admits
             base += n * (price + Number(row.dataset.tax))
+            cash += n * (price + Number(row.dataset.cashTax ?? row.dataset.tax))
             if (price > 0 && !product) paid += n * admits
             row.querySelector("[data-door-sell-target='count']").textContent = n
             row.querySelector("[data-door-sell-target='minus']").disabled = n === 0
@@ -78,7 +82,7 @@ export default class extends Controller {
         const card = orderTotalCents({ base, paid, feeMode: this.feeModeValue, platformFee: this.platformFeeValue,
             perMille: this.perMilleValue, fixed: this.fixedValue })
         this.label(this.cardButtonTarget, count === 0 ? this.cardLabelValue : `${this.cardLabelValue} · ${money(card)}`)
-        this.label(this.cashButtonTarget, count === 0 ? "Cash" : `Cash · ${money(base)}`)
+        this.label(this.cashButtonTarget, count === 0 ? "Cash" : `Cash · ${money(cash)}`)
         ;[this.cardButtonTarget, this.cashButtonTarget, this.compButtonTarget].forEach((button) => { button.disabled = count === 0 })
         // Tap to Pay (the app): the same sale at Stripe's in-person rate.
         if (this.hasTapButtonTarget) {

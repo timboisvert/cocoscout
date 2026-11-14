@@ -131,6 +131,53 @@ RSpec.describe TicketDoor do
       expect([ line.tickets_sold, line.amount.to_f ]).to eq([ 2, 40.0 ])
     end
 
+    # Cash that holds its tax (Tim, 2026-11-13): nobody makes change in
+    # coins. The box office says so once; a production and a date can each
+    # say otherwise. Cards and online sales are never changed by it.
+    context "when the box office holds cash's tax inside the price" do
+      before do
+        TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")
+        TicketingProfile.for(org).update!(cash_tax: "included")
+      end
+
+      it "takes a round $20 a ticket and carves the tax out of it, in the order and in the books" do
+        order = door.sell({ general.id.to_s => "2" }, kind: "cash")
+
+        expect([ order.subtotal_cents, order.tax_cents, order.total_cents ]).to eq([ 4_000, 372, 4_000 ])
+        expect(TaxLine.where(taxable: order.tickets).pluck(:included).uniq).to eq([ true ])
+        expect(ChartOfAccounts.account(org, :door_cash).natural_balance_cents).to eq(4_000)
+        expect(ChartOfAccounts.account(org, :ticket_income).natural_balance_cents).to eq(3_628)
+        expect(ChartOfAccounts.account(org, :tax_to_remit).natural_balance_cents).to eq(372)
+        expect(LedgerPosting.trial_balance(org).values.sum).to eq(0)
+      end
+
+      it "leaves a card sale as it was: tax on top" do
+        order = TicketCheckout.start!(listing: listing, quantities: { general.id.to_s => "1" }, channel: "door_card", at_door: true)
+        expect(order.tax_cents).to eq(205)
+        expect(TaxLine.where(taxable: order.tickets).pluck(:included).uniq).to eq([ false ])
+      end
+
+      it "follows the date's own say first, then the production's, then the box office's" do
+        expect(listing.effective_cash_tax).to eq("included")
+
+        listing.update!(cash_tax: "same")
+        expect(listing.effective_cash_tax).to eq("same")
+        expect(door.sell({ general.id.to_s => "1" }, kind: "cash").total_cents).to eq(2_205)
+
+        listing.update!(cash_tax: nil)
+        setup = ProductionTicketing.create!(organization: org, production: listing.production, cash_tax: "same")
+        listing.update_columns(production_ticketing_id: setup.id) if listing.has_attribute?(:production_ticketing_id)
+        expect(listing.reload.effective_cash_tax).to eq(listing.production_ticketing ? "same" : "included")
+      end
+    end
+
+    it "prices cash like any other sale unless the box office says otherwise" do
+      TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")
+      expect(TicketingProfile.for(org).cash_tax).to eq("same")
+      expect(listing.cash_tax_mode).to be_nil
+      expect(door.sell({ general.id.to_s => "1" }, kind: "cash").total_cents).to eq(2_205)
+    end
+
     it "comps for free: nothing in the books, counted as comped, not sold, and they're in" do
       order = door.sell({ general.id.to_s => "2" }, kind: "comp")
       expect([ order.channel, order.money_path, order.total_cents ]).to eq([ "comp", "none", 0 ])

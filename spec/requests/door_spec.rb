@@ -32,6 +32,23 @@ RSpec.describe "Door", type: :request do
     order.reload
   end
 
+  # The Cash button's total follows the box office's cash setting (Tim,
+  # 2026-11-13): each row says what cash adds in tax, which is nothing when
+  # cash holds its tax inside the price.
+  it "tells the sell screen what cash adds in tax" do
+    TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")
+    sign_in(owner)
+
+    get door_path(listing)
+    row = Nokogiri::HTML(response.body).at_css("[data-door-sell-target='row']")
+    expect([ row["data-price"], row["data-tax"], row["data-cash-tax"] ]).to eq(%w[2000 205 205])
+
+    profile.update!(cash_tax: "included")
+    get door_path(listing)
+    row = Nokogiri::HTML(response.body).at_css("[data-door-sell-target='row']")
+    expect([ row["data-price"], row["data-tax"], row["data-cash-tax"] ]).to eq(%w[2000 205 0])
+  end
+
   it "needs a sign-in" do
     get door_path(listing)
     expect(response).to redirect_to(signin_path)

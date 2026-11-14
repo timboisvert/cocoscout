@@ -94,6 +94,17 @@ RSpec.describe "Manage ticketing settings", type: :request do
                "support_email" => "box@starsandgarters.com", "enabled" => true)
     end
 
+    # Cash at the door (Tim, 2026-11-13): the same as any other sale until
+    # the box office says cash holds its tax.
+    it "saves how cash is taxed, the same as any other sale by default" do
+      get manage_ticketing_settings_section_path(section: "box_office")
+      doc = Nokogiri::HTML(response.body)
+      expect(doc.at_css("[data-cash-tax] input[checked]")["value"]).to eq("same")
+
+      patch manage_ticketing_settings_path, params: { ticketing_profile: { cash_tax: "included" } }
+      expect(TicketingProfile.for(org).reload.cash_tax).to eq("included")
+    end
+
     it "sets how many days ahead buyers get their reminder, or turns it off" do
       get manage_ticketing_settings_section_path(section: "box_office")
       expect(response.body).to include("Reminder email", "1 day before the show", "30 days before the show")

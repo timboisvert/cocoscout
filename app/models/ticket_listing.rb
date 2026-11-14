@@ -40,6 +40,7 @@ class TicketListing < ApplicationRecord
   validates :slug, presence: true, uniqueness: { scope: :organization_id },
                    format: { with: /\A[a-z0-9][a-z0-9-]*\z/ }
   validates :fee_mode, inclusion: { in: TicketingProfile::FEE_MODES }, allow_nil: true
+  validates :cash_tax, inclusion: { in: TicketingProfile::CASH_TAXES }, allow_nil: true
   validates :max_per_order, numericality: { only_integer: true, in: 1..100 }, allow_nil: true
   # Blank follows the production; 0 is all ages for this date (AgeLimit).
   validates :minimum_age, numericality: { only_integer: true, in: 0..AgeLimit::AGES.max }, allow_nil: true
@@ -169,6 +170,18 @@ class TicketListing < ApplicationRecord
 
   def effective_fee_mode
     fee_mode.presence || production_ticketing&.fee_mode.presence || profile&.default_fee_mode || "buyer"
+  end
+
+  # Cash at the door: this date's say, else its production's, else the box
+  # office's. "included" holds the tax inside the price paid in cash.
+  def effective_cash_tax
+    cash_tax.presence || production_ticketing&.cash_tax.presence || profile&.cash_tax || "same"
+  end
+
+  # The tax mode a cash sale forces on the tax engine: "included", or nil
+  # to leave it to the organization's tax setting.
+  def cash_tax_mode
+    effective_cash_tax == "included" ? "included" : nil
   end
 
   def effective_max_per_order

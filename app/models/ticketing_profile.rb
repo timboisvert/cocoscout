@@ -57,6 +57,13 @@ class TicketingProfile < ApplicationRecord
   validate :slug_not_someone_elses_old_address
   validates :default_fee_mode, inclusion: { in: FEE_MODES }
   validates :price_display, inclusion: { in: PRICE_DISPLAYS }
+  # Cash at the door: priced the same as every other sale ("same", the
+  # default: tax follows the organization's tax setting), or with the tax
+  # held inside the price so a $20 ticket is $20 in cash (Tim, 2026-11-13).
+  # A production and a date can each say otherwise
+  # (TicketListing#effective_cash_tax).
+  CASH_TAXES = %w[same included].freeze
+  validates :cash_tax, inclusion: { in: CASH_TAXES }
   validates :auto_withdraw, inclusion: { in: AUTO_WITHDRAW }
   validates :default_max_per_order, numericality: { only_integer: true, in: 1..100 }
   validates :support_email, format: { with: URI::MailTo::EMAIL_REGEXP }, allow_nil: true

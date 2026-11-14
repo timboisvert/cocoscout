@@ -105,6 +105,25 @@
         <p class="text-xs text-gray-500 mt-2"><%= price_display_note %></p>
       </fieldset>
 
+      <%# Cash at the door (Tim, 2026-11-13): the same as every other sale
+          unless you say cash holds its tax, so nobody makes change in coins. %>
+      <fieldset data-cash-tax>
+        <legend class="block text-sm font-medium text-gray-700 mb-1.5">Cash at the door</legend>
+        <div class="space-y-2">
+          <% [ [ "same", "The same as any other sale", (tax_on_top ? "Tax is added on top: a $20 ticket is #{money.(2_000 + example_tax)} in cash." : "A $20 ticket is $20.00 in cash.") ],
+               [ "included", "Tax is inside the price", "A $20 ticket is $20.00 in cash, and the tax comes out of that $20. Cards and online sales aren't changed." ] ].each do |value, title, explanation| %>
+            <label class="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+              <%= f.radio_button :cash_tax, value, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
+              <span>
+                <span class="block text-sm font-medium text-gray-900"><%= title %></span>
+                <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
+              </span>
+            </label>
+          <% end %>
+        </div>
+        <p class="text-xs text-gray-500 mt-2">Cash never carries fees. Each production and date can change this.</p>
+      </fieldset>
+
       <div>
         <label for="ticketing_profile_default_max_per_order" class="block text-sm font-medium text-gray-700 mb-1.5">Most tickets in one order</label>
         <%= f.number_field :default_max_per_order, min: 1, max: 100, class: "#{input_class} max-w-[8rem]" %>

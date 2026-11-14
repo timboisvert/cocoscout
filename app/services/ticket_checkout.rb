@@ -351,7 +351,8 @@ class TicketCheckout
 
   def self.record_item_tax(order, item, offer)
     listing = order.ticket_listing
-    tax = TaxCalculator.for_product(listing, offer, item.price_cents)
+    # A product bought with cash follows the cash setting, as its tickets do.
+    tax = TaxCalculator.for_product(listing, offer, item.price_cents, mode: (listing.cash_tax_mode if order.money_path == "cash"))
     tax.lines.each do |line|
       TaxLine.create!(organization_id: order.organization_id, taxable: item, tax_rate: line.tax_rate,
                       name: line.name, rate_bps: line.rate_bps, jurisdiction: line.jurisdiction, remitter: line.remitter,

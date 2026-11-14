@@ -344,11 +344,12 @@ module Manage
 
     def listing_params
       permitted = params.require(:ticket_listing).permit(
-        :title, :description, :on_sale_at, :off_sale_at, :max_per_order, :fee_mode, :low_stock_threshold,
+        :title, :description, :on_sale_at, :off_sale_at, :max_per_order, :fee_mode, :cash_tax, :low_stock_threshold,
         :door_note, :age_note, :accessibility_note, :sell_products,
         ticket_tiers_attributes: %i[id name price quantity admits bundle_of_tier_id description position sells_at _destroy]
       )
       permitted[:fee_mode] = permitted[:fee_mode].presence if permitted.key?(:fee_mode)
+      permitted[:cash_tax] = permitted[:cash_tax].presence if permitted.key?(:cash_tax)
       permitted[:max_per_order] = permitted[:max_per_order].presence if permitted.key?(:max_per_order)
       permitted[:low_stock_threshold] = permitted[:low_stock_threshold].presence if permitted.key?(:low_stock_threshold)
       # The Page tab's ages: the production's, all ages here, or an age.
