@@ -52,9 +52,26 @@ RSpec.describe "Money hub parity", type: :request do
       expect(response.body).to include("Every day is settled.")
       expect(links_to(day_path(overdue_a))).to be(false)
 
+      # Settle up says so too. A show later today puts today on the page in
+      # its own box (still going, not a day to settle), and then the line
+      # is about the days before it; late at night that show is tomorrow's.
+      get manage_money_settle_up_path
+      if SettlementDay.day_for(org, starts_soon.date_and_time) == SettlementDay.day_for(org, Time.current)
+        expect(response.body).to include("data-settle-today", "Every earlier day is settled.")
+      else
+        expect(response.body).to include("Every day is settled", "The next show that happens will put its day here.")
+      end
+      expect(links_to(day_path(overdue_a))).to be(false)
+    end
+
+    it "says every day is settled, plainly, when nothing is on today" do
+      starts_soon.destroy!
+      settle!(overdue_a)
+      settle!(overdue_b)
+
       get manage_money_settle_up_path
       expect(response.body).to include("Every day is settled", "The next show that happens will put its day here.")
-      expect(links_to(day_path(overdue_a))).to be(false)
+      expect(response.body).not_to include("data-settle-today")
     end
 
     it "drops a day from the hub as soon as it is settled" do
