@@ -47,6 +47,28 @@ RSpec.describe "Manage a show's tickets", type: :request do
     expect(response.body).not_to include("Dana Scully")
   end
 
+  # Five $20 tickets at $96.28 read as a mistake (Tim, 2026-11-15): the two
+  # sold for cash hold their tax inside the $20, so the tile says so.
+  it "says what came off Ticket sales here when cash holds its tax inside the price" do
+    TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")
+    TicketingProfile.for(org).update!(cash_tax: "included")
+    listing.show.update!(date_and_time: 2.hours.from_now)
+    buy(3, "Dana Scully")
+    TicketDoor.new(listing, superadmin).sell({ general.id.to_s => "2" }, kind: "cash")
+
+    get manage_ticket_listing_path(listing)
+    expect(response.body).to include("$96.28", "$9.87 tax to pay", "$100.00 at ticket prices, less $3.72 tax inside the cash prices")
+  end
+
+  it "says nothing more under Ticket sales here when no tax is inside a price" do
+    TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")
+    buy(2, "Dana Scully")
+
+    get manage_ticket_listing_path(listing)
+    expect(response.body).to include("$40.00", "$4.10 tax to pay")
+    expect(response.body).not_to include("at ticket prices, less")
+  end
+
   it "downloads the guest list and prints a door list by last name" do
     buy(2, "Dana Scully")
     buy(1, "Fox Mulder")

@@ -41,7 +41,8 @@ module Ticketing
       ids = listings.map(&:id)
       tickets = Ticket.joins(:ticket_order).where(ticket_listing_id: ids)
                       .where(ticket_orders: { status: TicketOrder::WAS_PAID })
-                      .select("tickets.*, ticket_orders.channel AS order_channel, ticket_orders.paid_at AS order_paid_at, " \
+                      .select("tickets.*, ticket_orders.channel AS order_channel, ticket_orders.money_path AS order_money_path, " \
+                              "ticket_orders.paid_at AS order_paid_at, " \
                               "ticket_orders.ticket_discount_code_id AS order_code_id")
                       .to_a.group_by(&:ticket_listing_id)
       orders = TicketOrder.where(ticket_listing_id: ids, status: TicketOrder::WAS_PAID).to_a.group_by(&:ticket_listing_id)
@@ -195,6 +196,19 @@ module Ticketing
 
     def tax_cents
       held_tickets.sum { |t| @tax.fetch([ t.id, true ], 0) + @tax.fetch([ t.id, false ], 0) }
+    end
+
+    # Tax held inside a ticket's price (cash at the door, when the box office
+    # says a $20 ticket is $20 in cash): gross_cents leaves it out, so the
+    # Ticket sales here tile says what came off (Tim, 2026-11-15: $96.28 for
+    # five $20 tickets read as a mistake).
+    def included_tax_cents
+      held_tickets.sum { |t| @tax.fetch([ t.id, true ], 0) }
+    end
+
+    # Whether all of that tax is inside cash sales, not an included tax rule.
+    def included_tax_all_cash?
+      held_tickets.select { |t| @tax.fetch([ t.id, true ], 0).positive? }.all? { |t| t.order_money_path == "cash" }
     end
 
     def net_cents
