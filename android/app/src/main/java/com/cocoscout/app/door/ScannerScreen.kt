@@ -283,7 +283,7 @@ private fun Pill(content: @Composable () -> Unit) {
 
 /**
  * The door page's result banner, in the hand: the name or the problem big,
- * the details under it, Undo on a fresh admit, and anything they pre-bought
+ * the details under it, Uncheck on a fresh admit, and anything they pre-bought
  * with a Delivered button.
  */
 @Composable
@@ -314,7 +314,7 @@ private fun ResultCard(result: DoorResult, delivering: List<String>, onUndo: (St
         }
         result.undoTicketId?.let { ticketId ->
             Text(
-                "Undo",
+                "Uncheck",
                 color = textColor,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,

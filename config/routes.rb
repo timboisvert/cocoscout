@@ -454,6 +454,8 @@ Rails.application.routes.draw do
   post "/door/:listing_id/check-in",      to: "door#check_in",       as: "door_check_in"
   post "/door/:listing_id/check-in-order", to: "door#check_in_order", as: "door_check_in_order"
   post "/door/:listing_id/undo",          to: "door#undo",           as: "door_undo"
+  post "/door/:listing_id/uncheck",       to: "door#uncheck",        as: "door_uncheck"
+  get  "/door/:listing_id/party/:order_id", to: "door#party",        as: "door_party"
   get  "/door/:listing_id/search",        to: "door#search",         as: "door_search"
   get  "/door/:listing_id/list",          to: "door#list",           as: "door_list"
   get  "/door/:listing_id/stats",         to: "door#stats",          as: "door_stats"

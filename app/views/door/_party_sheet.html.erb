@@ -1,0 +1,65 @@
+<%# A party's sheet at the door (Tim, 2026-11-16): tap a party's name, or
+    its green check, and every ticket on the order is here, in or out, with
+    Check in or Uncheck on each, and everyone at once. Unchecking is how a
+    mistake is put right, whenever it's found: the wrong person tapped, a
+    count too high, the wrong group. Filled by door#openParty and again
+    after each tap in it. Locals: order, listing, ahead. %>
+<%
+  tickets = order.tickets.select { |t| Ticket::SOLD_STATUSES.include?(t.status) }.sort_by { |t| [ t.checked_in? ? 0 : 1, -t.price_cents, t.id ] }
+  inside = tickets.count(&:checked_in?)
+  waiting = tickets.size - inside
+  name = order.buyer_name.presence || "No name"
+%>
+<div data-door-party-title="<%= name %>" class="pb-[env(safe-area-inset-bottom)] sm:pb-0">
+  <div class="text-sm text-gray-600">
+    <span class="font-medium text-gray-900"><%= order.code %></span>
+    · <% if tickets.size == 1 %><%= inside.positive? ? "Checked in" : "Not checked in" %><% else %><%= inside %> of <%= tickets.size %> checked in<% end %>
+  </div>
+
+  <ul class="mt-3 divide-y divide-gray-100 border-y border-gray-100">
+    <% tickets.each do |ticket| %>
+      <li class="flex items-center gap-3 py-2.5">
+        <span class="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center <%= ticket.checked_in? ? 'bg-green-600 text-white' : 'border-2 border-gray-200' %>" aria-hidden="true">
+          <% if ticket.checked_in? %><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg><% end %>
+        </span>
+        <div class="min-w-0 flex-1">
+          <div class="text-sm font-medium text-gray-900 truncate"><%= ticket.type_label %><% if ticket.holder_name.present? %> · <%= ticket.holder_name %><% end %></div>
+          <div class="text-xs text-gray-500 truncate">
+            <% if ticket.checked_in? %>
+              In at <%= ticket.checked_in_at&.strftime("%-l:%M %p") %><% if (by = ticket.checked_in_by&.person&.name).present? %> by <%= by %><% end %>
+            <% else %>
+              Not checked in
+            <% end %>
+          </div>
+        </div>
+        <% unless ahead %>
+          <% if ticket.checked_in? %>
+            <%= render "shared/button", text: "Uncheck", variant: "secondary", size: "small", type: :button, classes: "flex-shrink-0 disabled:opacity-50",
+                  data: { action: "click->door#partyChange", url: door_uncheck_path(listing, ticket_id: ticket.id) } %>
+          <% else %>
+            <%= render "shared/button", text: "Check in", variant: "outline-pink", size: "small", type: :button, classes: "flex-shrink-0 disabled:opacity-50",
+                  data: { action: "click->door#partyChange", url: door_check_in_order_path(listing, order_id: order.id, ticket_id: ticket.id) } %>
+          <% end %>
+        <% end %>
+      </li>
+    <% end %>
+  </ul>
+
+  <% if ahead %>
+    <p class="mt-3 text-xs text-gray-500">Check-in starts when the door opens.</p>
+  <% elsif tickets.size > 1 %>
+    <div class="mt-4 flex flex-col sm:flex-row gap-2 [&>*]:w-full sm:[&>*]:w-auto">
+      <% if waiting.positive? %>
+        <%= render "shared/button", text: (inside.positive? ? "Check in the other #{waiting}" : "Check in all #{waiting}"), variant: "primary", size: "medium", type: :button, classes: "justify-center disabled:opacity-50",
+              data: { action: "click->door#partyChange", url: door_check_in_order_path(listing, order_id: order.id) } %>
+      <% end %>
+      <% if inside.positive? %>
+        <%= render "shared/button", text: (inside == tickets.size ? "Uncheck all #{inside}" : "Uncheck the #{inside} in"), variant: "secondary", size: "medium", type: :button, classes: "justify-center disabled:opacity-50",
+              data: { action: "click->door#partyChange", url: door_uncheck_path(listing, order_id: order.id) } %>
+      <% end %>
+    </div>
+  <% end %>
+  <% if inside.positive? && !ahead %>
+    <p class="mt-3 text-xs text-gray-500">Unchecking puts a ticket back: its code scans again.</p>
+  <% end %>
+</div>

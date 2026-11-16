@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_14_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -4645,6 +4645,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_130000) do
     t.index ["ticket_listing_id"], name: "index_ticket_tiers_on_ticket_listing_id"
   end
 
+  create_table "ticket_unchecks", force: :cascade do |t|
+    t.bigint "ticket_id", null: false
+    t.bigint "ticket_listing_id", null: false
+    t.bigint "unchecked_by_id"
+    t.datetime "checked_in_at"
+    t.bigint "checked_in_by_id"
+    t.datetime "created_at", null: false
+    t.index ["ticket_id"], name: "index_ticket_unchecks_on_ticket_id"
+    t.index ["ticket_listing_id", "created_at"], name: "index_ticket_unchecks_on_ticket_listing_id_and_created_at"
+    t.index ["unchecked_by_id"], name: "index_ticket_unchecks_on_unchecked_by_id"
+  end
+
   create_table "ticketing_access_grants", force: :cascade do |t|
     t.bigint "organization_id", null: false
     t.bigint "user_id"
@@ -5406,6 +5418,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_130000) do
   add_foreign_key "ticket_tiers", "ticket_listings"
   add_foreign_key "ticket_tiers", "ticket_tiers", column: "bundle_of_tier_id"
   add_foreign_key "ticket_tiers", "ticket_tiers", column: "source_tier_id"
+  add_foreign_key "ticket_unchecks", "ticket_listings", on_delete: :cascade
+  add_foreign_key "ticket_unchecks", "tickets", on_delete: :cascade
+  add_foreign_key "ticket_unchecks", "users", column: "checked_in_by_id", on_delete: :nullify
+  add_foreign_key "ticket_unchecks", "users", column: "unchecked_by_id", on_delete: :nullify
   add_foreign_key "ticketing_access_grants", "organizations"
   add_foreign_key "ticketing_access_grants", "users", column: "granted_by_id", on_delete: :nullify
   add_foreign_key "ticketing_access_grants", "users", column: "revoked_by_id", on_delete: :nullify

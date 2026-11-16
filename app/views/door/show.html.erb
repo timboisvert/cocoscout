@@ -258,4 +258,8 @@
     </p>
   </section>
 
+  <%# A party's sheet: filled when a party's name is tapped (door#openParty). %>
+  <%= render layout: "shared/sheet", locals: { id: "door-party", title: "Check-in" } do %>
+    <div data-door-target="partySheet"></div>
+  <% end %>
 </div>

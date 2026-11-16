@@ -312,12 +312,82 @@ RSpec.describe "Door", type: :request do
       expect(response.parsed_body.slice("kind", "message")).to eq("kind" => "already", "message" => "Everyone on this order is already in")
     end
 
-    it "undoes a mistaken check-in" do
+    it "unchecks a mistaken check-in from the banner, and from the app's scanner address" do
       ticket = sold_order(1).tickets.sole
+      post door_check_in_path(listing), params: { code: ticket.code }, as: :json
+      post door_uncheck_path(listing), params: { ticket_id: ticket.id }, as: :json
+      expect(response.parsed_body.slice("ok", "message")).to eq("ok" => true, "message" => "Unchecked — Dana Scully")
+      expect(ticket.reload.status).to eq("valid")
+
       post door_check_in_path(listing), params: { code: ticket.code }, as: :json
       post door_undo_path(listing), params: { ticket_id: ticket.id }, as: :json
       expect(response.parsed_body["ok"]).to be(true)
       expect(ticket.reload.status).to eq("valid")
+    end
+
+    # Tim, 2026-11-16: tap a party to step its count down, take back the
+    # wrong group, or put back an All pressed on the wrong party.
+    it "opens a party's sheet from its name, and takes the party up and down from it" do
+      order = sold_order(3)
+      first, second, third = order.tickets.order(:id).to_a
+      get door_path(listing)
+      expect(response.body).to include(door_party_path(listing, order_id: order.id), 'id="door-party"')
+
+      # All on the wrong party: the banner's Uncheck takes back the whole tap.
+      post door_check_in_order_path(listing, order_id: order.id), as: :json
+      ids = response.parsed_body["ticket_id"]
+      expect(ids.split(",").map(&:to_i)).to contain_exactly(first.id, second.id, third.id)
+      post door_uncheck_path(listing), params: { ticket_id: ids }, as: :json
+      expect(response.parsed_body.slice("ok", "message")).to eq("ok" => true, "message" => "Unchecked 3 — Dana Scully")
+      expect(order.tickets.reload.map(&:status).uniq).to eq([ "valid" ])
+
+      # One ticket in from the sheet, then everyone, then down to two.
+      post door_check_in_order_path(listing, order_id: order.id, ticket_id: second.id), as: :json
+      expect(second.reload.status).to eq("checked_in")
+      get door_party_path(listing, order_id: order.id)
+      expect(response.body).to include("1 of 3 checked in", "Check in the other 2", "Uncheck the 1 in", door_uncheck_path(listing, ticket_id: second.id))
+
+      post door_check_in_order_path(listing, order_id: order.id), as: :json
+      get door_party_path(listing, order_id: order.id)
+      expect(response.body).to include("3 of 3 checked in", "Uncheck all 3")
+      expect(response.body).not_to include("Check in the other")
+
+      post door_uncheck_path(listing, ticket_id: first.id), as: :json
+      expect(response.parsed_body["party"]).to eq("2 of 3 checked in")
+
+      # The wrong group: everyone back out.
+      post door_uncheck_path(listing, order_id: order.id), as: :json
+      expect(response.parsed_body.slice("message", "party")).to eq("message" => "Unchecked 2 — Dana Scully", "party" => "0 of 3 checked in")
+      expect(order.tickets.reload.map(&:status).uniq).to eq([ "valid" ])
+      expect(TicketUncheck.where(ticket_listing: listing).count).to eq(6)
+
+      # The order says who took each check-in back, and whose it was.
+      door_person.update!(default_person: create(:person, name: "Door Dee"))
+      create(:organization_role, :manager, user: owner, organization: org)
+      sign_in(owner)
+      get manage_ticket_order_path(order.id)
+      expect(response.body).to include("Unchecked", "by Door Dee (checked in at")
+    end
+
+    it "opens a fully checked-in party's sheet from its green check" do
+      order = sold_order(1)
+      post door_check_in_order_path(listing, order_id: order.id, one: 1), as: :json
+      get door_list_path(listing)
+      doc = Nokogiri::HTML(response.body)
+      expect(doc.css("button[data-action='click->door#openParty'][data-url='#{door_party_path(listing, order_id: order.id)}']").size).to eq(2)
+      get door_party_path(listing, order_id: order.id)
+      expect(response.body).to include("Checked in", ">Uncheck<")
+    end
+
+    it "keeps one show's door from unchecking another's tickets" do
+      other = create(:ticket_listing, organization: org, show: create(:show, production: listing.production, date_and_time: 3.hours.from_now))
+      tier = other.ticket_tiers.create!(name: "General", price_cents: 1_000, quantity: 5)
+      order = TicketCheckout.start!(listing: other, quantities: { tier.id.to_s => "1" })
+      TicketOrderSettlement.settle!(order)
+      TicketDoor.new(other, owner).check_in_order(order.reload)
+      post door_uncheck_path(listing), params: { ticket_id: order.tickets.sole.id }, as: :json
+      expect(response.parsed_body["ok"]).to be(false)
+      expect(order.tickets.sole.reload.status).to eq("checked_in")
     end
 
     it "keeps check-in-only people away from door sales" do

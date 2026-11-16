@@ -152,7 +152,7 @@ struct ScannerOverlay: View {
 }
 
 /// The door page's result banner, in the hand: the name or the problem big,
-/// the details under it, Undo on a fresh admit, and anything they pre-bought
+/// the details under it, Uncheck on a fresh admit, and anything they pre-bought
 /// with a Delivered button.
 private struct ResultCard: View {
     let result: DoorResult
@@ -170,7 +170,7 @@ private struct ResultCard: View {
             if let ticketID = result.undoTicketID {
                 // A text link, as on the door page's banner.
                 Button { onUndo(ticketID) } label: {
-                    Text("Undo").underline().font(.system(size: 15, weight: .medium))
+                    Text("Uncheck").underline().font(.system(size: 15, weight: .medium))
                 }
                 .padding(.top, 6)
             }

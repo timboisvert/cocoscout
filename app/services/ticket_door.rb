@@ -12,8 +12,6 @@ class TicketDoor
   #   :not_found  — no ticket with that code
   Result = Data.define(:kind, :ticket, :message)
 
-  UNDO_WINDOW = 2.minutes
-
   # The buyer's name and email for a door sale, checked: { buyer_name:,
   # buyer_email: }. Ahead of the door opening it's presale and both are
   # required, as online (Tim, 2026-10-23); on the night they're optional.
@@ -88,14 +86,25 @@ class TicketDoor
     ticket && admit(ticket)
   end
 
-  # A mistaken check-in, put right. Door staff can undo their own for a couple
-  # of minutes; managers any time.
-  def undo(ticket, manager: false)
-    return false unless ticket.ticket_listing_id == @listing.id && ticket.checked_in?
-    return false unless manager || (ticket.checked_in_by_id == @user&.id && ticket.checked_in_at > UNDO_WINDOW.ago)
+  # Check-ins taken back (Tim, 2026-11-16: the wrong person tapped, a
+  # party's count too high, the wrong group): each ticket goes back to valid,
+  # so its QR code scans again, and a TicketUncheck keeps who checked it in,
+  # when, and who took it back. Anyone working tonight's door can take back
+  # any check-in at it, not only their own or a fresh one: a mistake is often
+  # found by someone else, later. The tickets taken back; one already out,
+  # or for another show, is skipped.
+  def uncheck(tickets)
+    Array(tickets).select { |ticket| ticket.ticket_listing_id == @listing.id }.filter_map do |ticket|
+      Ticket.transaction do
+        row = Ticket.where(id: ticket.id, status: "checked_in").lock.first
+        next unless row
 
-    Ticket.where(id: ticket.id, status: "checked_in")
-          .update_all(status: "valid", checked_in_at: nil, checked_in_by_id: nil, updated_at: Time.current) == 1
+        TicketUncheck.create!(ticket: row, ticket_listing: @listing, unchecked_by: @user,
+                              checked_in_at: row.checked_in_at, checked_in_by_id: row.checked_in_by_id)
+        row.update_columns(status: "valid", checked_in_at: nil, checked_in_by_id: nil, updated_at: Time.current)
+        row
+      end
+    end
   end
 
   # Walk-ups paying cash, or comps — recorded so the count, the show's

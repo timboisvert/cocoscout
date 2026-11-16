@@ -3,7 +3,7 @@
 require "rails_helper"
 
 # The door on show night: scans, the wrong-ticket cases, whole parties,
-# undoing a mistake, and cash sales and comps at the door.
+# unchecking a mistake, and cash sales and comps at the door.
 RSpec.describe TicketDoor do
   let(:org) { create(:organization, :pro) }
   # Tonight's show, its door open (DoorTonight): the door before it opens
@@ -96,19 +96,34 @@ RSpec.describe TicketDoor do
     expect(door.check_in_next(order)).to be_nil
   end
 
-  describe "#undo" do
-    it "lets door staff undo their own check-in for a couple of minutes, and managers any time" do
-      ticket = sold_order(1).tickets.sole
-      door.check_in(ticket.code)
-      expect(door.undo(ticket.reload)).to be(true)
-      expect(ticket.reload.status).to eq("valid")
+  describe "#uncheck" do
+    # Tim, 2026-11-16: a mistake is often found later, by someone else.
+    it "lets anyone at tonight's door take back any check-in, at any time, and keeps a record" do
+      order = sold_order(2)
+      first, second = order.tickets.order(:id).to_a
+      door.check_in_order(order)
+      other = create(:user)
 
-      door.check_in(ticket.code)
-      travel 3.minutes do
-        expect(door.undo(ticket.reload)).to be(false)
-        expect(described_class.new(listing, create(:user)).undo(ticket, manager: false)).to be(false)
-        expect(described_class.new(listing, create(:user)).undo(ticket, manager: true)).to be(true)
+      travel 30.minutes do
+        expect(described_class.new(listing, other).uncheck([ first.reload ])).to eq([ first ])
       end
+      expect([ first.reload.status, first.checked_in_at, first.checked_in_by_id ]).to eq([ "valid", nil, nil ])
+      expect(second.reload.status).to eq("checked_in")
+      record = first.unchecks.sole
+      expect([ record.unchecked_by, record.checked_in_by, record.ticket_listing ]).to eq([ other, door_person, listing ])
+      expect(record.checked_in_at).to be_present
+
+      # Its code scans again.
+      expect(door.check_in(first.code).kind).to eq(:admitted)
+    end
+
+    it "skips a ticket that isn't in, and one for another show" do
+      ticket = sold_order(1).tickets.sole
+      elsewhere = create(:ticket_listing, organization: org)
+      expect(door.uncheck([ ticket ])).to eq([])
+      door.check_in(ticket.code)
+      expect(described_class.new(elsewhere, door_person).uncheck([ ticket.reload ])).to eq([])
+      expect(TicketUncheck.count).to eq(0)
     end
   end
 
