@@ -342,7 +342,7 @@ RSpec.describe "Settle up", type: :request do
 
       patch manage_check_show_money_settle_up_day_path(today.iso8601, show_id: tonight.id), params: { checked: "1" }
       get manage_money_settle_up_day_path(today.iso8601)
-      expect(response.body).to include("settle it now if the night is done", "settle now only if the night is done", "is not in the day until you reopen it")
+      expect(response.body).to include("The day closes at 2 AM, when the door closes; settle it now if the night is done", "settle now only if the night is done", "is not in the day until you reopen it")
       expect(response.body).not_to include("Confirm every piece first")
 
       post manage_settle_money_settle_up_day_path(today.iso8601)
@@ -359,7 +359,7 @@ RSpec.describe "Settle up", type: :request do
 
       get manage_money_settle_up_path
       box = Nokogiri::HTML(response.body).at_css("[data-settle-today]")
-      expect(box.text.squish).to include("Today", "Still going", "Start settling")
+      expect(box.text.squish).to include("Today", "Still going: it closes at 2 AM, when the door closes", "Start settling")
       expect(box.at_css("a[href='#{manage_money_settle_up_day_path(today.iso8601)}']")).to be_present
       expect(SettleUp.open_dates(org)).not_to include(today)
 

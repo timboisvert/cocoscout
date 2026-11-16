@@ -220,6 +220,14 @@ class SettleUp
     def settled? = record&.settled? == true
     def status = settled? ? "settled" : "open"
     def ended? = SettlementDay.ended?(organization, date)
+    # While the day is still going: when it closes, in words (DayClose).
+    def closes_words
+      return "The day runs until midnight" if organization.settlement_day_mode == "calendar"
+
+      closes = SettlementDay.ends_at(organization, date)
+      at = DayClose.words(closes, date)
+      closes < SettlementDay.window(organization, date).end ? "The day closes at #{at}, when the door closes" : "The day closes at #{at}"
+    end
     def registers_state = record&.register_checked? ? :ok : :wait
     def register_label = registers.size == 1 ? "Bar, #{registers.first.location_name}" : "Registers"
     # Every piece to confirm, in page order, with why it can't be yet when it

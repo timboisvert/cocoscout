@@ -38,7 +38,7 @@
   <% if @today %>
     <div class="mb-4 bg-white border border-gray-200 rounded-xl overflow-hidden" data-settle-today>
       <%= render "shared/section_heading", padding: "px-5 py-3", title: "Today" do %>
-        <span class="text-xs text-gray-500">Still going. Confirm each piece as it finishes; the day can be settled once every piece is confirmed.</span>
+        <span class="text-xs text-gray-500">Still going: <%= @today.closes_words.sub(/\AThe day/, "it") %>. Confirm each piece as it finishes; the day can be settled once every piece is confirmed.</span>
       <% end %>
       <%= render "manage/settlement_days/day_row", day: @today, start: true %>
     </div>
