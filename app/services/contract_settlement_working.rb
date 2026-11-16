@@ -108,6 +108,15 @@ class ContractSettlementWorking
     end
   end
 
+  # "the week" / "the month" / "the run", for "For the week's 3 shows".
+  def stretch_name
+    case contract.settlement_cadence
+    when "weekly" then "the week"
+    when "monthly" then "the month"
+    else "the run"
+    end
+  end
+
   def stretch_words
     case contract.settlement_cadence
     when "weekly" then "the week's other shows"

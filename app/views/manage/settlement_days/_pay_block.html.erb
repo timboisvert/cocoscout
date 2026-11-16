@@ -145,6 +145,20 @@
           <% elsif pay.payments.empty? && facing_us.nil? %>
             <span class="block mt-0.5 text-xs text-gray-500">The contract has no payment for this show yet.</span>
           <% end %>
+          <%# A settlement for a week or a month is paid once for all its nights (Tim, 2026-11-16): say so, and what this show adds to it, which is what the day counts. %>
+          <% if (shared = pay.shared_working) %>
+            <% night = SettleUp.contract_night(show, pay.payments, pay.settlement) %>
+            <span class="block mt-0.5 text-xs text-gray-500" data-pay-shared="<%= show.id %>">
+              For <%= shared.stretch_name %>'s <%= pluralize(shared.shows.size, "show") %>, paid once.
+              <% if night.out_cents.negative? && !shared.contract.ticket_revenue_minus_fee? %>
+                This show's share is <%= money.call(-night.out_cents) %> short of what they owe for it.
+              <% elsif night.out_cents.negative? %>
+                This show came in <%= money.call(-night.out_cents) %> under our fee<%= night.kept_back_cents.positive? ? " and what they owe for it" : "" %>.
+              <% else %>
+                This show's part is <%= money.call(night.out_cents) %><%= night.kept_back_cents.positive? ? ", after #{money.call(night.kept_back_cents)} they owe for it" : "" %>.
+              <% end %>
+            </span>
+          <% end %>
           <% if summary %>
             <%# The outer span is what hides (a display class beside hidden would win); the inner one spaces it. %>
             <span class="<%= open ? 'hidden' : '' %>" data-disclosure-target="closedOnly"><span class="block mt-1.5"><span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap <%= summary_tone %>"><%= summary %></span></span></span>

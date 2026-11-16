@@ -95,9 +95,20 @@ class SettleUp
     end
     # What this show pays its people, for the day's "what the house keeps":
     # the calculated lines, else what the numbers as they stand would pay.
-    def going_out_cents = none? ? 0 : (performers? && rows.empty? ? preview_cents.to_i : total_cents)
-    # What a contract show's people owe that is kept back from their share.
-    def kept_back_cents = contract? ? SettleUp.contract_deductions(payments).values.flatten.sum { |charge| (charge.amount.to_d * 100).round } : 0
+    # A contract show counts its own night: of a settlement for a week or a
+    # month, only what this show adds to it (SettleUp.contract_night).
+    def going_out_cents
+      return 0 if none?
+      return SettleUp.contract_night(show, payments, settlement).out_cents if contract?
+
+      performers? && rows.empty? ? preview_cents.to_i : total_cents
+    end
+    # What a contract show's people owe that is kept back from their share:
+    # this night's, when the settlement covers others too.
+    def kept_back_cents = contract? ? SettleUp.contract_night(show, payments, settlement).kept_back_cents : 0
+    # A settlement for a week or a month that covers this show and others
+    # (its working), or nil: the whole of it is paid once, not per night.
+    def shared_working = contract? ? SettleUp.shared_settlement_working(show, settlement) : nil
     # What settling the day puts on the run, and for how many people.
     def to_run_rows = rows.select { |r| r.stage == :run }
     def to_run_cents
@@ -718,6 +729,70 @@ class SettleUp
 
         found[group[:payment].id] = group[:deductions] if group[:deductions].any?
       end
+    end
+  end
+
+  # A contract show's own night, for the day's "what the house keeps" (Tim,
+  # 2026-11-16: a weekly settlement of $736.28 was counted whole on Nov 13,
+  # one of its three nights, and the day said the house kept −$86.50; the
+  # week's other days counted it whole again). A settlement that covers
+  # several shows counts, on each show's day, only that night: its ticket
+  # sales less our fee for it (a minus-fee deal), or their share of its
+  # sales (a revenue share), less what they owe for that night. Any other
+  # payment counts as it is.
+  #   share_cents      this night's part before what they owe
+  #   out_cents        what goes to them, for this show
+  #   kept_back_cents  what they owe that comes out of it
+  ContractNight = Data.define(:share_cents, :out_cents, :kept_back_cents)
+
+  def self.contract_night(show, payments, settlement)
+    working = shared_settlement_working(show, settlement)
+    others = working ? payments.reject { |p| p.id == working.payment.id } : payments
+    taken = contract_deductions(others)
+    out = others.sum { |p| contract_net_cents(p, taken) }
+    kept = taken.values.flatten.sum { |charge| (charge.amount.to_d * 100).round }
+    return ContractNight.new(share_cents: nil, out_cents: out, kept_back_cents: kept) unless working
+
+    share = night_share_cents(working, show)
+    owed = night_charges(working, show).sum { |charge| (charge.amount.to_d * 100).round }
+    ContractNight.new(share_cents: share, out_cents: out + share - owed, kept_back_cents: kept + owed)
+  end
+
+  # The settlement's working when it covers this show and others. A
+  # revenue share that faces us (they sell, we take our share) isn't one:
+  # its nights' ticket money isn't ours to count.
+  def self.shared_settlement_working(show, settlement)
+    return nil unless settlement
+
+    working = ContractSettlementWorking.for(settlement)
+    return nil unless working.period? && working.shows.any? { |s| s.id == show.id }
+    return nil if settlement.direction_incoming? && !working.contract.ticket_revenue_minus_fee?
+
+    working
+  end
+
+  # One night's part of a shared settlement, before what they owe: its
+  # ticket sales less our fee for it, or their share of its sales. A night
+  # that sold under the fee is less than nothing: the house keeps its fee.
+  def self.night_share_cents(working, show)
+    contract = working.contract
+    if contract.ticket_revenue_minus_fee?
+      sales = (contract.settled_revenue(show.show_financials).to_d * 100).round
+      sales - (contract.flat_fee_for_shows([ show ]).to_d * 100).round
+    else
+      (contract.settled_share_amount([ show ]).to_d * 100).round
+    end
+  end
+
+  # What they owe that rides a shared settlement, for this night: the
+  # charge tied to the show, else the one due that day. A charge for none of
+  # its nights goes with the last.
+  def self.night_charges(working, show)
+    working.charges.select do |charge|
+      night = working.shows.detect { |s| s.id == charge.show_id } ||
+              working.shows.detect { |s| charge.due_date && s.date_and_time.to_date == charge.due_date } ||
+              working.last_show
+      night.id == show.id
     end
   end
 
