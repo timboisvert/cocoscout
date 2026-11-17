@@ -51,6 +51,14 @@ RSpec.describe ContractDateRequests do
       expect(contract.date_requests.waiting).to contain_exactly(second)
     end
 
+    it "lets a question sit beside a request to change the same date" do
+      move = ask
+      question = ask(kind: "question", proposed_at: nil, note: "Is load-in at 5?")
+
+      expect(move.reload.status).to eq("open")
+      expect(contract.date_requests.waiting).to contain_exactly(move, question)
+    end
+
     it "is the contractor's alone" do
       stranger = create(:user)
       create(:person, user: stranger)
@@ -72,11 +80,37 @@ RSpec.describe ContractDateRequests do
       expect { ask(kind: "question") }.to raise_error(ActiveRecord::RecordInvalid, /Write your question/)
     end
 
+    it "won't ask to add a date that's already on the contract" do
+      expect { ask(kind: "add", about: nil, proposed_at: night) }
+        .to raise_error(ActiveRecord::RecordInvalid, /already on the contract/)
+    end
+
     it "asks to add a date with no date of the contract's behind it" do
       request = ask(kind: "add", about: nil, proposed_at: night + 1.day)
 
       expect(request).to have_attributes(kind: "add", show: nil, status: "open")
       expect(request.words).to start_with("add ")
+    end
+  end
+
+  describe ".withdraw!" do
+    it "takes the request back, and the organization's unopened notifications about it" do
+      request = ask
+      expect(owner.notifications.where(subject: request).count).to eq(1)
+
+      described_class.withdraw!(request, user: user)
+
+      expect(request.reload.status).to eq("withdrawn")
+      expect(owner.notifications.where(subject: request)).to be_empty
+    end
+
+    it "leaves a notification they've already opened, as history" do
+      request = ask
+      owner.notifications.where(subject: request).update_all(read_at: Time.current)
+
+      described_class.withdraw!(request, user: user)
+
+      expect(owner.notifications.where(subject: request).count).to eq(1)
     end
   end
 
@@ -114,8 +148,10 @@ RSpec.describe ContractDateRequests do
       request = ask(proposed_at: night - 30.minutes)
 
       expect { ContractDateChanges.move!(contract: contract, rental: rental, starts_at: night + 1.hour, ends_at: night + 3.hours) }
-        .not_to change(user.notifications, :count)
+        .to change(user.notifications, :count).by(1)
       expect(request.reload.status).to eq("void")
+      expect(user.notifications.last.title).to include("no longer applies: that date is now")
+      expect(ContractDateRequest.showing_to_asker).to include(request)
     end
 
     it "is done when a date they asked to cancel comes off the contract" do
@@ -141,8 +177,20 @@ RSpec.describe ContractDateRequests do
       request = ask(proposed_at: night - 30.minutes)
       amend = { "moved_rentals" => { rental.id.to_s => { "starts_at" => (night - 30.minutes).iso8601, "ends_at" => (night + 90.minutes).iso8601 } } }
 
-      expect { described_class.staged!(contract, amend, by: owner) }.to change(user.notifications, :count).by(1)
+      # No notice of its own: the signature request notifies them when it's sent.
+      expect { described_class.staged!(contract, amend, by: owner) }.not_to change(user.notifications, :count)
       expect(request.reload).to have_attributes(status: "amending", answered_by: owner)
+    end
+
+    it "waits again when the amendment that answered it is discarded" do
+      request = ask(proposed_at: night - 30.minutes)
+      amend = { "moved_rentals" => { rental.id.to_s => { "starts_at" => (night - 30.minutes).iso8601, "ends_at" => (night + 90.minutes).iso8601 } } }
+      described_class.staged!(contract, amend, by: owner)
+
+      # Nothing is pending on the contract: the staged amendment is gone.
+      described_class.settle!(contract)
+
+      expect(request.reload).to have_attributes(status: "open", answered_by: nil)
     end
 
     it "leaves alone a request the amendment doesn't answer" do
@@ -180,13 +228,13 @@ RSpec.describe ContractDateRequests do
       expect { described_class.sweep! }.not_to change(owner.notifications, :count)
     end
 
-    it "closes a request whose date has passed" do
+    it "closes a request whose date has passed, quietly" do
       request = ask
       show.update_columns(date_and_time: 1.day.ago)
 
-      described_class.sweep!
-
+      expect { described_class.sweep! }.not_to change(user.notifications, :count)
       expect(request.reload.status).to eq("void")
+      expect(request.superseded_words).to be_nil
     end
   end
 end

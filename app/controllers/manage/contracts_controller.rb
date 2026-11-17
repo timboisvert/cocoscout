@@ -1197,8 +1197,9 @@ module Manage
 
       amending = (actives - payment_contracts).select(&:amendment_pending?)
       # The contractor asked about a date and nobody has answered (ContractDateRequests).
-      asked_ids = ContractDateRequest.where(contract_id: actives.map(&:id), status: "open").distinct.pluck(:contract_id).to_set
-      asking = (actives - payment_contracts - amending).select { |c| asked_ids.include?(c.id) }
+      asked_kinds = ContractDateRequest.where(contract_id: actives.map(&:id), status: "open").pluck(:contract_id, :kind)
+                                       .group_by(&:first).transform_values { |rows| rows.map(&:last) }
+      asking = (actives - payment_contracts - amending).select { |c| asked_kinds.key?(c.id) }
       recent = (actives - payment_contracts - amending - asking).filter_map do |c|
         signed_at = [ c.executed_at, c.activated_at, c.contract_versions.filter_map(&:executed_at).max ].compact.max
         [ c, signed_at ] if signed_at && signed_at >= since
@@ -1225,7 +1226,10 @@ module Manage
       amending.each do |c|
         @in_motion_badges[c.id] = c.signing_out_for_signature? ? { text: "Amendment out for signature", color: "amber" } : { text: "Amendment ready to send", color: "blue" }
       end
-      asking.each { |c| @in_motion_badges[c.id] = { text: "Date change requested", color: "amber" } }
+      asking.each do |c|
+        only_questions = asked_kinds[c.id].all? { |kind| kind == "question" }
+        @in_motion_badges[c.id] = { text: only_questions ? "Question about a date" : "Date change requested", color: "amber" }
+      end
       recent.each do |c, at|
         verb = c.signing_mode_esign? ? "Signed" : "Activated"
         @in_motion_badges[c.id] = { text: "#{verb} #{helpers.time_ago_in_words(at)} ago", color: "green" }

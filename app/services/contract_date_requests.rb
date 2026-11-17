@@ -22,15 +22,18 @@ class ContractDateRequests
     contract.contract_shows.where(canceled: false).where("shows.date_and_time > ?", Time.current).order(:date_and_time)
   end
 
-  # A new request. One waits per date: asking again about the same date
-  # takes the earlier one back. Raises ActiveRecord::RecordInvalid with the
-  # reason when it can't be asked.
+  # A new request. One change waits per date: requesting another for the
+  # same date takes the earlier one back. A question takes nothing back and
+  # is left alone by a later request. Raises ActiveRecord::RecordInvalid
+  # with the reason when it can't be asked.
   def self.ask!(contract:, user:, kind:, show: nil, proposed_at: nil, note: nil)
     raise NotAllowed unless can_ask?(user, contract)
     raise NotAllowed if show && !askable_shows(contract).exists?(id: show.id)
 
     request = ContractDateRequest.transaction do
-      contract.date_requests.waiting.where(show_id: show.id).find_each { |earlier| close!(earlier, "withdrawn") } if show
+      if show && kind.to_s != "question"
+        contract.date_requests.waiting.where(show_id: show.id).where.not(kind: "question").find_each { |earlier| close!(earlier, "withdrawn") }
+      end
       contract.date_requests.create!(
         organization: contract.organization, show: show, kind: kind, requested_by: user,
         original_at: show&.date_and_time, proposed_at: proposed_at, note: note.to_s.strip.presence
@@ -76,12 +79,19 @@ class ContractDateRequests
         ContractDateRequestNotices.done(request)
       elsif request.lapsed?
         close!(request, "void")
+        # The date changed some other way while it waited: they're notified
+        # why it no longer applies. One the calendar passed by closes quietly.
+        ContractDateRequestNotices.superseded(request) if request.superseded_words
+      elsif request.status == "amending" && !contract.amendment_pending?
+        # The amendment that answered it was discarded: it waits again.
+        request.update!(status: "open", answered_by: nil, answered_at: nil)
       end
     end
   end
 
-  # An amendment that waits for the contractor's signature: the requests it
-  # answers say so, and close when it's signed and its dates change.
+  # An amendment staged for the contractor's signature (Change the deal): the
+  # requests it answers say so, and close when it's signed and its dates
+  # change. If it's discarded first, they wait again (settle!).
   # `amend` is the staged amendment (Contract#amend_data's shape).
   def self.staged!(contract, amend, by: nil)
     moved = (amend["moved_rentals"] || {}).to_h
@@ -97,8 +107,9 @@ class ContractDateRequests
       end
       next unless covered
 
+      # No notice of its own: the amendment isn't theirs to sign until it's
+      # sent, and the signature request notifies them then.
       request.update!(status: "amending", answered_by: by, answered_at: Time.current)
-      ContractDateRequestNotices.amending(request)
     end
   end
 
@@ -155,6 +166,8 @@ class ContractDateRequests
 
   def self.close!(request, status)
     request.update!(status: status, closed_at: Time.current)
+    # Taken back or no longer applying: nobody should be sent to it any more.
+    ContractDateRequestNotices.retract(request)
   end
   private_class_method :close!
 end

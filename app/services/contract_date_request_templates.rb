@@ -39,11 +39,12 @@ class ContractDateRequestTemplates
       variables: REQUEST_VARIABLES + [
         { "name" => "kept_words", "description" => "The answer, e.g. kept Fri Dec 18 at 8:00 PM" },
         { "name" => "contracts_url", "description" => "My Contracts" } ] },
-    { key: "contract_date_request_amending", name: "A date request answered with an amendment to sign (to the contractor)",
-      subject: "{{organization_name}} changed your contract for {{production_name}}. Review and sign it.",
-      body: %(<p>{{organization_name}} changed your contract for {{production_name}}, after {{request_phrase}}. It takes effect when you sign.</p><p><a href="{{contracts_url}}">Open My Contracts</a></p>),
+    { key: "contract_date_request_superseded", name: "A date request that no longer applies (to the contractor)",
+      subject: "{{your_request}} no longer applies: {{reason}}",
+      body: %(<p>{{your_request}} no longer applies: {{reason}}.</p><p><a href="{{contracts_url}}">Open My Contracts</a></p>),
       variables: REQUEST_VARIABLES + [
-        { "name" => "request_phrase", "description" => "The request, e.g. the request to move Fri Dec 18 to 7:30 PM" },
+        { "name" => "your_request", "description" => "The request, e.g. Your request to move Fri Dec 18 to 7:30 PM" },
+        { "name" => "reason", "description" => "What changed, e.g. that date is now Fri Dec 18, 9:00 PM" },
         { "name" => "contracts_url", "description" => "My Contracts" } ] }
   ].freeze
 

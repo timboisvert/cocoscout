@@ -28,8 +28,8 @@ module My
       proposed_at = kind.in?(%w[move add]) ? parse_in_zone(params[:proposed_at]) : nil
       ContractDateRequests.ask!(contract: @contract, user: Current.user, show: show, kind: kind,
                                 proposed_at: proposed_at, note: params[:note])
-      redirect_to my_contracts_path,
-                  notice: "#{@contract.organization.name} has been notified. Nothing changes until they change the contract."
+      notified = "#{@contract.organization.name} has been notified."
+      redirect_to my_contracts_path, notice: kind == "question" ? notified : "#{notified} Nothing changes until they change the contract."
     rescue ActiveRecord::RecordInvalid => e
       redirect_to my_contracts_path, alert: e.record.errors.full_messages.to_sentence
     rescue ContractDateRequests::NotAllowed

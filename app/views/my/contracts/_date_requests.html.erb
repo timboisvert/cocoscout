@@ -11,6 +11,8 @@
   ask_modal = "ask-date-modal-#{contract.id}"
 %>
 <% requests.each do |request| %>
+  <%# One that simply ran out (the date passed) has nothing to say. %>
+  <% next if request.status == "void" && request.superseded_words.nil? %>
   <div class="flex items-start justify-between gap-3 px-5 py-3" data-date-request="<%= request.status %>">
     <div class="min-w-0 flex items-start gap-2 text-sm text-gray-700">
       <%= icon("calendar", class: "w-4 h-4 text-pink-500 flex-shrink-0 mt-0.5") %>
@@ -18,12 +20,15 @@
         <% case request.status %>
         <% when "open" %>
           <div class="font-medium text-gray-900"><%= request.requested_words %></div>
-          <div class="text-xs text-gray-500">Waiting for their answer. Nothing changes until they change the contract.</div>
+          <div class="text-xs text-gray-500"><%= request.kind == "question" ? "Waiting for their answer." : "Waiting for their answer. Nothing changes until they change the contract." %></div>
         <% when "amending" %>
-          <div class="font-medium text-gray-900"><%= org %> changed the contract after <%= request.request_phrase %></div>
-          <div class="text-xs text-gray-500">It takes effect when you sign.</div>
+          <div class="font-medium text-gray-900"><%= org %> is amending the contract after <%= request.request_phrase %></div>
+          <div class="text-xs text-gray-500">The change takes effect once you sign the amendment.</div>
         <% when "done" %>
           <div class="font-medium text-gray-900"><%= org %> <%= request.outcome_words %>, as you requested</div>
+        <% when "void" %>
+          <div class="font-medium text-gray-900"><%= request.your_request_words %> no longer applies</div>
+          <div class="text-xs text-gray-500"><%= org %> changed it another way: <%= request.superseded_words %>.</div>
         <% when "kept" %>
           <div class="font-medium text-gray-900"><%= org %> <%= request.kept_words %></div>
           <% if request.answer_note.present? %>

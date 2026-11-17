@@ -8,7 +8,8 @@
 # date, with a note.
 #
 #   open       waiting for the organization
-#   amending   they amended and the change waits for a signature
+#   amending   they amended through Change the deal, and the change waits
+#              for a signature (back to open if that amendment is discarded)
 #   done       the contract now says what was asked
 #   kept       they answered no, with their reason
 #   withdrawn  the asker took it back
@@ -20,6 +21,9 @@ class ContractDateRequest < ApplicationRecord
   WAITING = %w[open amending].freeze
   # How long an answer stays on the asker's page by itself.
   DONE_SHOWS_FOR = 1.day
+  # How long "no longer applies" stays there, when the date changed some
+  # other way while the request waited.
+  VOID_SHOWS_FOR = 7.days
   REMIND_AFTER = 3.days
 
   belongs_to :organization
@@ -39,7 +43,8 @@ class ContractDateRequest < ApplicationRecord
   # until it's dismissed (a "done" clears itself after a day).
   scope :showing_to_asker, lambda {
     where(dismissed_at: nil).where(
-      "status IN ('open', 'amending', 'kept') OR (status = 'done' AND closed_at > ?)", DONE_SHOWS_FOR.ago
+      "status IN ('open', 'amending', 'kept') OR (status = 'done' AND closed_at > :done) OR (status = 'void' AND closed_at > :void)",
+      done: DONE_SHOWS_FOR.ago, void: VOID_SHOWS_FOR.ago
     )
   }
 
@@ -106,6 +111,22 @@ class ContractDateRequest < ApplicationRecord
     when "add" then "didn't add #{moment_words(proposed_local)}"
     else "answered your question #{words}"
     end
+  end
+
+  # "Your request to move Fri Dec 18 to 7:30 PM" / "Your question about Fri Dec 18, 8:00 PM".
+  def your_request_words = kind == "question" ? "Your question #{words}" : "Your request to #{words}"
+
+  # Why a request stopped applying, when the date changed some other way
+  # while it waited: "that date is now Sun Nov 29, 9:00 PM", "that date was
+  # canceled", "that date is no longer on the contract". Nil when it simply
+  # ran out (the date passed, the contract ended): nothing to say then.
+  def superseded_words
+    return nil if kind == "add" || contract.status.in?(%w[cancelled completed])
+    return "that date is no longer on the contract" if show.nil?
+    return "that date was canceled" if show.canceled
+    return nil if show.date_and_time < Time.current
+
+    "that date is now #{moment_words(show.date_and_time.in_time_zone(time_zone))}" if original_at && show.date_and_time != original_at
   end
 
   # The organization's "no", as a button and as its question:
@@ -175,6 +196,8 @@ class ContractDateRequest < ApplicationRecord
         errors.add(:base, "That day and time has already passed.")
       elsif kind == "move" && show && show.date_and_time == proposed_at
         errors.add(:base, "That's when the date already is.")
+      elsif kind == "add" && contract&.contract_shows&.where(canceled: false, date_and_time: proposed_at)&.exists?
+        errors.add(:base, "That day and time is already on the contract.")
       end
     end
     errors.add(:base, "Write your question.") if kind == "question" && note.blank?

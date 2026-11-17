@@ -20,7 +20,8 @@
     keep = { text: request.keep_button_words, type: :button, data: { action: "click->modal#open", modal_id: keep_modal } }
     ticketed = request.show && request.kind.in?(%w[move cancel]) && ContractDateChanges.tickets_held?([ request.show ])
     on_contract = request.kind == "move" && request.original_local ? "It's #{request.clock_words(request.original_local)} on the contract. " : ""
-    body = "#{on_contract}Requested #{request.created_at.strftime('%b %-d')}. Nothing has changed: the contract changes only when you amend it."
+    asked_on = request.created_at.in_time_zone.strftime("%b %-d")
+    body = question ? "Sent #{asked_on}." : "#{on_contract}Requested #{asked_on}. Nothing has changed: the contract changes only when you amend it."
     details = capture do %>
       <% if request.note.present? %>
         <div class="mt-3 rounded-lg bg-white/70 border border-pink-100 px-4 py-3 text-sm text-gray-700">"<%= request.note %>"</div>
@@ -34,7 +35,7 @@
     <% end %>
   <div data-date-request="<%= request.id %>">
     <%= render "shared/alert_panel",
-          eyebrow: "A request about a date",
+          eyebrow: (question ? "A question about a date" : "A request about a date"),
           headline: "#{contractor} #{request.requests_words}",
           body: body,
           actions: (question ? [ keep, amend ] : [ amend, keep ]),
@@ -51,7 +52,7 @@
         <%= form_with url: keep_date_request_manage_contract_path(@contract, request_id: request.id), method: :post, local: true,
               data: { turbo_action: "replace" } do %>
           <div class="p-6 space-y-4">
-            <p class="text-sm text-gray-700"><%= contractor %> will be notified. Nothing changes on the contract.</p>
+            <p class="text-sm text-gray-700"><%= contractor %> will be notified.<%= " Nothing changes on the contract." unless question %></p>
             <label class="block">
               <span class="block text-sm font-medium text-gray-700 mb-1">
                 <%= question ? "Your reply" : "A note to #{contractor}" %>
@@ -63,7 +64,7 @@
           </div>
           <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
             <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
-            <%= render "shared/button", text: "Send answer", variant: "primary", size: "medium", type: :submit %>
+            <%= render "shared/button", text: (question ? "Send reply" : "Send answer"), variant: "primary", size: "medium", type: :submit %>
           </div>
         <% end %>
       </div>

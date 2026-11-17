@@ -31,9 +31,10 @@ class ContractorsCanAskAboutAContractDate < ActiveRecord::Migration[8.1]
       t.timestamps
     end
     add_index :contract_date_requests, %i[organization_id status]
-    # One open request per date; a second one replaces the first.
+    # One open request to change a date; a second one replaces the first.
+    # Questions sit beside it: asking one takes nothing back.
     add_index :contract_date_requests, %i[contract_id show_id], unique: true,
-              where: "status IN ('open', 'amending') AND show_id IS NOT NULL",
+              where: "status IN ('open', 'amending') AND show_id IS NOT NULL AND kind <> 'question'",
               name: "index_contract_date_requests_one_open_per_date"
   end
 end

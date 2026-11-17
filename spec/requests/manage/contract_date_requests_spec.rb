@@ -74,6 +74,14 @@ RSpec.describe "Manage contract date requests", type: :request do
     expect(response.body).not_to include("A request about a date")
   end
 
+  it "words a question as a question, with Reply first" do
+    ContractDateRequests.ask!(contract: contract, user: asker, show: show, kind: "question", note: "Is load-in at 5?")
+
+    get manage_contract_path(contract)
+
+    expect(response.body).to include("A question about a date").and include("has a question about").and include("Send reply")
+  end
+
   it "keeps the date with a note, and notifies the asker" do
     expect do
       post keep_date_request_manage_contract_path(contract, request_id: date_request.id), params: { answer_note: "Doors are 7:30." }

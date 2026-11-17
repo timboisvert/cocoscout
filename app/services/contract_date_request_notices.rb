@@ -28,9 +28,16 @@ class ContractDateRequestNotices
                         extra: { kept_words: request.kept_words, note: request.answer_note.to_s })
     end
 
-    def amending(request)
-      to_asker(request, kind: "contract_date_request_amending", template: "contract_date_request_amending",
-                        extra: { request_phrase: request.request_phrase })
+    def superseded(request)
+      to_asker(request, kind: "contract_date_request_superseded", template: "contract_date_request_superseded",
+                        extra: { your_request: request.your_request_words, reason: request.superseded_words })
+    end
+
+    # A request taken back, or one that no longer applies: the organization's
+    # notifications about it that nobody has opened are removed, so nobody is
+    # sent to a request that isn't there. Opened ones stay, as history.
+    def retract(request)
+      Notification.where(subject: request, kind: %w[contract_date_request_asked contract_date_request_reminder], read_at: nil).delete_all
     end
 
     private
@@ -51,7 +58,7 @@ class ContractDateRequestNotices
     def deliver(user, request, kind:, template:, path:, variables:)
       contract = request.contract
       Notifier.deliver(user: user, category: "contracts", kind: kind, template_key: template, path: path,
-                       organization: contract.organization, subject: contract,
+                       organization: contract.organization, subject: request,
                        variables: { contractor_name: contract.contractor_name, organization_name: contract.organization.name,
                                     production_name: contract.production&.name || contract.production_name.to_s,
                                     note: request.note.to_s }.merge(variables))

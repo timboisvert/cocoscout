@@ -774,7 +774,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_174847) do
     t.datetime "dismissed_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["contract_id", "show_id"], name: "index_contract_date_requests_one_open_per_date", unique: true, where: "(((status)::text = ANY ((ARRAY['open'::character varying, 'amending'::character varying])::text[])) AND (show_id IS NOT NULL))"
+    t.index ["contract_id", "show_id"], name: "index_contract_date_requests_one_open_per_date", unique: true, where: "(((status)::text = ANY ((ARRAY['open'::character varying, 'amending'::character varying])::text[])) AND (show_id IS NOT NULL) AND ((kind)::text <> 'question'::text))"
     t.index ["contract_id"], name: "index_contract_date_requests_on_contract_id"
     t.index ["organization_id", "status"], name: "index_contract_date_requests_on_organization_id_and_status"
     t.index ["show_id"], name: "index_contract_date_requests_on_show_id"
