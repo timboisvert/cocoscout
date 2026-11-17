@@ -1,0 +1,49 @@
+<%# The production's ticket sales page, when another organization sells its
+    dates under a contract (LinkedTicketSales): what that contract pays for
+    each date, as the contractor already sees it on My. For the contractor's
+    organization's owners and managers and the contractor; never the
+    production team. An amount that waits on ticket sales says so.
+    Locals: production. %>
+<%
+  manager = Current.user.superadmin? || Current.organization.manageable_by?(Current.user)
+  rows = LinkedTicketSales.connections_for_production(production).select { |connection| LinkedTicketSales.sharing?(connection) }.flat_map do |connection|
+    contract = connection.contract
+    next [] unless contract.organization.feature_available?(:contracts)
+    next [] unless manager || ContractConnections.contractor?(Current.user, contract)
+
+    zone = Time.find_zone(contract.organization.time_zone.presence) || Time.zone
+    LinkedDates.contract_shows(contract).where(canceled: false).order(:date_and_time).filter_map do |seller_show|
+      payout = contract_payments_for_show(contract, seller_show).find(&:direction_outgoing?)
+      payout && { at: seller_show.date_and_time.in_time_zone(zone), payout: payout, contractor: contract.contractor_name }
+    end
+  end
+  known = rows.reject { |row| row[:payout].awaiting_amount? }
+%>
+<% if rows.any? %>
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden" data-contract-share>
+    <%= render "shared/section_heading", padding: "px-5 py-3", title: "What the contract pays",
+          intro: "Your share for each date, as the contract sets it. Payments go to #{rows.first[:contractor]}." %>
+    <ul class="divide-y divide-gray-100 text-sm">
+      <% rows.each do |row| %>
+        <% payout = row[:payout] %>
+        <li class="flex items-baseline justify-between gap-3 px-5 py-2.5">
+          <span class="text-gray-900"><%= row[:at].strftime("%a %b %-d, %-l:%M %p") %></span>
+          <span class="text-right">
+            <% if payout.awaiting_amount? %>
+              <span class="text-gray-600">Known once ticket sales are final</span>
+            <% else %>
+              <span class="text-gray-900 tabular-nums"><%= number_to_currency(payout.amount) %></span>
+              <span class="text-gray-500"> · <%= payout.status_paid? ? "Paid" : "Due #{payout.due_date.strftime('%b %-d')}" %></span>
+            <% end %>
+          </span>
+        </li>
+      <% end %>
+    </ul>
+    <% if known.any? %>
+      <div class="px-5 py-2.5 border-t border-gray-200 bg-gray-50 flex items-baseline justify-between gap-3 text-sm">
+        <span class="text-gray-600">So far, for <%= pluralize(known.size, "date") %></span>
+        <span class="font-semibold text-gray-900 tabular-nums"><%= number_to_currency(known.sum { |row| row[:payout].amount.to_f }) %></span>
+      </div>
+    <% end %>
+  </div>
+<% end %>

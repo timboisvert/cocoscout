@@ -725,6 +725,7 @@
       <%# Tickets: the production's answer to the Tickets question, and this date's standing. %>
       <% if @show.follows_contract? %>
         <%= render "manage/shows/followed_tickets_card", show: @show, production: @production %>
+        <%= render "manage/shows/followed_contract_box", show: @show %>
       <% else %>
         <%= render "manage/shows/tickets_card", show: @show, production: @production %>
       <% end %>

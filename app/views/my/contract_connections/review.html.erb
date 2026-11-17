@@ -37,6 +37,7 @@
       <ul class="p-4 space-y-3 text-sm text-gray-700">
         <li><%= possessive(org) %> <%= pluralize(shows.size, "date") %> for this contract, added to <%= production_name %>.</li>
         <li>Their ticket sales for those dates, just as you see them on My today. <%= @managers.any? ? "#{@managers.to_sentence} will be able to see them too, as #{@managers.size == 1 ? 'a manager' : 'managers'} of #{mine}." : "You're the only person who manages #{mine}, so for now only you will see them." %></li>
+        <li>What the contract pays for each date, for the people who manage <%= mine %>. Your production team and cast are never shown it.</li>
         <li>How many tickets have sold, for your team and cast, if you'd like them to.</li>
         <li class="text-gray-500">You'll never see what <%= org %> keeps from each sale, or the email addresses of the people who bought tickets.</li>
       </ul>

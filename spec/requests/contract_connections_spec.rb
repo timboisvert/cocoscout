@@ -306,6 +306,33 @@ RSpec.describe "Contract connections", type: :request do
       expect(response.body).to include("Sold by Stars and Garters")
     end
 
+    it "shows the people who manage it what the contract pays for a date, and never the production team" do
+      on_sale!
+      create(:contract_payment, contract: contract, show: contract_show, direction: "outgoing", amount: 412.50,
+                                due_date: contract_show.date_and_time.to_date + 3.days, description: "Their share")
+      sign_in(user)
+
+      get manage_show_path(their_production, followed)
+      expect(response.body).to include("data-followed-contract-box").and include("You get").and include("Payments go to #{contractor.name}.")
+
+      get manage_production_sales_path(their_production)
+      expect(response.body).to include("What the contract pays").and include("$412.50")
+
+      # A production team manager sees the numbers their organization chose, not the money.
+      teammate = create(:user, password: password)
+      create(:person, user: teammate)
+      create(:organization_role, user: teammate, organization: theirs, company_role: "member")
+      ProductionPermission.create!(user: teammate, production: their_production, role: "manager")
+      get signout_path
+      sign_in(teammate)
+      post set_organization_path(id: theirs.id)
+      get manage_production_sales_path(their_production)
+      expect(response).to have_http_status(:ok), "went to #{response.location}"
+      expect(response.body).not_to include("What the contract pays")
+      get manage_show_path(their_production, followed)
+      expect(response.body).not_to include("data-followed-contract-box")
+    end
+
     it "says where a coming date is booked on the production page, and doesn't ask where its tickets are sold" do
       sign_in(user)
       get manage_production_path(their_production)

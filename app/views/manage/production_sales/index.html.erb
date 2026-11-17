@@ -50,5 +50,8 @@
         <p class="px-5 py-8 text-center text-sm text-gray-600"><%= @filter == "past" ? "No past dates were sold here." : "No dates are on sale." %></p>
       <% end %>
     </div>
+    <% if @seller %>
+      <%= render "manage/production_sales/contract_share", production: @production %>
+    <% end %>
   </div>
 </div>
