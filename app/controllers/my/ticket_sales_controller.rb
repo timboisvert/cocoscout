@@ -21,6 +21,11 @@ module My
     def index
       @show_my_sidebar = true
       listings = TicketSalesAccess.listings_for(Current.user).includes(:organization, :production, show: :location)
+      # A contract connected to an organization they run has its sales
+      # there, not here: a pointer each, in place of the rows.
+      @moved = ContractConnections.moved_for(Current.user).to_a
+      moved_show_ids = ContractConnections.moved_show_ids(Current.user)
+      listings = listings.where.not(show_id: moved_show_ids) if moved_show_ids.any?
       now = Time.current.beginning_of_day
       upcoming = listings.where("shows.date_and_time >= ?", now).order("shows.date_and_time ASC, ticket_listings.id ASC")
       @upcoming_shown = params[:upcoming].to_i.clamp(UPCOMING_BATCH, 10_000)
@@ -30,7 +35,7 @@ module My
       @pagy, @past = pagy(listings.where("shows.date_and_time < ?", now).order("shows.date_and_time DESC, ticket_listings.id DESC"),
                           limit: PAST_PER_PAGE, page_key: "past_page")
       @stats = Ticketing::ListingStats.for(@upcoming + @past)
-      @sees_sales = @upcoming.any? || @pagy.count.positive?
+      @sees_sales = @upcoming.any? || @pagy.count.positive? || @moved.any?
       @daily_email = TicketSalesViewer.active.where(user_id: Current.user.id, daily_email: true).exists?
     end
 

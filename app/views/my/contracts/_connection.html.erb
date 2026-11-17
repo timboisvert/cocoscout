@@ -19,9 +19,19 @@
       <%= icon("link", class: "w-4 h-4 text-pink-500 flex-shrink-0 mt-0.5") %>
       <div class="min-w-0">
         <div class="font-medium text-gray-900">Connected to <%= theirs %></div>
-        <div class="text-xs text-gray-500">You'll find <%= possessive(org) %> dates, and how they're selling, in <%= connection.production_name %> in <%= theirs %>.</div>
+        <% if local_assigns[:moved] %>
+          <div class="text-xs text-gray-500">This contract's dates, ticket sales and followers are in <%= theirs %> now, in <%= connection.production_name %>.</div>
+        <% else %>
+          <div class="text-xs text-gray-500"><%= possessive(org) %> dates, and how they're selling, are in <%= connection.production_name %> in <%= theirs %>.</div>
+        <% end %>
       </div>
     </div>
+    <% if local_assigns[:moved] %>
+      <%= form_with url: set_organization_path(id: connection.linked_organization_id), method: :post, local: true, class: "flex-shrink-0" do %>
+        <%= hidden_field_tag :return_to, (connection.linked_production ? manage_production_path(connection.linked_production) : manage_connections_path) %>
+        <%= render "shared/button", text: "Open #{theirs}", variant: "outline-pink", size: "small", type: :submit %>
+      <% end %>
+    <% end %>
   </div>
 <% elsif connection&.requested? %>
   <div class="<%= row %>" data-connection="requested">

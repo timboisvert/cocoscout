@@ -221,7 +221,8 @@
               <% end %>
 
               <% if connection_row %>
-                <%= render "my/contracts/connection", contract: contract, connection: connection, connectable: connectable, payee: payee %>
+                <%= render "my/contracts/connection", contract: contract, connection: connection, connectable: connectable, payee: payee,
+                      moved: @moved_contract_ids.include?(contract.id) %>
               <% end %>
             </div>
           <% end %>

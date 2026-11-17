@@ -42,6 +42,11 @@ module My
       @connections = ContractConnection.where(contract_id: @contracts.map(&:id)).includes(:linked_organization, :linked_production)
                                        .order(:created_at).index_by(&:contract_id)
       managed = ContractConnections.managed_organization_ids(Current.user)
+      # A contract connected to an organization they run shows its ticket
+      # numbers there, not here: the card points to it instead.
+      @moved_contract_ids = @connections.values.select { |connection| connection.connected? && managed.include?(connection.linked_organization_id) }
+                                        .map(&:contract_id).to_set
+      @moved_contract_ids.each { |id| @ticket_sales[id] = [] }
       @connectable_contract_ids = @contracts.select do |contract|
         @payee_contract_ids.include?(contract.id) && contract.status_active? && !@connections[contract.id]&.live? &&
           (managed - [ contract.organization_id ]).any?

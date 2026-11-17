@@ -437,6 +437,25 @@ RSpec.describe "Contract connections", type: :request do
       expect(response.body).to include("What the contract pays").and include("$250.00")
     end
 
+    it "moves the ticket numbers off My for someone who runs the organization, and leaves them for someone who doesn't" do
+      on_sale!
+      sign_in(user)
+      get my_contracts_path
+      expect(response.body).to include("dates, ticket sales and followers are in The Holly Problem now").and include("Open The Holly Problem")
+      expect(response.body).not_to include(my_ticket_sale_path(TicketListing.find_by!(show: contract_show)))
+      get my_ticket_sales_path
+      expect(response.body).to include("are in The Holly Problem now").and include("Open ticket sales")
+
+      # Someone on the contract who doesn't run The Holly Problem keeps the My views.
+      colleague = create(:user, password: password)
+      ContractPerson.create!(contract: contract, person: create(:person, user: colleague))
+      get signout_path
+      sign_in(colleague)
+      get my_ticket_sales_path
+      expect(response.body).not_to include("Open ticket sales")
+      expect(response.body).to include(my_ticket_sale_path(TicketListing.find_by!(show: contract_show)))
+    end
+
     it "says where a coming date is booked on the production page, and doesn't ask where its tickets are sold" do
       sign_in(user)
       get manage_production_path(their_production)

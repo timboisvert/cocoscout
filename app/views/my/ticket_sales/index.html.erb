@@ -26,7 +26,20 @@
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render "shared/module_header", title: "Ticket Sales" %>
 
-  <p class="text-sm text-gray-600 mb-4">How tickets are selling for the shows a theater shares with you. You can look, not change: sold of seats, sales, and who's coming by name.</p>
+  <p class="text-sm text-gray-600 mb-4">How tickets are selling for the shows an organization shares with you. You can look, not change: sold of seats, sales, and who's coming by name.</p>
+
+  <% @moved.each do |connection| %>
+    <%# Connected to an organization they run: its sales live there now. %>
+    <div class="mb-4 bg-white border border-gray-200 rounded-lg px-4 py-3 flex flex-wrap items-center justify-between gap-3" data-moved-sales="<%= connection.id %>">
+      <p class="text-sm text-gray-700 min-w-0 flex-1">
+        Ticket sales for <span class="font-medium text-gray-900"><%= connection.contract.production&.name || connection.production_name %></span> at <%= connection.organization.name %> are in <%= connection.linked_organization.name %> now, because that contract is connected to it.
+      </p>
+      <%= form_with url: set_organization_path(id: connection.linked_organization_id), method: :post, local: true, class: "flex-shrink-0" do %>
+        <%= hidden_field_tag :return_to, (connection.linked_production ? manage_production_sales_path(connection.linked_production) : manage_connections_path) %>
+        <%= render "shared/button", text: "Open ticket sales", variant: "outline-pink", size: "small", type: :submit %>
+      <% end %>
+    </div>
+  <% end %>
 
   <% if @upcoming.any? %>
     <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Upcoming</h2>
