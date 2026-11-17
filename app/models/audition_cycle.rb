@@ -81,6 +81,15 @@ class AuditionCycle < ApplicationRecord
     allow_video_submissions && allow_in_person_auditions
   end
 
+  # No audition sessions to put people in: a video-only cycle, or an
+  # open-ended one that never set any up (Tim, 2026-11-17). Its decisions come
+  # straight from the sign-ups: the casting board lists everyone who sent a
+  # request, and each request can be decided (and the person notified) on
+  # its own page instead of waiting for the board's Finalize & notify.
+  def decided_from_requests?
+    video_only? || audition_sessions.none?
+  end
+
   # Validation: at least one format must be enabled
   validate :at_least_one_audition_format
 

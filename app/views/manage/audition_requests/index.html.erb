@@ -112,6 +112,11 @@
               <%= render "shared/review_card", member: requestable, size: :sm,
                     vote_counts: (current_user_can_review?(@production) ? vote_counts : nil) %>
             <% end %>
+            <% if (decision = @decisions&.dig([ audition_request.requestable_type, audition_request.requestable_id ])) %>
+              <span class="self-center ml-2 flex-shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium <%= decision.cast? ? 'bg-pink-100 text-pink-700' : 'bg-gray-100 text-gray-600' %>">
+                <%= decision.cast? ? "Added to the talent pool" : "Not chosen" %>
+              </span>
+            <% end %>
           </div>
         <% end %>
 

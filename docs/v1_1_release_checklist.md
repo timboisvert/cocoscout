@@ -54,7 +54,7 @@ button says "Sending to followers isn't switched on yet."
 
 **Trying it out first (Tim, 2026-10-28):** follower email can share
 cocoscout.com's sending domain under a CocoScout-wide cap of 2,000 a month
-(`FOLLOWERS_MONTHLY_CAP` changes it), switched on with `FOLLOWERS_SENDING: on`
+(`FOLLOWERS_MONTHLY_CAP` changes it), switched on with `FOLLOWERS_SENDING: "on"` (quoted: a bare `on` is read as true, and the app looks for the word)
 under `env.clear` in `config/deploy.yml`. **Not on Mailgun's free plan:** it
 is a hard 100 emails a day for everything, so one email to 150 followers
 would stop sign-in and ticket mail until midnight. Move to Basic ($15 a
