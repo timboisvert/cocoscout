@@ -84,34 +84,38 @@ class TicketSalesAccess
   # them everything and the comp rules let the team give some:
   #   date_left   what the date can still give away, whoever gives it (nil: no limit)
   #   team_limit  the team's share of a date's comps (nil: all of them)
-  #   team_given  comps already given by people who aren't the theater's managers
+  #   team_given  comps the production team has already given
   #   left        what this manager can still give (nil: no limit)
   # nil for everyone else, when comps are off, and once the date has started
   # (Tim, 2026-10-17: no comps for a show that's already happened).
-  # Someone on a contract that includes the date (the contractor's person or
-  # a contract person) gives comps for their own show too, up to what the
-  # date can still give away; the team's share doesn't apply to them.
+  # The people on a contract that includes the date have a rule of their
+  # own (CompRules#contract_comps_per_show; Tim, 2026-11-17): none, or a
+  # number for the date shared between all of them: the contractor, the
+  # people added to the contract and, when the contract is connected to the
+  # contractor's own organization, that organization's owners and managers
+  # (LinkedTicketSales). For them team_limit is that number and team_given
+  # what their side has given; the production team's share doesn't apply.
   def self.comp_allowance(user, listing)
     return nil unless user && listing && open_for?(listing)
     return nil if listing.show.date_and_time <= Time.current
     return nil if listing.organization.manageable_by?(user)
     return nil unless listing.effective_comps_enabled
 
-    # The contractor's own organization, connected to the contract: its
-    # owners and managers give comps as the contractor does (LinkedTicketSales).
     if on_contract_for?(user, listing) || LinkedTicketSales.manages_for?(user, listing)
+      limit = listing.effective_contract_comps
+      return nil unless limit.positive?
+
       date_left = listing.comps_left
-      return { date_left: date_left, team_limit: nil, team_given: 0, left: date_left, contract: true }
+      given = contract_comps_given(listing)
+      left = [ date_left, [ limit - given, 0 ].max ].compact.min
+      return { date_left: date_left, team_limit: limit, team_given: given, left: left, contract: true }
     end
 
     return nil unless team_role(user, listing.production) == "manager" && team_level(user, listing.production) == :full
     return nil unless listing.effective_team_comps
 
     date_left = listing.comps_left
-    team_limit = case listing.effective_team_comps_limit
-    when "fixed" then listing.effective_team_comps_per_show
-    when "per_performer" then listing.show.show_person_role_assignments.visible_to_performers.distinct.count(:assignable_id)
-    end
+    team_limit = (listing.effective_team_comps_per_show if listing.effective_team_comps_limit == "fixed")
     team_given = team_comps_given(listing)
     left = [ date_left, (team_limit && [ team_limit - team_given, 0 ].max) ].compact.min
     { date_left: date_left, team_limit: team_limit, team_given: team_given, left: left }
@@ -122,16 +126,51 @@ class TicketSalesAccess
     allowance.present? && (allowance[:left].nil? || allowance[:left].positive?)
   end
 
-  # Comps on this date given by someone other than the theater's managers:
-  # the production team's share of them. Door comps carry no giver and
-  # aren't the team's.
+  # Comps on this date given by the production team: by someone who is
+  # neither one of the organization's managers nor on the contract's side
+  # (they have their own number). Door comps carry no giver and aren't the
+  # team's.
   def self.team_comps_given(listing)
+    comps_given(listing).where.not(ticket_orders: { issued_by_id: manager_ids(listing) + contract_side_user_ids(listing) }).count
+  end
+
+  # Comps on this date given by the contract's side, between all of them.
+  def self.contract_comps_given(listing)
+    theirs = contract_side_user_ids(listing) - manager_ids(listing)
+    theirs.empty? ? 0 : comps_given(listing).where(ticket_orders: { issued_by_id: theirs }).count
+  end
+
+  # Who gives comps as the contract's side for this date: the sign-ins of
+  # the contractor and the contract people on every live contract that
+  # includes it and shares its sales, and the owners and managers of an
+  # organization such a contract is connected to.
+  def self.contract_side_user_ids(listing)
+    contracts = contracts_for(listing).select(&:shares_ticket_sales)
+    return [] if contracts.empty?
+
+    person_ids = contracts.filter_map { |contract| contract.contractor&.person_id } +
+                 ContractPerson.where(contract_id: contracts.map(&:id)).pluck(:person_id)
+    user_ids = Person.where(id: person_ids).where.not(user_id: nil).pluck(:user_id)
+    ContractConnection.connected.where(contract_id: contracts.map(&:id)).includes(:linked_organization).each do |connection|
+      theirs = connection.linked_organization
+      user_ids += [ theirs.owner_id ] + theirs.organization_roles.where(company_role: "manager").pluck(:user_id)
+    end
+    user_ids.compact.uniq
+  end
+
+  def self.manager_ids(listing)
     org = listing.organization
-    manager_ids = org.organization_roles.where(company_role: "manager").pluck(:user_id) + [ org.owner_id ]
+    org.organization_roles.where(company_role: "manager").pluck(:user_id) + [ org.owner_id ]
+  end
+  private_class_method :manager_ids
+
+  # Every comp ticket on the date that someone gave (not the door's).
+  def self.comps_given(listing)
     Ticket.joins(:ticket_order).where(ticket_listing_id: listing.id, status: Ticket::SOLD_STATUSES)
           .where(ticket_orders: { channel: "comp", status: TicketOrder::WAS_PAID })
-          .where.not(ticket_orders: { issued_by_id: nil }).where.not(ticket_orders: { issued_by_id: manager_ids }).count
+          .where.not(ticket_orders: { issued_by_id: nil })
   end
+  private_class_method :comps_given
 
   # The contracts whose contractor sees this show's sales automatically.
   def self.contracts_for(listing)

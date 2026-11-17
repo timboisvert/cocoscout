@@ -249,13 +249,18 @@ class TicketListing < ApplicationRecord
     comp_rules.team_comps_per_show || 2
   end
 
-  # How many comps this date can still give away, whoever gives them: nil
-  # when there's no limit. People cast counts each person once.
-  def comps_left
-    return nil if effective_comps_limit == "unlimited"
+  # How many comps the people on a contract may give for this date, between
+  # all of them: 0 is none.
+  def effective_contract_comps
+    comp_rules.contract_comps_per_show.to_i
+  end
 
-    limit = effective_comps_limit == "fixed" ? effective_comps_per_show : show.show_person_role_assignments.visible_to_performers.distinct.count(:assignable_id)
-    [ limit - Ticketing::ListingStats.of(self).comps, 0 ].max
+  # How many comps this date can still give away, whoever gives them: nil
+  # when there's no limit.
+  def comps_left
+    return nil unless effective_comps_limit == "fixed"
+
+    [ effective_comps_per_show - Ticketing::ListingStats.of(self).comps, 0 ].max
   end
 
   # "Only 3 left" when a count is at or under the threshold, else nil.

@@ -383,19 +383,32 @@ RSpec.describe "Contract connections", type: :request do
       expect(response.body).not_to include("data-followed-contract-box")
     end
 
-    it "lets another manager of the contractor's organization give comps from what the date has left" do
+    it "lets another manager of the contractor's organization give comps from the number allowed the people on the contract" do
       listing = on_sale!
       tier = listing.ticket_tiers.first || listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 40)
       colleague = create(:user, password: password)
       create(:person, user: colleague)
       create(:organization_role, :manager, user: colleague, organization: theirs)
-      expect(TicketSalesAccess.comp_allowance(colleague, listing)).to include(contract: true)
+      # None until the organization that sells says how many.
+      expect(TicketSalesAccess.comp_allowance(colleague, listing)).to be_nil
+      TicketingProfile.for(venue).update!(contract_comps_per_show: 4)
+      listing = TicketListing.find(listing.id)
+      expect(TicketSalesAccess.comp_allowance(colleague, listing)).to include(contract: true, team_limit: 4, left: 4)
+      # The production's own number comes ahead of the box office's.
+      ProductionTicketing.for(production).update!(own_comps: true, comps_enabled: true, comps_limit: "unlimited", contract_comps_per_show: 2)
+      listing = TicketListing.find(listing.id)
+      expect(TicketSalesAccess.comp_allowance(colleague, listing)).to include(team_limit: 2, left: 2)
 
       sign_in(colleague)
       post set_organization_path(id: theirs.id)
       expect do
         post manage_production_sale_comps_path(their_production, listing), params: { name: "A Friend", quantity: "1", tier_id: tier.id }
       end.to change { listing.tickets.count }.by(1)
+
+      # It is one number for the whole contract's side: the contractor has one left too.
+      expect(TicketSalesAccess.comp_allowance(user, TicketListing.find(listing.id))).to include(team_limit: 2, team_given: 1, left: 1)
+      get manage_production_sale_path(their_production, listing)
+      expect(CGI.unescapeHTML(response.body)).to include("Give comps · 1 of 2 left", "allows 2 comps for this date, shared between everyone on the contract. 1 has been given so far.")
 
       # Not once the seller stops sharing.
       contract.update!(shares_ticket_sales: false)

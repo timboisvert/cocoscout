@@ -120,6 +120,7 @@ RSpec.describe "Contract people", type: :request do
 
   it "gives comps from a pasted list on My Ticket Sales, the whole list or none" do
     listing = open_box_office
+    TicketingProfile.for(org).update!(contract_comps_per_show: 3)
     general = listing.ticket_tiers.first
     sign_in(priya)
     get my_ticket_sale_path(listing)
@@ -136,22 +137,46 @@ RSpec.describe "Contract people", type: :request do
       .to change { Ticket.where(ticket_listing_id: listing.id).count }.by(3)
     expect(response).to redirect_to(my_ticket_sale_path(listing, anchor: "guests"))
     expect(flash[:notice]).to eq("Gave 3 tickets to 2 people. They're on the guest list.")
+
+    # The contract's three are given: a list of one more is turned away.
+    post my_ticket_sale_comps_path(listing), params: { mode: "paste", tier_id: general.id, text: "Cy Comp" }
+    expect(flash[:alert]).to eq("You can't give comps for this date.")
   end
 
-  it "sees the date's sales on My Ticket Sales and gives comps for it, up to what the date can give" do
+  it "sees the date's sales on My Ticket Sales and gives comps for it, up to the number the organization allows the people on a contract" do
     listing = open_box_office
     sign_in(priya)
     get my_show_path(show)
     expect(response.body).to include("data-tickets-card", my_ticket_sale_path(listing), "View ticket sales")
 
+    # People on a contract start with none (Tim, 2026-11-17): the page shows the sales and no comps.
     get my_ticket_sale_path(listing)
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Your comps for this date", "Give comps", my_ticket_sale_comps_path(listing))
+    expect(response.body).not_to include("Your comps for this date", "Give comps")
+    expect { post my_ticket_sale_comps_path(listing), params: { name: "Abe Comp", quantity: "1", tier_id: listing.ticket_tiers.first.id } }
+      .not_to(change { Ticket.where(ticket_listing_id: listing.id).count })
+
+    # The box office allows three per date, between everyone on the contract.
+    TicketingProfile.for(org).update!(contract_comps_per_show: 3)
+    get my_ticket_sale_path(listing)
+    expect(CGI.unescapeHTML(response.body)).to include("Your comps for this date", "Give comps · 3 of 3 left", my_ticket_sale_comps_path(listing),
+                                                       "allows 3 comps for this date, shared between everyone on the contract. None have been given so far.")
 
     expect { post my_ticket_sale_comps_path(listing), params: { name: "Abe Comp", quantity: "2", tier_id: listing.ticket_tiers.first.id } }
       .to change { Ticket.where(ticket_listing_id: listing.id).count }.by(2)
     expect(response).to redirect_to(my_ticket_sale_path(listing, anchor: "guests"))
     expect(flash[:notice]).to include("Gave 2 tickets to Abe Comp")
+
+    # One number between them: the contractor has what Priya left, and no more.
+    expect(TicketSalesAccess.comp_allowance(dan, TicketListing.find(listing.id))).to include(team_limit: 3, team_given: 2, left: 1, contract: true)
+    get my_ticket_sale_path(listing)
+    expect(response.body).to include("Give comps · 1 of 3 left", "2 have been given so far.")
+    expect { post my_ticket_sale_comps_path(listing), params: { name: "Bea Comp", quantity: "2", tier_id: listing.ticket_tiers.first.id } }
+      .not_to(change { Ticket.where(ticket_listing_id: listing.id).count })
+    expect(flash[:alert]).to eq("You can give 1 more comp for this date.")
+    # Their comps are their own number's, not the production team's share.
+    expect(TicketSalesAccess.contract_comps_given(listing)).to eq(2)
+    expect(TicketSalesAccess.team_comps_given(listing)).to eq(0)
 
     # Once the date has started there are no comps to give.
     show.update_columns(date_and_time: 1.hour.ago)

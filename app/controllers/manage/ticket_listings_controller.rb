@@ -337,7 +337,7 @@ module Manage
     # The Comps tab: this date's own comp rules (the switch on), or the ones
     # it follows, its production's or the box office's (CompRules).
     def update_comps
-      raw = params.require(:ticket_listing).permit(:own_comps, *CompRules::FIELDS)
+      raw = params.require(:ticket_listing).permit(:own_comps, *CompRules::PARAMS)
       own = raw[:own_comps] == "1"
       @listing.update!(CompRules.attributes_from(raw, own: own).merge(own_comps: own))
       notice = own ? "Saved. This date has its own comp rules: #{@listing.comp_rules_words}." : "Saved. This date follows #{@listing.comp_rules_source == :production ? "#{helpers.possessive(@listing.production.name)} comp rules" : "your box office's comp rules"}."

@@ -184,11 +184,11 @@ RSpec.describe TicketSalesAccess do
       expect(described_class.can_comp?(manager, fresh_listing)).to be(false)
     end
 
-    it "follows one per performer, and a production's or a date's own rules" do
-      profile.update!(team_comps_limit: "per_performer")
-      performer(in_pool: true, cast_in: show)
-      performer(in_pool: true, cast_in: show)
-      expect(described_class.comp_allowance(manager, fresh_listing)[:team_limit]).to eq(2)
+    it "has no one-per-performer rule any more, and follows a production's or a date's own rules" do
+      expect(TicketingProfile::COMPS_LIMITS).to eq(%w[unlimited fixed])
+      expect(TicketingProfile::TEAM_COMPS_LIMITS).to eq(%w[all fixed])
+      profile.team_comps_limit = "per_performer"
+      expect(profile).not_to be_valid
 
       setup = ProductionTicketing.for(production)
       setup.update!(own_comps: true, comps_enabled: true, comps_limit: "unlimited", team_comps: true, team_comps_limit: "fixed", team_comps_per_show: 5)

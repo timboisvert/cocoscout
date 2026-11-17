@@ -220,7 +220,7 @@ module Manage
     end
 
     def update_comps
-      raw = params.require(:production_ticketing).permit(:own_comps, *CompRules::FIELDS)
+      raw = params.require(:production_ticketing).permit(:own_comps, *CompRules::PARAMS)
       own = raw[:own_comps] == "1"
       @setup.update!(CompRules.attributes_from(raw, own: own).merge(own_comps: own))
       notice = own ? "Saved. #{@production.name} has its own comp rules: #{@setup.comp_rules_words}." : "Saved. #{@production.name} follows your box office's comp rules."
