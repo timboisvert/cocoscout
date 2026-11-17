@@ -103,7 +103,7 @@
             <% if sales.any? %>
               <div class="mt-2 flex flex-wrap gap-1.5">
                 <% sales.each do |listing, stats| %>
-                  <%= link_to my_ticket_sale_path(listing), class: "inline-flex items-center gap-1 rounded-full bg-pink-50 px-2.5 py-0.5 text-xs font-medium text-pink-700 hover:bg-pink-100" do %>
+                  <%= link_to my_show_tickets_path(listing.show_id), class: "inline-flex items-center gap-1 rounded-full bg-pink-50 px-2.5 py-0.5 text-xs font-medium text-pink-700 hover:bg-pink-100" do %>
                     <%= listing.show.date_and_time.strftime("%b %-d") %> · <%= stats.sold_words %>
                   <% end %>
                 <% end %>

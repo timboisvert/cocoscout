@@ -122,19 +122,19 @@ RSpec.describe "Contract people", type: :request do
     listing = open_box_office
     general = listing.ticket_tiers.first
     sign_in(priya)
-    get my_ticket_sale_path(listing)
-    expect(response.body).to include("Paste a list", my_ticket_sale_comps_preview_path(listing))
+    get my_show_tickets_path(listing.show)
+    expect(response.body).to include("Paste a list", my_show_ticket_comps_preview_path(listing.show))
 
-    post my_ticket_sale_comps_preview_path(listing), params: { tier_id: general.id, text: "Abe Comp, abe@example.com, 2\nBea Comp" }
+    post my_show_ticket_comps_preview_path(listing.show), params: { tier_id: general.id, text: "Abe Comp, abe@example.com, 2\nBea Comp" }
     expect(response.body).to include('data-comps-paste-ready="3"', "Abe Comp", "Bea Comp")
 
-    expect { post my_ticket_sale_comps_path(listing), params: { mode: "paste", tier_id: general.id, text: "Abe Comp, 2\nBea Comp, bea@example" } }
+    expect { post my_show_ticket_comps_path(listing.show), params: { mode: "paste", tier_id: general.id, text: "Abe Comp, 2\nBea Comp, bea@example" } }
       .not_to change { Ticket.where(ticket_listing_id: listing.id).count }
     expect(flash[:alert]).to eq("Line 2: bea@example isn't an email address.")
 
-    expect { post my_ticket_sale_comps_path(listing), params: { mode: "paste", tier_id: general.id, text: "Abe Comp, abe@example.com, 2\nBea Comp" } }
+    expect { post my_show_ticket_comps_path(listing.show), params: { mode: "paste", tier_id: general.id, text: "Abe Comp, abe@example.com, 2\nBea Comp" } }
       .to change { Ticket.where(ticket_listing_id: listing.id).count }.by(3)
-    expect(response).to redirect_to(my_ticket_sale_path(listing, anchor: "guests"))
+    expect(response).to redirect_to(my_show_tickets_path(listing.show, anchor: "guests"))
     expect(flash[:notice]).to eq("Gave 3 tickets to 2 people. They're on the guest list.")
   end
 
@@ -142,26 +142,26 @@ RSpec.describe "Contract people", type: :request do
     listing = open_box_office
     sign_in(priya)
     get my_show_path(show)
-    expect(response.body).to include("data-tickets-card", my_ticket_sale_path(listing), "View ticket sales")
+    expect(response.body).to include("data-tickets-card", my_show_tickets_path(listing.show), "View ticket sales")
 
-    get my_ticket_sale_path(listing)
+    get my_show_tickets_path(listing.show)
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Your comps for this date", "Give comps", my_ticket_sale_comps_path(listing))
+    expect(response.body).to include("Your comps for this date", "Give comps", my_show_ticket_comps_path(listing.show))
 
-    expect { post my_ticket_sale_comps_path(listing), params: { name: "Abe Comp", quantity: "2", tier_id: listing.ticket_tiers.first.id } }
+    expect { post my_show_ticket_comps_path(listing.show), params: { name: "Abe Comp", quantity: "2", tier_id: listing.ticket_tiers.first.id } }
       .to change { Ticket.where(ticket_listing_id: listing.id).count }.by(2)
-    expect(response).to redirect_to(my_ticket_sale_path(listing, anchor: "guests"))
+    expect(response).to redirect_to(my_show_tickets_path(listing.show, anchor: "guests"))
     expect(flash[:notice]).to include("Gave 2 tickets to Abe Comp")
 
     # Once the date has started there are no comps to give.
     show.update_columns(date_and_time: 1.hour.ago)
-    get my_ticket_sale_path(listing)
+    get my_show_tickets_path(listing.show)
     expect(response.body).not_to include("Give comps")
 
     # And the date's page says it has happened, with the way into how it sold and no link to share (Tim, 2026-10-18).
     get my_show_path(show)
     html = response.body.gsub(/\s+/, " ")
-    expect(html).to include('data-show-state="past"', "has already happened", my_ticket_sale_path(listing), "View ticket sales")
+    expect(html).to include('data-show-state="past"', "has already happened", my_show_tickets_path(listing.show), "View ticket sales")
     expect(html).not_to include("Your link for this date", "Who's coming is in", "Who's coming, and your comps")
   end
 
@@ -176,7 +176,7 @@ RSpec.describe "Contract people", type: :request do
     listing = open_box_office
     contract.update!(shares_ticket_sales: false)
     sign_in(priya)
-    get my_ticket_sale_path(listing)
+    get my_show_tickets_path(listing.show)
     expect(response).not_to have_http_status(:ok)
     expect(TicketSalesAccess.comp_allowance(priya, listing)).to be_nil
   end

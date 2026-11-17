@@ -258,7 +258,6 @@ module NativeAppHelper
       my_shows_path => [ "shows", "My Shows", "calendar" ],
       my_shifts_path => [ "shifts", "My Shifts", "clock" ],
       door_index_path => %w[door Door qrcode.viewfinder],
-      my_ticket_sales_path => [ "ticket_sales", "Ticket Sales", "chart.bar" ],
       my_courses_path => [ "courses", "My Courses", "book" ],
       my_auditions_path => [ "auditions", "My Auditions", "theatermasks" ],
       my_documents_path => [ "documents", "My Documents", "doc.text" ],
