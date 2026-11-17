@@ -91,6 +91,32 @@ RSpec.describe "Followers shared through a contract", type: :request do
     end
   end
 
+  describe "a production's Checkout boxes" do
+    let!(:holiday) { venue.mailing_lists.create!(kind: "group", name: "Holiday shows") }
+
+    before do
+      TicketingProfile.for(venue).update!(enabled: true)
+      sign_in(owner)
+      post set_organization_path(id: venue.id)
+    end
+
+    it "lists every box with why it's there, and adds or removes one of the other lists" do
+      get manage_edit_production_ticketing_path(production, section: "boxes")
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Boxes on this production").and include("From your contract with Thea Example").and include("On every production")
+      expect(response.body).not_to include("Chosen for this production")
+
+      patch manage_update_production_ticketing_path(production, section: "boxes"), params: { mailing_list_ids: [ holiday.id ] }
+      expect(MailingList.for_checkout(production).map(&:name)).to eq([ "Thea's shows", "Holiday shows", "Stars and Garters" ])
+      follow_redirect!
+      expect(response.body).to include("Chosen for this production")
+
+      # The contract's list isn't something to untick here: sending nothing removes only the chosen one.
+      patch manage_update_production_ticketing_path(production, section: "boxes"), params: { mailing_list_ids: [ "" ] }
+      expect(MailingList.for_checkout(production).map(&:name)).to eq([ "Thea's shows", "Stars and Garters" ])
+    end
+  end
+
   describe "My Followers" do
     before { follow!("dana@example.com", "Dana Whitfield") }
 

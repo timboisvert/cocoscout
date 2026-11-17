@@ -13,7 +13,8 @@ module Manage
     # Refunds, Discount codes, Products, and the ticket page last. "fees" has
     # no save of its own: its box saves through "sales" and comes back.
     SECTIONS = { "dates" => "Basic info", "tickets" => "Tickets", "fees" => "Fees and taxes", "comps" => "Comps",
-                 "refunds" => "Refunds", "codes" => "Discount codes", "products" => "Products", "sales" => "Ticket page" }.freeze
+                 "refunds" => "Refunds", "codes" => "Discount codes", "products" => "Products", "sales" => "Ticket page",
+                 "boxes" => "Checkout boxes" }.freeze
     CLOSE_CHOICES = [ [ "At showtime", 0 ], [ "15 minutes before", 15 ], [ "30 minutes before", 30 ], [ "1 hour before", 60 ],
                       [ "2 hours before", 120 ], [ "The day before", 1440 ] ].freeze
 
@@ -70,6 +71,7 @@ module Manage
       when "refunds" then update_refunds
       when "products" then update_products
       when "comps" then update_comps
+      when "boxes" then update_boxes
       else redirect_to section_path("codes")
       end
     rescue ActiveRecord::RecordInvalid => e
@@ -201,6 +203,22 @@ module Manage
 
     # The Comps tab: its own comp rules (the switch on), or the box office's
     # (off: every field cleared). Its dates follow it (CompRules).
+    # Which of the organization's other mailing lists put their box on this
+    # production's checkout (MailingListProduction, the same thing a list's
+    # own page writes). A list that is here through a contract, and the main
+    # list, aren't chosen here.
+    def update_boxes
+      lists = Current.organization.mailing_lists.active.where(kind: "group", source_list_id: nil)
+      wanted = lists.where(id: Array(params[:mailing_list_ids])).pluck(:id)
+      MailingList.transaction do
+        MailingListProduction.where(production_id: @production.id, mailing_list_id: lists.select(:id)).where.not(mailing_list_id: wanted).destroy_all
+        (wanted - MailingListProduction.where(production_id: @production.id).pluck(:mailing_list_id)).each do |id|
+          MailingListProduction.create!(production_id: @production.id, mailing_list_id: id)
+        end
+      end
+      redirect_to section_path("boxes"), notice: "Saved. #{@production.name}'s checkout shows #{helpers.pluralize(MailingList.for_checkout(@production).size, 'box')}."
+    end
+
     def update_comps
       raw = params.require(:production_ticketing).permit(:own_comps, *CompRules::FIELDS)
       own = raw[:own_comps] == "1"

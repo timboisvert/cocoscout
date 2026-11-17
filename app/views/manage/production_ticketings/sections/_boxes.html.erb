@@ -1,0 +1,78 @@
+<%# The boxes this production's checkout shows, each one a mailing list a
+    buyer can join (MailingList.for_checkout), in the order a buyer sees
+    them, with why each is there: from a contract (a list for the
+    contractor), chosen for this production, or the main list, which is on
+    every production. Other lists can be added and removed here; it writes
+    the same thing the list's own page does. The words belong to the list
+    and are changed on its page. Locals: setup, production. %>
+<%
+  profile = ticketing_profile
+  boxes = MailingList.for_checkout(production)
+  chosen_ids = MailingListProduction.where(production_id: production.id).pluck(:mailing_list_id)
+  from_contract = boxes.select { |list| list.for_contractor? && MailingList.contract_production_ids(list.contractor_id).include?(production.id) }
+  choosable = Current.organization.mailing_lists.active.where(kind: "group", source_list_id: nil).order(:name).to_a - from_contract
+  check_class = "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+  ticked = profile.follow_boxes_ticked != false
+%>
+<div class="space-y-6">
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="boxes">
+    <%= render "shared/section_heading", title: "Boxes on this production's checkout",
+          intro: "Each box adds the buyer to one of your mailing lists. Buyers see them when they pay online, in this order. They are never shown at the door." %>
+    <% unless profile.follow_at_checkout %>
+      <p class="px-6 py-3 text-sm text-amber-700 border-b border-gray-100">Checkout doesn't ask at the moment: it is switched off for the whole organization in <%= link_to "Mailing list settings", manage_mailing_list_settings_path(section: "checkout"), class: "underline" %>.</p>
+    <% end %>
+    <ul class="divide-y divide-gray-100">
+      <% boxes.each do |list| %>
+        <%
+          why, tone = if list.main? then [ "On every production", "bg-gray-100 text-gray-700" ]
+          elsif from_contract.include?(list) then [ "From your contract with #{list.contractor.name}", "bg-pink-50 text-pink-700" ]
+          else [ "Chosen for this production", "bg-gray-100 text-gray-700" ]
+          end
+        %>
+        <li class="px-6 py-3.5 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2" data-box="<%= list.id %>">
+          <div class="min-w-0">
+            <div class="font-medium text-gray-900">"<%= list.box_words %>"</div>
+            <div class="text-sm text-gray-600 mt-0.5">
+              <%= list.main? ? "Your main list" : "The list #{list.name}" %>
+              <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ml-1 <%= tone %>"><%= why %></span>
+            </div>
+            <% if from_contract.include?(list) %>
+              <p class="text-xs text-gray-500 mt-1">It is here because <%= list.contractor.name %> has a live contract for this production, and it leaves when that contract ends.<% if list.shared? %> The people who tick it join the list that is shared with <%= list.contractor.name %>.<% end %></p>
+            <% end %>
+          </div>
+          <%= link_to "Change the words", manage_mailing_list_path(list), class: "text-sm text-pink-600 hover:text-pink-700 underline flex-shrink-0" %>
+        </li>
+      <% end %>
+    </ul>
+    <p class="px-6 py-3 text-xs text-gray-500 border-t border-gray-100">
+      Every box starts <%= ticked ? "ticked" : "unticked" %>. That is set once for the whole organization, in
+      <%= link_to "Mailing list settings", manage_mailing_list_settings_path(section: "checkout"), class: "text-pink-600 hover:text-pink-700 underline" %>.
+    </p>
+  </div>
+
+  <%= form_with url: manage_update_production_ticketing_path(production, section: "boxes"), method: :patch do %>
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="boxes-choose">
+      <%= render "shared/section_heading", title: "Your other lists",
+            intro: "Tick a list to put its box on #{possessive(production.name)} checkout. The same choice appears on the list's own page, under Collects from." %>
+      <%= hidden_field_tag "mailing_list_ids[]", "", id: nil %>
+      <% if choosable.any? %>
+        <div class="divide-y divide-gray-100">
+          <% choosable.each do |list| %>
+            <label class="flex items-start gap-3 px-6 py-3 cursor-pointer">
+              <%= check_box_tag "mailing_list_ids[]", list.id, chosen_ids.include?(list.id), id: "box_list_#{list.id}", class: check_class %>
+              <span class="min-w-0">
+                <span class="block text-sm font-medium text-gray-900"><%= list.name %></span>
+                <span class="block text-xs text-gray-500 mt-0.5">The box says "<%= list.box_words %>".</span>
+              </span>
+            </label>
+          <% end %>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+          <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+        </div>
+      <% else %>
+        <p class="px-6 py-4 text-sm text-gray-600">You have no other lists yet. You can make one in <%= link_to "Mailing lists", manage_mailing_lists_path, class: "text-pink-600 hover:text-pink-700 underline" %>, for a kind of show or for one producer's shows.</p>
+      <% end %>
+    </div>
+  <% end %>
+</div>
