@@ -33,6 +33,8 @@ class Contract < ApplicationRecord
   has_many :contract_people, dependent: :destroy
   # What the contractor has asked about its dates (ContractDateRequests).
   has_many :date_requests, class_name: "ContractDateRequest", dependent: :destroy
+  # Connecting it to the contractor's own organization (ContractConnections).
+  has_many :connections, class_name: "ContractConnection", dependent: :destroy
   has_many :people, through: :contract_people
 
   # The contracts these people are on: as the contractor's person or as a

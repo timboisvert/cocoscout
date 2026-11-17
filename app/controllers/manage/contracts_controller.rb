@@ -275,6 +275,51 @@ module Manage
       # daily pass closes it.
       @date_requests = @contract.date_requests.where(status: "open").includes(:show, :organization, :requested_by)
                                 .order(:created_at).reject(&:lapsed?)
+      # The contractor's own organization on CocoScout, requested or connected
+      # (ContractConnections).
+      @connection = @contract.connections.live.includes(:linked_organization, :linked_production, :requested_by).first
+    end
+
+    # The contractor requested to connect the contract to their own
+    # organization: yes (with how far it goes for later contracts), no (with
+    # a note), and ending it later. Their dates and numbers are LinkedDates'.
+    def accept_connection
+      connection = @contract.connections.requested.first
+      if connection
+        ContractConnections.accept!(connection, user: Current.user, later_contracts: params[:later_contracts])
+        redirect_to manage_contract_path(@contract),
+                    notice: "Connected to #{connection.linked_organization.name}. #{@contract.contractor_name} has been notified."
+      else
+        redirect_to manage_contract_path(@contract), notice: "That request was already answered."
+      end
+    end
+
+    def decline_connection
+      connection = @contract.connections.requested.first
+      if connection
+        ContractConnections.decline!(connection, user: Current.user, note: params[:answer_note])
+        redirect_to manage_contract_path(@contract), notice: "#{@contract.contractor_name} has been notified."
+      else
+        redirect_to manage_contract_path(@contract), notice: "That request was already answered."
+      end
+    end
+
+    def unlink_connection
+      connection = @contract.connections.connected.first
+      if connection
+        ContractConnections.unlink!(connection, user: Current.user)
+        redirect_to manage_contract_path(@contract),
+                    notice: "Unlinked from #{connection.linked_organization.name}. #{@contract.contractor_name} has been notified."
+      else
+        redirect_to manage_contract_path(@contract), notice: "This contract isn't connected."
+      end
+    end
+
+    def update_connection_later_contracts
+      connection = @contract.connections.connected.first
+      choice = params[:later_contracts].to_s.presence_in(ContractConnection::LATER_CONTRACTS)
+      ContractConnections.choose_later_contracts!(connection, choice) if connection && choice
+      redirect_to manage_contract_path(@contract), notice: (connection && choice ? "Saved." : nil)
     end
 
     # The organization's "no" to a contractor's request about a date: the date
@@ -1197,9 +1242,11 @@ module Manage
 
       amending = (actives - payment_contracts).select(&:amendment_pending?)
       # The contractor asked about a date and nobody has answered (ContractDateRequests).
+      # ...or requested to connect it to their own organization (ContractConnections).
+      connecting_ids = ContractConnection.requested.where(contract_id: actives.map(&:id)).pluck(:contract_id).to_set
       asked_kinds = ContractDateRequest.where(contract_id: actives.map(&:id), status: "open").pluck(:contract_id, :kind)
                                        .group_by(&:first).transform_values { |rows| rows.map(&:last) }
-      asking = (actives - payment_contracts - amending).select { |c| asked_kinds.key?(c.id) }
+      asking = (actives - payment_contracts - amending).select { |c| asked_kinds.key?(c.id) || connecting_ids.include?(c.id) }
       recent = (actives - payment_contracts - amending - asking).filter_map do |c|
         signed_at = [ c.executed_at, c.activated_at, c.contract_versions.filter_map(&:executed_at).max ].compact.max
         [ c, signed_at ] if signed_at && signed_at >= since
@@ -1227,8 +1274,11 @@ module Manage
         @in_motion_badges[c.id] = c.signing_out_for_signature? ? { text: "Amendment out for signature", color: "amber" } : { text: "Amendment ready to send", color: "blue" }
       end
       asking.each do |c|
-        only_questions = asked_kinds[c.id].all? { |kind| kind == "question" }
-        @in_motion_badges[c.id] = { text: only_questions ? "Question about a date" : "Date change requested", color: "amber" }
+        text = if connecting_ids.include?(c.id) then "Connection requested"
+        elsif asked_kinds[c.id].all? { |kind| kind == "question" } then "Question about a date"
+        else "Date change requested"
+        end
+        @in_motion_badges[c.id] = { text: text, color: "amber" }
       end
       recent.each do |c, at|
         verb = c.signing_mode_esign? ? "Signed" : "Activated"

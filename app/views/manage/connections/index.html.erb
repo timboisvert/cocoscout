@@ -1,0 +1,176 @@
+<%# Connections: other organizations' contracts connected to this one as the
+    contractor's own organization (Manage::ConnectionsController). From the
+    controller: @connections, newest first. %>
+<% content_for :title, "Connections" %>
+<%
+  groups = [
+    { field: "team_manager_sales", title: "Production team managers",
+      intro: "These are the people you've added to the production's team as managers.",
+      choices: [ [ "everything", "Everything you see", "They can see how each date is selling, who's coming by name, and the ticket link." ],
+                 [ "numbers", "Numbers and the link", "They can see how many seats have sold and the ticket link, but no names and no money." ],
+                 [ "nothing", "Nothing", "Ticket sales stay with your owners and managers." ] ] },
+    { field: "team_viewer_sales", title: "Production team viewers",
+      intro: "These are team members with the viewer role, including anyone who is a viewer across your whole organization.",
+      choices: [ [ "numbers", "Numbers and the link", "They can see how many seats have sold and the ticket link, but no names and no money." ],
+                 [ "nothing", "Nothing", "They can see the production, but not its sales." ] ] },
+    { field: "cast_sales", title: "Cast",
+      intro: "These are your performers. They see ticket numbers on each show's page in their My Shows & Events.",
+      choices: [ [ "production_cast", "Everyone on the production", "Anyone in the production's talent pool, or cast in any of its dates, can see how many tickets each date has sold, with its ticket link." ],
+                 [ "show_cast", "The cast of each date", "Only the people cast in a date can see how many tickets that date has sold." ],
+                 [ "nothing", "Nothing", "The cast isn't shown any ticket numbers." ] ] }
+  ]
+  radio_class = "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500 flex-shrink-0"
+  card_class = "flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3.5 cursor-pointer hover:border-pink-400 transition-colors has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50"
+  stamp = ->(time, zone) { time.in_time_zone(zone).strftime("%a %b %-d, %-l:%M %p") }
+%>
+<div class="w-full mb-10" data-controller="modal">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [], text: "Connections", links: [] } %>
+  <p class="text-sm text-gray-600 mb-6 max-w-3xl">
+    These are the other organizations on CocoScout that present your dates under a contract. Each connection brings
+    that organization's dates, along with how they're selling, into one of your productions.
+  </p>
+
+  <% if @connections.empty? %>
+    <p class="text-sm text-gray-600">No contract is connected to <%= Current.organization.name %> yet. If you're the contractor on a contract with another organization, you can connect it from My Contracts.</p>
+  <% end %>
+
+  <div class="space-y-8 max-w-4xl">
+    <% @connections.each do |connection| %>
+      <%
+        seller = connection.organization
+        zone = Time.find_zone(seller.time_zone.presence) || Time.zone
+        following = connection.connected? ? LinkedDates.following_for(connection).where(canceled: false).count : 0
+        on_contract = LinkedDates.contract_shows(connection.contract).where(canceled: false).count
+        questions = LinkedDates.open_questions(connection)
+        unlink_modal = "unlink-connection-#{connection.id}"
+        badge = { "connected" => [ "Connected", "bg-green-100 text-green-700" ], "requested" => [ "Waiting for #{seller.name}", "bg-amber-100 text-amber-700" ],
+                  "unlinked" => [ "Unlinked", "bg-gray-100 text-gray-600" ] }[connection.status]
+      %>
+      <section class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-connection="<%= connection.status %>">
+        <%= render "shared/section_heading", title: seller.name,
+              intro: "Contract for #{connection.contract.production&.name || connection.contract.production_name} · #{pluralize(on_contract, 'date')}" do %>
+          <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold <%= badge.last %>"><%= badge.first %></span>
+          <% if connection.connected? %>
+            <%= render "shared/button", text: "Unlink", variant: "secondary", size: "small", type: :button,
+                  data: { action: "click->modal#open", modal_id: unlink_modal } %>
+          <% end %>
+        <% end %>
+
+        <dl class="divide-y divide-gray-100 text-sm">
+          <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-0.5 sm:gap-4 px-6 py-3">
+            <dt class="text-gray-600">Their dates are in</dt>
+            <dd class="text-gray-900 sm:text-right">
+              <% if connection.linked_production %>
+                <%= link_to connection.linked_production.name, manage_production_path(connection.linked_production), class: "text-pink-600 hover:text-pink-700 underline" %>
+              <% else %>
+                <%= connection.production_name %> (made when they accept)
+              <% end %>
+            </dd>
+          </div>
+          <% if connection.connected? %>
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-0.5 sm:gap-4 px-6 py-3">
+              <dt class="text-gray-600">Their dates</dt>
+              <dd class="text-gray-900 sm:text-right"><%= following %> of <%= on_contract %> in your production<%= " · #{pluralize(questions.size, 'question')} open" if questions.any? %></dd>
+            </div>
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-0.5 sm:gap-4 px-6 py-3">
+              <dt class="text-gray-600">Ticket sales</dt>
+              <dd class="text-gray-900 sm:text-right max-w-md">
+                <% if connection.contract.shares_ticket_sales %>
+                  <%= seller.name %> shares them with you. Your owners and managers can see them, and your production team and cast see as much as you choose below.
+                  <% if connection.linked_production %>
+                    <%= link_to "See ticket sales", manage_production_sales_path(connection.linked_production), class: "text-pink-600 hover:text-pink-700 underline" %>
+                  <% end %>
+                <% else %>
+                  <%= seller.name %> isn't sharing ticket sales for this contract.
+                <% end %>
+              </dd>
+            </div>
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-0.5 sm:gap-4 px-6 py-3">
+              <dt class="text-gray-600">Later contracts</dt>
+              <dd class="text-gray-900 sm:text-right max-w-md"><%= connection.later_contracts_words %></dd>
+            </div>
+          <% end %>
+          <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-0.5 sm:gap-4 px-6 py-3">
+            <dt class="text-gray-600">Requested by</dt>
+            <dd class="text-gray-900 sm:text-right">
+              <%= connection.requested_by.default_person&.name || connection.requested_by.people.first&.name || connection.requested_by.email_address %>, <%= connection.created_at.in_time_zone.strftime("%b %-d, %Y") %>
+            </dd>
+          </div>
+        </dl>
+
+        <% if questions.any? %>
+          <div class="border-t border-gray-200 px-6 py-4 bg-amber-50/50" data-date-questions>
+            <h3 class="text-sm font-semibold text-gray-900">Is this the same show?</h3>
+            <p class="text-xs text-gray-600 mt-0.5">When you connected, you weren't sure whether these were the same show. Both dates will stay in your production until you decide.</p>
+            <ul class="mt-3 space-y-3">
+              <% questions.each do |contract_show, show| %>
+                <li class="flex flex-wrap items-center justify-between gap-3 bg-white border border-amber-200 rounded-lg px-4 py-3">
+                  <div class="text-sm text-gray-700">
+                    <div><span class="font-medium text-gray-900">Yours:</span> <%= stamp.call(show.date_and_time, zone) %> · <%= show.display_name %></div>
+                    <div><span class="font-medium text-gray-900"><%= possessive(seller.name) %>:</span> <%= stamp.call(contract_show.date_and_time, zone) %></div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <%= form_with url: manage_connection_dates_path(connection), method: :post, local: true, data: { turbo_action: "replace" } do %>
+                      <input type="hidden" name="contract_show_id" value="<%= contract_show.id %>"><input type="hidden" name="show_id" value="<%= show.id %>"><input type="hidden" name="same" value="0">
+                      <%= render "shared/button", text: "Two different events", variant: "secondary", size: "small", type: :submit %>
+                    <% end %>
+                    <%= form_with url: manage_connection_dates_path(connection), method: :post, local: true, data: { turbo_action: "replace" } do %>
+                      <input type="hidden" name="contract_show_id" value="<%= contract_show.id %>"><input type="hidden" name="show_id" value="<%= show.id %>"><input type="hidden" name="same" value="1">
+                      <%= render "shared/button", text: "The same show", variant: "primary", size: "small", type: :submit %>
+                    <% end %>
+                  </div>
+                </li>
+              <% end %>
+            </ul>
+            <p class="text-xs text-gray-500 mt-2">If you choose "The same show", we'll keep your date and its cast, and set it to <%= possessive(seller.name) %> time and room. If anyone is cast, you'll be asked to notify them of the change.</p>
+          </div>
+        <% end %>
+
+        <% if connection.connected? && connection.contract.shares_ticket_sales %>
+          <%# One box per kind of person, as Ticketing settings → Who sees sales lays out the same choices. %>
+          <%= form_with url: manage_connection_path(connection), method: :patch, local: true, data: { turbo_action: "replace", who_sees: connection.id },
+                class: "border-t border-gray-200 bg-gray-50 px-6 py-5" do %>
+            <h3 class="text-base font-semibold text-gray-900">Who in <%= Current.organization.name %> sees <%= possessive(seller.name) %> ticket sales</h3>
+            <p class="text-sm text-gray-600 mt-1 max-w-3xl">
+              These choices apply to the dates on this contract. Your owners and managers can always see the sales, and the cast is never shown buyers' names or any money.
+            </p>
+            <div class="mt-4 space-y-4">
+              <% groups.each do |group| %>
+                <fieldset class="bg-white border border-gray-200 rounded-lg overflow-hidden" data-who-sees-group="<%= group[:field] %>">
+                  <legend class="sr-only"><%= group[:title] %></legend>
+                  <div class="px-4 py-3 border-b border-gray-100">
+                    <div class="text-sm font-semibold text-gray-900"><%= group[:title] %></div>
+                    <p class="text-sm text-gray-600 mt-0.5"><%= group[:intro] %></p>
+                  </div>
+                  <div class="p-4 grid grid-cols-1 <%= group[:choices].size == 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-3' %> gap-3">
+                    <% group[:choices].each do |value, title, explanation| %>
+                      <label class="<%= card_class %>">
+                        <%= radio_button_tag "connection[#{group[:field]}]", value, connection.public_send(group[:field]) == value,
+                              id: "connection_#{connection.id}_#{group[:field]}_#{value}", class: radio_class %>
+                        <span>
+                          <span class="block text-sm font-medium text-gray-900"><%= title %></span>
+                          <span class="block text-sm text-gray-600 mt-1"><%= explanation %></span>
+                        </span>
+                      </label>
+                    <% end %>
+                  </div>
+                </fieldset>
+              <% end %>
+            </div>
+            <div class="mt-4">
+              <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+            </div>
+          <% end %>
+        <% end %>
+      </section>
+
+      <% if connection.connected? %>
+        <%= render "shared/confirm_modal", id: unlink_modal,
+              title: "Unlink #{seller.name}?",
+              message: "The contract itself doesn't change. You'll stop seeing their ticket sales here. Their dates will stay in #{connection.production_name} as your own, but they'll no longer follow #{possessive(seller.name)} changes, so you'll need to check them yourself if #{seller.name} moves one. #{seller.name} will be notified.",
+              confirm_text: "Unlink", url: manage_unlink_connection_path(connection), method: :post %>
+      <% end %>
+    <% end %>
+  </div>
+</div>

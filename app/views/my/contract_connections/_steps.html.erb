@@ -1,0 +1,21 @@
+<%# The connect flow's header: breadcrumbs and where they are in its four
+    steps (My::ContractConnectionsController).
+
+    Locals:
+      step — 1 to 4: what connecting does, choose a production, check your dates, review and send %>
+<%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+<%= render partial: "shared/top_menu", locals: {
+  breadcrumbs: [ [ "My Contracts", my_contracts_path ] ],
+  text: "Connect",
+  links: []
+} %>
+<ol class="flex flex-wrap gap-x-6 gap-y-2 mb-7 text-sm">
+  <% [ "What connecting does", "Choose a production", "Check your dates", "Review and send" ].each_with_index do |label, index| %>
+    <% number = index + 1 %>
+    <li class="flex items-center gap-2 <%= number == step ? "text-gray-900 font-semibold" : "text-gray-500" %>">
+      <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold border
+                   <%= number == step ? "bg-pink-500 border-pink-500 text-white" : (number < step ? "bg-pink-50 border-pink-200 text-pink-600" : "border-gray-300") %>"><%= number %></span>
+      <%= label %>
+    </li>
+  <% end %>
+</ol>

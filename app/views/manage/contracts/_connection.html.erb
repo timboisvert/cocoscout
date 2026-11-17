@@ -1,0 +1,143 @@
+<%# Contract page: the contractor's own organization on CocoScout
+    (ContractConnections). A request waits above the contract, with what
+    each side gets, how far a yes goes for later contracts, and Accept or
+    Decline. Once connected, a card says who they are, where the dates
+    went and who sees the ticket sales, with Unlink.
+
+    Locals:
+      connection — the contract's live ContractConnection, or nil %>
+<% if connection %>
+  <%
+    contractor = @contract.contractor_name
+    theirs = connection.linked_organization.name
+    show_name = @contract.production&.name || @contract.production_name
+    choice_class = "flex items-start p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-400 transition-colors has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 bg-white"
+    radio_class = "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500"
+    later = [
+      [ "ask", "Ask us each time", "Only this contract will connect for now. #{contractor} will need to send a new request for each contract after it." ],
+      [ "production", "Connect later contracts for #{show_name}", "When you write another contract with #{contractor} for this production, #{contractor} will be able to connect it without waiting for your approval. You'll be notified each time that happens." ],
+      [ "all", "Connect every later contract with #{contractor}", "The same goes for any production you book with #{contractor}, who chooses which production in #{theirs} each contract's dates go into." ]
+    ]
+  %>
+  <% if connection.requested? %>
+    <% decline_modal = "decline-connection-#{connection.id}" %>
+    <% details = capture do %>
+      <% if connection.note.present? %>
+        <div class="rounded-lg bg-white/70 border border-pink-100 px-4 py-3 text-sm text-gray-700">"<%= connection.note %>"</div>
+      <% end %>
+
+      <div class="grid md:grid-cols-3 gap-4 mt-4 text-sm text-gray-700">
+        <div>
+          <div class="font-semibold text-gray-900 mb-1">What you get</div>
+          <ul class="space-y-1.5 list-disc pl-4">
+            <li>Everyone who manages <%= theirs %> will be able to see how each date is selling, so they can promote the dates that need it without having to ask you.</li>
+            <li>Their cast will be able to see how many tickets have sold, and share the ticket link.</li>
+          </ul>
+        </div>
+        <div>
+          <div class="font-semibold text-gray-900 mb-1">What they get</div>
+          <ul class="space-y-1.5 list-disc pl-4">
+            <li>The dates on this contract will appear in their production<%= ", #{connection.production_name}" if connection.production_name.present? %>. Whenever you move or cancel a date, theirs changes to match.</li>
+            <li>The owners and managers of <%= theirs %> will see ticket sales for these dates, just as <%= contractor %> does today. Their production team and cast can see how many tickets have sold.</li>
+          </ul>
+        </div>
+        <div>
+          <div class="font-semibold text-gray-900 mb-1">What doesn't change</div>
+          <ul class="space-y-1.5 list-disc pl-4">
+            <li>Your contract, your share and your terms stay exactly as they are.</li>
+            <li>The tickets, the door and Settle up are still yours to run.</li>
+            <li>They won't see anything else of yours: your other productions, what you keep from each sale, buyers' email addresses or your Books.</li>
+          </ul>
+        </div>
+      </div>
+
+      <%= form_with url: accept_connection_manage_contract_path(@contract), method: :post, local: true,
+            data: { turbo_action: "replace" }, class: "mt-5 pt-4 border-t border-pink-100" do %>
+        <fieldset>
+          <legend class="font-semibold text-gray-900">Later contracts with <%= contractor %></legend>
+          <p class="text-sm text-gray-600 mb-2">When you write another contract with <%= contractor %> after this one, should it be connected as well?</p>
+          <div class="space-y-2">
+            <% later.each do |value, title, words| %>
+              <label class="<%= choice_class %>">
+                <input type="radio" name="later_contracts" value="<%= value %>" <%= "checked" if value == "production" %> class="<%= radio_class %>">
+                <div class="ml-3"><div class="text-sm font-medium text-gray-900"><%= title %></div><div class="text-sm text-gray-500"><%= words %></div></div>
+              </label>
+            <% end %>
+          </div>
+          <p class="text-xs text-gray-500 mt-2">You can change this choice later on this page, and you can unlink the contract at any time.</p>
+        </fieldset>
+        <div class="flex items-center justify-end gap-2 mt-4">
+          <%= render "shared/button", text: "Decline", variant: "secondary", size: "medium", type: :button,
+                data: { action: "click->modal#open", modal_id: decline_modal } %>
+          <%= render "shared/button", text: "Accept", variant: "primary", size: "medium", type: :submit %>
+        </div>
+      <% end %>
+
+      <div id="<%= decline_modal %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" data-action="click->modal#closeOnBackdrop">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden" data-action="click->modal#stopPropagation">
+          <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+            <h3 class="text-lg font-semibold text-white">Decline the connection?</h3>
+            <button type="button" data-action="click->modal#close" aria-label="Close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+          </div>
+          <%= form_with url: decline_connection_manage_contract_path(@contract), method: :post, local: true, data: { turbo_action: "replace" } do %>
+            <div class="p-6 space-y-4">
+              <p class="text-sm text-gray-700"><%= contractor %> will be notified. Nothing in their production will change, and <%= contractor %> can send the request again later.</p>
+              <label class="block">
+                <span class="block text-sm font-medium text-gray-700 mb-1">A note to <%= contractor %> <span class="font-normal text-gray-500">(optional)</span></span>
+                <textarea name="answer_note" rows="3" maxlength="2000" class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"></textarea>
+              </label>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+              <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+              <%= render "shared/button", text: "Decline", variant: "primary", size: "medium", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+    <div data-connection="requested">
+      <%= render "shared/alert_panel",
+            eyebrow: "A request to connect",
+            headline: "#{contractor} requests to connect this contract to #{theirs}",
+            body: "#{theirs} is #{possessive(contractor)} own organization on CocoScout. #{contractor} sent this request on #{connection.created_at.in_time_zone.strftime('%b %-d')}.",
+            details: details %>
+    </div>
+  <% elsif connection.connected? %>
+    <%
+      unlink_modal = "unlink-connection-#{connection.id}"
+      viewers = LinkedTicketSales.viewer_words(connection)
+    %>
+    <div data-connection="connected" class="mb-6 border border-pink-200 rounded-lg overflow-hidden bg-white">
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "On CocoScout as #{theirs}",
+            intro: "#{possessive(contractor)} own organization. Connected #{connection.answered_at&.in_time_zone&.strftime('%b %-d, %Y')}." do %>
+        <%= render "shared/button", text: "Unlink", variant: "secondary", size: "small", type: :button,
+              data: { action: "click->modal#open", modal_id: unlink_modal } %>
+      <% end %>
+      <dl class="divide-y divide-gray-100 text-sm">
+        <div class="flex items-start justify-between gap-4 px-4 py-2.5"><dt class="text-gray-600">Your dates are in</dt><dd class="text-gray-900 text-right">Their production, <%= connection.production_name %></dd></div>
+        <div class="flex items-start justify-between gap-4 px-4 py-2.5"><dt class="text-gray-600">Who sees ticket sales</dt><dd class="text-gray-900 text-right max-w-md"><%= viewers %></dd></div>
+        <div class="flex items-start justify-between gap-4 px-4 py-2.5">
+          <dt class="text-gray-600 pt-1.5">Later contracts with <%= contractor %></dt>
+          <dd>
+            <%= form_with url: connection_later_contracts_manage_contract_path(@contract), method: :patch, local: true,
+                  data: { turbo_action: "replace" }, class: "flex items-center gap-2" do %>
+              <select name="later_contracts" aria-label="Later contracts with <%= contractor %>"
+                      class="px-3 py-1.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                <% later.each do |value, title, _words| %>
+                  <option value="<%= value %>" <%= "selected" if connection.later_contracts == value %>><%= title %></option>
+                <% end %>
+              </select>
+              <%= render "shared/button", text: "Save", variant: "secondary", size: "small", type: :submit %>
+            <% end %>
+          </dd>
+        </div>
+      </dl>
+    </div>
+    <%= render "shared/confirm_modal", id: unlink_modal,
+          title: "Unlink #{theirs}?",
+          message: "The contract itself doesn't change. #{theirs} will stop seeing your ticket sales. The dates already in their production will stay there as their own, but they will no longer follow yours. #{contractor} will be notified.",
+          confirm_text: "Unlink", url: unlink_connection_manage_contract_path(@contract), method: :post %>
+  <% end %>
+<% end %>

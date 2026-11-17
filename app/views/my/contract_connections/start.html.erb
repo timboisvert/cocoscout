@@ -1,0 +1,57 @@
+<%# Connect, step 1: what connecting a contract to your own organization
+    does. From the controller: @contract, @organizations (the ones they
+    run), @shows (the contract's dates). %>
+<% content_for :title, "Connect your contract" %>
+<%
+  org = @contract.organization.name
+  show_name = @contract.production&.name || @contract.production_name
+  coming = @shows.reject(&:canceled)
+  mine = @organizations.one? ? @organizations.first.name : "your organization"
+%>
+<div class="w-full mb-10 max-w-3xl">
+  <%= render "my/contract_connections/steps", step: 1 %>
+
+  <h1 class="text-3xl coustard-regular text-gray-900">Connect your contract to <%= mine %></h1>
+  <p class="text-gray-600 mt-2">
+    <%= show_name %> is your show, and you run it in <%= mine %>. <%= org %> is presenting <%= pluralize(coming.size, "date") %> of it
+    under your contract. When you connect the two, those dates and their ticket sales appear in your own production, so you and
+    your team can see everything in one place without typing any of it in again.
+  </p>
+
+  <div class="grid sm:grid-cols-2 gap-4 mt-6">
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "What you'll get from #{org}" %>
+      <ul class="p-4 space-y-4 text-sm text-gray-600">
+        <li><span class="block font-medium text-gray-900">Their dates appear in your show's calendar.</span>
+          You won't need to enter them yourself. If <%= org %> moves or cancels a date, yours changes to match, and you'll be asked to let your cast know.</li>
+        <li><span class="block font-medium text-gray-900">You'll see how each date is selling.</span>
+          Everyone who manages <%= mine %> can see the ticket sales, not only you.</li>
+        <li><span class="block font-medium text-gray-900">Your team and cast can follow along too.</span>
+          You decide whether they can see how many tickets have sold.</li>
+      </ul>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "What stays the same" %>
+      <ul class="p-4 space-y-4 text-sm text-gray-600">
+        <li><span class="block font-medium text-gray-900">Your contract and your share don't change.</span>
+          Connecting adds nothing to the contract, and you can unlink whenever you like.</li>
+        <li><span class="block font-medium text-gray-900">Your side of the show stays private.</span>
+          Who's in it, your rehearsals, call times, messages and what you pay people are never shared with <%= org %>.</li>
+        <li><span class="block font-medium text-gray-900"><%= org %> still runs the box office.</span>
+          Prices, ticket types, the door, comps and settling each date remain theirs.</li>
+      </ul>
+    </div>
+  </div>
+
+  <% if @standing_organization %>
+    <p class="text-sm text-gray-500 mt-4"><%= org %> has already agreed to connect your later contracts to <%= @standing_organization.name %>, so this one won't need their approval again. It will connect as soon as you finish these steps, and <%= org %> will be notified.</p>
+  <% else %>
+    <p class="text-sm text-gray-500 mt-4"><%= org %> needs to accept before anything happens. Until they do, nothing changes for either of you.</p>
+  <% end %>
+
+  <div class="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
+    <%= render "shared/button", text: "Not now", variant: "secondary", size: "medium", path: my_contracts_path %>
+    <%= render "shared/button", text: "Continue", variant: "primary", size: "medium",
+          path: my_connect_contract_production_path(@contract) %>
+  </div>
+</div>

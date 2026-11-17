@@ -149,6 +149,16 @@ module My
       # Filter by event type
       all_shows.select! { |show| @event_type_filter.include?(show.event_type) }
 
+      # One date, shown once (LinkedDates): when a contract's date is followed
+      # by a date in the contractor's own production that's in this list too,
+      # their own date stands for both and carries the contract's mark.
+      followed = all_shows.select { |show| show.linked_show_id && @contract_show_ids.include?(show.linked_show_id) }
+      if followed.any?
+        stood_for = followed.map(&:linked_show_id).to_set
+        all_shows.reject! { |show| stood_for.include?(show.id) }
+        @contract_show_ids.merge(followed.map(&:id))
+      end
+
       # Step 2: Get all assignments for these shows (for selected people and groups)
       show_ids = all_shows.map(&:id)
       assignments = if show_ids.any?
@@ -592,6 +602,8 @@ module My
     # comps count and a button to the date's sales page in the Production
     # Dashboard.
     def load_ticket_card
+      return load_followed_ticket_card if @show.follows_contract?
+
       listing = @show.ticket_listing
       @ticket_level = listing && TicketSalesAccess.level_for(Current.user, listing)
       return unless @ticket_level
@@ -615,6 +627,27 @@ module My
     # they're on for this production (a production that has had several
     # contracts counts only its rental-linked dates as a contract's, and an
     # older date may be linked to none).
+    # A date that follows another organization's contract date
+    # (LinkedDates): the tickets are sold by that organization, and what
+    # this viewer sees of them is their own organization's choice, one layer
+    # down (LinkedTicketSales): its managers what the contractor sees, its
+    # team and cast the count and the link.
+    def load_followed_ticket_card
+      connection = LinkedTicketSales.connection_for(@show)
+      listing = LinkedTicketSales.listing_for(@show, connection: connection)
+      @ticket_level = listing && LinkedTicketSales.level_for(Current.user, @show, connection: connection)
+      return unless @ticket_level
+
+      @ticket_listing = listing
+      @ticket_seller = connection.organization
+      @ticket_stats = Ticketing::ListingStats.of(listing)
+      @ticket_link = TicketLink.for(listing.show, listing: listing)
+      # No button into the sales page from My: that page is their
+      # organization's, reached from its production.
+      @ticket_sales_path = nil
+      @ticket_codes = []
+    end
+
     def contract_for_date(show, people_ids)
       contracts = Contract.for_people(people_ids).where.not(status: %w[draft cancelled]).includes(:contractor, :organization).to_a
       contracts.detect { |contract| contract.contract_shows.exists?(id: show.id) } ||

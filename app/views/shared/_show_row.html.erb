@@ -221,6 +221,9 @@
             · Online
           <% elsif show.location.present? && !show.space_rental.present? %>
             · <%= show.location.name %>
+          <% elsif show.follows_contract? && (booked_at = show.followed_organization) %>
+            <%# A date that follows another organization's contract date (LinkedDates): its place is theirs. %>
+            · Booked at <%= booked_at.name %>
           <% end %>
         <% end %>
         <%= render "shared/ticket_chip", link: local_assigns[:ticket_link] if local_assigns[:ticket_link] %>

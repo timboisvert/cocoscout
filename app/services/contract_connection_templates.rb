@@ -1,0 +1,53 @@
+# frozen_string_literal: true
+
+# The words of the notifications about connecting a contract to the
+# contractor's own organization (ContractConnectionNotices; Tim, 2026-11-17).
+# Each is a seeded ContentTemplate and a notification only: the Notifications
+# list and a push, never an email.
+class ContractConnectionTemplates
+  VARIABLES = [
+    { "name" => "contractor_name", "description" => "The contractor on the contract" },
+    { "name" => "organization_name", "description" => "The organization that wrote the contract" },
+    { "name" => "linked_organization_name", "description" => "The contractor's own organization" },
+    { "name" => "production_name", "description" => "The production the contract is for" },
+    { "name" => "linked_production_name", "description" => "The production in the contractor's organization" },
+    { "name" => "note", "description" => "What they wrote, if anything" }
+  ].freeze
+
+  TEMPLATES = [
+    { key: "contract_connection_requested", name: "A contractor requests to connect their organization (to the organization)",
+      subject: "{{contractor_name}} requests to connect {{linked_organization_name}} to the contract for {{production_name}}",
+      body: %(<p>{{contractor_name}} requests to connect {{linked_organization_name}} to the contract for {{production_name}}. It needs your OK.</p>{{#note}}<p>"{{note}}"</p>{{/note}}<p><a href="{{contract_url}}">Open the contract</a></p>) },
+    { key: "contract_connection_reminder", name: "A connection request still waiting (to the organization)",
+      subject: "{{contractor_name}} is still waiting on the connection for {{production_name}}",
+      body: %(<p>{{contractor_name}} is still waiting on the connection for {{production_name}}.</p><p><a href="{{contract_url}}">Open the contract</a></p>) },
+    { key: "contract_connection_connected_by_earlier_yes", name: "A later contract connected under an earlier yes (to the organization)",
+      subject: "{{contractor_name}} connected the contract for {{production_name}} to {{linked_organization_name}}",
+      body: %(<p>{{contractor_name}} connected the contract for {{production_name}} to {{linked_organization_name}}. You weren't asked this time, because {{organization_name}} chose to connect later contracts with {{contractor_name}}. You can change that choice, or unlink this contract, on the contract's page.</p><p><a href="{{contract_url}}">Open the contract</a></p>) },
+    { key: "contract_connection_accepted", name: "A connection accepted (to the contractor)",
+      subject: "{{organization_name}} connected your contract. Their dates are in {{linked_production_name}}.",
+      body: %(<p>{{organization_name}} connected your contract for {{production_name}}. Their dates are in {{linked_production_name}}, in {{linked_organization_name}}.</p><p><a href="{{contracts_url}}">Open My Contracts</a></p>) },
+    { key: "contract_connection_declined", name: "A connection declined (to the contractor)",
+      subject: "{{organization_name}} didn't connect your contract for {{production_name}}",
+      body: %(<p>{{organization_name}} didn't connect your contract for {{production_name}}.</p>{{#note}}<p>"{{note}}"</p>{{/note}}<p><a href="{{contracts_url}}">Open My Contracts</a></p>) },
+    { key: "contract_connection_unlinked_by_contractor", name: "A connection ended by the contractor's organization (to the organization)",
+      subject: "{{linked_organization_name}} unlinked the contract for {{production_name}}",
+      body: %(<p>{{linked_organization_name}} unlinked the contract for {{production_name}}. The contract itself hasn't changed.</p><p><a href="{{contract_url}}">Open the contract</a></p>) },
+    { key: "contract_connection_unlinked_by_organization", name: "A connection ended by the organization (to the contractor)",
+      subject: "{{organization_name}} unlinked your contract for {{production_name}}",
+      body: %(<p>{{organization_name}} unlinked your contract for {{production_name}}. The contract itself hasn't changed, and the dates already in {{linked_production_name}} stay, as your own.</p><p><a href="{{contracts_url}}">Open My Contracts</a></p>) }
+  ].freeze
+
+  def self.ensure!(keys: nil, overwrite: false)
+    TEMPLATES.each do |spec|
+      next if keys && !keys.include?(spec[:key])
+
+      template = ContentTemplate.find_or_initialize_by(key: spec[:key])
+      next if template.persisted? && !overwrite
+
+      template.assign_attributes(name: spec[:name], category: "contracts", channel: "message", template_type: "structured",
+                                 active: true, subject: spec[:subject], body: spec[:body], available_variables: VARIABLES)
+      template.save!
+    end
+  end
+end

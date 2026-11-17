@@ -1,0 +1,38 @@
+<%# A production whose dates follow another organization's contract
+    (LinkedDates): "Sold by <that organization>", its next dates with how
+    they're selling, and the way into the production's ticket sales page
+    (LinkedTicketSales). Drawn on the production page and on Ticketing's
+    home. Nothing when the sales aren't shared with this viewer.
+    Locals: production, margin (optional). %>
+<%
+  level = LinkedTicketSales.production_level(Current.user, production)
+  seller = LinkedTicketSales.connections_for_production(production).select { |connection| LinkedTicketSales.sharing?(connection) }.first&.organization
+%>
+<% if level && seller %>
+  <%
+    listings = LinkedTicketSales.listings_for_production(production).where("shows.date_and_time >= ?", Time.current)
+                                .includes(:show).order("shows.date_and_time").limit(4).to_a
+    stats = listings.any? ? Ticketing::ListingStats.for(listings) : {}
+    zone = Time.find_zone(seller.time_zone.presence) || Time.zone
+  %>
+  <section class="bg-white border border-pink-200 rounded-lg overflow-hidden <%= local_assigns.fetch(:margin, 'mb-6') %>" data-sold-elsewhere="<%= production.id %>">
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Sold by #{seller.name}",
+          intro: "#{seller.name} sells the tickets for #{possessive(production.name)} dates there, under your contract. Prices, orders, refunds and the door are theirs." do %>
+      <%= render "shared/button", text: "See ticket sales", variant: "secondary", size: "small", path: manage_production_sales_path(production) %>
+    <% end %>
+    <% if listings.any? %>
+      <ul class="divide-y divide-gray-100">
+        <% listings.each do |listing| %>
+          <% row = stats[listing.id] %>
+          <% at = listing.show.date_and_time.in_time_zone(zone) %>
+          <li class="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+            <span class="text-gray-900"><%= at.strftime("%a %b %-d, %-l:%M %p") %></span>
+            <span class="text-gray-700 tabular-nums"><%= row.sold_words %></span>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="px-4 py-3 text-sm text-gray-600">No dates are on sale right now.</p>
+    <% end %>
+  </section>
+<% end %>

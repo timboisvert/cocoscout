@@ -537,6 +537,16 @@ Rails.application.routes.draw do
     post   "/contracts/:id/ask",                         to: "contract_date_requests#create"
     delete "/contracts/:id/ask/:request_id",             to: "contract_date_requests#withdraw", as: "contract_date_request"
     patch  "/contracts/:id/ask/:request_id/dismiss",     to: "contract_date_requests#dismiss",  as: "dismiss_contract_date_request"
+    # The contractor connects the contract to an organization of their own
+    # (ContractConnections): what it does, which production, how the dates
+    # line up, what the other side gets, then the request.
+    get    "/contracts/:id/connect",                     to: "contract_connections#start",      as: "connect_contract"
+    get    "/contracts/:id/connect/production",          to: "contract_connections#production", as: "connect_contract_production"
+    get    "/contracts/:id/connect/dates",               to: "contract_connections#dates",      as: "connect_contract_dates"
+    get    "/contracts/:id/connect/review",              to: "contract_connections#review",     as: "connect_contract_review"
+    post   "/contracts/:id/connect",                     to: "contract_connections#create"
+    delete "/contracts/:id/connect",                     to: "contract_connections#withdraw"
+    patch  "/contracts/:id/connect/dismiss",             to: "contract_connections#dismiss",    as: "dismiss_contract_connection"
 
     get    "/productions",                  to: "productions#index",        as: "productions"
     get    "/productions/:id",              to: "productions#show",         as: "production"
@@ -692,6 +702,14 @@ Rails.application.routes.draw do
     post   "/productions/:production_id/sales/:id/comps", to: "production_sales#create_comp", as: "production_sale_comps"
     post   "/productions/:production_id/sales/:id/comps/preview", to: "production_sales#preview_comps", as: "production_sale_comps_preview"
     get "/",                              to: "manage#index"
+
+    # Connections: other organizations' contracts connected to this one, as
+    # the contractor's own organization (ContractConnections). Free, for
+    # owners and managers.
+    get   "/connections",                 to: "connections#index",       as: "connections"
+    patch "/connections/:id",             to: "connections#update",      as: "connection"
+    post  "/connections/:id/unlink",      to: "connections#unlink",      as: "unlink_connection"
+    post  "/connections/:id/dates",       to: "connections#answer_date", as: "connection_dates"
 
     # Messages
     resources :messages, only: [ :index, :show, :create ] do
@@ -1965,6 +1983,12 @@ Rails.application.routes.draw do
         # same params to apply.
         # The organization's "no" to a contractor's request about a date.
         post "date_requests/:request_id/keep", action: :keep_date_request, as: :keep_date_request
+        # The contractor's request to connect the contract to their own
+        # organization: accept, decline, and later unlink (ContractConnections).
+        post "connection/accept", action: :accept_connection, as: :accept_connection
+        post "connection/decline", action: :decline_connection, as: :decline_connection
+        post "connection/unlink", action: :unlink_connection, as: :unlink_connection
+        patch "connection/later_contracts", action: :update_connection_later_contracts, as: :connection_later_contracts
         get "amend/dates", action: :amend_dates, as: :amend_dates
         get "amend/dates/review", action: :review_amend_dates, as: :review_amend_dates
         post "amend/dates", action: :apply_amend_dates, as: :apply_amend_dates

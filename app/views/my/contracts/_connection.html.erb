@@ -1,0 +1,72 @@
+<%# My Contracts, on a contract's card: its connection to an organization of
+    the contractor's own (ContractConnections). The offer when they run one,
+    then where the request stands. A row of the card's to-do strip.
+
+    Locals:
+      contract    — the contract
+      connection  — its latest ContractConnection, or nil
+      connectable — whether a new one can be requested (the contractor, who
+                    runs an organization, on a live contract)
+      payee       — whether the viewer is the contractor %>
+<%
+  org = contract.organization.name
+  row = "flex items-start justify-between gap-3 px-5 py-3"
+  theirs = connection&.linked_organization&.name
+%>
+<% if connection&.connected? %>
+  <div class="<%= row %>" data-connection="connected">
+    <div class="min-w-0 flex items-start gap-2 text-sm text-gray-700">
+      <%= icon("link", class: "w-4 h-4 text-pink-500 flex-shrink-0 mt-0.5") %>
+      <div class="min-w-0">
+        <div class="font-medium text-gray-900">Connected to <%= theirs %></div>
+        <div class="text-xs text-gray-500">You'll find <%= possessive(org) %> dates, and how they're selling, in <%= connection.production_name %> in <%= theirs %>.</div>
+      </div>
+    </div>
+  </div>
+<% elsif connection&.requested? %>
+  <div class="<%= row %>" data-connection="requested">
+    <div class="min-w-0 flex items-start gap-2 text-sm text-gray-700">
+      <%= icon("link", class: "w-4 h-4 text-pink-500 flex-shrink-0 mt-0.5") %>
+      <div class="min-w-0">
+        <div class="font-medium text-gray-900">Waiting for <%= org %></div>
+        <div class="text-xs text-gray-500">You requested to connect this contract to <%= theirs %> on <%= connection.created_at.in_time_zone.strftime("%b %-d") %>. <%= org %> has been notified and hasn't answered yet.</div>
+      </div>
+    </div>
+    <% if payee %>
+      <%= form_with url: my_connect_contract_path(contract), method: :delete, local: true, class: "flex-shrink-0", data: { turbo_action: "replace" } do %>
+        <%= render "shared/button", text: "Withdraw", variant: "secondary", size: "xs", type: :submit %>
+      <% end %>
+    <% end %>
+  </div>
+<% else %>
+  <% if connection && connection.dismissed_at.nil? && connection.status.in?(%w[declined unlinked]) %>
+    <div class="<%= row %>" data-connection="<%= connection.status %>">
+      <div class="min-w-0 flex items-start gap-2 text-sm text-gray-700">
+        <%= icon("link", class: "w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5") %>
+        <div class="min-w-0">
+          <% if connection.status == "declined" %>
+            <div class="font-medium text-gray-900"><%= org %> didn't connect this contract</div>
+            <% if connection.answer_note.present? %><div class="text-sm text-gray-600 mt-0.5">"<%= connection.answer_note %>"</div><% end %>
+            <div class="text-xs text-gray-500">Your production is unchanged.</div>
+          <% else %>
+            <div class="font-medium text-gray-900">No longer connected to <%= theirs %></div>
+            <div class="text-xs text-gray-500">Unlinked <%= connection.ended_at&.in_time_zone&.strftime("%b %-d") %>. The dates already in <%= connection.production_name %> stay there as your own, and no longer follow <%= possessive(org) %>.</div>
+          <% end %>
+        </div>
+      </div>
+      <%= form_with url: my_dismiss_contract_connection_path(contract), method: :patch, local: true, class: "flex-shrink-0", data: { turbo_action: "replace" } do %>
+        <%= render "shared/button", text: "Dismiss", variant: "secondary", size: "xs", type: :submit %>
+      <% end %>
+    </div>
+  <% end %>
+  <% if connectable %>
+    <div class="flex items-center justify-between gap-3 px-5 py-3" data-connection="offer">
+      <span class="min-w-0 flex items-center gap-2 text-sm text-gray-700">
+        <%= icon("link", class: "w-4 h-4 text-pink-500 flex-shrink-0") %>
+        <span>You also run an organization on CocoScout. You can connect this contract to it, so these dates and their ticket sales appear in your own show.</span>
+      </span>
+      <%= render "shared/button", text: connection ? "Connect again" : "Connect your organization", variant: "outline-pink", size: "small",
+            classes: "flex-shrink-0", path: my_connect_contract_path(contract) %>
+    </div>
+  <% end %>
+<% end %>

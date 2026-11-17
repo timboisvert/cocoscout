@@ -8,6 +8,12 @@ class Show < ApplicationRecord
   belongs_to :event_linkage, optional: true
   belongs_to :location_space, optional: true
   belongs_to :space_rental, optional: true
+  # A date in a contractor's own production that follows one of another
+  # organization's contract dates (ContractConnection, LinkedDates): its
+  # time, place and whether it's on are that show's. (Not EventLinkage's
+  # "linked", which groups shows of one production.)
+  belongs_to :linked_show, class_name: "Show", optional: true
+  has_many :following_shows, class_name: "Show", foreign_key: :linked_show_id, inverse_of: :linked_show, dependent: :nullify
   # For course sessions (event_type "class"): the run (CourseOffering) this
   # session belongs to. Nil for non-course shows. Scopes CourseOffering#sessions.
   belongs_to :course_offering, optional: true
@@ -217,6 +223,16 @@ class Show < ApplicationRecord
   # first, before the cast assignments go with the show.
   before_destroy :record_show_removal, prepend: true
   after_update :record_show_change, if: -> { saved_change_to_canceled? || saved_change_to_date_and_time? }
+
+  # A date that follows a contract date can't be moved, relocated, canceled
+  # or removed from here: that's the other organization's to do, and this
+  # one follows (LinkedDates sets following_contract while it does).
+  attr_accessor :following_contract
+  validate :follows_its_contract_date, on: :update, if: :follows_contract?
+  before_destroy :keep_a_followed_date, prepend: true
+  # Dates in other organizations that follow this one keep in step with it.
+  before_destroy :remember_following_shows, prepend: true
+  after_commit :keep_following_shows_in_step, on: %i[create update destroy]
 
   # A contractor's request about this date closes itself when the date comes
   # to say what they asked, or stops applying (ContractDateRequests). After
@@ -1148,6 +1164,8 @@ class Show < ApplicationRecord
 
   def location_or_online_required
     return if location.present? || location_id.present? || is_online?
+    # Its place is the show it follows: the other organization's venue.
+    return if follows_contract?
 
     errors.add(:base, "Please select a location or mark this event as online")
   end
@@ -1170,6 +1188,10 @@ class Show < ApplicationRecord
   def within_free_event_limit
     return if canceled?
     return if date_and_time.blank?
+    # A contract's dates always arrive (Tim, 2026-11-17). They count toward
+    # the month like any other date; the limit stops only the dates an
+    # organization adds itself.
+    return if follows_contract?
 
     organization = production&.organization
     return if organization.nil?
@@ -1257,5 +1279,55 @@ class Show < ApplicationRecord
     # Never let a request's bookkeeping undo or fail a date change that's
     # already saved; the daily pass (ContractDateRequestsSweepJob) catches up.
     Rails.logger.error("[ContractDateRequests] show #{id}: #{e.class}: #{e.message}")
+  end
+
+  public
+
+  # Follows another organization's contract date (LinkedDates).
+  def follows_contract? = linked_show_id.present?
+
+  # Where it happens: its own location, or the venue of the date it follows.
+  def venue_location = location || (linked_show&.location if follows_contract?)
+
+  # The organization whose date this follows, for "Booked at …".
+  def followed_organization = (linked_show&.production&.organization if follows_contract?)
+
+  private
+
+  def follows_its_contract_date
+    return if following_contract || will_save_change_to_linked_show_id?
+
+    seller = followed_organization&.name || "the organization it's booked with"
+    if will_save_change_to_date_and_time? || will_save_change_to_canceled?
+      errors.add(:base, "This date is booked at #{seller} and follows their contract. To move or cancel it, request a change from #{seller}.")
+    elsif will_save_change_to_location_id? || will_save_change_to_is_online?
+      errors.add(:base, "This date is booked at #{seller}: its place is theirs.")
+    end
+  end
+
+  def keep_a_followed_date
+    return unless follows_contract? && !following_contract && !destroyed_by_association
+
+    errors.add(:base, "This date is booked at #{followed_organization&.name || 'another organization'} and can't be deleted here.")
+    throw :abort
+  end
+
+  # Read before the show goes: the link to it is cleared when it does.
+  def remember_following_shows
+    @following_show_ids = following_shows.pluck(:id)
+  end
+
+  def keep_following_shows_in_step
+    if destroyed?
+      LinkedDates.source_removed!(Array(@following_show_ids), was: self)
+    elsif previously_new_record?
+      LinkedDates.source_added!(self) if space_rental_id
+    else
+      LinkedDates.source_changed!(self)
+    end
+  rescue StandardError => e
+    # A date change already saved never fails because another organization's
+    # copy couldn't follow; the daily pass (LinkedDatesSweepJob) catches up.
+    Rails.logger.error("[LinkedDates] show #{id}: #{e.class}: #{e.message}")
   end
 end

@@ -12,7 +12,7 @@
     links: []
   } %>
 
-  <p class="text-sm text-gray-600 mb-6"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %> · <%= Current.organization.name %><%= " · #{show.location.name}" if show.location %></p>
+  <p class="text-sm text-gray-600 mb-6"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %> · <%= @seller ? "Sold by #{@seller.name}" : Current.organization.name %><%= " · #{show.location.name}" if show.location && !(@seller && show.location.name.to_s.casecmp?(@seller.name.to_s)) %></p>
 
   <div class="max-w-4xl space-y-6">
     <% if @level == :full %>
@@ -55,7 +55,7 @@
         <% end %>
       </div>
 
-      <% if (shared_codes = TicketDiscountCode.shared_for(@listing)).any? %>
+      <% if !@seller && (shared_codes = TicketDiscountCode.shared_for(@listing)).any? %>
         <%= render "shared/ticketing/shared_codes", codes: shared_codes %>
       <% end %>
 
@@ -93,7 +93,7 @@
           <%= render "shared/copy_url", url: @link.url, layout: :tile, label: "Ticket link", show_qr: true, qr_title: "Scan for tickets" %>
         <% end %>
       </div>
-      <% if (shared_codes = TicketDiscountCode.shared_for(@listing)).any? %>
+      <% if !@seller && (shared_codes = TicketDiscountCode.shared_for(@listing)).any? %>
         <%= render "shared/ticketing/shared_codes", codes: shared_codes %>
       <% end %>
       <% rows = @stats.by_tier.reject { |row| row.tier.bundle? || (row.tier.archived_at && row.sold.zero?) } %>

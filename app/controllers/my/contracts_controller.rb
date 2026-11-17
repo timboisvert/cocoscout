@@ -27,6 +27,15 @@ module My
       # each request stands (ContractDateRequests).
       @date_requests = ContractDateRequest.where(contract_id: @payee_contract_ids.to_a).showing_to_asker
                                           .includes(:show, :organization).order(:created_at).group_by(&:contract_id)
+      # Each contract's connection to an organization of the contractor's own
+      # (ContractConnections): the latest one, and whether one can be requested.
+      @connections = ContractConnection.where(contract_id: @contracts.map(&:id)).includes(:linked_organization, :linked_production)
+                                       .order(:created_at).index_by(&:contract_id)
+      managed = ContractConnections.managed_organization_ids(Current.user)
+      @connectable_contract_ids = @contracts.select do |contract|
+        @payee_contract_ids.include?(contract.id) && contract.status_active? && !@connections[contract.id]&.live? &&
+          (managed - [ contract.organization_id ]).any?
+      end.map(&:id).to_set
     end
 
     # Case 2: the contractor enters ticket sales for each show themselves. We
