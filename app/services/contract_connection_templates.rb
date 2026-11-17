@@ -12,6 +12,9 @@ class ContractConnectionTemplates
     { "name" => "production_name", "description" => "The production the contract is for" },
     { "name" => "linked_production_name", "description" => "The production in the contractor's organization" },
     { "name" => "note", "description" => "What they wrote, if anything" },
+    { "name" => "ticket_count", "description" => "How many, in words: 2 tickets, 1 comp" },
+    { "name" => "show_date", "description" => "The date they are for: Fri Dec 18" },
+    { "name" => "sold_line", "description" => "How full the date is now: 47 of 70 sold" },
     { "name" => "contractor_possessive", "description" => "The contractor's name as a possessive: Thea's, Chris'" },
     { "name" => "linked_organization_possessive", "description" => "The contractor's organization as a possessive" }
   ].freeze
@@ -32,6 +35,12 @@ class ContractConnectionTemplates
     { key: "contract_share_paid_into_balance", name: "A contract payment arrived in the balance (to the contractor's organization)",
       subject: "{{organization_name}} paid {{amount}} into {{linked_organization_possessive}} balance",
       body: %(<p>{{organization_name}} paid {{amount}} into {{linked_organization_possessive}} CocoScout balance, for your contract with them. It is there now: you can pay people from it or withdraw it.</p><p><a href="{{connections_url}}">Open Connections</a></p>) },
+    { key: "linked_ticket_sale", name: "Tickets sold for a connected contract's date (to the contractor's side)",
+      subject: "{{ticket_count}} sold for {{production_name}}, {{show_date}}. {{sold_line}}.",
+      body: %(<p>{{organization_name}} sold {{ticket_count}} for {{production_name}}, {{show_date}}. It stands at {{sold_line}}.</p>) },
+    { key: "linked_ticket_comp", name: "Comps given for a connected contract's date (to the contractor's side)",
+      subject: "{{ticket_count}} given for {{production_name}}, {{show_date}}. {{sold_line}}.",
+      body: %(<p>{{ticket_count}} given for {{production_name}}, {{show_date}}, at {{organization_name}}. It stands at {{sold_line}}.</p>) },
     { key: "contract_connection_requested", name: "A contractor requests to connect their organization (to the organization)",
       subject: "{{contractor_name}} requests to connect {{linked_organization_name}} to the contract for {{production_name}}",
       body: %(<p>{{contractor_name}} requests to connect {{linked_organization_name}} to the contract for {{production_name}}. It needs your OK.</p>{{#note}}<p>"{{note}}"</p>{{/note}}<p><a href="{{contract_url}}">Open the contract</a></p>) },

@@ -720,6 +720,7 @@ Rails.application.routes.draw do
     post  "/connections/:id/unlink",      to: "connections#unlink",      as: "unlink_connection"
     post  "/connections/:id/remove_dates", to: "connections#remove_dates", as: "connection_remove_dates"
     patch "/connections/:id/pay_to",      to: "connections#pay_to",      as: "connection_pay_to"
+    patch "/connections/:id/notify",      to: "connections#notify",      as: "connection_notify"
     post  "/connections/:id/dates",       to: "connections#answer_date", as: "connection_dates"
 
     # Messages

@@ -32,6 +32,8 @@ class ContractConnection < ApplicationRecord
   belongs_to :answered_by, class_name: "User", optional: true
   belongs_to :ended_by, class_name: "User", optional: true
   belongs_to :pay_choice_by, class_name: "User", optional: true
+  # Who on the contractor's side is notified as its tickets sell (LinkedSaleNotices).
+  has_many :watchers, class_name: "ContractConnectionWatcher", dependent: :destroy
 
   validates :status, inclusion: { in: STATUSES }
   validates :later_contracts, inclusion: { in: LATER_CONTRACTS }

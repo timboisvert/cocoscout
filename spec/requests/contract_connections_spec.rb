@@ -497,6 +497,33 @@ RSpec.describe "Contract connections", type: :request do
       expect(connection.reload.pay_into_balance).to be(false)
     end
 
+    it "lets the organization tick who is notified as tickets sell, and each person switch theirs off" do
+      listing = on_sale!
+      sign_in(user)
+      get manage_connections_path
+      expect(response.body).to include("Who is notified when a ticket sells").and include("Thea Example").and include("It never names the buyer")
+
+      patch manage_connection_notify_path(connection), params: { user_ids: [ user.id ] }
+      watcher = connection.watchers.sole
+      expect(watcher).to have_attributes(user: user, muted_at: nil)
+
+      # The sale's own job tells them, through the connection.
+      tier = listing.ticket_tiers.first || listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 40)
+      order = TicketCheckout.start!(listing: listing, quantities: { tier.id.to_s => "1" })
+      order.update!(buyer_name: "Dana Whitfield", buyer_email: "dana@example.com")
+      TicketOrderSettlement.settle!(order, payment_intent_id: "pi_linked", charge_id: "ch_linked")
+      expect { TicketingAfterSaleJob.perform_now(order.id) }.to change { user.notifications.where(kind: "linked_ticket_sale").count }.by(1)
+
+      # Their own switch, in their account.
+      get account_notifications_path
+      expect(response.body).to include("Ticket sales shared with you").and include("The Holly Problem at Stars and Garters")
+      patch account_notifications_path, params: { linked_sales: { watcher.id => "0" } }
+      expect(watcher.reload.muted_at).to be_present
+      expect { TicketingAfterSaleJob.perform_now(order.id) }.not_to change { user.notifications.where(kind: "linked_ticket_sale").count }
+      patch account_notifications_path, params: { linked_sales: { watcher.id => "1" } }
+      expect(watcher.reload.muted_at).to be_nil
+    end
+
     it "says where a coming date is booked on the production page, and doesn't ask where its tickets are sold" do
       sign_in(user)
       get manage_production_path(their_production)

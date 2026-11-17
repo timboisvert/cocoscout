@@ -10,7 +10,7 @@ module Manage
   # settings tab.
   class ConnectionsController < Manage::ManageController
     before_action :ensure_org_owner_or_manager
-    before_action :set_connection, only: %i[update unlinking unlink remove_dates answer_date pay_to]
+    before_action :set_connection, only: %i[update unlinking unlink remove_dates answer_date pay_to notify]
 
     def index
       @connections = scope.where.not(status: %w[withdrawn declined])
@@ -59,6 +59,14 @@ module Manage
       removed, kept = LinkedDates.remove_released!(@connection)
       notice = "#{helpers.pluralize(removed, 'date')} removed from #{@connection.production_name}."
       notice += " #{helpers.pluralize(kept, 'date')} with people on #{kept == 1 ? 'it' : 'them'} stayed: cancel #{kept == 1 ? 'it' : 'them'} yourself, so they're notified." if kept.positive?
+      redirect_to manage_connections_path, notice: notice
+    end
+
+    # Who on this side is notified as the contract's tickets sell and comps
+    # are given, person by person (LinkedSaleNotices).
+    def notify
+      chosen = LinkedSaleNotices.choose!(@connection, params[:user_ids], by: Current.user)
+      notice = chosen.empty? ? "Saved. Nobody is notified as tickets sell." : "Saved. #{helpers.pluralize(chosen.size, 'person')} will be notified as tickets sell."
       redirect_to manage_connections_path, notice: notice
     end
 

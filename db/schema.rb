@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_17_234652) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_18_004417) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -754,6 +754,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_234652) do
     t.datetime "updated_at", null: false
     t.index ["contract_id", "position"], name: "index_contract_appendixes_on_contract_id_and_position"
     t.index ["contract_id"], name: "index_contract_appendixes_on_contract_id"
+  end
+
+  create_table "contract_connection_watchers", force: :cascade do |t|
+    t.bigint "contract_connection_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "enabled_by_id"
+    t.datetime "muted_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contract_connection_id", "user_id"], name: "index_connection_watchers_one_per_person", unique: true
+    t.index ["user_id"], name: "index_contract_connection_watchers_on_user_id"
   end
 
   create_table "contract_connections", force: :cascade do |t|
@@ -5098,6 +5109,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_234652) do
   add_foreign_key "city_hub_memberships", "city_hubs"
   add_foreign_key "cocoscout_ledger_entries", "organizations"
   add_foreign_key "contract_appendixes", "contracts"
+  add_foreign_key "contract_connection_watchers", "contract_connections", on_delete: :cascade
+  add_foreign_key "contract_connection_watchers", "users", column: "enabled_by_id", on_delete: :nullify
+  add_foreign_key "contract_connection_watchers", "users", on_delete: :cascade
   add_foreign_key "contract_connections", "contracts", on_delete: :cascade
   add_foreign_key "contract_connections", "organizations", column: "linked_organization_id", on_delete: :cascade
   add_foreign_key "contract_connections", "organizations", on_delete: :cascade

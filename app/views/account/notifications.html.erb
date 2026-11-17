@@ -93,6 +93,25 @@
       </div>
     <% end %>
 
+    <% if @linked_sale_switches.present? %>
+      <%# Ticket sales an organization chose to notify them of, through a connected contract. %>
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-linked-sale-switches>
+        <%= render "shared/section_heading", padding: "px-4 py-3 sm:px-6 sm:py-4", title: "Ticket sales shared with you" %>
+        <p class="px-4 sm:px-6 pt-3 pb-2 text-sm text-gray-600">You are notified each time tickets sell online or comps are given for these shows. It says how many and how full the date is, and it is never an email. Switch one off to stop it.</p>
+        <% @linked_sale_switches.each do |watcher| %>
+          <% connection = watcher.contract_connection %>
+          <div class="flex items-center gap-3 px-4 sm:px-6 py-3 border-t border-gray-100">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-gray-900"><%= connection.production_name.presence || connection.contract.production&.name %> at <%= connection.organization.name %></p>
+              <p class="text-xs text-gray-500 mt-0.5"><%= connection.linked_organization.name %> switched this on for you.</p>
+            </div>
+            <%= render "shared/toggle_switch", name: "linked_sales[#{watcher.id}]", checked: !watcher.muted?, hidden_false: true,
+                  aria_label: "Ticket sales for #{connection.production_name} at #{connection.organization.name}" %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
     <div class="mb-6">
       <%= render "shared/button", text: "Save", type: :submit, variant: "primary" %>
     </div>

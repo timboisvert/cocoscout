@@ -208,6 +208,38 @@
               <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
             </div>
           <% end %>
+
+          <%# Who is notified as tickets sell: person by person, everyone off to start (Tim, 2026-11-17). %>
+          <%
+            candidates = LinkedSaleNotices.candidates(connection)
+            watching = connection.watchers.index_by(&:user_id)
+          %>
+          <%= form_with url: manage_connection_notify_path(connection), method: :patch, local: true, data: { turbo_action: "replace", who_is_notified: connection.id },
+                class: "border-t border-gray-200 px-6 py-5" do %>
+            <h3 class="text-base font-semibold text-gray-900">Who is notified when a ticket sells</h3>
+            <p class="text-sm text-gray-600 mt-1 max-w-3xl">
+              The people you tick get a notification each time <%= seller.name %> sells tickets online or gives comps for these dates: how many, for which date,
+              and how full it is now. It never names the buyer, and it is never an email. Each person can switch theirs off in their own account.
+            </p>
+            <%= hidden_field_tag "user_ids[]", "", id: nil %>
+            <div class="mt-4 bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
+              <% candidates.each do |candidate| %>
+                <% watcher = watching[candidate.user.id] %>
+                <label class="flex items-center gap-3 px-4 py-3 cursor-pointer">
+                  <%= check_box_tag "user_ids[]", candidate.user.id, watcher.present?, id: "notify_#{connection.id}_#{candidate.user.id}",
+                        class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+                  <span class="min-w-0 flex-1">
+                    <span class="block text-sm font-medium text-gray-900"><%= candidate.name %></span>
+                    <span class="block text-xs text-gray-500"><%= candidate.role %><%= " · switched it off for now" if watcher&.muted? %></span>
+                  </span>
+                </label>
+              <% end %>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">Only people who can see these ticket sales are listed. The cast isn't.</p>
+            <div class="mt-4">
+              <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+            </div>
+          <% end %>
         <% end %>
       </section>
 
