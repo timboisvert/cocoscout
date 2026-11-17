@@ -13,7 +13,7 @@
 
   <p class="text-sm text-gray-600 mb-6">
     <% if @seller %>
-      How <%= @production.name %> is selling at <%= @seller.name %>, date by date. You can see how each date is doing and share its ticket link.
+      How <%= @production.name %> is selling at <%= @seller.name %>, date by date. You can see how each date is doing, share its ticket link, and give comps from what a date has left.
       Prices, orders, refunds and the door stay with <%= @seller.name %>.
     <% else %>
       How <%= @production.name %> is selling, date by date. You can look<%= ", give comps within your allowance" if @level == :full %>, and share the link.

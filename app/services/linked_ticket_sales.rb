@@ -87,6 +87,21 @@ class LinkedTicketSales
     below.any? ? "#{words} #{theirs.name} decides how much of that #{below.to_sentence} can see, and the cast is never shown more than how many tickets have sold." : words
   end
 
+  # Whether a user runs the contractor's organization that one of the
+  # seller's listings is connected to: its owners and managers, while the
+  # sales are shared. They give comps for the date as the contractor does
+  # (TicketSalesAccess.comp_allowance).
+  def self.manages_for?(user, listing)
+    return false unless user && listing&.show
+
+    contract_id = listing.show.space_rental_id && SpaceRental.where(id: listing.show.space_rental_id).pick(:contract_id)
+    return false unless contract_id
+
+    ContractConnection.connected.where(contract_id: contract_id).includes(:contract, :linked_organization).any? do |connection|
+      sharing?(connection) && connection.linked_organization.manageable_by?(user)
+    end
+  end
+
   def self.sharing?(connection)
     connection.connected? && connection.contract.shares_ticket_sales
   end

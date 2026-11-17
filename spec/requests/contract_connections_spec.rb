@@ -373,6 +373,25 @@ RSpec.describe "Contract connections", type: :request do
       expect(response.body).not_to include("data-followed-contract-box")
     end
 
+    it "lets another manager of the contractor's organization give comps from what the date has left" do
+      listing = on_sale!
+      tier = listing.ticket_tiers.first || listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 40)
+      colleague = create(:user, password: password)
+      create(:person, user: colleague)
+      create(:organization_role, :manager, user: colleague, organization: theirs)
+      expect(TicketSalesAccess.comp_allowance(colleague, listing)).to include(contract: true)
+
+      sign_in(colleague)
+      post set_organization_path(id: theirs.id)
+      expect do
+        post manage_production_sale_comps_path(their_production, listing), params: { name: "A Friend", quantity: "1", tier_id: tier.id }
+      end.to change { listing.tickets.count }.by(1)
+
+      # Not once the seller stops sharing.
+      contract.update!(shares_ticket_sales: false)
+      expect(TicketSalesAccess.comp_allowance(colleague, listing)).to be_nil
+    end
+
     it "shows buyers the show's own description on the seller's ticket page, and the seller's again once it chooses its own" do
       listing = on_sale!
       listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 40) if listing.ticket_tiers.empty?

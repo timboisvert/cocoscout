@@ -97,7 +97,9 @@ class TicketSalesAccess
     return nil if listing.organization.manageable_by?(user)
     return nil unless listing.effective_comps_enabled
 
-    if on_contract_for?(user, listing)
+    # The contractor's own organization, connected to the contract: its
+    # owners and managers give comps as the contractor does (LinkedTicketSales).
+    if on_contract_for?(user, listing) || LinkedTicketSales.manages_for?(user, listing)
       date_left = listing.comps_left
       return { date_left: date_left, team_limit: nil, team_given: 0, left: date_left, contract: true }
     end
