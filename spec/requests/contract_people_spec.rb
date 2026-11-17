@@ -205,7 +205,7 @@ RSpec.describe "Contract people", type: :request do
 
     get my_ticket_sale_path(listing)
     html = response.body
-    expect(html).to include("You gave this.", "edit-comp-#{mine.id}", "remove-comp-#{mine.id}", my_ticket_sale_comp_path(listing, mine.id))
+    expect(html).to include("You issued this.", "edit-comp-#{mine.id}", "remove-comp-#{mine.id}", my_ticket_sale_comp_path(listing, mine.id))
     expect(html).not_to include("edit-comp-#{dans.id}", "edit-comp-#{bought.id}")
 
     patch my_ticket_sale_comp_path(listing, mine.id), params: { name: "Abe Corrected", email: "abe@example.com", send_tickets: "1" }

@@ -1,8 +1,10 @@
 <%# Who's coming to a show: one row per order still holding tickets.
     Locals: orders (TicketOrder, tickets loaded), read_only (producers see
     names and counts, never emails or links to orders), own_ids (optional:
-    the comps the reader gave themselves; each gets Edit and Remove, whose
-    modals shared/ticketing/own_comp_modals renders beside the list). %>
+    the comps the reader issued themselves; each gets a dot menu with Edit
+    and Remove, whose modals shared/ticketing/own_comp_modals renders beside
+    the list; the card around the list must not clip, or the menu is cut
+    off on the last row). %>
 <%
   read_only = local_assigns.fetch(:read_only, false)
   own_ids = local_assigns[:own_ids] || []
@@ -48,12 +50,16 @@
           <%= held.empty? ? "" : (inside.zero? ? "Not checked in yet" : "#{inside} of #{held.size} checked in") %>
         </div>
         <% if own_ids.include?(order.id) && held.any? %>
-          <div class="w-full sm:w-auto flex items-center gap-2" data-own-comp="<%= order.id %>">
-            <span class="text-xs text-gray-500">You gave this.</span>
-            <%= render "shared/button", text: "Edit", variant: "secondary", size: "small", type: :button,
-                  data: { controller: "modal", action: "click->modal#open", modal_id: "edit-comp-#{order.id}" } %>
-            <%= render "shared/button", text: "Remove", variant: "secondary", size: "small", type: :button,
-                  data: { controller: "modal", action: "click->modal#open", modal_id: "remove-comp-#{order.id}" } %>
+          <%# The reader issued this comp: Edit and Remove behind the row's dot
+              menu, each opening its modal (shared/ticketing/own_comp_modals). %>
+          <div class="flex items-center gap-2 ml-auto" data-own-comp="<%= order.id %>">
+            <span class="text-xs text-gray-500">You issued this.</span>
+            <%= render "shared/action_menu", id: "comp-#{order.id}-actions", title: order.buyer_name.presence || "This comp", label: "Edit or remove this comp", items: [
+                  { text: "Edit", path: "#", icon: "M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z",
+                    data: { controller: "modal", action: "click->modal#open click->dropdown#close", modal_id: "edit-comp-#{order.id}" } },
+                  { text: "Remove", path: "#", icon: "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16",
+                    data: { controller: "modal", action: "click->modal#open click->dropdown#close", modal_id: "remove-comp-#{order.id}" } }
+                ] %>
           </div>
         <% end %>
       </li>

@@ -412,7 +412,7 @@ RSpec.describe "Contract connections", type: :request do
 
       # The comp is the colleague's to edit and remove, there in the organization; the contractor's own isn't.
       comp = listing.ticket_orders.find_by!(buyer_name: "A Friend")
-      expect(response.body).to include("You gave this.", manage_production_sale_comp_path(their_production, listing, comp.id))
+      expect(response.body).to include("You issued this.", manage_production_sale_comp_path(their_production, listing, comp.id))
       patch manage_production_sale_comp_path(their_production, listing, comp.id), params: { name: "A Better Friend", email: "" }
       expect(comp.reload.buyer_name).to eq("A Better Friend")
       contractors = TicketComps.give!(listing, [ TicketComps::Guest.new(name: "Thea's Guest", email: nil, tier: tier, quantity: 1) ], by: user, email_them: false).sole

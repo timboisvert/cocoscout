@@ -1,5 +1,5 @@
-<%# Edit and Remove for the comps someone gave themselves, opened from their
-    rows on the guest list (shared/ticketing/guest_list, own_ids). The giver
+<%# Edit and Remove for the comps someone issued themselves, opened from the
+    dot menu on their rows on the guest list (shared/ticketing/guest_list, own_ids). The giver
     changes the guest's name and email, or takes the comp back, until the
     show starts (TicketComps.theirs?).
     Locals: orders (the comps, TicketOrder with tickets loaded),
@@ -27,7 +27,7 @@
       </div>
       <%= form_with url: url, method: :patch, data: { turbo: false } do %>
         <div class="p-6 space-y-5">
-          <p class="text-sm text-gray-600">You gave <%= tickets %> to <%= name %>. You can change who <%= count == 1 ? "it is" : "they are" %> for until the show starts. To change how many, remove this comp and give a new one.</p>
+          <p class="text-sm text-gray-600">You issued <%= tickets %> to <%= name %>. You can change who <%= count == 1 ? "it is" : "they are" %> for until the show starts. To change how many, remove this comp and issue a new one.</p>
           <div>
             <label for="edit_comp_name_<%= order.id %>" class="<%= label_class %>">Name</label>
             <%= text_field_tag :name, order.buyer_name, id: "edit_comp_name_#{order.id}", required: true, autocomplete: "off", class: input_class %>
@@ -51,6 +51,6 @@
 
   <%= render "shared/confirm_modal", id: "remove-comp-#{order.id}",
         title: "Remove this comp?",
-        message: "#{name.upcase_first} will lose #{count == 1 ? 'the ticket' : "the #{tickets}"} you gave them. #{count == 1 ? 'The ticket stops' : 'The tickets stop'} working at the door, and #{count == 1 ? 'the seat is' : 'the seats are'} free again.#{' They will be notified by email.' if order.buyer_email.present?} This can't be undone, but you can give them a new comp.",
+        message: "#{name.upcase_first} will lose #{count == 1 ? 'the ticket' : "the #{tickets}"} you issued them. #{count == 1 ? 'The ticket stops' : 'The tickets stop'} working at the door, and #{count == 1 ? 'the seat is' : 'the seats are'} free again.#{' They will be notified by email.' if order.buyer_email.present?} This can't be undone, but you can issue them a new comp.",
         confirm_text: "Remove", url: url, method: :delete %>
 <% end %>

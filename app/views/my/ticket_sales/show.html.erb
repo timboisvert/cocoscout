@@ -44,7 +44,8 @@
       </div>
     <% end %>
 
-    <div id="guests" class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <%# Not overflow-hidden: a row's dot menu opens past the card's edge. %>
+<div id="guests" class="bg-white border border-gray-200 rounded-lg">
       <div class="px-5 py-3 border-b border-gray-200">
         <h2 class="text-sm font-semibold text-gray-900">Who's coming <span class="font-normal text-gray-500">· <%= pluralize(@stats.sold, "ticket") %></span></h2>
       </div>
