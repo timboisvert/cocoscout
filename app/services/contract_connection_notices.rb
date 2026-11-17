@@ -33,6 +33,7 @@ class ContractConnectionNotices
         Notifier.deliver(user: user, category: "contracts", kind: "contract_share_paid_into_balance",
                          template_key: "contract_share_paid_into_balance", path: path, organization: target, subject: item,
                          variables: { organization_name: payer.name, linked_organization_name: target.name, amount: amount,
+                                      linked_organization_possessive: possessive(target.name), contractor_possessive: "",
                                       contractor_name: "", production_name: "", linked_production_name: "", note: "", connections_url: path })
       end
     rescue StandardError => e
@@ -86,6 +87,8 @@ class ContractConnectionNotices
                        organization: connection.organization, subject: connection,
                        variables: { contractor_name: contract.contractor_name, organization_name: connection.organization.name,
                                     linked_organization_name: connection.linked_organization.name,
+                                    linked_organization_possessive: possessive(connection.linked_organization.name),
+                                    contractor_possessive: possessive(contract.contractor_name),
                                     production_name: contract.production&.name || contract.production_name.to_s,
                                     linked_production_name: connection.production_name.to_s, note: "" }.merge(variables))
     rescue StandardError => e
@@ -105,6 +108,9 @@ class ContractConnectionNotices
       Rails.logger.error("[ContractConnectionNotices] contract #{contract.id} #{key}: #{e.class}: #{e.message}")
       nil
     end
+
+    # "Rising Stars'" / "Thea's".
+    def possessive(name) = name.to_s.end_with?("s") ? "#{name}'" : "#{name}'s"
 
     def routes = Rails.application.routes.url_helpers
   end
