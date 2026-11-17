@@ -6,12 +6,13 @@ module My
   # in full — sold of seats, sales, refunds, and the guest list as names
   # only. Nothing here can be changed, and no buyer's email ever shows,
   # except that someone on a contract that includes the date gives comps for
-  # their own show (TicketSalesAccess.comp_allowance).
+  # their own show (TicketSalesAccess.comp_allowance), and changes or
+  # removes the ones they gave (TicketComps.theirs?).
   class TicketSalesController < ApplicationController
     include GivesComps
 
     before_action :require_authentication
-    before_action :set_listing, only: %i[show create_comp preview_comps]
+    before_action :set_listing, only: %i[show create_comp preview_comps update_comp remove_comp]
 
     UPCOMING_BATCH = 30
     PAST_PER_PAGE = 30
@@ -43,6 +44,7 @@ module My
       @show_my_sidebar = true
       @stats = Ticketing::ListingStats.of(@listing)
       @allowance = TicketSalesAccess.comp_allowance(Current.user, @listing)
+      @own_comp_ids = TicketComps.own_ids(@listing, Current.user)
       @guest_orders = @listing.ticket_orders.where(status: TicketOrder::WAS_PAID).includes(:ticket_order_items, tickets: %i[ticket_tier ticket_pass bundle_tier])
                               .order(:buyer_name, :id).to_a.select { |o| o.tickets.any? { |t| Ticket::SOLD_STATUSES.include?(t.status) } }
     end
@@ -57,6 +59,15 @@ module My
     # A pasted list's preview, within the same allowance.
     def preview_comps
       preview_comps_within_allowance(@listing, TicketSalesAccess.comp_allowance(Current.user, @listing))
+    end
+
+    # A comp they gave themselves, corrected or taken back (GivesComps).
+    def update_comp
+      change_comp_given(@listing, back: my_ticket_sale_path(@listing, anchor: "guests"))
+    end
+
+    def remove_comp
+      remove_comp_given(@listing, back: my_ticket_sale_path(@listing, anchor: "guests"))
     end
 
     # A morning email on how their shows are selling, on or off for every

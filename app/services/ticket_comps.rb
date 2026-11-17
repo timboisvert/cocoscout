@@ -184,6 +184,60 @@ class TicketComps
     raise Error, sold_out_message(listing, requests)
   end
 
+  # ---- Changing a comp after it's given (Tim, 2026-11-17) ---------------
+  # Whoever gave a comp can change the guest's name or email, or remove it,
+  # until the show starts: someone on a contract on My Ticket Sales, and a
+  # production team manager or the people who run a connected organization
+  # on their sales page (GivesComps). The organization's own managers do
+  # the same from the order's page.
+
+  # Whether this comp is the user's to change: they gave it, it still
+  # holds tickets, and the show hasn't started.
+  def self.theirs?(order, user)
+    return false unless user && order&.channel == "comp" && order.issued_by_id == user.id
+
+    order.ticket_listing.show.date_and_time > Time.current && order.tickets.any? { |ticket| Ticket::SOLD_STATUSES.include?(ticket.status) }
+  end
+
+  # The comps on a date that are the user's to change, by order id.
+  def self.own_ids(listing, user)
+    return [] unless user && listing.show.date_and_time > Time.current
+
+    listing.ticket_orders.where(channel: "comp", issued_by_id: user.id, status: TicketOrder::WAS_PAID).pluck(:id)
+  end
+
+  # The guest's name and email, corrected. send_tickets emails the tickets
+  # to the address it now has.
+  def self.change!(order, name:, email:, by:, send_tickets: false)
+    raise Error, "This comp can't be changed any more." unless theirs?(order, by)
+
+    name = name.to_s.squish
+    email = email.to_s.strip.downcase.presence
+    raise Error, "Add the guest's name." if name.blank?
+    raise Error, "\"#{email}\" isn't an email address. Nothing was changed." if email && !email.match?(URI::MailTo::EMAIL_REGEXP)
+    raise Error, "Add their email to send their tickets, or switch off Email them their tickets." if send_tickets && email.blank?
+
+    order.update!(buyer_name: name, buyer_email: email)
+    TicketOrderConfirmationJob.perform_later(order.id) if send_tickets
+    order
+  rescue ActiveRecord::RecordInvalid => e
+    raise Error, e.record.errors.full_messages.to_sentence
+  end
+
+  # The comp taken back: its tickets stop working, its seats are free and
+  # it no longer counts against the giver's number. The guest is emailed if
+  # the comp has their address. Not once any of them has checked in.
+  def self.remove!(order, by:)
+    raise Error, "This comp can't be removed any more." unless theirs?(order, by)
+    if order.tickets.any?(&:checked_in?)
+      raise Error, "#{order.buyer_name.presence || 'This guest'} has already checked in, so this comp can't be removed."
+    end
+
+    TicketOrderRefund.issue!(order, by: by, reason: "Comp removed by the person who gave it", notify: true)
+  rescue TicketOrderRefund::Error => e
+    raise Error, e.message
+  end
+
   # Which type ran short, and where its seats went: "Front Row VIP has no
   # seats left: 3 sold here, 9 on Ticket Tailor."
   def self.sold_out_message(listing, requests)

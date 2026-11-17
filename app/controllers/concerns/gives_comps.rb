@@ -4,6 +4,7 @@
 # allowance (TicketSalesAccess.comp_allowance): a production team manager on
 # their sales page, a contract person on My Ticket Sales. One at a
 # time, or a pasted list (mode=paste), never more than what's left to them.
+# A comp they gave can be changed or removed by them until the show starts.
 # The manager's own Manage::TicketCompsController uses the pasted list with
 # no allowance.
 module GivesComps
@@ -34,6 +35,30 @@ module GivesComps
     redirect_to back, alert: e.message
   end
 
+  # A comp the signed-in person gave, changed: the guest's name and email
+  # (TicketComps.change!).
+  def change_comp_given(listing, back:)
+    order = comp_given(listing)
+    send_tickets = params[:send_tickets] == "1"
+    TicketComps.change!(order, name: params[:name], email: params[:email], by: Current.user, send_tickets: send_tickets)
+    sent = " Their tickets are on the way to #{order.buyer_email}." if send_tickets
+    redirect_to back, notice: "Saved. The comp is for #{order.buyer_name} now.#{sent}"
+  rescue TicketComps::Error => e
+    redirect_to back, alert: e.message
+  end
+
+  # ...and taken back (TicketComps.remove!).
+  def remove_comp_given(listing, back:)
+    order = comp_given(listing)
+    name = order.buyer_name.presence || "the guest"
+    emailed = order.buyer_email.present?
+    refund = TicketComps.remove!(order, by: Current.user)
+    count = refund.ticket_ids.size
+    redirect_to back, notice: "Removed #{helpers.pluralize(count, 'ticket')} for #{name}. #{count == 1 ? 'The seat is' : 'The seats are'} free again#{emailed ? ', and they have been notified by email' : ''}."
+  rescue TicketComps::Error => e
+    redirect_to back, alert: e.message
+  end
+
   # The pasted list's preview, into the open modal (fetched, so no Turbo).
   def preview_comps_within_allowance(listing, allowance)
     return head(:forbidden) unless allowance
@@ -44,6 +69,12 @@ module GivesComps
   private
 
   def pasting_comps? = params[:mode] == "paste"
+
+  # One of this date's comps that the signed-in person gave: never anyone
+  # else's, and never an order that was bought.
+  def comp_given(listing)
+    listing.ticket_orders.where(channel: "comp", issued_by_id: Current.user.id).find(params[:order_id])
+  end
 
   def render_comps_preview(listing, allowance_left: nil)
     render partial: "manage/ticket_listings/comps_preview", locals: { preview: pasted_comps(listing, allowance_left: allowance_left) }

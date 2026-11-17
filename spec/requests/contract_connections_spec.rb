@@ -410,6 +410,17 @@ RSpec.describe "Contract connections", type: :request do
       get manage_production_sale_path(their_production, listing)
       expect(CGI.unescapeHTML(response.body)).to include("Give comps · 1 of 2 left", "allows 2 comps for this date, shared between everyone on the contract. 1 has been given so far.")
 
+      # The comp is the colleague's to edit and remove, there in the organization; the contractor's own isn't.
+      comp = listing.ticket_orders.find_by!(buyer_name: "A Friend")
+      expect(response.body).to include("You gave this.", manage_production_sale_comp_path(their_production, listing, comp.id))
+      patch manage_production_sale_comp_path(their_production, listing, comp.id), params: { name: "A Better Friend", email: "" }
+      expect(comp.reload.buyer_name).to eq("A Better Friend")
+      contractors = TicketComps.give!(listing, [ TicketComps::Guest.new(name: "Thea's Guest", email: nil, tier: tier, quantity: 1) ], by: user, email_them: false).sole
+      delete manage_production_sale_comp_path(their_production, listing, contractors.id)
+      expect(response).to have_http_status(:not_found)
+      expect { delete manage_production_sale_comp_path(their_production, listing, comp.id) }.to change { listing.tickets.where(status: Ticket::SOLD_STATUSES).count }.by(-1)
+      expect(flash[:notice]).to eq("Removed 1 ticket for A Better Friend. The seat is free again.")
+
       # Not once the seller stops sharing.
       contract.update!(shares_ticket_sales: false)
       expect(TicketSalesAccess.comp_allowance(colleague, listing)).to be_nil

@@ -190,6 +190,72 @@ RSpec.describe "Contract people", type: :request do
     expect(html).not_to include("Your link for this date", "Who's coming is in", "Who's coming, and your comps")
   end
 
+  # Tim, 2026-11-17: whoever gave a comp can change the guest's name or take it back.
+  it "lets them edit and remove a comp they gave, and nobody else's" do
+    listing = open_box_office
+    TicketingProfile.for(org).update!(contract_comps_per_show: 3)
+    tier = listing.ticket_tiers.first
+    sign_in(priya)
+    post my_ticket_sale_comps_path(listing), params: { name: "Abe Comp", quantity: "2", tier_id: tier.id }
+    mine = listing.ticket_orders.find_by!(buyer_name: "Abe Comp")
+    # One the contractor gave, and one somebody bought.
+    dans = TicketComps.give!(listing, [ TicketComps::Guest.new(name: "Dan's Guest", email: nil, tier: tier, quantity: 1) ], by: dan, email_them: false).sole
+    bought = create(:ticket_order, organization: org, ticket_listing: listing, status: "paid", buyer_name: "Paying Buyer")
+    bought.tickets.create!(ticket_tier: tier, ticket_listing: listing, status: "valid", price_cents: 2_000)
+
+    get my_ticket_sale_path(listing)
+    html = response.body
+    expect(html).to include("You gave this.", "edit-comp-#{mine.id}", "remove-comp-#{mine.id}", my_ticket_sale_comp_path(listing, mine.id))
+    expect(html).not_to include("edit-comp-#{dans.id}", "edit-comp-#{bought.id}")
+
+    patch my_ticket_sale_comp_path(listing, mine.id), params: { name: "Abe Corrected", email: "abe@example.com", send_tickets: "1" }
+    expect(response).to redirect_to(my_ticket_sale_path(listing, anchor: "guests"))
+    expect(mine.reload).to have_attributes(buyer_name: "Abe Corrected", buyer_email: "abe@example.com")
+    expect(flash[:notice]).to eq("Saved. The comp is for Abe Corrected now. Their tickets are on the way to abe@example.com.")
+
+    patch my_ticket_sale_comp_path(listing, mine.id), params: { name: "", email: "" }
+    expect(flash[:alert]).to eq("Add the guest's name.")
+    expect(mine.reload.buyer_name).to eq("Abe Corrected")
+
+    # Not the contractor's comp, and not a sale.
+    patch my_ticket_sale_comp_path(listing, dans.id), params: { name: "Mine Now" }
+    expect(response).to have_http_status(:not_found)
+    delete my_ticket_sale_comp_path(listing, bought.id)
+    expect(response).to have_http_status(:not_found)
+    expect(dans.reload.buyer_name).to eq("Dan's Guest")
+
+    # Removing it frees the seats and gives the number back to the contract.
+    expect(TicketSalesAccess.comp_allowance(priya, TicketListing.find(listing.id))).to include(left: 0)
+    expect { delete my_ticket_sale_comp_path(listing, mine.id) }.to change { Ticket.where(ticket_listing_id: listing.id, status: Ticket::SOLD_STATUSES).count }.by(-2)
+    expect(flash[:notice]).to eq("Removed 2 tickets for Abe Corrected. The seats are free again, and they have been notified by email.")
+    expect(TicketSalesAccess.comp_allowance(priya, TicketListing.find(listing.id))).to include(left: 2)
+    get my_ticket_sale_path(listing)
+    expect(response.body).not_to include("edit-comp-#{mine.id}")
+
+    # Once the show has started, a comp stays as it is.
+    post my_ticket_sale_comps_path(listing), params: { name: "Late Guest", quantity: "1", tier_id: tier.id }
+    late = listing.ticket_orders.find_by!(buyer_name: "Late Guest")
+    show.update_columns(date_and_time: 1.hour.ago)
+    delete my_ticket_sale_comp_path(listing, late.id)
+    expect(flash[:alert]).to eq("This comp can't be removed any more.")
+    patch my_ticket_sale_comp_path(listing, late.id), params: { name: "Too Late" }
+    expect(flash[:alert]).to eq("This comp can't be changed any more.")
+    expect(late.reload.buyer_name).to eq("Late Guest")
+  end
+
+  it "keeps a comp whose guest has already checked in" do
+    listing = open_box_office
+    TicketingProfile.for(org).update!(contract_comps_per_show: 3)
+    sign_in(priya)
+    post my_ticket_sale_comps_path(listing), params: { name: "Early Bird", quantity: "1", tier_id: listing.ticket_tiers.first.id }
+    comp = listing.ticket_orders.find_by!(buyer_name: "Early Bird")
+    comp.tickets.first.update_columns(status: "checked_in", checked_in_at: Time.current)
+
+    delete my_ticket_sale_comp_path(listing, comp.id)
+    expect(flash[:alert]).to eq("Early Bird has already checked in, so this comp can't be removed.")
+    expect(comp.tickets.first.reload.status).to eq("checked_in")
+  end
+
   it "never puts them on the production team or in the organization" do
     expect(priya.production_permissions).to be_empty
     expect(OrganizationRole.where(user: priya)).to be_empty

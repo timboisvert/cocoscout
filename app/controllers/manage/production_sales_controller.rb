@@ -15,7 +15,7 @@ module Manage
     before_action :set_production
     before_action :check_production_access
     before_action :require_sales_level!
-    before_action :set_listing, only: %i[show create_comp preview_comps]
+    before_action :set_listing, only: %i[show create_comp preview_comps update_comp remove_comp]
 
     def index
       @filter = params[:dates] == "past" ? "past" : "upcoming"
@@ -39,12 +39,27 @@ module Manage
       @guest_orders = @listing.ticket_orders.where(status: TicketOrder::WAS_PAID).includes(:ticket_order_items, tickets: %i[ticket_tier ticket_pass bundle_tier])
                               .order(:buyer_name, :id).to_a.select { |o| o.tickets.any? { |t| Ticket::SOLD_STATUSES.include?(t.status) } }
       @allowance = TicketSalesAccess.comp_allowance(Current.user, @listing)
+      @own_comp_ids = TicketComps.own_ids(@listing, Current.user)
     end
 
     # A comp from a production team manager, within their allowance; the
     # same form as the manager's (GivesComps).
     def create_comp
       give_comp_within_allowance(@listing, TicketSalesAccess.comp_allowance(Current.user, @listing), back: sale_path)
+    end
+
+    # A comp they gave themselves, corrected or taken back (GivesComps).
+    # Only at the full view, where comps are given.
+    def update_comp
+      return redirect_to(sale_path, alert: "You can't change comps for this date.") unless @level == :full
+
+      change_comp_given(@listing, back: sale_path)
+    end
+
+    def remove_comp
+      return redirect_to(sale_path, alert: "You can't change comps for this date.") unless @level == :full
+
+      remove_comp_given(@listing, back: sale_path)
     end
 
     # A pasted list's preview, within the same allowance.

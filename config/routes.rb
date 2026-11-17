@@ -496,6 +496,8 @@ Rails.application.routes.draw do
     get   "/ticket-sales/:id",              to: "ticket_sales#show",        as: "ticket_sale"
     post  "/ticket-sales/:id/comps",        to: "ticket_sales#create_comp", as: "ticket_sale_comps"
     post  "/ticket-sales/:id/comps/preview", to: "ticket_sales#preview_comps", as: "ticket_sale_comps_preview"
+    delete "/ticket-sales/:id/comps/:order_id", to: "ticket_sales#remove_comp", as: "remove_ticket_sale_comp"
+    patch "/ticket-sales/:id/comps/:order_id", to: "ticket_sales#update_comp", as: "ticket_sale_comp"
 
     # Slim account screen for the mobile app. Routes /my/account → AccountsController#show.
     get   "/account",                       to: "accounts#show",            as: "account"
@@ -709,6 +711,8 @@ Rails.application.routes.draw do
     get    "/productions/:production_id/sales/:id",       to: "production_sales#show",        as: "production_sale"
     post   "/productions/:production_id/sales/:id/comps", to: "production_sales#create_comp", as: "production_sale_comps"
     post   "/productions/:production_id/sales/:id/comps/preview", to: "production_sales#preview_comps", as: "production_sale_comps_preview"
+    patch  "/productions/:production_id/sales/:id/comps/:order_id", to: "production_sales#update_comp", as: "production_sale_comp"
+    delete "/productions/:production_id/sales/:id/comps/:order_id", to: "production_sales#remove_comp", as: "remove_production_sale_comp"
     get "/",                              to: "manage#index"
 
     # Connections: other organizations' contracts connected to this one, as

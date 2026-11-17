@@ -57,8 +57,10 @@
         <div class="px-5 py-3 border-b border-gray-200">
           <h2 class="text-sm font-semibold text-gray-900">Who's coming <span class="font-normal text-gray-500">· <%= pluralize(@stats.sold, "ticket") %></span></h2>
         </div>
-        <%= render "shared/ticketing/guest_list", orders: @guest_orders, read_only: true %>
+        <%= render "shared/ticketing/guest_list", orders: @guest_orders, read_only: true, own_ids: @own_comp_ids %>
       </div>
+      <%= render "shared/ticketing/own_comp_modals", orders: @guest_orders.select { |order| @own_comp_ids.include?(order.id) },
+            comp_url: ->(order) { manage_production_sale_comp_path(@production, @listing, order.id) } %>
 
       <% if can_comp %>
         <%= render "manage/ticket_listings/comps_modal", id: "comps-modal", listing: @listing,
