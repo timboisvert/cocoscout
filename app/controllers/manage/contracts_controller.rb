@@ -283,6 +283,16 @@ module Manage
     # The contractor requested to connect the contract to their own
     # organization: yes (with how far it goes for later contracts), no (with
     # a note), and ending it later. Their dates and numbers are LinkedDates'.
+    # Nothing connects it yet: the organization lets the contractor know it
+    # can be, once (ContractConnections.tell!).
+    def tell_connection
+      if ContractConnections.tell!(@contract, user: Current.user)
+        redirect_to manage_contract_path(@contract), notice: "#{@contract.contractor_name} has been notified."
+      else
+        redirect_to manage_contract_path(@contract)
+      end
+    end
+
     def accept_connection
       connection = @contract.connections.requested.first
       if connection

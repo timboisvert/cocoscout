@@ -547,6 +547,7 @@ Rails.application.routes.draw do
     post   "/contracts/:id/connect",                     to: "contract_connections#create"
     delete "/contracts/:id/connect",                     to: "contract_connections#withdraw"
     patch  "/contracts/:id/connect/dismiss",             to: "contract_connections#dismiss",    as: "dismiss_contract_connection"
+    patch  "/contracts/:id/connect/not_now",             to: "contract_connections#not_now",    as: "contract_connection_not_now"
 
     get    "/productions",                  to: "productions#index",        as: "productions"
     get    "/productions/:id",              to: "productions#show",         as: "production"
@@ -1986,6 +1987,7 @@ Rails.application.routes.draw do
         # The contractor's request to connect the contract to their own
         # organization: accept, decline, and later unlink (ContractConnections).
         post "connection/accept", action: :accept_connection, as: :accept_connection
+        post "connection/tell", action: :tell_connection, as: :tell_connection
         post "connection/decline", action: :decline_connection, as: :decline_connection
         post "connection/unlink", action: :unlink_connection, as: :unlink_connection
         patch "connection/later_contracts", action: :update_connection_later_contracts, as: :connection_later_contracts

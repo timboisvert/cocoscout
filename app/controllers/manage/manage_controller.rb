@@ -185,6 +185,15 @@ module Manage
         c = Current.organization.contracts.where(signing_state: "out_for_signature").count
         items << { key: "contracts", topic: "Contracts", tone: :gray, text: "#{c} #{'contract'.pluralize(c)} out for signature", action: { path: manage_contracts_path } } if c.positive?
       end
+      # A contract of this user's own, with another organization, that can
+      # be connected to this one (ContractConnections.offer!): theirs alone
+      # to see, and gone once they connect it or say "Not now".
+      ContractConnections.offers_for(Current.user, Current.organization).each do |contract|
+        items << { key: "connect-#{contract.id}", topic: "Contracts", tone: :pink,
+                   text: "Your show is booked at #{contract.organization.name}: you can connect that contract to #{Current.organization.name}",
+                   detail: "Its dates and their ticket sales would appear here, in a production of yours.",
+                   action: { path: my_connect_contract_path(contract) } }
+      end
       items.concat(home_status_examples(items.map { |i| i[:key] })) if params[:all_actions].present? && (Rails.env.development? || Current.user.superadmin?)
       items.sort_by { |i| [ TOPIC_ORDER.index(i[:topic]) || 99, TONE_ORDER[i[:tone]] || 9 ] }
     end
@@ -205,7 +214,9 @@ module Manage
         { key: "ticketing-withdrawal", topic: "Ticketing", tone: :amber, text: "A withdrawal to your bank didn't go through", action: { path: manage_ticketing_path } },
         { key: "financials", topic: "Money", tone: :gray, text: "2 shows that need financials", action: { path: manage_money_financials_path } },
         { key: "pay", topic: "Money", tone: :pink, text: "$380.00 to pay", action: { path: manage_money_payouts_path } },
-        { key: "contracts", topic: "Contracts", tone: :gray, text: "1 contract out for signature", action: { path: manage_contracts_path } }
+        { key: "contracts", topic: "Contracts", tone: :gray, text: "1 contract out for signature", action: { path: manage_contracts_path } },
+        { key: "connect", topic: "Contracts", tone: :pink, text: "Your show is booked at Stars & Garters: you can connect that contract to #{Current.organization.name}",
+          detail: "Its dates and their ticket sales would appear here, in a production of yours.", action: { path: my_contracts_path } }
       ].reject { |i| present.include?(i[:key]) }.map { |i| i.merge(example: true) }
     end
 

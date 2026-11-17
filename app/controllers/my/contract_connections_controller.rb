@@ -76,6 +76,15 @@ module My
       end
     end
 
+    # "Not now": the offer is put away, and stays as a quiet link on the
+    # contract's card.
+    def not_now
+      ContractConnections.not_now!(@contract, user: Current.user)
+      redirect_to my_contracts_path
+    rescue ContractConnections::NotAllowed
+      redirect_to my_contracts_path
+    end
+
     # Clear an answer (declined, unlinked) from the contract's card.
     def dismiss
       @contract.connections.where(status: %w[declined unlinked], dismissed_at: nil).find_each do |connection|
@@ -96,6 +105,10 @@ module My
     def require_requestable
       @organizations = ContractConnections.organizations_for(Current.user, @contract).to_a
       return if ContractConnections.can_request?(Current.user, @contract)
+      # The contractor who runs no organization yet still gets the first
+      # page, which says what connecting does and how to start one.
+      return if action_name == "start" && @organizations.empty? && ContractConnections.contractor?(Current.user, @contract) &&
+                @contract.status_active? && @contract.connections.live.none?
 
       redirect_to my_contracts_path, alert: "That contract can't be connected right now."
     end

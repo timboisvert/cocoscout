@@ -153,6 +153,33 @@ RSpec.describe "Contract connections", type: :request do
       expect(response.body).to include("Your contract is now connected")
     end
 
+    it "puts the offer away with Not now, leaving a quiet link, and takes it off their organization's home" do
+      get manage_path
+      expect(response.body).to include("Your show is booked at Stars and Garters")
+
+      patch my_contract_connection_not_now_path(contract)
+      expect(contract.reload.connect_offer_dismissed_at).to be_present
+
+      get my_contracts_path
+      expect(response.body).to include("Connect to your organization")
+      expect(response.body).not_to include("Connect your organization")
+      get manage_path
+      expect(response.body).not_to include("Your show is booked at Stars and Garters")
+    end
+
+    it "shows a contractor with no organization what connecting does, and how to start one" do
+      theirs.update!(owner: create(:user))
+      OrganizationRole.where(user: user, organization: theirs).destroy_all
+
+      get my_connect_contract_path(contract)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("in an organization of your own").and include("Create your organization")
+      expect(response.body).not_to include("Continue")
+
+      get my_connect_contract_production_path(contract)
+      expect(response).to redirect_to(my_contracts_path)
+    end
+
     it "is only the contractor's: a stranger with an organization is turned away" do
       stranger = create(:user, password: password)
       create(:person, user: stranger)
@@ -174,8 +201,15 @@ RSpec.describe "Contract connections", type: :request do
     it "shows the request above the contract, with what each side gets and the later-contracts choice" do
       get manage_contract_path(contract)
 
-      expect(response.body).to include("requests to connect this contract to The Holly Problem")
+      expect(response.body).to include("requests to connect this contract").and include("also runs an organization on CocoScout, called The Holly Problem")
         .and include("So my team can see sales.").and include("Later contracts with").and include("Ask us each time")
+    end
+
+    it "says who the contractor is on CocoScout on the contractor's page, once connected" do
+      post accept_connection_manage_contract_path(contract), params: { later_contracts: "ask" }
+      get manage_contractor_path(contractor)
+
+      expect(response.body).to include("On CocoScout as").and include("The Holly Problem")
     end
 
     it "accepts: the dates go into their production, and the contract says who they are" do
@@ -199,6 +233,18 @@ RSpec.describe "Contract connections", type: :request do
 
       expect(connection.reload.status).to eq("unlinked")
       expect(their_production.shows.first).to have_attributes(linked_show_id: nil)
+    end
+
+    it "lets the organization notify the contractor that a contract can be connected, once, before anything connects it" do
+      connection.update!(status: "withdrawn")
+      connection.destroy!
+      get manage_contract_path(contract)
+      expect(response.body).to include("run this show on CocoScout too?").and include("Notify #{contractor.name}")
+
+      expect { post tell_connection_manage_contract_path(contract) }.to change(user.notifications, :count).by(1)
+      follow_redirect!
+      expect(response.body).to include("was notified on")
+      expect(response.body).not_to include("Notify #{contractor.name}")
     end
 
     it "never reaches another organization's contract" do

@@ -15,6 +15,12 @@ class ContractConnectionTemplates
   ].freeze
 
   TEMPLATES = [
+    { key: "contract_connection_offer", name: "A contract can be connected to the contractor's own organization (to the contractor)",
+      subject: "You can connect your {{organization_name}} contract to {{linked_organization_name}}",
+      body: %(<p>{{organization_name}} has a contract with {{contractor_name}} for {{production_name}}, and you also run an organization of your own on CocoScout. If you connect the two, the contract's dates and their ticket sales appear in your own production, so you and your team can see them without typing anything in again.</p><p><a href="{{connect_url}}">See what connecting does</a></p>) },
+    { key: "contract_connection_told", name: "The organization points out that the contract can be connected (to the contractor)",
+      subject: "{{organization_name}} would like you to know you can see these dates in an organization of your own",
+      body: %(<p>{{organization_name}} would like you to know that the dates on your contract for {{production_name}}, and how their tickets are selling, can appear in an organization of your own on CocoScout, where you and your team can see them alongside the rest of your show.</p><p><a href="{{connect_url}}">See how it works</a></p>) },
     { key: "contract_connection_requested", name: "A contractor requests to connect their organization (to the organization)",
       subject: "{{contractor_name}} requests to connect {{linked_organization_name}} to the contract for {{production_name}}",
       body: %(<p>{{contractor_name}} requests to connect {{linked_organization_name}} to the contract for {{production_name}}. It needs your OK.</p>{{#note}}<p>"{{note}}"</p>{{/note}}<p><a href="{{contract_url}}">Open the contract</a></p>) },

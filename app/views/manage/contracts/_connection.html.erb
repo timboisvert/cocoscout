@@ -10,6 +10,9 @@
   <%
     contractor = @contract.contractor_name
     theirs = connection.linked_organization.name
+    # The contractor and their organization often share one name: say so,
+    # and never "X is X's own organization".
+    same_name = theirs.casecmp?(contractor.to_s)
     show_name = @contract.production&.name || @contract.production_name
     choice_class = "flex items-start p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-400 transition-colors has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 bg-white"
     radio_class = "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500"
@@ -100,8 +103,8 @@
     <div data-connection="requested">
       <%= render "shared/alert_panel",
             eyebrow: "A request to connect",
-            headline: "#{contractor} requests to connect this contract to #{theirs}",
-            body: "#{theirs} is #{possessive(contractor)} own organization on CocoScout. #{contractor} sent this request on #{connection.created_at.in_time_zone.strftime('%b %-d')}.",
+            headline: "#{contractor} requests to connect this contract",
+            body: "#{contractor} also runs an organization on CocoScout#{same_name ? ' under the same name' : ", called #{theirs}"}, and would like this contract's dates to appear there. #{contractor} sent this request on #{connection.created_at.in_time_zone.strftime('%b %-d')}.",
             details: details %>
     </div>
   <% elsif connection.connected? %>
@@ -140,4 +143,24 @@
           message: "The contract itself doesn't change. #{theirs} will stop seeing your ticket sales. The dates already in their production will stay there as their own, but they will no longer follow yours. #{contractor} will be notified.",
           confirm_text: "Unlink", url: unlink_connection_manage_contract_path(@contract), method: :post %>
   <% end %>
+<% elsif ContractConnections.can_tell?(@contract) %>
+  <%# Nothing connects it yet. The organization can point the contractor at
+      connecting, once; it never learns here whether they run an organization. %>
+  <% contractor = @contract.contractor_name %>
+  <div data-connection="tell" class="mb-6 bg-white border border-gray-200 rounded-lg px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+    <div class="min-w-0 max-w-3xl">
+      <div class="text-sm font-semibold text-gray-900">Does <%= contractor %> run this show on CocoScout too?</div>
+      <p class="text-sm text-gray-600 mt-0.5">
+        If <%= contractor %> has an organization on CocoScout, this contract can be connected to it. Everyone who runs the show would then see these dates
+        and how they're selling without having to ask you, and nothing about your contract would change. You can let <%= contractor %> know that it's possible.
+      </p>
+    </div>
+    <%= form_with url: tell_connection_manage_contract_path(@contract), method: :post, local: true, data: { turbo_action: "replace" }, class: "flex-shrink-0" do %>
+      <%= render "shared/button", text: "Notify #{contractor}", variant: "secondary", size: "small", type: :submit %>
+    <% end %>
+  </div>
+<% elsif @contract.connect_told_at.present? && @contract.status_active? && @contract.connections.none? %>
+  <p data-connection="told" class="mb-6 text-sm text-gray-500">
+    <%= @contract.contractor_name %> was notified on <%= @contract.connect_told_at.in_time_zone.strftime("%b %-d") %> that this contract can be connected to an organization on CocoScout.
+  </p>
 <% end %>

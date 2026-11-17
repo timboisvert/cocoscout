@@ -345,6 +345,59 @@ RSpec.describe ContractConnections do
     end
   end
 
+  describe "the offer" do
+    # The let! records are made before the contract has dates, so nothing
+    # has been offered yet: this is the moment it first becomes true.
+    before { contract.update_columns(connect_offered_at: nil) }
+
+    it "notifies the contractor once, when they run an organization and the contract has dates ahead" do
+      expect { described_class.offer!(contract) }.to change(user.notifications, :count).by(1)
+      expect(user.notifications.last.title).to eq("You can connect your Stars and Garters contract to The Holly Problem")
+      expect { described_class.offer!(contract) }.not_to change(user.notifications, :count)
+    end
+
+    it "is made when someone comes to run an organization, and when a contract goes live" do
+      theirs.update!(owner: create(:user))
+      expect(described_class.offer!(contract)).to be(false)
+
+      expect { create(:organization, owner: user, name: "A New Company") }.to change(user.notifications, :count).by(1)
+      expect(user.notifications.last.title).to include("You can connect your Stars and Garters contract to A New Company")
+    end
+
+    it "says nothing for a contract whose dates are over, one already connected, or a contractor with no organization" do
+      first_show.update_columns(date_and_time: 2.days.ago)
+      second_show.update_columns(date_and_time: 1.day.ago)
+      expect(described_class.offer!(contract)).to be(false)
+
+      first_show.update_columns(date_and_time: first_night)
+      request!
+      expect(described_class.offer!(contract)).to be(false)
+    end
+
+    it "is put away with Not now, and then is no longer a line on their organization's home" do
+      expect(described_class.offers_for(user, theirs)).to contain_exactly(contract)
+      described_class.not_now!(contract, user: user)
+      expect(described_class.offers_for(user, theirs)).to be_empty
+      expect { described_class.not_now!(contract, user: owner) }.to raise_error(described_class::NotAllowed)
+    end
+  end
+
+  describe ".tell!" do
+    it "lets the organization notify the contractor once that the contract can be connected" do
+      expect(described_class.can_tell?(contract)).to be(true)
+      expect { described_class.tell!(contract, user: owner) }.to change(user.notifications, :count).by(1)
+      expect(user.notifications.last.title).to include("Stars and Garters would like you to know")
+      expect(contract.reload).to have_attributes(connect_told_by_id: owner.id)
+      expect(described_class.can_tell?(contract)).to be(false)
+      expect { described_class.tell!(contract, user: owner) }.not_to change(user.notifications, :count)
+    end
+
+    it "isn't offered for a contractor who can't sign in, or once a connection has been requested" do
+      request!
+      expect(described_class.can_tell?(contract)).to be(false)
+    end
+  end
+
   describe ".choose_later_contracts!" do
     it "is one answer for the contractor: asking each time on one contract takes back the yes given on another" do
       first = connect!

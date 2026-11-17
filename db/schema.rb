@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_17_143126) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_17_162208) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1002,6 +1002,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_143126) do
     t.datetime "sent_for_signature_at"
     t.datetime "executed_at"
     t.boolean "shares_ticket_sales", default: true, null: false
+    t.datetime "connect_offered_at"
+    t.datetime "connect_offer_dismissed_at"
+    t.datetime "connect_told_at"
+    t.bigint "connect_told_by_id"
     t.index ["contract_template_id"], name: "index_contracts_on_contract_template_id"
     t.index ["contractor_id"], name: "index_contracts_on_contractor_id"
     t.index ["organization_id", "status"], name: "index_contracts_on_organization_id_and_status"

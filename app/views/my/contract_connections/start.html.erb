@@ -8,19 +8,26 @@
   contractor = @contract.contractor_name.presence || "you"
   coming = @shows.reject(&:canceled)
   mine = @organizations.one? ? @organizations.first.name : "your organization"
+  none_yet = @organizations.empty?
 %>
 <div class="w-full mb-10 max-w-3xl">
   <%= render "my/contract_connections/steps", step: 1 %>
 
-  <h1 class="text-3xl coustard-regular text-gray-900">Connect your contract to <%= mine %></h1>
+  <h1 class="text-3xl coustard-regular text-gray-900"><%= none_yet ? "See your #{org} dates in an organization of your own" : "Connect your contract to #{mine}" %></h1>
   <%# Said by who the contract is with and what it's for: the show, the
       contractor and their organization often share one name, so "X is your
       show, and you run it in X" told nobody anything (Tim, 2026-11-17). %>
   <p class="text-gray-600 mt-2">
     <%= org %> has a contract with <%= contractor %> to present <%= pluralize(coming.size, "date") %><%= " of #{show_name}" if show_name.present? && !show_name.casecmp?(contractor) %>.
-    You also run <%= @organizations.one? ? "an organization of your own on CocoScout, #{@organizations.first.name}" : "organizations of your own on CocoScout" %>. When you connect the
-    contract to <%= @organizations.one? ? "it" : "one of them" %>, those dates and their ticket sales appear in your own production there, so you and
-    your team can see everything in one place without typing any of it in again.
+    <% if none_yet %>
+      If you run this show yourself on CocoScout, in an organization of your own, you can connect the contract to it. Those dates and
+      their ticket sales then appear in your own production there, so you and your team can see everything in one place without typing
+      any of it in again.
+    <% else %>
+      You also run <%= @organizations.one? ? "an organization of your own on CocoScout, #{@organizations.first.name}" : "organizations of your own on CocoScout" %>. When you connect the
+      contract to <%= @organizations.one? ? "it" : "one of them" %>, those dates and their ticket sales appear in your own production there, so you and
+      your team can see everything in one place without typing any of it in again.
+    <% end %>
   </p>
 
   <div class="grid sm:grid-cols-2 gap-4 mt-6">
@@ -48,15 +55,27 @@
     </div>
   </div>
 
-  <% if @standing_organization %>
+  <% if none_yet %>
+    <p class="text-sm text-gray-500 mt-4">You'll need an organization of your own first. Creating one is free, and when it's ready you can come back to My Contracts and connect this contract to it.</p>
+  <% elsif @standing_organization %>
     <p class="text-sm text-gray-500 mt-4"><%= org %> has already agreed to connect your later contracts to <%= @standing_organization.name %>, so this one won't need their approval again. It will connect as soon as you finish these steps, and <%= org %> will be notified.</p>
   <% else %>
     <p class="text-sm text-gray-500 mt-4"><%= org %> needs to accept before anything happens. Until they do, nothing changes for either of you.</p>
   <% end %>
 
   <div class="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
-    <%= render "shared/button", text: "Not now", variant: "secondary", size: "medium", path: my_contracts_path %>
-    <%= render "shared/button", text: "Continue", variant: "primary", size: "medium",
-          path: my_connect_contract_production_path(@contract) %>
+    <% if @contract.connect_offer_dismissed_at.nil? %>
+      <%= form_with url: my_contract_connection_not_now_path(@contract), method: :patch, local: true do %>
+        <%= render "shared/button", text: "Not now", variant: "secondary", size: "medium", type: :submit %>
+      <% end %>
+    <% else %>
+      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", path: my_contracts_path %>
+    <% end %>
+    <% if none_yet %>
+      <%= render "shared/button", text: "Create your organization", variant: "primary", size: "medium", path: new_manage_organization_path %>
+    <% else %>
+      <%= render "shared/button", text: "Continue", variant: "primary", size: "medium",
+            path: my_connect_contract_production_path(@contract) %>
+    <% end %>
   </div>
 </div>

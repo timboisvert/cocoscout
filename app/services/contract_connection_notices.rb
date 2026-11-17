@@ -16,6 +16,16 @@ class ContractConnectionNotices
     def accepted(connection) = to_contractor(connection, "contract_connection_accepted")
     def declined(connection) = to_contractor(connection, "contract_connection_declined", note: connection.answer_note.to_s)
 
+    # To the contractor, before any connection exists: that the contract
+    # can be connected (once, when it first becomes true), and the same
+    # pointed out by the organization that wrote it.
+    def offer(contract, user, organizations)
+      about_contract(contract, user, "contract_connection_offer",
+                     linked_organization_name: organizations.one? ? organizations.first.name : "your own organization")
+    end
+
+    def told(contract, user) = about_contract(contract, user, "contract_connection_told")
+
     # Whoever ended it isn't notified of their own doing.
     def unlinked(connection, by_contractor_side:)
       if by_contractor_side
@@ -57,6 +67,18 @@ class ContractConnectionNotices
     rescue StandardError => e
       # A notice that can't be sent never undoes the request or the answer.
       Rails.logger.error("[ContractConnectionNotices] connection #{connection.id} #{key}: #{e.class}: #{e.message}")
+      nil
+    end
+
+    def about_contract(contract, user, key, extra = {})
+      path = routes.my_connect_contract_path(contract)
+      Notifier.deliver(user: user, category: "contracts", kind: key, template_key: key, path: path,
+                       organization: contract.organization, subject: contract,
+                       variables: { contractor_name: contract.contractor_name, organization_name: contract.organization.name,
+                                    linked_organization_name: "", linked_production_name: "", note: "", connect_url: path,
+                                    production_name: contract.production&.name || contract.production_name.to_s }.merge(extra))
+    rescue StandardError => e
+      Rails.logger.error("[ContractConnectionNotices] contract #{contract.id} #{key}: #{e.class}: #{e.message}")
       nil
     end
 

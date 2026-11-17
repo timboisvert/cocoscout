@@ -33,6 +33,82 @@ class ContractConnections
       organizations_for(user, contract).exists?
   end
 
+  # The contractor's sign-in, when they have one: the user behind the person
+  # the contract pays.
+  def self.contractor_user(contract)
+    contract&.contractor&.person&.user
+  end
+
+  # Whether there's still something to connect: a date on the contract that
+  # hasn't happened. Nobody is offered a connection for a run that's over.
+  def self.dates_ahead?(contract)
+    LinkedDates.contract_shows(contract).where(canceled: false).where("shows.date_and_time > ?", Time.current).exists?
+  end
+
+  # The offer, made once per contract: the contractor is notified that the
+  # contract can be connected, as soon as that's a fact (they run an
+  # organization of their own, the contract is live with dates ahead, and
+  # nothing connects it yet). Called when a contract goes live, and when
+  # someone comes to run an organization (offer_all_for). Never guessed
+  # from names, and never repeated: after this it's a row on My Contracts.
+  def self.offer!(contract)
+    user = contractor_user(contract)
+    return false unless user && contract.connect_offered_at.nil? && contract.connections.none?
+    return false unless can_request?(user, contract) && dates_ahead?(contract)
+
+    contract.update_columns(connect_offered_at: Time.current)
+    ContractConnectionNotices.offer(contract, user, organizations_for(user, contract).to_a)
+    true
+  end
+
+  # Someone has just come to run an organization: every live contract of
+  # theirs that could now be connected is offered.
+  def self.offer_all_for(user)
+    return unless user
+
+    Contract.where(status: "active", connect_offered_at: nil)
+            .joins(:contractor).where(contractors: { person_id: user.people.select(:id) })
+            .find_each { |contract| offer!(contract) }
+  end
+
+  # "Not now": the offer leaves My Contracts and the organization's home,
+  # and stays as a quiet link on the contract. It never comes back by itself.
+  def self.not_now!(contract, user:)
+    raise NotAllowed unless contractor?(user, contract)
+
+    contract.update_columns(connect_offer_dismissed_at: Time.current) if contract.connect_offer_dismissed_at.nil?
+    contract
+  end
+
+  # The contracts a user is offered to connect to this organization of
+  # theirs: live, with dates ahead, nothing live on them, the offer not put
+  # away. For the line on the organization's home.
+  def self.offers_for(user, organization)
+    return [] unless user && organization && managed_organization_ids(user).include?(organization.id)
+
+    Contract.where(status: "active", connect_offer_dismissed_at: nil).where.not(organization_id: organization.id)
+            .joins(:contractor).where(contractors: { person_id: user.people.select(:id) })
+            .where.not(id: ContractConnection.live.select(:contract_id))
+            .includes(:organization, :production).select { |contract| dates_ahead?(contract) }
+  end
+
+  # The organization that wrote the contract points the contractor at it
+  # ("Tell <contractor>"): once per contract, to a contractor who can sign
+  # in. It says nothing about whether they run an organization: the page it
+  # opens does, to them alone.
+  def self.can_tell?(contract)
+    contract.status_active? && contract.connect_told_at.nil? && contract.connections.none? &&
+      contractor_user(contract).present? && dates_ahead?(contract)
+  end
+
+  def self.tell!(contract, user:)
+    return false unless can_tell?(contract)
+
+    contract.update_columns(connect_told_at: Time.current, connect_told_by_id: user&.id)
+    ContractConnectionNotices.told(contract, contractor_user(contract))
+    true
+  end
+
   # The request. `production` is one of theirs; without one,
   # `new_production_name` is made into a production when it's accepted.
   # `date_answers` is what they said about dates already there (LinkedDates).
