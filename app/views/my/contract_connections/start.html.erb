@@ -4,7 +4,8 @@
 <% content_for :title, "Connect your contract" %>
 <%
   org = @contract.organization.name
-  show_name = @contract.production&.name || @contract.production_name
+  show_name = (@contract.production&.name || @contract.production_name).to_s
+  contractor = @contract.contractor_name.presence || "you"
   coming = @shows.reject(&:canceled)
   mine = @organizations.one? ? @organizations.first.name : "your organization"
 %>
@@ -12,9 +13,13 @@
   <%= render "my/contract_connections/steps", step: 1 %>
 
   <h1 class="text-3xl coustard-regular text-gray-900">Connect your contract to <%= mine %></h1>
+  <%# Said by who the contract is with and what it's for: the show, the
+      contractor and their organization often share one name, so "X is your
+      show, and you run it in X" told nobody anything (Tim, 2026-11-17). %>
   <p class="text-gray-600 mt-2">
-    <%= show_name %> is your show, and you run it in <%= mine %>. <%= org %> is presenting <%= pluralize(coming.size, "date") %> of it
-    under your contract. When you connect the two, those dates and their ticket sales appear in your own production, so you and
+    <%= org %> has a contract with <%= contractor %> to present <%= pluralize(coming.size, "date") %><%= " of #{show_name}" if show_name.present? && !show_name.casecmp?(contractor) %>.
+    You also run <%= @organizations.one? ? "an organization of your own on CocoScout, #{@organizations.first.name}" : "organizations of your own on CocoScout" %>. When you connect the
+    contract to <%= @organizations.one? ? "it" : "one of them" %>, those dates and their ticket sales appear in your own production there, so you and
     your team can see everything in one place without typing any of it in again.
   </p>
 
