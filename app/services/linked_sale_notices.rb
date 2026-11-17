@@ -132,7 +132,7 @@ class LinkedSaleNotices
       if inside && connection.linked_production
         routes.manage_production_sale_path(connection.linked_production, listing)
       else
-        routes.my_ticket_sale_path(listing)
+        routes.my_show_tickets_path(listing.show_id)
       end
     end
   end

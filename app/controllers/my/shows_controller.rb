@@ -614,8 +614,8 @@ module My
       team_level = TicketSalesAccess.team_level_for(Current.user, @production)
       @ticket_sales_path = if @my_contract || TicketSalesAccess.on_contract_for?(Current.user, listing)
         # Theirs by contract: who's coming, their comps, and afterwards how it
-        # sold, are on My Ticket Sales.
-        my_ticket_sale_path(listing)
+        # sold, are on this show's Tickets page.
+        my_show_tickets_path(@show)
       elsif team_level == :full
         manage_production_sale_path(@production, listing)
       end

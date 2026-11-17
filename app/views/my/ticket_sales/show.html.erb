@@ -1,11 +1,16 @@
-<% content_for :title, "#{@listing.display_title} · Ticket Sales" %>
+<%# One date's ticket sales, a sub-page of the show on My: its breadcrumbs
+    carry on from the show's own page (Tim, 2026-11-17). %>
+<% content_for :title, "#{@listing.display_title} · Tickets" %>
 <% show = @listing.show %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: {
-    breadcrumbs: [ [ "Ticket Sales", my_ticket_sales_path ] ],
-    text: "#{@listing.display_title} · #{show.date_and_time.strftime('%a %b %-d')}",
+    breadcrumbs: [
+      [ "My Shows & Events", my_shows_path ],
+      [ "#{@listing.display_title} · #{show.date_and_time.strftime('%a %b %-d')}", (my_show_path(@show_page) if @show_page) ]
+    ],
+    text: "Tickets",
     links: []
   } %>
 
@@ -52,13 +57,24 @@
       <%= render "shared/ticketing/guest_list", orders: @guest_orders, read_only: true, changeable_ids: @changeable_comp_ids %>
     </div>
     <%= render "shared/ticketing/own_comp_modals", orders: @guest_orders.select { |order| @changeable_comp_ids.include?(order.id) },
-          comp_url: ->(order) { my_ticket_sale_comp_path(@listing, order.id) } %>
+          comp_url: ->(order) { my_show_ticket_comp_path(show, order.id) } %>
 
     <% if can_comp %>
       <%= render "manage/ticket_listings/comps_modal", id: "comps-modal", listing: @listing,
-            url: my_ticket_sale_comps_path(@listing), preview_url: my_ticket_sale_comps_preview_path(@listing), max: @allowance[:left],
+            url: my_show_ticket_comps_path(show), preview_url: my_show_ticket_comps_preview_path(show), max: @allowance[:left],
             allowance_note: (@allowance[:left] ? "You can issue #{@allowance[:left]} more for this date." : nil),
             note_label: "Note for the box office" %>
+    <% end %>
+
+    <%# The morning email is one choice for every show shared with them; its
+        switch lived on the list page this one replaced. %>
+    <%= form_with url: my_show_tickets_daily_email_path(show), method: :patch, class: "rounded-lg border border-gray-200 bg-white px-5 py-4 flex items-center justify-between gap-4", data: { controller: "auto-submit", turbo_action: "replace" } do |f| %>
+      <div>
+        <div class="text-sm font-medium text-gray-900">A morning email on how your shows are selling</div>
+        <div class="text-xs text-gray-600 mt-0.5">Sent at 7am on days you have shows coming up. It covers every show whose ticket sales you can see, not only this one.</div>
+      </div>
+      <%= hidden_field_tag :daily_email, "0", id: nil %>
+      <%= render "shared/toggle_switch", form: f, field: :daily_email, checked: @daily_email, data: { action: "change->auto-submit#submit" } %>
     <% end %>
   </div>
 </div>

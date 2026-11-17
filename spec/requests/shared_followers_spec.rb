@@ -50,13 +50,14 @@ RSpec.describe "Followers shared through a contract", type: :request do
   end
 
   describe "at checkout" do
-    it "puts the contractor's box on every production under a live contract, ahead of the main list, saying who can email them" do
+    it "puts the contractor's box on every production under a live contract, after the main list, saying who can email them" do
       boxes = MailingList.for_checkout(production)
 
-      expect(boxes.map(&:name)).to eq([ "Thea's shows", "Stars and Garters" ])
-      expect(boxes.first.box_words).to eq("Send me news about Thea's shows")
-      expect(boxes.first.box_note).to eq("Thea Example and Stars and Garters can both email you about them.")
-      expect(boxes.last.box_note).to be_nil
+      # The main list comes first, then the production's own (Tim, 2026-11-17).
+      expect(boxes.map(&:name)).to eq([ "Stars and Garters", "Thea's shows" ])
+      expect(boxes.last.box_words).to eq("Send me news about Thea's shows")
+      expect(boxes.last.box_note).to eq("Thea Example and Stars and Garters can both email you about them.")
+      expect(boxes.first.box_note).to be_nil
     end
 
     it "leaves when the contract is no longer live, and isn't on a production the contractor has nothing to do with" do
@@ -107,13 +108,13 @@ RSpec.describe "Followers shared through a contract", type: :request do
       expect(response.body).not_to include("Chosen for this production")
 
       patch manage_update_production_ticketing_path(production, section: "boxes"), params: { mailing_list_ids: [ holiday.id ] }
-      expect(MailingList.for_checkout(production).map(&:name)).to eq([ "Thea's shows", "Holiday shows", "Stars and Garters" ])
+      expect(MailingList.for_checkout(production).map(&:name)).to eq([ "Stars and Garters", "Thea's shows", "Holiday shows" ])
       follow_redirect!
       expect(response.body).to include("Chosen for this production")
 
       # The contract's list isn't something to untick here: sending nothing removes only the chosen one.
       patch manage_update_production_ticketing_path(production, section: "boxes"), params: { mailing_list_ids: [ "" ] }
-      expect(MailingList.for_checkout(production).map(&:name)).to eq([ "Thea's shows", "Stars and Garters" ])
+      expect(MailingList.for_checkout(production).map(&:name)).to eq([ "Stars and Garters", "Thea's shows" ])
     end
   end
 

@@ -37,14 +37,16 @@ class TicketingDailyNoticesJob < ApplicationJob
 
       stats = Ticketing::ListingStats.for(listings)
       rows = listings.map do |listing|
-        %(<tr><td style="padding:4px 12px 4px 0">#{listing.show.date_and_time.strftime('%a %b %-d')} · #{ERB::Util.html_escape(listing.display_title)}</td>) +
+        # Each date opens its own Tickets page under the show: there is no list of them.
+        url = Rails.application.routes.url_helpers.my_show_tickets_url(listing.show_id, **mailer_url_options)
+        %(<tr><td style="padding:4px 12px 4px 0"><a href="#{url}">#{listing.show.date_and_time.strftime('%a %b %-d')} · #{ERB::Util.html_escape(listing.display_title)}</a></td>) +
           %(<td style="padding:4px 0;text-align:right">#{TicketingNotificationContent.sold_line(stats[listing.id])}</td></tr>)
       end
       AppMailer.with(template_key: "ticket_sales_producer_daily", to: user.email_address, variables: {
         first_name: user.person&.name.to_s.split.first.presence || "there",
         organization_name: organization.name,
         rows: "<table>#{rows.join}</table>",
-        sales_url: Rails.application.routes.url_helpers.my_ticket_sales_url(**mailer_url_options)
+        sales_url: Rails.application.routes.url_helpers.my_shows_url(**mailer_url_options)
       }).send_template.deliver_later
     end
   end

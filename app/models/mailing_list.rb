@@ -71,18 +71,17 @@ class MailingList < ApplicationRecord
     organization.productions.where(id: self.class.contract_production_ids(contractor_id)).order(:name)
   end
 
-  # The lists whose boxes a production's checkout shows: its own groups
-  # first, then the main list.
+  # The lists whose boxes a production's checkout shows: the main list
+  # first, then the production's own (Tim, 2026-11-17): a contractor's list
+  # (it comes from the contract), then the lists chosen for this production.
   def self.for_checkout(production)
     organization = production.organization
-    # A contractor's list first (it comes from the contract), then the lists
-    # chosen for this production, then the main list.
     contractors = Contract.where(organization_id: organization.id, production_id: production.id, status: "active").select(:contractor_id)
     scope = organization.mailing_lists.active.where(kind: "group", source_list_id: nil)
     from_contract = scope.where(contractor_id: contractors).order(:name).to_a
     chosen = scope.where(id: MailingListProduction.where(production_id: production.id).select(:mailing_list_id))
                   .where.not(id: from_contract.map(&:id)).order(:name).to_a
-    from_contract + chosen + [ main_for!(organization) ]
+    [ main_for!(organization) ] + from_contract + chosen
   end
 
   def subscribed_count

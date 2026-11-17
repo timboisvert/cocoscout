@@ -53,15 +53,20 @@ RSpec.describe "Ticket sales viewers", type: :request do
 
     # The producer's side.
     sign_in(producer)
-    get my_ticket_sales_path
-    expect(response.body).to include("Ticket Sales", "Rising Stars", "2 of 60")
-    get my_ticket_sale_path(listing)
-    expect(response.body).to include("Dana Scully", "2 of 60", "$40.00", "Who's coming")
+    # There is no list of shared shows and nothing called Ticket Sales (Tim, 2026-11-17):
+    # one date's sales is a sub-page of its show, and the old addresses only pass people on.
+    get "/my/ticket-sales"
+    expect(response).to redirect_to("/my/shows")
+    get "/my/ticket-sales/#{listing.id}"
+    expect(response).to redirect_to(my_show_tickets_path(listing.show))
+    get my_show_tickets_path(listing.show)
+    expect(response.body).to include("Dana Scully", "2 of 60", "$40.00", "Who's coming", "My Shows &amp; Events", "Tickets")
+    expect(response.body).not_to include("Ticket Sales")
     expect(response.body).not_to include("dana@example.com", "312-555", "You keep", "Review refund", manage_ticket_order_path(1))
 
     # Another show of the production isn't shared; a different theater's never is.
     other = create(:ticket_listing, organization: org, show: create(:show, production: production, date_and_time: 12.days.from_now))
-    get my_ticket_sale_path(other)
+    get my_show_tickets_path(other.show)
     expect(response).to have_http_status(:not_found)
 
     # Cut off.
@@ -70,10 +75,8 @@ RSpec.describe "Ticket sales viewers", type: :request do
     delete manage_ticket_listing_visibility_viewer_path(listing, viewer_id: viewer.id)
     expect(viewer.reload.revoked_at).to be_present
     sign_in(producer)
-    get my_ticket_sale_path(listing)
+    get my_show_tickets_path(listing.show)
     expect(response).to have_http_status(:not_found)
-    get my_ticket_sales_path
-    expect(response.body).to include("No shows shared with you yet")
   end
 
   it "shares every date of a production with the cast ticked, and lists the production's team and cast to pick" do
@@ -89,33 +92,10 @@ RSpec.describe "Ticket sales viewers", type: :request do
     expect(org.ticket_sales_viewers.active.sole.scope).to eq(production)
 
     sign_in(producer)
-    get my_ticket_sales_path
-    expect(response.body).to include(my_ticket_sale_path(listing), my_ticket_sale_path(later))
-  end
-
-  # Prod, 2026-10-22: a producer with more than 60 upcoming shared shows got
-  # a 500 (figures were fetched for only the first 60 rows). Now the next 30
-  # dates show with "Show more", and the past goes a page at a time.
-  it "shows upcoming dates 30 at a time and the past a page at a time" do
-    org.ticket_sales_viewers.create!(user: producer, scope: production, granted_by: superadmin)
-    upcoming = Array.new(61) { |i| create(:ticket_listing, organization: org, show: create(:show, production: production, date_and_time: (6 + i).days.from_now)) }
-    past = Array.new(31) { |i| create(:ticket_listing, organization: org, show: create(:show, production: production, date_and_time: (2 + i).days.ago)) }
-    links = -> { response.body.scan(%r{href="/my/ticket-sales/(\d+)"}).flatten.map(&:to_i) }
-
-    sign_in(producer)
-    get my_ticket_sales_path
-    expect(response).to have_http_status(:ok)
-    expect(links.call).to eq([ listing.id ] + upcoming.first(29).map(&:id) + past.first(30).map(&:id))
-    expect(response.body).to include("Show more", my_ticket_sales_path(upcoming: 60, anchor: "upcoming-more"), "Page 1 of 2")
-
-    get my_ticket_sales_path(upcoming: 60)
-    expect(links.call.first(60)).to eq([ listing.id ] + upcoming.first(59).map(&:id))
-    expect(response.body).to include("Show more")
-
-    get my_ticket_sales_path(upcoming: 90, past_page: 2)
-    expect(links.call).to eq([ listing.id ] + upcoming.map(&:id) + [ past.last.id ])
-    expect(response.body).not_to include("Show more")
-    expect(response.body).to include("Page 2 of 2")
+    [ listing, later ].each do |date|
+      get my_show_tickets_path(date.show)
+      expect(response).to have_http_status(:ok)
+    end
   end
 
   it "lets a contract's contractor see their shows' sales unless the contract says not, with chips on My Contracts" do
@@ -125,7 +105,7 @@ RSpec.describe "Ticket sales viewers", type: :request do
 
     sign_in(producer)
     get my_contracts_path
-    expect(response.body).to include("2 of 60 sold", my_ticket_sale_path(listing))
+    expect(response.body).to include("2 of 60 sold", my_show_tickets_path(listing.show))
 
     # Tickets sold on other sites count too (Tim, 2026-10-10: the chips said
     # 0 of 60 while another site had sold).
@@ -133,8 +113,8 @@ RSpec.describe "Ticket sales viewers", type: :request do
     TicketOutsideSales.record!(listing, { tailor.id.to_s => { listing.ticket_tiers.first.id.to_s => { "tickets" => "5", "amount" => "$100" } } })
     get my_contracts_path
     expect(response.body).to include("7 of 60 sold")
-    get my_ticket_sales_path
-    expect(response.body).to include("7 of 60 sold")
+    get my_show_tickets_path(listing.show)
+    expect(response.body).to include("7 of 60")
 
     sign_in(superadmin)
     get manage_path
@@ -161,7 +141,8 @@ RSpec.describe "Ticket sales viewers", type: :request do
     get ticket_sales_invitation_path(token: viewer.invitation_token)
     expect(response.body).to include("sharing ticket sales with you", "Make my account")
     post ticket_sales_invitation_accept_path(token: viewer.invitation_token), params: { password: password }
-    expect(response).to redirect_to(my_ticket_sales_path)
+    # A share lands on its date's Tickets page under the show.
+    expect(response).to redirect_to(my_show_tickets_path(listing.show))
     expect(viewer.reload.user).to be_present
     expect(viewer.user.person.name).to eq("Sam Producer")
     follow_redirect!
@@ -194,7 +175,7 @@ RSpec.describe "Ticket sales viewers", type: :request do
     expect { TicketingDailyNoticesJob.perform_now(Date.current) }.to have_enqueued_job(ActionMailer::MailDeliveryJob).at_least(:once)
 
     sign_in(producer)
-    patch my_ticket_sales_daily_email_path, params: { daily_email: "0" }
+    patch my_show_tickets_daily_email_path(listing.show), params: { daily_email: "0" }
     expect(org.ticket_sales_viewers.active.sole.daily_email).to be(false)
   end
 
@@ -205,7 +186,7 @@ RSpec.describe "Ticket sales viewers", type: :request do
     create(:contract, organization: org, production: production, contractor: contractor, status: :active, shares_ticket_sales: true)
     sign_in(producer)
     expect(org.ticket_sales_viewers.count).to eq(0)
-    patch my_ticket_sales_daily_email_path, params: { daily_email: "1" }
+    patch my_show_tickets_daily_email_path(listing.show), params: { daily_email: "1" }
     viewer = org.ticket_sales_viewers.active.sole
     expect(viewer.scope).to eq(production)
     expect(viewer.user).to eq(producer)
@@ -219,12 +200,12 @@ RSpec.describe "Ticket sales viewers", type: :request do
     contractor = create(:contractor, organization: org, person: producer_person, email: producer_person.email)
     contract = create(:contract, organization: org, production: production, contractor: contractor, status: :active, shares_ticket_sales: true)
     sign_in(producer)
-    patch my_ticket_sales_daily_email_path, params: { daily_email: "1" }
+    patch my_show_tickets_daily_email_path(listing.show), params: { daily_email: "1" }
     expect(TicketSalesAccess.can_see?(producer, listing)).to be(true)
 
     contract.update!(shares_ticket_sales: false)
     expect(TicketSalesAccess.can_see?(producer, listing)).to be(false)
-    get my_ticket_sale_path(listing)
+    get my_show_tickets_path(listing.show)
     expect(response).to have_http_status(:not_found)
     expect(TicketSalesAccess.viewers_for(listing)).to be_empty
   end

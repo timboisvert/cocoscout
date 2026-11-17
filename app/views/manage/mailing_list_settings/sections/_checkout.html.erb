@@ -38,8 +38,8 @@
     <div class="space-y-2.5 text-sm text-gray-700">
       <div><span class="block text-xs font-medium text-gray-700 mb-1">Email</span><div class="px-3 py-2.5 border border-gray-300 rounded-lg text-gray-400">you@example.com</div></div>
       <% example = @collecting_lists.find { |list| list.productions.any? } %>
-      <% if example %><label class="flex items-center gap-2.5"><input type="checkbox" class="h-4 w-4 accent-pink-500" <%= "checked" if @profile.follow_boxes_ticked %> disabled><%= example.box_words %></label><% end %>
-      <label class="flex items-center gap-2.5"><input type="checkbox" class="h-4 w-4 accent-pink-500" <%= "checked" if @profile.follow_boxes_ticked %> disabled><%= MailingList.main_for!(@organization).box_words %></label>
+      <label class="flex items-center gap-2.5"><input type="checkbox" class="h-4 w-4 flex-none accent-pink-500" <%= "checked" if @profile.follow_boxes_ticked %> disabled><%= MailingList.main_for!(@organization).box_words %></label>
+      <% if example %><label class="flex items-center gap-2.5"><input type="checkbox" class="h-4 w-4 flex-none accent-pink-500" <%= "checked" if @profile.follow_boxes_ticked %> disabled><%= example.box_words %></label><% end %>
     </div>
     <% unless @profile.follow_at_checkout %><p class="text-xs text-amber-700 mt-3">Switched off: checkout doesn't ask.</p><% end %>
   </section>

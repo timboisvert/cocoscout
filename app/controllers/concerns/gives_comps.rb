@@ -2,7 +2,7 @@
 
 # The comps form (manage/ticket_listings/comps_modal) handled within someone's
 # allowance (TicketSalesAccess.comp_allowance): a production team manager on
-# their sales page, a contract person on My Ticket Sales. One at a
+# their sales page, a contract person on the date's Tickets page on My. One at a
 # time, or a pasted list (mode=paste), never more than what's left to them.
 # A comp their side issued can be changed or removed by them until the show starts.
 # The manager's own Manage::TicketCompsController uses the pasted list with

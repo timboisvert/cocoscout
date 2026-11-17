@@ -472,18 +472,18 @@ RSpec.describe "Contract connections", type: :request do
       sign_in(user)
       get my_contracts_path
       expect(response.body).to include("dates, ticket sales and followers are in The Holly Problem now").and include("Open The Holly Problem")
-      expect(response.body).not_to include(my_ticket_sale_path(TicketListing.find_by!(show: contract_show)))
-      get my_ticket_sales_path
-      expect(response.body).to include("are in The Holly Problem now").and include("Open ticket sales")
+      expect(response.body).not_to include(my_show_tickets_path(contract_show))
 
-      # Someone on the contract who doesn't run The Holly Problem keeps the My views.
+      # Someone on the contract who doesn't run The Holly Problem keeps the My views:
+      # the date's chip on My Contracts, and its Tickets page under the show.
       colleague = create(:user, password: password)
       ContractPerson.create!(contract: contract, person: create(:person, user: colleague))
       get signout_path
       sign_in(colleague)
-      get my_ticket_sales_path
-      expect(response.body).not_to include("Open ticket sales")
-      expect(response.body).to include(my_ticket_sale_path(TicketListing.find_by!(show: contract_show)))
+      get my_contracts_path
+      expect(response.body).to include(my_show_tickets_path(contract_show))
+      get my_show_tickets_path(contract_show)
+      expect(response).to have_http_status(:ok)
     end
 
     it "lets the contractor send the other organization's payments into the balance, and tells both sides where they go" do

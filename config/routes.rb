@@ -491,13 +491,11 @@ Rails.application.routes.draw do
   namespace :my do
     get   "/",                              to: "dashboard#index",          as: "dashboard"
     # Ticket sales a theater shares with a producer or performer: read-only.
-    get   "/ticket-sales",                  to: "ticket_sales#index",       as: "ticket_sales"
-    patch "/ticket-sales/daily-email",      to: "ticket_sales#daily_email", as: "ticket_sales_daily_email"
-    get   "/ticket-sales/:id",              to: "ticket_sales#show",        as: "ticket_sale"
-    post  "/ticket-sales/:id/comps",        to: "ticket_sales#create_comp", as: "ticket_sale_comps"
-    post  "/ticket-sales/:id/comps/preview", to: "ticket_sales#preview_comps", as: "ticket_sale_comps_preview"
-    delete "/ticket-sales/:id/comps/:order_id", to: "ticket_sales#remove_comp", as: "remove_ticket_sale_comp"
-    patch "/ticket-sales/:id/comps/:order_id", to: "ticket_sales#update_comp", as: "ticket_sale_comp"
+    # The old addresses of a date's ticket sales (a list, and a page per
+    # listing), kept only so links already sent land somewhere: the date's
+    # page is under its show now (shows/:id/tickets, below). No page here.
+    get   "/ticket-sales",                  to: redirect("/my/shows")
+    get   "/ticket-sales/:id",              to: "ticket_sales#moved"
 
     # Slim account screen for the mobile app. Routes /my/account → AccountsController#show.
     get   "/account",                       to: "accounts#show",            as: "account"
@@ -576,6 +574,15 @@ Rails.application.routes.draw do
     get   "/courses/:id",                   to: "courses#show",             as: "course"
     get   "/shows",                         to: "shows#index",              as: "shows"
     get   "/shows/:id",                     to: "shows#show",              as: "show"
+    # One date's ticket sales for someone it's shared with or who is on its
+    # contract: a sub-page of the show, reached from the show's own page
+    # (Tim, 2026-11-17). There is no list of them.
+    get   "/shows/:id/tickets",             to: "ticket_sales#show",        as: "show_tickets"
+    patch "/shows/:id/tickets/daily-email", to: "ticket_sales#daily_email", as: "show_tickets_daily_email"
+    post  "/shows/:id/tickets/comps",       to: "ticket_sales#create_comp", as: "show_ticket_comps"
+    post  "/shows/:id/tickets/comps/preview", to: "ticket_sales#preview_comps", as: "show_ticket_comps_preview"
+    delete "/shows/:id/tickets/comps/:order_id", to: "ticket_sales#remove_comp", as: "remove_show_ticket_comp"
+    patch "/shows/:id/tickets/comps/:order_id", to: "ticket_sales#update_comp", as: "show_ticket_comp"
     post  "/shows/:show_id/reclaim_vacancy/:vacancy_id", to: "shows#reclaim_vacancy", as: "reclaim_vacancy"
 
     # House staffing shifts the user has been assigned to.
