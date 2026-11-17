@@ -29,8 +29,10 @@ class ContractorPayoutRunService
       return failure("Set an amount on this payment before paying it.") if cents <= 0
 
       # The payee is the contractor's explicitly-linked Person (the identity that
-      # holds the Stripe account + ledger).
-      payee = contractor.person
+      # holds the Stripe account + ledger), or, when the contractor chose it,
+      # their own organization, whose CocoScout balance the share is paid
+      # into (ContractConnections.pay_target; no bank is involved).
+      payee = ContractConnections.pay_target(contract_payment.contract) || contractor.person
       return failure("Link a person to #{contractor.name} first, then they can connect a bank and be paid.") unless payee
 
       if (existing = PayoutContribution.find_by(source: contract_payment))

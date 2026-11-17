@@ -22,10 +22,13 @@ module My
       # contract has something to pay them (Tim, 2026-11-17: the panel showed
       # on a contract where they pay the organization). The organizations
       # that would pay are named on it.
+      # A contract whose payments go into their own organization's balance
+      # needs no bank (ContractConnections.pay_target).
       @paying_organizations = if @payee_contract_ids.any?
-        Organization.where(id: Contract.where(id: @payee_contract_ids.to_a)
-                                       .where(id: ContractPayment.where(direction: "outgoing").where.not(status: %w[cancelled paid]).select(:contract_id))
-                                       .select(:organization_id)).order(:name).pluck(:name)
+        Contract.where(id: @payee_contract_ids.to_a)
+                .where(id: ContractPayment.where(direction: "outgoing").where.not(status: %w[cancelled paid]).select(:contract_id))
+                .includes(:organization).reject { |contract| ContractConnections.pay_target(contract) }
+                .map { |contract| contract.organization.name }.uniq.sort
       else
         []
       end

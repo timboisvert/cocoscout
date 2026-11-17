@@ -16,6 +16,30 @@ class ContractConnectionNotices
     def accepted(connection) = to_contractor(connection, "contract_connection_accepted")
     def declined(connection) = to_contractor(connection, "contract_connection_declined", note: connection.answer_note.to_s)
 
+    # The contractor chose where the contract's payments are sent: the organization that
+    # pays it is notified, not asked.
+    def pay_to_changed(connection)
+      to_organization(connection, connection.pay_into_balance ? "contract_connection_pay_to_balance" : "contract_connection_pay_to_bank")
+    end
+
+    # A run paid a share into the contractor's organization's balance: the
+    # people who run that organization are notified.
+    def share_paid_into_balance(item)
+      target = item.payee
+      payer = item.payout_batch.organization
+      amount = ActiveSupport::NumberHelper.number_to_currency(item.amount_cents / 100.0)
+      path = routes.manage_connections_path
+      User.where(id: [ target.owner_id ] + target.organization_roles.where(company_role: "manager").pluck(:user_id)).find_each do |user|
+        Notifier.deliver(user: user, category: "contracts", kind: "contract_share_paid_into_balance",
+                         template_key: "contract_share_paid_into_balance", path: path, organization: target, subject: item,
+                         variables: { organization_name: payer.name, linked_organization_name: target.name, amount: amount,
+                                      contractor_name: "", production_name: "", linked_production_name: "", note: "", connections_url: path })
+      end
+    rescue StandardError => e
+      Rails.logger.error("[ContractConnectionNotices] item #{item.id} paid into balance: #{e.class}: #{e.message}")
+      nil
+    end
+
     # To the contractor, before any connection exists: that the contract
     # can be connected (once, when it first becomes true), and the same
     # pointed out by the organization that wrote it.

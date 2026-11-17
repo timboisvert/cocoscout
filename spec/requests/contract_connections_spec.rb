@@ -456,6 +456,47 @@ RSpec.describe "Contract connections", type: :request do
       expect(response.body).to include(my_ticket_sale_path(TicketListing.find_by!(show: contract_show)))
     end
 
+    it "lets the contractor send the other organization's payments into the balance, and tells both sides where they go" do
+      sign_in(user)
+      get manage_connections_path
+      expect(response.body).to include("Where Stars and Garters&#39; payments are sent").and include("To you")
+        .and include("Your bank continues to be paid as it is currently.").and include("whatever the contract pays")
+
+      patch manage_connection_pay_to_path(connection), params: { pay_to: "balance" }
+      expect(connection.reload.pay_into_balance).to be(true)
+      follow_redirect!
+      expect(response.body).to include("payments for this contract will go into The Holly Problem&#39;s balance").and include('data-pay-to="balance"')
+
+      # The paying organization's contract page says so, and so does its payout run.
+      create(:contract_payment, contract: contract, show: contract_show, direction: "outgoing", amount: 300, description: "Their fee")
+      # ...and My Contracts doesn't ask for a bank for a contract that pays into the balance.
+      get my_contracts_path
+      expect(response.body).not_to include("Connect a bank account for your contract payments")
+      batch = ContractorPayoutRunService.add_contract_payment!(contract.contract_payments.last, added_by: owner).batch
+      get signout_path
+      sign_in(owner)
+      post set_organization_path(id: venue.id)
+      get manage_contract_path(contract)
+      expect(response.body).to include("Where your payments to #{contractor.name} go").and include("Into The Holly Problem&#39;s CocoScout balance")
+      get manage_payout_batch_path(batch)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("data-into-balance").and include("The Holly Problem")
+    end
+
+    it "keeps the choice the contractor's: another manager of the organization can read it and not change it" do
+      colleague = create(:user, password: password)
+      create(:person, user: colleague)
+      create(:organization_role, :manager, user: colleague, organization: theirs)
+      sign_in(colleague)
+      post set_organization_path(id: theirs.id)
+
+      get manage_connections_path
+      expect(response.body).to include("Where Stars and Garters&#39; payments are sent")
+      expect(response.body).not_to include("Your bank continues to be paid as it is currently.")
+      patch manage_connection_pay_to_path(connection), params: { pay_to: "balance" }
+      expect(connection.reload.pay_into_balance).to be(false)
+    end
+
     it "says where a coming date is booked on the production page, and doesn't ask where its tickets are sold" do
       sign_in(user)
       get manage_production_path(their_production)

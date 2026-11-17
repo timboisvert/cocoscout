@@ -100,7 +100,7 @@ class CocoScoutBalance
   def self.aged_cents(organization, now: Time.current)
     return TicketBalance.aged_cents(organization, now: now) unless pooled?(organization)
 
-    recent = OrgCashEntry.where(organization: organization, entry_type: OTHER_CREDITS + %w[top_up])
+    recent = OrgCashEntry.where(organization: organization, entry_type: OTHER_CREDITS + %w[top_up partner_payment_in])
                          .where("occurred_at > ?", now - 1.year).sum(:amount_cents) +
              TicketBalance.recent_settled_cents(organization, since: now - 1.year)
     [ available_cents(organization) - recent, 0 ].max
@@ -112,7 +112,7 @@ class CocoScoutBalance
     {
       tickets: TicketBalance::ENTRY_TYPES.sum { |t| sums.fetch(t, 0) },
       courses: sums.fetch("course_registration", 0) + sums.fetch("refund", 0),
-      contracts: sums.fetch("contract_payment", 0),
+      contracts: sums.fetch("contract_payment", 0) + sums.fetch("partner_payment_in", 0),
       added: sums.fetch("top_up", 0) + sums.fetch("funding", 0),
       paid_out: -(sums.fetch("transfer", 0) + sums.fetch("transfer_reversal", 0)) - BalanceWithdrawal.where(organization_id: organization.id).not_failed.sum(:amount_cents),
       withdrawn: BalanceWithdrawal.where(organization_id: organization.id).not_failed.sum(:amount_cents)

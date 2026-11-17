@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_17_224309) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_17_234652) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -780,11 +780,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_224309) do
     t.datetime "updated_at", null: false
     t.datetime "reminded_at"
     t.boolean "use_own_images", default: false, null: false
+    t.boolean "pay_into_balance", default: false, null: false
+    t.datetime "pay_choice_at"
+    t.bigint "pay_choice_by_id"
     t.index ["contract_id"], name: "index_contract_connections_on_contract_id"
     t.index ["contract_id"], name: "index_contract_connections_one_live_per_contract", unique: true, where: "((status)::text = ANY (ARRAY[('requested'::character varying)::text, ('connected'::character varying)::text]))"
     t.index ["linked_organization_id"], name: "index_contract_connections_on_linked_organization_id"
     t.index ["linked_production_id"], name: "index_contract_connections_on_linked_production_id"
     t.index ["organization_id", "status"], name: "index_contract_connections_on_organization_id_and_status"
+    t.index ["pay_choice_by_id"], name: "index_contract_connections_on_pay_choice_by_id"
   end
 
   create_table "contract_date_requests", force: :cascade do |t|
@@ -5100,6 +5104,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_224309) do
   add_foreign_key "contract_connections", "productions", column: "linked_production_id", on_delete: :nullify
   add_foreign_key "contract_connections", "users", column: "answered_by_id", on_delete: :nullify
   add_foreign_key "contract_connections", "users", column: "ended_by_id", on_delete: :nullify
+  add_foreign_key "contract_connections", "users", column: "pay_choice_by_id", on_delete: :nullify
   add_foreign_key "contract_connections", "users", column: "requested_by_id", on_delete: :cascade
   add_foreign_key "contract_date_requests", "contracts", on_delete: :cascade
   add_foreign_key "contract_date_requests", "organizations", on_delete: :cascade

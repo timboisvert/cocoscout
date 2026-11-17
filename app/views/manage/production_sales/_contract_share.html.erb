@@ -14,7 +14,9 @@
     zone = Time.find_zone(contract.organization.time_zone.presence) || Time.zone
     LinkedDates.contract_shows(contract).where(canceled: false).order(:date_and_time).filter_map do |seller_show|
       payout = contract_payments_for_show(contract, seller_show).find(&:direction_outgoing?)
-      payout && { at: seller_show.date_and_time.in_time_zone(zone), payout: payout, contractor: contract.contractor_name }
+      target = ContractConnections.pay_target(contract)
+      payout && { at: seller_show.date_and_time.in_time_zone(zone), payout: payout,
+                  goes_to: (target ? "Payments go into #{possessive(target.name)} CocoScout balance." : "Payments go to #{contract.contractor_name}.") }
     end
   end
   known = rows.reject { |row| row[:payout].awaiting_amount? }
@@ -22,7 +24,7 @@
 <% if rows.any? %>
   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden" data-contract-share>
     <%= render "shared/section_heading", padding: "px-5 py-3", title: "What the contract pays",
-          intro: "Your share for each date, as the contract sets it. Payments go to #{rows.first[:contractor]}." %>
+          intro: "Your share for each date, as the contract sets it. #{rows.first[:goes_to]}" %>
     <ul class="divide-y divide-gray-100 text-sm">
       <% rows.each do |row| %>
         <% payout = row[:payout] %>

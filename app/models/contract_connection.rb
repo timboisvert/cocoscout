@@ -31,6 +31,7 @@ class ContractConnection < ApplicationRecord
   belongs_to :requested_by, class_name: "User"
   belongs_to :answered_by, class_name: "User", optional: true
   belongs_to :ended_by, class_name: "User", optional: true
+  belongs_to :pay_choice_by, class_name: "User", optional: true
 
   validates :status, inclusion: { in: STATUSES }
   validates :later_contracts, inclusion: { in: LATER_CONTRACTS }

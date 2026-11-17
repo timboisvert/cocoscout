@@ -162,7 +162,7 @@ class PayoutBatch < ApplicationRecord
   # Somebody parked on this run can be paid right now.
   def ready_to_retry?
     awaiting_retry? &&
-      items.any? { |i| RETRYABLE_ITEM_STATUSES.include?(i.status) && i.payee.respond_to?(:can_receive_payouts?) && i.payee.can_receive_payouts? }
+      items.any? { |i| RETRYABLE_ITEM_STATUSES.include?(i.status) && i.payable_now? }
   end
 
   # When the automatic sweep will next look at this run. nil when there's
@@ -200,8 +200,7 @@ class PayoutBatch < ApplicationRecord
     when "paid" then :paid
     when "returned" then :returned
     else
-      payee = item.payee
-      payee.respond_to?(:can_receive_payouts?) && payee.can_receive_payouts? ? :ready : :waiting
+      item.payable_now? ? :ready : :waiting
     end
   end
 

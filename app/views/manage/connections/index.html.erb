@@ -87,6 +87,28 @@
                 <% end %>
               </dd>
             </div>
+            <%
+              # Where the other organization's payments under the contract are sent
+              # (a share of ticket sales, a fee, whatever the contract pays; Tim,
+              # 2026-11-17: not "your share"): the contractor's choice.
+              contractor_here = ContractConnections.contractor?(Current.user, connection.contract)
+              balance_ok = ContractConnections.balance_available?(connection.linked_organization)
+              into_balance = connection.pay_into_balance && balance_ok
+              pay_modal = "pay-to-#{connection.id}"
+            %>
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-0.5 sm:gap-4 px-6 py-3" data-pay-to="<%= into_balance ? 'balance' : 'bank' %>">
+              <dt class="text-gray-600">Where <%= possessive(seller.name) %> payments are sent</dt>
+              <dd class="text-gray-900 sm:text-right max-w-md">
+                <% if into_balance %>
+                  Into <%= possessive(Current.organization.name) %> CocoScout balance, the moment <%= seller.name %> pays. No bank is involved.
+                <% else %>
+                  To <%= possessive(connection.contract.contractor_name) %> bank, as before.
+                <% end %>
+                <% if contractor_here %>
+                  <button type="button" class="text-pink-600 hover:text-pink-700 underline cursor-pointer" data-action="click->modal#open" data-modal-id="<%= pay_modal %>">Change</button>
+                <% end %>
+              </dd>
+            </div>
             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-0.5 sm:gap-4 px-6 py-3" data-connection-images>
               <dt class="text-gray-600">Images and description</dt>
               <dd class="text-gray-900 sm:text-right max-w-md">
@@ -188,6 +210,57 @@
           <% end %>
         <% end %>
       </section>
+
+      <% if connection.connected? && ContractConnections.contractor?(Current.user, connection.contract) %>
+        <%
+          balance_ok = ContractConnections.balance_available?(connection.linked_organization)
+          into_balance = connection.pay_into_balance && balance_ok
+          option = "relative flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3.5 cursor-pointer hover:border-pink-400 transition-colors has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50"
+          pay_radio = "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500 flex-shrink-0"
+        %>
+        <%# Where the other organization's payments are sent (Tim, 2026-11-17). The Pro mark sits on the box's border, so the option's name never wraps around it. %>
+        <div id="pay-to-<%= connection.id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" data-action="click->modal#closeOnBackdrop">
+          <div class="bg-white rounded-xl shadow-2xl w-full max-w-xl mx-4 overflow-hidden" data-action="click->modal#stopPropagation">
+            <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+              <h3 class="text-lg font-semibold text-white">Where <%= possessive(seller.name) %> payments are sent</h3>
+              <button type="button" data-action="click->modal#close" aria-label="Close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              </button>
+            </div>
+            <%= form_with url: manage_connection_pay_to_path(connection), method: :patch, local: true, data: { turbo_action: "replace" } do %>
+              <div class="p-6 space-y-3">
+                <p class="text-sm text-gray-700">This is the money <%= seller.name %> pays under your contract for <%= connection.contract.production&.name || connection.contract.production_name %>, whatever the contract pays: a share of ticket sales, a fee, or anything else.</p>
+                <label class="<%= option %> <%= 'opacity-70 cursor-not-allowed' unless balance_ok %>">
+                  <% unless balance_ok %><span class="absolute -top-2.5 right-3"><%= render "shared/pro_marker" %></span><% end %>
+                  <input type="radio" name="pay_to" value="balance" class="<%= pay_radio %>" <%= "checked" if into_balance %> <%= "disabled" unless balance_ok %>>
+                  <span>
+                    <span class="block text-sm font-medium text-gray-900"><%= possessive(Current.organization.name) %> balance</span>
+                    <span class="block text-sm text-gray-600 mt-1">
+                      <% if balance_ok %>
+                        It lands the moment <%= seller.name %> pays. You can pay your people from it with no bank debit, and withdraw it to your bank whenever you like.
+                      <% else %>
+                        A CocoScout balance comes with Pro.
+                      <% end %>
+                    </span>
+                  </span>
+                </label>
+                <label class="<%= option %>">
+                  <input type="radio" name="pay_to" value="bank" class="<%= pay_radio %>" <%= "checked" unless into_balance %>>
+                  <span>
+                    <span class="block text-sm font-medium text-gray-900">To you</span>
+                    <span class="block text-sm text-gray-600 mt-1">Your bank continues to be paid as it is currently.</span>
+                  </span>
+                </label>
+                <p class="text-xs text-gray-500">This applies to payments that aren't on one of <%= possessive(seller.name) %> payout runs yet. Anything already on a run goes where it was going. <%= seller.name %> will be notified of a change.</p>
+              </div>
+              <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+                <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+                <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
 
       <% if connection.status == "unlinked" && kept.any? %>
         <%= render "shared/confirm_modal", id: remove_modal,

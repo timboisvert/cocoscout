@@ -462,6 +462,7 @@
                     <svg class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-90 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     <div class="min-w-0 sm:flex sm:items-center sm:gap-2">
                       <div class="text-gray-900 truncate"><%= item.payee&.name %></div>
+                      <% if item.partner_organization? %><span class="inline-flex items-center rounded-full bg-pink-50 px-2 py-0.5 text-[11px] font-medium text-pink-700 flex-shrink-0" data-into-balance>Into their CocoScout balance</span><% end %>
                       <div class="text-xs text-gray-400 flex-shrink-0"><%= pluralize(contributions.size, "item") %></div>
                     </div>
                   </div>
@@ -528,6 +529,7 @@
               <div class="px-4 sm:px-5 py-3 flex items-center justify-between gap-3 sm:gap-4">
                 <div class="min-w-0">
                   <span class="text-gray-900"><%= item.payee&.name %></span>
+                  <% if item.partner_organization? %><span class="inline-flex items-center rounded-full bg-pink-50 px-2 py-0.5 text-[11px] font-medium text-pink-700 ml-1" data-into-balance>Into their CocoScout balance</span><% end %>
                   <% if item.error.present? %>
                     <div class="text-xs text-red-600 mt-0.5"><%= item.error %></div>
                   <% end %>

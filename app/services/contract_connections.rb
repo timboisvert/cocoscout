@@ -249,6 +249,41 @@ class ContractConnections
     end
   end
 
+  # ---- Where the share is paid (Tim, 2026-11-17) ------------------------
+  #
+  # A connected contract's share can be paid into the contractor's own
+  # organization's CocoScout balance, in place of the contractor's bank. The
+  # contractor chooses, per connection: it is the contractor's pay. The
+  # organization that wrote the contract is notified, not asked. It applies
+  # to payments not yet on a payout run; anything already on one goes where
+  # it was going.
+
+  # A balance comes with Pro: only an organization on Pro can be paid into.
+  def self.balance_available?(organization)
+    organization.present? && organization.feature_available?(:money) && CocoScoutBalance.pooled?(organization)
+  end
+
+  # The organization whose balance this contract's share is paid into right
+  # now, or nil for the contractor's bank: connected, chosen, and still on
+  # Pro. If Pro lapses or the connection ends, the next payment goes to the
+  # contractor's bank again, with nothing to switch back.
+  def self.pay_target(contract)
+    connection = contract && contract.connections.connected.where(pay_into_balance: true).includes(:linked_organization).first
+    target = connection&.linked_organization
+    target if target && balance_available?(target)
+  end
+
+  # The contractor's choice. Only the contractor makes it.
+  def self.set_pay_to!(connection, user:, balance:)
+    raise NotAllowed unless connection.connected? && contractor?(user, connection.contract)
+    raise NotAllowed if balance && !balance_available?(connection.linked_organization)
+    return connection if connection.pay_into_balance == balance
+
+    connection.update!(pay_into_balance: balance, pay_choice_by: user, pay_choice_at: Time.current)
+    ContractConnectionNotices.pay_to_changed(connection)
+    connection
+  end
+
   # The connections that have moved a contract's show into an organization
   # the user runs (Tim, 2026-11-17: once it's linked, show it in the
   # organization and not on My). For those, My keeps the contract itself

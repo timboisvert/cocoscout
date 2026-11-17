@@ -10,7 +10,7 @@ module Manage
   # settings tab.
   class ConnectionsController < Manage::ManageController
     before_action :ensure_org_owner_or_manager
-    before_action :set_connection, only: %i[update unlinking unlink remove_dates answer_date]
+    before_action :set_connection, only: %i[update unlinking unlink remove_dates answer_date pay_to]
 
     def index
       @connections = scope.where.not(status: %w[withdrawn declined])
@@ -60,6 +60,23 @@ module Manage
       notice = "#{helpers.pluralize(removed, 'date')} removed from #{@connection.production_name}."
       notice += " #{helpers.pluralize(kept, 'date')} with people on #{kept == 1 ? 'it' : 'them'} stayed: cancel #{kept == 1 ? 'it' : 'them'} yourself, so they're notified." if kept.positive?
       redirect_to manage_connections_path, notice: notice
+    end
+
+    # Where the other organization's payments under the contract are sent:
+    # the contractor's bank, or this organization's CocoScout balance. The contractor's own choice
+    # (ContractConnections.set_pay_to!).
+    def pay_to
+      balance = params[:pay_to] == "balance"
+      ContractConnections.set_pay_to!(@connection, user: Current.user, balance: balance)
+      seller = @connection.organization.name
+      notice = if balance
+        "Saved. #{seller}'s payments for this contract will go into #{Current.organization.name}'s balance. #{seller} has been notified."
+      else
+        "Saved. #{seller}'s payments for this contract will go to your bank. #{seller} has been notified."
+      end
+      redirect_to manage_connections_path, notice: notice
+    rescue ContractConnections::NotAllowed
+      redirect_to manage_connections_path, alert: "Only the contractor on this contract can choose where its payments are sent."
     end
 
     # A question left open when connecting: is this date of ours the same

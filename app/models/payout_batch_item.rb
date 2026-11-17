@@ -31,6 +31,30 @@ class PayoutBatchItem < ApplicationRecord
     status == "paid"
   end
 
+  # The run's own organization as a payee: CocoScout remitting it money it
+  # already holds for it (a course remainder, collected contract payments).
+  def own_organization?
+    payee_type == "Organization" && payee_id == payout_batch.organization_id
+  end
+
+  # Another organization as a payee: a contractor's own organization whose
+  # CocoScout balance a contract share is paid into (ContractConnections,
+  # Tim 2026-11-17). It is owed the money like any payee, on the payee
+  # ledger and in the books; only how it's paid differs: no bank transfer,
+  # the money moves from this organization's balance to theirs
+  # (PayoutBatchService.pay_into_balance!).
+  def partner_organization?
+    payee_type == "Organization" && !own_organization?
+  end
+
+  # Whether this item can be paid right now: a payee with a connected bank,
+  # or another organization's balance, which needs no bank.
+  def payable_now?
+    return true if partner_organization?
+
+    payee.respond_to?(:can_receive_payouts?) && payee.can_receive_payouts?
+  end
+
   # After we send it, pay is "on its way" until the payout provider says it
   # was deposited in the payee's bank (deposited_at, from its payout.paid
   # event). Without that word it stays on its way until a couple of business
@@ -82,7 +106,7 @@ class PayoutBatchItem < ApplicationRecord
       # run: that's CocoScout remitting the org its own held money (course
       # remainder, collected contract payments), and the org has no ledger.
       # Posting here would record a payout with no matching earning.
-      next if payout_batch.kind == "course" || payee_type == "Organization"
+      next if payout_batch.kind == "course" || own_organization?
 
       category_split.each do |category, cents|
         next if cents.zero?
@@ -142,7 +166,7 @@ class PayoutBatchItem < ApplicationRecord
 
       # Course runs and Organization-payee items never posted a payout entry,
       # so there's nothing to reverse.
-      next if payout_batch.kind == "course" || payee_type == "Organization"
+      next if payout_batch.kind == "course" || own_organization?
 
       category_split.each do |category, cents|
         next if cents.zero?
@@ -192,7 +216,7 @@ class PayoutBatchItem < ApplicationRecord
     # The org's own remittance rows (course remainder, collected contract
     # payments) live outside the performer ledger — their amount is simply the
     # sum of their lines.
-    if payee_type == "Organization"
+    if own_organization?
       total = payout_contributions.payable.sum(:amount_cents)
       if total.positive?
         update!(amount_cents: total)

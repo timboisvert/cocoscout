@@ -48,7 +48,7 @@
         <div>
           <div class="font-semibold text-gray-900 mb-1">What doesn't change</div>
           <ul class="space-y-1.5 list-disc pl-4">
-            <li>Your contract, your share and your terms stay exactly as they are.</li>
+            <li>Your contract, its terms and what it pays stay exactly as they are.</li>
             <li>The tickets, the door and Settle up are still yours to run.</li>
             <li>They won't see anything else of yours: your other productions, what you keep from each sale, buyers' email addresses or your Books.</li>
           </ul>
@@ -122,6 +122,16 @@
       <dl class="divide-y divide-gray-100 text-sm">
         <div class="flex items-start justify-between gap-4 px-4 py-2.5"><dt class="text-gray-600">Your dates are in</dt><dd class="text-gray-900 text-right">Their production, <%= connection.production_name %></dd></div>
         <div class="flex items-start justify-between gap-4 px-4 py-2.5"><dt class="text-gray-600">Who sees ticket sales</dt><dd class="text-gray-900 text-right max-w-md"><%= viewers %></dd></div>
+        <div class="flex items-start justify-between gap-4 px-4 py-2.5" data-connection-pay-to>
+          <dt class="text-gray-600">Where your payments to <%= contractor %> go</dt>
+          <dd class="text-gray-900 text-right max-w-md">
+            <% if ContractConnections.pay_target(@contract) %>
+              Into <%= possessive(theirs) %> CocoScout balance. <%= contractor %> chose this<%= " on #{connection.pay_choice_at.in_time_zone.strftime('%b %-d')}" if connection.pay_choice_at %>. Each payment goes on your payout run as one line and moves out of your balance into theirs, with no bank transfer.
+            <% else %>
+              To <%= possessive(contractor) %> bank, on your payout run, as before.
+            <% end %>
+          </dd>
+        </div>
         <div class="flex items-start justify-between gap-4 px-4 py-2.5" data-connection-images>
           <dt class="text-gray-600 pt-1.5">Images on your ticket page</dt>
           <dd class="flex flex-col items-end gap-2 max-w-md text-right text-gray-900">
