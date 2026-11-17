@@ -22,6 +22,7 @@ class Organization < ApplicationRecord
   has_many :productions, dependent: :destroy
   has_many :contracts, dependent: :destroy
   has_many :contractors, dependent: :destroy
+  has_many :follower_email_blocks, dependent: :destroy
   # What the organization offers its productions (Organization settings →
   # Services): booth tech, ticket taking, a projector. Contracts pick from it.
   has_many :house_services, dependent: :destroy

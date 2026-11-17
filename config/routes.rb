@@ -330,6 +330,10 @@ Rails.application.routes.draw do
 
     # Finances: CocoScout's money, every org's money, bills, and the Stripe check.
     get    "/finances",               to: "superadmin/finances#cocoscout",      as: "finances"
+    # Email: how much mail CocoScout sends against its Mailgun plan, and the
+    # extra follower emails organizations have bought (MailVolume).
+    get    "/finances/email",          to: "superadmin/email_volume#index", as: "finances_email"
+    patch  "/finances/email",          to: "superadmin/email_volume#update"
     get    "/finances/costs",          to: "superadmin/costs#index",       as: "finances_costs"
     post   "/finances/costs",          to: "superadmin/costs#create"
     post   "/finances/costs/upload",   to: "superadmin/costs#upload",      as: "finances_costs_upload"

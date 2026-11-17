@@ -43,6 +43,30 @@ class SuperadminNotices
       )
     end
 
+    # An organization bought a block of extra emails to followers
+    # (FollowerEmailBlock#after_create_commit).
+    def follower_email_block_bought(block)
+      organization = block.organization
+      deliver(
+        kind: "follower_email_block_bought", template_key: "superadmin_follower_email_block_bought", subject: organization,
+        variables: { organization_name: organization.name, emails: ActiveSupport::NumberHelper.number_to_delimited(block.emails),
+                     price: ActiveSupport::NumberHelper.number_to_currency(block.price_cents / 100.0, precision: 0),
+                     email_url: urls.finances_email_url(**url_options) },
+        path: urls.finances_email_path
+      )
+    end
+
+    # The month's mail is close to what the Mailgun plan includes: once a
+    # month (MailVolume.check!).
+    def mail_volume_close(volume)
+      mail_volume_notice(volume, "mail_volume_close", "superadmin_mail_volume_close")
+    end
+
+    # At the month's pace it's time to move up a Mailgun plan: once a month.
+    def mail_upgrade_near(volume)
+      mail_volume_notice(volume, "mail_upgrade_near", "superadmin_mail_upgrade_near")
+    end
+
     def recipients = User.where(email_address: User::SUPERADMIN_EMAILS).select(&:superadmin?)
 
     private
@@ -55,6 +79,20 @@ class SuperadminNotices
     rescue StandardError => e
       Rails.logger.error("[SuperadminNotices] #{kind} for organization #{subject&.id} not sent: #{e.class}: #{e.message}")
       Sentry.capture_exception(e) if defined?(Sentry)
+    end
+
+    def mail_volume_notice(volume, kind, template_key)
+      record = volume.record or return
+      return if Notification.where(category: CATEGORY, kind: kind, subject: record).exists?
+
+      number = ->(n) { ActiveSupport::NumberHelper.number_to_delimited(n) }
+      deliver(
+        kind: kind, template_key: template_key, subject: record,
+        variables: { sent: number.call(volume.sent), plan: number.call(volume.plan_emails), percent: volume.percent.to_s,
+                     projected: number.call(volume.projected.to_i), upgrade_at: number.call(volume.upgrade_at),
+                     month: volume.month.strftime("%B"), email_url: urls.finances_email_url(**url_options) },
+        path: urls.finances_email_path
+      )
     end
 
     def plan_words(organization, via)

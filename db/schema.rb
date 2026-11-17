@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_17_201544) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_17_224309) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1328,6 +1328,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_201544) do
     t.index ["feature_type"], name: "index_feature_credits_on_feature_type"
   end
 
+  create_table "follower_email_blocks", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.integer "emails", null: false
+    t.integer "price_cents", null: false
+    t.bigint "bought_by_id"
+    t.bigint "follower_email_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["bought_by_id"], name: "index_follower_email_blocks_on_bought_by_id"
+    t.index ["follower_email_id"], name: "index_follower_email_blocks_on_follower_email_id"
+    t.index ["organization_id"], name: "index_follower_email_blocks_on_organization_id"
+  end
+
   create_table "follower_email_deliveries", force: :cascade do |t|
     t.bigint "follower_email_id", null: false
     t.bigint "follower_id", null: false
@@ -1360,6 +1373,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_201544) do
     t.integer "recipient_count", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "paid_emails_used", default: 0, null: false
     t.index ["created_by_id"], name: "index_follower_emails_on_created_by_id"
     t.index ["organization_id"], name: "index_follower_emails_on_organization_id"
     t.index ["sent_by_id"], name: "index_follower_emails_on_sent_by_id"
@@ -1702,6 +1716,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_201544) do
     t.boolean "default", default: false, null: false
     t.datetime "archived_at"
     t.index ["organization_id"], name: "index_locations_on_organization_id"
+  end
+
+  create_table "mail_volume_months", force: :cascade do |t|
+    t.date "month", null: false
+    t.integer "sent", default: 0, null: false
+    t.datetime "counted_from"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["month"], name: "index_mail_volume_months_on_month", unique: true
   end
 
   create_table "mailing_list_memberships", force: :cascade do |t|
@@ -5141,6 +5164,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_201544) do
   add_foreign_key "expense_items", "show_financials", column: "show_financials_id"
   add_foreign_key "feature_credit_redemptions", "feature_credits"
   add_foreign_key "feature_credit_redemptions", "organizations"
+  add_foreign_key "follower_email_blocks", "follower_emails", on_delete: :nullify
+  add_foreign_key "follower_email_blocks", "organizations", on_delete: :cascade
+  add_foreign_key "follower_email_blocks", "users", column: "bought_by_id", on_delete: :nullify
   add_foreign_key "follower_email_deliveries", "follower_emails"
   add_foreign_key "follower_email_deliveries", "followers"
   add_foreign_key "follower_emails", "organizations"

@@ -36,6 +36,7 @@ class UsageInvoiceCorrection
       if organization.bills_usage_in?(month)
         add_bank_debit_fee!(record, organization, month)
         add_withdrawal_fee!(record, organization, month)
+        add_follower_email_blocks!(record, organization, month)
       end
     end
     return if difference.zero?
@@ -77,6 +78,21 @@ class UsageInvoiceCorrection
                      "in #{month.strftime('%B %Y')}: 0.25% of #{over}, our payment provider's cost",
         metadata: { kind: "withdrawal_fee", organization_id: organization.id, month: month.iso8601, withdrawn_cents: withdrawn } },
       { idempotency_key: "withdrawal-fee-#{record.stripe_invoice_id}-#{fee}" }
+    )
+  end
+
+  # Blocks of extra emails to followers bought that month, as their own line.
+  def self.add_follower_email_blocks!(record, organization, month)
+    blocks = UsageRules.follower_email_blocks(organization, month)
+    cents = blocks.sum(:price_cents)
+    return if cents.zero?
+
+    emails = blocks.sum(:emails)
+    Stripe::InvoiceItem.create(
+      { customer: organization.stripe_customer_id, invoice: record.stripe_invoice_id, currency: "usd", amount: cents,
+        description: "#{ActiveSupport::NumberHelper.number_to_delimited(emails)} extra emails to followers, bought in #{month.strftime('%B %Y')}",
+        metadata: { kind: "follower_email_blocks", organization_id: organization.id, month: month.iso8601, emails: emails } },
+      { idempotency_key: "follower-email-blocks-#{record.stripe_invoice_id}-#{cents}" }
     )
   end
 

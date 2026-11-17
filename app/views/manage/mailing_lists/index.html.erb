@@ -66,7 +66,7 @@
     </div>
 
     <section class="lg:col-span-2 bg-white rounded-lg border border-gray-200 overflow-hidden" data-emails>
-      <%= render "shared/section_heading", title: "Emails", intro: "#{number_with_delimiter(@allowance.used)} of #{number_with_delimiter(@allowance.included)} sent this month" do %>
+      <%= render "shared/section_heading", title: "Emails", intro: "#{number_with_delimiter(@allowance.used)} of #{number_with_delimiter(@allowance.included)} sent this month#{@allowance.paid_left.positive? ? ", and #{number_with_delimiter(@allowance.paid_left)} more that you've paid for" : ''}" do %>
         <%= render "shared/button", text: "New email", variant: "primary", size: "small", path: manage_new_follower_email_path %>
       <% end %>
       <% if @drafts.empty? && @sent.empty? %>
