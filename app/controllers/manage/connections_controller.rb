@@ -10,7 +10,7 @@ module Manage
   # settings tab.
   class ConnectionsController < Manage::ManageController
     before_action :ensure_org_owner_or_manager
-    before_action :set_connection, only: %i[update unlink answer_date]
+    before_action :set_connection, only: %i[update unlinking unlink remove_dates answer_date]
 
     def index
       @connections = scope.where.not(status: %w[withdrawn declined])
@@ -27,10 +27,39 @@ module Manage
       end
     end
 
+    # Before unlinking: what it ends and what it doesn't, the smaller things
+    # that may be what they're after, and whether the coming dates stay.
+    def unlinking
+      return redirect_to(manage_connections_path) unless @connection.connected?
+
+      @coming = LinkedDates.following_for(@connection).where(canceled: false).where("shows.date_and_time > ?", Time.current).order(:date_and_time).to_a
+      @with_people = @coming.count { |show| LinkedDates.people_on?(show) }
+    end
+
     def unlink
-      ContractConnections.unlink!(@connection, user: Current.user)
-      redirect_to manage_connections_path,
-                  notice: "Unlinked from #{@connection.organization.name}. Its dates stay in #{@connection.production_name} as your own. #{@connection.organization.name} has been notified."
+      remove = params[:dates] == "remove"
+      ContractConnections.unlink!(@connection, user: Current.user, remove_coming: remove)
+      seller = @connection.organization.name
+      left = LinkedDates.released_coming(@connection).count
+      words = if remove && left.zero?
+        "The coming dates were removed from #{@connection.production_name}."
+      elsif remove
+        "The coming dates nobody was on were removed. #{helpers.pluralize(left, 'date')} with people on #{left == 1 ? 'it' : 'them'} stayed in #{@connection.production_name}, as your own."
+      else
+        "Its dates stay in #{@connection.production_name} as your own."
+      end
+      redirect_to manage_connections_path, notice: "Unlinked from #{seller}. #{words} #{seller} has been notified."
+    end
+
+    # After the connection has ended (either side): remove the coming dates
+    # kept from it that nobody is on.
+    def remove_dates
+      return redirect_to(manage_connections_path) unless @connection.status == "unlinked"
+
+      removed, kept = LinkedDates.remove_released!(@connection)
+      notice = "#{helpers.pluralize(removed, 'date')} removed from #{@connection.production_name}."
+      notice += " #{helpers.pluralize(kept, 'date')} with people on #{kept == 1 ? 'it' : 'them'} stayed: cancel #{kept == 1 ? 'it' : 'them'} yourself, so they're notified." if kept.positive?
+      redirect_to manage_connections_path, notice: notice
     end
 
     # A question left open when connecting: is this date of ours the same

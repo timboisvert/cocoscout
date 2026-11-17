@@ -709,7 +709,9 @@ Rails.application.routes.draw do
     # owners and managers.
     get   "/connections",                 to: "connections#index",       as: "connections"
     patch "/connections/:id",             to: "connections#update",      as: "connection"
+    get   "/connections/:id/unlink",      to: "connections#unlinking",   as: "unlinking_connection"
     post  "/connections/:id/unlink",      to: "connections#unlink",      as: "unlink_connection"
+    post  "/connections/:id/remove_dates", to: "connections#remove_dates", as: "connection_remove_dates"
     post  "/connections/:id/dates",       to: "connections#answer_date", as: "connection_dates"
 
     # Messages

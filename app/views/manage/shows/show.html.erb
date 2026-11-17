@@ -199,6 +199,12 @@
         <% elsif !has_contract && current_user_can_manage?(@production) %>
           <%# Standard manage show box — only for productions NOT governed by a
               contract, and only for its managers (viewers look). %>
+          <% if @show.released_from_contract? && (was = @show.released_connection&.organization) %>
+            <%# Kept from a contract connection that has ended: it's theirs now, and nothing keeps it in step. %>
+            <div class="border border-gray-200 rounded-lg bg-white px-4 py-3 text-sm text-gray-600" data-released-from-contract>
+              This date came from your contract with <%= was.name %>. That connection has ended, so the date is now your own and no longer follows <%= possessive(was.name) %> changes.
+            </div>
+          <% end %>
           <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
             <%= render "shared/section_heading", padding: "px-4 py-3", title: "Manage #{sanitize(@show.event_type.titleize)}" %>
             <div class="p-4">

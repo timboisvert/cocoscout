@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_17_162208) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_17_171941) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -3542,6 +3542,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_162208) do
     t.string "tickets_mode"
     t.jsonb "contract_terms", default: {}, null: false
     t.bigint "linked_show_id"
+    t.bigint "released_connection_id"
     t.index ["casting_mode"], name: "index_shows_on_casting_mode"
     t.index ["casting_source"], name: "index_shows_on_casting_source"
     t.index ["course_offering_id"], name: "index_shows_on_course_offering_id"
@@ -3553,6 +3554,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_162208) do
     t.index ["mic_status"], name: "index_shows_on_mic_status", where: "(mic_status IS NOT NULL)"
     t.index ["production_id", "event_type", "canceled", "date_and_time"], name: "idx_shows_prod_type_canceled_date"
     t.index ["production_id"], name: "index_shows_on_production_id"
+    t.index ["released_connection_id"], name: "index_shows_on_released_connection_id"
     t.index ["space_rental_id"], name: "index_shows_on_space_rental_id"
   end
 
@@ -5350,6 +5352,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_162208) do
   add_foreign_key "show_person_role_assignments", "shows"
   add_foreign_key "show_service_changes", "house_services"
   add_foreign_key "show_service_changes", "shows"
+  add_foreign_key "shows", "contract_connections", column: "released_connection_id", on_delete: :nullify
   add_foreign_key "shows", "course_offerings"
   add_foreign_key "shows", "event_linkages"
   add_foreign_key "shows", "location_spaces"

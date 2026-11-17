@@ -43,7 +43,9 @@
         following = connection.connected? ? LinkedDates.following_for(connection).where(canceled: false).count : 0
         on_contract = LinkedDates.contract_shows(connection.contract).where(canceled: false).count
         questions = LinkedDates.open_questions(connection)
-        unlink_modal = "unlink-connection-#{connection.id}"
+        remove_modal = "remove-dates-#{connection.id}"
+        # After unlinking: the coming dates kept from this contract.
+        kept = connection.status == "unlinked" ? LinkedDates.released_coming(connection).to_a : []
         badge = { "connected" => [ "Connected", "bg-green-100 text-green-700" ], "requested" => [ "Waiting for #{seller.name}", "bg-amber-100 text-amber-700" ],
                   "unlinked" => [ "Unlinked", "bg-gray-100 text-gray-600" ] }[connection.status]
       %>
@@ -52,8 +54,7 @@
               intro: "Contract for #{connection.contract.production&.name || connection.contract.production_name} · #{pluralize(on_contract, 'date')}" do %>
           <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold <%= badge.last %>"><%= badge.first %></span>
           <% if connection.connected? %>
-            <%= render "shared/button", text: "Unlink", variant: "secondary", size: "small", type: :button,
-                  data: { action: "click->modal#open", modal_id: unlink_modal } %>
+            <%= render "shared/button", text: "Unlink", variant: "secondary", size: "small", path: manage_unlinking_connection_path(connection) %>
           <% end %>
         <% end %>
 
@@ -98,6 +99,17 @@
             </dd>
           </div>
         </dl>
+
+        <% if kept.any? %>
+          <div class="border-t border-gray-200 px-6 py-4 flex flex-wrap items-center justify-between gap-3" data-kept-dates>
+            <p class="text-sm text-gray-700 max-w-xl">
+              <%= pluralize(kept.size, "coming date") %> from this contract <%= kept.size == 1 ? "is" : "are" %> still in <%= connection.production_name %> as your own.
+              <%= kept.size == 1 ? "It no longer follows" : "They no longer follow" %> <%= seller.name %>, so check <%= kept.size == 1 ? "it" : "them" %> if <%= seller.name %> changes anything.
+            </p>
+            <%= render "shared/button", text: "Remove #{kept.size == 1 ? 'it' : 'them'}", variant: "secondary", size: "small", type: :button,
+                  data: { action: "click->modal#open", modal_id: remove_modal } %>
+          </div>
+        <% end %>
 
         <% if questions.any? %>
           <div class="border-t border-gray-200 px-6 py-4 bg-amber-50/50" data-date-questions>
@@ -165,11 +177,11 @@
         <% end %>
       </section>
 
-      <% if connection.connected? %>
-        <%= render "shared/confirm_modal", id: unlink_modal,
-              title: "Unlink #{seller.name}?",
-              message: "The contract itself doesn't change. You'll stop seeing their ticket sales here. Their dates will stay in #{connection.production_name} as your own, but they'll no longer follow #{possessive(seller.name)} changes, so you'll need to check them yourself if #{seller.name} moves one. #{seller.name} will be notified.",
-              confirm_text: "Unlink", url: manage_unlink_connection_path(connection), method: :post %>
+      <% if connection.status == "unlinked" && kept.any? %>
+        <%= render "shared/confirm_modal", id: remove_modal,
+              title: "Remove the dates you kept?",
+              message: "We'll delete the coming dates from this contract that nobody is cast in or scheduled to work. Any date with people on it will stay, so that you can cancel it yourself and they're notified. Dates that have already happened always stay.",
+              confirm_text: "Remove", url: manage_connection_remove_dates_path(connection), method: :post %>
       <% end %>
     <% end %>
   </div>

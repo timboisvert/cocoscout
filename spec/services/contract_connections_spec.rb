@@ -281,6 +281,40 @@ RSpec.describe ContractConnections do
       expect(kept.first.reload.date_and_time).to eq(first_night)
     end
 
+    it "marks the dates it leaves, and can remove the coming ones nobody is on" do
+      connection = connect!
+      followed = their_production.shows.find_by!(linked_show: first_show)
+      role = create(:role, production: their_production)
+      followed.show_person_role_assignments.create!(role: role, assignable: create(:person))
+
+      described_class.unlink!(connection, user: user, remove_coming: true)
+
+      # The one with someone cast stays, marked; the other is gone.
+      expect(followed.reload).to have_attributes(linked_show_id: nil, released_connection_id: connection.id)
+      expect(their_production.shows.count).to eq(1)
+      expect(LinkedDates.released_coming(connection)).to contain_exactly(followed)
+    end
+
+    it "keeps every date when the other organization unlinks, and lets the contractor's side remove the coming ones later" do
+      connection = connect!
+      described_class.unlink!(connection, user: owner, remove_coming: true)
+      expect(their_production.shows.count).to eq(2)
+
+      expect(LinkedDates.remove_released!(connection)).to eq([ 2, 0 ])
+      expect(their_production.shows.count).to eq(0)
+    end
+
+    it "takes the mark off again when the contract is connected again" do
+      first = connect!
+      described_class.unlink!(first, user: user)
+      kept = their_production.shows.find_by!(date_and_time: first_show.date_and_time)
+      again = described_class.request!(contract: contract, user: user, organization: theirs, production: their_production,
+                                       date_answers: LinkedDates.answers_from(contract, their_production, pair: { first_show.id.to_s => kept.id.to_s }, call: {}, join: {}))
+      described_class.accept!(again, user: owner)
+
+      expect(kept.reload).to have_attributes(linked_show_id: first_show.id, released_connection_id: nil)
+    end
+
     it "notifies the other organization when the contractor's side ends it" do
       connection = connect!
       expect { described_class.unlink!(connection, user: user) }.to change(owner.notifications, :count).by(1)

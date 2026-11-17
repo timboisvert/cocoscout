@@ -12,6 +12,7 @@ class Show < ApplicationRecord
   # organization's contract dates (ContractConnection, LinkedDates): its
   # time, place and whether it's on are that show's. (Not EventLinkage's
   # "linked", which groups shows of one production.)
+  belongs_to :released_connection, class_name: "ContractConnection", optional: true
   belongs_to :linked_show, class_name: "Show", optional: true
   has_many :following_shows, class_name: "Show", foreign_key: :linked_show_id, inverse_of: :linked_show, dependent: :nullify
   # For course sessions (event_type "class"): the run (CourseOffering) this
@@ -1285,6 +1286,10 @@ class Show < ApplicationRecord
 
   # Follows another organization's contract date (LinkedDates).
   def follows_contract? = linked_show_id.present?
+
+  # Kept from a contract connection that has since ended: it's this
+  # organization's own date now, and no longer follows the other's changes.
+  def released_from_contract? = released_connection_id.present?
 
   # Where it happens: its own location, or the venue of the date it follows.
   def venue_location = location || (linked_show&.location if follows_contract?)

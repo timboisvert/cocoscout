@@ -175,9 +175,39 @@ class LinkedDates
     def release!(connection)
       apart do
         following_for(connection).includes(linked_show: :location).find_each do |show|
-          stand_alone!(show, venue: show.linked_show&.location)
+          stand_alone!(show, venue: show.linked_show&.location, released_from: connection)
         end
       end
+    end
+
+    # The dates kept from a connection that has ended, still to come.
+    def released_coming(connection)
+      Show.where(released_connection_id: connection.id, canceled: false).where("shows.date_and_time > ?", Time.current).order(:date_and_time)
+    end
+
+    # Whether anyone is on a date: cast in it, or scheduled to work it.
+    # Such a date is never removed for them: it's theirs to cancel, so the
+    # people on it are notified the usual way.
+    def people_on?(show)
+      show.show_person_role_assignments.exists? || show.shift_shows.exists?
+    end
+
+    # After unlinking, the contractor's side removes the coming dates it
+    # kept: the ones nobody is on. Returns [removed, kept because someone
+    # is on them]. Past dates always stay.
+    def remove_released!(connection)
+      removed = kept = 0
+      apart do
+        released_coming(connection).find_each do |show|
+          if people_on?(show)
+            kept += 1
+          else
+            show.destroy!
+            removed += 1
+          end
+        end
+      end
+      [ removed, kept ]
     end
 
     # A question left open on the Your dates step, answered later: the same
@@ -303,7 +333,7 @@ class LinkedDates
       show.following_contract = true
       attributes = { linked_show: contract_show, date_and_time: contract_show.date_and_time, duration_minutes: contract_show.duration_minutes,
                      canceled: contract_show.canceled, location_id: nil, location_space_id: nil, is_online: false,
-                     online_location_info: nil, recurrence_group_id: nil }
+                     online_location_info: nil, recurrence_group_id: nil, released_connection_id: nil }
       # Their old time can stay as the cast call, when they asked for that
       # and the date had no call time of its own. One it already had is
       # theirs and is never touched.
@@ -315,9 +345,10 @@ class LinkedDates
     # A date that stops following: it needs a place of its own, so it gets
     # the contractor's own record of the venue (made if they have none by
     # that name).
-    def stand_alone!(show, venue:, canceled: nil)
+    def stand_alone!(show, venue:, canceled: nil, released_from: nil)
       show.following_contract = true
       attributes = { linked_show_id: nil, location: own_record_of(venue, show.production.organization) }
+      attributes[:released_connection_id] = released_from.id if released_from
       attributes[:is_online] = true if attributes[:location].nil?
       attributes[:canceled] = canceled unless canceled.nil?
       show.update!(attributes)

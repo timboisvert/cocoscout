@@ -206,13 +206,16 @@ class ContractConnections
 
   # Either side ends it. Nothing already done is undone: the dates in the
   # contractor's production stay, as their own, and stop following.
-  def self.unlink!(connection, user:)
+  # `remove_coming`: the contractor's side also removes the coming dates
+  # nobody is on (LinkedDates.remove_released!); otherwise every date stays.
+  def self.unlink!(connection, user:, remove_coming: false)
     return connection unless connection.connected?
 
     by_contractor_side = theirs?(connection, user)
     ContractConnection.transaction do
       LinkedDates.release!(connection)
       connection.update!(status: "unlinked", ended_by: user, ended_at: Time.current)
+      LinkedDates.remove_released!(connection) if remove_coming && by_contractor_side
     end
     ContractConnectionNotices.unlinked(connection, by_contractor_side: by_contractor_side)
     connection

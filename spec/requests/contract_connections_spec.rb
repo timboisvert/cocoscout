@@ -274,8 +274,29 @@ RSpec.describe "Contract connections", type: :request do
       patch manage_connection_path(connection), params: { connection: { cast_sales: "nothing", team_viewer_sales: "nothing" } }
       expect(connection.reload).to have_attributes(cast_sales: "nothing", team_viewer_sales: "nothing")
 
-      post manage_unlink_connection_path(connection)
+      # Unlink is a page of its own: what it ends, the smaller options, and the coming dates.
+      get manage_unlinking_connection_path(connection)
+      expect(response.body).to include("You might not need to unlink").and include("What should happen to the 1 date still to come?")
+
+      post manage_unlink_connection_path(connection), params: { dates: "keep" }
       expect(connection.reload.status).to eq("unlinked")
+      expect(their_production.shows.count).to eq(1)
+
+      get manage_connections_path
+      expect(response.body).to include("1 coming date from this contract is still in The Holly Problem as your own")
+      get manage_show_path(their_production, their_production.shows.first)
+      expect(response.body).to include("That connection has ended")
+
+      post manage_connection_remove_dates_path(connection)
+      expect(their_production.shows.count).to eq(0)
+    end
+
+    it "removes the coming dates when unlinking, if asked to" do
+      sign_in(user)
+      post manage_unlink_connection_path(connection), params: { dates: "remove" }
+
+      expect(their_production.shows.count).to eq(0)
+      expect(flash[:notice]).to include("The coming dates were removed")
     end
 
     it "shows the date as booked there, at their venue, with nothing to move or delete" do
