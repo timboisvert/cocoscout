@@ -115,8 +115,8 @@
 
       <%# On a phone (V1.1 plan §4): the cast count and Notify pinned to the
           bottom, so they're never a scroll away. Notify opens the same modal
-          as the button above (drop-role#notifyFromBar). %>
-      <div class="md:hidden h-20" aria-hidden="true"></div>
+          as the button above (drop-role#notifyFromBar). Its room at the foot
+          of the page is after the board, below. %>
       <div class="md:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 <%= phone_bar_room %> flex items-center gap-3" data-casting-phone-bar>
         <span id="progress-fraction" class="flex-1 text-sm font-semibold <%= fully_cast ? 'text-green-600' : 'text-pink-600' %>"><%= filled_slots %>/<%= total_slots %> <%= progress_unit_plural %> cast</span>
         <span data-drop-role-target="phoneNotify" class="<%= 'hidden' if filled_slots.zero? %>">
@@ -367,6 +367,12 @@
       <% end %><%# end show_talent_pool_panel %>
 
     </div>
+
+    <%# Room for the phone's pinned cast count and Notify, at the foot of the
+        board (it sat under the progress card, a gap above the lineup). %>
+    <% if total_slots > 0 %>
+      <div class="md:hidden h-20" aria-hidden="true"></div>
+    <% end %>
 
     <%# Phone, act-based night: the acts to move someone to (V1.1 plan §4,
         Move to…); the JS fills it from the board's own act list. %>
