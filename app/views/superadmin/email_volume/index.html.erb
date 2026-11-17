@@ -26,14 +26,19 @@
       <div class="text-xl font-semibold text-gray-900 mt-1 tabular-nums"><%= number.call(v.sent) %> of <%= number.call(v.plan_emails) %></div>
       <div class="text-xs text-gray-600 mt-0.5">
         <%= v.percent %>% of the plan.
-        <% if v.counted_from && v.counted_from.to_date > v.month %>Counted since <%= v.counted_from.strftime("%b %-d") %>, when counting began.<% end %>
+        <% if v.counted_from.nil? %>Nothing has been counted yet this month. Counting starts with the next email that goes out.
+        <% elsif v.counted_from.to_date > v.month %>Counted since <%= v.counted_from.strftime("%b %-d") %>, when counting began.<% end %>
       </div>
     </div>
     <div class="rounded-lg border border-gray-200 bg-white p-4" data-mail-pace>
       <div class="text-xs text-gray-500 uppercase tracking-wider">Heading for</div>
       <div class="text-xl font-semibold text-gray-900 mt-1 tabular-nums"><%= v.projected ? "About #{number.call(v.projected)}" : "Too early to say" %></div>
       <div class="text-xs text-gray-600 mt-0.5">
-        <% if v.projected.nil? %>A month's pace means little in its first few days.
+        <%# Three reasons there's no pace yet, each said as what it is: nothing
+            counted, counting only just begun, or the month only just begun. %>
+        <% if v.counted_from.nil? %>There is nothing to work a pace out from yet.
+        <% elsif v.projected.nil? && v.counted_from.to_date > v.month %>Counting began on <%= v.counted_from.strftime("%b %-d") %>. A pace means little until it has run for <%= MailVolume::PACE_FROM_DAY %> days.
+        <% elsif v.projected.nil? %>A month's pace means little in its first few days.
         <% elsif v.upgrade_near? %>Past <%= number.call(v.upgrade_at) %> the next plan up costs less than paying for the extra.
         <% elsif v.projected > v.plan_emails %>Over the plan, and still cheaper than moving up one.
         <% else %>Within the plan at this pace.<% end %>

@@ -52,10 +52,11 @@
 <% end %>
 
 <% if can_ask %>
-<div class="flex items-center justify-between gap-3 px-5 py-3">
+<%# On a phone the words go above the button: side by side they were cut to "Need …". %>
+<div class="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 px-5 py-3">
   <span class="min-w-0 flex items-center gap-2 text-sm text-gray-700">
     <%= icon("calendar", class: "w-4 h-4 text-pink-500 flex-shrink-0") %>
-    <span class="truncate">Need a date moved, canceled or added?</span>
+    <span>Need a date moved, canceled or added?</span>
   </span>
   <%= render "shared/button", text: "Request date/time change", variant: "outline-pink", size: "small", type: :button,
         classes: "flex-shrink-0", data: { action: "click->modal#open", modal_id: ask_modal } %>

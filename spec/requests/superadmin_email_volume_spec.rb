@@ -98,6 +98,26 @@ RSpec.describe "Superadmin Finances - Email", type: :request do
       post set_organization_path(id: organization.id)
     end
 
+    # Dev walk, 2026-11-17: with nothing counted yet the page blamed "a month's first few days" on the 17th.
+    it "says why there is no pace yet: nothing counted, counting only just begun, or the month only just begun" do
+      sign_in(superadmin_user)
+      travel_to(Date.current.beginning_of_month + 16.days + 12.hours) do
+        get finances_email_path
+        expect(response.body).to include("Nothing has been counted yet this month.", "There is nothing to work a pace out from yet.")
+        expect(response.body).not_to include("first few days")
+
+        MailVolume.count!(40)
+        get finances_email_path
+        expect(response.body).to include("Counting began on #{Time.current.strftime('%b %-d')}. A pace means little until it has run for 5 days.")
+      end
+      MailVolumeMonth.delete_all
+      travel_to(Date.current.next_month.beginning_of_month + 1.day + 12.hours) do
+        MailVolumeMonth.create!(month: Date.current.beginning_of_month, sent: 40, counted_from: Date.current.beginning_of_month.beginning_of_day)
+        get finances_email_path
+        expect(response.body).to include("A month's pace means little in its first few days.")
+      end
+    end
+
     it "offers a block when an email goes past what's left, and buys it only on that button" do
       email = organization.follower_emails.create!(subject: "News", body: "<p>Hello</p>", status: "draft", created_by: owner,
                                                    targets: { "list_ids" => [ list.id ], "segment_ids" => [] })

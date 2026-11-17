@@ -75,8 +75,9 @@
       <%= link_to "Connect to your organization", my_connect_contract_path(contract), class: "text-gray-500 hover:text-pink-600 underline" %>
     </div>
   <% elsif connectable %>
-    <div class="flex items-center justify-between gap-3 px-5 py-3" data-connection="offer">
-      <span class="min-w-0 flex items-center gap-2 text-sm text-gray-700">
+    <%# On a phone the words go above the button: side by side they ran nine lines deep. %>
+    <div class="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 px-5 py-3" data-connection="offer">
+      <span class="min-w-0 flex items-start sm:items-center gap-2 text-sm text-gray-700">
         <%= icon("link", class: "w-4 h-4 text-pink-500 flex-shrink-0") %>
         <span>You also run an organization on CocoScout. You can connect this contract to it, so these dates and their ticket sales appear in your own show.</span>
       </span>
