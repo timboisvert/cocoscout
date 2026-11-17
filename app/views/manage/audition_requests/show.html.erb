@@ -153,6 +153,37 @@
             </p>
           </div>
         <% end %>
+        <%# No audition sessions: decide this one here and send its email (Tim, 2026-11-17). %>
+        <% if @decision_drafts %>
+          <% who = @requestable.is_a?(Person) ? (@requestable.first_name.presence || @requestable.name) : @requestable.name %>
+          <% if @decision_stage&.finalized? %>
+            <p class="text-sm text-gray-700 mb-2">
+              <%= @decision_stage.cast? ? "Added to the talent pool" : "Marked as not chosen" %>
+              on <%= @decision_stage.updated_at.strftime("%b %-d") %>.
+              To change it, use the <%= link_to "casting board", manage_casting_select_signups_auditions_cycle_path(@production, @audition_cycle), class: "text-pink-600 hover:underline" %>.
+            </p>
+          <% else %>
+            <% if @decision_stage&.pending? %>
+              <p class="text-sm text-gray-600 mb-2">
+                On the casting board as <%= @decision_stage.cast? ? "added to the talent pool" : "not chosen" %>, and not notified yet.
+              </p>
+            <% end %>
+            <div class="flex flex-wrap gap-2 mb-2">
+              <%= render "shared/button", text: "Add to talent pool", variant: "primary", size: "small", type: :button,
+                    data: { controller: "modal", action: "click->modal#open", modal_id: "decide-cast-#{@audition_request.id}" } %>
+              <%= render "shared/button", text: "Not this time", variant: "outline", size: "small", type: :button,
+                    data: { controller: "modal", action: "click->modal#open", modal_id: "decide-rejected-#{@audition_request.id}" } %>
+            </div>
+            <%= render "manage/audition_requests/decide_modal", id: "decide-cast-#{@audition_request.id}", decision: "cast",
+                  draft: @decision_drafts["cast"], title: "Add #{who} to the talent pool?",
+                  intro: "#{@requestable.name} will be added to #{possessive(@production.name)} talent pool and sent this email. You can change the words before it goes.",
+                  confirm_text: "Add and send" %>
+            <%= render "manage/audition_requests/decide_modal", id: "decide-rejected-#{@audition_request.id}", decision: "rejected",
+                  draft: @decision_drafts["rejected"], title: "Let #{who} know?",
+                  intro: "#{@requestable.name} will be sent this email saying they weren't chosen this time. You can change the words before it goes.",
+                  confirm_text: "Send" %>
+          <% end %>
+        <% end %>
         <div class="flex flex-wrap gap-2">
           <% if @audition_request.archived? %>
             <%= render "shared/button", text: "Restore Sign-up", variant: "outline", size: "small", type: :button,
@@ -345,7 +376,7 @@
   <% others_unvoted = @audition_request.others_unvoted_by(Current.user).count %>
   <% requestable_kind = @requestable.is_a?(Person) ? "person" : "group" %>
   <%= render "shared/vote_bar",
-        title: (@audition_cycle.video_only? ? "Should this #{requestable_kind} be added to #{@production.name}'s talent pool?" : "Should this #{requestable_kind} get an audition?"),
+        title: (@audition_cycle.decided_from_requests? ? "Should this #{requestable_kind} be added to #{@production.name}'s talent pool?" : "Should this #{requestable_kind} get an audition?"),
         vote_url: manage_cast_vote_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request),
         current_vote: current_vote, vote_counts: @audition_request.vote_counts,
         previous_path: (@audition_request.previous && manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request.previous)),

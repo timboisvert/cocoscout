@@ -5,9 +5,9 @@ module Manage
     before_action :set_production
     before_action :check_production_access
     before_action :set_audition_cycle
-    before_action :set_audition_request, only: %i[show edit_answers edit_video update destroy update_audition_session_availability update_show_availability cast_vote votes archive unarchive]
+    before_action :set_audition_request, only: %i[show edit_answers edit_video update destroy update_audition_session_availability update_show_availability cast_vote votes archive unarchive decide]
     before_action :ensure_user_is_manager, except: %i[index show cast_vote votes archived]
-    before_action :ensure_audition_cycle_active, only: %i[edit_answers edit_video update update_audition_session_availability update_show_availability cast_vote]
+    before_action :ensure_audition_cycle_active, only: %i[edit_answers edit_video update update_audition_session_availability update_show_availability cast_vote decide]
 
     def index
       # Redirect to audition cycle show page if archived
@@ -31,6 +31,13 @@ module Manage
                                       .where.not(id: AuditionRequestVote.where(user: Current.user).select(:audition_request_id))
                                       .count
       @archived_count = @audition_cycle.audition_requests.archived.count
+
+      # No sessions: each request can be decided on its own page, so the list
+      # says which ones have been.
+      if @audition_cycle.decided_from_requests?
+        @decisions = @audition_cycle.cast_assignment_stages.active.finalized
+                                    .index_by { |stage| [ stage.assignable_type, stage.assignable_id ] }
+      end
     end
 
     def show
@@ -50,6 +57,9 @@ module Manage
 
       # Get the answers
       @answers = @audition_request.answers.includes(:question)
+
+      # No audition sessions: this request can be decided right here.
+      load_decision if @requestable.present? && @audition_cycle.active && @audition_cycle.decided_from_requests?
 
       # Get all votes for this request
       @votes = @audition_request.audition_request_votes.includes(user: :default_person)
@@ -352,6 +362,33 @@ module Manage
                   notice: "#{count} #{'sign-up'.pluralize(count)} archived successfully"
     end
 
+    # Add to the talent pool, or tell them they weren't chosen, and send the
+    # email from the modal: one request at a time, for a cycle with no
+    # audition sessions (AuditionRequestDecision).
+    def decide
+      requestable = @audition_request.requestable
+      unless @audition_cycle.decided_from_requests? && requestable
+        return redirect_to manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request),
+                           alert: "This cycle has audition sessions, so its decisions are made on the casting board."
+      end
+      unless AuditionRequestDecision::DECISIONS.include?(params[:decision].to_s)
+        return redirect_to manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request),
+                           alert: "Choose whether to add them to the talent pool or not."
+      end
+
+      result = AuditionRequestDecision.call(audition_request: @audition_request, decision: params[:decision],
+                                            subject: params[:subject], body: params[:body], sender: Current.user)
+      notified = (result.messages_sent + result.emails_sent).positive?
+      notice = if params[:decision] == "cast"
+        "#{requestable.name} has been added to the talent pool#{' and notified' if notified}."
+      else
+        "#{requestable.name} has been marked as not chosen#{' and notified' if notified}."
+      end
+      notice += " No one has been notified, since there's no email address to send it to." unless notified
+
+      redirect_to manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request), notice: notice
+    end
+
     def unarchive
       @audition_request.unarchive!
       redirect_to manage_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request),
@@ -363,6 +400,21 @@ module Manage
     end
 
     private
+
+    # The decision this request already has, and the two emails the decide
+    # modal opens with, written to this person (a group's: [Name], filled in
+    # per member when it's sent).
+    def load_decision
+      @decision_stage = @audition_cycle.cast_assignment_stages.active
+                                       .find_by(assignable_type: @requestable.class.name, assignable_id: @requestable.id)
+      name = @requestable.is_a?(Person) ? (@requestable.first_name.presence || @requestable.name) : "[Name]"
+      vars = { recipient_name: name, production_name: @production.name }
+      @decision_drafts = {
+        "cast" => ContentTemplateService.render("audition_added_to_cast",
+                                                vars.merge(talent_pool_name: @production.effective_talent_pool&.name)),
+        "rejected" => ContentTemplateService.render("audition_not_cast", vars)
+      }
+    end
 
     def set_production
       unless Current.organization
