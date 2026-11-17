@@ -31,6 +31,8 @@ class Contract < ApplicationRecord
   # contractor's visibility on My, never a production permission. The
   # contractor's own person isn't a row here; Contract.for_people counts both.
   has_many :contract_people, dependent: :destroy
+  # What the contractor has asked about its dates (ContractDateRequests).
+  has_many :date_requests, class_name: "ContractDateRequest", dependent: :destroy
   has_many :people, through: :contract_people
 
   # The contracts these people are on: as the contractor's person or as a

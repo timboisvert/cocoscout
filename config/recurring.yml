@@ -205,6 +205,12 @@ production:
     class: ContractSignatureRemindersJob
     schedule: at 9am every day
 
+  # Closes contractors' date requests the calendar has passed by, and reminds
+  # the organization once about one nobody has answered in three days.
+  contract_date_requests_sweep:
+    class: ContractDateRequestsSweepJob
+    schedule: at 9:10am every day
+
   w9_reminders:
     class: W9RemindersJob
     schedule: at 10am every day

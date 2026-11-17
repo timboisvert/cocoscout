@@ -23,6 +23,10 @@ module My
       # Live ticket sales for the contracts' upcoming shows, when the theater
       # sells them on CocoScout and shares the numbers (TicketSalesAccess).
       @ticket_sales = ticket_sales_by_contract
+      # What the contractor has asked about each contract's dates, and where
+      # each request stands (ContractDateRequests).
+      @date_requests = ContractDateRequest.where(contract_id: @payee_contract_ids.to_a).showing_to_asker
+                                          .includes(:show, :organization).order(:created_at).group_by(&:contract_id)
     end
 
     # Case 2: the contractor enters ticket sales for each show themselves. We

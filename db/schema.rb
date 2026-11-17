@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_16_174847) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -754,6 +754,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
     t.datetime "updated_at", null: false
     t.index ["contract_id", "position"], name: "index_contract_appendixes_on_contract_id_and_position"
     t.index ["contract_id"], name: "index_contract_appendixes_on_contract_id"
+  end
+
+  create_table "contract_date_requests", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "contract_id", null: false
+    t.bigint "show_id"
+    t.string "kind", null: false
+    t.string "status", default: "open", null: false
+    t.datetime "original_at"
+    t.datetime "proposed_at"
+    t.text "note"
+    t.bigint "requested_by_id", null: false
+    t.text "answer_note"
+    t.bigint "answered_by_id"
+    t.datetime "answered_at"
+    t.datetime "closed_at"
+    t.datetime "reminded_at"
+    t.datetime "dismissed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contract_id", "show_id"], name: "index_contract_date_requests_one_open_per_date", unique: true, where: "(((status)::text = ANY ((ARRAY['open'::character varying, 'amending'::character varying])::text[])) AND (show_id IS NOT NULL))"
+    t.index ["contract_id"], name: "index_contract_date_requests_on_contract_id"
+    t.index ["organization_id", "status"], name: "index_contract_date_requests_on_organization_id_and_status"
+    t.index ["show_id"], name: "index_contract_date_requests_on_show_id"
   end
 
   create_table "contract_documents", force: :cascade do |t|
@@ -5003,6 +5027,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
   add_foreign_key "city_hub_memberships", "city_hubs"
   add_foreign_key "cocoscout_ledger_entries", "organizations"
   add_foreign_key "contract_appendixes", "contracts"
+  add_foreign_key "contract_date_requests", "contracts", on_delete: :cascade
+  add_foreign_key "contract_date_requests", "organizations", on_delete: :cascade
+  add_foreign_key "contract_date_requests", "shows", on_delete: :nullify
+  add_foreign_key "contract_date_requests", "users", column: "answered_by_id", on_delete: :nullify
+  add_foreign_key "contract_date_requests", "users", column: "requested_by_id", on_delete: :cascade
   add_foreign_key "contract_documents", "contract_versions"
   add_foreign_key "contract_documents", "contracts"
   add_foreign_key "contract_invoices", "contract_payments", on_delete: :nullify

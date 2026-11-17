@@ -1,0 +1,74 @@
+<%# The Ask about a date form, loaded into its modal on My Contracts
+    (my/contracts/_date_requests) by a lazy turbo-frame, as Report sales is.
+    From the controller: @contract, @shows (its dates still to come), @zone
+    (the organization's clock). %>
+<%
+  org = @contract.organization.name
+  input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  choice_class = "flex items-start p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-400 transition-colors has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50"
+  radio_class = "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500"
+  fmt = "%Y-%m-%dT%H:%M"
+  first = @shows.first
+%>
+<%= turbo_frame_tag "ask_contract_date_#{@contract.id}" do %>
+  <%= form_with url: my_ask_contract_date_path(@contract), method: :post, local: true,
+        data: { turbo_frame: "_top", turbo_action: "replace", controller: "date-request" } do %>
+    <div class="space-y-5">
+      <div>
+        <label for="ask_show_<%= @contract.id %>" class="block text-sm font-medium text-gray-700 mb-1">Which date?</label>
+        <select name="show_id" id="ask_show_<%= @contract.id %>" class="<%= input_class %>"
+                data-date-request-target="date" data-action="change->date-request#changed">
+          <% @shows.each do |show| %>
+            <% at = show.date_and_time.in_time_zone(@zone) %>
+            <option value="<%= show.id %>" data-at="<%= at.strftime(fmt) %>"><%= at.strftime("%a %b %-d, %-l:%M %p") %></option>
+          <% end %>
+          <option value="new">A date that isn't on the contract</option>
+        </select>
+      </div>
+
+      <fieldset data-date-request-target="kinds" class="<%= "hidden" if first.nil? %>">
+        <legend class="block text-sm font-medium text-gray-700 mb-2">What do you need?</legend>
+        <div class="space-y-2">
+          <label class="<%= choice_class %>">
+            <input type="radio" name="kind" value="move" checked class="<%= radio_class %>" data-action="change->date-request#changed">
+            <div class="ml-3"><div class="text-sm font-medium text-gray-900">Move it</div><div class="text-sm text-gray-500">To another time, or another day.</div></div>
+          </label>
+          <label class="<%= choice_class %>">
+            <input type="radio" name="kind" value="cancel" class="<%= radio_class %>" data-action="change->date-request#changed">
+            <div class="ml-3"><div class="text-sm font-medium text-gray-900">Cancel it</div><div class="text-sm text-gray-500">Take this date off the contract.</div></div>
+          </label>
+          <label class="<%= choice_class %>">
+            <input type="radio" name="kind" value="question" class="<%= radio_class %>" data-action="change->date-request#changed">
+            <div class="ml-3"><div class="text-sm font-medium text-gray-900">Something else about this date</div><div class="text-sm text-gray-500">A question for <%= org %>.</div></div>
+          </label>
+        </div>
+      </fieldset>
+
+      <div data-date-request-target="when">
+        <label for="ask_when_<%= @contract.id %>" class="block text-sm font-medium text-gray-700 mb-1" data-date-request-target="whenLabel">New day and time</label>
+        <input type="datetime-local" name="proposed_at" id="ask_when_<%= @contract.id %>" class="<%= input_class %>"
+               value="<%= first&.date_and_time&.in_time_zone(@zone)&.strftime(fmt) %>" data-date-request-target="whenField">
+        <% if @zone.name != Time.zone.name %>
+          <p class="text-xs text-gray-500 mt-1">In <%= org %>'s time: <%= @zone.name %>.</p>
+        <% end %>
+      </div>
+
+      <div>
+        <label for="ask_note_<%= @contract.id %>" class="block text-sm font-medium text-gray-700 mb-1">
+          A note <span class="font-normal text-gray-500" data-date-request-target="noteHint">(optional)</span>
+        </label>
+        <textarea name="note" id="ask_note_<%= @contract.id %>" rows="3" maxlength="2000" class="<%= input_class %>"
+                  data-date-request-target="note"></textarea>
+      </div>
+
+      <p class="text-xs text-gray-500">
+        <%= org %> will be notified. Nothing on the contract changes, and tickets keep selling as they are, until <%= org %> changes it.
+      </p>
+    </div>
+
+    <div class="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-gray-200">
+      <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+      <%= render "shared/button", text: "Send request", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

@@ -218,6 +218,13 @@ class Show < ApplicationRecord
   before_destroy :record_show_removal, prepend: true
   after_update :record_show_change, if: -> { saved_change_to_canceled? || saved_change_to_date_and_time? }
 
+  # A contractor's request about this date closes itself when the date comes
+  # to say what they asked, or stops applying (ContractDateRequests). After
+  # the commit, so a change that's rolled back (an amendment's preview)
+  # answers nobody.
+  before_destroy :remember_date_request_contracts
+  after_commit :settle_contract_date_requests, on: %i[create update destroy]
+
   # Clear assignments when toggling custom roles (unless migration is handling it)
   attr_accessor :skip_assignment_clear_on_role_toggle
   before_save :clear_assignments_on_custom_roles_toggle, if: :should_clear_assignments_on_toggle?
@@ -1223,5 +1230,32 @@ class Show < ApplicationRecord
       was = date_and_time_before_last_save
       ShowChanges.record_move(self, was_starts_at: was, was_ends_at: was + (ends_at - date_and_time))
     end
+  end
+
+  # The contracts with a request waiting on this date. Read before the show
+  # goes: the request's link to it is cleared when it does.
+  def remember_date_request_contracts
+    @date_request_contract_ids = ContractDateRequest.waiting.where(show_id: id).pluck(:contract_id)
+  end
+
+  def settle_contract_date_requests
+    contract_ids = Array(@date_request_contract_ids)
+    if destroyed?
+      # remembered above
+    elsif previously_new_record?
+      # A new date may be the one somebody asked to add.
+      rental_contract_id = space_rental_id && SpaceRental.where(id: space_rental_id).pick(:contract_id)
+      contract_ids += ContractDateRequest.waiting.where(kind: "add", contract_id: rental_contract_id).pluck(:contract_id) if rental_contract_id
+    else
+      # Any save: the last one in a transaction may not be the one that moved it.
+      contract_ids += ContractDateRequest.waiting.where(show_id: id).pluck(:contract_id)
+    end
+    return if contract_ids.empty?
+
+    Contract.where(id: contract_ids.uniq).find_each { |contract| ContractDateRequests.settle!(contract, by: Current.user) }
+  rescue StandardError => e
+    # Never let a request's bookkeeping undo or fail a date change that's
+    # already saved; the daily pass (ContractDateRequestsSweepJob) catches up.
+    Rails.logger.error("[ContractDateRequests] show #{id}: #{e.class}: #{e.message}")
   end
 end

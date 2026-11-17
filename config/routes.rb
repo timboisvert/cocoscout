@@ -531,6 +531,12 @@ Rails.application.routes.draw do
     # Case 2: the contractor self-reports their own ticket sales.
     get    "/contracts/:id/report-sales",   to: "contracts#report_sales",   as: "report_contract_sales"
     patch  "/contracts/:id/report-sales",   to: "contracts#save_sales_report"
+    # The contractor asks the organization about one of the contract's dates:
+    # move it, cancel it, add one, or a question (ContractDateRequests).
+    get    "/contracts/:id/ask",                         to: "contract_date_requests#new",      as: "ask_contract_date"
+    post   "/contracts/:id/ask",                         to: "contract_date_requests#create"
+    delete "/contracts/:id/ask/:request_id",             to: "contract_date_requests#withdraw", as: "contract_date_request"
+    patch  "/contracts/:id/ask/:request_id/dismiss",     to: "contract_date_requests#dismiss",  as: "dismiss_contract_date_request"
 
     get    "/productions",                  to: "productions#index",        as: "productions"
     get    "/productions/:id",              to: "productions#show",         as: "production"
@@ -1957,6 +1963,8 @@ Rails.application.routes.draw do
         # The form GETs review (a preview, no side effects — and a POST that
         # renders 200 HTML would be ignored by Turbo); confirming posts the
         # same params to apply.
+        # The organization's "no" to a contractor's request about a date.
+        post "date_requests/:request_id/keep", action: :keep_date_request, as: :keep_date_request
         get "amend/dates", action: :amend_dates, as: :amend_dates
         get "amend/dates/review", action: :review_amend_dates, as: :review_amend_dates
         post "amend/dates", action: :apply_amend_dates, as: :apply_amend_dates

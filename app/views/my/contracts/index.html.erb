@@ -60,6 +60,10 @@
           reports_sales = payee && contract.pending_sales_report?
           has_overdue = due_now.any?
           has_action = needs_signature || reports_sales || to_pay.any?
+          # What they've asked about this contract's dates, and the way to ask
+          # (ContractDateRequests): the contractor only, on a live contract.
+          date_requests = payee ? (@date_requests[contract.id] || []) : []
+          asks_dates = payee && contract.status_active?
           border = needs_signature ? "border-amber-300" : (has_overdue ? "border-amber-300" : "border-gray-200")
           status_class = { "active" => "bg-green-100 text-green-700", "completed" => "bg-blue-100 text-blue-700",
                            "cancelled" => "bg-red-100 text-red-700" }[contract.status] || "bg-gray-100 text-gray-600"
@@ -125,7 +129,7 @@
           </div>
 
           <%# Everything you need to DO on this contract, contained in one strip. %>
-          <% if has_action %>
+          <% if has_action || asks_dates || date_requests.any? %>
             <div class="border-t border-gray-100 divide-y divide-gray-100">
               <% if needs_signature %>
                 <div class="flex items-center justify-between gap-3 px-5 py-3 bg-amber-50/60">
@@ -205,6 +209,10 @@
                     <% end %>
                   </div>
                 </details>
+              <% end %>
+
+              <% if asks_dates || date_requests.any? %>
+                <%= render "my/contracts/date_requests", contract: contract, requests: date_requests, can_ask: asks_dates %>
               <% end %>
             </div>
           <% end %>

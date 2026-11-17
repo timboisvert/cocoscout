@@ -270,6 +270,24 @@ module Manage
       scope = ShowChange.open.where(contract_id: @contract.id)
       scope = scope.or(ShowChange.open.where(production_id: @contract.production_id)) if @contract.production_id
       @untold_changes = scope.includes(:notices).order(:was_starts_at).select(&:waiting?)
+      # What the contractor has asked about its dates and nobody has answered
+      # (ContractDateRequests). One the calendar has passed by is left out; the
+      # daily pass closes it.
+      @date_requests = @contract.date_requests.where(status: "open").includes(:show, :organization, :requested_by)
+                                .order(:created_at).reject(&:lapsed?)
+    end
+
+    # The organization's "no" to a contractor's request about a date: the date
+    # stays as it is, with a note. (Its "yes" is an amendment; the request
+    # closes itself when the date changes.)
+    def keep_date_request
+      date_request = @contract.date_requests.find(params[:request_id])
+      if date_request.open?
+        ContractDateRequests.keep!(date_request, user: Current.user, note: params[:answer_note])
+        redirect_to manage_contract_path(@contract), notice: "#{@contract.contractor_name} has been notified."
+      else
+        redirect_to manage_contract_path(@contract), notice: "That request was already answered."
+      end
     end
 
     def new
@@ -500,6 +518,10 @@ module Manage
       @rentals = @contract.space_rentals.includes(:location, :location_space).order(:starts_at)
       @shows_by_rental = @contract.production&.shows&.where(space_rental_id: @rentals.map(&:id))&.index_by(&:space_rental_id) || {}
       @locations = Current.organization.locations.pickable(@rentals.map(&:location_id)).includes(:location_spaces)
+      # Opened from a contractor's request about a date: its row starts on
+      # what they asked for (ContractDateRequests.amend_prefill).
+      @date_request = @contract.date_requests.waiting.includes(:organization, show: :space_rental).find_by(id: params[:request]) if params[:request].present?
+      @prefill = ContractDateRequests.amend_prefill(@date_request)
     end
 
     # Show the plan before touching anything: the same params apply_amend_dates
@@ -1174,7 +1196,10 @@ module Manage
       payment_contracts = groups.values.flatten(1).map(&:first)
 
       amending = (actives - payment_contracts).select(&:amendment_pending?)
-      recent = (actives - payment_contracts - amending).filter_map do |c|
+      # The contractor asked about a date and nobody has answered (ContractDateRequests).
+      asked_ids = ContractDateRequest.where(contract_id: actives.map(&:id), status: "open").distinct.pluck(:contract_id).to_set
+      asking = (actives - payment_contracts - amending).select { |c| asked_ids.include?(c.id) }
+      recent = (actives - payment_contracts - amending - asking).filter_map do |c|
         signed_at = [ c.executed_at, c.activated_at, c.contract_versions.filter_map(&:executed_at).max ].compact.max
         [ c, signed_at ] if signed_at && signed_at >= since
       end.sort_by { |_, at| -at.to_i }
@@ -1200,12 +1225,13 @@ module Manage
       amending.each do |c|
         @in_motion_badges[c.id] = c.signing_out_for_signature? ? { text: "Amendment out for signature", color: "amber" } : { text: "Amendment ready to send", color: "blue" }
       end
+      asking.each { |c| @in_motion_badges[c.id] = { text: "Asked about a date", color: "amber" } }
       recent.each do |c, at|
         verb = c.signing_mode_esign? ? "Signed" : "Activated"
         @in_motion_badges[c.id] = { text: "#{verb} #{helpers.time_ago_in_words(at)} ago", color: "green" }
       end
 
-      @in_motion_contracts = payment_contracts + waiting_drafts + amending + other_drafts + recent.map(&:first)
+      @in_motion_contracts = payment_contracts + waiting_drafts + asking + amending + other_drafts + recent.map(&:first)
     end
 
     # Needs a signature, so nothing goes live. The version carries the proposed
@@ -1233,6 +1259,8 @@ module Manage
       # Back to unsent so the existing Prepare → Sign → Send wizard drives the
       # re-signature. amend_data stays put — it's what gets applied on signing.
       @contract.update!(signing_state: :unsent)
+      # A contractor's request this amendment answers now waits on their own signature.
+      ContractDateRequests.staged!(@contract, @amend_data, by: Current.user)
       redirect_to manage_sign_contract_wizard_path(@contract),
                   notice: "#{version.label} is ready. Sign it and send it to #{@contract.contractor_name} — " \
                           "nothing changes on the contract until they sign."
