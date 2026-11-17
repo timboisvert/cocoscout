@@ -1206,7 +1206,8 @@ module Manage
       numbers = Role.lineup_numbers_for(show_roles)
       assignments_by_role = @show.show_person_role_assignments.includes(:assignable).group_by(&:role_id)
 
-      in_show = show_roles.select { |r| r.act?(show: @show) }.map do |r|
+      # An intermission isn't an act to run again: Add intermission does that.
+      in_show = show_roles.select { |r| r.act?(show: @show) && !r.break? }.map do |r|
         performers = (assignments_by_role[r.id] || []).map { |a| a.assignable&.name || a.guest_name }.compact
         { id: r.id, name: r.name, act_number: numbers[r.id], performers: performers }
       end

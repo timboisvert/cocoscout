@@ -40,6 +40,9 @@ export default class extends Controller {
         this.draggedElement = event.target.closest("[data-running-order-item]")
         event.dataTransfer.effectAllowed = "move"
         event.dataTransfer.setData("text/plain", "running-order")
+        // Marks the drag as an act, so the slots it crosses don't take it for
+        // a person (drop-role#isActDrag).
+        event.dataTransfer.setData("application/x-running-order", "1")
         this.draggedElement.classList.add("opacity-50")
     }
 
