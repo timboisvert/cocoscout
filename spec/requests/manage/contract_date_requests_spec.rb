@@ -39,7 +39,7 @@ RSpec.describe "Manage contract date requests", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("A request about a date")
-    expect(response.body).to include("#{contractor.name} asks to move")
+    expect(response.body).to include("#{contractor.name} requests to move")
     expect(response.body).to include("We agreed on 7:30.")
     expect(response.body).to include(amend_dates_manage_contract_path(contract, request: date_request.id).gsub("&", "&amp;"))
     expect(response.body).to include("Keep 8:00 PM")
@@ -88,7 +88,7 @@ RSpec.describe "Manage contract date requests", type: :request do
     get manage_contracts_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Asked about a date")
+    expect(response.body).to include("Date change requested")
   end
 
   it "never reaches another organization's request" do

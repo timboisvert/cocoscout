@@ -1225,7 +1225,7 @@ module Manage
       amending.each do |c|
         @in_motion_badges[c.id] = c.signing_out_for_signature? ? { text: "Amendment out for signature", color: "amber" } : { text: "Amendment ready to send", color: "blue" }
       end
-      asking.each { |c| @in_motion_badges[c.id] = { text: "Asked about a date", color: "amber" } }
+      asking.each { |c| @in_motion_badges[c.id] = { text: "Date change requested", color: "amber" } }
       recent.each do |c, at|
         verb = c.signing_mode_esign? ? "Signed" : "Activated"
         @in_motion_badges[c.id] = { text: "#{verb} #{helpers.time_ago_in_words(at)} ago", color: "green" }

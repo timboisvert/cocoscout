@@ -30,6 +30,6 @@ export default class extends Controller {
 
         const question = kind === "question"
         this.noteTarget.required = question
-        this.noteHintTarget.textContent = question ? "(what would you like to ask?)" : "(optional)"
+        this.noteHintTarget.textContent = question ? "(what's your question?)" : "(optional)"
     }
 }

@@ -12,8 +12,8 @@
         moved: the rest are disabled (amend_date_controller). %>
     <% if @date_request && @prefill.any? %>
       <div class="mb-4 rounded-lg border border-pink-200 bg-pink-50 px-4 py-3 text-sm text-gray-700" data-from-date-request>
-        <span class="font-medium text-gray-900"><%= @contract.contractor_name %> <%= @date_request.asks_words %>.</span>
-        That date starts on what they asked for. Change anything before you continue.
+        <span class="font-medium text-gray-900"><%= @contract.contractor_name %> <%= @date_request.requests_words %>.</span>
+        That date starts on what they requested. Change anything before you continue.
       </div>
     <% end %>
     <%= form_with url: review_amend_dates_manage_contract_path(@contract), method: :get, html: { novalidate: true } do %>

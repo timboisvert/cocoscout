@@ -15,11 +15,11 @@ class ContractDateRequestTemplates
   ].freeze
 
   TEMPLATES = [
-    { key: "contract_date_request_asked", name: "A contractor asks about a date (to the organization)",
-      subject: "{{contractor_name}} {{asks_words}}",
-      body: %(<p>{{contractor_name}} {{asks_words}}, on the contract for {{production_name}}.</p>{{#note}}<p>"{{note}}"</p>{{/note}}<p><a href="{{contract_url}}">Open the contract</a></p>),
+    { key: "contract_date_request_asked", name: "A contractor requests a date change (to the organization)",
+      subject: "{{contractor_name}} {{requests_words}}",
+      body: %(<p>{{contractor_name}} {{requests_words}}, on the contract for {{production_name}}.</p>{{#note}}<p>"{{note}}"</p>{{/note}}<p><a href="{{contract_url}}">Open the contract</a></p>),
       variables: REQUEST_VARIABLES + [
-        { "name" => "asks_words", "description" => "The request, e.g. asks to move Fri Dec 18 to 7:30 PM" },
+        { "name" => "requests_words", "description" => "The request, e.g. requests to move Fri Dec 18 to 7:30 PM" },
         { "name" => "contract_url", "description" => "The contract's page" } ] },
     { key: "contract_date_request_reminder", name: "A date request still waiting (to the organization)",
       subject: "{{contractor_name}} is still waiting on {{request_phrase}}",
@@ -28,8 +28,8 @@ class ContractDateRequestTemplates
         { "name" => "request_phrase", "description" => "The request, e.g. the request to move Fri Dec 18 to 7:30 PM" },
         { "name" => "contract_url", "description" => "The contract's page" } ] },
     { key: "contract_date_request_done", name: "A date request done (to the contractor)",
-      subject: "{{organization_name}} {{outcome_words}}, as you asked",
-      body: %(<p>{{organization_name}} {{outcome_words}}, as you asked.</p><p><a href="{{contracts_url}}">Open My Contracts</a></p>),
+      subject: "{{organization_name}} {{outcome_words}}, as you requested",
+      body: %(<p>{{organization_name}} {{outcome_words}}, as you requested.</p><p><a href="{{contracts_url}}">Open My Contracts</a></p>),
       variables: REQUEST_VARIABLES + [
         { "name" => "outcome_words", "description" => "What changed, e.g. moved Fri Dec 18 to 7:30 PM" },
         { "name" => "contracts_url", "description" => "My Contracts" } ] },

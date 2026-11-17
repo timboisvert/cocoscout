@@ -10,7 +10,7 @@ class ContractDateRequestNotices
   class << self
     def asked(request)
       to_organization(request, kind: "contract_date_request_asked", template: "contract_date_request_asked",
-                               extra: { asks_words: request.asks_words })
+                               extra: { requests_words: request.requests_words })
     end
 
     def reminder(request)

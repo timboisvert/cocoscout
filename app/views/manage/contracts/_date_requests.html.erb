@@ -1,7 +1,7 @@
-<%# Contract page: what the contractor has asked about its dates and nobody
+<%# Contract page: what the contractor has requested about its dates and nobody
     has answered yet (ContractDateRequests), one panel each, above the
     contract. Two answers: amend the contract (the Change dates step opens on
-    what they asked; the request closes itself when the date changes), or
+    what they requested; the request closes itself when the date changes), or
     keep the date, with a note. Either way they're notified.
 
     Locals:
@@ -20,7 +20,7 @@
     keep = { text: request.keep_button_words, type: :button, data: { action: "click->modal#open", modal_id: keep_modal } }
     ticketed = request.show && request.kind.in?(%w[move cancel]) && ContractDateChanges.tickets_held?([ request.show ])
     on_contract = request.kind == "move" && request.original_local ? "It's #{request.clock_words(request.original_local)} on the contract. " : ""
-    body = "#{on_contract}Asked #{request.created_at.strftime('%b %-d')}. Nothing has changed: the contract changes only when you amend it."
+    body = "#{on_contract}Requested #{request.created_at.strftime('%b %-d')}. Nothing has changed: the contract changes only when you amend it."
     details = capture do %>
       <% if request.note.present? %>
         <div class="mt-3 rounded-lg bg-white/70 border border-pink-100 px-4 py-3 text-sm text-gray-700">"<%= request.note %>"</div>
@@ -35,7 +35,7 @@
   <div data-date-request="<%= request.id %>">
     <%= render "shared/alert_panel",
           eyebrow: "A request about a date",
-          headline: "#{contractor} #{request.asks_words}",
+          headline: "#{contractor} #{request.requests_words}",
           body: body,
           actions: (question ? [ keep, amend ] : [ amend, keep ]),
           details: details %>

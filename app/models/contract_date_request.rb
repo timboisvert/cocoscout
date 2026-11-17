@@ -55,7 +55,7 @@ class ContractDateRequest < ApplicationRecord
 
   # "move Fri Dec 18 to 7:30 PM", "cancel Fri Dec 18, 8:00 PM", "add Sun Dec 13,
   # 3:00 PM", "about Fri Dec 18, 8:00 PM": the request in a few words, to
-  # follow "asks to" (or stand alone for a question).
+  # follow "requests to" (or "a question" for a question).
   def words
     case kind
     when "move" then "move #{day_words(original_local)} to #{move_target_words}"
@@ -65,22 +65,21 @@ class ContractDateRequest < ApplicationRecord
     end
   end
 
-  # "asks to move Fri Dec 18 to 7:30 PM" / "asks about Fri Dec 18, 8:00 PM".
-  def asks_words = kind == "question" ? "asks #{words}" : "asks to #{words}"
+  # "requests to move Fri Dec 18 to 7:30 PM" / "has a question about Fri Dec
+  # 18, 8:00 PM": what the contractor wants, to follow their name.
+  def requests_words = kind == "question" ? "has a question #{words}" : "requests to #{words}"
 
-  # "You asked Stars and Garters to move Fri Dec 18 to 7:30 PM": the request
-  # read back to the asker, where the date isn't otherwise on the page.
-  def asked_words(organization_name)
-    kind == "question" ? "You asked #{organization_name} #{words}" : "You asked #{organization_name} to #{words}"
-  end
+  # "You requested to move Fri Dec 18 to 7:30 PM": the request read back to
+  # whoever made it, where the date isn't otherwise on the page.
+  def requested_words = kind == "question" ? "Your question #{words}" : "You requested to #{words}"
 
-  # "Asked to move it to 7:30 PM", for the mark on the date itself.
-  def mark_words(organization_name)
+  # "Requested a move to 7:30 PM", for the mark on the date itself.
+  def mark_words
     case kind
-    when "move" then "Asked #{organization_name} to move it to #{move_target_words}"
-    when "cancel" then "Asked #{organization_name} to cancel it"
-    when "add" then "Asked #{organization_name} to add #{moment_words(proposed_local)}"
-    else "Asked #{organization_name} about it"
+    when "move" then "Requested a move to #{move_target_words}"
+    when "cancel" then "Requested to cancel it"
+    when "add" then "Requested to add #{moment_words(proposed_local)}"
+    else "Sent a question about it"
     end
   end
 
@@ -171,13 +170,13 @@ class ContractDateRequest < ApplicationRecord
     errors.add(:base, "That date isn't on this contract any more.") if kind != "add" && show.nil?
     if kind.in?(%w[move add])
       if proposed_at.nil?
-        errors.add(:base, "Choose the day and time you're asking for.")
+        errors.add(:base, "Choose the day and time you're requesting.")
       elsif proposed_at < Time.current
         errors.add(:base, "That day and time has already passed.")
       elsif kind == "move" && show && show.date_and_time == proposed_at
         errors.add(:base, "That's when the date already is.")
       end
     end
-    errors.add(:base, "Say what you're asking.") if kind == "question" && note.blank?
+    errors.add(:base, "Write your question.") if kind == "question" && note.blank?
   end
 end

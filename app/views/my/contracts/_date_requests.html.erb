@@ -1,4 +1,4 @@
-<%# My Contracts, on a contract's card: what the contractor has asked about
+<%# My Contracts, on a contract's card: what the contractor has requested about
     its dates (ContractDateRequests) and where each request stands, then the
     way to ask. Rows of the card's to-do strip.
 
@@ -17,13 +17,13 @@
       <div class="min-w-0">
         <% case request.status %>
         <% when "open" %>
-          <div class="font-medium text-gray-900"><%= request.asked_words(org) %></div>
+          <div class="font-medium text-gray-900"><%= request.requested_words %></div>
           <div class="text-xs text-gray-500">Waiting for their answer. Nothing changes until they change the contract.</div>
         <% when "amending" %>
           <div class="font-medium text-gray-900"><%= org %> changed the contract after <%= request.request_phrase %></div>
           <div class="text-xs text-gray-500">It takes effect when you sign.</div>
         <% when "done" %>
-          <div class="font-medium text-gray-900"><%= org %> <%= request.outcome_words %>, as you asked</div>
+          <div class="font-medium text-gray-900"><%= org %> <%= request.outcome_words %>, as you requested</div>
         <% when "kept" %>
           <div class="font-medium text-gray-900"><%= org %> <%= request.kept_words %></div>
           <% if request.answer_note.present? %>

@@ -54,7 +54,7 @@ RSpec.describe "My contract date requests", type: :request do
     expect(show.reload.date_and_time).to eq(night)
 
     get my_contracts_path
-    expect(response.body).to include("You asked #{org.name} to move").and include("Withdraw")
+    expect(response.body).to include("You requested to move").and include("Withdraw")
   end
 
   it "asks to add a date" do
@@ -67,7 +67,7 @@ RSpec.describe "My contract date requests", type: :request do
     post my_ask_contract_date_path(contract), params: { show_id: show.id, kind: "question", note: "" }
 
     expect(response).to redirect_to(my_contracts_path)
-    expect(flash[:alert]).to include("Say what you're asking")
+    expect(flash[:alert]).to include("Write your question")
     expect(contract.date_requests).to be_empty
   end
 

@@ -33,7 +33,7 @@ module My
     rescue ActiveRecord::RecordInvalid => e
       redirect_to my_contracts_path, alert: e.record.errors.full_messages.to_sentence
     rescue ContractDateRequests::NotAllowed
-      redirect_to my_contracts_path, alert: "That date isn't available to ask about."
+      redirect_to my_contracts_path, alert: "That date isn't available for a request."
     end
 
     def withdraw

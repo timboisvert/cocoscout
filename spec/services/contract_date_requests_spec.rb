@@ -34,7 +34,7 @@ RSpec.describe ContractDateRequests do
 
       expect(request).to have_attributes(status: "open", kind: "move", original_at: show.date_and_time, organization: org)
       notification = owner.notifications.last
-      expect(notification.title).to start_with("#{contract.contractor_name} asks to move ")
+      expect(notification.title).to start_with("#{contract.contractor_name} requests to move ")
       expect(notification.path).to eq("/manage/contracts/#{contract.to_param}")
       expect(notification.category).to eq("contracts")
     end
@@ -69,7 +69,7 @@ RSpec.describe ContractDateRequests do
     it "says why a request can't be asked" do
       expect { ask(proposed_at: nil) }.to raise_error(ActiveRecord::RecordInvalid, /Choose the day and time/)
       expect { ask(proposed_at: night) }.to raise_error(ActiveRecord::RecordInvalid, /already is/)
-      expect { ask(kind: "question") }.to raise_error(ActiveRecord::RecordInvalid, /Say what you're asking/)
+      expect { ask(kind: "question") }.to raise_error(ActiveRecord::RecordInvalid, /Write your question/)
     end
 
     it "asks to add a date with no date of the contract's behind it" do
@@ -107,7 +107,7 @@ RSpec.describe ContractDateRequests do
       expect { ContractDateChanges.move!(contract: contract, rental: rental, starts_at: night - 30.minutes, ends_at: night + 90.minutes) }
         .to change(user.notifications, :count).by(1)
       expect(request.reload.status).to eq("done")
-      expect(user.notifications.last.title).to include("as you asked")
+      expect(user.notifications.last.title).to include("as you requested")
     end
 
     it "no longer applies when the date moves somewhere else" do
