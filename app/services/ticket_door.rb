@@ -127,7 +127,7 @@ class TicketDoor
       # The comp rules (CompRules) hold at the door too.
       raise TicketCheckout::Error, "Comps are off for this show." unless @listing.effective_comps_enabled
       if (left = @listing.comps_left) && left < quantities.to_h.values.sum(&:to_i)
-        raise TicketCheckout::Error, left.zero? ? "This date has no comps left to give." : "This date has #{left} #{'comp'.pluralize(left)} left to give."
+        raise TicketCheckout::Error, left.zero? ? "This date has no comps left to issue." : "This date has #{left} #{'comp'.pluralize(left)} left to issue."
       end
     end
 

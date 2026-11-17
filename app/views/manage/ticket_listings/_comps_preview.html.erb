@@ -12,7 +12,7 @@
   <% if fixes %>
     <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
       <p class="font-medium">
-        <%= paste.guests.empty? && paste.problems.empty? && preview.blockers.empty? ? "Paste at least one person, one per line." : "Nothing's given yet. Fix these, then preview again:" %>
+        <%= paste.guests.empty? && paste.problems.empty? && preview.blockers.empty? ? "Paste at least one person, one per line." : "Nothing's issued yet. Fix these, then preview again:" %>
       </p>
       <% if preview.blockers.any? || paste.problems.any? %>
         <ul class="mt-2 space-y-1.5">
@@ -40,7 +40,7 @@
           <%= [
                 (preview.comps_left ? "#{preview.comps_left} #{'comp'.pluralize(preview.comps_left)} left on this date" : nil),
                 *preview.seats.map { |s| s[:left] ? "#{s[:tier].name}: #{s[:left]} #{'seat'.pluralize(s[:left])} left" : nil },
-                (preview.allowance_left ? "#{preview.allowance_left} more for you to give" : nil),
+                (preview.allowance_left ? "#{preview.allowance_left} more for you to issue" : nil),
                 (preview.email_them ? "each gets their tickets by email" : "you hand them over")
               ].compact.join(" · ").upcase_first %>
         </p>

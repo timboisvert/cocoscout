@@ -249,7 +249,7 @@ class TicketListing < ApplicationRecord
     comp_rules.team_comps_per_show || 2
   end
 
-  # How many comps the people on a contract may give for this date, between
+  # How many comps the people on a contract may issue for this date, between
   # all of them: 0 is none.
   def effective_contract_comps
     comp_rules.contract_comps_per_show.to_i

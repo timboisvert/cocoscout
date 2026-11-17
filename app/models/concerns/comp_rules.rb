@@ -7,9 +7,9 @@
 #   comps_enabled        comps at all; off, nobody gives any
 #   comps_limit          how many a date can give away, whoever gives them:
 #                        unlimited | fixed (comps_per_show)
-#   team_comps           production team managers may give some
+#   team_comps           production team managers may issue some
 #   team_comps_limit     how many of them: all | fixed (team_comps_per_show)
-#   contract_comps_per_show  how many the people on a contract may give for
+#   contract_comps_per_show  how many the people on a contract may issue for
 #                        a date the contract covers: 0 is none. One number
 #                        between all of them (TicketSalesAccess.comp_allowance).
 #
@@ -43,8 +43,8 @@ module CompRules
     }
   end
 
-  # "comps on · no limit per date · production team managers may give any of
-  # them · people on a contract may give 4 of them", the way the production's and the date's Comps tabs read back the
+  # "comps on · no limit per date · production team managers may issue any of
+  # them · people on a contract may issue 4 of them", the way the production's and the date's Comps tabs read back the
   # rules they follow.
   def comp_rules_words
     return "comps off" if comps_enabled == false
@@ -54,14 +54,14 @@ module CompRules
     else "no limit per date"
     end
     team = if team_comps == false
-      "production team managers don't give them"
+      "production team managers don't issue them"
     else
       case team_comps_limit.presence || "all"
-      when "fixed" then "production team managers may give #{team_comps_per_show || 2} of them"
-      else "production team managers may give any of them"
+      when "fixed" then "production team managers may issue #{team_comps_per_show || 2} of them"
+      else "production team managers may issue any of them"
       end
     end
-    contract = contract_comps_per_show.to_i.positive? ? "people on a contract may give #{contract_comps_per_show} of them" : "people on a contract don't give them"
+    contract = contract_comps_per_show.to_i.positive? ? "people on a contract may issue #{contract_comps_per_show} of them" : "people on a contract don't issue them"
     "comps on · #{per_date} · #{team} · #{contract}"
   end
 end

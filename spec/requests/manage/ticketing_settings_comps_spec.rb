@@ -21,12 +21,12 @@ RSpec.describe "Ticketing settings: Comps", type: :request do
     get manage_path
   end
 
-  it "shows the five parts with the defaults: on, no limit, the team may give all of them, people on a contract none" do
+  it "shows the five parts with the defaults: on, no limit, the team may issue all of them, people on a contract none" do
     get manage_ticketing_settings_section_path(section: "comps")
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Comps per date", "Production team managers can give comps", "How many of them a production team may give",
-                                     "People on a contract can give comps", "shared between everyone on the contract",
-                                     "With these rules, a date can give away as many comps as it has seats, its production team managers may give any of them, and people on a contract give none of them.")
+    expect(response.body).to include("Comps per date", "Production team managers can issue comps", "How many of them a production team may issue",
+                                     "People on a contract can issue comps", "shared between everyone on the contract",
+                                     "With these rules, a date can issue as many comps as it has seats, its production team managers may issue any of them, and people on a contract issue none of them.")
     # Comps are none or a number: "one per performer" is not offered (Tim, 2026-11-17).
     expect(response.body).not_to include("per_performer", "One per performer")
     expect(response.body).not_to match(/id="ticketing_profile_contract_comps"[^>]*checked/)
@@ -42,8 +42,8 @@ RSpec.describe "Ticketing settings: Comps", type: :request do
     } }
     expect(response).to redirect_to(manage_ticketing_settings_section_path(section: "comps"))
     profile = TicketingProfile.find_by!(organization: org)
-    expect(profile.comp_rules_words).to eq("comps on · 6 per date · production team managers may give 2 of them · people on a contract don't give them")
-    expect(flash[:notice]).to eq("Saved. Comps on · 6 per date · production team managers may give 2 of them · people on a contract don't give them.")
+    expect(profile.comp_rules_words).to eq("comps on · 6 per date · production team managers may issue 2 of them · people on a contract don't issue them")
+    expect(flash[:notice]).to eq("Saved. Comps on · 6 per date · production team managers may issue 2 of them · people on a contract don't issue them.")
     expect(fresh_listing.effective_comps_per_show).to eq(6)
     expect(fresh_listing.comps_left).to eq(6)
 
@@ -52,17 +52,17 @@ RSpec.describe "Ticketing settings: Comps", type: :request do
     expect(fresh_listing.effective_comps_enabled).to be(false)
   end
 
-  it "saves how many the people on a contract may give, and none when it's switched off" do
+  it "saves how many the people on a contract may issue, and none when it's switched off" do
     rules = { comps_enabled: "1", comps_limit: "unlimited", team_comps: "1", team_comps_limit: "all" }
     patch manage_ticketing_settings_comps_path, params: { ticketing_profile: rules.merge(contract_comps: "1", contract_comps_per_show: "4") }
     profile = TicketingProfile.find_by!(organization: org)
     expect(profile.contract_comps_per_show).to eq(4)
-    expect(flash[:notice]).to end_with("people on a contract may give 4 of them.")
+    expect(flash[:notice]).to end_with("people on a contract may issue 4 of them.")
     expect(fresh_listing.effective_contract_comps).to eq(4)
 
     get manage_ticketing_settings_section_path(section: "comps")
     expect(response.body).to match(/id="ticketing_profile_contract_comps"[^>]*checked/)
-    expect(response.body).to include("and people on a contract may give 4 of them.")
+    expect(response.body).to include("and people on a contract may issue 4 of them.")
 
     # The number stays in the box, and the switch is what counts.
     patch manage_ticketing_settings_comps_path, params: { ticketing_profile: rules.merge(contract_comps: "0", contract_comps_per_show: "4") }
@@ -128,15 +128,15 @@ RSpec.describe "Ticketing settings: Comps", type: :request do
 
     listing.update!(own_comps: true, comps_enabled: false)
     get manage_ticket_listing_path(listing)
-    expect(response.body).to include("Given away free · off on this date&#39;s Comps tab")
+    expect(response.body).to include("Issued free · off on this date&#39;s Comps tab")
     expect(response.body).not_to include('data-modal-id="comps-modal"', 'id="comps-modal"')
 
     listing.update!(comps_enabled: true, comps_limit: "fixed", comps_per_show: 1)
     get manage_ticket_listing_path(listing)
-    expect(response.body).to include("Given away free · give 1 more", 'id="comps-modal"')
+    expect(response.body).to include("Issued free · issue 1 more", 'id="comps-modal"')
     TicketComps.give!(listing, [ TicketComps::Guest.new(name: "Abe Comp", email: nil, tier: general, quantity: 1) ], by: owner, email_them: false)
     get manage_ticket_listing_path(listing)
-    expect(response.body).to include("Given away free · none left to give")
+    expect(response.body).to include("Issued free · none left to issue")
     expect(response.body).not_to include('id="comps-modal"')
   end
 end

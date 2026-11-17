@@ -19,8 +19,8 @@
       <%
         can_comp = @allowance.present? && (@allowance[:left].nil? || @allowance[:left].positive?)
         comps_note = if @allowance.nil? then nil
-                     elsif @allowance[:left].nil? then "Given away free · give tickets"
-                     elsif @allowance[:left].positive? then "Given away free · give #{@allowance[:left]} more"
+                     elsif @allowance[:left].nil? then "Issued free · issue tickets"
+                     elsif @allowance[:left].positive? then "Issued free · issue #{@allowance[:left]} more"
                      else "Given away free · none left for you to give"
                      end
       %>
@@ -42,7 +42,7 @@
                 <%= render "shared/button", text: comp_allowance_button(@allowance),
                       variant: "primary", size: "small", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: "comps-modal" } %>
               <% else %>
-                <span class="text-xs text-gray-500">None left to give.</span>
+                <span class="text-xs text-gray-500">None left to issue.</span>
               <% end %>
             </div>
           </div>
@@ -58,16 +58,16 @@
         <div class="px-5 py-3 border-b border-gray-200">
           <h2 class="text-sm font-semibold text-gray-900">Who's coming <span class="font-normal text-gray-500">· <%= pluralize(@stats.sold, "ticket") %></span></h2>
         </div>
-        <%= render "shared/ticketing/guest_list", orders: @guest_orders, read_only: true, own_ids: @own_comp_ids %>
+        <%= render "shared/ticketing/guest_list", orders: @guest_orders, read_only: true, changeable_ids: @changeable_comp_ids %>
       </div>
-      <%= render "shared/ticketing/own_comp_modals", orders: @guest_orders.select { |order| @own_comp_ids.include?(order.id) },
+      <%= render "shared/ticketing/own_comp_modals", orders: @guest_orders.select { |order| @changeable_comp_ids.include?(order.id) },
             comp_url: ->(order) { manage_production_sale_comp_path(@production, @listing, order.id) } %>
 
       <% if can_comp %>
         <%= render "manage/ticket_listings/comps_modal", id: "comps-modal", listing: @listing,
               url: manage_production_sale_comps_path(@production, @listing), max: @allowance[:left],
               preview_url: manage_production_sale_comps_preview_path(@production, @listing),
-              allowance_note: (@allowance[:left] ? "You can give #{@allowance[:left]} more for this date." : nil),
+              allowance_note: (@allowance[:left] ? "You can issue #{@allowance[:left]} more for this date." : nil),
               note_label: "Note for the box office" %>
       <% end %>
     <% else %>

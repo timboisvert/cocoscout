@@ -121,7 +121,7 @@ RSpec.describe "Manage a show's tickets", type: :request do
            params: { name: "Walter Skinner", email: "walter@example.com", quantity: "2", tier_id: general.id, note: "Press", email_them: "1" }
     }.to have_enqueued_job(TicketOrderConfirmationJob).once
     expect(response).to redirect_to(manage_ticket_listing_path(listing, anchor: "guests"))
-    expect(flash[:notice]).to start_with("Gave 2 tickets to Walter Skinner.")
+    expect(flash[:notice]).to start_with("Issued 2 tickets to Walter Skinner.")
 
     expect {
       post manage_ticket_listing_comps_path(listing), params: { name: "Monica Reyes", quantity: "1", tier_id: general.id, email_them: "0" }

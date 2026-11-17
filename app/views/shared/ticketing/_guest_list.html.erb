@@ -1,13 +1,13 @@
 <%# Who's coming to a show: one row per order still holding tickets.
     Locals: orders (TicketOrder, tickets loaded), read_only (producers see
-    names and counts, never emails or links to orders), own_ids (optional:
-    the comps the reader issued themselves; each gets a dot menu with Edit
-    and Remove, whose modals shared/ticketing/own_comp_modals renders beside
-    the list; the card around the list must not clip, or the menu is cut
-    off on the last row). %>
+    names and counts, never emails or links to orders), changeable_ids
+    (optional: the comps the reader may change, TicketComps.changeable_ids;
+    each gets a dot menu with Edit and Remove, whose modals
+    shared/ticketing/own_comp_modals renders beside the list; the card
+    around the list must not clip, or the menu is cut off on the last row). %>
 <%
   read_only = local_assigns.fetch(:read_only, false)
-  own_ids = local_assigns[:own_ids] || []
+  changeable_ids = local_assigns[:changeable_ids] || []
   channel_badges = { "comp" => [ "Comp", "bg-blue-100 text-blue-700" ], "door_cash" => [ "Door", "bg-green-100 text-green-700" ],
                      "door_card" => [ "Door", "bg-green-100 text-green-700" ], "door_tap" => [ "Door", "bg-green-100 text-green-700" ] }
 %>
@@ -49,11 +49,11 @@
         <div class="sm:w-28 sm:text-right text-xs <%= inside == held.size && held.any? ? 'text-green-700 font-medium' : 'text-gray-500' %>">
           <%= held.empty? ? "" : (inside.zero? ? "Not checked in yet" : "#{inside} of #{held.size} checked in") %>
         </div>
-        <% if own_ids.include?(order.id) && held.any? %>
-          <%# The reader issued this comp: Edit and Remove behind the row's dot
-              menu, each opening its modal (shared/ticketing/own_comp_modals). %>
-          <div class="flex items-center gap-2 ml-auto" data-own-comp="<%= order.id %>">
-            <span class="text-xs text-gray-500">You issued this.</span>
+        <% if changeable_ids.include?(order.id) && held.any? %>
+          <%# A comp the reader may change: Edit and Remove behind the row's
+              dot menu, each opening its modal (shared/ticketing/own_comp_modals).
+              No word on who issued it (Tim, 2026-11-17: it doesn't matter). %>
+          <div class="ml-auto" data-changeable-comp="<%= order.id %>">
             <%= render "shared/action_menu", id: "comp-#{order.id}-actions", title: order.buyer_name.presence || "This comp", label: "Edit or remove this comp", items: [
                   { text: "Edit", path: "#", icon: "M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z",
                     data: { controller: "modal", action: "click->modal#open click->dropdown#close", modal_id: "edit-comp-#{order.id}" } },

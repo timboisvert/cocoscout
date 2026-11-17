@@ -129,7 +129,7 @@ class TicketingTemplates
       variables: SHOW_VARS + v(:seller_name, :payment_method, :buyer_name, :ticket_count, :ticket_summary, :products, :order_total, :org_net, :sold_line, :products_sold, :order_url) },
     { key: "ticketing_comp_issued", name: "Ticketing: each comp issued", channel: "email",
       subject: "{{ticket_count}} issued: {{show_title}}, {{show_date}}",
-      body: %(<p><strong>{{giver_name}}</strong> gave {{ticket_count}} for <strong>{{show_title}}</strong> on {{show_date}} at {{show_time}}: {{recipients}}.</p><p>{{sold_line}}.</p><p><a href="{{show_url}}">Open this show's ticketing</a></p>#{FOOTER}),
+      body: %(<p><strong>{{giver_name}}</strong> issued {{ticket_count}} for <strong>{{show_title}}</strong> on {{show_date}} at {{show_time}}: {{recipients}}.</p><p>{{sold_line}}.</p><p><a href="{{show_url}}">Open this show's ticketing</a></p>#{FOOTER}),
       variables: SHOW_VARS + v(:giver_name, :ticket_count, :recipients, :sold_line) },
     { key: "ticketing_pass_redeemed", name: "Ticketing: each pass redeemed", channel: "email",
       subject: "Pass redeemed: {{show_title}}, {{show_date}}",

@@ -70,7 +70,7 @@ RSpec.describe LinkedSaleNotices do
     orders = TicketComps.give!(listing, [ TicketComps::Guest.new(name: "A Friend", email: nil, tier: tier, quantity: 1) ], by: owner, note: nil, email_them: false)
 
     expect { described_class.after_sale(:comp_issued, orders) }.to change(user.notifications, :count).by(1)
-    expect(user.notifications.last.title).to start_with("1 comp given for The Holly Problem")
+    expect(user.notifications.last.title).to start_with("1 comp issued for The Holly Problem")
   end
 
   it "says nothing about a door sale, to someone who switched theirs off, or once the seller stops sharing" do

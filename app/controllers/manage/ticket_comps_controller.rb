@@ -36,7 +36,7 @@ module Manage
       guest = TicketComps::Guest.new(name: params[:name].to_s.squish, email: email, tier: tier, quantity: params[:quantity].to_i)
       order = TicketComps.give!(@listing, [ guest ], by: Current.user, note: params[:note], email_them: email_them).sole
       redirect_to manage_ticket_listing_path(@listing, anchor: "guests"),
-                  notice: "Gave #{helpers.pluralize(order.tickets.size, 'ticket')} to #{guest.name}. They're on the guest list."
+                  notice: "Issued #{helpers.pluralize(order.tickets.size, 'ticket')} to #{guest.name}. They're on the guest list."
     rescue TicketComps::Error => e
       redirect_to manage_ticket_listing_path(@listing, anchor: "guests"), alert: e.message
     end

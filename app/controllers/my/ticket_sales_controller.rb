@@ -7,7 +7,7 @@ module My
   # only. Nothing here can be changed, and no buyer's email ever shows,
   # except that someone on a contract that includes the date gives comps for
   # their own show (TicketSalesAccess.comp_allowance), and changes or
-  # removes the ones they gave (TicketComps.theirs?).
+  # removes the ones their side issued (TicketComps.changeable_by?).
   class TicketSalesController < ApplicationController
     include GivesComps
 
@@ -44,7 +44,7 @@ module My
       @show_my_sidebar = true
       @stats = Ticketing::ListingStats.of(@listing)
       @allowance = TicketSalesAccess.comp_allowance(Current.user, @listing)
-      @own_comp_ids = TicketComps.own_ids(@listing, Current.user)
+      @changeable_comp_ids = TicketComps.changeable_ids(@listing, Current.user)
       @guest_orders = @listing.ticket_orders.where(status: TicketOrder::WAS_PAID).includes(:ticket_order_items, tickets: %i[ticket_tier ticket_pass bundle_tier])
                               .order(:buyer_name, :id).to_a.select { |o| o.tickets.any? { |t| Ticket::SOLD_STATUSES.include?(t.status) } }
     end
@@ -61,7 +61,7 @@ module My
       preview_comps_within_allowance(@listing, TicketSalesAccess.comp_allowance(Current.user, @listing))
     end
 
-    # A comp they gave themselves, corrected or taken back (GivesComps).
+    # A comp their side issued, corrected or taken back (GivesComps).
     def update_comp
       change_comp_given(@listing, back: my_ticket_sale_path(@listing, anchor: "guests"))
     end

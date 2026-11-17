@@ -143,7 +143,7 @@ RSpec.describe TicketSalesAccess do
   describe ".comp_allowance" do
     let(:manager) { team_member("manager") }
 
-    it "is for a production team manager at Everything only, while comps are on and the team may give some" do
+    it "is for a production team manager at Everything only, while comps are on and the team may issue some" do
       expect(described_class.comp_allowance(manager, listing)).to eq(date_left: nil, team_limit: nil, team_given: 0, left: nil)
       expect(described_class.can_comp?(manager, listing)).to be(true)
       expect(described_class.comp_allowance(team_member("viewer"), listing)).to be_nil
@@ -209,11 +209,11 @@ RSpec.describe TicketSalesAccess do
 
       listing.update!(comps_enabled: true, comps_limit: "fixed", comps_per_show: 1)
       expect(listing.comps_left).to eq(1)
-      expect { TicketComps.give!(listing, [ guest(2) ], by: owner, email_them: false) }.to raise_error(TicketComps::Error, "This date has 1 comp left to give.")
+      expect { TicketComps.give!(listing, [ guest(2) ], by: owner, email_them: false) }.to raise_error(TicketComps::Error, "This date has 1 comp left to issue.")
       TicketComps.give!(listing, [ guest(1) ], by: owner, email_them: false)
       expect(listing.comps_left).to eq(0)
-      expect { TicketComps.give!(listing, [ guest(1) ], by: owner, email_them: false) }.to raise_error(TicketComps::Error, "This date has no comps left to give.")
-      expect { TicketDoor.new(listing, owner).sell({ general.id.to_s => 1 }, kind: "comp") }.to raise_error(TicketCheckout::Error, "This date has no comps left to give.")
+      expect { TicketComps.give!(listing, [ guest(1) ], by: owner, email_them: false) }.to raise_error(TicketComps::Error, "This date has no comps left to issue.")
+      expect { TicketDoor.new(listing, owner).sell({ general.id.to_s => 1 }, kind: "comp") }.to raise_error(TicketCheckout::Error, "This date has no comps left to issue.")
       # Cash at the door is untouched.
       expect(TicketDoor.new(listing, owner).sell({ general.id.to_s => 1 }, kind: "cash").channel).to eq("door_cash")
     end

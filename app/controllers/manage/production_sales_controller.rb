@@ -39,7 +39,7 @@ module Manage
       @guest_orders = @listing.ticket_orders.where(status: TicketOrder::WAS_PAID).includes(:ticket_order_items, tickets: %i[ticket_tier ticket_pass bundle_tier])
                               .order(:buyer_name, :id).to_a.select { |o| o.tickets.any? { |t| Ticket::SOLD_STATUSES.include?(t.status) } }
       @allowance = TicketSalesAccess.comp_allowance(Current.user, @listing)
-      @own_comp_ids = TicketComps.own_ids(@listing, Current.user)
+      @changeable_comp_ids = TicketComps.changeable_ids(@listing, Current.user)
     end
 
     # A comp from a production team manager, within their allowance; the
@@ -48,7 +48,7 @@ module Manage
       give_comp_within_allowance(@listing, TicketSalesAccess.comp_allowance(Current.user, @listing), back: sale_path)
     end
 
-    # A comp they gave themselves, corrected or taken back (GivesComps).
+    # A comp their side issued, corrected or taken back (GivesComps).
     # Only at the full view, where comps are given.
     def update_comp
       return redirect_to(sale_path, alert: "You can't change comps for this date.") unless @level == :full

@@ -1,7 +1,11 @@
-<%# Edit and Remove for the comps someone issued themselves, opened from the
-    dot menu on their rows on the guest list (shared/ticketing/guest_list, own_ids). The giver
+<%# Edit and Remove for the comps someone may change, opened from the dot
+    menu on their rows on the guest list (shared/ticketing/guest_list,
+    changeable_ids). Anyone on the side that issued a comp
     changes the guest's name and email, or takes the comp back, until the
-    show starts (TicketComps.theirs?).
+    show starts (TicketComps.changeable_by?). The email works as it does when a
+    comp is issued (Tim, 2026-11-17): a comp with an email had its tickets
+    sent there, so the email is required; one without has the Email them
+    their tickets switch, off, with the email box behind it.
     Locals: orders (the comps, TicketOrder with tickets loaded),
     comp_url (a lambda: order to its PATCH and DELETE address, by the
     order's id: an order's own address is its buyer's token). %>
@@ -27,19 +31,37 @@
       </div>
       <%= form_with url: url, method: :patch, data: { turbo: false } do %>
         <div class="p-6 space-y-5">
-          <p class="text-sm text-gray-600">You issued <%= tickets %> to <%= name %>. You can change who <%= count == 1 ? "it is" : "they are" %> for until the show starts. To change how many, remove this comp and issue a new one.</p>
+          <p class="text-sm text-gray-600">This comp is <%= tickets %> for <%= name %>. You can change who <%= count == 1 ? "it is" : "they are" %> for until the show starts. To change how many, remove this comp and issue a new one.</p>
           <div>
             <label for="edit_comp_name_<%= order.id %>" class="<%= label_class %>">Name</label>
             <%= text_field_tag :name, order.buyer_name, id: "edit_comp_name_#{order.id}", required: true, autocomplete: "off", class: input_class %>
           </div>
-          <div>
-            <label for="edit_comp_email_<%= order.id %>" class="<%= label_class %>">Their email <span class="font-normal text-gray-500">(optional)</span></label>
-            <%= email_field_tag :email, order.buyer_email, id: "edit_comp_email_#{order.id}", placeholder: "their@email.com", autocomplete: "off", class: input_class %>
-          </div>
-          <label class="flex items-start gap-3 cursor-pointer">
-            <%= check_box_tag :send_tickets, "1", false, id: "edit_comp_send_#{order.id}", class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
-            <span class="text-sm text-gray-700">Email the tickets to this address when I save.</span>
-          </label>
+          <% if order.buyer_email.present? %>
+            <%# Their tickets went to this address when the comp was issued, so
+                it can't be emptied; a new address gets the tickets. %>
+            <div>
+              <label for="edit_comp_email_<%= order.id %>" class="<%= label_class %>">Their email</label>
+              <%= email_field_tag :email, order.buyer_email, id: "edit_comp_email_#{order.id}", placeholder: "their@email.com", required: true, autocomplete: "off", class: input_class %>
+              <p class="text-xs text-gray-600 mt-1.5">Their tickets were emailed to this address. If you change it, the tickets are sent to the new address when you save.</p>
+            </div>
+          <% else %>
+            <%# The same switch as issuing a comp (manage/ticket_listings/comps_modal):
+                off, there's nothing to fill in; on, their email is needed. %>
+            <div class="pt-5 border-t border-gray-200 space-y-4" data-controller="toggle-section fieldset-toggle">
+              <div class="flex items-center justify-between gap-4">
+                <div>
+                  <div class="text-sm font-medium text-gray-900">Email them their tickets</div>
+                  <div class="text-xs text-gray-600 mt-0.5">The usual email with their QR codes. They haven't been emailed their tickets yet.</div>
+                </div>
+                <%= render "shared/toggle_switch", name: "email_them", checked: false, hidden_false: true, id: "edit_comp_email_them_#{order.id}", aria_label: "Email them their tickets",
+                      data: { toggle_section_target: "toggle", fieldset_toggle_target: "switch", action: "change->toggle-section#toggle change->fieldset-toggle#toggle" } %>
+              </div>
+              <fieldset data-toggle-section-target="content" data-fieldset-toggle-target="fields" class="min-w-0 hidden">
+                <label for="edit_comp_email_<%= order.id %>" class="<%= label_class %>">Their email</label>
+                <%= email_field_tag :email, nil, id: "edit_comp_email_#{order.id}", placeholder: "their@email.com", required: true, autocomplete: "off", class: input_class %>
+              </fieldset>
+            </div>
+          <% end %>
         </div>
         <div class="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 bg-gray-50">
           <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
@@ -51,6 +73,6 @@
 
   <%= render "shared/confirm_modal", id: "remove-comp-#{order.id}",
         title: "Remove this comp?",
-        message: "#{name.upcase_first} will lose #{count == 1 ? 'the ticket' : "the #{tickets}"} you issued them. #{count == 1 ? 'The ticket stops' : 'The tickets stop'} working at the door, and #{count == 1 ? 'the seat is' : 'the seats are'} free again.#{' They will be notified by email.' if order.buyer_email.present?} This can't be undone, but you can issue them a new comp.",
+        message: "#{name.upcase_first} will lose this comp. #{count == 1 ? 'The ticket stops' : 'The tickets stop'} working at the door, and #{count == 1 ? 'the seat is' : 'the seats are'} free again.#{' They will be notified by email.' if order.buyer_email.present?} This can't be undone, but you can issue them a new comp.",
         confirm_text: "Remove", url: url, method: :delete %>
 <% end %>

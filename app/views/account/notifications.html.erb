@@ -97,7 +97,7 @@
       <%# Ticket sales an organization chose to notify them of, through a connected contract. %>
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6" data-linked-sale-switches>
         <%= render "shared/section_heading", padding: "px-4 py-3 sm:px-6 sm:py-4", title: "Ticket sales shared with you" %>
-        <p class="px-4 sm:px-6 pt-3 pb-2 text-sm text-gray-600">You are notified each time tickets sell online or comps are given for these shows. It says how many and how full the date is, and it is never an email. Switch one off to stop it.</p>
+        <p class="px-4 sm:px-6 pt-3 pb-2 text-sm text-gray-600">You are notified each time tickets sell online or comps are issued for these shows. It says how many and how full the date is, and it is never an email. Switch one off to stop it.</p>
         <% @linked_sale_switches.each do |watcher| %>
           <% connection = watcher.contract_connection %>
           <div class="flex items-center gap-3 px-4 sm:px-6 py-3 border-t border-gray-100">

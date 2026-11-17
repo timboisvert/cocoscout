@@ -408,15 +408,21 @@ RSpec.describe "Contract connections", type: :request do
       # It is one number for the whole contract's side: the contractor has one left too.
       expect(TicketSalesAccess.comp_allowance(user, TicketListing.find(listing.id))).to include(team_limit: 2, team_given: 1, left: 1)
       get manage_production_sale_path(their_production, listing)
-      expect(CGI.unescapeHTML(response.body)).to include("Give comps · 1 of 2 left", "allows 2 comps for this date, shared between everyone on the contract. 1 has been given so far.")
+      expect(CGI.unescapeHTML(response.body)).to include("Issue comps · 1 of 2 left", "allows 2 comps for this date, shared between everyone on the contract. 1 has been issued so far.")
 
-      # The comp is the colleague's to edit and remove, there in the organization; the contractor's own isn't.
+      # Edit and Remove are there in the organization, for any comp the contract's side issued: the colleague's and the contractor's.
       comp = listing.ticket_orders.find_by!(buyer_name: "A Friend")
-      expect(response.body).to include("You issued this.", manage_production_sale_comp_path(their_production, listing, comp.id))
-      patch manage_production_sale_comp_path(their_production, listing, comp.id), params: { name: "A Better Friend", email: "" }
-      expect(comp.reload.buyer_name).to eq("A Better Friend")
       contractors = TicketComps.give!(listing, [ TicketComps::Guest.new(name: "Thea's Guest", email: nil, tier: tier, quantity: 1) ], by: user, email_them: false).sole
-      delete manage_production_sale_comp_path(their_production, listing, contractors.id)
+      get manage_production_sale_path(their_production, listing)
+      expect(response.body).to include("Edit or remove this comp", manage_production_sale_comp_path(their_production, listing, comp.id),
+                                       manage_production_sale_comp_path(their_production, listing, contractors.id))
+      patch manage_production_sale_comp_path(their_production, listing, comp.id), params: { name: "A Better Friend", email_them: "0" }
+      expect(comp.reload.buyer_name).to eq("A Better Friend")
+      patch manage_production_sale_comp_path(their_production, listing, contractors.id), params: { name: "Thea's Friend", email_them: "0" }
+      expect(contractors.reload.buyer_name).to eq("Thea's Friend")
+      # Never one the selling organization issued itself.
+      houses = TicketComps.give!(listing, [ TicketComps::Guest.new(name: "House Guest", email: nil, tier: tier, quantity: 1) ], by: owner, email_them: false).sole
+      delete manage_production_sale_comp_path(their_production, listing, houses.id)
       expect(response).to have_http_status(:not_found)
       expect { delete manage_production_sale_comp_path(their_production, listing, comp.id) }.to change { listing.tickets.where(status: Ticket::SOLD_STATUSES).count }.by(-1)
       expect(flash[:notice]).to eq("Removed 1 ticket for A Better Friend. The seat is free again.")

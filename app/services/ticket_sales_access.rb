@@ -121,6 +121,32 @@ class TicketSalesAccess
     { date_left: date_left, team_limit: team_limit, team_given: team_given, left: left }
   end
 
+  # Which comps someone issues from on this date: :contract (the people on
+  # its contract and, connected, the people who run the contractor's
+  # organization) or :team (a production team manager who sees everything).
+  # nil for everyone else: the organization's own managers work from
+  # Ticketing. It is who they are, not what's left: a side with nothing
+  # left to issue can still change the comps it has (TicketComps).
+  def self.comp_side(user, listing)
+    return nil unless user && listing && open_for?(listing)
+    return nil if listing.organization.manageable_by?(user)
+    return :contract if on_contract_for?(user, listing) || LinkedTicketSales.manages_for?(user, listing)
+
+    :team if team_role(user, listing.production) == "manager" && team_level(user, listing.production) == :full
+  end
+
+  # The comps on this date a side issued, whoever on it did (Tim,
+  # 2026-11-17: "it doesn't matter who issued it"): order ids.
+  def self.comp_ids_of(listing, side)
+    scope = listing.ticket_orders.where(channel: "comp", status: TicketOrder::WAS_PAID).where.not(issued_by_id: nil)
+    contract = contract_side_user_ids(listing) - manager_ids(listing)
+    case side
+    when :contract then scope.where(issued_by_id: contract).pluck(:id)
+    when :team then scope.where.not(issued_by_id: manager_ids(listing) + contract).pluck(:id)
+    else []
+    end
+  end
+
   def self.can_comp?(user, listing)
     allowance = comp_allowance(user, listing)
     allowance.present? && (allowance[:left].nil? || allowance[:left].positive?)

@@ -8,7 +8,7 @@ const PREVIEW_FAILED = "Couldn't preview that list just now. Press Preview to tr
 // The pasted list's footer button always does something: Preview asks the
 // server what the list would give (who, how many, against the comps, seats
 // and allowance left, and the lines to fix) and shows it, or says why it
-// couldn't; once that preview is ready the button is Give N comps. Any edit
+// couldn't; once that preview is ready the button is Issue N comps. Any edit
 // to the list, the ticket type or the email switch goes back to Preview.
 export default class extends Controller {
     static targets = ["pastePane", "text", "result", "giveOne", "preview", "give"]
@@ -88,7 +88,7 @@ export default class extends Controller {
         const giving = this.pasting && this.ready > 0
         this.previewTarget.style.display = this.pasting && !giving ? "" : "none"
         this.giveTarget.style.display = giving ? "" : "none"
-        if (giving) this.setLabel(this.giveTarget, `Give ${this.ready} ${this.ready === 1 ? "comp" : "comps"}`)
+        if (giving) this.setLabel(this.giveTarget, `Issue ${this.ready} ${this.ready === 1 ? "comp" : "comps"}`)
     }
 
     // the words live in the button's span; setting the button's own text would wipe it
