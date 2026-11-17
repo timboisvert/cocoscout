@@ -493,11 +493,13 @@ class Show < ApplicationRecord
   end
 
   def ticket_page_image
+    # The show's own image settles it, before anything else is looked up.
+    own = [ [ wide_image, :wide ], [ poster, :poster ] ].find { |attachment, _| attachment&.attached? }
+    return PageImage.new(attachment: own[0], kind: own[1], owner: :show) if own
+
     poster_record = production&.primary_poster
     partner = LinkedArt.source_for_show(self)
     candidates = [
-      [ wide_image, :wide, :show ],
-      [ poster, :poster, :show ],
       [ partner&.wide_image, :wide, :partner ],
       [ partner&.primary_poster&.image, :poster, :partner ],
       [ production&.wide_image, :wide, :production ],

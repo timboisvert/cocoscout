@@ -13,10 +13,11 @@
             (Current.user.superadmin? || Current.organization.manageable_by?(Current.user) || contractor)
 %>
 <% if visible %>
+  <% picture = contract.organization.feature_available?(:contracts) ? contract_date_picture(contract, theirs) : nil %>
   <div data-followed-contract-box>
     <%= render "shared/contract_date_box", contract: contract, show: theirs, voice: :you,
-          picture: (contract.organization.feature_available?(:contracts) ? contract_date_picture(contract, theirs) : nil),
+          picture: picture,
           heading_link: (contractor ? link_to("My Contracts", my_contracts_path, class: "text-[13px] font-medium text-pink-600 hover:text-pink-700 flex-shrink-0") : nil),
-          payee_note: "Payments go to #{contract.contractor_name}." %>
+          payee_note: (picture && picture[:payout] ? "Payments go to #{contract.contractor_name}." : nil) %>
   </div>
 <% end %>
