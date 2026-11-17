@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 
-// The Ask about a date form on My Contracts (my/contract_date_requests/new).
+// The Request date/time change form on My Contracts (my/contract_date_requests/new).
 // Which date and what's needed decide the rest: a day and time for a move
 // or a date to add, none for a cancel or a question, and a note that a
 // question can't go without.

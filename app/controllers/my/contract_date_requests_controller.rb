@@ -11,7 +11,7 @@ module My
     before_action :set_contract
     before_action :set_date_request, only: %i[withdraw dismiss]
 
-    # The form, loaded into the Ask about a date modal on My Contracts.
+    # The form, loaded into the Request date/time change modal on My Contracts.
     def new
       @shows = ContractDateRequests.askable_shows(@contract).to_a
       @zone = zone

@@ -52,13 +52,13 @@
     <%= icon("calendar", class: "w-4 h-4 text-pink-500 flex-shrink-0") %>
     <span class="truncate">Need a date moved, canceled or added?</span>
   </span>
-  <%= render "shared/button", text: "Ask about a date", variant: "outline-pink", size: "small", type: :button,
+  <%= render "shared/button", text: "Request date/time change", variant: "outline-pink", size: "small", type: :button,
         classes: "flex-shrink-0", data: { action: "click->modal#open", modal_id: ask_modal } %>
 </div>
 <div id="<%= ask_modal %>" class="hidden fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4 overflow-y-auto" data-action="click->modal#closeOnBackdrop">
   <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full my-8 overflow-hidden" data-action="click->modal#stopPropagation">
     <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
-      <h3 class="text-lg font-semibold text-white">Ask <%= org %></h3>
+      <h3 class="text-lg font-semibold text-white">Request date/time change</h3>
       <button type="button" data-action="click->modal#close" aria-label="Close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition cursor-pointer">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
       </button>

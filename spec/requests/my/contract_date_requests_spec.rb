@@ -22,11 +22,11 @@ RSpec.describe "My contract date requests", type: :request do
 
   before { post handle_signin_path, params: { email_address: user.email_address, password: password } }
 
-  it "offers Ask about a date on a live contract" do
+  it "offers Request date/time change on a live contract" do
     get my_contracts_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Ask about a date")
+    expect(response.body).to include("Request date/time change")
     expect(response.body).to include(my_ask_contract_date_path(contract))
   end
 
@@ -99,7 +99,7 @@ RSpec.describe "My contract date requests", type: :request do
     post handle_signin_path, params: { email_address: other.email_address, password: password }
 
     get my_contracts_path
-    expect(response.body).not_to include("Ask about a date")
+    expect(response.body).not_to include("Request date/time change")
 
     expect do
       post my_ask_contract_date_path(contract), params: { show_id: show.id, kind: "cancel" }
