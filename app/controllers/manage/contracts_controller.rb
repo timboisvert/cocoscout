@@ -325,6 +325,14 @@ module Manage
       end
     end
 
+    # Whose poster, wide image and description the ticket page for this show
+    # uses while connected: the contractor's, or this organization's own (LinkedArt).
+    def update_connection_images
+      connection = @contract.connections.connected.first
+      connection&.update!(use_own_images: params[:use_own_images] == "1")
+      redirect_to manage_contract_path(@contract), notice: (connection ? "Saved." : nil)
+    end
+
     def update_connection_later_contracts
       connection = @contract.connections.connected.first
       choice = params[:later_contracts].to_s.presence_in(ContractConnection::LATER_CONTRACTS)

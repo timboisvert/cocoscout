@@ -87,6 +87,18 @@
                 <% end %>
               </dd>
             </div>
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-0.5 sm:gap-4 px-6 py-3" data-connection-images>
+              <dt class="text-gray-600">Images and description</dt>
+              <dd class="text-gray-900 sm:text-right max-w-md">
+                <% if connection.use_own_images %>
+                  <%= seller.name %> has chosen to use its own images and description on its ticket page.
+                <% elsif connection.linked_production %>
+                  <%= possessive(seller.name) %> ticket page for this show uses the poster, wide image and description you set on
+                  <%= link_to connection.linked_production.name, edit_manage_production_path(connection.linked_production), class: "text-pink-600 hover:text-pink-700 underline" %>.
+                  When you change them, the ticket page changes too.
+                <% end %>
+              </dd>
+            </div>
             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-0.5 sm:gap-4 px-6 py-3">
               <dt class="text-gray-600">Later contracts</dt>
               <dd class="text-gray-900 sm:text-right max-w-md"><%= connection.later_contracts_words %></dd>

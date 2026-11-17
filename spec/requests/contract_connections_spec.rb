@@ -213,6 +213,17 @@ RSpec.describe "Contract connections", type: :request do
         .and include("So my team can see sales.").and include("Later contracts with").and include("Ask us each time")
     end
 
+    it "lets the organization go back to its own images on its ticket page, and to theirs again" do
+      post accept_connection_manage_contract_path(contract), params: { later_contracts: "ask" }
+      get manage_contract_path(contract)
+      expect(response.body).to include("Images on your ticket page").and include("Use our own instead")
+
+      patch connection_images_manage_contract_path(contract), params: { use_own_images: "1" }
+      expect(connection.reload.use_own_images).to be(true)
+      follow_redirect!
+      expect(response.body).to include("using your own images and description")
+    end
+
     it "says who the contractor is on CocoScout on the contractor's page, once connected" do
       post accept_connection_manage_contract_path(contract), params: { later_contracts: "ask" }
       get manage_contractor_path(contractor)
@@ -360,6 +371,23 @@ RSpec.describe "Contract connections", type: :request do
       expect(response.body).not_to include("What the contract pays")
       get manage_show_path(their_production, followed)
       expect(response.body).not_to include("data-followed-contract-box")
+    end
+
+    it "shows buyers the show's own description on the seller's ticket page, and the seller's again once it chooses its own" do
+      listing = on_sale!
+      listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 40) if listing.ticket_tiers.empty?
+      production.update!(description: "The venue wrote this.")
+      their_production.update!(description: "The show wrote this itself.")
+      slug = TicketingProfile.for(venue).slug
+
+      get tickets_event_path(org: slug, event: production.ticket_page_key)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("The show wrote this itself.")
+      expect(response.body).not_to include("The venue wrote this.")
+
+      connection.update!(use_own_images: true)
+      get tickets_event_path(org: slug, event: production.ticket_page_key)
+      expect(response.body).to include("The venue wrote this.")
     end
 
     it "says where a coming date is booked on the production page, and doesn't ask where its tickets are sold" do

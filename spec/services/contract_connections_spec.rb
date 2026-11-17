@@ -432,6 +432,41 @@ RSpec.describe ContractConnections do
     end
   end
 
+  describe "whose images the ticket page shows (LinkedArt)" do
+    # A fresh file each time: an attached one has been read to its end.
+    def png = { io: StringIO.new(Base64.decode64("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")), filename: "wide.png", content_type: "image/png" }
+
+    it "puts the contractor's production's wide image and description ahead of the seller's own, while connected" do
+      production.update!(description: "The venue's words.")
+      their_production.update!(description: "The show's own words.")
+      their_production.wide_image.attach(**png)
+      listing = create(:ticket_listing, organization: venue, production: production, show: first_show)
+      expect(first_show.ticket_page_image).to be_nil
+      expect(listing.effective_description.to_plain_text).to eq("The venue's words.")
+
+      connection = connect!
+      image = Show.find(first_show.id).ticket_page_image
+      expect(image).to have_attributes(owner: :partner, kind: :wide, from: "The Holly Problem")
+      expect(TicketListing.find(listing.id).effective_description.to_plain_text).to eq("The show's own words.")
+
+      # The seller keeps its own, and it all goes back when the connection ends.
+      connection.update!(use_own_images: true)
+      expect(Show.find(first_show.id).ticket_page_image).to be_nil
+      connection.update!(use_own_images: false)
+      described_class.unlink!(connection, user: owner)
+      expect(Show.find(first_show.id).ticket_page_image).to be_nil
+      expect(TicketListing.find(listing.id).effective_description.to_plain_text).to eq("The venue's words.")
+    end
+
+    it "leaves a date's own image first" do
+      their_production.wide_image.attach(**png)
+      first_show.wide_image.attach(**png)
+      connect!
+
+      expect(Show.find(first_show.id).ticket_page_image).to have_attributes(owner: :show)
+    end
+  end
+
   describe ".choose_later_contracts!" do
     it "is one answer for the contractor: asking each time on one contract takes back the yes given on another" do
       first = connect!

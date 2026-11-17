@@ -18,7 +18,7 @@
     <% if has_wide %>
       <%= ticket_page_image_source(page_image) %>.
     <% elsif page_image %>
-      No wide image, so the page uses <%= page_image.own? ? "this show's" : "the production's" %> poster.
+      No wide image, so the page uses <%= page_image.own? ? "this show's" : (page_image.partner? ? possessive(page_image.from) : "the production's") %> poster.
     <% else %>
       No wide image or poster yet.
     <% end %>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_17_171941) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_17_183355) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -779,6 +779,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_171941) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.datetime "reminded_at"
+    t.boolean "use_own_images", default: false, null: false
     t.index ["contract_id"], name: "index_contract_connections_on_contract_id"
     t.index ["contract_id"], name: "index_contract_connections_one_live_per_contract", unique: true, where: "((status)::text = ANY (ARRAY[('requested'::character varying)::text, ('connected'::character varying)::text]))"
     t.index ["linked_organization_id"], name: "index_contract_connections_on_linked_organization_id"

@@ -102,8 +102,12 @@ class TicketListing < ApplicationRecord
     @production_ticketing = production&.production_ticketing
   end
 
+  # The date's own words, the production's ticketing setup, then the
+  # production's: the contractor's own production's first, when the show is
+  # theirs and sold here under a connected contract (LinkedArt).
   def effective_description
-    description.presence || production_ticketing&.description.presence || production&.description.presence
+    description.presence || production_ticketing&.description.presence ||
+      LinkedArt.source_for_show(show)&.description.presence || production&.description.presence
   end
 
   def effective_door_note

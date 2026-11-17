@@ -35,6 +35,7 @@
           <ul class="space-y-1.5 list-disc pl-4">
             <li>Everyone who manages <%= theirs %> will be able to see how each date is selling, so they can promote the dates that need it without having to ask you.</li>
             <li>Their cast will be able to see how many tickets have sold, and share the ticket link.</li>
+            <li>Your ticket page for this show can use their poster, wide image and description, so it shows the show's own art. You can switch back to yours at any time.</li>
           </ul>
         </div>
         <div>
@@ -121,6 +122,25 @@
       <dl class="divide-y divide-gray-100 text-sm">
         <div class="flex items-start justify-between gap-4 px-4 py-2.5"><dt class="text-gray-600">Your dates are in</dt><dd class="text-gray-900 text-right">Their production, <%= connection.production_name %></dd></div>
         <div class="flex items-start justify-between gap-4 px-4 py-2.5"><dt class="text-gray-600">Who sees ticket sales</dt><dd class="text-gray-900 text-right max-w-md"><%= viewers %></dd></div>
+        <div class="flex items-start justify-between gap-4 px-4 py-2.5" data-connection-images>
+          <dt class="text-gray-600 pt-1.5">Images on your ticket page</dt>
+          <dd class="flex flex-col items-end gap-2 max-w-md text-right text-gray-900">
+            <% offered = LinkedArt.offered_words(connection) %>
+            <span>
+              <% if connection.use_own_images %>
+                You're using your own images and description for this show.
+              <% elsif offered %>
+                Your ticket page for this show uses <%= offered %> from <%= theirs %>. Anything you've set on a single date still comes first.
+              <% else %>
+                <%= theirs %> hasn't added a poster, wide image or description yet, so your own are shown. When <%= theirs %> adds them, your ticket page for this show will use them.
+              <% end %>
+            </span>
+            <%= form_with url: connection_images_manage_contract_path(@contract), method: :patch, local: true, data: { turbo_action: "replace" } do %>
+              <input type="hidden" name="use_own_images" value="<%= connection.use_own_images ? '0' : '1' %>">
+              <%= render "shared/button", text: connection.use_own_images ? "Use #{possessive(theirs)} instead" : "Use our own instead", variant: "secondary", size: "small", type: :submit %>
+            <% end %>
+          </dd>
+        </div>
         <div class="flex items-start justify-between gap-4 px-4 py-2.5">
           <dt class="text-gray-600 pt-1.5">Later contracts with <%= contractor %></dt>
           <dd>

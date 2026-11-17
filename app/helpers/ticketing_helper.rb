@@ -48,7 +48,10 @@ module TicketingHelper
   def ticket_page_image_source(page_image)
     return "No image yet" unless page_image
 
-    whose = page_image.own? ? "This show's" : "The production's"
+    whose = if page_image.own? then "This show's"
+    elsif page_image.partner? then possessive(page_image.from)
+    else "The production's"
+    end
     "#{whose} #{page_image.wide? ? 'wide image' : 'poster'}"
   end
 

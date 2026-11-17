@@ -481,21 +481,30 @@ class Show < ApplicationRecord
   # show's wide image, this show's poster, the production's wide image, then
   # the production's primary poster. Nil when there's none. Shown whole, at its
   # own shape.
-  PageImage = Data.define(:attachment, :kind, :owner) do
+  #
+  # A show the contractor runs in an organization of their own, sold here
+  # under a connected contract, puts the contractor's production's images
+  # ahead of this production's (LinkedArt): owner :partner, with its name.
+  PageImage = Data.define(:attachment, :kind, :owner, :from) do
+    def initialize(attachment:, kind:, owner:, from: nil) = super
     def wide? = kind == :wide
     def own? = owner == :show
+    def partner? = owner == :partner
   end
 
   def ticket_page_image
     poster_record = production&.primary_poster
+    partner = LinkedArt.source_for_show(self)
     candidates = [
       [ wide_image, :wide, :show ],
       [ poster, :poster, :show ],
+      [ partner&.wide_image, :wide, :partner ],
+      [ partner&.primary_poster&.image, :poster, :partner ],
       [ production&.wide_image, :wide, :production ],
       [ poster_record&.image, :poster, :production ]
     ]
     found = candidates.find { |attachment, _, _| attachment&.attached? }
-    found && PageImage.new(attachment: found[0], kind: found[1], owner: found[2])
+    found && PageImage.new(attachment: found[0], kind: found[1], owner: found[2], from: (partner.organization.name if found[2] == :partner))
   end
 
   # A list row's picture (shared/wide_thumb): this show's wide image, or the

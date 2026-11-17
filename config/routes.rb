@@ -1993,6 +1993,7 @@ Rails.application.routes.draw do
         post "connection/decline", action: :decline_connection, as: :decline_connection
         post "connection/unlink", action: :unlink_connection, as: :unlink_connection
         patch "connection/later_contracts", action: :update_connection_later_contracts, as: :connection_later_contracts
+        patch "connection/images", action: :update_connection_images, as: :connection_images
         get "amend/dates", action: :amend_dates, as: :amend_dates
         get "amend/dates/review", action: :review_amend_dates, as: :review_amend_dates
         post "amend/dates", action: :apply_amend_dates, as: :apply_amend_dates
