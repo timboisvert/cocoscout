@@ -528,6 +528,9 @@ Rails.application.routes.draw do
 
     # Contracts held by this person (as a contractor's backing Person).
     get    "/contracts",                    to: "contracts#index",          as: "contracts"
+    # My Followers: mailing lists shared through a contract (SharedFollowers).
+    get    "/followers",                    to: "followers#index",          as: "followers"
+    get    "/followers/:id/download",       to: "followers#download",       as: "followers_download"
     # Case 2: the contractor self-reports their own ticket sales.
     get    "/contracts/:id/report-sales",   to: "contracts#report_sales",   as: "report_contract_sales"
     patch  "/contracts/:id/report-sales",   to: "contracts#save_sales_report"
@@ -1893,6 +1896,12 @@ Rails.application.routes.draw do
     # Contractors - manage contractor records
     # Mailing lists (Pro, V1.1; Tim 2026-10-23): followers in lists, segments,
     # and emails to them.
+    # Followers shared with this organization through a connected contract,
+    # and the dates another organization sells for it: read-only, and free.
+    get    "/shared-followers",                               to: "shared_followers#index",         as: "shared_followers"
+    get    "/shared-followers/:id/download",                  to: "shared_followers#download",      as: "shared_followers_download"
+    get    "/ticket-sales",                                   to: "sold_elsewhere#index",           as: "sold_elsewhere"
+    patch  "/mailing-lists/:id/contractor",                   to: "mailing_lists#update_contractor", as: "mailing_list_contractor"
     get    "/mailing-lists",                                  to: "mailing_lists#index",            as: "mailing_lists"
     post   "/mailing-lists",                                  to: "mailing_lists#create"
     get    "/mailing-lists/settings(/:section)",              to: "mailing_list_settings#show",     as: "mailing_list_settings"

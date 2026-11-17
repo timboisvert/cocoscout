@@ -189,6 +189,8 @@ class ContractConnections
       LinkedDates.connect!(connection)
     end
     standing ? ContractConnectionNotices.connected_by_earlier_yes(connection) : ContractConnectionNotices.accepted(connection)
+    # A list shared through this contract now belongs in their organization.
+    SharedFollowersSyncJob.perform_later(organization_id: connection.linked_organization_id)
     connection
   end
 

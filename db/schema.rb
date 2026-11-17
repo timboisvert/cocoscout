@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_17_183355) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_17_201544) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1732,8 +1732,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_183355) do
     t.datetime "archived_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "contractor_id"
+    t.boolean "shared_with_contractor", default: true, null: false
+    t.bigint "source_list_id"
+    t.index ["contractor_id"], name: "index_mailing_lists_on_contractor_id"
     t.index ["organization_id"], name: "index_mailing_lists_on_organization_id"
     t.index ["organization_id"], name: "index_mailing_lists_one_main_per_org", unique: true, where: "((kind)::text = 'main'::text)"
+    t.index ["source_list_id"], name: "index_mailing_lists_on_source_list_id"
   end
 
   create_table "message_poll_options", force: :cascade do |t|
@@ -5182,6 +5187,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_183355) do
   add_foreign_key "mailing_list_memberships", "mailing_lists"
   add_foreign_key "mailing_list_productions", "mailing_lists"
   add_foreign_key "mailing_list_productions", "productions"
+  add_foreign_key "mailing_lists", "contractors", on_delete: :nullify
+  add_foreign_key "mailing_lists", "mailing_lists", column: "source_list_id", on_delete: :nullify
   add_foreign_key "mailing_lists", "organizations"
   add_foreign_key "message_poll_options", "message_polls"
   add_foreign_key "message_poll_votes", "message_poll_options"

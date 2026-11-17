@@ -1,0 +1,38 @@
+<%# My Followers (My::FollowersController): the mailing lists organizations
+    share with the people on a contract. From the controller: @lists (the
+    ones shown here), @rows (by list id), @moved ([[list, organization]]:
+    the ones that now live in an organization of their own), @q. %>
+<% content_for :title, "My Followers" %>
+<div class="w-full mb-10 max-w-4xl">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render "shared/module_header", title: "My Followers" %>
+
+  <% if @lists.any? %>
+    <p class="text-sm text-gray-600 mb-5 max-w-3xl">
+      These are the people who asked to hear about your shows. Most of them ticked a box when they bought tickets. You can download a list
+      or copy the addresses, and email them however you usually do. Nothing is sent from this page.
+    </p>
+    <div class="space-y-6">
+      <% @lists.each do |list| %>
+        <div>
+          <%= render "shared/followers/shared_list", list: list, rows: @rows[list.id], q: @q,
+                title: list.name,
+                intro: "From #{list.organization.name} · #{pluralize(SharedFollowers.count(list), 'follower')}",
+                download_path: my_followers_download_path(list), search_path: my_followers_path %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% @moved.each do |list, organization| %>
+    <div class="mt-5 bg-white border border-gray-200 rounded-lg px-4 py-3 flex flex-wrap items-center justify-between gap-3" data-moved-list="<%= list.id %>">
+      <p class="text-sm text-gray-700 min-w-0 flex-1">
+        <span class="font-medium text-gray-900"><%= list.name %></span>, from <%= list.organization.name %>, is in <%= organization.name %> now, because that contract is connected to it.
+      </p>
+      <%= form_with url: set_organization_path(id: organization.id), method: :post, local: true, class: "flex-shrink-0" do %>
+        <%= hidden_field_tag :return_to, manage_shared_followers_path %>
+        <%= render "shared/button", text: "Open #{organization.name}", variant: "outline-pink", size: "small", type: :submit %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

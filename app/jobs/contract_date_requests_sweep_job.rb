@@ -11,5 +11,7 @@ class ContractDateRequestsSweepJob < ApplicationJob
   def perform(now: Time.current)
     ContractDateRequests.sweep!(now: now)
     ContractConnections.sweep!(now: now)
+    # ...and the followers shared through connected contracts are brought up to date.
+    SharedFollowersSyncJob.perform_later
   end
 end

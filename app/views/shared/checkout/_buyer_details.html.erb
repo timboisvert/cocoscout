@@ -30,7 +30,7 @@
         <% ticked = chosen.nil? ? local_assigns[:follow_ticked] != false : chosen.include?(list.id) %>
         <label class="flex items-start gap-3 text-sm text-gray-800 cursor-pointer">
           <%= check_box_tag "follow_list_ids[]", list.id, ticked, id: "follow_list_#{list.id}", class: "mt-0.5 h-[18px] w-[18px] text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
-          <span><%= list.box_words %></span>
+          <span><%= list.box_words %><% if (note = list.box_note) %><span class="block text-xs text-gray-500 mt-0.5"><%= note %></span><% end %></span>
         </label>
       <% end %>
       <p class="text-xs text-gray-500 pl-[30px]">Unsubscribe any time, in one tap.</p>
