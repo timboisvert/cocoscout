@@ -102,6 +102,9 @@ env:
     - AWS_SECRET_ACCESS_KEY
     - AWS_REGION
     - MAILGUN_API_KEY
+    # Signs what Mailgun reports back (delivered, bounced, marked as spam), so
+    # a bounce or complaint takes the address off follower emails everywhere.
+    - MAILGUN_WEBHOOK_SIGNING_KEY
     - SENTRY_DSN
     - REDIS_URL
     - STRIPE_SECRET_KEY
