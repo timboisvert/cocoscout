@@ -167,6 +167,14 @@ RSpec.describe "Contract connections", type: :request do
       expect(response.body).not_to include("Your show is booked at Stars and Garters")
     end
 
+    it "offers to start a new production from the contract, on the production wizard's first step" do
+      get manage_productions_wizard_path
+      follow_redirect! while response.redirect?
+
+      expect(response.body).to include("Is this the show that Stars and Garters has under contract").and include("Start from the contract")
+        .and include(my_connect_contract_production_path(contract, organization_id: theirs.id))
+    end
+
     it "shows a contractor with no organization what connecting does, and how to start one" do
       theirs.update!(owner: create(:user))
       OrganizationRole.where(user: user, organization: theirs).destroy_all

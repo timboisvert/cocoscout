@@ -82,12 +82,15 @@ class ContractConnections
 
   # The contracts a user is offered to connect to this organization of
   # theirs: live, with dates ahead, nothing live on them, the offer not put
-  # away. For the line on the organization's home.
-  def self.offers_for(user, organization)
+  # away. For the line on the organization's home. `put_away: true` keeps
+  # the ones they said "Not now" to, for the one place that asks in passing
+  # (starting a new production).
+  def self.offers_for(user, organization, put_away: false)
     return [] unless user && organization && managed_organization_ids(user).include?(organization.id)
 
-    Contract.where(status: "active", connect_offer_dismissed_at: nil).where.not(organization_id: organization.id)
-            .joins(:contractor).where(contractors: { person_id: user.people.select(:id) })
+    scope = Contract.where(status: "active").where.not(organization_id: organization.id)
+    scope = scope.where(connect_offer_dismissed_at: nil) unless put_away
+    scope.joins(:contractor).where(contractors: { person_id: user.people.select(:id) })
             .where.not(id: ContractConnection.live.select(:contract_id))
             .includes(:organization, :production).select { |contract| dates_ahead?(contract) }
   end

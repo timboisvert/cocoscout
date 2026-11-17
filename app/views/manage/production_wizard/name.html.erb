@@ -9,6 +9,20 @@
     <p class="text-gray-600 mt-2">Give your production a name. This can be the name of your show, theater company, or series.</p>
   </div>
 
+  <%# A show of theirs that another organization has under contract can
+      start from that contract, dates and all (ContractConnections). %>
+  <% ContractConnections.offers_for(Current.user, Current.organization, put_away: true).each do |contract| %>
+    <% show_name = contract.production&.name.presence || contract.production_name %>
+    <div class="mb-5 rounded-lg border border-pink-200 bg-pink-50 px-4 py-3 flex flex-wrap items-center justify-between gap-3" data-start-from-contract="<%= contract.id %>">
+      <p class="text-sm text-gray-700 min-w-0 flex-1">
+        Is this the show that <%= contract.organization.name %> has under contract<%= ", #{show_name}" if show_name.present? %>? You can start from that contract instead,
+        and its dates will come with the new production.
+      </p>
+      <%= render "shared/button", text: "Start from the contract", variant: "outline-pink", size: "small", classes: "flex-shrink-0",
+            path: my_connect_contract_production_path(contract, organization_id: Current.organization.id) %>
+    </div>
+  <% end %>
+
   <%= form_with url: manage_productions_wizard_save_name_path, method: :post, local: true do |form| %>
     <div class="space-y-5">
       <div>
