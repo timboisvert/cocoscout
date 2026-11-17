@@ -1,15 +1,15 @@
 <%# The production's ticket sales page, when another organization sells its
     dates under a contract (LinkedTicketSales): what that contract pays for
     each date, as the contractor already sees it on My. For the contractor's
-    organization's owners and managers and the contractor; never the
-    production team. An amount that waits on ticket sales says so.
+    organization's owners and managers and everyone on the contract; never
+    the rest of the production team. An amount that waits on ticket sales says so.
     Locals: production. %>
 <%
   manager = Current.user.superadmin? || Current.organization.manageable_by?(Current.user)
   rows = LinkedTicketSales.connections_for_production(production).select { |connection| LinkedTicketSales.sharing?(connection) }.flat_map do |connection|
     contract = connection.contract
     next [] unless contract.organization.feature_available?(:contracts)
-    next [] unless manager || ContractConnections.contractor?(Current.user, contract)
+    next [] unless manager || ContractConnections.on_contract?(Current.user, contract)
 
     zone = Time.find_zone(contract.organization.time_zone.presence) || Time.zone
     LinkedDates.contract_shows(contract).where(canceled: false).order(:date_and_time).filter_map do |seller_show|

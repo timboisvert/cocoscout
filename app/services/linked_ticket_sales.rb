@@ -119,7 +119,7 @@ class LinkedTicketSales
   def self.level_in(user, connection, show:)
     theirs = connection.linked_organization
     return :full if user.superadmin? || theirs.manageable_by?(user)
-    return :full if ContractConnections.contractor?(user, connection.contract)
+    return :full if ContractConnections.on_contract?(user, connection.contract)
 
     production = connection.linked_production
     role = team_role(user, production)

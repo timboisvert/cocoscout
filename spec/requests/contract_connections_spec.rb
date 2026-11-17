@@ -419,6 +419,24 @@ RSpec.describe "Contract connections", type: :request do
       expect(response.body).to include("The venue wrote this.")
     end
 
+    it "shows everyone on the contract what the contractor sees, not only the contractor" do
+      on_sale!
+      create(:contract_payment, contract: contract, show: contract_show, direction: "outgoing", amount: 250, description: "Their share")
+      colleague = create(:user, password: password)
+      colleague_person = create(:person, user: colleague, name: "Robin On The Contract")
+      ContractPerson.create!(contract: contract, person: colleague_person)
+      # In The Holly Problem only as a production team viewer, whose own level is the numbers.
+      create(:organization_role, user: colleague, organization: theirs, company_role: "member")
+      ProductionPermission.create!(user: colleague, production: their_production, role: "viewer")
+      expect(LinkedTicketSales.level_for(colleague, followed)).to eq(:full)
+
+      sign_in(colleague)
+      post set_organization_path(id: theirs.id)
+      get manage_production_sales_path(their_production)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("What the contract pays").and include("$250.00")
+    end
+
     it "says where a coming date is booked on the production page, and doesn't ask where its tickets are sold" do
       sign_in(user)
       get manage_production_path(their_production)

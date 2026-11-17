@@ -25,6 +25,15 @@ class ContractConnections
     user.present? && contract.present? && contract.payee_among?(user.people.pluck(:id))
   end
 
+  # Anyone on the contract: the contractor, and the people added to it
+  # (ContractPerson). They all see what the contract shares (Tim,
+  # 2026-11-17: "not just the contract holder but anyone on the contract
+  # team"): its dates, ticket sales, what it pays and its followers. Only
+  # the contractor signs, connects and unlinks.
+  def self.on_contract?(user, contract)
+    user.present? && contract.present? && Contract.visible_to(user).exists?(id: contract.id)
+  end
+
   # Only the contractor requests, on a live contract with nothing live on it
   # already, and only when they run an organization of their own. A fact
   # about them and the contract: nothing is guessed from names.
