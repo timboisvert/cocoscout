@@ -3,8 +3,8 @@
 module Manage
   # Mailing lists (Pro, V1.1; Tim 2026-10-23): the module's home (lists,
   # segments, emails) and one list's page (its followers, where it collects,
-  # and its actions). Lists aren't shared outside the organization (Tim,
-  # 2026-10-28: My Followers is gone).
+  # and its actions). A list for a contractor is shared with the people on
+  # that contractor's contracts (SharedFollowers; Tim, 2026-11-17).
   class MailingListsController < ManageController
     before_action :set_list, only: %i[show update update_productions update_contractor archive unarchive export]
 

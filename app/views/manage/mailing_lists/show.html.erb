@@ -134,7 +134,7 @@
               </div>
             <% end %>
           </div>
-          <p class="text-xs text-gray-500 mt-3">Every production under a live contract with <%= @list.contractor.name %> is included by itself. Buyers see "<%= @list.box_words %>" at checkout<% if @list.box_note %>, with a line that says "<%= @list.box_note %>"<% end %>.</p>
+          <p class="text-xs text-gray-500 mt-3">Every production under a live contract with <%= @list.contractor.name %> is included by itself. Buyers see "<%= @list.box_words %>" at checkout<% if @list.box_note %>, with a line under it: "<%= @list.box_note %>"<% else %>.<% end %></p>
         <% elsif @list.main? %>
           <p class="text-sm text-gray-600">Every production's checkout offers it: "<%= @list.box_words %>".</p>
         <% elsif @productions.any? %>

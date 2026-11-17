@@ -283,7 +283,8 @@ RSpec.describe "Production ticketing", type: :request do
       get manage_edit_ticket_listing_path(listing)
       tabs = Nokogiri::HTML(response.body).css("nav[aria-label='Settings sections'] a").map { |a| a.text.squish }
       expect(tabs).to eq([ "Basic info", "Tickets", "Fees and taxes", "Comps", "Refunds", "Discount codes", "Products", "Ticket page" ])
-      expect(tabs).to eq(Manage::ProductionTicketingsController::SECTIONS.values)
+      # ...all but Checkout boxes: the mailing lists a checkout offers are the production's, never one date's.
+      expect(tabs).to eq(Manage::ProductionTicketingsController::SECTIONS.values - [ "Checkout boxes" ])
       expect(response.body).to include("When sales open and close")
 
       get manage_edit_ticket_listing_path(listing, section: "tickets")
