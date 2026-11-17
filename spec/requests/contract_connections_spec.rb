@@ -502,15 +502,35 @@ RSpec.describe "Contract connections", type: :request do
       # ...and My Contracts doesn't ask for a bank for a contract that pays into the balance.
       get my_contracts_path
       expect(response.body).not_to include("Connect a bank account for your contract payments")
-      batch = ContractorPayoutRunService.add_contract_payment!(contract.contract_payments.last, added_by: owner).batch
       get signout_path
       sign_in(owner)
       post set_organization_path(id: venue.id)
       get manage_contract_path(contract)
       expect(response.body).to include("Where your payments to #{contractor.name} go").and include("Into The Holly Problem&#39;s CocoScout balance")
+      # Adding it to the run says where it goes, and says nothing of a bank they haven't connected (dev walk, 2026-11-17).
+      expect(response.body).to include("When the run pays, it goes into The Holly Problem&#39;s CocoScout balance, with no bank transfer.")
+      expect(response.body).not_to include("hasn&#39;t connected a bank yet")
+
+      batch = ContractorPayoutRunService.add_contract_payment!(contract.contract_payments.last, added_by: owner).batch
       get manage_payout_batch_path(batch)
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("data-into-balance").and include("The Holly Problem")
+      # The run's own words don't promise a bank transfer for it.
+      expect(response.body).to include("1 payee · ready, fund the run to pay").and include("nobody is waiting on a bank")
+      expect(response.body).not_to include("bank connected, fund the run to pay", "straight to each payee&#39;s connected bank.</p>")
+    end
+
+    it "shows one card for a contract on Connections, however many times it was connected" do
+      ContractConnections.unlink!(connection, user: user)
+      again = ContractConnections.request!(contract: contract, user: user, organization: theirs, production: their_production)
+      ContractConnections.accept!(again, user: owner) unless again.reload.connected?
+      expect(ContractConnection.where(contract: contract).count).to eq(2)
+
+      sign_in(user)
+      post set_organization_path(id: theirs.id)
+      get manage_connections_path
+      expect(response.body.scan("Contract for #{production.name}").size).to eq(1)
+      expect(response.body).to include("Connected")
     end
 
     it "keeps the choice the contractor's: another manager of the organization can read it and not change it" do

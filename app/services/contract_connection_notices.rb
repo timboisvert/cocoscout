@@ -28,13 +28,14 @@ class ContractConnectionNotices
       target = item.payee
       payer = item.payout_batch.organization
       amount = ActiveSupport::NumberHelper.number_to_currency(item.amount_cents / 100.0)
-      path = routes.manage_connections_path
+      # It opens where the money is: the organization's balance.
+      path = routes.manage_ticket_balance_path
       User.where(id: [ target.owner_id ] + target.organization_roles.where(company_role: "manager").pluck(:user_id)).find_each do |user|
         Notifier.deliver(user: user, category: "contracts", kind: "contract_share_paid_into_balance",
                          template_key: "contract_share_paid_into_balance", path: path, organization: target, subject: item,
                          variables: { organization_name: payer.name, linked_organization_name: target.name, amount: amount,
                                       linked_organization_possessive: possessive(target.name), contractor_possessive: "",
-                                      contractor_name: "", production_name: "", linked_production_name: "", note: "", connections_url: path })
+                                      contractor_name: "", production_name: "", linked_production_name: "", note: "", connections_url: path, balance_url: path })
       end
     rescue StandardError => e
       Rails.logger.error("[ContractConnectionNotices] item #{item.id} paid into balance: #{e.class}: #{e.message}")

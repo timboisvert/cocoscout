@@ -137,7 +137,21 @@ RSpec.describe "Contract payments into the contractor's organization's balance" 
       batch.update!(status: "funded", funding_status: "succeeded")
 
       expect { PayoutBatchService.process!(batch) }.to change { user.notifications.where(kind: "contract_share_paid_into_balance").count }.by(1)
-      expect(user.notifications.where(kind: "contract_share_paid_into_balance").last.title).to eq("Stars and Garters paid $825.00 into The Holly Problem's balance")
+      notice = user.notifications.where(kind: "contract_share_paid_into_balance").last
+      expect(notice.title).to eq("Stars and Garters paid $825.00 into The Holly Problem's balance")
+      # It opens where the money is, and the payer's own ledger line reads properly.
+      expect(notice.path).to eq("/manage/money/books/balance")
+      expect(OrgCashEntry.where(organization: venue, entry_type: "transfer").last.description).to end_with("paid into The Holly Problem's CocoScout balance")
+    end
+
+    it "writes a name that ends in s the right way in the payer's ledger" do
+      theirs.update!(name: "Thea Presents")
+      choose_balance!
+      batch = run_with_payment!
+      batch.update!(status: "funded", funding_status: "succeeded")
+      PayoutBatchService.process!(batch)
+
+      expect(OrgCashEntry.where(organization: venue, entry_type: "transfer").last.description).to end_with("paid into Thea Presents' CocoScout balance")
     end
 
     it "posts it in both organizations' books: paid from one balance, contract income in the other, by production and date" do

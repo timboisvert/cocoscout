@@ -486,7 +486,7 @@ class PayoutBatchService
     ActiveRecord::Base.transaction do
       OrgCashEntry.debit!(organization: payer, amount_cents: item.amount_cents, source: item,
                           enforce: batch.funding_status != "succeeded",
-                          description: "Payout run ##{batch.id}: paid into #{target.name}'s CocoScout balance")
+                          description: "Payout run ##{batch.id}: paid into #{target.name}#{target.name.to_s.end_with?('s') ? "'" : "'s"} CocoScout balance")
       OrgCashEntry.post!(organization: target, entry_type: "partner_payment_in", amount_cents: item.amount_cents, source: item,
                          description: "From #{payer.name}: #{item.payout_contributions.payable.where('amount_cents > 0').pluck(:label).first(2).to_sentence.presence || 'contract payment'}")
       item.mark_paid!

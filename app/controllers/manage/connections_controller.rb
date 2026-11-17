@@ -13,8 +13,11 @@ module Manage
     before_action :set_connection, only: %i[update unlinking unlink remove_dates answer_date pay_to notify]
 
     def index
+      # One card per contract: its latest connection. A contract unlinked and
+      # connected again has earlier rows, and each showed as its own card.
       @connections = scope.where.not(status: %w[withdrawn declined])
                           .includes(:organization, :linked_production, :requested_by, contract: :production).order(created_at: :desc).to_a
+                          .uniq(&:contract_id)
     end
 
     # Who in this organization sees the ticket sales, below its owners and
