@@ -125,7 +125,7 @@ RSpec.describe "Manage::GoogleCalendar", type: :request do
     it "saves what goes on it, how titles read and the colors, and brings the calendar up to date" do
       expect {
         patch manage_organization_google_calendar_path(org), params: {
-          event_types: { show: "1", rehearsal: "0" }, title: { room: "1", call_time: "0", start_at_call: "0" },
+          event_types: { show: "1", rehearsal: "0" }, title: { room: "1", call_time: "0", event_type: "1", start_at_call: "0" },
           room_colors: { ruse.id => "4", mainstage.id => "7", "999999" => "3" }, other_color: "8"
         }
       }.to have_enqueued_job(GoogleCalendarFullSyncJob).with(org.id)
@@ -134,6 +134,7 @@ RSpec.describe "Manage::GoogleCalendar", type: :request do
       expect(integration.calendar_event_type?("show")).to be(true)
       expect(integration.calendar_event_type?("rehearsal")).to be(false)
       expect(integration.calendar_title_part?("call_time")).to be(false)
+      expect(integration.calendar_title_part?("event_type")).to be(true)
       expect(integration.room_color(ruse)).to eq("4")
       expect(integration.room_color(mainstage)).to eq("7")
       expect(integration.settings["room_colors"].keys).to contain_exactly(ruse.id.to_s, mainstage.id.to_s)

@@ -45,7 +45,7 @@ class GoogleCalendarEntry
   def digest = Digest::SHA256.hexdigest(payload.to_json)
 
   def title
-    parts = [ name ]
+    parts = [ kind, name ].compact
     parts << room.name if room && integration.calendar_title_part?("room")
     parts << times_in_title if times_in_title
     parts.join(" · ")
@@ -81,15 +81,38 @@ class GoogleCalendarEntry
 
   # The show's own name: the production's for a plain show ("Rising Stars",
   # not "Rising Stars Show"), the event's for everything else ("Rising Stars
-  # Rehearsal", or what someone named it).
+  # Rehearsal", or what someone named it). With the kind of event at the
+  # front of the title, an unnamed event is just the production's name, so
+  # it reads "Rehearsal · Rising Stars", not "Rehearsal · Rising Stars
+  # Rehearsal".
   def name
-    return "Rental: #{record.contract.contractor_name}" unless show?
+    return @name if defined?(@name)
+    return @name = "Rental: #{record.contract.contractor_name}" unless show?
 
     production = record.production.name
     custom = record.name_subtitle
-    return record.event_type == "show" ? production : record.display_name if custom.blank?
+    @name = if custom.blank?
+      record.event_type == "show" || kind_label ? production : record.display_name
+    else
+      custom.downcase.include?(production.downcase) ? custom : "#{production}: #{custom}"
+    end
+  end
 
-    custom.downcase.include?(production.downcase) ? custom : "#{production}: #{custom}"
+  # What kind of event this is, for the front of its title (Tim,
+  # 2026-11-17): "Rehearsal", "Meeting". Never for a show, and not when the
+  # organization switched it off.
+  def kind_label
+    return nil unless show? && integration.calendar_title_part?("event_type")
+    return nil if record.event_type.blank? || record.event_type == "show"
+
+    EventTypes.labels[record.event_type] || record.event_type.titleize
+  end
+
+  # The label, unless the name already says it ("Rising Stars: Dress
+  # rehearsal" needs no "Rehearsal" in front).
+  def kind
+    label = kind_label
+    label unless label.nil? || name.downcase.include?(label.downcase)
   end
 
   # The call time, on the show's own day. Only its clock is trusted: a show

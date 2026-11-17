@@ -67,13 +67,42 @@ RSpec.describe GoogleCalendarSync do
       expect(entry(show).starts_at).to eq(showtime)
     end
 
-    it "names a rehearsal as one, and a named event by its name" do
-      rehearsal = show_at(event_type: "rehearsal")
+    it "names a named event by its name" do
       named = show_at(showtime + 1.day, secondary_name: "Fall Showcase")
 
-      expect(entry(rehearsal).title).to eq("#{rehearsal.display_name} · Mainstage")
-      expect(entry(rehearsal).title).to include("Rehearsal")
       expect(entry(named).title).to eq("Rising Stars: Fall Showcase · Mainstage")
+    end
+
+    # Every event that isn't a show says what kind it is, at the front of its
+    # title (Tim, 2026-11-17).
+    it "puts the kind of event at the front of everything but a show" do
+      rehearsal = show_at(event_type: "rehearsal", secondary_name: nil)
+      tech = show_at(showtime + 1.day, event_type: "rehearsal", secondary_name: "Tech run")
+      meeting = show_at(showtime + 2.days, event_type: "meeting", secondary_name: "Budget review", location_space: nil)
+      dress = show_at(showtime + 3.days, event_type: "rehearsal", secondary_name: "Dress rehearsal")
+      show = show_at(showtime + 4.days)
+
+      expect(entry(rehearsal).title).to eq("Rehearsal · Rising Stars · Mainstage")
+      expect(entry(tech).title).to eq("Rehearsal · Rising Stars: Tech run · Mainstage")
+      expect(entry(meeting).title).to eq("Meeting · Rising Stars: Budget review")
+      expect(entry(dress).title).to eq("Rising Stars: Dress rehearsal · Mainstage")
+      expect(entry(show).title).to eq("Rising Stars · Mainstage")
+    end
+
+    it "says what kind of event an outside production's date is" do
+      production.update_columns(production_type: "third_party")
+      session = show_at(event_type: "class", secondary_name: nil)
+
+      expect(entry(session).title).to eq("Class · Rising Stars · Mainstage")
+    end
+
+    it "leaves the kind off when the organization switches it off" do
+      integration.update!(settings: integration.settings.merge("title" => { "event_type" => false }))
+      rehearsal = show_at(event_type: "rehearsal", secondary_name: nil)
+      tech = show_at(showtime + 1.day, event_type: "rehearsal", secondary_name: "Tech run")
+
+      expect(entry(rehearsal).title).to eq("Rising Stars Rehearsal · Mainstage")
+      expect(entry(tech).title).to eq("Rising Stars: Tech run · Mainstage")
     end
 
     it "takes the room's color, and the one color for everything else without a room" do
