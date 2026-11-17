@@ -18,8 +18,18 @@ module My
       # The contracts they're the contractor on: the ones with money to receive or pay.
       @people_ids = person_ids.map(&:id)
       @payee_contract_ids = @contracts.select { |contract| contract.payee_among?(@people_ids) }.map(&:id).to_set
-      # Whether they still need to connect a bank to be paid, when there's a contract that pays them.
-      @needs_bank = @payee_contract_ids.any? && Current.user.people.select(&:can_receive_payouts?).empty?
+      # Whether they still need to connect a bank to be paid: only when a
+      # contract has something to pay them (Tim, 2026-11-17: the panel showed
+      # on a contract where they pay the organization). The organizations
+      # that would pay are named on it.
+      @paying_organizations = if @payee_contract_ids.any?
+        Organization.where(id: Contract.where(id: @payee_contract_ids.to_a)
+                                       .where(id: ContractPayment.where(direction: "outgoing").where.not(status: %w[cancelled paid]).select(:contract_id))
+                                       .select(:organization_id)).order(:name).pluck(:name)
+      else
+        []
+      end
+      @needs_bank = @paying_organizations.any? && Current.user.people.select(&:can_receive_payouts?).empty?
       # Live ticket sales for the contracts' upcoming shows, when the theater
       # sells them on CocoScout and shares the numbers (TicketSalesAccess).
       @ticket_sales = ticket_sales_by_contract

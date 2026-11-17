@@ -167,6 +167,16 @@ RSpec.describe "Contract connections", type: :request do
       expect(response.body).not_to include("Your show is booked at Stars and Garters")
     end
 
+    it "asks for a bank only when a contract has something to pay them, and says who pays" do
+      get my_contracts_path
+      expect(response.body).not_to include("Connect a bank account for your contract payments")
+
+      create(:contract_payment, contract: contract, show: contract_show, direction: "outgoing", amount: 300, description: "Their share")
+      get my_contracts_path
+      expect(response.body).to include("Connect a bank account for your contract payments")
+        .and include("What Stars and Garters pays you under your contract")
+    end
+
     it "offers to start a new production from the contract, on the production wizard's first step" do
       get manage_productions_wizard_path
       follow_redirect! while response.redirect?
