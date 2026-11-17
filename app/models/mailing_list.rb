@@ -41,14 +41,14 @@ class MailingList < ApplicationRecord
     "Send me news about #{name}"
   end
 
-  # The lists whose boxes a production's checkout shows: its own groups
-  # first, then the main list.
+  # The lists whose boxes a production's checkout shows: the main list
+  # first, then the production's own groups (Tim, 2026-11-17).
   def self.for_checkout(production)
     organization = production.organization
     groups = organization.mailing_lists.active.where(kind: "group")
                          .where(id: MailingListProduction.where(production_id: production.id).select(:mailing_list_id))
                          .order(:name).to_a
-    groups + [ main_for!(organization) ]
+    [ main_for!(organization) ] + groups
   end
 
   def subscribed_count

@@ -22,18 +22,19 @@
   </div>
   <% boxes = Array(local_assigns[:follow_boxes]) %>
   <% if boxes.any? %>
-    <%# Mailing lists (V1.1): one box per list, naming whose news it is. %>
+    <%# Mailing lists (V1.1): one box per list, naming whose news it is, the
+        organization's main list first. %>
     <% chosen = local_assigns[:follow_chosen] %>
     <div class="space-y-2.5 pt-1" data-follow-boxes>
       <%= hidden_field_tag "follow_list_ids[]", "", id: nil %>
       <% boxes.each do |list| %>
         <% ticked = chosen.nil? ? local_assigns[:follow_ticked] != false : chosen.include?(list.id) %>
         <label class="flex items-start gap-3 text-sm text-gray-800 cursor-pointer">
-          <%= check_box_tag "follow_list_ids[]", list.id, ticked, id: "follow_list_#{list.id}", class: "mt-0.5 h-[18px] w-[18px] text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+          <%= check_box_tag "follow_list_ids[]", list.id, ticked, id: "follow_list_#{list.id}", class: "mt-0.5 h-[18px] w-[18px] flex-none text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
           <span><%= list.box_words %></span>
         </label>
       <% end %>
-      <p class="text-xs text-gray-500 pl-[30px]">Unsubscribe any time, in one tap.</p>
+      <p class="text-xs text-gray-500">Unsubscribe any time with one click.</p>
     </div>
   <% end %>
 </div>
