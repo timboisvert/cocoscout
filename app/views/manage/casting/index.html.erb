@@ -80,7 +80,7 @@
         <p class="text-gray-600 text-sm <%= 'mt-3' if @shows.any? %>" data-casting-list-note>
           <%= note %>
           <% if dates_link %>
-            <%= link_to "Choose which dates are cast", manage_casting_settings_section_path(production_id: @production, section: "dates"), class: "text-pink-600 hover:text-pink-700 font-medium" %>
+            <%= link_to "Choose which dates are cast", manage_casting_settings_path(@production, dates: 1), class: "text-pink-600 hover:text-pink-700 font-medium" %>
           <% end %>
         </p>
       <% end %>

@@ -63,12 +63,18 @@
                 active: section[:key].to_s == current.to_s }
             } %>
     </div>
-    <nav class="hidden sm:flex gap-1 border-b border-gray-200 mb-6 overflow-x-auto" aria-label="Settings sections">
+    <%# The gray line is this wrapper's; the strip sits one pixel over it so
+        the current tab's pink line covers it. The strip scrolls sideways
+        when the tabs don't fit and never up and down: with the line on the
+        strip itself, each tab's one-pixel overlap made it scroll that
+        pixel (Tim, 2026-11-18: "a weird scroll up and down in the tabs"). %>
+    <div class="hidden sm:block border-b border-gray-200 mb-6" data-settings-tabs>
+    <nav class="flex gap-1 -mb-px overflow-x-auto overflow-y-hidden" aria-label="Settings sections">
       <% sections.each do |section| %>
         <% active = section[:key].to_s == current.to_s %>
         <%= link_to section[:path],
               aria: { current: active ? "page" : nil },
-              class: "px-4 py-2 -mb-px text-sm font-medium whitespace-nowrap border-b-2 transition-colors #{active ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}" do %>
+              class: "px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors #{active ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}" do %>
           <%= section[:label] %>
           <%# A Pro section: `feature:` marks it; `locked: true` adds the padlock (the page shows the locked card). %>
           <% if section[:feature].present? %>
@@ -81,6 +87,7 @@
         <% end %>
       <% end %>
     </nav>
+    </div>
   <% end %>
 
   <div class="<%= width %> space-y-6">

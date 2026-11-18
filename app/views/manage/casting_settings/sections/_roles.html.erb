@@ -1,1 +1,27 @@
+<%# Roles: how a show is put together (named roles, or a running order of
+    acts), then the roles themselves. %>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="style">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900">Roles or acts</h2>
+    <p class="text-sm text-gray-600 mt-1">How a show is put together. A single date can do it the other way.</p>
+  </div>
+  <%= form_with url: manage_update_casting_settings_path(@production), method: :patch, local: true, data: { turbo_action: "replace" } do %>
+    <input type="hidden" name="section" value="roles">
+    <div class="px-6 py-5">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <%= render "manage/casting_settings/choice", name: "production[casting_mode]", value: "role_based", checked: @production.role_based?,
+              title: "Roles",
+              help: "Fill named positions: Host, Performer ×6. Best for plays, improv teams, and comedy line-ups." %>
+        <%= render "manage/casting_settings/choice", name: "production[casting_mode]", value: "act_based", checked: @production.act_based?,
+              title: "Acts",
+              help: "Build a running order (Magic, Clown, Intermission, Aerial) and cast each act. Best for burlesque, variety, cabaret, and circus." %>
+      </div>
+      <p class="text-sm text-gray-600 mt-4">Switching keeps everyone who is cast. Going to acts turns a role with several people into one act per person. Going back to roles merges acts of the same name in a row into one role, and drops intermissions.</p>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
+  <% end %>
+</div>
+
 <%= render "manage/casting_settings/roles_tab" %>

@@ -69,7 +69,7 @@ RSpec.describe "Casting set-up", type: :request do
       note = board.at_css("[data-casting-list-note]")
       expect(response.body).not_to include("No upcoming shows scheduled.")
       expect(text_of(note)).to include("Casting is off for all 2 dates coming up, so there is nothing to cast here.")
-      expect(note.at_css("a")["href"]).to eq(manage_casting_settings_section_path(production_id: production, section: "dates"))
+      expect(note.at_css("a")["href"]).to eq(manage_casting_settings_path(production, dates: 1))
     end
 
     it "says how many more dates have casting off under the ones it lists, and says so plainly when there are none at all" do
@@ -226,16 +226,70 @@ RSpec.describe "Casting set-up", type: :request do
       expect(rehearsal.reload.casting_enabled).to be(false)
     end
 
-    it "has a Dates section that lists every coming date and saves which are cast" do
-      get manage_casting_settings_section_path(production_id: production, section: "dates")
-      expect(response).to have_http_status(:ok)
-      rows = doc.css("[data-casting-date]")
+    # Tim, 2026-11-18: the tabs read as a mess. Three tabs now (Casting,
+    # Roles, Talent Pool), each a stack of cards like Ticketing's and Money's,
+    # with the dates in a window opened from the first.
+    it "has three tabs, with no line of prose above them" do
+      get manage_casting_settings_path(production)
+
+      tabs = doc.css("nav[aria-label='Settings sections'] a").map { |a| text_of(a) }
+      expect(tabs).to eq([ "Casting", "Roles", "Talent Pool" ])
+      expect(response.body).not_to include("casts by roles", "casts by acts")
+      expect(doc.css("[data-settings-card]").map { |card| card["data-settings-card"] }).to eq(%w[answer source dates attendance])
+    end
+
+    it "keeps the tab strip from scrolling up and down" do
+      get manage_casting_settings_path(production)
+
+      strip = doc.at_css("nav[aria-label='Settings sections']")
+      expect(strip["class"]).to include("overflow-x-auto", "overflow-y-hidden")
+      expect(strip.css("a").map { |a| a["class"] }).to all(satisfy { |classes| !classes.include?("-mb-px") })
+    end
+
+    it "says how many coming dates are cast, and opens every one of them in a window to choose from" do
+      get manage_casting_settings_path(production)
+
+      card = doc.at_css("[data-settings-card='dates']")
+      expect(text_of(card.at_css("[data-casting-dates-count]"))).to eq("Casting is on for 1 of the 2 dates coming up.")
+      expect(card.at_css("button")["data-modal-id"]).to eq("casting-dates-modal")
+
+      modal = doc.at_css("#casting-dates-modal")
+      expect(modal["class"]).to include("hidden")
+      rows = modal.css("[data-casting-date]")
       expect(rows.map { |row| [ row["data-casting-date"].to_i, row.at_css("input")["checked"].present? ] }).to eq([ [ rehearsal.id, false ], [ show.id, true ] ])
 
       patch manage_casting_dates_path(production), params: { show_ids: [ rehearsal.id ] }
-      expect(response).to redirect_to(manage_casting_settings_section_path(production_id: production, section: "dates"))
+      expect(response).to redirect_to(manage_casting_settings_path(production))
       expect(rehearsal.reload.casting_enabled).to be(true)
       expect(show.reload.casting_enabled).to be(false)
+    end
+
+    it "lands an old address on the tab that holds it now, the dates one with the window open" do
+      get manage_casting_settings_section_path(production_id: production, section: "source")
+      expect(response).to redirect_to(manage_casting_settings_path(production))
+
+      get manage_casting_settings_section_path(production_id: production, section: "dates")
+      expect(response).to redirect_to(manage_casting_settings_path(production, dates: 1))
+      follow_redirect!
+      expect(doc.at_css("#casting-dates-modal")["class"]).not_to include("hidden")
+    end
+
+    it "saves who you cast and attendance from their own cards, and roles or acts from the Roles tab" do
+      patch manage_update_casting_settings_path(production), params: { production: { casting_source: "manual" } }
+      expect(response).to redirect_to(manage_casting_settings_path(production))
+      expect(production.reload).to be_casting_manual
+
+      patch manage_update_casting_settings_path(production), params: { production: { default_attendance_enabled: "1" } }
+      expect(production.reload.default_attendance_enabled).to be(true)
+
+      get manage_casting_settings_section_path(production_id: production, section: "roles")
+      expect(doc.css("[data-settings-card]").map { |card| card["data-settings-card"] }).to eq(%w[style roles])
+      expect(text_of(doc.at_css("[data-roles-empty]"))).to include("No roles yet.")
+      expect(response.body).not_to include("Next step")
+
+      patch manage_update_casting_settings_path(production), params: { section: "roles", production: { casting_mode: "act_based" } }
+      expect(response).to redirect_to(manage_casting_settings_section_path(production_id: production, section: "roles"))
+      expect(production.reload).to be_act_based
     end
   end
 

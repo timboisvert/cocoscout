@@ -6,14 +6,23 @@ module Manage
   class CastingSettingsController < ManageController
     include CastingHelper
 
-    SECTIONS = %w[source roles talent_pool dates].freeze
+    # Three tabs, in the order the questions come (Tim, 2026-11-18, after the
+    # first four read as a mess):
+    #
+    #   general      "Casting": are people cast in it, where they come from,
+    #                which coming dates are cast (a window), attendance
+    #   roles        roles or acts, then the roles (the lineup, for acts)
+    #   talent_pool  the people it casts from
+    SECTIONS = %w[general roles talent_pool].freeze
     SECTION_LABELS = {
-      "source" => "Casting Source",
+      "general" => "Casting",
       "roles" => "Roles",
-      "talent_pool" => "Talent Pool",
-      "dates" => "Dates"
+      "talent_pool" => "Talent Pool"
     }.freeze
-    DEFAULT_SECTION = "source"
+    DEFAULT_SECTION = "general"
+    # Addresses the older tabs had: each lands on the tab that holds it now
+    # ("dates" with the Choose dates window open).
+    MOVED_SECTIONS = { "source" => {}, "dates" => { dates: 1 } }.freeze
 
     before_action :set_production
     # Production team viewers look; managers change things (Tim, 2026-10-17).
@@ -34,10 +43,9 @@ module Manage
           CastingModeConverter.to_roles!(@production)
         end
 
-        respond_to do |format|
-          format.html { redirect_to manage_casting_settings_path(@production), notice: "Casting settings updated." }
-          format.turbo_stream { head :ok }
-        end
+        # Back to the tab the card is on.
+        back = params[:section].to_s.in?(SECTIONS - [ DEFAULT_SECTION ]) ? manage_casting_settings_section_path(production_id: @production, section: params[:section]) : manage_casting_settings_path(@production)
+        redirect_to back, notice: "Casting settings updated."
       else
         @section = DEFAULT_SECTION
         load_section_data
@@ -62,10 +70,10 @@ module Manage
       redirect_to answer_return_path, notice: notice
     end
 
-    # Which of the coming dates are cast (the Dates section).
+    # Which of the coming dates are cast (the Choose dates window).
     def update_dates
       CastingAnswer.choose_dates!(@production, params[:show_ids])
-      redirect_to manage_casting_settings_section_path(production_id: @production, section: "dates"), notice: "The dates were updated."
+      redirect_to manage_casting_settings_path(@production), notice: "The dates were updated."
     end
 
     private
@@ -98,21 +106,24 @@ module Manage
 
     def set_section
       @section = params[:section].presence || DEFAULT_SECTION
-      redirect_to manage_casting_settings_path(@production) unless @section.in?(SECTIONS)
+      return if @section.in?(SECTIONS)
+
+      redirect_to manage_casting_settings_path(@production, MOVED_SECTIONS.fetch(@section, {}))
     end
 
-    # The source section needs nothing but the production; the others need the
-    # roster and/or the pool they cast from.
+    # Each tab loads only what it draws.
     def load_section_data
       case @section
+      when "general"
+        @dates = CastingAnswer.upcoming(@production).includes(:location, :location_space, linked_show: { production: :organization }).to_a
+        @cast_ids = CastingAnswer.cast_show_ids(@production).to_set
+        @casting_status = CastingStatus.new(@production)
+        @casting_dates_words = "#{@casting_status.dates_words}."
       when "roles"
         load_roles_data
         load_talent_pool_data
       when "talent_pool"
         load_talent_pool_data
-      when "dates"
-        @dates = CastingAnswer.upcoming(@production).includes(:location, :location_space, linked_show: { production: :organization }).to_a
-        @cast_ids = CastingAnswer.cast_show_ids(@production).to_set
       end
     end
 

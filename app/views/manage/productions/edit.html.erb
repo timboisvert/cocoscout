@@ -830,15 +830,15 @@
 
     <% if casting_tab %>
       <!-- Casting: the production's answer, and the way into the rest -->
-      <div data-tabs-target="panel" class="hidden" data-production-casting-tab>
+      <div data-tabs-target="panel" class="hidden space-y-6" data-production-casting-tab>
         <%= render "manage/casting/answer_card", production: @production, return_to: "production_edit" %>
-        <div class="bg-white border border-gray-200 rounded-lg p-6 flex flex-wrap items-center justify-between gap-3">
+        <div class="bg-white border border-gray-200 rounded-xl px-6 py-4 flex flex-wrap items-center justify-between gap-3">
           <% case @production.casting_state %>
           <% when :not_set_up %>
             <p class="text-sm text-gray-700">Casting isn't set up for <%= @production.name %> yet: who you cast, your roles, and which dates are cast.</p>
             <%= render "shared/button", text: "Set up casting", variant: "primary", size: "small", path: manage_casting_setup_path(@production) %>
           <% when :on %>
-            <p class="text-sm text-gray-700">Who you cast, your <%= @production.act_based? ? "lineup" : "roles" %>, the talent pool, and which dates are cast are in Casting Settings.</p>
+            <p class="text-sm text-gray-700">Who you cast, which dates are cast, your <%= @production.act_based? ? "lineup" : "roles" %>, and the talent pool are in Casting Settings.</p>
             <%= render "shared/button", text: "Casting Settings", variant: "secondary", size: "small", path: manage_casting_settings_path(@production) %>
           <% else %>
             <p class="text-sm text-gray-700">A single date can still be cast: turn casting on from that date's page.</p>

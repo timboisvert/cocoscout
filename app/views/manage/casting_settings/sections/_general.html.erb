@@ -1,0 +1,99 @@
+<%# Casting: whether people are cast in this production, where they come
+    from, which of its coming dates are cast, and attendance on new dates.
+    One card a question, each with its own Save, the way Ticketing and
+    Money settings are laid out. %>
+<%
+  on, total = @casting_status.upcoming
+  dates_open = params[:dates].present? && @dates.any?
+%>
+<%= render "manage/casting/answer_card", production: @production %>
+
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="source">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900">Who you cast</h2>
+    <p class="text-sm text-gray-600 mt-1">Where the people you assign to a date come from. A single date can do it the other way.</p>
+  </div>
+  <%= form_with url: manage_update_casting_settings_path(@production), method: :patch, local: true, data: { turbo_action: "replace" } do %>
+    <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <%= render "manage/casting_settings/choice", name: "production[casting_source]", value: "talent_pool", checked: !@production.casting_manual?,
+            title: "Talent Pool",
+            help: "Cast the people and groups in this production's talent pool." %>
+      <%= render "manage/casting_settings/choice", name: "production[casting_source]", value: "manual", checked: @production.casting_manual?,
+            title: "Manual Entry",
+            help: "Add anyone by name or email as you need them. Good for guests and one-off events." %>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
+  <% end %>
+</div>
+
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="dates">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900">Dates</h2>
+    <p class="text-sm text-gray-600 mt-1">Which of the dates coming up are cast.</p>
+  </div>
+  <div class="px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+    <p class="text-sm text-gray-900" data-casting-dates-count>
+      <% if @dates.empty? %>
+        No dates are coming up in <%= @production.name %>.
+      <% else %>
+        <%= @casting_dates_words %>
+      <% end %>
+    </p>
+    <% if @dates.any? %>
+      <%= render "shared/button", text: "Choose dates", variant: "secondary", size: "small", type: :button,
+            data: { controller: "modal", action: "click->modal#open", modal_id: "casting-dates-modal" } %>
+    <% end %>
+  </div>
+</div>
+
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="attendance">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900">Attendance</h2>
+    <p class="text-sm text-gray-600 mt-1">Whether you mark who showed up.</p>
+  </div>
+  <%= form_with url: manage_update_casting_settings_path(@production), method: :patch, local: true, data: { turbo_action: "replace" } do %>
+    <div class="px-6 py-5">
+      <label class="flex items-start gap-3 cursor-pointer">
+        <input type="hidden" name="production[default_attendance_enabled]" value="0">
+        <input type="checkbox" name="production[default_attendance_enabled]" value="1" <%= "checked" if @production.default_attendance_enabled? %>
+               class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+        <span class="text-sm">
+          <span class="font-semibold text-gray-900">Take attendance on new dates</span>
+          <span class="block text-gray-600 mt-0.5">Every new date starts with attendance tracking on. Off, classes, workshops, and open mics still start with it on. You can change any one date.</span>
+        </span>
+      </label>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
+  <% end %>
+</div>
+
+<%# "Choose dates": every coming date with a tick box, in a window, so the
+    tab stays short however long the run is. %>
+<% if @dates.any? %>
+  <div id="casting-dates-modal" class="<%= 'hidden' unless dates_open %> fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+       data-controller="modal" data-action="click->modal#closeOnBackdrop">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden" data-action="click->modal#stopPropagation">
+      <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4 flex-shrink-0">
+        <h3 class="text-lg font-semibold text-white">Which dates are cast</h3>
+        <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" aria-label="Close">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <%= form_with url: manage_casting_dates_path(@production), method: :patch, local: true, id: "casting-dates-form",
+            class: "flex flex-col min-h-0", data: { controller: "select-all" } do %>
+        <div class="p-6 overflow-y-auto min-h-0">
+          <p class="text-sm text-gray-600 mb-4">Tick the dates you cast people in, and untick any you don't.</p>
+          <%= render "manage/casting_steps/date_ticks", dates: @dates, chosen: @dates.select(&:casting_enabled?).map(&:id), cast_ids: @cast_ids %>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-2 flex-shrink-0">
+          <%= render "shared/button", text: "Cancel", variant: "secondary", size: "small", type: :button, data: { action: "click->modal#close" } %>
+          <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>

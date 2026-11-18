@@ -11,11 +11,11 @@ RSpec.describe "Manage::CastingSettings", type: :request do
 
   before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
-  it "opens on the casting source section with a strip to the others" do
+  it "opens on the Casting tab with a strip to the others" do
     get manage_casting_settings_path(production)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Choose where cast members for this production come from")
+    expect(response.body).to include("Casting in this production", "Who you cast", "Where the people you assign to a date come from.")
     expect(response.body).to include(manage_casting_settings_section_path(production_id: production, section: "roles"))
     expect(response.body).to include(manage_casting_settings_section_path(production_id: production, section: "talent_pool"))
   end
@@ -51,13 +51,13 @@ RSpec.describe "Manage::CastingSettings", type: :request do
   end
 
   describe "casting style" do
-    it "offers the roles / acts choice on the source section" do
-      get manage_casting_settings_path(production)
+    it "offers the roles / acts choice at the top of the Roles tab" do
+      get manage_casting_settings_section_path(production_id: production, section: "roles")
 
-      expect(response.body).to include("Casting Style")
-      expect(response.body).to include('name="casting_mode"')
-      expect(response.body).to include("Existing roles and assignments are kept")
-      expect(response.body).to include("Dancer ×5 becomes five Dancer acts, cast kept")
+      expect(response.body).to include("Roles or acts")
+      expect(response.body).to include('name="production[casting_mode]"')
+      expect(response.body).to include("Switching keeps everyone who is cast.")
+      expect(response.body).to include("one act per person")
     end
 
     it "updates the casting mode" do
@@ -204,13 +204,11 @@ RSpec.describe "Manage::CastingSettings", type: :request do
       expect(response.body).not_to include("Add intermission")
     end
 
-    it "says under the heading how the production casts" do
+    # The line of prose above the tabs is gone (Tim, 2026-11-18: "Why is
+    # that there?"): the Roles tab's own card says which it is.
+    it "says nothing above the tabs about how the production casts" do
       get manage_casting_settings_path(production)
-      expect(response.body).to include("#{production.name} casts by roles.")
-
-      production.update!(casting_mode: "act_based")
-      get manage_casting_settings_path(production)
-      expect(response.body).to include("#{production.name} casts by acts.")
+      expect(response.body).not_to include("casts by roles", "casts by acts")
     end
   end
 
