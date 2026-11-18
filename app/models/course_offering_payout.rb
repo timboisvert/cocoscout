@@ -56,11 +56,11 @@ class CourseOfferingPayout < ApplicationRecord
     contract = course_offering&.contract
     return unless contract && line_item.paid? && contractor_line?(line_item, contract)
 
-    payments = contract_settlements(contract)
+    paid_on = (line_item.paid_at || Time.current).to_date
+    payments = contract_settlements(contract, paid_on)
     return if payments.empty?
 
     carrier = payments.max_by { |p| [ p.due_date, p.id ] }
-    paid_on = (line_item.paid_at || Time.current).to_date
     whole = ActiveSupport::NumberHelper.number_to_currency(line_item.amount_cents / 100.0)
     payments.each do |payment|
       payment.mark_paid!(paid_on: paid_on, method: "course_payout", reference: "course_offering_payout_#{id}",
@@ -134,8 +134,13 @@ class CourseOfferingPayout < ApplicationRecord
   # The contract's money for this run still waiting to be paid to them:
   # settlements tied to its sessions (by show, or due the day of one), or,
   # when the contract has no other course, every settlement still waiting.
-  def contract_settlements(contract)
+  # Never one for a date after the payout was paid: that money wasn't in it.
+  # A date added to the contract later is its own money, settled when it
+  # happens (Tim, 2026-11-17: contract 113 was amended to add a January date,
+  # and opening the contract marked it paid with September's $75.60).
+  def contract_settlements(contract, paid_on)
     waiting = contract.contract_payments.direction_outgoing.status_pending.reject(&:in_payout_run?)
+    waiting = waiting.select { |p| (date = settlement_day(p)) && date <= paid_on }
     sessions = course_offering.offering_shows.to_a
     ids = sessions.map(&:id)
     days = sessions.filter_map { |s| s.date_and_time&.to_date }
@@ -144,6 +149,11 @@ class CourseOfferingPayout < ApplicationRecord
 
     settlement_ids = contract.settlement_payments.pluck(:id)
     waiting.select { |p| settlement_ids.include?(p.id) }
+  end
+
+  # The day a settlement's money was earned: its show's date, else its due date.
+  def settlement_day(payment)
+    payment.show&.date_and_time&.to_date || payment.due_date
   end
 
   def format_cents(cents)
