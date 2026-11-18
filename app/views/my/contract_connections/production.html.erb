@@ -50,7 +50,7 @@
             <div class="ml-3 min-w-0">
               <div class="text-sm font-medium text-gray-900">
                 Add them to <%= production.name %>
-                <% if production == @suggested %><span class="ml-1.5 inline-flex items-center rounded-full bg-pink-50 px-2 py-0.5 text-xs font-medium text-pink-700">Same name as the contract</span><% end %>
+                <% if production == @suggested %><span class="ml-1.5 text-xs font-medium text-pink-600">Same as <%= possessive(org) %> contract</span><% end %>
               </div>
               <div class="text-sm text-gray-500">
                 <% if shows.zero? %>

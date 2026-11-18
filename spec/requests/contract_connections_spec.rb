@@ -71,14 +71,14 @@ RSpec.describe "Contract connections", type: :request do
         .and include("the dates, ticket sales, and mailing lists")
 
       get my_connect_contract_production_path(contract)
-      expect(response.body).to include("Where would you like these dates to go?").and include("Same name as the contract").and include("Create a new production for them")
+      expect(response.body).to include("Where would you like these dates to go?").and include("Same as Stars and Garters&#39; contract").and include("Create a new production for them")
 
       # Nothing of theirs to weigh: the dates step passes straight through.
       get my_connect_contract_dates_path(contract, organization_id: theirs.id, production: their_production.id)
       expect(response).to redirect_to(my_connect_contract_review_path(contract, organization_id: theirs.id, production: their_production.id))
 
       get my_connect_contract_review_path(contract, organization_id: theirs.id, production: their_production.id)
-      expect(response.body).to include("Send the request").and include("What Stars and Garters will see")
+      expect(response.body).to include("Send the request").and include("What Stars and Garters will see").and include("Review and send your request").and include("your dates that aren't on the contract")
     end
 
     it "asks about a date of theirs on the same day at another time" do

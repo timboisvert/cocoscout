@@ -9,50 +9,80 @@
   mine = @organization.name
   production_name = @production&.name || @new_name
   shows = LinkedDates.contract_shows(@contract).to_a
+  contract_show_name = (@contract.production&.name || @contract.production_name).to_s
 %>
 <div class="w-full mb-10">
   <%= render "my/contract_connections/steps", step: 4 %>
 
   <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-8">
 
-  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Ready to connect <%= production_name %> to your <%= org %> contract?</h2>
+  <%# A summary of what they chose, then what each side sees, in few words
+      (Tim, 2026-11-18: the page was confusing). What stays private is said
+      as "dates that aren't on the contract": the contract's own dates can
+      be rehearsals, and those are shared like any other. %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular"><%= @standing ? "Review and connect" : "Review and send your request" %></h2>
   <p class="text-gray-600 mt-2">
     <% if @standing %>
-      Here's what each side will be able to see. <%= org %> has already agreed to connect your later contracts, so this one will connect as soon as you press Connect, and <%= org %> will be notified.
+      Check what you chose. <%= org %> has already agreed to connect your later contracts, so this one connects as soon as you press Connect, and <%= org %> will be notified.
     <% else %>
-      Here's what each side will be able to see once <%= org %> accepts. Nothing changes for either of you until then.
+      Check what you chose, then send the request. <%= org %> needs to accept it, and nothing changes for either of you until they do.
     <% end %>
   </p>
 
-  <div class="grid sm:grid-cols-2 gap-4 mt-6">
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mt-6">
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "What you're connecting" %>
+    <dl class="divide-y divide-gray-100 text-sm">
+      <div class="px-4 py-3 sm:grid sm:grid-cols-4 sm:gap-4">
+        <dt class="font-medium text-gray-900">The contract</dt>
+        <dd class="text-gray-700 sm:col-span-3"><%= possessive(org) %> contract<%= " to present #{contract_show_name}" if contract_show_name.present? %>, with <%= pluralize(shows.size, "date") %>.</dd>
+      </div>
+      <div class="px-4 py-3 sm:grid sm:grid-cols-4 sm:gap-4">
+        <dt class="font-medium text-gray-900">Your production</dt>
+        <dd class="text-gray-700 sm:col-span-3">
+          <% if @production %>
+            <%= production_name %>, in <%= mine %>. The contract's dates are added to it.
+          <% else %>
+            A new production called <%= production_name %>, in <%= mine %>, created <%= @standing ? "when you connect" : "when #{org} accepts" %> with the contract's dates in it.
+          <% end %>
+        </dd>
+      </div>
+      <% if @comparison && !@comparison.nothing_to_check? %>
+        <div class="px-4 py-3 sm:grid sm:grid-cols-4 sm:gap-4">
+          <dt class="font-medium text-gray-900">Your dates</dt>
+          <dd class="text-gray-700 sm:col-span-3">
+            <%= @comparison.summary_words(pair: carried[:pair], join: carried[:join]).upcase_first %>.
+            <%= link_to "Change your answers", my_connect_contract_dates_path(@contract, carried), class: "text-pink-600 hover:text-pink-700 underline" %>
+          </dd>
+        </div>
+      <% end %>
+      <div class="px-4 py-3 sm:grid sm:grid-cols-4 sm:gap-4">
+        <dt class="font-medium text-gray-900">Who sees ticket sales</dt>
+        <dd class="text-gray-700 sm:col-span-3">
+          <%= @managers.any? ? "You and #{@managers.to_sentence}, who #{@managers.size == 1 ? 'manages' : 'manage'} #{mine}." : "Only you for now, because you're the only person who manages #{mine}." %>
+          You can let your team and cast see how many tickets have sold once you're connected.
+        </dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="grid sm:grid-cols-2 gap-4 mt-4">
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
       <%= render "shared/section_heading", padding: "px-4 py-3", title: "What #{org} will see" %>
       <ul class="p-4 space-y-3 text-sm text-gray-700">
-        <li>That you run this show as <%= mine %> on CocoScout.</li>
-        <li>Which of your productions their dates have gone into: <%= production_name %>.</li>
-        <li>How many people in <%= mine %> can see their ticket sales.</li>
-        <li>The poster, wide image, and description you set on <%= production_name %>. <%= possessive(org) %> ticket page for these dates will use them, unless <%= org %> chooses to keep its own.</li>
-        <li class="text-gray-500">They'll never see your other dates, your rehearsals, your cast and staff, your contacts, or your money.</li>
+        <li>That you run this show as <%= mine %> on CocoScout, and that their dates are in <%= production_name %>.</li>
+        <li>The poster, wide image, and description you set on <%= production_name %>. <%= possessive(org) %> ticket page for these dates uses them, unless <%= org %> chooses to keep its own.</li>
+        <li class="text-gray-500">They never see your dates that aren't on the contract, your messages with your performers, or what you pay people.</li>
       </ul>
     </div>
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <%= render "shared/section_heading", padding: "px-4 py-3", title: "What #{mine} will see" %>
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "What you will see" %>
       <ul class="p-4 space-y-3 text-sm text-gray-700">
-        <li><%= possessive(org) %> <%= pluralize(shows.size, "date") %> for this contract, added to <%= production_name %>.</li>
-        <li>Their ticket sales for those dates, just as you see them on My today. <%= @managers.any? ? "#{@managers.to_sentence} will be able to see them too, as #{@managers.size == 1 ? 'a manager' : 'managers'} of #{mine}." : "You're the only person who manages #{mine}, so for now only you will see them." %></li>
-        <li>What the contract pays for each date, for the people who manage <%= mine %>. Your production team and cast are never shown it.</li>
-        <li>How many tickets have sold, for your team and cast, if you'd like them to.</li>
-        <li class="text-gray-500">You'll never see what <%= org %> keeps from each sale, or the email addresses of the people who bought tickets.</li>
+        <li>The contract's dates in <%= production_name %>, kept in step when <%= org %> moves or cancels one.</li>
+        <li>How each date is selling, and what the contract pays for it.</li>
+        <li class="text-gray-500">You never see what <%= org %> keeps from each sale, or the email addresses of the people who bought tickets.</li>
       </ul>
     </div>
   </div>
-
-  <% if @comparison && !@comparison.nothing_to_check? %>
-    <p class="text-sm text-gray-600 mt-4">
-      About your dates: <%= @comparison.summary_words(pair: carried[:pair], join: carried[:join]) %>.
-      <%= link_to "Change your answers", my_connect_contract_dates_path(@contract, carried), class: "text-pink-600 hover:text-pink-700 underline" %>
-    </p>
-  <% end %>
 
   <%= form_with url: my_connect_contract_path(@contract), method: :post, local: true, class: "mt-6" do %>
     <% carried.each do |key, value| %>
