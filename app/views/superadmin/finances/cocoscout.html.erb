@@ -65,7 +65,7 @@
         <% end %>
         <% if m.outside_cost_cents.nonzero? %>
           <div class="flex justify-between gap-4 px-4 py-2">
-            <dt class="text-gray-700">Plus costs paid from our bank, not from Stripe<p class="text-xs text-gray-500">Amazon, Claude and the rest on <%= link_to "Costs", finances_costs_path, class: "text-pink-600 hover:underline" %>: spent, but that money was never in Stripe</p></dt>
+            <dt class="text-gray-700">Plus costs paid from our bank, not from Stripe<p class="text-xs text-gray-500">Amazon, Claude, and the rest on <%= link_to "Costs", finances_costs_path, class: "text-pink-600 hover:underline" %>: spent, but that money was never in Stripe</p></dt>
             <dd class="tabular-nums text-gray-900"><%= usd(m.outside_cost_cents) %></dd>
           </div>
         <% end %>
@@ -286,7 +286,7 @@
     <div class="rounded-lg border border-gray-200 bg-white p-4">
       <div class="text-sm text-gray-600">Earned</div>
       <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(@finances.income_cents) %></div>
-      <p class="text-xs text-gray-500 mt-1">Fees, plans and usage</p>
+      <p class="text-xs text-gray-500 mt-1">Fees, plans, and usage</p>
     </div>
     <div class="rounded-lg border border-gray-200 bg-white p-4">
       <div class="text-sm text-gray-600">Went on to Stripe</div>
@@ -303,7 +303,7 @@
     <div class="rounded-lg border border-gray-200 bg-white p-4">
       <div class="text-sm text-gray-600">Building and running</div>
       <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(@finances.outside_cost_cents) %></div>
-      <p class="text-xs text-gray-500 mt-1">Amazon, Claude and the like; owed with no payments at all</p>
+      <p class="text-xs text-gray-500 mt-1">Amazon, Claude, and the like; owed with no payments at all</p>
     </div>
     <% net = @finances.net_cents %>
     <% if net.negative? %>

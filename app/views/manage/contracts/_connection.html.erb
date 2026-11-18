@@ -35,7 +35,7 @@
           <ul class="space-y-1.5 list-disc pl-4">
             <li>Everyone who manages <%= theirs %> will be able to see how each date is selling, so they can promote the dates that need it without having to ask you.</li>
             <li>Their cast will be able to see how many tickets have sold, and share the ticket link.</li>
-            <li>Your ticket page for this show can use their poster, wide image and description, so it shows the show's own art. You can switch back to yours at any time.</li>
+            <li>Your ticket page for this show can use their poster, wide image, and description, so it shows the show's own art. You can switch back to yours at any time.</li>
           </ul>
         </div>
         <div>
@@ -48,9 +48,9 @@
         <div>
           <div class="font-semibold text-gray-900 mb-1">What doesn't change</div>
           <ul class="space-y-1.5 list-disc pl-4">
-            <li>Your contract, its terms and what it pays stay exactly as they are.</li>
-            <li>The tickets, the door and Settle up are still yours to run.</li>
-            <li>They won't see anything else of yours: your other productions, what you keep from each sale, buyers' email addresses or your Books.</li>
+            <li>Your contract, its terms, and what it pays stay exactly as they are.</li>
+            <li>The tickets, the door, and Settle up are still yours to run.</li>
+            <li>They won't see anything else of yours: your other productions, what you keep from each sale, buyers' email addresses, or your Books.</li>
           </ul>
         </div>
       </div>
@@ -142,7 +142,7 @@
               <% elsif offered %>
                 Your ticket page for this show uses <%= offered %> from <%= theirs %>. Anything you've set on a single date still comes first.
               <% else %>
-                <%= theirs %> hasn't added a poster, wide image or description yet, so your own are shown. When <%= theirs %> adds them, your ticket page for this show will use them.
+                <%= theirs %> hasn't added a poster, wide image, or description yet, so your own are shown. When <%= theirs %> adds them, your ticket page for this show will use them.
               <% end %>
             </span>
             <%= form_with url: connection_images_manage_contract_path(@contract), method: :patch, local: true, data: { turbo_action: "replace" } do %>

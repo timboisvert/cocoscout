@@ -11,7 +11,7 @@
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="fieldset-toggle radio-card" data-settings-card="refunds">
     <%= render "manage/ticketing/own_switch", title: "Refund policy", follows: (from_production ? listing.production.name : "your box office"),
           settings_path: (from_production ? manage_edit_production_ticketing_path(listing.production, section: "refunds") : manage_ticketing_settings_section_path(section: "refunds")),
-          intro: "Buyers see it on the ticket page, at checkout and in their emails. An order keeps the policy it was bought under.",
+          intro: "Buyers see it on the ticket page, at checkout, and in their emails. An order keeps the policy it was bought under.",
           only: "this date", name: "ticket_listing[own_refund_policy]", id: "ticket_listing_own_refund_policy", checked: own %>
     <div class="px-6 py-5 space-y-4">
       <fieldset <%= "disabled" unless own %> data-fieldset-toggle-target="fields" class="space-y-3 disabled:opacity-50">

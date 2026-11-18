@@ -32,7 +32,8 @@
     data_steps << { num: 7, name: "Documents", path: persisted ? manage_documents_contract_wizard_path(@contract) : nil } unless esign
     data_steps << { num: 8, name: esign ? "Review" : "Review", path: persisted ? manage_review_contract_wizard_path(@contract) : nil }
 
-    if esign && @step && @step >= 9
+    # 9, 10 and 11 only: People is step 12, and it belongs to the data phase.
+    if esign && [ 9, 10, 11 ].include?(@step)
       # Document phase (Prepare/Sign/Send): the whole data journey compresses into a
       # single clickable "Set up" group, followed by the three document steps.
       wizard_steps = [
@@ -52,7 +53,9 @@
   <%# Full-width step bar, directly below the breadcrumb. %>
   <%= render "shared/wizard_steps", steps: wizard_steps, current_index: current_index %>
 
-  <div class="<%= local_assigns[:width].presence || "max-w-2xl" %> mx-auto">
+  <%# Every step is the page's full width, under the full-width step bar
+      (Tim, 2026-11-18: each step had its own width, four in all). %>
+  <div class="w-full">
     <!-- Step Content -->
     <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-8">
       <%= yield %>

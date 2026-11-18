@@ -63,7 +63,7 @@ module Manage
     def update_signing
       days = params[:signature_expiry_days].to_i
       unless Organization::SIGNATURE_EXPIRY_CHOICES.include?(days)
-        redirect_to section_path("signing"), alert: "Pick 7, 14 or 30 days." and return
+        redirect_to section_path("signing"), alert: "Pick 7, 14, or 30 days." and return
       end
 
       Current.organization.update!(signature_expiry_days: days)

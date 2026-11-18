@@ -20,7 +20,8 @@
   # hours when the room is held for longer than the show.
   contract_words = lambda do |contract_show|
     rental = contract_show.space_rental
-    show_hours = "The show runs from #{clock.call(contract_show.date_and_time)} to #{clock.call(contract_show.ends_at)}."
+    kind = contract_show.event_type == "show" ? "show" : (EventTypes.labels[contract_show.event_type] || "event").downcase
+    show_hours = "The #{kind} runs from #{clock.call(contract_show.date_and_time)} to #{clock.call(contract_show.ends_at)}."
     if rental&.has_separate_event_time?
       "#{show_hours} The room is booked from #{clock.call(rental.starts_at)} to #{clock.call(rental.ends_at)}, which leaves time to set up and clear out."
     else
@@ -44,21 +45,26 @@
   answered = params[:pair].present? || params[:join].present?
   count_words = ->(count, one, many) { count == 1 ? "1 date #{one}" : "#{count} dates #{many}" }
 %>
-<div class="w-full mb-10 max-w-3xl">
+<div class="w-full mb-10">
   <%= render "my/contract_connections/steps", step: 3 %>
 
-  <h1 class="text-3xl coustard-regular text-gray-900">Let's check your dates against the contract</h1>
+  <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-8">
+
+  <%# What the step is for, said first (Tim, 2026-11-18: "I'm not quite sure
+      what it's meant to achieve"): the production already has dates, the
+      contract brings its own, and nothing should end up listed twice. %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Make sure no date is listed twice</h2>
   <p class="text-gray-600 mt-2">
-    <%= @production.name %> already has some dates in it. Below is how they compare with the dates on your <%= org %> contract.
-    Nothing of yours will be changed unless you tell us that two dates are the same show, and your cast, roles, call times
-    and notes stay exactly where they are.
+    <%= @production.name %> already has dates of its own, and connecting adds the dates on your <%= org %> contract to it.
+    If you already entered one of the contract's dates yourself, tell us here, so that it isn't added a second time.
+    Nothing of yours changes unless you say two dates are the same show.
   </p>
 
   <div class="flex flex-wrap gap-2 mt-4">
-    <% if @comparison.matches.any? %><span class="<%= pill %> bg-green-100 text-green-700"><%= count_words.call(@comparison.matches.size, "matches", "match") %></span><% end %>
-    <% if @comparison.questions.any? %><span class="<%= pill %> bg-amber-100 text-amber-700"><%= count_words.call(@comparison.questions.size, "is", "are") %> on the same night at a different time</span><% end %>
-    <% if @comparison.added.any? %><span class="<%= pill %> bg-blue-100 text-blue-700"><%= count_words.call(@comparison.added.size, "is", "are") %> only on the contract</span><% end %>
-    <% if @comparison.theirs_only.any? %><span class="<%= pill %> bg-gray-100 text-gray-600"><%= count_words.call(@comparison.theirs_only.size, "is", "are") %> only in your list</span><% end %>
+    <% if @comparison.added.any? %><span class="<%= pill %> bg-pink-100 text-pink-700"><%= count_words.call(@comparison.added.size, "will be added from the contract", "will be added from the contract") %></span><% end %>
+    <% if @comparison.matches.any? %><span class="<%= pill %> bg-green-100 text-green-700"><%= count_words.call(@comparison.matches.size, "is", "are") %> already in your list</span><% end %>
+    <% if @comparison.questions.any? %><span class="<%= pill %> bg-amber-100 text-amber-700"><%= count_words.call(@comparison.questions.size, "needs", "need") %> an answer from you</span><% end %>
+    <% if @comparison.theirs_only.any? %><span class="<%= pill %> bg-gray-100 text-gray-600"><%= count_words.call(@comparison.theirs_only.size, "of yours stays", "of yours stay") %> as <%= @comparison.theirs_only.size == 1 ? "it is" : "they are" %></span><% end %>
   </div>
 
   <%= form_with url: my_connect_contract_review_path(@contract), method: :get, class: "mt-6 space-y-6" do %>
@@ -114,7 +120,7 @@
                 </div>
                 <div class="text-sm text-gray-500">
                   We'll keep your date and set it to the contract's show time, <%= clock.call(contract_show.date_and_time) %> to <%= clock.call(contract_show.ends_at) %>, in <%= possessive(org) %> room.
-                  Its cast, roles and notes won't change. If anyone is cast, you'll be asked to let them know about the new time.
+                  Its cast, roles, and notes won't change. If anyone is cast, you'll be asked to let them know about the new time.
                 </div>
                 <% if has_call.call(show) %>
                   <div class="text-sm text-gray-500 mt-1">
@@ -154,7 +160,7 @@
 
     <% if @comparison.matches.any? %>
       <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
-        <%= render "shared/section_heading", padding: "px-4 py-3", title: "These dates match",
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Dates you already have",
               intro: "The dates below start at the same time as the show on the contract, so we'll treat each one as the contract's date. Everything on them stays as it is, including any call time. If one of them is actually a separate event, untick it and we'll keep it as your own." %>
         <ul class="divide-y divide-gray-100">
           <% @comparison.matches.each do |contract_show, show| %>
@@ -176,12 +182,12 @@
 
     <% if @comparison.added.any? %>
       <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
-        <%= render "shared/section_heading", padding: "px-4 py-3", title: "These dates are only on the contract",
-              intro: "You don't have these in #{@production.name} yet, so we'll add them for you. Nobody will be cast in them to begin with." %>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Dates we'll add from the contract",
+              intro: "You don't have these in #{@production.name} yet, so they'll be added when you connect. Nobody is cast in them to begin with." %>
         <ul class="divide-y divide-gray-100">
           <% @comparison.added.each do |contract_show| %>
             <li class="px-4 py-3">
-              <div class="text-sm font-medium text-gray-900"><%= stamp.call(contract_show.date_and_time) %><%= " (already played)" if contract_show.date_and_time < Time.current %></div>
+              <div class="text-sm font-medium text-gray-900"><%= stamp.call(contract_show.date_and_time) %><%= " · #{EventTypes.labels[contract_show.event_type]}" unless contract_show.event_type == "show" %><%= " (already played)" if contract_show.date_and_time < Time.current %></div>
               <div class="text-sm text-gray-500"><%= contract_words.call(contract_show) %></div>
             </li>
           <% end %>
@@ -192,8 +198,8 @@
     <% if @comparison.theirs_only.any? %>
       <% joinable = @comparison.added.select { |contract_show| contract_show.date_and_time > Time.current } %>
       <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
-        <%= render "shared/section_heading", padding: "px-4 py-3", title: "These dates are only in your list",
-              intro: "The contract doesn't include these, so they'll stay just as they are.#{' If one of them is really the same show as a contract date, choose that date from its menu.' if joinable.any?}" %>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Your dates that stay as they are",
+              intro: "These aren't on the contract, so nothing happens to them.#{' If one of them is really the same show as a contract date, choose that date from its menu.' if joinable.any?}" %>
         <ul class="divide-y divide-gray-100">
           <% @comparison.theirs_only.each do |show| %>
             <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
@@ -217,10 +223,11 @@
       <p class="text-xs text-gray-500 -mt-3">We only compare shows. Your rehearsals and other events aren't listed here, and nothing will happen to them.</p>
     <% end %>
 
-    <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+    <div class="mt-8 flex items-center justify-between">
       <%= render "shared/button", text: "Back", variant: "secondary", size: "medium",
             path: my_connect_contract_production_path(@contract, organization_id: @organization.id) %>
       <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit %>
     </div>
   <% end %>
+  </div>
 </div>

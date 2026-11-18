@@ -24,7 +24,7 @@ class InvoiceTemplates
   PAID = [ { "name" => "paid_on", "description" => "The day it was paid" },
            { "name" => "paid_via", "description" => "How, e.g. by check (blank when paid online)" } ].freeze
   OWN = DUE + [ { "name" => "custom_message", "description" => "The message on the invoice, if there is one" },
-                { "name" => "ways_to_pay", "description" => "How they can pay, e.g. card, bank transfer and check" } ].freeze
+                { "name" => "ways_to_pay", "description" => "How they can pay, e.g. card, bank transfer, and check" } ].freeze
   CONTRACT = DUE + [ { "name" => "custom_message", "description" => "The manager's note, if they wrote one" },
                      { "name" => "other_payment_methods", "description" => "Other ways the contract lets them pay, e.g. check or cash" } ].freeze
 

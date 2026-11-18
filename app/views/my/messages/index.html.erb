@@ -21,7 +21,7 @@
     </span>
     <span class="min-w-0 flex-1">
       <span class="block text-sm font-semibold text-gray-900">Notifications</span>
-      <span class="block text-xs text-gray-600"><%= unread_notifications.positive? ? "#{unread_notifications} unread: casting, sign-ups, pay, contracts and more" : "Casting, sign-ups, pay, contracts and more" %></span>
+      <span class="block text-xs text-gray-600"><%= unread_notifications.positive? ? "#{unread_notifications} unread: casting, sign-ups, pay, contracts, and more" : "Casting, sign-ups, pay, contracts, and more" %></span>
     </span>
     <% if unread_notifications.positive? %>
       <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-pink-500 rounded-full"><%= unread_notifications > 99 ? "99+" : unread_notifications %></span>

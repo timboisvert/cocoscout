@@ -61,7 +61,7 @@
       </div>
     </div>
   <% elsif @pending_staff.empty? %>
-    <%= render "shared/empty_state", icon: "people", title: "No staff added yet", body: "Add your team and schedule their shifts, approve their hours and pay them here.",
+    <%= render "shared/empty_state", icon: "people", title: "No staff added yet", body: "Add your team and schedule their shifts, approve their hours, and pay them here.",
           actions: [ { text: "Add your first staff member", path: manage_new_staffing_staff_wizard_path } ] %>
   <% end %>
 

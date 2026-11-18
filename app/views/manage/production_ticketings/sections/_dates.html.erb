@@ -44,7 +44,7 @@
       <div class="<%= option_class.call('all') %>" data-event-matching-target="option" data-value="all" data-action="click->event-matching#select">
         <%= f.radio_button :event_matching, "all", class: "sr-only", data: { event_matching_target: "input" } %>
         <p class="font-medium text-gray-900">All performances</p>
-        <p class="text-sm text-gray-500 mt-1">Every show, class and workshop of <%= production.name %>, never rehearsals or meetings. New ones join on their own.</p>
+        <p class="text-sm text-gray-500 mt-1">Every show, class, and workshop of <%= production.name %>, never rehearsals or meetings. New ones join on their own.</p>
       </div>
 
       <div class="<%= option_class.call('event_types') %>" data-event-matching-target="option" data-value="event_types" data-action="click->event-matching#select">

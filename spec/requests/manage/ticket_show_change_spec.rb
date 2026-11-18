@@ -46,7 +46,7 @@ RSpec.describe "Telling buyers a show changed", type: :request do
 
     expect(TicketShowChange.orders(listing)).to contain_exactly(dana)
     get manage_ticket_listing_path(listing)
-    expect(response.body).to include("1 buyer was told a different date, time or place", "Tell buyers")
+    expect(response.body).to include("1 buyer was told a different date, time, or place", "Tell buyers")
     get manage_ticketing_path
     expect(response.body).to include("moved after people bought tickets")
   end

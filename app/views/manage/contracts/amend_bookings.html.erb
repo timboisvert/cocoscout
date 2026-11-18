@@ -29,7 +29,7 @@
   <%# Existing Events Section %>
   <% if @existing_rentals.any? %>
     <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-6">
-      <%= render "shared/section_heading", padding: "px-4 py-3", title: "Current Events (#{@existing_rentals.count})", intro: "Changing a time? Use Change time on the event, so it keeps its tickets, cast and staffing. Removing it and adding another starts over." %>
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "Current Events (#{@existing_rentals.count})", intro: "Changing a time? Use Change time on the event, so it keeps its tickets, cast, and staffing. Removing it and adding another starts over." %>
       <div class="p-4 space-y-2" id="existing-rentals-list">
         <% staged_moves = @amend_data["moved_rentals"] || {} %>
         <% @existing_rentals.each do |rental| %>

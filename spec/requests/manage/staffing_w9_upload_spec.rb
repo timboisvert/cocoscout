@@ -67,7 +67,7 @@ RSpec.describe "Staffing W-9 uploads", type: :request do
       post manage_upload_w9_staffing_tax_path(member),
            params: { w9: w9_params(document: Rack::Test::UploadedFile.new(StringIO.new("x"), "text/plain", original_filename: "w9.txt")) }
 
-      expect(flash[:alert]).to include("PDF, JPG or PNG")
+      expect(flash[:alert]).to include("PDF, JPG, or PNG")
     end
 
     it "won't touch another org's staff member" do

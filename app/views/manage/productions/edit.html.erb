@@ -235,7 +235,7 @@
             <div class="w-9 h-12 flex-shrink-0 rounded border-2 border-pink-300 bg-pink-50"></div>
             <div>
               <div class="font-medium text-gray-900">Poster · 3:4, tall</div>
-              <div class="text-gray-600 mt-0.5">Like the poster in a lobby. It's what people see while browsing: show lists, sign-ups, casting, messages and your public profile.</div>
+              <div class="text-gray-600 mt-0.5">Like the poster in a lobby. It's what people see while browsing: show lists, sign-ups, casting, messages, and your public profile.</div>
             </div>
           </div>
           <div class="flex gap-3">
@@ -281,7 +281,7 @@
                 <% end %>
               </div>
             <% end %>
-            <p class="text-xs text-gray-500 mt-2">3:4, ideally 1200×1600. JPG, PNG or PDF.</p>
+            <p class="text-xs text-gray-500 mt-2">3:4, ideally 1200×1600. JPG, PNG, or PDF.</p>
 
             <% if other_posters.any? %>
               <div class="mt-6 pt-5 border-t border-gray-200">
@@ -333,7 +333,7 @@
               <% end %>
               <p class="hidden text-xs text-amber-700 mt-2" data-image-crops-target="warning"></p>
             <% end %>
-            <p class="text-xs text-gray-500 mt-2">16:9, ideally 1920×1080 (at least 1200×675). JPG, PNG or WebP up to 10 MB.</p>
+            <p class="text-xs text-gray-500 mt-2">16:9, ideally 1920×1080 (at least 1200×675). JPG, PNG, or WebP up to 10 MB.</p>
           </div>
         </div>
       </div>
@@ -831,7 +831,7 @@
           <% if @production.archived? %>
             <h3 class="text-lg font-semibold text-gray-900 mb-2">This production is archived</h3>
             <p class="text-sm text-gray-600 mb-4">
-              It's hidden from your production lists and pickers. Nothing was deleted: its dates, people, money and documents are all still here.
+              It's hidden from your production lists and pickers. Nothing was deleted: its dates, people, money, and documents are all still here.
             </p>
             <%= render "shared/button", text: "Unarchive", variant: "primary", size: "medium",
                   path: unarchive_manage_production_path(@production), method: :post %>

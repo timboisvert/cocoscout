@@ -105,7 +105,7 @@ class BooksStatements
     accounts = @organization.ledger_accounts.where(id: cash_ids).order(:code)
     where = accounts.map { |a| Line.new(label: a.name, cents: closing_by_account[a.id].to_i) }
     sections = [
-      Section.new(title: "Cash at the start", lines: [ Line.new(label: "Bank, door cash and CocoScout balance together", cents: opening) ], total_label: "Cash at the start", total_cents: opening, by_production: {}),
+      Section.new(title: "Cash at the start", lines: [ Line.new(label: "Bank, door cash, and CocoScout balance together", cents: opening) ], total_label: "Cash at the start", total_cents: opening, by_production: {}),
       Section.new(title: "Came in", lines: ins, total_label: "Total in", total_cents: ins.sum(&:cents), by_production: {}),
       Section.new(title: "Went out", lines: outs, total_label: "Total out", total_cents: outs.sum(&:cents), by_production: {}),
       Section.new(title: "Cash at the end, by where it sits", lines: where, total_label: "Cash at the end", total_cents: where.sum(&:cents), by_production: {})

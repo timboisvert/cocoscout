@@ -42,9 +42,9 @@ module Manage
         title: "Ticketing",
         icon: "ticketing",
         reports: [
-          { key: :ticket_sales_by_show, title: "Ticket Sales by Show", description: "Tickets, sales, products, refunds and what you keep, per show." },
+          { key: :ticket_sales_by_show, title: "Ticket Sales by Show", description: "Tickets, sales, products, refunds, and what you keep, per show." },
           { key: :ticket_sales_by_type, title: "Ticket Sales by Type", description: "How each ticket type sold across a period." },
-          { key: :ticket_sales_by_channel, title: "Ticket Sales by Channel", description: "Online, your website, the door and comps." },
+          { key: :ticket_sales_by_channel, title: "Ticket Sales by Channel", description: "Online, your website, the door, and comps." },
           { key: :ticket_buyers, title: "Ticket Buyers", description: "Everyone who bought in a period, with their contact details." },
           { key: :ticket_taxes, title: "Sales Tax", description: "Tax collected on tickets and courses, what's set aside, and marking it paid." }
         ]
@@ -91,7 +91,7 @@ module Manage
       end
       render_report(
         key: :ticket_sales_by_show, title: "Ticket Sales by Show",
-        subtitle: "Tickets, sales, products, refunds and what you keep, per show, with what sold on other sites. " \
+        subtitle: "Tickets, sales, products, refunds, and what you keep, per show, with what sold on other sites. " \
                   "Sales are face value, before fees and tax. Other sites count by the day of the show.",
         stats: [
           { label: "Tickets sold", value: s.tickets + s.outside },

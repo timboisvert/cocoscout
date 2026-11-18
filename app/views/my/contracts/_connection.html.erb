@@ -20,7 +20,7 @@
       <div class="min-w-0">
         <div class="font-medium text-gray-900">Connected to <%= theirs %></div>
         <% if local_assigns[:moved] %>
-          <div class="text-xs text-gray-500">This contract's dates, ticket sales and followers are in <%= theirs %> now, in <%= connection.production_name %>.</div>
+          <div class="text-xs text-gray-500">This contract's dates, ticket sales, and followers are in <%= theirs %> now, in <%= connection.production_name %>.</div>
         <% else %>
           <div class="text-xs text-gray-500"><%= possessive(org) %> dates, and how they're selling, are in <%= connection.production_name %> in <%= theirs %>.</div>
         <% end %>

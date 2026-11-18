@@ -38,7 +38,7 @@
     <%# No drawn tap icon: Apple allows none of our own (Tap to Pay 5.5 and its marketing rules). %>
     <%# An Android phone's tap spot is usually on its back (its own tap screen points to it); Android's words never name Apple. %>
     <p class="mt-6 text-base font-medium text-gray-900" data-door-tap-target="prompt"><%= native_android? ? "Hold their card or phone to the back of this phone" : "Hold their card or phone to the top of this iPhone" %></p>
-    <p class="mt-1 text-sm text-gray-600"><%= native_android? ? "Contactless card, or a phone or watch wallet" : "Contactless card, Apple Pay or Google Pay" %></p>
+    <p class="mt-1 text-sm text-gray-600"><%= native_android? ? "Contactless card, or a phone or watch wallet" : "Contactless card, Apple Pay, or Google Pay" %></p>
     <div class="mt-2 flex justify-center">
       <%= render "shared/button", text: "How to take a tap", variant: "ghost", size: "small", type: :button,
             data: { action: "click->bridge--tap-to-pay#howToTap" } %>

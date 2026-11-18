@@ -18,7 +18,7 @@
               <% if @moves.any? %>
                 <li class="flex items-center gap-2">
                   <%= icon("clock", class: "w-4 h-4 text-pink-500") %>
-                  <span><%= pluralize(@moves.count, "event") %> will move to a new time, keeping <%= @moves.count == 1 ? "its" : "their" %> tickets, cast and staffing</span>
+                  <span><%= pluralize(@moves.count, "event") %> will move to a new time, keeping <%= @moves.count == 1 ? "its" : "their" %> tickets, cast, and staffing</span>
                 </li>
               <% end %>
               <% if @new_bookings.any? %>
@@ -40,7 +40,7 @@
           <%= icon("info", class: "w-5 h-5 text-gray-500 flex-shrink-0 mt-0.5") %>
           <div class="text-sm text-gray-600">
             <p class="font-medium">No changes to events</p>
-            <p class="mt-1">You haven't added, moved or removed any events. You can continue to modify payments.</p>
+            <p class="mt-1">You haven't added, moved, or removed any events. You can continue to modify payments.</p>
           </div>
         </div>
       </div>

@@ -8,7 +8,7 @@
   sent = @password_reset_instructions_sent
   lede =
     if @user_exists_error
-      "Your calendar, cast messages, contracts and pay are already waiting in there."
+      "Your calendar, cast messages, contracts, and pay are already waiting in there."
     elsif sent
       "Remembered it after all? Sign in here."
     elsif auth_native_app?

@@ -31,13 +31,13 @@
 <%
   title = existing ? (onto_contract ? "Sign in to see the contract" : "Sign in to join the team") : "Choose your password"
   lede = if onto_contract && existing
-    "Enter the password for #{inv.email} and you're on the contract: its dates, how tickets are selling, who's coming and what it pays, on your My pages."
+    "Enter the password for #{inv.email} and you're on the contract: its dates, how tickets are selling, who's coming, and what it pays, on your My pages."
   elsif onto_contract
-    "You're on #{inv.contract.contractor_name}'s contract with #{org.name}. Pick a password and you'll see its dates, how tickets are selling, who's coming and what it pays."
+    "You're on #{inv.contract.contractor_name}'s contract with #{org.name}. Pick a password and you'll see its dates, how tickets are selling, who's coming, and what it pays."
   elsif existing
-    "Enter the password for #{inv.email} and you're on #{org.name}'s team: their productions, casting and scheduling, yours to work on too."
+    "Enter the password for #{inv.email} and you're on #{org.name}'s team: their productions, casting, and scheduling, yours to work on too."
   else
-    "#{org.name} set you up as part of their team. Pick a password and you're in; their productions, casting and scheduling are yours to work on too."
+    "#{org.name} set you up as part of their team. Pick a password and you're in; their productions, casting, and scheduling are yours to work on too."
   end
 %>
 

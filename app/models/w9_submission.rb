@@ -125,7 +125,7 @@ class W9Submission < ApplicationRecord
       errors.add(:document, "is required — attach the W-9 you have")
       return
     end
-    errors.add(:document, "must be a PDF, JPG or PNG") unless DOCUMENT_TYPES.include?(document.blob.content_type)
+    errors.add(:document, "must be a PDF, JPG, or PNG") unless DOCUMENT_TYPES.include?(document.blob.content_type)
     errors.add(:document, "must be 10 MB or smaller") if document.blob.byte_size.to_i > DOCUMENT_MAX_BYTES
   end
 

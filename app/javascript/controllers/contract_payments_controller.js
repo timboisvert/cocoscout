@@ -791,6 +791,14 @@ export default class extends Controller {
         this.renderList()
     }
 
+    // Enter inside the modal accepts it (Tim, 2026-11-18). It sits inside the
+    // page's form, so Enter used to submit that form and lose what was typed.
+    enterPayment(event) {
+        if (event.target.closest("button")) return
+        event.preventDefault()
+        this.addPayment()
+    }
+
     addPayment() {
         if (!this.hasDescriptionTarget || !this.hasAmountTarget) return
 

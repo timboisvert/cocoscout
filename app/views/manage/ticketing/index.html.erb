@@ -25,7 +25,7 @@
           { icon: "shopping-bag", text: "Products", description: "Bottles and extras sold with tickets", path: manage_ticket_products_path },
           { icon: "banknotes", text: "Gift certificates", description: "A dollar value spent at checkout instead of a card", path: manage_ticket_gift_certificates_path },
           { icon: "user-group", text: "Door", description: "Check people in and sell at the door", path: door_index_path, badge: d.tonight.size },
-          { icon: "cog", text: "Settings", description: "Box office, fees, tax and door access", path: manage_ticketing_settings_path }
+          { icon: "cog", text: "Settings", description: "Box office, fees, tax, and door access", path: manage_ticketing_settings_path }
         ] %>
 
   <%# Dates another organization sells for this one, under a contract
@@ -150,7 +150,7 @@
       <%= render "shared/action_list", items: [
         { text: "Memberships", description: "Levels built from a menu of perks, and who's a member", path: manage_ticket_memberships_path,
           icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
-        { text: "Reports", description: "Ticket sales by show, type and channel, in Reports", path: manage_reports_path,
+        { text: "Reports", description: "Ticket sales by show, type, and channel, in Reports", path: manage_reports_path,
           icon: "M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
         { text: "Sales tax", description: "What you collected, what's set aside, and how to pay it", path: manage_ticket_taxes_path,
           icon: "M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" },

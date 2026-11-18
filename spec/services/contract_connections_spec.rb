@@ -110,6 +110,22 @@ RSpec.describe ContractConnections do
   end
 
   describe ".accept!" do
+    it "brings a rehearsal on the contract in as a rehearsal, never compared with their shows" do
+      # They rehearse in the room too (Tim, 2026-11-18). It arrived as a show.
+      first_show.update_columns(event_type: "rehearsal")
+      own = own_show!(first_night + 1.hour)
+
+      comparison = LinkedDates.compare(contract, their_production)
+      expect(comparison.added).to include(first_show)
+      expect(comparison.questions.map(&:first)).not_to include(first_show)
+
+      connect!
+      arrived = their_production.shows.find_by!(linked_show: first_show)
+      expect(arrived).to have_attributes(event_type: "rehearsal", casting_enabled: false)
+      expect(their_production.shows.find_by!(linked_show: second_show)).to have_attributes(event_type: "show", casting_enabled: true)
+      expect(own.reload.linked_show_id).to be_nil
+    end
+
     it "puts every date on the contract into their production, following it" do
       connection = nil
       expect { connection = connect! }.to change(user.notifications, :count).by(1)
@@ -420,7 +436,7 @@ RSpec.describe ContractConnections do
     it "lets the organization notify the contractor once that the contract can be connected" do
       expect(described_class.can_tell?(contract)).to be(true)
       expect { described_class.tell!(contract, user: owner) }.to change(user.notifications, :count).by(1)
-      expect(user.notifications.last.title).to include("Stars and Garters would like you to know")
+      expect(user.notifications.last.title).to eq("Stars and Garters invites you to link your production to their contract")
       expect(contract.reload).to have_attributes(connect_told_by_id: owner.id)
       expect(described_class.can_tell?(contract)).to be(false)
       expect { described_class.tell!(contract, user: owner) }.not_to change(user.notifications, :count)

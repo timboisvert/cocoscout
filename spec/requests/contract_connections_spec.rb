@@ -64,20 +64,21 @@ RSpec.describe "Contract connections", type: :request do
     it "walks through what it does, the production, and what they'll see" do
       get my_connect_contract_path(contract)
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Connect your contract to The Holly Problem")
+      expect(response.body).to include("Connect your Stars and Garters contract to The Holly Problem")
       # Who the contract is with and what it's for, not "X is your show, and you run it in X".
-      expect(response.body).to include("Stars and Garters has a contract with #{contractor.name} to present 1 date of The Holly Problem.")
+      expect(response.body).to include("Stars and Garters has a contract with #{contractor.name} to present The Holly Problem.")
         .and include("You also run an organization of your own on CocoScout, The Holly Problem.")
+        .and include("the dates, ticket sales, and mailing lists")
 
       get my_connect_contract_production_path(contract)
-      expect(response.body).to include("Where would you like these dates to go?").and include("Same name as the contract").and include("Create a new production for them")
+      expect(response.body).to include("Where would you like these dates to go?").and include("Same as Stars and Garters&#39; contract").and include("Create a new production for them")
 
       # Nothing of theirs to weigh: the dates step passes straight through.
       get my_connect_contract_dates_path(contract, organization_id: theirs.id, production: their_production.id)
       expect(response).to redirect_to(my_connect_contract_review_path(contract, organization_id: theirs.id, production: their_production.id))
 
       get my_connect_contract_review_path(contract, organization_id: theirs.id, production: their_production.id)
-      expect(response.body).to include("Send the request").and include("What Stars and Garters will see")
+      expect(response.body).to include("Send the request").and include("What Stars and Garters will see").and include("Review and send your request").and include("your dates that aren't on the contract")
     end
 
     it "asks about a date of theirs on the same day at another time" do
@@ -471,7 +472,7 @@ RSpec.describe "Contract connections", type: :request do
       on_sale!
       sign_in(user)
       get my_contracts_path
-      expect(response.body).to include("dates, ticket sales and followers are in The Holly Problem now").and include("Open The Holly Problem")
+      expect(response.body).to include("dates, ticket sales, and followers are in The Holly Problem now").and include("Open The Holly Problem")
       expect(response.body).not_to include(my_show_tickets_path(contract_show))
 
       # Someone on the contract who doesn't run The Holly Problem keeps the My views:

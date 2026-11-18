@@ -2,7 +2,7 @@
 <%= render layout: "manage/contracts/amend_layout", locals: { step_name: "Change the basic info" } do %>
     <h2 class="text-2xl coustard-regular text-gray-900 mb-1">Change the basic info</h2>
     <p class="text-gray-600 mb-6">
-      What the production is called and how it's described. The dates, the money and the signed
+      What the production is called and how it's described. The dates, the money, and the signed
       contract stay exactly as they are, so there's nothing to re-sign.
     </p>
 
@@ -16,7 +16,7 @@
           <label for="production_name" class="block text-sm font-medium text-gray-900 mb-1.5">Production name</label>
           <input type="text" name="production_name" id="production_name" value="<%= @production_name %>" required
                  placeholder="e.g. Music & Improv Show" class="<%= input_class %>">
-          <p class="mt-1.5 text-xs text-gray-500">Shown on the contract, the calendar and the ticket page.</p>
+          <p class="mt-1.5 text-xs text-gray-500">Shown on the contract, the calendar, and the ticket page.</p>
         </div>
 
         <div>

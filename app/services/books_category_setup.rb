@@ -24,7 +24,7 @@ class BooksCategorySetup
     [ "staff", "We have paid staff", "Door, bar, box office, crew on the clock" ],
     [ "pay_rent", "We pay rent for a space", "A lease, or a theater we rent by the night" ],
     [ "rent_out", "We rent our space to others", "Renters, co-productions, a share of their door" ],
-    [ "nonprofit", "We are a nonprofit", "Grants, donations and memberships; the statements use nonprofit words" ]
+    [ "nonprofit", "We are a nonprofit", "Grants, donations, and memberships; the statements use nonprofit words" ]
   ].freeze
 
   FLAGS = (KINDS.values.flat_map { |k| k[:flags] } + QUESTIONS.map(&:first)).uniq.freeze

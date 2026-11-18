@@ -17,7 +17,7 @@
   %>
   <section class="bg-white border border-pink-200 rounded-lg overflow-hidden <%= local_assigns.fetch(:margin, 'mb-6') %>" data-sold-elsewhere="<%= production.id %>">
     <%= render "shared/section_heading", padding: "px-4 py-3", title: "Sold by #{seller.name}",
-          intro: "#{seller.name} sells the tickets for #{possessive(production.name)} dates there, under your contract. Prices, orders, refunds and the door are theirs." do %>
+          intro: "#{seller.name} sells the tickets for #{possessive(production.name)} dates there, under your contract. Prices, orders, refunds, and the door are theirs." do %>
       <%= render "shared/button", text: "See ticket sales", variant: "secondary", size: "small", path: manage_production_sales_path(production) %>
     <% end %>
     <% if listings.any? %>

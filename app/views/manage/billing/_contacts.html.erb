@@ -9,7 +9,7 @@
 %>
 <div class="mt-8 border-t border-gray-200 pt-6">
   <h4 class="text-base font-semibold text-gray-900">Who gets the bills</h4>
-  <p class="text-sm text-gray-500 mt-1">CocoScout emails each bill, its receipt and the monthly statement to these people. With nobody chosen, they go to the owner.</p>
+  <p class="text-sm text-gray-500 mt-1">CocoScout emails each bill, its receipt, and the monthly statement to these people. With nobody chosen, they go to the owner.</p>
   <%= form_with url: manage_billing_contacts_path, method: :patch, class: "mt-4 space-y-4" do %>
     <div class="space-y-3">
       <% managers.each do |user| %>

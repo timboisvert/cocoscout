@@ -15,7 +15,7 @@ const RULES = [
   { test: (p) => /[^A-Za-z0-9]/.test(p), noun: "a symbol", fix: "add a symbol, like ! or #" }
 ]
 
-const EMPTY_HINT = "8 or more characters, with a capital, a number and a symbol."
+const EMPTY_HINT = "8 or more characters, with a capital, a number, and a symbol."
 const DONE_HINT = "That'll do nicely."
 
 export default class extends Controller {
@@ -71,10 +71,10 @@ export default class extends Controller {
     hint.classList.toggle("text-slate-700", !quiet)
   }
 
-  // "a, b and c"
+  // "a and b", "a, b, and c"
   list(items) {
-    if (items.length <= 1) return items.join("")
-    return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`
+    if (items.length <= 2) return items.join(" and ")
+    return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`
   }
 
   enableButton() {

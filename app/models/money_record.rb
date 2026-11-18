@@ -144,7 +144,7 @@ class MoneyRecord < ApplicationRecord
   def acceptable_receipt
     return unless receipt.attached?
 
-    errors.add(:receipt, "must be a PDF, JPG or PNG") unless receipt.content_type.in?(%w[application/pdf image/jpeg image/png])
+    errors.add(:receipt, "must be a PDF, JPG, or PNG") unless receipt.content_type.in?(%w[application/pdf image/jpeg image/png])
     errors.add(:receipt, "must be under 10 MB") if receipt.byte_size > 10.megabytes
   end
 end

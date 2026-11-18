@@ -39,7 +39,7 @@
 
   <%= render layout: "shared/auth/shell",
         locals: { title: "Choose your password", strip: strip, notices: notices, legal: "joining",
-                  lede: "Your account is ready; it just needs a password. Once it's set, you share #{group.name}'s profile, headshots and history with the rest of the group." } do %>
+                  lede: "Your account is ready; it just needs a password. Once it's set, you share #{group.name}'s profile, headshots, and history with the rest of the group." } do %>
     <%= form_with url: accept_path, method: :post, local: true, class: "space-y-4", data: { controller: "password-strength" } do |form| %>
       <%= render "shared/auth/account_row", email: inv.email %>
 

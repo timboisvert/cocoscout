@@ -64,7 +64,7 @@
   <input type="hidden" name="ticketing" data-contract-ticketing-target="ticketingJson" value="<%= ticketing.to_json %>">
 
   <%# Add-a-tier modal %>
-  <div data-contract-ticketing-target="tierModal" class="hidden fixed inset-0 z-50">
+  <div data-contract-ticketing-target="tierModal" data-action="keydown.enter->contract-ticketing#enterTier" class="hidden fixed inset-0 z-50">
     <div class="fixed inset-0 bg-black/50" data-action="click->contract-ticketing#closeTierModal"></div>
     <div class="fixed inset-0 flex items-center justify-center p-4">
       <div class="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden">
@@ -96,8 +96,8 @@
           </div>
           <p data-contract-ticketing-target="tierError" class="hidden text-sm text-red-600"></p>
           <div class="flex gap-3 pt-1">
-            <button type="button" data-action="click->contract-ticketing#closeTierModal"
-                    class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button,
+                  classes: "flex-1", data: { action: "click->contract-ticketing#closeTierModal" } %>
             <%= render "shared/button", text: "Add tier", variant: "primary", size: "medium", type: :button,
                   classes: "flex-1", data: { action: "click->contract-ticketing#addTier" } %>
           </div>
@@ -107,7 +107,7 @@
   </div>
 
   <%# Add-a-discount modal %>
-  <div data-contract-ticketing-target="discountModal" class="hidden fixed inset-0 z-50">
+  <div data-contract-ticketing-target="discountModal" data-action="keydown.enter->contract-ticketing#enterDiscount" class="hidden fixed inset-0 z-50">
     <div class="fixed inset-0 bg-black/50" data-action="click->contract-ticketing#closeDiscountModal"></div>
     <div class="fixed inset-0 flex items-center justify-center p-4">
       <div class="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden">
@@ -158,8 +158,8 @@
           </div>
           <p data-contract-ticketing-target="discountError" class="hidden text-sm text-red-600"></p>
           <div class="flex gap-3 pt-1">
-            <button type="button" data-action="click->contract-ticketing#closeDiscountModal"
-                    class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button,
+                  classes: "flex-1", data: { action: "click->contract-ticketing#closeDiscountModal" } %>
             <%= render "shared/button", text: "Add code", variant: "primary", size: "medium", type: :button,
                   classes: "flex-1", data: { action: "click->contract-ticketing#addDiscount" } %>
           </div>

@@ -47,6 +47,16 @@ RSpec.describe "Contract wizard: People step", type: :request do
     expect(response.body).to include(manage_people_contract_wizard_path(contract))
   end
 
+  it "keeps the data steps in the step bar on a contract signed in CocoScout" do
+    # People is step 12; the bar once took any step from 9 up for the
+    # Prepare, Sign and Send phase and showed those in its place.
+    contract.update_columns(signing_mode: "esign")
+    get manage_people_contract_wizard_path(contract)
+
+    expect(response.body).to include("Schedule").and include("Financials")
+    expect(response.body).not_to include(">Prepare<")
+  end
+
   it "suggests an invitation when the signer has no account" do
     contractor.update!(person: nil, email: "sam@brightlights.org")
     contract.update!(contractor_email: "sam@brightlights.org")

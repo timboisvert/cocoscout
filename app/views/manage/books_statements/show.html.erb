@@ -60,7 +60,7 @@
   <div class="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-6 items-start">
     <div class="min-w-0">
       <%= render "manage/books_statements/statement", statement: @statement, money: money %>
-      <p class="mt-3 text-xs text-gray-500"><% if @kind == "balance" %>The two sides agree by construction: every dollar earned less spent to that day sits under <%= @words[:equity].downcase %>.<% elsif @kind == "cash" %>Cash is the bank, door cash and the CocoScout balance together, by when money moved.<% else %>The same lines as the Overview, laid out the way an accountant reads them.<% end %></p>
+      <p class="mt-3 text-xs text-gray-500"><% if @kind == "balance" %>The two sides agree by construction: every dollar earned less spent to that day sits under <%= @words[:equity].downcase %>.<% elsif @kind == "cash" %>Cash is the bank, door cash, and the CocoScout balance together, by when money moved.<% else %>The same lines as the Overview, laid out the way an accountant reads them.<% end %></p>
     </div>
     <div class="space-y-4">
       <section class="rounded-xl border border-gray-200 bg-white px-5 py-4">
@@ -82,7 +82,7 @@
       </section>
       <section class="rounded-xl border border-gray-200 bg-white px-5 py-4">
         <h3 class="text-sm font-semibold text-gray-900">For your accountant</h3>
-        <p class="mt-1 text-sm text-gray-700">Every line ever posted, as a spreadsheet: date earned and moved, account, debit, credit, production, show, payee and source.</p>
+        <p class="mt-1 text-sm text-gray-700">Every line ever posted, as a spreadsheet: date earned and moved, account, debit, credit, production, show, payee, and source.</p>
         <div class="mt-3"><%= render "shared/button", text: "The whole ledger (CSV)", variant: "secondary", size: "small", path: manage_money_statements_ledger_path, data: { turbo: false } %></div>
         <%# What was asked for in the last week (BooksDownload): put together in the background, then downloaded from here. %>
         <% if @downloads.any? %>

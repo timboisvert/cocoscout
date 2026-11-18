@@ -81,6 +81,12 @@ class LinkedDates
       reasons = {}
       contract_shows(contract).where(canceled: false).includes(:space_rental).each do |contract_show|
         rental = contract_show.space_rental
+        # Only shows are compared with their shows: a rehearsal or meeting on
+        # the contract is simply added, as its own kind.
+        if contract_show.event_type != "show"
+          added << contract_show
+          next
+        end
         day = contract_show.date_and_time.in_time_zone(zone).to_date
         # The same night: the same day on the venue's clock, or within a few
         # hours either way (a show that runs past midnight, a load-in the
@@ -320,7 +326,12 @@ class LinkedDates
     private
 
     def create_following!(production, contract_show)
-      production.shows.create!(linked_show: contract_show, following_contract: true, event_type: "show",
+      # The date keeps its kind: a contract can book rehearsals as well as
+      # shows (Tim, 2026-11-18: "They're rehearsing at our theater"), and a
+      # rehearsal arrives as a rehearsal, with casting as that kind starts.
+      kind = contract_show.event_type.presence || "show"
+      production.shows.create!(linked_show: contract_show, following_contract: true, event_type: kind,
+                               casting_enabled: EventTypes.casting_enabled_default(kind),
                                date_and_time: contract_show.date_and_time, duration_minutes: contract_show.duration_minutes,
                                canceled: contract_show.canceled)
     end

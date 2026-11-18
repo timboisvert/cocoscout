@@ -48,18 +48,18 @@ class OrganizationAccess
   # manager (everything); "custom" is any grid.
   TEMPLATES = {
     "manager" => { label: "Manager", blurb: "Everything but the organization's own settings and billing." },
-    "bookkeeper" => { label: "Bookkeeper", blurb: "All of Money: settling up, recording, bills, invoices and Books. Payout runs to review but not send. Staffing hours and Contracts to read.",
+    "bookkeeper" => { label: "Bookkeeper", blurb: "All of Money: settling up, recording, bills, invoices, and Books. Payout runs to review but not send. Staffing hours and Contracts to read.",
                       grants: { "productions" => "view", "shows" => "view", "contacts" => "view", "staffing" => "view", "contracts" => "view", "reports" => "view",
                                 "settle_up" => "manage", "payouts" => "view", "bills_invoices" => "manage", "books" => "manage", "money_settings" => "view" } },
     "accountant" => { label: "Accountant", blurb: "All of Money to read and download. Changes nothing.",
                       grants: { "productions" => "view", "reports" => "view", "settle_up" => "view", "payouts" => "view", "bills_invoices" => "view", "books" => "view", "money_settings" => "view" } },
-    "box_office" => { label: "Box office", blurb: "Ticketing, the door and Products. Shows to read.",
+    "box_office" => { label: "Box office", blurb: "Ticketing, the door, and Products. Shows to read.",
                       grants: { "productions" => "view", "shows" => "view", "contacts" => "view", "ticketing" => "manage", "door" => "manage" } },
-    "show_scheduler" => { label: "Show scheduler", blurb: "Shows and events, Contracts and Casting. Settle up to read.",
+    "show_scheduler" => { label: "Show scheduler", blurb: "Shows and events, Contracts, and Casting. Settle up to read.",
                           grants: { "productions" => "manage", "shows" => "manage", "casting" => "manage", "contacts" => "view", "contracts" => "manage", "settle_up" => "view" } },
     "education_manager" => { label: "Education manager", blurb: "Courses and their contracts, and Sign-ups. Course money to read.",
                              grants: { "productions" => "view", "courses" => "manage", "signups" => "manage", "contacts" => "view", "contracts" => "view", "settle_up" => "view" } },
-    "marketing" => { label: "Marketing", blurb: "Mailing lists, Documents and the public pages. Shows to read.",
+    "marketing" => { label: "Marketing", blurb: "Mailing lists, Documents, and the public pages. Shows to read.",
                      grants: { "productions" => "view", "shows" => "view", "documents" => "manage", "contacts" => "view", "mailing_lists" => "manage" } },
     "custom" => { label: "Custom", blurb: "Whatever the grid says." }
   }.freeze

@@ -90,7 +90,7 @@ module Manage
       tier = @listing.ticket_tiers.active.find(params[:tier_id])
       availability = params[:availability].to_s
       unless TicketTier::AVAILABILITIES.include?(availability)
-        redirect_to manage_ticket_listing_path(@listing), alert: "Pick on sale, sold out or hidden."
+        redirect_to manage_ticket_listing_path(@listing), alert: "Pick on sale, sold out, or hidden."
         return
       end
 
@@ -276,7 +276,7 @@ module Manage
     # get (editable), before anything goes out.
     def change_review
       unless TicketShowChange.pending?(@listing)
-        redirect_to manage_ticket_listing_path(@listing), notice: "Everyone who bought knows the show's date, time and place." and return
+        redirect_to manage_ticket_listing_path(@listing), notice: "Everyone who bought knows the show's date, time, and place." and return
       end
 
       @draft = TicketShowChange.draft(@listing)

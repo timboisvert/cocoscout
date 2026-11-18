@@ -19,7 +19,7 @@
 
   <p class="text-sm text-gray-600 max-w-3xl mb-6">
     Your staff are independent contractors, so you need a signed W-9 from each one. It gives you the legal name,
-    address and tax ID that go on the 1099-NEC you send them after the year ends.
+    address, and tax ID that go on the 1099-NEC you send them after the year ends.
   </p>
 
   <%# ---- What needs doing ---- %>
@@ -34,7 +34,7 @@
           <% if payer_ready %>
             <p class="text-sm text-gray-600 mt-0.5"><%= @tax_setting.legal_name %> · EIN <%= @tax_setting.masked_ein %></p>
           <% else %>
-            <p class="text-sm text-gray-600 mt-0.5">Your legal name, EIN and address go on every 1099 you send.</p>
+            <p class="text-sm text-gray-600 mt-0.5">Your legal name, EIN, and address go on every 1099 you send.</p>
           <% end %>
         </div>
         <%= render "shared/button", text: (payer_ready ? "Edit" : "Add payer details"),

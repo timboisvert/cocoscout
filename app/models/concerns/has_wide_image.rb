@@ -36,7 +36,7 @@ module HasWideImage
   def wide_image_is_a_usable_picture
     return unless wide_image.attached? && wide_image.blob
 
-    errors.add(:wide_image, "must be a JPG, PNG or WebP") unless WIDE_IMAGE_TYPES.include?(wide_image.blob.content_type)
+    errors.add(:wide_image, "must be a JPG, PNG, or WebP") unless WIDE_IMAGE_TYPES.include?(wide_image.blob.content_type)
     errors.add(:wide_image, "must be 10 MB or smaller") if wide_image.blob.byte_size > WIDE_IMAGE_MAX_BYTES
   end
 end

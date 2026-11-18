@@ -42,7 +42,7 @@ RSpec.describe "Wide images", type: :request do
   it "won't take a file that isn't a picture" do
     production.wide_image.attach(fixture_file_upload("test_document.pdf", "application/pdf"))
     expect(production).not_to be_valid
-    expect(production.errors[:wide_image]).to include("must be a JPG, PNG or WebP")
+    expect(production.errors[:wide_image]).to include("must be a JPG, PNG, or WebP")
   end
 
   it "uploads and removes the production's wide image in Visual Assets" do
@@ -109,7 +109,7 @@ RSpec.describe "Wide images", type: :request do
 
       # The show's page itself only points at Settings for it.
       get manage_ticket_listing_path(listing)
-      expect(response.body).to include("page and image")
+      expect(response.body).to include("page, and image")
       expect(response.body).not_to include("Ticket page image")
     end
 

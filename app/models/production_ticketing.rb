@@ -75,7 +75,7 @@ class ProductionTicketing < ApplicationRecord
   RESERVED_PAGE_KEYS = %w[passes checkout embed orders members access].freeze
   normalizes :page_key, with: ->(value) { value.to_s.strip.downcase.presence }
   before_validation { self.page_key = nil if page_key.present? && page_key == production&.public_key }
-  validates :page_key, format: { with: PAGE_KEY, message: "must be 3 to 30 lowercase letters, numbers and hyphens" }, allow_nil: true
+  validates :page_key, format: { with: PAGE_KEY, message: "must be 3 to 30 lowercase letters, numbers, and hyphens" }, allow_nil: true
   validate :page_key_is_free, if: -> { page_key.present? && page_key_changed? }
   before_save :keep_old_page_key, if: :page_key_changed?
 

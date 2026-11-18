@@ -111,7 +111,7 @@ class Bill < ApplicationRecord
   def acceptable_document
     return unless document.attached?
 
-    errors.add(:document, "must be a PDF, JPG or PNG") unless document.content_type.in?(%w[application/pdf image/jpeg image/png])
+    errors.add(:document, "must be a PDF, JPG, or PNG") unless document.content_type.in?(%w[application/pdf image/jpeg image/png])
     errors.add(:document, "must be under 10 MB") if document.byte_size > 10.megabytes
   end
 end
