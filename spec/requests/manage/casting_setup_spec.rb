@@ -293,9 +293,12 @@ RSpec.describe "Casting set-up", type: :request do
         end
       end
 
-      it "says so once under Needs doing, with both ways to answer it" do
+      it "says so once under To do, with both ways to answer it" do
         get manage_production_path(production)
         line = doc.at_css("[data-needs='casting']")
+        # The box is headed "To do", never "Needs doing" (Tim, 2026-11-18).
+        expect(text_of(doc.at_css("[data-production-needs-doing] h2"))).to eq("To do")
+        expect(response.body).not_to include("Needs doing")
 
         expect(text_of(line)).to include("2 dates are booked at Stars & Garters, and casting isn't set up yet.")
         expect(line.at_css("a[href='#{manage_casting_setup_path(production)}']").text.squish).to eq("Set up casting")

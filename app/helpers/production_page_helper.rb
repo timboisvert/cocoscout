@@ -17,7 +17,7 @@ module ProductionPageHelper
     end
   end
 
-  # Where a Needs doing line goes (ProductionPage::NeedsDoing#path).
+  # Where a To do line goes (ProductionPage::NeedsDoing#path).
   def production_page_needs_path(production, item, path: item.path)
     kind, record = path
     case kind

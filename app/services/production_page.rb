@@ -71,7 +71,7 @@ class ProductionPage
     end
   end
 
-  # --- Needs doing --------------------------------------------------------
+  # --- To do (the heading never says "Needs doing") -----------------------
 
   def needs_doing
     @needs_doing ||= casting_items + vacancy_items + audition_items + told_items
