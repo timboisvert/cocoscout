@@ -327,8 +327,17 @@ RSpec.describe "Casting set-up", type: :request do
       expect(response).to redirect_to(manage_casting_settings_path(production))
       expect(production.reload).to be_casting_manual
 
+      # Attendance is a switch, not a tick box, and it sends "0" when off.
+      get manage_casting_settings_path(production)
+      attendance = doc.at_css("[data-settings-card='attendance']")
+      expect(attendance.at_css("input[type=checkbox][name='production[default_attendance_enabled]']")["class"]).to include("sr-only", "peer")
+      expect(attendance.at_css("input[type=hidden][name='production[default_attendance_enabled]']")["value"]).to eq("0")
+      expect(text_of(attendance)).to include("Take attendance at every new date", "When this is off, attendance is taken only at classes, workshops, and open mics.")
+
       patch manage_update_casting_settings_path(production), params: { production: { default_attendance_enabled: "1" } }
       expect(production.reload.default_attendance_enabled).to be(true)
+      patch manage_update_casting_settings_path(production), params: { production: { default_attendance_enabled: "0" } }
+      expect(production.reload.default_attendance_enabled).to be(false)
 
       get manage_casting_settings_section_path(production_id: production, section: "roles")
       expect(doc.css("[data-settings-card]").map { |card| card["data-settings-card"] }).to eq(%w[style roles])

@@ -51,16 +51,16 @@
     <p class="text-sm text-gray-600 mt-1">Whether you mark who showed up.</p>
   </div>
   <%= form_with url: manage_update_casting_settings_path(@production), method: :patch, local: true, data: { turbo_action: "replace" } do %>
-    <div class="px-6 py-5">
-      <label class="flex items-start gap-3 cursor-pointer">
-        <input type="hidden" name="production[default_attendance_enabled]" value="0">
-        <input type="checkbox" name="production[default_attendance_enabled]" value="1" <%= "checked" if @production.default_attendance_enabled? %>
-               class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
-        <span class="text-sm">
-          <span class="font-semibold text-gray-900">Take attendance at every new date</span>
-          <span class="block text-gray-600 mt-0.5">When this is off, attendance is taken only at classes, workshops, and open mics. Either way, you can change it for any single date.</span>
-        </span>
-      </label>
+    <%# A saved setting that is on or off is a switch, as Ticketing's
+        "Selling tickets" is (Tim, 2026-11-18: "that should be a toggle,
+        not a checkbox"). %>
+    <div class="px-6 py-4 flex items-start gap-3">
+      <%= render "shared/toggle_switch", name: "production[default_attendance_enabled]", checked: @production.default_attendance_enabled?,
+            hidden_false: true, aria_label: "Take attendance at every new date" %>
+      <div class="text-sm min-w-0">
+        <p class="font-semibold text-gray-900">Take attendance at every new date</p>
+        <p class="text-gray-600 mt-0.5">When this is off, attendance is taken only at classes, workshops, and open mics. Either way, you can change it for any single date.</p>
+      </div>
     </div>
     <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
       <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
