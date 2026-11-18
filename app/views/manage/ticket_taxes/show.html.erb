@@ -98,7 +98,7 @@
             <%= period_label %>: <%= money.call(unpaid_cents) %> to pay
           <% end %>
         </h2>
-        <p class="text-sm text-gray-600 mt-1">Tax CocoScout collected on your <%= { "tickets" => "tickets and products", "courses" => "course registrations" }.fetch(r.kind, "tickets, products and course registrations") %>. Your organization sends it to the government. When you have, mark it paid.</p>
+        <p class="text-sm text-gray-600 mt-1">Tax CocoScout collected on your <%= { "tickets" => "tickets and products", "courses" => "course registrations" }.fetch(r.kind, "tickets, products, and course registrations") %>. Your organization sends it to the government. When you have, mark it paid.</p>
       </div>
       <% if entries.any? %>
         <%# Phones: one card per tax, the amount to pay and its status. %>
@@ -198,7 +198,7 @@
       <ol class="mt-3 list-decimal pl-5 space-y-2 text-sm text-gray-700">
         <li><span class="font-medium text-gray-900">Find out which tax you owe.</span> Admission tickets are often taxed differently from products, and many cities exempt live performances in smaller rooms. Your accountant can tell you which applies, and the rate to enter in <%= link_to "Ticketing settings", settings_link, class: "text-pink-600 hover:text-pink-700 underline" %>.</li>
         <li><span class="font-medium text-gray-900">Register with the tax agency</span> to get an account number, if you don't have one yet.</li>
-        <li><span class="font-medium text-gray-900">File each period's return</span> with the numbers above: gross receipts, exempt receipts, taxable receipts and tax collected. Pick the period, and whether your agency counts a sale by the day it sold or the day of the show. Download the CSV for your accountant.</li>
+        <li><span class="font-medium text-gray-900">File each period's return</span> with the numbers above: gross receipts, exempt receipts, taxable receipts, and tax collected. Pick the period, and whether your agency counts a sale by the day it sold or the day of the show. Download the CSV for your accountant.</li>
         <li><span class="font-medium text-gray-900">Pay it</span> from your organization's bank account.</li>
         <li><span class="font-medium text-gray-900">Mark the period paid here.</span> The tax set aside for it becomes available again: withdraw it to your bank to cover the payment, or let your next payout run spend it.</li>
       </ol>
@@ -226,7 +226,7 @@
             <dd class="text-gray-700 mt-0.5">Things like bottles usually carry sales tax, filed with the Illinois Department of Revenue. Alcohol has its own taxes too. <%= link_to "MyTax Illinois", "https://mytax.illinois.gov/", target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700 underline" %></dd>
           </div>
         </dl>
-        <p class="text-xs text-gray-500 mt-4">Checked October 2026. Rules change, so confirm with the city, the county or your accountant.</p>
+        <p class="text-xs text-gray-500 mt-4">Checked October 2026. Rules change, so confirm with the city, the county, or your accountant.</p>
       </div>
     <% end %>
   </div>

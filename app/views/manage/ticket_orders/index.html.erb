@@ -18,7 +18,7 @@
     <%= hidden_field_tag :production_id, @production&.id if @production %>
     <%= hidden_field_tag :status, @status %>
     <%= render "shared/filters/filter_bar", bare: true, filter_groups: [
-      { label: "Find", partial: "shared/filters/search_input", locals: { placeholder: "Name, email or code", value: @query } },
+      { label: "Find", partial: "shared/filters/search_input", locals: { placeholder: "Name, email, or code", value: @query } },
       { separator: true },
       { label: "Orders", filters: [
         { text: "All", path: status_path.call(nil), active: @status.nil? },

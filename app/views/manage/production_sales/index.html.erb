@@ -14,10 +14,10 @@
   <p class="text-sm text-gray-600 mb-6">
     <% if @seller %>
       How <%= @production.name %> is selling at <%= @seller.name %>, date by date. You can see how each date is doing and share its ticket link. When <%= @seller.name %> allows comps for the people on the contract, you can issue them here too.
-      Prices, orders, refunds and the door stay with <%= @seller.name %>.
+      Prices, orders, refunds, and the door stay with <%= @seller.name %>.
     <% else %>
       How <%= @production.name %> is selling, date by date. You can look<%= ", issue comps within your allowance" if @level == :full %>, and share the link.
-      Prices, refunds and settings stay with <%= Current.organization.name %>.
+      Prices, refunds, and settings stay with <%= Current.organization.name %>.
     <% end %>
   </p>
 

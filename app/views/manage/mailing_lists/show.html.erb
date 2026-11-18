@@ -107,7 +107,7 @@
             <p class="text-sm text-gray-900 font-medium"><%= @list.contractor.name %></p>
             <p class="text-sm text-gray-600 mt-1">
               <% if @list.shared_with_contractor %>
-                Everyone on this list is shared with the people on <%= possessive(@list.contractor.name) %> contracts: each follower's name, email, when they joined and how.
+                Everyone on this list is shared with the people on <%= possessive(@list.contractor.name) %> contracts: each follower's name, email, when they joined, and how.
               <% else %>
                 This list isn't shared with <%= @list.contractor.name %>.
               <% end %>
@@ -266,7 +266,7 @@
               concat check_box_tag(:shared_with_contractor, "1", @list.shared_with_contractor, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500")
               concat(tag.span do
                 concat tag.span("Share this list with the people on their contracts", class: "block font-medium text-gray-900")
-                concat tag.span("They see everyone on the list: each follower's name, email, when they joined and how. The box at checkout then says that both of you can email the people who tick it.", class: "block text-xs text-gray-500 mt-0.5")
+                concat tag.span("They see everyone on the list: each follower's name, email, when they joined, and how. The box at checkout then says that both of you can email the people who tick it.", class: "block text-xs text-gray-500 mt-0.5")
               end)
             end)
           end

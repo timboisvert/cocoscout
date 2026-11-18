@@ -28,7 +28,7 @@ module Manage
       end
       added = intake.add!(entries, kind: kind, added_by_person: Current.user.person)
       left = entries.size - added
-      notice = if added.zero? then "Nobody new to add#{' (they were already on it, unsubscribed, bounced or not an email)' if left.positive?}."
+      notice = if added.zero? then "Nobody new to add#{' (they were already on it, unsubscribed, bounced, or not an email)' if left.positive?}."
       else "Added #{ActionController::Base.helpers.pluralize(added, 'person')} to #{@list.name}."
       end
       redirect_to manage_mailing_list_path(@list), notice: notice

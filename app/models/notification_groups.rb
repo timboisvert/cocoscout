@@ -21,15 +21,15 @@ module NotificationGroups
     Group.new("casting", "Casting and vacancies", "You're cast, a show changes, someone needs cover.", :yours, true, :person, true, true, %w[vacancy_invitations vacancy_notifications], "Casting"),
     Group.new("signups", "Sign-ups and auditions", "Spots, results, invitations to audition, reminders before a deadline.", :yours, true, :person, true, true, %w[audition_invitations], "Sign-ups"),
     Group.new("invitations", "Invitations", "To join a group or a production team, or to answer a questionnaire.", :yours, true, :person, true, true, %w[group_invitations], nil),
-    Group.new("pay", "Pay and payouts", "Your pay on its way or sent back; for managers, payout runs that bounce, come back or pay by themselves.", :yours, true, :person, true, true, [], "Pay"),
+    Group.new("pay", "Pay and payouts", "Your pay on its way or sent back; for managers, payout runs that bounce, come back, or pay by themselves.", :yours, true, :person, true, true, [], "Pay"),
     # Email always goes for contracts: it carries the signing link or the signed copy.
     Group.new("contracts", "Contracts", "Requests and reminders to sign, signed and countersigned, and ones that stall or expire.", :yours, true, :always, true, true, [], "Contracts"),
     # Push on by default, as for Casting (Tim, 2026-11-07): a shift notice
     # is the kind people want on their phone.
-    Group.new("shifts", "Shifts and hours", "Shifts assigned, changed or taken off, cover shifts, onboarding steps.", :yours, true, :person, true, true, [], "Shifts"),
-    Group.new("courses", "Courses", "Registrations, cancellations and session reminders.", :yours, false, :person, true, true, [], "Courses"),
+    Group.new("shifts", "Shifts and hours", "Shifts assigned, changed, or taken off; cover shifts; onboarding steps.", :yours, true, :person, true, true, [], "Shifts"),
+    Group.new("courses", "Courses", "Registrations, cancellations, and session reminders.", :yours, false, :person, true, true, [], "Courses"),
     Group.new("books", "Books and bank", "An invoice paid on its page, a bank statement matched to the books, a download that's ready, or one of those that didn't finish.", :yours, true, :person, true, true, [], "Books"),
-    Group.new("ticketing_sales", "Sales as they happen", "Each online sale, door sale, comp and pass.", :ticketing, true, :plan, false, true, [], "Ticketing"),
+    Group.new("ticketing_sales", "Sales as they happen", "Each online sale, door sale, comp, and pass.", :ticketing, true, :plan, false, true, [], "Ticketing"),
     Group.new("ticketing_reports", "Reports", "Daily summary, show day, after the show.", :ticketing, false, :plan, false, true, [], "Ticketing"),
     Group.new("ticketing_milestones", "Milestones", "Sales opened, almost sold out, sold out.", :ticketing, true, :plan, false, true, [], "Ticketing"),
     Group.new("ticketing_money", "Money", "Refunds, disputes, withdrawals, canceled shows.", :ticketing, true, :plan, false, true, [], "Ticketing"),

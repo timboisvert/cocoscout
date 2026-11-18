@@ -41,10 +41,10 @@
 %>
 
   <%= render layout: "shared/choice_card", locals: { name: "tickets[mode]", value: "cocoscout", selected: mode,
-        title: "Sell them on CocoScout", hint: (pro ? "Your own box office page, checkout and the door. 50¢ a paid ticket; the money fills in each show's financials and pays your people." : "Part of Pro: your own box office, 50¢ a paid ticket."), disabled: !pro } do %>
+        title: "Sell them on CocoScout", hint: (pro ? "Your own box office page, checkout, and the door. 50¢ a paid ticket; the money fills in each show's financials and pays your people." : "Part of Pro: your own box office, 50¢ a paid ticket."), disabled: !pro } do %>
     <% if pro && !cocoscout_fields %>
       <% if setup&.persisted? %>
-        <p class="text-sm text-gray-700">Ticket types, prices, dates and the page are set in <%= link_to "Ticketing", manage_production_ticketing_path(production), class: "font-medium text-pink-600 hover:text-pink-700" %><%= setup.enabled? ? "; it's on." : "; turn it on there when the prices are set." %></p>
+        <p class="text-sm text-gray-700">Ticket types, prices, dates, and the page are set in <%= link_to "Ticketing", manage_production_ticketing_path(production), class: "font-medium text-pink-600 hover:text-pink-700" %><%= setup.enabled? ? "; it's on." : "; turn it on there when the prices are set." %></p>
       <% else %>
         <p class="text-sm text-gray-700">Save, and you'll set the ticket types and prices in Ticketing next. Every date goes on sale right away once it's on.</p>
       <% end %>

@@ -130,7 +130,7 @@ class CocoScoutInvoice
     end
     if others.positive?
       lines << InvoiceDocument::Line.new(description: "#{others} #{others == 1 ? 'other person' : 'other people'} paid × #{dollars(PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS)}",
-                                         detail: "Performers, contractors and everyone else paid through CocoScout in #{month.strftime('%B %Y')}, counted once each.",
+                                         detail: "Performers, contractors, and everyone else paid through CocoScout in #{month.strftime('%B %Y')}, counted once each.",
                                          amount_cents: others * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS)
     end
     lines

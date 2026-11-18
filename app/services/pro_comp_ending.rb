@@ -13,11 +13,11 @@ class ProCompEnding
 
   # What Pro gives an organization, for the "what you'd lose" list.
   PRO_UNLOCKS = [
-    "Unlimited productions, shows and events",
+    "Unlimited productions, shows, and events",
     "Ticketing, with ticket money that pays your people with no bank debit",
-    "Money: show financials, payout runs, contracts and advances",
-    "Staffing: shifts, onboarding and paying your staff",
-    "Auditions, casting tables and company-wide reports"
+    "Money: show financials, payout runs, contracts, and advances",
+    "Staffing: shifts, onboarding, and paying your staff",
+    "Auditions, casting tables, and company-wide reports"
   ].freeze
 
   attr_reader :organization

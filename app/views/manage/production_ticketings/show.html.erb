@@ -22,7 +22,7 @@
   }
   links = @production.short_links.live.to_a
   actions = [
-    { text: "Settings", description: "Dates, ticket prices, products, sales, refunds and codes", path: settings_path, icon: icons[:cog] },
+    { text: "Settings", description: "Dates, ticket prices, products, sales, refunds, and codes", path: settings_path, icon: icons[:cog] },
     { text: "Orders", description: "Every order for these dates", path: manage_ticket_orders_path(production_id: @production.id), icon: icons[:orders] },
     { text: "Links", description: links.any? ? "#{pluralize(links.size, 'link')} · #{pluralize(links.sum(&:clicks_count), 'click')}" : "Short links for posters and posts", path: manage_production_ticketing_links_path(@production), icon: icons[:link] },
     { text: "Visibility", description: "Who can see every date's sales", path: manage_production_ticketing_visibility_path(@production), icon: icons[:share] }

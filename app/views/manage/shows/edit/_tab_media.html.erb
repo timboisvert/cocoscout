@@ -25,7 +25,7 @@
       url: own_wide ? url_for(@show.safe_wide_image_variant || @show.wide_image) : production_wide_url,
       inherited_url: production_wide_url, noun: "wide image",
       empty: "No wide image yet, here or on #{production.name}. Ticket pages and shared links use the poster.",
-      accept: "image/jpeg,image/png,image/webp", spec: "16:9, ideally 1920×1080 (at least 1200×675). JPG, PNG or WebP up to 10 MB.", min: [ 1200, 675 ],
+      accept: "image/jpeg,image/png,image/webp", spec: "16:9, ideally 1920×1080 (at least 1200×675). JPG, PNG, or WebP up to 10 MB.", min: [ 1200, 675 ],
       img_class: "w-full h-auto rounded shadow-sm" }
   ]
 %>
@@ -41,7 +41,7 @@
       <div class="w-9 h-12 flex-shrink-0 rounded border-2 border-pink-300 bg-pink-50"></div>
       <div>
         <div class="font-medium text-gray-900">Poster · 3:4, tall</div>
-        <div class="text-gray-600 mt-0.5">What people see while browsing: show lists, sign-ups, casting, messages and the public listing.</div>
+        <div class="text-gray-600 mt-0.5">What people see while browsing: show lists, sign-ups, casting, messages, and the public listing.</div>
       </div>
     </div>
     <div class="flex gap-3">

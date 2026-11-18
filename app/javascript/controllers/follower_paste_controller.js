@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 
-const CHECK_FAILED = "Couldn't check that paste just now. You can still add them: we'll skip anyone already on the list, unsubscribed or bounced."
+const CHECK_FAILED = "Couldn't check that paste just now. You can still add them: we'll skip anyone already on the list, unsubscribed, or bounced."
 
 // The Add people window on a mailing list: one person, or many pasted, on
 // the usual tabs (tabs_controller); this swaps the footer's buttons to match

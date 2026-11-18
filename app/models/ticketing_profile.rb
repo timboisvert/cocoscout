@@ -52,7 +52,7 @@ class TicketingProfile < ApplicationRecord
 
   validates :slug, presence: true, uniqueness: { message: "is already another box office's address" },
                    format: { with: /\A[a-z0-9][a-z0-9-]{1,48}[a-z0-9]\z/,
-                             message: "can use lowercase letters, numbers and dashes" }
+                             message: "can use lowercase letters, numbers, and dashes" }
   validate :slug_not_reserved
   validate :slug_not_someone_elses_old_address
   validates :default_fee_mode, inclusion: { in: FEE_MODES }

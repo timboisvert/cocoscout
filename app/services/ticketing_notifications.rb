@@ -54,8 +54,8 @@ class TicketingNotifications
 
   PLANS = [
     Plan.new("everything", "Everything", "Every Ticketing email, and any new kind as it's added."),
-    Plan.new("usual", "The usual", "The daily summary, show reports, milestones and money problems. Managers start here."),
-    Plan.new("money", "Just the money", "Refunds, refund problems, disputed charges, withdrawals and canceled shows."),
+    Plan.new("usual", "The usual", "The daily summary, show reports, milestones, and money problems. Managers start here."),
+    Plan.new("money", "Just the money", "Refunds, refund problems, disputed charges, withdrawals, and canceled shows."),
     Plan.new("custom", "Pick my own", "Choose each email. Nothing new arrives until it's switched on."),
     Plan.new("nothing", "Nothing", "No Ticketing email.")
   ].freeze

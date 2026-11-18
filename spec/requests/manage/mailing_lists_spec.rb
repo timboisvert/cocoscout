@@ -97,7 +97,7 @@ RSpec.describe "Mailing lists", type: :request do
     expect {
       post manage_mailing_list_followers_path(list), params: { text: paste, permission: "1" }
     }.not_to change { list.mailing_list_memberships.count }
-    expect(flash[:notice]).to eq("Nobody new to add (they were already on it, unsubscribed, bounced or not an email).")
+    expect(flash[:notice]).to eq("Nobody new to add (they were already on it, unsubscribed, bounced, or not an email).")
   end
 
   it "says when a Check finds new people, without the nothing-to-add note" do

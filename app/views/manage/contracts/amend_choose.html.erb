@@ -27,7 +27,7 @@
     <% group.call("Small changes", "Nothing on the signed contract moves.") do %>
       <%= row.call(amend_basics_manage_contract_path(@contract), "pencil", "Basic info", "The production's name and description.") %>
       <%= row.call(amend_people_manage_contract_path(@contract), "users", "Who's on it",
-                   "The people on #{@contract.contractor_name}'s side who see the dates, the ticket sales and what the contract pays.") %>
+                   "The people on #{@contract.contractor_name}'s side who see the dates, the ticket sales, and what the contract pays.") %>
       <%= row.call(amend_space_manage_contract_path(@contract), "building", "The room", "A different space at the same venue, for one date or all of them.") %>
     <% end %>
 

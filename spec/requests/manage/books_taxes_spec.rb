@@ -30,6 +30,6 @@ RSpec.describe "Manage::BooksTaxes", type: :request do
   it "groups income the 990-EZ way for a nonprofit" do
     org.update!(books_nonprofit: true)
     get manage_money_taxes_path(year: year)
-    expect(response.body).to include("Support and revenue (990-EZ, Part I)", "Contributions, gifts and grants", "$5,000.00", "Change in net assets")
+    expect(response.body).to include("Support and revenue (990-EZ, Part I)", "Contributions, gifts, and grants", "$5,000.00", "Change in net assets")
   end
 end

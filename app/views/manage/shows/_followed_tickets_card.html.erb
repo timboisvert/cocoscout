@@ -20,7 +20,7 @@
   %>
   <div class="border border-gray-200 rounded-lg overflow-hidden bg-white" data-followed-tickets-card>
     <%= render "shared/section_heading", padding: "px-4 py-3", title: "Tickets at #{seller.name}",
-          intro: "#{seller.name} sells the tickets for this date. Prices, orders, refunds and the door are theirs." do %>
+          intro: "#{seller.name} sells the tickets for this date. Prices, orders, refunds, and the door are theirs." do %>
       <% if level == :full %>
         <%= render "shared/button", text: "See ticket sales", variant: "secondary", size: "small", path: manage_production_sale_path(production, listing) %>
       <% end %>

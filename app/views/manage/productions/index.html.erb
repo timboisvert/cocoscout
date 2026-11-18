@@ -140,7 +140,7 @@
     <p class="text-gray-600">No archived productions.</p>
     </div>
 <% else %>
-    <%= render "shared/empty_state", icon: "calendar", title: "No productions yet", body: "A production is a show, a run, a festival or a class with a cast and crew.",
+    <%= render "shared/empty_state", icon: "calendar", title: "No productions yet", body: "A production is a show, a run, a festival, or a class with a cast and crew.",
           actions: (current_user_is_global_manager? ? [ { text: "Create your first production", path: manage_productions_wizard_path } ] : []) %>
 <% end %>
 </div>

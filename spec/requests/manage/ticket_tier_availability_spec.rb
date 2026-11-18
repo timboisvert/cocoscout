@@ -144,7 +144,7 @@ RSpec.describe "Ticket type availability on one date", type: :request do
 
   it "refuses an unknown status, and another organization's dates" do
     _, alert = set(vip, "door_only")
-    expect(alert).to eq("Pick on sale, sold out or hidden.")
+    expect(alert).to eq("Pick on sale, sold out, or hidden.")
     expect(vip.reload.availability).to eq("on_sale")
 
     theirs = TicketListing.create!(show: create(:show, production: create(:production, organization: create(:organization, :pro)), date_and_time: 3.days.from_now), status: "on_sale")

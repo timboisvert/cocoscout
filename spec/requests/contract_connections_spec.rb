@@ -472,7 +472,7 @@ RSpec.describe "Contract connections", type: :request do
       on_sale!
       sign_in(user)
       get my_contracts_path
-      expect(response.body).to include("dates, ticket sales and followers are in The Holly Problem now").and include("Open The Holly Problem")
+      expect(response.body).to include("dates, ticket sales, and followers are in The Holly Problem now").and include("Open The Holly Problem")
       expect(response.body).not_to include(my_show_tickets_path(contract_show))
 
       # Someone on the contract who doesn't run The Holly Problem keeps the My views:

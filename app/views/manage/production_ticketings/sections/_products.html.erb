@@ -30,7 +30,7 @@
         and follows its own revenue rule; on, both are set here. %>
     <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="fieldset-toggle" data-settings-card="products">
       <%= render "manage/ticketing/own_switch", title: "Products at checkout", what: "standard price", follows: "each product", settings_path: manage_ticket_products_path,
-            intro: "After picking their tickets, buyers of any date of #{production.name} can add the ones you tick. What they buy shows on their order, on the guest list and at the door.",
+            intro: "After picking their tickets, buyers of any date of #{production.name} can add the ones you tick. What they buy shows on their order, on the guest list, and at the door.",
             only: production.name, name: "production_ticketing[own_product_prices]", id: "production_ticketing_own_product_prices", checked: own %>
       <ul class="divide-y divide-gray-100">
         <% products.each do |product| %>

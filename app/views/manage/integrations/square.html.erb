@@ -24,7 +24,7 @@
         <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gray-900 text-sm font-bold text-white">Sq</span>
         <div>
           <div class="font-semibold text-gray-900">Connect Square</div>
-          <div class="text-sm text-gray-600">Bar, food and merch sales, tips, sales tax and fees, onto the day's worksheet.</div>
+          <div class="text-sm text-gray-600">Bar, food, and merch sales, tips, sales tax, and fees, onto the day's worksheet.</div>
         </div>
       </div>
       <p class="text-sm text-gray-700">You sign in on Square's own page and choose to let CocoScout read your orders, payments, refunds and locations. CocoScout cannot change anything in Square, never sees your Square password, and you can disconnect here any time.</p>
@@ -45,7 +45,7 @@
     <div class="rounded-xl border <%= integration.status == 'error' ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50' %> px-5 py-4 mb-5 flex flex-wrap items-start gap-4">
       <span class="inline-flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-gray-900 text-sm font-bold text-white">Sq</span>
       <div class="flex-1 min-w-[16rem] text-sm text-gray-800">
-        <b>Connected</b><% if integration.merchant_name %> as <%= integration.merchant_name %><% end %><% if integration.connected_by %>, by <%= integration.connected_by.default_person&.name || integration.connected_by.email_address %><% end %><% if integration.connected_at %> on <%= integration.connected_at.strftime("%b %-d, %Y") %><% end %>, through Square's own sign-in. CocoScout can read orders, payments, refunds and locations; it cannot change anything in Square.
+        <b>Connected</b><% if integration.merchant_name %> as <%= integration.merchant_name %><% end %><% if integration.connected_by %>, by <%= integration.connected_by.default_person&.name || integration.connected_by.email_address %><% end %><% if integration.connected_at %> on <%= integration.connected_at.strftime("%b %-d, %Y") %><% end %>, through Square's own sign-in. CocoScout can read orders, payments, refunds, and locations; it cannot change anything in Square.
         <% if integration.status == "error" %><div class="mt-1 text-amber-900">The last pull did not finish: <%= integration.last_error %></div><% end %>
       </div>
       <div class="text-xs text-gray-600 sm:text-right">

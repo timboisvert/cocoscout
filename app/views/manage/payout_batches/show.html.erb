@@ -575,7 +575,7 @@
         </div>
         <%= render "shared/confirm_modal", id: discard_cid,
               title: "Discard this draft run?",
-              message: "This removes the run and returns any pulled-in staff hours to what's waiting to be paid. Bonuses, reimbursements, tips and manually-typed amounts on this run are cleared. This can't be undone.",
+              message: "This removes the run and returns any pulled-in staff hours to what's waiting to be paid. Bonuses, reimbursements, tips, and manually-typed amounts on this run are cleared. This can't be undone.",
               confirm_text: "Discard run",
               url: manage_payout_batch_path(@batch),
               method: :delete %>

@@ -13,7 +13,7 @@ class BooksTaxSummary
 
   # Schedule C lines, each from the accounts that feed it.
   SPENDING_LINES = [
-    [ "Contract labor", %w[performer_pay instructor_pay contractor_pay], "Performers, instructors and contractors (1099 total beside it)" ],
+    [ "Contract labor", %w[performer_pay instructor_pay contractor_pay], "Performers, instructors, and contractors (1099 total beside it)" ],
     [ "Wages", %w[staff_pay], "Staff pay" ],
     [ "Cost of goods sold", %w[bar_purchases merchandise_purchases], "Bar stock and merchandise bought to sell" ],
     [ "Rent", %w[venue], "Venue and space" ],
@@ -26,10 +26,10 @@ class BooksTaxSummary
     [ "Insurance", %w[insurance], nil ],
     [ "Travel and meals", %w[travel food_and_drink], nil ],
     [ "Software and subscriptions", %w[software], "CocoScout and other software" ],
-    [ "Fees", %w[ticketing_fees fees_paid_by_buyers course_fees bank_fees], "Ticketing, card, platform and bank fees, less what buyers paid" ]
+    [ "Fees", %w[ticketing_fees fees_paid_by_buyers course_fees bank_fees], "Ticketing, card, platform, and bank fees, less what buyers paid" ]
   ].freeze
   NONPROFIT_INCOME_GROUPS = [
-    [ "Contributions, gifts and grants", %w[sponsorship_income donation_income grant_income fundraising_income] ],
+    [ "Contributions, gifts, and grants", %w[sponsorship_income donation_income grant_income fundraising_income] ],
     [ "Membership dues", %w[membership_income] ],
     [ "Program service revenue", %w[ticket_income product_income unused_pass_income course_income contract_income] ],
     [ "Sales of inventory", %w[bar_income merchandise_income] ]

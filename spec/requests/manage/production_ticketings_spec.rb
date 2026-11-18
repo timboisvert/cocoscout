@@ -100,7 +100,7 @@ RSpec.describe "Production ticketing", type: :request do
     expect(response.body).to include("Selling", "All performances", "New dates join on their own",
                                      manage_ticket_listing_path(first_show.ticket_listing), "/t/#{production.reload.short_link.code}")
     # One Settings link, the way a date's page has, instead of a link per tab.
-    expect(response.body).to include("Dates, ticket prices, products, sales, refunds and codes", %(href="#{manage_edit_production_ticketing_path(production)}"))
+    expect(response.body).to include("Dates, ticket prices, products, sales, refunds, and codes", %(href="#{manage_edit_production_ticketing_path(production)}"))
     expect(response.body).not_to include("Select dates", "Tickets and prices")
     get manage_ticket_listings_path
     expect(response.body).to include("Rising Stars", "2 dates")
@@ -226,7 +226,7 @@ RSpec.describe "Production ticketing", type: :request do
     expect(production.reload.ticket_page_key).to eq("the-holly-problem")
 
     save.("no")
-    expect(flash[:alert]).to eq("The address must be 3 to 30 lowercase letters, numbers and hyphens")
+    expect(flash[:alert]).to eq("The address must be 3 to 30 lowercase letters, numbers, and hyphens")
     other = create(:production, organization: org, name: "Other Show")
     save.(other.public_key)
     expect(flash[:alert]).to eq("That address is already taken by another page.")
