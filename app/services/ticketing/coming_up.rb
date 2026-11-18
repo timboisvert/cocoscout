@@ -30,7 +30,7 @@ module Ticketing
       ids = TicketListing.from(ranked, :ranked).where("ranked.place <= ?", dates_per_production).pluck("ranked.id")
       totals = upcoming.group("ticket_listings.production_id").count
       listings = @organization.ticket_listings.joins(:show)
-                              .includes(production: { wide_image_attachment: :blob }, show: [ :location, :location_space, { wide_image_attachment: :blob } ])
+                              .includes(production: { wide_image_attachment: :blob }, show: [ :location_space, { location: :location_spaces }, { wide_image_attachment: :blob } ])
                               .where(id: ids).order("shows.date_and_time", :id).to_a
       stats = ListingStats.for(listings)
       listings.group_by(&:production_id).values.map do |dates|

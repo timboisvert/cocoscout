@@ -10,9 +10,13 @@
 class TicketShowChange
   Draft = Data.define(:orders, :subject, :body)
 
+  # A buyer told no room was told the location alone (they bought before
+  # every show had a room): the room a show was given since is not a move,
+  # and nobody is asked to email buyers about it (Tim, 2026-11-18).
   CHANGED = "ticket_orders.told_starts_at IS DISTINCT FROM shows.date_and_time OR " \
             "ticket_orders.told_location_id IS DISTINCT FROM shows.location_id OR " \
-            "ticket_orders.told_location_space_id IS DISTINCT FROM shows.location_space_id"
+            "(ticket_orders.told_location_space_id IS NOT NULL AND " \
+            "ticket_orders.told_location_space_id IS DISTINCT FROM shows.location_space_id)"
 
   # Every order, anywhere, whose buyer was told something else.
   def self.changed_orders
@@ -67,11 +71,14 @@ class TicketShowChange
     words = []
     words << "date" if told && told.to_date != show.date_and_time.to_date
     words << "time" if told && told.strftime("%H:%M") != show.date_and_time.strftime("%H:%M")
-    words << "place" if order.told_location_id != show.location_id || order.told_location_space_id != show.location_space_id
+    words << "place" if order.told_location_id != show.location_id ||
+                        (order.told_location_space_id && order.told_location_space_id != show.location_space_id)
     words.to_sentence.presence || "time"
   end
 
   def self.described(time, location, space)
+    # A location's only room (every location has one) adds nothing to the place.
+    space = nil unless location&.several_rooms?
     venue = [ location&.name, space&.name ].compact.uniq.join(", ")
     [ time.strftime("%A, %B %-d at %-l:%M %p"), (" at #{venue}" if venue.present?) ].compact.join(",")
   end

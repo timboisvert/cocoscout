@@ -10,7 +10,7 @@
   organization = production.organization
   sessions = @all_sessions.to_a
   first = sessions.find { |s| s.date_and_time >= Time.current } || sessions.first
-  venue = first && [ first.location&.name, first.location_space&.name ].compact.uniq.join(" · ")
+  venue = first && [ first.location&.name, first.room_name ].compact.uniq.join(" · ")
   location = sessions.map(&:location).compact.first
   address = location && [ location.address1, location.city, location.state ].compact_blank.join(", ")
   map_url = address.present? ? "https://www.google.com/maps/search/?api=1&query=#{ERB::Util.url_encode([ location.name, address ].compact.join(', '))}" : nil

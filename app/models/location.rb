@@ -34,6 +34,12 @@ class Location < ApplicationRecord
   after_create :set_as_default_if_only_location
   after_create :ensure_a_room
 
+  # Whether its rooms are worth naming (Tim, 2026-11-18): every location
+  # has a room now, and a location's only room says nothing its own name
+  # doesn't. So a room is named, colored, and offered in a picker only where
+  # there are two or more; a one-room location reads as the location alone.
+  def several_rooms? = location_spaces.size > 1
+
   # The room a show lands in when none is picked.
   def default_room
     location_spaces.find_by(default: true) || location_spaces.order(:id).first

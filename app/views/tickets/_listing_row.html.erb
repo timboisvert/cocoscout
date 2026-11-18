@@ -3,7 +3,7 @@
   show = listing.show
   note = public_listing_note(listing)
   from = listing_from_price_cents(listing)
-  place = [ show.location&.name, show.location_space&.name ].compact.uniq.join(" · ")
+  place = [ show.location&.name, show.room_name ].compact.uniq.join(" · ")
 %>
 <%= link_to tickets_event_path(org: profile.slug, event: listing.slug, **embed_params),
       class: "flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 hover:border-pink-400 transition-colors" do %>

@@ -1322,6 +1322,24 @@ class Show < ApplicationRecord
   # Where it happens: its own location, or the venue of the date it follows.
   def venue_location = location || (linked_show&.location if follows_contract?)
 
+  # The room worth naming: nil at a location with one room (Tim, 2026-11-18;
+  # Location#several_rooms?). Every show with a location sits in a room now,
+  # and "Main room" alone says nothing, so those shows read as their location
+  # the way they did before rooms were on everything.
+  def named_room
+    room = location_space
+    return nil unless room
+
+    place = location_id == room.location_id ? location : room.location
+    room if place&.several_rooms?
+  end
+
+  def room_name = named_room&.name
+
+  # Where it is, in a word: the room at a location with several, else the
+  # location.
+  def place_name = room_name || location&.name
+
   # The organization whose date this follows, for "Booked at …".
   def followed_organization = (linked_show&.production&.organization if follows_contract?)
 

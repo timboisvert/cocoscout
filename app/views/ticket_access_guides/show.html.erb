@@ -1,12 +1,14 @@
-<% content_for :title, "Accessibility · #{@room.name} · #{@organization.name}" %>
 <%
-  place = [ @location.name, @room.name ].uniq.join(" · ")
+  # A location's only room goes by the location's name (Tim, 2026-11-18).
+  room_name = @room.known_as
+  place = [ @location.name, room_name ].uniq.join(" · ")
   address = [ @location.address1, @location.city, @location.state ].compact_blank.join(", ")
 %>
+<% content_for :title, "Accessibility · #{room_name} · #{@organization.name}" %>
 <div class="mx-auto max-w-xl space-y-5">
   <div class="text-center space-y-1.5">
     <p class="text-sm font-medium text-pink-700"><%= @organization.name %></p>
-    <h1 class="text-3xl sm:text-4xl coustard-regular text-gray-900">Getting to <%= @room.name %></h1>
+    <h1 class="text-3xl sm:text-4xl coustard-regular text-gray-900">Getting to <%= room_name %></h1>
     <p class="text-sm text-gray-600"><%= place %><% if address.present? %> · <%= address %><% end %></p>
     <% if @room.floor_label.present? %><p class="text-sm text-gray-600"><%= @room.floor_label %></p><% end %>
   </div>

@@ -24,7 +24,10 @@ class CourseSessionChange
     sessions.filter_map do |show|
       told = registration.told_sessions[show.id.to_s]
       next unless told
-      next if told["at"] == show.date_and_time.iso8601 && told["location_id"] == show.location_id && told["space_id"] == show.location_space_id
+      # Told no room: told the location alone, so the room a session was
+      # given since (every show has one now) is not a move.
+      same_room = told["space_id"].nil? || told["space_id"] == show.location_space_id
+      next if told["at"] == show.date_and_time.iso8601 && told["location_id"] == show.location_id && same_room
 
       Moved.new(show: show, was_at: Time.zone.parse(told["at"].to_s), was_location: Location.find_by(id: told["location_id"]),
                 was_space: LocationSpace.find_by(id: told["space_id"]))
@@ -75,13 +78,13 @@ class CourseSessionChange
     words = []
     words << "date" if moved.was_at && moved.was_at.to_date != show.date_and_time.to_date
     words << "time" if moved.was_at && moved.was_at.strftime("%H:%M") != show.date_and_time.strftime("%H:%M")
-    words << "place" if moved.was_location&.id != show.location_id || moved.was_space&.id != show.location_space_id
+    words << "place" if moved.was_location&.id != show.location_id || (moved.was_space && moved.was_space.id != show.location_space_id)
     words.to_sentence.presence || "time"
   end
 
   def self.described(time, location, space)
     # A location's only room (every location has one) adds nothing to the place.
-    space = nil if space && location && location.location_spaces.count == 1
+    space = nil unless location&.several_rooms?
     venue = [ location&.name, space&.name ].compact.uniq.join(", ")
     [ time.strftime("%A, %B %-d at %-l:%M %p"), (" at #{venue}" if venue.present?) ].compact.join(",")
   end

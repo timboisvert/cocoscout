@@ -14,7 +14,7 @@
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <div class="lg:col-span-2 space-y-6">
       <div class="bg-white border border-gray-200 rounded-lg" data-controller="seat-map" data-seat-map-mode-value="edit" data-seat-map-payload-value="<%= @payload.to_json %>">
-        <%= render "shared/section_heading", title: "#{@chart.name}", intro: "#{@chart.location_space.location.name} · #{@chart.location_space.name} · #{pluralize(@chart.seat_count, 'seat')}#{", standing room for #{@chart.standing_capacity}" if @chart.standing_capacity.positive?} · #{@chart.status}" do %>
+        <%= render "shared/section_heading", title: "#{@chart.name}", intro: "#{@chart.location_space.place_name} · #{pluralize(@chart.seat_count, 'seat')}#{", standing room for #{@chart.standing_capacity}" if @chart.standing_capacity.positive?} · #{@chart.status}" do %>
           <%= form_with url: manage_seat_chart_path(@chart), method: :patch, data: { turbo: false }, class: "flex items-center gap-2" do %>
             <%= text_field_tag "seat_chart[name]", @chart.name, class: input + " w-48", "aria-label": "Chart name" %>
             <%= render "shared/button", text: "Rename", variant: "secondary", size: "xs", type: :submit %>

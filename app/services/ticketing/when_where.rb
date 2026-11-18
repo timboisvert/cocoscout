@@ -12,7 +12,7 @@ module Ticketing
         date: show.date_and_time.strftime("%A, %B %-d"),
         time: show.date_and_time.strftime("%-l:%M %p"),
         venue: location&.name,
-        room: (show.location_space&.name if show.location_space&.name != location&.name),
+        room: (show.room_name if show.room_name != location&.name),
         address: address.presence,
         online: show.is_online,
         directions_url: address.present? ? "https://www.google.com/maps/search/?api=1&query=#{ERB::Util.url_encode([ location.name, address ].join(', '))}" : nil,

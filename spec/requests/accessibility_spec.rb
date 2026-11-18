@@ -86,7 +86,8 @@ RSpec.describe "Accessibility", type: :request do
 
     get tickets_access_guide_path(org: "starsandgarters", room: room.id)
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Getting to Main room", "2 wheelchair spaces", "Front left, level with the stage", "Headsets at the bar", "Ask us", "access@lodge.example")
+    # A location's only room goes by the location's name (Tim, 2026-11-18).
+    expect(response.body).to include("Getting to The Lodge", "2 wheelchair spaces", "Front left, level with the stage", "Headsets at the bar", "Ask us", "access@lodge.example")
     expect(response.body).not_to include("Accessible restroom for guests")
   end
 

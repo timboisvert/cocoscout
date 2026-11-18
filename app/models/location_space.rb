@@ -35,6 +35,15 @@ class LocationSpace < ApplicationRecord
     "#{location.name} - #{name}"
   end
 
+  # A location's only room is never named (Location#several_rooms?).
+  def worth_naming? = location.several_rooms?
+
+  # What to call it alone: its own name, or the location's for its only room.
+  def known_as = worth_naming? ? name : location.name
+
+  # "Riverside Hall · Studio B", or just "Riverside Hall" for its only room.
+  def place_name = worth_naming? ? "#{location.name} · #{name}" : location.name
+
   # What's coming up in this room: shows, rehearsals, classes, every kind of
   # event on the calendar, soonest first.
   def upcoming_shows(limit: 20)

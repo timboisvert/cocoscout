@@ -1,7 +1,7 @@
 <%
   show = @listing.show
   tickets = @order.tickets.select { |t| Ticket::SOLD_STATUSES.include?(t.status) }.sort_by(&:id)
-  place = [ show.location&.name, show.location_space&.name ].compact.uniq.join(" · ")
+  place = [ show.location&.name, show.room_name ].compact.uniq.join(" · ")
   waiting = @order.pending? && @order.stripe_payment_intent_id.present?
   moved = @order.exchanges_out.includes(to_order: { ticket_listing: :show }).order(:id).to_a
   items = @order.ticket_order_items.sold.order(:id).to_a

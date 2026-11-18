@@ -117,6 +117,35 @@ RSpec.describe GoogleCalendarSync do
       expect(entry(roomless(show_at(showtime + 2.days))).payload[:colorId]).to eq("8")
     end
 
+    # Every show with a location sits in a room (1.4), and a location's only
+    # room is never named (Tim, 2026-11-18): its events must come out exactly
+    # as they did when the show had no room, so shipping rooms for every
+    # location rewrites nothing on anyone's calendar.
+    it "leaves a one-room location's room out of the title, the color, and the place" do
+      integration.update!(settings: integration.settings.merge("other_color" => "8"))
+      hall = create(:location, organization: org, name: "Riverside Hall", address1: "12 River Rd.", address2: nil, city: "Chicago", state: "IL", postal_code: "60601")
+      only_room = hall.location_spaces.sole
+      show = show_at(showtime + 3.days, location: hall, location_space: nil, call_time: showtime + 3.days - 1.hour, call_time_enabled: true)
+
+      expect(show.location_space).to eq(only_room)
+      expect(only_room.name).to eq("Main room")
+      expect(entry(show).title).to eq("Rising Stars · call 6:30, show 7:30")
+      expect(entry(show).payload[:colorId]).to eq("8")
+      expect(entry(show).payload[:location]).to eq("Riverside Hall, 12 River Rd., Chicago, IL 60601")
+      as_it_was = entry(show).digest
+      expect(entry(roomless(show)).digest).to eq(as_it_was)
+
+      # A color someone chose for that room while it was one of several counts for nothing now.
+      integration.update!(settings: integration.settings.merge("room_colors" => integration.settings["room_colors"].merge(only_room.id.to_s => "2")))
+      expect(entry(show.reload).payload[:colorId]).to eq("8")
+      expect(org.calendar_rooms).to contain_exactly(mainstage, ruse, location.location_spaces.find_by!(name: "Main room"))
+
+      # A second room, and the room is worth saying.
+      hall.location_spaces.create!(name: "Studio B")
+      show.update_columns(location_space_id: only_room.id)
+      expect(entry(Show.find(show.id)).title).to eq("Rising Stars · Main room · call 6:30, show 7:30")
+    end
+
     it "says CocoScout manages it and links back, with the room and address, and no numbers" do
       ProductionPermission.create!(user: create(:user).tap { |u| create(:person, user: u, name: "Veronica Ortiz").then { |p| u.update!(default_person: p) } },
                                    production: production, role: "manager")

@@ -152,7 +152,7 @@ class ProductionPage
   def ticket_listings
     @ticket_listings ||= organization.ticket_listings.where(production: production).where.not(status: "canceled").joins(:show)
                                      .where(shows: { canceled: [ false, nil ] }).where("shows.date_and_time >= ?", Time.current.beginning_of_day)
-                                     .order("shows.date_and_time").includes(show: %i[location location_space space_rental]).to_a
+                                     .order("shows.date_and_time").includes(show: [ :location_space, :space_rental, { location: :location_spaces } ]).to_a
   end
 
   def ticket_stats
@@ -260,7 +260,7 @@ class ProductionPage
 
   def load_dates(cast_loader)
     scope = production.shows.where("date_and_time >= ?", Time.current.beginning_of_day)
-    listed = scope.includes(:production, :location, :location_space, :space_rental).order(:date_and_time).limit(LISTED + 12).to_a
+    listed = scope.includes(:production, :location_space, :space_rental, location: :location_spaces).order(:date_and_time).limit(LISTED + 12).to_a
                   .reject { |show| show.ends_at < Time.current }.first(LISTED)
     # Everything still to start, plus what's on right now.
     @upcoming_count = scope.where(canceled: [ false, nil ]).where("date_and_time >= ?", Time.current).count +

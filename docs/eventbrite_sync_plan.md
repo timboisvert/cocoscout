@@ -1,6 +1,6 @@
 # Eventbrite: list our shows there and keep the seats in step
 
-**Held (Tim, 2026-11-04): part of V1.4, not to be built until V1.3 is deployed.**
+**Part of V1.4, and no longer held (Tim, 2026-11-18).** It was held on 2026-11-04 until V1.3 was deployed; V1.3 went live on 2026-11-11.
 
 Plan, 2026-11-04. Not built. Tim's model (11/4): the integration belongs to the organization, like Square. Listing is switched on in ticketing, at three levels. Both sites sell from one pool of seats, and CocoScout keeps the two counts in step.
 

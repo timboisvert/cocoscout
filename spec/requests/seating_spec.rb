@@ -45,9 +45,11 @@ RSpec.describe "Seating", type: :request do
 
   it "draws a chart for a room from Rooms and seating, marks seats, and makes it active" do
     get manage_ticketing_settings_path(section: "rooms")
-    expect(response.body).to include("Draw one for this room", manage_new_seat_chart_path(room_id: room.id))
+    expect(response.body).to include("Draw a chart", manage_new_seat_chart_path(room_id: room.id))
     get manage_new_seat_chart_path(room_id: room.id)
-    expect(response.body).to include("A chart for Main room")
+    # A location's only room goes by the location's name (Tim, 2026-11-18).
+    expect(response.body).to include("A chart for The Lodge")
+    expect(response.body).not_to include("Main room")
 
     chart = draw_chart
     expect(chart).to have_attributes(status: "active", seat_count: 26, standing_capacity: 40, kind: "mixed")
@@ -162,7 +164,75 @@ RSpec.describe "Seating", type: :request do
     expect(listing.reload.seated?).to be(false)
     expect(listing.inventory.capacity).to be_nil
     get manage_edit_ticket_listing_path(listing, section: "seating")
-    expect(response.body).to include("general admission")
+    expect(response.body).to include("This date sells:", "General admission", "Override", "for this date")
+
+    # The override switched off (its fields are disabled and send nothing):
+    # the date follows its production again.
+    patch manage_ticket_listing_path(listing), params: { section: "seating", ticket_listing: { own_seating: "0" } }
+    expect(listing.reload).to have_attributes(seating_mode: nil, seat_chart_id: nil)
+    expect(listing.seated?).to be(true)
+  end
+
+  # The one override control (manage/ticketing/own_switch): off, every date
+  # follows its room.
+  it "lets a production go back to following its rooms" do
+    chart = draw_chart
+    zone!(chart)
+    get manage_edit_production_ticketing_path(production, section: "seating")
+    expect(response.body).to include("Override", "seating settings", "for Boylesque", "production_ticketing_own_seating", "Concert layout (The Lodge, 26 seats)")
+
+    patch manage_update_production_ticketing_path(production, section: "seating"), params: { production_ticketing: { own_seating: "0" } }
+    expect(response).to redirect_to(manage_edit_production_ticketing_path(production, section: "seating"))
+    expect(setup.reload).to have_attributes(seating_mode: nil, seat_chart_id: nil)
+    expect(flash[:notice]).to include("Each date sells the way its room says.")
+  end
+
+  # Tim, 2026-11-18: an archived location leaves 1.4's Rooms and seating tab
+  # and the seat-chart pickers; whatever already points at it keeps it.
+  describe "an archived location" do
+    let!(:annex) { create(:location, organization: org, name: "The Old Annex") }
+    let!(:annex_chart) { org.seat_charts.create!(location_space: annex.default_room, name: "Annex rows", status: "active") }
+
+    it "is not on the Rooms and seating tab" do
+      get manage_ticketing_settings_path(section: "rooms")
+      expect(response.body).to include("The Lodge", "The Old Annex")
+
+      annex.archive!
+      get manage_ticketing_settings_path(section: "rooms")
+      expect(response.body).to include("The Lodge")
+      expect(response.body).not_to include("The Old Annex")
+    end
+
+    it "leaves the seat-chart pickers, except where its chart is already picked" do
+      chart = draw_chart
+      get manage_edit_production_ticketing_path(production, section: "seating")
+      expect(response.body).to include("Concert layout", "Annex rows (The Old Annex")
+
+      annex.archive!
+      expect(org.seat_charts.pickable).to contain_exactly(chart)
+      get manage_edit_production_ticketing_path(production, section: "seating")
+      expect(response.body).to include("Concert layout")
+      expect(response.body).not_to include("Annex rows")
+      get manage_edit_ticket_listing_path(listing, section: "seating")
+      expect(response.body).to include("Concert layout")
+      expect(response.body).not_to include("Annex rows")
+
+      # A production and a date already on that chart keep it, and saving never blanks it.
+      setup.update!(seating_mode: "reserved", seat_chart: annex_chart)
+      expect(org.seat_charts.pickable(annex_chart.id)).to contain_exactly(chart, annex_chart)
+      get manage_edit_production_ticketing_path(production, section: "seating")
+      expect(response.body).to include("Annex rows (The Old Annex")
+      listing.update!(seating_mode: "reserved", seat_chart: annex_chart)
+      get manage_edit_ticket_listing_path(listing, section: "seating")
+      expect(response.body).to include("Annex rows (The Old Annex")
+    end
+
+    it "keeps the room a past show had" do
+      past = create(:show, production: production, location: annex, date_and_time: 3.days.ago)
+      annex.archive!
+      expect(past.reload.location_space).to eq(annex.default_room)
+      expect(past.place_name).to eq("The Old Annex")
+    end
   end
 
   it "keeps a chart that is in use, and lets an unused one go" do

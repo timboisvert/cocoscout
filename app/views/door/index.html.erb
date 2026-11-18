@@ -3,7 +3,7 @@
   now = Time.current
   time_words = ->(listing) { listing.show.date_and_time.strftime("%-l:%M %p") }
   started = ->(listing) { listing.show.date_and_time <= now }
-  room = ->(listing) { [ listing.show.location&.name, listing.show.location_space&.name ].compact.uniq.last }
+  room = ->(listing) { [ listing.show.location&.name, listing.show.room_name ].compact.uniq.last }
 %>
 
 <% if @on_now.any? %>

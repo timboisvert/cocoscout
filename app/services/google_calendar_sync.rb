@@ -149,10 +149,10 @@ class GoogleCalendarSync
     organization = integration.organization
     shows = Show.where(production: organization.productions.schedulable.active, canceled: false)
                 .where(event_type: integration.calendar_event_types, date_and_time: from..)
-                .includes(:location, :location_space, :ticket_listing, production: :organization, space_rental: :contract).to_a
+                .includes(:location, :ticket_listing, location_space: { location: :location_spaces }, production: :organization, space_rental: :contract).to_a
     # A rental nobody has put a show in still holds its room.
     rentals = SpaceRental.joins(:contract).where(contracts: { organization_id: organization.id, status: %w[active completed] })
-                         .where(ends_at: from..).where.missing(:shows).includes(:location, :location_space, :contract).to_a
+                         .where(ends_at: from..).where.missing(:shows).includes(:location, :contract, location_space: { location: :location_spaces }).to_a
     shows + rentals
   end
 

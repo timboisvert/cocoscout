@@ -35,7 +35,7 @@ module ProductionPageHelper
     kind = kind && show.event_type.to_s != "show" ? event_type_label(show.event_type) : nil
     # A date that follows another organization's contract has no place of
     # its own: it happens where that organization booked it.
-    place = show.location_space&.name || show.location&.name
+    place = show.place_name
     place ||= "Booked at #{show.followed_organization&.name || show.venue_location&.name}" if show.follows_contract? && (show.followed_organization || show.venue_location)
     [ kind, place ].compact.join(" · ")
   end

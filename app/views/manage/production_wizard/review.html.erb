@@ -173,7 +173,7 @@
             type_label = EventTypes.labels[details[:event_type].to_s] || details[:event_type].to_s.titleize.presence || "Show"
             # The details every show shares — where, how long, call time, subtitle.
             bits = []
-            bits << (details[:is_online] ? "Online" : [ @location&.name, @location_space&.name ].compact.join(" · ").presence)
+            bits << (details[:is_online] ? "Online" : [ @location&.name, (@location_space.name if @location_space&.worth_naming?) ].compact.join(" · ").presence)
             if details[:duration_minutes].to_i.positive?
               h, m = details[:duration_minutes].to_i.divmod(60)
               bits << [ (h.positive? ? "#{h} hr" : nil), (m.positive? ? "#{m} min" : nil) ].compact.join(" ")

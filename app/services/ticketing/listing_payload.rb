@@ -46,7 +46,7 @@ module Ticketing
 
       {
         name: location.name,
-        room: @show.location_space&.name,
+        room: @show.room_name,
         address1: location.address1,
         address2: location.address2,
         city: location.city,

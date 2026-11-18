@@ -38,7 +38,7 @@
   # The chosen date's ages, which can differ from the production's.
   ages = selected ? selected.age_words : setup&.age_words
   show = selected&.show
-  venue = show && [ show.location&.name, show.location_space&.name ].compact.uniq.join(" · ")
+  venue = show && [ show.location&.name, show.room_name ].compact.uniq.join(" · ")
   address = show&.location && [ show.location.address1, show.location.city, show.location.state ].compact_blank.join(", ")
   map_url = address.present? ? "https://www.google.com/maps/search/?api=1&query=#{ERB::Util.url_encode([ show.location.name, address ].compact.join(', '))}" : nil
   # A date's one word about itself: nothing while it's simply on sale.

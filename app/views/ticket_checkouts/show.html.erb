@@ -11,7 +11,7 @@
   pay_text = free ? "Get my tickets" : "Pay #{number_to_currency(card_cents / 100.0)}"
   gift_applied = paying.gift_certificate_cents.to_i.positive?
   image, page_image = ticket_page_image(@listing)
-  place = [ show.location&.name, show.location_space&.name ].compact.uniq.join(" · ")
+  place = [ show.location&.name, show.room_name ].compact.uniq.join(" · ")
   back_path = pass ? tickets_pass_path(org: @ticketing_profile.slug, pass: pass.slug, **embed_params) : tickets_event_path(org: @ticketing_profile.slug, event: @listing.slug, **embed_params)
   # Paying on their own phone at the door: the door picked the tickets, and
   # the buyer's details are optional. Sold ahead of the door opening it's

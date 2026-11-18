@@ -114,7 +114,7 @@
             <div class="flex flex-wrap items-center gap-x-6 gap-y-2 <%= 'border-t border-gray-100 pt-4' if @rooms.any? %>">
               <div class="w-48 min-w-0">
                 <div class="text-sm font-medium text-gray-900">Everything else</div>
-                <div class="text-xs text-gray-500">Anything without a room</div>
+                <div class="text-xs text-gray-500">Anything without a room, and every location with one room</div>
               </div>
               <div class="flex flex-wrap gap-2"><%= swatches.call("other_color", integration.other_color) %></div>
             </div>

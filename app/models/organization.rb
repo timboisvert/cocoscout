@@ -543,11 +543,13 @@ class Organization < ApplicationRecord
     }
   end
 
-  # The rooms a calendar colors by: every room of every location, by
-  # location then name.
+  # The rooms a calendar colors by: every room worth naming (the rooms of a
+  # location with two or more; a one-room location's events are "everything
+  # else"), by location then name.
   def calendar_rooms
     @calendar_rooms ||= LocationSpace.joins(:location).where(locations: { organization_id: id, archived_at: nil })
-                                     .order("locations.name, location_spaces.name").includes(:location).to_a
+                                     .order("locations.name, location_spaces.name").includes(location: :location_spaces).to_a
+                                     .select { |room| room.location.several_rooms? }
   end
 
   private

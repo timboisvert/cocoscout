@@ -35,7 +35,7 @@ module Manage
                     .where(date_and_time: range.first.beginning_of_day..range.last.end_of_day)
       scope = scope.where(production_id: productions.map(&:id)) if productions
       scope = scope.where(canceled: [ false, nil ]) unless canceled
-      scope.includes(:production, :location, :location_space, :space_rental)
+      scope.includes(:production, :location_space, :space_rental, location: :location_spaces)
            .order(:date_and_time)
            .to_a
     end

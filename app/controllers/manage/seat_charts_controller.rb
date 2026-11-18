@@ -11,12 +11,12 @@ module Manage
 
     def new
       @room = org_rooms.find(params[:room_id])
-      @chart = SeatChart.new(location_space: @room, name: "#{@room.name} seating")
+      @chart = SeatChart.new(location_space: @room, name: "#{@room.known_as} seating")
     end
 
     def create
       @room = org_rooms.find(params.dig(:seat_chart, :location_space_id))
-      @chart = Current.organization.seat_charts.new(location_space: @room, name: params.dig(:seat_chart, :name).to_s.squish.presence || "#{@room.name} seating")
+      @chart = Current.organization.seat_charts.new(location_space: @room, name: params.dig(:seat_chart, :name).to_s.squish.presence || "#{@room.known_as} seating")
       if @chart.save
         redirect_to manage_seat_chart_path(@chart), notice: "#{@chart.name} is started. Add its rows, tables and standing areas."
       else
@@ -56,7 +56,7 @@ module Manage
       room = @chart.location_space
       RoomTicketingSetting.where(default_seat_chart_id: @chart.id).update_all(default_seat_chart_id: nil)
       @chart.destroy!
-      redirect_to manage_ticketing_settings_path(section: "rooms"), notice: "#{@chart.name} is gone; #{room.name} has no chart."
+      redirect_to manage_ticketing_settings_path(section: "rooms"), notice: "#{@chart.name} is gone; #{room.known_as} has no chart."
     end
 
     # A section of rows ("Orchestra: 12 rows of 20 from A"), tables ("6 tables of 8") or a standing area.

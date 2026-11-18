@@ -10,7 +10,7 @@
         <%= link_to tickets_event_path(org: @ticketing_profile.slug, event: listing.slug, **embed_params),
               class: "flex items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white px-4 py-3.5 hover:border-pink-400 transition-colors" do %>
           <span class="min-w-0">
-            <span class="block text-xs font-semibold text-pink-600"><%= show.date_and_time.strftime("%-l:%M %p") %><%= " · #{show.location_space&.name || show.location&.name}" if show.location %></span>
+            <span class="block text-xs font-semibold text-pink-600"><%= show.date_and_time.strftime("%-l:%M %p") %><%= " · #{show.place_name}" if show.location %></span>
             <span class="block text-[17px] font-semibold text-gray-900 leading-snug mt-0.5"><%= listing.display_title %></span>
           </span>
           <span class="flex-shrink-0 rounded-lg bg-pink-500 px-3.5 py-2 text-sm font-semibold text-white"><%= note == "Sold out" ? "Sold out" : (from.nil? ? "Tickets" : listing_from_price_text(listing, from)) %></span>

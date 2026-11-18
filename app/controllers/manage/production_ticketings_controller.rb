@@ -165,10 +165,12 @@ module Manage
       finish(result)
     end
 
-    # The Seating tab: how every date sells seats (blank follows the rooms),
-    # the chart, and each ticket type's zone on it.
+    # The Seating tab: how every date sells seats (the override switch off,
+    # each date follows its room), the chart, and each ticket type's zone on
+    # it. Off, the box's fields are disabled and send nothing.
     def update_seating
-      raw = params.fetch(:production_ticketing, {}).permit(:seating_mode, :seat_chart_id)
+      raw = params.fetch(:production_ticketing, {}).permit(:seating_mode, :seat_chart_id, :own_seating)
+      raw = raw.merge(seating_mode: nil, seat_chart_id: nil) if raw[:own_seating] == "0"
       chart = raw[:seat_chart_id].present? ? Current.organization.seat_charts.find_by(id: raw[:seat_chart_id]) : nil
       # Dates with seats sold keep the chart those seats are on.
       stuck = @setup.production.ticket_listings.select { |l| l.seating_mode.blank? && l.seat_chart_id.nil? && l.seats_in_use? }

@@ -10,7 +10,7 @@
     show's (Tim, 2026-10-18): the poster, the name, when, where, the ages. %>
 <%
   poster = show.poster.attached? ? show.safe_poster_variant(:small) : @listing.production.safe_poster_variant(:small)
-  room = [ show.location&.name, show.location_space&.name ].compact.uniq.last
+  room = [ show.location&.name, show.room_name ].compact.uniq.last
 %>
 <div class="rounded-2xl border border-gray-200 bg-white px-4 py-3 flex items-center gap-3">
   <% if poster %>

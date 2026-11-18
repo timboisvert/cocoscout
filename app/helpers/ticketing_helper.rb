@@ -253,8 +253,7 @@ module TicketingHelper
     location = show.location
     return nil unless location
 
-    room = show.location_space
-    room && location.location_spaces.size > 1 ? "#{location.name} · #{room.name}" : location.name
+    [ location.name, show.room_name ].compact.join(" · ")
   end
 
   def public_listing_note(listing, inventory = listing.inventory, at: Time.current)

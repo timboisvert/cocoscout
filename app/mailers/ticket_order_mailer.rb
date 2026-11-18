@@ -155,7 +155,7 @@ class TicketOrderMailer < ApplicationMailer
       show_title: listing.display_title,
       show_date: show.date_and_time.strftime("%A, %B %-d"),
       show_time: show.date_and_time.strftime("%-l:%M %p"),
-      venue: [ show.location&.name, show.location_space&.name ].compact.uniq.join(", "),
+      venue: [ show.location&.name, show.room_name ].compact.uniq.join(", "),
       ticket_count: ActionController::Base.helpers.pluralize(count, "ticket"),
       ticket_count_verb: count == 1 ? "is" : "are",
       order_code: order.code,

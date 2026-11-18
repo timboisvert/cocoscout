@@ -209,7 +209,7 @@ RSpec.describe "Production Home, show by show", type: :request do
     day = page(day: saturday.iso8601).at_css("[data-home-day]")
     row = day.at_css("[data-home-show='#{rehearsal.id}']")
     expect(row.at_css("[data-home-show-kind]").text).to eq("Rehearsal")
-    venue = rehearsal.location_space&.name || rehearsal.location&.name
+    venue = rehearsal.place_name
     expect(row.at_css("[data-home-show-where]").text.squish).to eq([ "Rehearsal", venue ].compact.join(" · "))
     expect(day.at_css("[data-home-show='#{sat_show.id}'] [data-home-show-kind]")).to be_nil
   end

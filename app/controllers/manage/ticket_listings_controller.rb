@@ -394,6 +394,7 @@ module Manage
       raw = params[:ticket_listing]
       permitted.merge!(fee_mode: nil, cash_tax: nil, price_display: nil) if raw[:own_fees] == "0"
       permitted.merge!(max_per_order: nil, low_stock_threshold: nil) if raw[:own_orders] == "0"
+      permitted.merge!(seating_mode: nil, seat_chart_id: nil) if raw[:own_seating] == "0"
       permitted.merge!(title: nil, description: nil, door_note: nil, accessibility_note: nil) if raw[:own_page] == "0"
       if raw[:own_ages] == "0"
         permitted.merge!(minimum_age: nil, age_note: nil)

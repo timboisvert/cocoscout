@@ -71,7 +71,9 @@ RSpec.describe "Rooms", type: :request do
     room = location.default_room
     get manage_ticketing_settings_section_path(section: "rooms")
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Rooms and seating", "The Lincoln Lodge", "Main room", "Reserved seats", "Directions for buyers")
+    expect(response.body).to include("Rooms and seating", "The Lincoln Lodge", "Reserved seats", "Directions for buyers")
+    # A location's only room goes by the location's name (Tim, 2026-11-18).
+    expect(response.body).not_to include("Main room")
 
     patch manage_ticketing_settings_room_path(room), params: { room_ticketing_setting: { seating_mode: "reserved", buyer_directions: "Enter on Clark Street." } }
     expect(response).to redirect_to(manage_ticketing_settings_section_path(section: "rooms"))

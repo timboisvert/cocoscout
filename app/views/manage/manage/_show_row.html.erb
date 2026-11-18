@@ -14,7 +14,7 @@
   show = row.show
   phone = local_assigns[:size] == :phone
   chips = home_row_chips(row, staffing_on: @home.staffing_on?)
-  venue = show.location_space&.name || show.location&.name
+  venue = show.place_name
   # An event that isn't a show says what it is, ahead of the room (Tim,
   # 2026-11-08): "Rehearsal · Main Stage". A show says nothing.
   kind = show.event_type.to_s == "show" ? nil : event_type_label(show.event_type)

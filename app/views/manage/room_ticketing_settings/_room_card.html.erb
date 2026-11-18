@@ -19,9 +19,12 @@
       <div><dt class="font-medium text-gray-500">Directions for buyers</dt><dd class="mt-1 text-gray-900"><%= setting.buyer_directions %></dd></div>
     <% end %>
   </dl>
-  <div class="px-6 pb-4">
-    <%= link_to manage_ticketing_settings_section_path(section: "rooms") do %>
-      <%= render "shared/button", text: "Rooms and seating settings", variant: "secondary", size: "small" %>
-    <% end %>
-  </div>
+  <%# An archived location's rooms aren't on that tab. %>
+  <% unless room.location.archived? %>
+    <div class="px-6 pb-4">
+      <%= link_to manage_ticketing_settings_section_path(section: "rooms") do %>
+        <%= render "shared/button", text: "Rooms and seating settings", variant: "secondary", size: "small" %>
+      <% end %>
+    </div>
+  <% end %>
 </div>

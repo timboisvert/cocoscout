@@ -114,13 +114,14 @@ class TicketPdf
     "Accessibility: #{profile.guest_summary}. Access guide: #{Rails.application.routes.url_helpers.tickets_access_guide_url(org: slug, room: room.id, **(Rails.application.config.action_mailer.default_url_options || { host: "cocoscout.com" }))}"
   end
 
-  # The room, then the venue, then its address; online shows say so.
+  # The room (where the venue has several), then the venue, then its address;
+  # online shows say so.
   def place_words(show)
     return "Online" if show.is_online
 
     location = show.location
     address = [ location&.address1, [ location&.city, location&.state ].compact_blank.join(", ") ].compact_blank.join(", ")
-    [ show.location_space&.name, location&.name, address ].compact_blank.uniq.join(" · ")
+    [ show.room_name, location&.name, address ].compact_blank.uniq.join(" · ")
   end
 
   # A ticket's seat, as { section:, row:, seat: }. Reserved seating (the

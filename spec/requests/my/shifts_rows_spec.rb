@@ -57,8 +57,9 @@ RSpec.describe "My::Shifts rows and sheet", type: :request do
     # The whole night on the card: each show with its time and count, and
     # everyone working alongside with role and hours (told people only).
     # A show on sale says its count, zero included.
-    # Each show's room comes first: a show with a location is always in a room (1.4), here its location's Main room.
-    expect(hero.at_css("[data-next-shift-shows]").text.squish).to eq("8:30 PM Rising Stars Main room · 12 expected 10:00 PM Rising Stars Main room · 0 expected")
+    # A show with a location is always in a room (1.4), and a location's
+    # only room is never named (Tim, 2026-11-18): no "Main room" here.
+    expect(hero.at_css("[data-next-shift-shows]").text.squish).to eq("8:30 PM Rising Stars 12 expected 10:00 PM Rising Stars 0 expected")
     expect(hero.text).to include("Keys are in the office drawer.")
     # Never who else is working: not the card, not the sheet (Tim, 2026-11-07).
     expect(hero.text).not_to include("Mia Manager", "Working with you", "That night")

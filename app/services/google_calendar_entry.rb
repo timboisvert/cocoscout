@@ -51,7 +51,13 @@ class GoogleCalendarEntry
     parts.join(" · ")
   end
 
-  def room = record.location_space
+  # The room an event is titled and colored by: none at a location with one
+  # room (Tim, 2026-11-18), so those events read, and are colored, as they
+  # did before every show had a room.
+  def room
+    space = record.location_space
+    space if space&.worth_naming?
+  end
 
   # The block opens at the earliest of: the show's own time, its call time
   # (when the organization starts blocks there), and the start of the rental

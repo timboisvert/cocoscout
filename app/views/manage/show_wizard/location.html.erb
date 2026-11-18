@@ -2,7 +2,8 @@
   <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Where is this event?</h2>
   <p class="text-gray-600 mb-6">Choose the location for your <%= @wizard_state[:event_type]&.titleize&.downcase || "event" %>.</p>
 
-  <% location_spaces_map = @locations.each_with_object({}) { |l, h| h[l.id] = l.location_spaces.map { |s| { id: s.id, name: s.name } } } %>
+  <%# A room is offered only where the location has two or more (Tim, 2026-11-18): a one-room location's show lands in its room by itself. %>
+  <% location_spaces_map = @locations.each_with_object({}) { |l, h| h[l.id] = l.several_rooms? ? l.location_spaces.map { |s| { id: s.id, name: s.name } } : [] } %>
   <div data-controller="location-modal" data-location-modal-event-type-value="<%= @wizard_state[:event_type]&.titleize&.downcase || "event" %>">
   <%= form_with url: manage_shows_wizard_save_location_path(@production), method: :post, local: true, data: { controller: "location-toggle", "location-toggle-spaces-value": location_spaces_map.to_json } do |form| %>
     <div class="mb-6">

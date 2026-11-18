@@ -1,100 +1,98 @@
 <%# Pricing rules (advanced ticketing §7c): rules that move a ticket type's
     price as a date sells or draws near, in order; each type's floor and
-    ceiling; what each coming date costs right now; the log of flips.
-    Locals: setup, production. %>
+    ceiling; what each coming date costs right now; the log of flips. Drawn
+    as the other tabs are (Tim, 2026-11-13): the list with a pink modal to
+    add to it, as Discount codes has. Locals: setup, production. %>
 <%
-  input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-  label = "block text-xs font-medium text-gray-700"
+  input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  label = "block text-sm font-medium text-gray-700 mb-1.5"
+  hint = "text-xs text-gray-500 mt-1"
   url = manage_update_production_ticketing_path(production, section: "pricing")
   rules = setup.price_rules.in_order.includes(:ticket_tier).to_a
   tiers = setup.ticket_tiers.active.to_a
   coming = setup.listings.where.not(status: "canceled").includes(:show, :ticket_tiers).select { |l| l.show.date_and_time > Time.current }.sort_by { |l| l.show.date_and_time }.first(6)
   changes = TicketPriceChange.where(ticket_listing_id: setup.listings.select(:id)).recent.includes(:ticket_listing, :ticket_tier, :ticket_price_rule).limit(20).to_a
+  modal_id = "add-rule-modal"
 %>
 <div class="space-y-6">
-  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="pricing-rules">
     <%= render "shared/section_heading", title: "Pricing rules",
-          intro: "Read top to bottom for each date and ticket type; the first rule that fits sets the price, within the type's floor and ceiling. A ticket keeps the price it was held at, and a price going down never refunds anyone. Comps, groups and subscriptions never read these." %>
+          intro: "Rules are read from top to bottom for each date and ticket type. The first rule that fits sets the price, within the ticket type's floor and ceiling. A ticket keeps the price it was held at, and a price going down never refunds anyone. Comps, groups, and subscriptions never read these." do %>
+      <%= render "shared/button", text: "Add a rule", variant: "primary", size: "small", type: :button,
+            data: { controller: "modal", action: "click->modal#open", modal_id: modal_id } %>
+    <% end %>
     <% if rules.empty? %>
-      <p class="px-6 py-5 text-sm text-gray-500">No rules yet. Every type sells at its list price.</p>
+      <p class="px-6 py-5 text-sm text-gray-500">No rules yet. Every ticket type sells at its list price.</p>
     <% else %>
       <ol class="divide-y divide-gray-100">
         <% rules.each_with_index do |rule, i| %>
-          <li class="flex items-center gap-3 px-6 py-3 <%= 'opacity-60' unless rule.enabled %>">
-            <span class="w-6 text-sm tabular-nums text-gray-400"><%= i + 1 %>.</span>
-            <span class="min-w-0 flex-1">
-              <span class="block text-sm font-semibold text-gray-900"><%= rule.name.presence || rule.words %></span>
-              <span class="block text-xs text-gray-500"><%= rule.words %><%= " · off" unless rule.enabled %></span>
-            </span>
-            <div class="flex items-center gap-1">
+          <li class="flex flex-wrap items-center justify-between gap-3 px-6 py-3" data-price-rule="<%= rule.id %>">
+            <div class="min-w-0 flex items-baseline gap-3 <%= 'opacity-60' unless rule.enabled %>">
+              <span class="w-5 text-sm tabular-nums text-gray-400"><%= i + 1 %>.</span>
+              <span class="min-w-0">
+                <span class="block text-sm font-semibold text-gray-900"><%= rule.name.presence || rule.words %></span>
+                <span class="block text-xs text-gray-500"><%= rule.words %><%= " · Turned off" unless rule.enabled %></span>
+              </span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
               <% unless i.zero? %>
                 <%= form_with url: url, method: :patch, data: { turbo: false } do %>
                   <%= hidden_field_tag :pricing_action, "up", id: nil %><%= hidden_field_tag :rule_id, rule.id, id: nil %>
-                  <%= render "shared/button", text: "Up", variant: "ghost", size: "xs", type: :submit %>
+                  <%= render "shared/button", text: "Move up", variant: "secondary", size: "small", type: :submit %>
                 <% end %>
               <% end %>
               <% unless i == rules.size - 1 %>
                 <%= form_with url: url, method: :patch, data: { turbo: false } do %>
                   <%= hidden_field_tag :pricing_action, "down", id: nil %><%= hidden_field_tag :rule_id, rule.id, id: nil %>
-                  <%= render "shared/button", text: "Down", variant: "ghost", size: "xs", type: :submit %>
+                  <%= render "shared/button", text: "Move down", variant: "secondary", size: "small", type: :submit %>
                 <% end %>
               <% end %>
               <%= form_with url: url, method: :patch, data: { turbo: false } do %>
                 <%= hidden_field_tag :pricing_action, "toggle", id: nil %><%= hidden_field_tag :rule_id, rule.id, id: nil %>
-                <%= render "shared/button", text: (rule.enabled ? "Turn off" : "Turn on"), variant: "secondary", size: "xs", type: :submit %>
+                <%= render "shared/button", text: (rule.enabled ? "Turn off" : "Turn on"), variant: "secondary", size: "small", type: :submit %>
               <% end %>
-              <% cid = "remove-rule-#{rule.id}" %>
-              <%= render "shared/button", text: "Remove", variant: "secondary", size: "xs", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
+              <%= render "shared/button", text: "Remove", variant: "secondary", size: "small", type: :button,
+                    data: { controller: "modal", action: "click->modal#open", modal_id: "remove-rule-#{rule.id}" } %>
             </div>
           </li>
         <% end %>
       </ol>
     <% end %>
-    <%= form_with url: url, method: :patch, data: { turbo: false }, class: "border-t border-gray-100 px-6 py-5 space-y-4" do %>
-      <%= hidden_field_tag :pricing_action, "add", id: nil %>
-      <p class="text-sm font-semibold text-gray-900">Add a rule</p>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <label class="<%= label %>">Ticket type<%= select_tag "rule[ticket_tier_id]", options_for_select([ [ "Every ticket type", "" ] ] + tiers.map { |t| [ t.name, t.id ] }), class: input + " mt-1" %></label>
-        <label class="<%= label %>">Name <span class="font-normal text-gray-500">(optional)</span><%= text_field_tag "rule[name]", nil, placeholder: "Last week, Slow seller", class: input + " mt-1" %></label>
-        <label class="<%= label %> sm:col-span-2">When<%= select_tag "rule[condition]", options_for_select(TicketPriceRule::CONDITION_LABELS.map { |k, v| [ v, k ] }), class: input + " mt-1" %></label>
-        <label class="<%= label %>">This far sold (%)<%= number_field_tag "rule[threshold]", 80, min: 0, max: 100, class: input + " mt-1" %><span class="block mt-1 font-normal text-gray-500">For the rules about how far sold.</span></label>
-        <label class="<%= label %>">This close (days before)<%= number_field_tag "rule[days]", 7, min: 0, max: 365, class: input + " mt-1" %><span class="block mt-1 font-normal text-gray-500">For the rules about how close.</span></label>
-        <label class="<%= label %>">Change by<%= select_tag "rule[change_kind]", options_for_select([ [ "Dollars", "amount" ], [ "Percent", "percent" ] ]), class: input + " mt-1" %></label>
-        <label class="<%= label %>">How much<%= text_field_tag "rule[change_value]", nil, placeholder: "5 or -5 (dollars), 10 or -10 (percent)", class: input + " mt-1" %><span class="block mt-1 font-normal text-gray-500">Minus lowers the price.</span></label>
-      </div>
-      <%= render "shared/button", text: "Add rule", variant: "primary", size: "small", type: :submit %>
-    <% end %>
   </div>
 
   <% if tiers.any? %>
-    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <%= render "shared/section_heading", title: "Floors and ceilings", intro: "A rule never takes a type below its floor or above its ceiling. Blank means no limit." %>
-      <%= form_with url: url, method: :patch, data: { turbo: false }, class: "px-6 py-5 space-y-4" do %>
-        <%= hidden_field_tag :pricing_action, "limits", id: nil %>
-        <div class="divide-y divide-gray-100">
-          <% tiers.each do |tier| %>
-            <div class="grid grid-cols-3 gap-3 items-center py-2">
-              <span class="text-sm text-gray-900"><span class="font-semibold"><%= tier.name %></span> <span class="text-gray-500">list <%= number_to_currency(tier.price_cents / 100.0) %></span></span>
-              <%= text_field_tag "limits[#{tier.id}][floor]", (tier.price_floor_cents && number_with_precision(tier.price_floor_cents / 100.0, precision: 2)), placeholder: "Floor $", "aria-label": "#{tier.name} floor", class: input %>
-              <%= text_field_tag "limits[#{tier.id}][ceiling]", (tier.price_ceiling_cents && number_with_precision(tier.price_ceiling_cents / 100.0, precision: 2)), placeholder: "Ceiling $", "aria-label": "#{tier.name} ceiling", class: input %>
-            </div>
-          <% end %>
+    <%= form_with url: url, method: :patch, data: { turbo: false } do %>
+      <%= hidden_field_tag :pricing_action, "limits", id: nil %>
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="pricing-limits">
+        <%= render "shared/section_heading", title: "Floors and ceilings", intro: "A rule never takes a ticket type below its floor or above its ceiling. Leave one blank for no limit." %>
+        <div class="px-6 py-5">
+          <div class="divide-y divide-gray-100">
+            <% tiers.each do |tier| %>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center py-3 first:pt-0 last:pb-0">
+                <span class="text-sm text-gray-900"><span class="font-semibold"><%= tier.name %></span> <span class="text-gray-500">· list price <%= number_to_currency(tier.price_cents / 100.0) %></span></span>
+                <%= text_field_tag "limits[#{tier.id}][floor]", (tier.price_floor_cents && number_with_precision(tier.price_floor_cents / 100.0, precision: 2)), id: "limits_#{tier.id}_floor", placeholder: "Floor $", "aria-label": "#{tier.name} floor", class: input %>
+                <%= text_field_tag "limits[#{tier.id}][ceiling]", (tier.price_ceiling_cents && number_with_precision(tier.price_ceiling_cents / 100.0, precision: 2)), id: "limits_#{tier.id}_ceiling", placeholder: "Ceiling $", "aria-label": "#{tier.name} ceiling", class: input %>
+              </div>
+            <% end %>
+          </div>
         </div>
-        <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
-      <% end %>
-    </div>
+        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+          <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+        </div>
+      </div>
+    <% end %>
   <% end %>
 
   <% if rules.any? && coming.any? %>
-    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <%= render "shared/section_heading", title: "Right now", intro: "What each coming date sells at this minute, and the rule setting it." %>
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="pricing-now">
+      <%= render "shared/section_heading", title: "Right now", intro: "What each coming date sells for at this minute, and the rule that sets it." %>
       <div class="overflow-x-auto">
         <table class="min-w-full text-sm">
-          <thead><tr class="text-left text-xs text-gray-500"><th class="px-6 py-2">Date</th><% tiers.reject(&:bundle?).each do |t| %><th class="px-3 py-2"><%= t.name %></th><% end %></tr></thead>
+          <thead><tr class="text-left text-xs text-gray-500 border-b border-gray-100"><th class="px-6 py-2 font-medium">Date</th><% tiers.reject(&:bundle?).each do |t| %><th class="px-3 py-2 font-medium"><%= t.name %></th><% end %></tr></thead>
           <tbody class="divide-y divide-gray-100">
             <% coming.each do |l| %>
               <tr>
-                <td class="px-6 py-2 text-gray-900"><%= link_to l.show.date_and_time.strftime("%a %b %-d, %-l:%M %p"), manage_ticket_listing_path(l), class: "text-pink-600 hover:text-pink-700" %></td>
+                <td class="px-6 py-2 text-gray-900"><%= link_to l.show.date_and_time.strftime("%a %b %-d, %-l:%M %p"), manage_ticket_listing_path(l), class: "text-pink-600 hover:text-pink-700 underline" %></td>
                 <% tiers.reject(&:bundle?).each do |t| %>
                   <% copy = l.ticket_tiers.find { |c| c.source_tier_id == t.id || c.id == t.id } %>
                   <td class="px-3 py-2 tabular-nums">
@@ -114,15 +112,71 @@
   <% end %>
 
   <% if changes.any? %>
-    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <%= render "shared/section_heading", title: "Price changes", intro: "Each time a rule started or stopped setting a price, checked hourly." %>
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="pricing-changes">
+      <%= render "shared/section_heading", title: "Price changes", intro: "Each time a rule started or stopped setting a price. Prices are checked every hour." %>
       <ul class="divide-y divide-gray-100">
         <% changes.each do |c| %>
-          <li class="px-6 py-2 text-sm text-gray-700"><span class="text-gray-500"><%= c.created_at.strftime("%b %-d, %-l:%M %p") %></span> · <%= c.ticket_listing.show.date_and_time.strftime("%a %b %-d") %> · <%= c.ticket_tier.name %> <%= number_to_currency(c.from_cents / 100.0) %> → <%= number_to_currency(c.to_cents / 100.0) %><% if c.ticket_price_rule %> <span class="text-gray-500">(<%= c.ticket_price_rule.name.presence || c.ticket_price_rule.words %>)</span><% end %></li>
+          <li class="px-6 py-3 text-sm text-gray-700"><span class="text-gray-500"><%= c.created_at.strftime("%b %-d, %-l:%M %p") %></span> · <%= c.ticket_listing.show.date_and_time.strftime("%a %b %-d") %> · <%= c.ticket_tier.name %> <%= number_to_currency(c.from_cents / 100.0) %> → <%= number_to_currency(c.to_cents / 100.0) %><% if c.ticket_price_rule %> <span class="text-gray-500">(<%= c.ticket_price_rule.name.presence || c.ticket_price_rule.words %>)</span><% end %></li>
         <% end %>
       </ul>
     </div>
   <% end %>
+</div>
+
+<%# Add a rule, in a modal: the tab shows the list; this is where a new one is typed. %>
+<div id="<%= modal_id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden max-h-[90vh] overflow-y-auto" data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white">Add a pricing rule</h3>
+      <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" aria-label="Close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <%= form_with url: url, method: :patch, data: { turbo: false } do %>
+      <%= hidden_field_tag :pricing_action, "add", id: nil %>
+      <div class="p-6 space-y-5">
+        <p class="text-sm text-gray-600">The rule goes to the bottom of the list for every date of <%= production.name %>. You can move it up afterward.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <%= label_tag "rule_ticket_tier_id", "Ticket type", class: label %>
+            <%= select_tag "rule[ticket_tier_id]", options_for_select([ [ "Every ticket type", "" ] ] + tiers.map { |t| [ t.name, t.id ] }), class: input %>
+          </div>
+          <div>
+            <%= label_tag "rule_name", class: label do %>Name <span class="font-normal text-gray-500">(optional)</span><% end %>
+            <%= text_field_tag "rule[name]", nil, placeholder: "Last week, Slow seller", class: input %>
+          </div>
+          <div class="sm:col-span-2">
+            <%= label_tag "rule_condition", "When", class: label %>
+            <%= select_tag "rule[condition]", options_for_select(TicketPriceRule::CONDITION_LABELS.map { |k, v| [ v, k ] }), class: input %>
+          </div>
+          <div>
+            <%= label_tag "rule_threshold", "This far sold (%)", class: label %>
+            <%= number_field_tag "rule[threshold]", 80, min: 0, max: 100, class: input %>
+            <p class="<%= hint %>">This is for the rules about how far a date has sold.</p>
+          </div>
+          <div>
+            <%= label_tag "rule_days", "This close (days before)", class: label %>
+            <%= number_field_tag "rule[days]", 7, min: 0, max: 365, class: input %>
+            <p class="<%= hint %>">This is for the rules about how close a date is.</p>
+          </div>
+          <div>
+            <%= label_tag "rule_change_kind", "Change by", class: label %>
+            <%= select_tag "rule[change_kind]", options_for_select([ [ "Dollars", "amount" ], [ "Percent", "percent" ] ]), class: input %>
+          </div>
+          <div>
+            <%= label_tag "rule_change_value", "How much", class: label %>
+            <%= text_field_tag "rule[change_value]", nil, placeholder: "5 or -5 (dollars), 10 or -10 (percent)", class: input %>
+            <p class="<%= hint %>">A minus sign lowers the price.</p>
+          </div>
+        </div>
+      </div>
+      <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+        <%= render "shared/button", text: "Add rule", variant: "primary", size: "medium", type: :submit %>
+      </div>
+    <% end %>
+  </div>
 </div>
 <% rules.each do |rule| %>
   <%= render "shared/confirm_modal", id: "remove-rule-#{rule.id}", title: "Remove this rule?", message: rule.words + ". Tickets already sold keep their price.",

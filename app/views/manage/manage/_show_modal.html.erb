@@ -8,7 +8,7 @@
 %>
 <%
   show = row.show
-  venue = show.location_space&.name || show.location&.name
+  venue = show.place_name
   hours = "#{show.date_and_time.strftime("%-l:%M")}–#{show.ends_at.strftime("%-l:%M %p")}"
   call_time = show.call_time_enabled? && show.call_time ? show.call_time.strftime("%-l:%M %p") : nil
   # The space is often booked longer than the show runs (5:30 to 7:30 for a

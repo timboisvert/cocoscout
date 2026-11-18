@@ -4,7 +4,7 @@
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Ticketing", manage_ticketing_path ], [ "Settings", manage_ticketing_settings_path ], [ "Rooms and seating", manage_ticketing_settings_path(section: "rooms") ] ], text: "New seat chart", links: [] } %>
   <div class="max-w-xl -mx-4 sm:mx-auto bg-white sm:rounded-xl sm:border sm:border-gray-200 sm:shadow-sm overflow-hidden">
-    <div class="bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4"><h2 class="text-lg font-semibold text-white">A chart for <%= @room.name %></h2><p class="text-xs text-pink-100"><%= @room.location.name %></p></div>
+    <div class="bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4"><h2 class="text-lg font-semibold text-white">A chart for <%= @room.known_as %></h2><% if @room.worth_naming? %><p class="text-xs text-pink-100"><%= @room.location.name %></p><% end %></div>
     <%= form_with model: @chart, url: manage_seat_charts_path, method: :post, data: { turbo: false } do |f| %>
       <%= f.hidden_field :location_space_id %>
       <div class="px-6 py-5 space-y-4">

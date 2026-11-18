@@ -25,7 +25,7 @@
       </div>
       <div class="px-6 py-5 space-y-4 text-sm text-gray-700">
         <div>
-          <div class="font-semibold text-gray-900"><%= room.name %></div>
+          <div class="font-semibold text-gray-900"><%= room.known_as %></div>
           <% if chips.any? %>
             <div class="mt-2 flex flex-wrap gap-1.5">
               <% chips.each do |chip| %><span class="inline-flex items-center rounded-full bg-pink-50 text-pink-700 px-2.5 py-0.5 text-xs font-medium"><%= chip %></span><% end %>

@@ -37,7 +37,7 @@ module Manage
       attrs[:buyer_directions] = attrs[:buyer_directions].to_s.strip.presence if attrs.key?(:buyer_directions)
       attrs[:default_seat_chart_id] = attrs[:default_seat_chart_id].presence if attrs.key?(:default_seat_chart_id)
       if setting.update(attrs)
-        redirect_to section_path("rooms"), notice: "Saved. #{room.name} sells #{setting.seating_mode_label.downcase_first}."
+        redirect_to section_path("rooms"), notice: "Saved. #{room.known_as} sells #{setting.seating_mode_label.downcase_first}."
       else
         redirect_to section_path("rooms"), alert: setting.errors.full_messages.to_sentence
       end
@@ -269,9 +269,10 @@ module Manage
 
     private
 
-    # Every room, by location, with its ticketing settings (made as needed).
+    # Every room of the locations in use, by location, with its ticketing
+    # settings (made as needed). An archived location's rooms aren't here.
     def load_rooms
-      @locations = Current.organization.locations.includes(:location_spaces).order(:name).to_a
+      @locations = Current.organization.locations.active.includes(:location_spaces).order(:name).to_a
       rooms = @locations.flat_map(&:location_spaces)
       settings = RoomTicketingSetting.where(location_space_id: rooms.map(&:id)).index_by(&:location_space_id)
       @room_settings = rooms.to_h { |room| [ room.id, settings[room.id] || RoomTicketingSetting.new(organization: Current.organization, location_space: room) ] }

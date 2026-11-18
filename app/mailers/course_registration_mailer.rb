@@ -57,7 +57,7 @@ class CourseRegistrationMailer < ApplicationMailer
       course_title: offering.title,
       first_session: first ? first.date_and_time.strftime("%A, %B %-d at %-l:%M %p") : "",
       session_count: ActionController::Base.helpers.pluralize(sessions.size, "session"),
-      venue: [ first&.location&.name, first&.location_space&.name ].compact.uniq.join(", "),
+      venue: [ first&.location&.name, first&.room_name ].compact.uniq.join(", "),
       amount_paid: ActiveSupport::NumberHelper.number_to_currency(registration.total_cents / 100.0),
       registration_url: routes.my_course_success_url(code: offering.short_code, token: registration.token, **url_options)
     }

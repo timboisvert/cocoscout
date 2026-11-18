@@ -32,7 +32,7 @@
                         date_and_time: s.date_and_time.strftime('%Y-%m-%dT%H:%M'),
                         label: "#{s.date_and_time.strftime('%a, %b %-d, %Y at %-I:%M %p')} — #{format_duration(s.duration_minutes)}",
                         location: s.location&.name || 'No location',
-                        space: s.location_space&.name,
+                        space: s.room_name,
                         event_type: event_type_configs.dig(s.event_type, 'label') || s.event_type&.titleize || 'Event'
                       }
                     }.to_json %>">

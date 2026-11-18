@@ -24,6 +24,13 @@ class SeatChart < ApplicationRecord
   validates :status, inclusion: { in: STATUSES }
 
   scope :usable, -> { where(status: %w[draft active]) }
+  # What a chart picker offers: the charts that can sell, in rooms of
+  # locations still in use (an archived location's leave every picker), plus
+  # whichever chart the record being edited already has, so saving a
+  # production or a date never blanks the chart it was on.
+  scope :pickable, ->(*keep_ids) {
+    usable.where(location_space_id: LocationSpace.joins(:location).merge(Location.active).select(:id)).or(where(id: keep_ids.flatten.compact))
+  }
 
   def room = location_space
   def active? = status == "active"
