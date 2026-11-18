@@ -355,6 +355,9 @@
           </div>
         <% end %>
 
+        <% if @roles.empty? && @production.castable? %>
+          <%= render "manage/shows/casting_note", show: @show, production: @production, kind: :no_roles %>
+        <% else %>
         <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
           <%= render "shared/section_heading", padding: "px-4 py-3", title: "Casting" do %>
             <%= render "shared/button", text: (current_user_can_manage?(@production) ? "Manage Cast" : "View Cast"), path: manage_casting_show_cast_path(@production, @show), variant: "primary", size: "small" %>
@@ -575,10 +578,13 @@
                 <% end %>
               <% end %>
             <% else %>
+              <%# Only a course's session gets here: a production we run
+                  casting for says it above, with the thing to press. %>
               <p class="text-xs text-gray-400 italic">No roles defined yet</p>
             <% end %>
           </div>
         </div>
+        <% end %>
 
         <%# Attendees Section - from sign-up registrations %>
         <% if @sign_up_registrations.any? %>
@@ -726,6 +732,8 @@
             </div>
           </div>
         <% end %>
+      <% elsif !@show.casting_enabled && @production.castable? %>
+        <%= render "manage/shows/casting_note", show: @show, production: @production, kind: :off %>
       <% end %>
 
       <%# Tickets: the production's answer to the Tickets question, and this date's standing. %>

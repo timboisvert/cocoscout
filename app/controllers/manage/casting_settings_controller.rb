@@ -6,11 +6,12 @@ module Manage
   class CastingSettingsController < ManageController
     include CastingHelper
 
-    SECTIONS = %w[source roles talent_pool].freeze
+    SECTIONS = %w[source roles talent_pool dates].freeze
     SECTION_LABELS = {
       "source" => "Casting Source",
       "roles" => "Roles",
-      "talent_pool" => "Talent Pool"
+      "talent_pool" => "Talent Pool",
+      "dates" => "Dates"
     }.freeze
     DEFAULT_SECTION = "source"
 
@@ -44,7 +45,40 @@ module Manage
       end
     end
 
+    # The production's answer (Tim, 2026-11-18): "We cast people in this
+    # production" or "We don't cast people in this production". The coming
+    # dates are brought into line with it (CastingAnswer). return_to: the
+    # page the answer was given on, when that isn't Casting Settings (the
+    # production's page, its Casting tab).
+    def update_answer
+      answer = params[:casts_people].to_s
+      if answer == "no"
+        CastingAnswer.off!(@production)
+        notice = "We don't cast people in #{@production.name}. You can change this in Casting Settings."
+      elsif answer == "yes"
+        CastingAnswer.on!(@production)
+        notice = "We cast people in #{@production.name}."
+      end
+      redirect_to answer_return_path, notice: notice
+    end
+
+    # Which of the coming dates are cast (the Dates section).
+    def update_dates
+      CastingAnswer.choose_dates!(@production, params[:show_ids])
+      redirect_to manage_casting_settings_section_path(production_id: @production, section: "dates"), notice: "The dates were updated."
+    end
+
     private
+
+    # Only a path on this site, and only one of the two pages the answer is
+    # asked on outside Casting Settings.
+    def answer_return_path
+      case params[:return_to].to_s
+      when "production" then manage_production_path(@production)
+      when "production_edit" then edit_manage_production_path(@production, tab: helpers.production_casting_tab(@production))
+      else manage_casting_settings_path(@production)
+      end
+    end
 
     def sections
       SECTIONS.map do |key|
@@ -76,6 +110,9 @@ module Manage
         load_talent_pool_data
       when "talent_pool"
         load_talent_pool_data
+      when "dates"
+        @dates = CastingAnswer.upcoming(@production).includes(:location, :location_space, linked_show: { production: :organization }).to_a
+        @cast_ids = CastingAnswer.cast_show_ids(@production).to_set
       end
     end
 

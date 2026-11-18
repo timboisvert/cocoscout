@@ -4,7 +4,7 @@ module Manage
   class ShowsController < Manage::ManageController
     before_action :set_production, except: [ :org_index, :org_calendar ]
     before_action :check_production_access, except: [ :org_index, :org_calendar ]
-    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show transfer transfer_select transfer_preview toggle_signup_based_casting toggle_attendance attendance update_attendance create_walkin add_to_series link_into_series confirm_time_change apply_time_change upload_poster]
+    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show transfer transfer_select transfer_preview toggle_signup_based_casting toggle_attendance turn_casting_on attendance update_attendance create_walkin add_to_series link_into_series confirm_time_change apply_time_change upload_poster]
     before_action :ensure_user_is_manager, except: %i[index show recurring_series org_index org_calendar]
 
     # Org-level shows index (moved from org_shows_controller)
@@ -459,7 +459,7 @@ module Manage
           location_space_id: @last_show.location_space_id,
           is_online: @last_show.is_online,
           online_location_info: @last_show.online_location_info,
-          casting_enabled: @last_show.casting_enabled,
+          casting_enabled: Show.casting_default_for(@production, @last_show.event_type, like: @last_show),
           casting_source: @last_show.casting_source,
           casting_mode: @last_show.casting_mode,
           public_profile_visible: @last_show.public_profile_visible,
@@ -669,7 +669,9 @@ module Manage
       location_space_id = params[:show].key?(:location_space_id) ? params[:show][:location_space_id].presence : @show.location_space_id
       is_online = params[:show][:is_online].nil? ? @show.is_online : params[:show][:is_online]
       online_location_info = params[:show][:online_location_info] || @show.online_location_info
-      casting_enabled = params[:show][:casting_enabled].nil? ? @show.casting_enabled : params[:show][:casting_enabled]
+      # The form's own answer wins; without one the rebuilt dates follow the
+      # production and the series (Show.casting_default_for).
+      casting_enabled = params[:show][:casting_enabled].nil? ? Show.casting_default_for(@production, event_type, like: @show) : params[:show][:casting_enabled]
       # Respect clear_casting_source flag
       casting_source = if params[:clear_casting_source] == "1"
         nil # Inherit from production
@@ -1319,6 +1321,18 @@ module Manage
       end
     end
 
+    # "Turn casting on", from the one line a casting-off date's page shows
+    # where its Casting box would be. Turning it off again is on Edit, under
+    # Casting & Visibility, and on Casting Settings' Dates.
+    def turn_casting_on
+      unless @production.castable?
+        redirect_to manage_show_path(@production, @show), alert: "Casting isn't available for this production." and return
+      end
+
+      @show.update!(casting_enabled: true)
+      redirect_to manage_show_path(@production, @show), notice: "Casting is on for this #{(EventTypes.labels[@show.event_type.to_s] || "date").downcase}."
+    end
+
     def attendance
       @attendance_records = @show.attendance_records_for_all_cast
       @attendance_summary = @show.attendance_summary
@@ -1567,7 +1581,7 @@ module Manage
           location_space_id: template.location_space_id,
           is_online: template.is_online,
           online_location_info: template.online_location_info,
-          casting_enabled: template.casting_enabled,
+          casting_enabled: Show.casting_default_for(@production, template.event_type, like: template),
           casting_source: template.casting_source,
           casting_mode: template.casting_mode,
           public_profile_visible: template.public_profile_visible,

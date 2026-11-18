@@ -18,9 +18,11 @@ module ProductionPageHelper
   end
 
   # Where a Needs doing line goes (ProductionPage::NeedsDoing#path).
-  def production_page_needs_path(production, item)
-    kind, record = item.path
+  def production_page_needs_path(production, item, path: item.path)
+    kind, record = path
     case kind
+    when :casting_setup then manage_casting_setup_path(production)
+    when :casting_off then manage_casting_answer_path(production, casts_people: "no", return_to: "production")
     when :vacancy then manage_casting_vacancy_path(production, record)
     when :auditions then manage_signups_auditions_path(production)
     when :changes then manage_show_changes_path(record)

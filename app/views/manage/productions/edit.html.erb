@@ -4,6 +4,9 @@
 <% org_manager = Current.user&.superadmin? || @production.organization.manageable_by?(Current.user) %>
 <%# Services (after-V1 #6): Pro and the managers', and no tab at all otherwise. %>
 <% services_on = @production.organization.services_available_to?(Current.user) %>
+<%# Casting: whether people are cast in it at all, for a production we run
+    casting for (not one booked by a contract, not a course). %>
+<% casting_tab = @production.castable? %>
 
 <div class="w-full">
 
@@ -20,6 +23,7 @@
     edit_sections += [ "Agreement", "Public Listing", "Pay" ] unless @production.type_third_party?
     edit_sections << "Tickets"
     edit_sections << "Services" if services_on
+    edit_sections << "Casting" if casting_tab
     edit_sections << "Danger Zone" if org_manager
     section_features = { "Agreement" => :agreements, "Pay" => :money, "Tickets" => :ticketing, "Services" => nil }
   %>
@@ -67,8 +71,11 @@
             <%= render "shared/pro_marker" %>
           </button>
         <% end %>
+        <% if casting_tab %>
+          <button type="button" data-tabs-target="tab" data-index="<%= production_casting_tab(@production) %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap">Casting</button>
+        <% end %>
         <% if org_manager %>
-          <button type="button" data-tabs-target="tab" data-index="<%= services_on ? 9 : 8 %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
+          <button type="button" data-tabs-target="tab" data-index="<%= (services_on ? 9 : 8) + (casting_tab ? 1 : 0) %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
         <% end %>
       <% else %>
         <%# A production booked by a contract still has a team (Tim, 2026-10-16):
@@ -818,6 +825,25 @@
       <!-- Services (Pro): what every show needs -->
       <div data-tabs-target="panel" class="hidden">
         <%= render "manage/productions/services_tab", production: @production %>
+      </div>
+    <% end %>
+
+    <% if casting_tab %>
+      <!-- Casting: the production's answer, and the way into the rest -->
+      <div data-tabs-target="panel" class="hidden" data-production-casting-tab>
+        <%= render "manage/casting/answer_card", production: @production, return_to: "production_edit" %>
+        <div class="bg-white border border-gray-200 rounded-lg p-6 flex flex-wrap items-center justify-between gap-3">
+          <% case @production.casting_state %>
+          <% when :not_set_up %>
+            <p class="text-sm text-gray-700">Casting isn't set up for <%= @production.name %> yet: who you cast, your roles, and which dates are cast.</p>
+            <%= render "shared/button", text: "Set up casting", variant: "primary", size: "small", path: manage_casting_setup_path(@production) %>
+          <% when :on %>
+            <p class="text-sm text-gray-700">Who you cast, your <%= @production.act_based? ? "lineup" : "roles" %>, the talent pool, and which dates are cast are in Casting Settings.</p>
+            <%= render "shared/button", text: "Casting Settings", variant: "secondary", size: "small", path: manage_casting_settings_path(@production) %>
+          <% else %>
+            <p class="text-sm text-gray-700">A single date can still be cast: turn casting on from that date's page.</p>
+          <% end %>
+        </div>
       </div>
     <% end %>
 

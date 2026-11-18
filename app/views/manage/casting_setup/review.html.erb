@@ -1,0 +1,73 @@
+<%
+  act_mode = act_based_wizard?
+  roles = Array(@wizard_state[:roles])
+  row = "flex items-start justify-between gap-4 py-3 border-b border-gray-200"
+  label = "text-sm font-medium text-gray-500"
+  edit = "text-sm text-pink-600 hover:text-pink-700 flex-shrink-0"
+  off_dates = @dates.reject { |show| @chosen.include?(show.id) }
+%>
+<%= render layout: "manage/casting_setup/wizard_layout", locals: { step: :review, step_name: "Review" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Does this look right?</h2>
+  <p class="text-gray-600 mb-6">Nothing has been changed on <%= @production.name %> yet. Finish, and this is how it's cast. After that, changes happen in Casting Settings.</p>
+
+  <div data-casting-setup-review>
+    <div class="<%= row %>">
+      <div>
+        <p class="<%= label %>">Who you cast</p>
+        <p class="text-sm text-gray-900 mt-1"><%= wizard_casting_source == "manual" ? "Anyone, added by name or email as you need them." : "People from the talent pool." %></p>
+      </div>
+      <%= link_to "Edit", manage_casting_setup_path(@production), class: edit %>
+    </div>
+
+    <div class="<%= row %>">
+      <div>
+        <p class="<%= label %>">Roles or acts</p>
+        <p class="text-sm text-gray-900 mt-1"><%= act_mode ? "Acts: a running order, with each act cast." : "Roles: named positions to fill." %></p>
+      </div>
+      <%= link_to "Edit", manage_casting_setup_style_path(@production), class: edit %>
+    </div>
+
+    <div class="<%= row %>">
+      <div class="min-w-0">
+        <p class="<%= label %>"><%= act_mode ? "Your lineup" : "Your roles" %></p>
+        <% if roles.any? %>
+          <p class="text-sm text-gray-900 mt-1">
+            <%= roles.map { |r|
+                  name = r[:name] || r["name"]
+                  quantity = (r[:quantity] || r["quantity"] || 1).to_i
+                  quantity > 1 ? "#{name} ×#{quantity}" : name
+                }.to_sentence %>
+          </p>
+        <% else %>
+          <p class="text-sm text-gray-900 mt-1"><%= act_mode ? "No lineup yet. You can build it later in Casting Settings." : "No set roles yet. You can add them later in Casting Settings." %></p>
+        <% end %>
+      </div>
+      <%= link_to "Edit", manage_casting_setup_roles_path(@production), class: edit %>
+    </div>
+
+    <div class="<%= row %>">
+      <div class="min-w-0">
+        <p class="<%= label %>">Dates</p>
+        <% if @dates.empty? %>
+          <p class="text-sm text-gray-900 mt-1">No dates are coming up yet.</p>
+        <% elsif off_dates.empty? %>
+          <p class="text-sm text-gray-900 mt-1"><%= @dates.one? ? "The one date coming up is cast." : "All #{@dates.size} dates coming up are cast." %></p>
+        <% else %>
+          <p class="text-sm text-gray-900 mt-1"><%= @chosen.size %> of the <%= pluralize(@dates.size, "date") %> coming up <%= @chosen.size == 1 ? "is" : "are" %> cast.</p>
+          <p class="text-sm text-gray-600 mt-1">Not cast: <%= off_dates.first(6).map { |show| "#{show.date_and_time.strftime('%a %b %-d')} (#{event_type_label(show.event_type).downcase})" }.to_sentence %><%= ", and #{off_dates.size - 6} more" if off_dates.size > 6 %>.</p>
+        <% end %>
+        <p class="text-sm text-gray-600 mt-1">A new date follows its kind: shows, classes, workshops, and open mics start with casting on, and rehearsals and meetings start with it off.</p>
+      </div>
+      <%= link_to "Edit", manage_casting_setup_dates_path(@production), class: edit %>
+    </div>
+  </div>
+
+  <%= form_with url: manage_casting_setup_finish_path(@production), method: :post, local: true do %>
+    <div class="mt-8 flex justify-between items-center">
+      <%= link_to manage_casting_setup_dates_path(@production), class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
+        ← Back
+      <% end %>
+      <%= render "shared/button", text: "Finish set-up", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

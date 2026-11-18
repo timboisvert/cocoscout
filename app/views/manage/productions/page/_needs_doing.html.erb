@@ -1,4 +1,5 @@
-<%# What's waiting on someone, one line each with its way in: a role
+<%# What's waiting on someone, one line each with its way in: dates booked
+    at another organization while casting isn't set up, a role
     nobody's filling, audition sign-ups to review, a date that moved or
     was canceled with people still to hear. Nothing here when nothing is.
     Locals: page. %>
@@ -8,7 +9,11 @@
     <% page.needs_doing.each do |item| %>
       <div class="<%= ProductionPageHelper::ROW %>" data-needs="<%= item.key %>">
         <div class="min-w-0 flex-1 text-gray-900"><%= item.text %><% if item.detail %> <span class="text-gray-500">· <%= item.detail %></span><% end %></div>
-        <%= render "shared/button", text: item.action, variant: "secondary", size: "small",
+        <% if item.also %>
+          <%= render "shared/button", text: item.also[:action], variant: "secondary", size: "small",
+                path: production_page_needs_path(page.production, item, path: item.also[:path]), method: item.also[:method] %>
+        <% end %>
+        <%= render "shared/button", text: item.action, variant: (item.also ? "primary" : "secondary"), size: "small",
               path: production_page_needs_path(page.production, item), method: item.method %>
       </div>
     <% end %>

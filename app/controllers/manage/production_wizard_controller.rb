@@ -2,6 +2,8 @@
 
 module Manage
   class ProductionWizardController < Manage::ManageController
+    include Manage::CastingSteps
+
     before_action :ensure_user_is_global_manager
     # Stop a Producer-plan org at the door with the upgrade pitch instead of
     # letting them walk all seven steps into a validation wall at create.
@@ -90,8 +92,9 @@ module Manage
     def save_casting
       source = params[:casting_source] || "talent_pool"
       @wizard_state[:casting_source] = source
-      @wizard_state[:casting_enabled] = (source != "none")
 
+      # "We don't cast people in this production": stored on the production
+      # when it's made (casts_people), and its dates start with casting off.
       # No casting means no roles, no lineup, nobody to pay: skip straight on.
       if source == "none"
         @wizard_state[:casting_mode] = "role_based"
@@ -113,16 +116,7 @@ module Manage
     end
 
     def save_casting_style
-      mode = params[:casting_mode].to_s
-      mode = "role_based" unless Production.casting_modes.key?(mode)
-      # Break rows only make sense in a lineup — drop them if the mode flips
-      # back; show roles become plain roles.
-      if mode == "role_based" && @wizard_state[:roles].present?
-        @wizard_state[:roles] = @wizard_state[:roles]
-          .reject { |r| (r[:category] || r["category"]) == Role::BREAK_CATEGORY }
-          .map { |r| r.to_h.except(:standing, "standing") }
-      end
-      @wizard_state[:casting_mode] = mode
+      store_casting_style(params[:casting_mode])
       save_wizard_state
       redirect_to manage_productions_wizard_roles_path
     end
@@ -134,11 +128,7 @@ module Manage
     end
 
     def save_roles
-      # Blank rows are dropped by parse_roles; a "yes" with nothing in it (or an
-      # act-mode lineup left empty) is stored as no roles at all.
-      roles = params[:has_roles] == "yes" ? parse_roles(params[:roles]) : []
-      @wizard_state[:roles] = roles
-      @wizard_state[:has_roles] = roles.any? ? "yes" : "no"
+      store_roles(params[:has_roles], params[:roles])
 
       save_wizard_state
       redirect_to(pay_step_available? ? manage_productions_wizard_pay_path : manage_productions_wizard_shows_path)
@@ -292,13 +282,16 @@ module Manage
           name: @wizard_state[:name],
           description: @wizard_state[:description],
           genre: @wizard_state[:genre].presence,
-          # "No casting" isn't a source — it's switched off on each show (see
-          # casting_enabled below) — so the production keeps the default.
-          casting_source: Production.casting_sources.key?(@wizard_state[:casting_source].to_s) ? @wizard_state[:casting_source] : "talent_pool",
+          # "We don't cast people in this production" isn't a source: it's the
+          # production's own answer (casts_people), which every date follows,
+          # so the source keeps the default.
+          casts_people: @wizard_state[:casting_source] != "none",
+          casting_source: wizard_casting_source,
           casting_mode: wizard_casting_mode,
           # "Will performers be paid?" — only asked on a paid plan; otherwise
           # the production keeps the default (on) until someone says otherwise.
           pays_performers: !(pay_step_available? && @wizard_state[:pays_performers] == "no"),
+          # The casting questions were asked and answered on the way here.
           casting_setup_completed: true
         )
 
@@ -325,24 +318,11 @@ module Manage
 
         # Create roles (the lineup, in order, for an act-based production —
         # break rows come through as category "break")
-        if @wizard_state[:roles].present?
-          @wizard_state[:roles].each_with_index do |role_data, index|
-            category = role_data[:category] || role_data["category"] || "performing"
-            category = "performing" if category == Role::BREAK_CATEGORY && !@production.act_based?
-            standing = @production.act_based? && (role_data[:standing] || role_data["standing"]) ? true : false
-            @production.roles.create!(
-              name: role_data[:name] || role_data["name"],
-              quantity: (role_data[:quantity] || role_data["quantity"] || 1).to_i,
-              category: category,
-              standing: standing,
-              position: index + 1,
-              restricted: false
-            )
-          end
-        end
+        create_wizard_roles!(@production)
 
         # Create shows — every one carries the schedule step's shared details,
-        # the same field set the show wizard collects.
+        # the same field set the show wizard collects. Each one's casting
+        # follows the production's answer and its kind (Show.casting_default_for).
         if @wizard_state[:shows].present?
           details = (@wizard_state[:details] || {}).with_indifferent_access
           # A repeating series shares one recurrence_group_id, like the show wizard.
@@ -364,8 +344,7 @@ module Manage
               call_time_enabled: details[:call_time_enabled] == true,
               call_time: wizard_call_time(show_data[:date_and_time], details),
               recurrence_group_id: recurrence_group_id,
-              recurrence_pattern: recurrence_group_id && wizard_recurrence_pattern,
-              casting_enabled: @wizard_state.fetch(:casting_enabled, true)
+              recurrence_pattern: recurrence_group_id && wizard_recurrence_pattern
             )
           end
         end
@@ -432,18 +411,6 @@ module Manage
     def wizard_cache_key
       "production_wizard:#{Current.user.id}:#{Current.organization.id}"
     end
-
-    # "role_based" or "act_based" — whatever the casting-style step stored,
-    # falling back to roles.
-    def wizard_casting_mode
-      mode = @wizard_state[:casting_mode].to_s
-      Production.casting_modes.key?(mode) ? mode : "role_based"
-    end
-
-    def act_based_wizard?
-      wizard_casting_mode == "act_based"
-    end
-    helper_method :act_based_wizard?
 
     # The pay step exists only for orgs with the Money feature, and only when
     # the production is cast at all.
@@ -519,30 +486,6 @@ module Manage
       when "new"
         NEW_CALCULATION
       end
-    end
-
-    def parse_roles(roles_params)
-      return [] if roles_params.blank?
-
-      allowed = act_based_wizard? ? Role::CATEGORIES : (Role::CATEGORIES - [ Role::BREAK_CATEGORY ])
-
-      roles_params.values.map do |role|
-        next if role[:name].blank?
-        category = role[:category].to_s
-        # A show role (MC, Stage Kitten ×2) sits alongside an act-based lineup:
-        # not an act, so it may hold several people.
-        standing = act_based_wizard? && category == "show_role"
-        category = "performing" unless allowed.include?(category)
-        # An act (or an intermission) is one thing in the running order.
-        quantity = act_based_wizard? && !standing ? 1 : [ (role[:quantity] || 1).to_i, 1 ].max
-        row = {
-          name: role[:name].to_s.strip,
-          quantity: quantity,
-          category: category
-        }
-        row[:standing] = true if standing
-        row
-      end.compact
     end
 
     def parse_shows(shows_params)

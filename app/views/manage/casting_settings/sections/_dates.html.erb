@@ -1,0 +1,10 @@
+<%# Which of the coming dates are cast: Set up casting's Dates step, kept
+    here for changes afterwards. %>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <%= render "shared/section_heading", title: "Which dates are cast",
+        intro: (@dates.any? ? "Every date coming up in #{@production.name}. Tick the ones you cast people in, and untick any you don't." : nil) %>
+  <div class="p-6">
+    <%= render "manage/casting_steps/dates", production: @production, dates: @dates, chosen: @dates.select(&:casting_enabled?).map(&:id), cast_ids: @cast_ids,
+          url: manage_casting_dates_path(@production), method: :patch, back_path: nil, submit_text: "Save" %>
+  </div>
+</div>

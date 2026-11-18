@@ -1,3 +1,6 @@
+<%# First, the production's own answer: are people cast in it at all. %>
+<%= render "manage/casting/answer_card", production: @production %>
+
 <%# Each control posts its own change through the casting-source controller. %>
 <div data-controller="casting-source" data-casting-source-update-url-value="<%= manage_casting_settings_path(@production) %>">
   <div class="max-w-3xl">

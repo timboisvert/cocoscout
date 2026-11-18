@@ -165,6 +165,18 @@ module Manage
         @shows = base_shows.where("date_and_time >= ?", Time.current).order(:date_and_time)
       end
 
+      # Where casting stands (Not set up, Casting on, Off), and the dates
+      # this list leaves out because their casting is off: the page says how
+      # many, so an empty list never reads as "nothing is scheduled".
+      @casting_status = CastingStatus.new(@production)
+      in_view = @production.shows
+      in_view = in_view.where(canceled: false) if @hide_canceled
+      in_view = @filter == "past" ? in_view.where("date_and_time < ?", Time.current) : in_view.where("date_and_time >= ?", Time.current)
+      @dates_in_view = in_view.count
+      @casting_off_in_view = in_view.where(casting_enabled: false).count
+      @canceled_hidden = @hide_canceled && @dates_in_view.zero? && @production.shows.where(canceled: true)
+                                                                              .where(@filter == "past" ? "date_and_time < ?" : "date_and_time >= ?", Time.current).exists?
+
       # Eager load roles for the production (used in cast_card partial)
       @roles = @production.roles.order(:position).to_a
       @roles_count = @roles.size

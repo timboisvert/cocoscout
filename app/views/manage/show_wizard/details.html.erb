@@ -23,6 +23,9 @@
           <p class="text-sm font-medium text-gray-700">Enable casting for this event</p>
           <p class="text-xs text-gray-500 mt-1">
             When enabled, you can assign cast members to roles for this event.
+            <% if @production.castable? && !@production.casts_people? %>
+              It starts off because we don't cast people in <%= @production.name %>.
+            <% end %>
           </p>
         </div>
         <label class="relative inline-flex items-center cursor-pointer ml-4">

@@ -24,6 +24,11 @@ class Role < ApplicationRecord
   has_many :show_cast_notifications, dependent: :nullify
   has_many :casting_table_draft_assignments, dependent: :destroy
 
+  # A production somebody has given a role is one whose casting is set up
+  # (Production#casting_state), whichever screen the role was added on. The
+  # Attendees role a sign-up form makes for itself isn't somebody's.
+  after_create :mark_casting_set_up, unless: :system_managed?
+
   # Scopes for production vs show-specific roles
   scope :production_roles, -> { where(show_id: nil) }
   scope :show_roles, -> { where.not(show_id: nil) }
@@ -283,6 +288,10 @@ class Role < ApplicationRecord
   end
 
   private
+
+  def mark_casting_set_up
+    production.update_column(:casting_setup_completed, true) if production && !production.casting_setup_completed?
+  end
 
   def break_only_in_act_based_production
     return unless break?

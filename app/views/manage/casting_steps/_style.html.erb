@@ -1,0 +1,79 @@
+<%# "Roles or acts": named positions to fill, or a running order of acts.
+    Shared by the new-production wizard and Set up casting; the page around
+    it writes the heading.
+
+    Locals: url, mode ("role_based" or "act_based"), back_path, next_text. %>
+<%
+  mode = local_assigns[:mode].presence || "role_based"
+  next_text = local_assigns[:next_text] || "Next"
+%>
+<%= form_with url: url, method: :post, local: true, id: "casting-style-form" do |form| %>
+  <div class="space-y-4">
+    <!-- Roles option -->
+    <label class="block cursor-pointer">
+      <div id="role-based-option" class="p-4 rounded-lg border-2 transition-colors <%= mode == 'role_based' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300">
+        <div class="flex items-start">
+          <input type="radio" name="casting_mode" value="role_based"
+                 <%= "checked" if mode == 'role_based' %>
+                 class="mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500">
+          <div class="ml-3">
+            <p class="font-medium text-gray-900">Roles</p>
+            <p class="text-sm text-gray-500 mt-1">
+              Fill named positions: Host, Performer ×6, Stage Manager.
+              <span class="text-gray-600 font-medium">Best for:</span> plays, improv teams, crews.
+            </p>
+          </div>
+        </div>
+      </div>
+    </label>
+
+    <!-- Acts option -->
+    <label class="block cursor-pointer">
+      <div id="act-based-option" class="p-4 rounded-lg border-2 transition-colors <%= mode == 'act_based' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300">
+        <div class="flex items-start">
+          <input type="radio" name="casting_mode" value="act_based"
+                 <%= "checked" if mode == 'act_based' %>
+                 class="mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500">
+          <div class="ml-3">
+            <p class="font-medium text-gray-900">Acts</p>
+            <p class="text-sm text-gray-500 mt-1">
+              Build a running order: Magic, Clown, Intermission, Aerial… and cast each act. Performers can hold more than one act.
+              <span class="text-gray-600 font-medium">Best for:</span> burlesque, variety, cabaret, circus.
+            </p>
+          </div>
+        </div>
+      </div>
+    </label>
+  </div>
+
+  <div class="mt-8 flex justify-between items-center">
+    <%= link_to back_path, class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
+      ← Back
+    <% end %>
+    <%= render "shared/button", text: next_text, variant: "primary", size: "medium", type: :submit %>
+  </div>
+<% end %>
+
+<script>
+(function() {
+  const options = {
+    role_based: document.getElementById('role-based-option'),
+    act_based: document.getElementById('act-based-option')
+  };
+
+  document.querySelectorAll('input[name="casting_mode"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+      Object.entries(options).forEach(([value, el]) => {
+        if (!el) return;
+        if (value === this.value) {
+          el.classList.add('border-pink-500', 'bg-pink-50');
+          el.classList.remove('border-gray-200', 'bg-gray-50');
+        } else {
+          el.classList.remove('border-pink-500', 'bg-pink-50');
+          el.classList.add('border-gray-200', 'bg-gray-50');
+        }
+      });
+    });
+  });
+})();
+</script>
