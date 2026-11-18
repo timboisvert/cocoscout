@@ -173,7 +173,6 @@ class CourseOffering < ApplicationRecord
 
   def ensure_instructor_role
     production.roles.find_or_create_by!(name: "Instructor") do |role|
-      role.category = "technical"
       role.quantity = 1
     end
   end

@@ -395,7 +395,10 @@ class HomeWeek
   def cast_for(show)
     return nil if show.canceled # its row says whether the cast were told (told_for)
 
-    roles = @roles_by_show.fetch(show.id, [])
+    # A date with casting off asks for nobody: its roles aren't counted, so
+    # it never reads "3 uncast" (Tim, 2026-11-18). People already on it, or
+    # a vacancy still open, are still shown.
+    roles = show.casting_enabled? ? @roles_by_show.fetch(show.id, []) : []
     assignments = @assignments_by_show.fetch(show.id, [])
     return nil if roles.empty? && assignments.empty? && @vacancies_by_show[show.id].empty?
 

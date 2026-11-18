@@ -48,7 +48,7 @@ module Manage
             is_online: original_show.is_online,
             online_location_info: original_show.online_location_info,
             secondary_name: original_show.secondary_name,
-            casting_enabled: original_show.casting_enabled,
+            casting_enabled: Show.casting_default_for(@production, original_show.event_type, like: original_show),
             public_profile_visible: original_show.public_profile_visible,
             event_frequency: "single",
             duplicating_from: original_show.id
@@ -71,7 +71,7 @@ module Manage
 
       # Set defaults based on event type. Call time defaults to OFF in the
       # wizard — the manager opts in with the toggle on the schedule step.
-      @wizard_state[:casting_enabled] = EventTypes.casting_enabled_default(@wizard_state[:event_type])
+      @wizard_state[:casting_enabled] = Show.casting_default_for(@production, @wizard_state[:event_type])
       @wizard_state[:call_time_enabled] = false
 
       save_wizard_state

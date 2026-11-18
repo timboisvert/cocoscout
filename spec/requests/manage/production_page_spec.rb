@@ -95,7 +95,8 @@ RSpec.describe "A production's page", type: :request do
 
       doc = page_for(production)
       cast = doc.at_css("[data-production-cast]")
-      expect(text_of(cast.at_css("[data-production-pool]"))).to eq("2 in the talent pool · 1 role")
+      expect(text_of(cast.at_css("[data-production-pool]"))).to eq("2 in the talent pool · 1 role · Casting is on for 1 of the 2 dates coming up")
+      expect(text_of(cast.at_css("[data-production-casting-badge]"))).to eq("Casting on")
       expect(cast.css("[data-faces] > *").size).to eq(2)
       expect(cast.at_css(%(a[href="#{manage_casting_production_path(production)}"]))).to be_present
 

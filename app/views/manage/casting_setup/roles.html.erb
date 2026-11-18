@@ -1,0 +1,13 @@
+<% act_mode = act_based_wizard? %>
+<%= render layout: "manage/casting_setup/wizard_layout", locals: { step: :roles, step_name: (act_mode ? "Your lineup" : "Your roles") } do %>
+  <% if act_mode %>
+    <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Build your lineup</h2>
+    <p class="text-gray-600 mb-6">The lineup is your running order: the acts in the order they go on, with an intermission wherever you break. Each new date starts from this lineup, and you can change it later in Casting Settings.</p>
+  <% else %>
+    <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Do you have set roles?</h2>
+    <p class="text-gray-600 mb-6">Roles are the positions you fill on each date, like "Host", "Featured Comic", or "Lead". You can add or change roles later in Casting Settings.</p>
+  <% end %>
+
+  <%= render "manage/casting_steps/roles", url: manage_casting_setup_save_roles_path(@production), act_mode: act_mode,
+        has_roles: @wizard_state[:has_roles], rows: @wizard_state[:roles], back_path: manage_casting_setup_style_path(@production) %>
+<% end %>

@@ -8,7 +8,7 @@
   ],
   sections: sections,
   current: @section,
-  intro: "#{@production.name} casts by #{@production.act_based? ? 'acts' : 'roles'}."
+  intro: (@production.casts_people? ? "#{@production.name} casts by #{@production.act_based? ? 'acts' : 'roles'}." : nil)
 } do %>
   <%= render "manage/casting_settings/sections/#{@section}" %>
 <% end %>

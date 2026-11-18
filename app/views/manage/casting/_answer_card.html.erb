@@ -1,0 +1,37 @@
+<%# The production's answer, in Tim's words (2026-11-18): "We cast people in
+    this production" or "We don't cast people in this production". The
+    first card of Casting Settings, and the Casting tab of the production's
+    own settings. Its own form with its own Save, because saving brings the
+    coming dates into line with the answer (CastingAnswer).
+
+    Locals: production; return_to (optional: "production_edit" lands back
+    on the production's settings instead of Casting Settings). %>
+<%
+  yes = production.casts_people?
+  card = "flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-colors has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 border-gray-200"
+%>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden mb-8" data-casting-answer="<%= yes ? 'yes' : 'no' %>">
+  <%= render "shared/section_heading", title: "Casting in this production", intro: "Every new date follows this, however the date is made." %>
+  <%= form_with url: manage_casting_answer_path(production), method: :patch, local: true, data: { turbo_action: "replace" } do %>
+    <% if local_assigns[:return_to].present? %><input type="hidden" name="return_to" value="<%= return_to %>"><% end %>
+    <div class="p-6 space-y-3">
+      <label class="<%= card %>">
+        <input type="radio" name="casts_people" value="yes" <%= "checked" if yes %> class="h-4 w-4 mt-0.5 accent-pink-500 cursor-pointer">
+        <span class="flex-1">
+          <span class="block font-medium text-gray-900">We cast people in this production</span>
+          <span class="block text-sm text-gray-600 mt-0.5">New shows, classes, workshops, and open mics start with casting on. Rehearsals and meetings start with it off. You can change any one date.</span>
+        </span>
+      </label>
+      <label class="<%= card %>">
+        <input type="radio" name="casts_people" value="no" <%= "checked" unless yes %> class="h-4 w-4 mt-0.5 accent-pink-500 cursor-pointer">
+        <span class="flex-1">
+          <span class="block font-medium text-gray-900">We don't cast people in this production</span>
+          <span class="block text-sm text-gray-600 mt-0.5">Every new date starts with casting off, and casting is switched off on the coming dates nobody is cast in. A date with people already cast keeps them.</span>
+        </span>
+      </label>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+</div>

@@ -20,6 +20,10 @@
     </div>
   <% end %>
 
+  <div class="mt-4">
+    <%= render "manage/casting/status", status: @casting_status, can_manage: current_user_can_manage?(@production) %>
+  </div>
+
   <div class="pt-4 mt-2" data-controller="casting-filter">
     <%= render "shared/filters/filter_bar", filter_groups: [
       {
@@ -51,8 +55,34 @@
             <%= render "manage/casting/cast_card", show: show, production: @production, title: nil, roles: @roles, roles_count: @roles_count, people_by_id: @people_by_id, groups_by_id: @groups_by_id, sign_up_registrations: sign_up_regs %>
           <% end %>
         </div>
-      <% else %>
-        <p class="text-gray-500 text-sm"><%= @filter == "past" ? "No past shows found." : "No upcoming shows scheduled." %></p>
+      <% end %>
+      <%# What the list above leaves out, said plainly: a date with casting
+          off isn't here, and an empty list isn't "nothing scheduled". %>
+      <%
+        coming = @filter != "past"
+        off = @casting_off_in_view
+        note = if @dates_in_view.zero? && @canceled_hidden
+          coming ? "Every date coming up in #{@production.name} is canceled." : "Every past date of #{@production.name} was canceled."
+        elsif @dates_in_view.zero?
+          coming ? "No dates are coming up in #{@production.name}." : "#{@production.name} has no past dates."
+        elsif @shows.empty?
+          if coming
+            "Casting is off for #{off == 1 ? 'the one date' : "all #{off} dates"} coming up, so there is nothing to cast here."
+          else
+            "Casting was off for #{off == 1 ? 'the one past date' : "all #{off} past dates"}."
+          end
+        elsif off.positive?
+          coming ? "Casting is off for #{pluralize(off, 'more date')} coming up." : "Casting was off for #{pluralize(off, 'more past date')}."
+        end
+        dates_link = coming && off.positive? && current_user_can_manage?(@production)
+      %>
+      <% if note %>
+        <p class="text-gray-600 text-sm <%= 'mt-3' if @shows.any? %>" data-casting-list-note>
+          <%= note %>
+          <% if dates_link %>
+            <%= link_to "Choose which dates are cast", manage_casting_settings_section_path(production_id: @production, section: "dates"), class: "text-pink-600 hover:text-pink-700 font-medium" %>
+          <% end %>
+        </p>
       <% end %>
     </div>
   </div>

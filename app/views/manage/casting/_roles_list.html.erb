@@ -53,10 +53,10 @@
     roles_by_category = { "lineup" => roles.reject(&:standing?), "show_roles" => roles.select(&:standing?) }.reject { |cat, list| list.empty? && cat == "lineup" }
     category_order = %w[lineup show_roles] & roles_by_category.keys
   else
-    # Group roles by category for section display
-    roles_by_category = roles.group_by { |r| r.category || "performing" }
-    # Order categories: performing first, then others alphabetically
-    category_order = ["performing"] + (roles_by_category.keys - ["performing"]).sort
+    # One list, in the roles' own order: a role is its name and how many,
+    # with no Performing / Technical sections (Tim, 2026-11-18).
+    roles_by_category = { "roles" => roles }
+    category_order = [ "roles" ]
   end
   is_manual_mode = local_assigns[:is_manual_mode] || false
   role_slot_copy = is_manual_mode ? "Click to add someone" : "Drag or click to add someone"
@@ -125,11 +125,6 @@
       <% if act_mode %>
         <div class="flex items-center gap-2 pt-2 first:pt-0">
           <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide"><%= section_titles[category] %></h3>
-          <div class="flex-1 border-t border-gray-200"></div>
-        </div>
-      <% elsif roles_by_category.keys.size > 1 %>
-        <div class="flex items-center gap-2 pt-2 first:pt-0">
-          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide capitalize"><%= category %></h3>
           <div class="flex-1 border-t border-gray-200"></div>
         </div>
       <% end %>

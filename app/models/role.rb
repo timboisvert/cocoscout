@@ -1,10 +1,13 @@
 # frozen_string_literal: true
 
 class Role < ApplicationRecord
-  # Role categories (performing = on stage, technical = backstage/crew,
-  # break = a running-order marker such as an intermission in an act-based
-  # lineup — never cast, never counted)
-  CATEGORIES = %w[performing technical break].freeze
+  # Role categories. performing is every ordinary role. break is a
+  # running-order marker such as an intermission in an act-based lineup:
+  # never cast, never counted. There used to be a third, technical
+  # (backstage/crew): it's gone (Tim, 2026-11-18: crew is Staffing's now),
+  # and the roles that carried it became performing
+  # (CrewRolesBecomePlainRoles).
+  CATEGORIES = %w[performing break].freeze
   BREAK_CATEGORY = "break"
 
   # System role types (for system-managed roles)
@@ -24,6 +27,11 @@ class Role < ApplicationRecord
   has_many :show_cast_notifications, dependent: :nullify
   has_many :casting_table_draft_assignments, dependent: :destroy
 
+  # A production somebody has given a role is one whose casting is set up
+  # (Production#casting_state), whichever screen the role was added on. The
+  # Attendees role a sign-up form makes for itself isn't somebody's.
+  after_create :mark_casting_set_up, unless: :system_managed?
+
   # Scopes for production vs show-specific roles
   scope :production_roles, -> { where(show_id: nil) }
   scope :show_roles, -> { where.not(show_id: nil) }
@@ -31,7 +39,6 @@ class Role < ApplicationRecord
 
   # Scopes for role categories
   scope :performing, -> { where(category: "performing") }
-  scope :technical, -> { where(category: "technical") }
   # Everything that takes a performer — excludes intermission-style break markers
   scope :castable, -> { where.not(category: BREAK_CATEGORY) }
   scope :breaks, -> { where(category: BREAK_CATEGORY) }
@@ -156,9 +163,8 @@ class Role < ApplicationRecord
 
   # The act-mode editor's Type select: "act" | "break" | "show_role". Setting
   # it maps onto category + standing in one place so every editor (production
-  # roles, a show's lineup, the production wizard) agrees. A show role that
-  # was technical stays technical (the flag is what makes it a show role); an
-  # act or break clears the flag.
+  # roles, a show's lineup, the production wizard) agrees. The flag is what
+  # makes a role a show role; an act or break clears it.
   def lineup_kind
     return "break" if break?
     return "show_role" if standing?
@@ -169,9 +175,10 @@ class Role < ApplicationRecord
   # What a role editor posted, made safe for the lineup it's editing. In an
   # act-based lineup the Type select posts `category` as performing (an act),
   # break (an intermission) or show_role — that becomes lineup_kind, acts and
-  # breaks are one slot, and breaks aren't restricted. In a role-based lineup
-  # there are no breaks or show roles: either quietly becomes a performing
-  # role and `standing` is left alone.
+  # breaks are one slot, and breaks aren't restricted. A role-based lineup
+  # has no kinds at all: a role is its name and how many (Tim, 2026-11-18;
+  # the Performing / Technical choice is gone, crew being Staffing's now).
+  # Whatever is posted there is dropped: every role is a plain one.
   def self.editor_params(permitted, act_based:)
     permitted = permitted.to_h.with_indifferent_access
     category = permitted.delete(:category).to_s
@@ -185,7 +192,9 @@ class Role < ApplicationRecord
       permitted[:quantity] = 1 unless kind == "show_role"
       permitted[:restricted] = false if kind == "break"
     else
-      permitted[:category] = %w[performing technical].include?(category) ? category : "performing"
+      # An intermission left in a lineup that's now cast by roles becomes a
+      # plain role when it's edited, as it always has.
+      permitted[:lineup_kind] = "role"
     end
     permitted
   end
@@ -196,8 +205,10 @@ class Role < ApplicationRecord
       self.category = BREAK_CATEGORY
       self.standing = false
     when "show_role"
-      self.category = "performing" unless category == "technical"
+      self.category = "performing"
       self.standing = true
+    when "role"
+      self.category = "performing" if break?
     else
       self.category = "performing" if break?
       self.standing = false
@@ -283,6 +294,10 @@ class Role < ApplicationRecord
   end
 
   private
+
+  def mark_casting_set_up
+    production.update_column(:casting_setup_completed, true) if production && !production.casting_setup_completed?
+  end
 
   def break_only_in_act_based_production
     return unless break?

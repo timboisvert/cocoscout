@@ -43,7 +43,7 @@
     links: []
   } %>
 
-  <%= form_with(model: [ :manage, @production, @show ], class: "contents", data: { controller: "show-edit", "show-edit-casting-defaults-value": EventTypes.casting_enabled_defaults.to_json }) do |form| %>
+  <%= form_with(model: [ :manage, @production, @show ], class: "contents", data: { controller: "show-edit", "show-edit-casting-defaults-value": (@production.casts_people? ? EventTypes.casting_enabled_defaults : []).to_json }) do |form| %>
     <%# One event of a series: say so once, above every tab, with the one
         switch that sends a save to all of them. %>
     <% if @show.recurring? %>

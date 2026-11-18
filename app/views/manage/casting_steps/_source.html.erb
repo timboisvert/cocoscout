@@ -1,0 +1,112 @@
+<%# "Who do you cast?": the talent pool, or names typed in. One step, two
+    homes: the new-production wizard and Set up casting. The page around it
+    writes the heading; this is the choice, Back, and Next.
+
+    Locals:
+      url        - where the form posts
+      source     - the choice so far: "talent_pool", "manual", or "none"
+      back_path  - the step before, nil for a first step
+      allow_none - true offers "We don't cast people in this production"
+                   (the new-production wizard, where it's first asked)
+      next_text  - the submit button's words (default "Next") %>
+<%
+  source = local_assigns[:source].presence
+  back_path = local_assigns[:back_path]
+  allow_none = local_assigns[:allow_none]
+  next_text = local_assigns[:next_text] || "Next"
+%>
+<%= form_with url: url, method: :post, local: true, id: "casting-form" do |form| %>
+  <div class="space-y-4">
+    <!-- Talent Pool option -->
+    <label class="block cursor-pointer">
+      <div id="talent-pool-option" class="p-4 rounded-lg border-2 transition-colors <%= source == 'talent_pool' || source.nil? ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300">
+        <div class="flex items-start">
+          <input type="radio" name="casting_source" value="talent_pool"
+                 <%= "checked" if source == 'talent_pool' || source.nil? %>
+                 class="mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500">
+          <div class="ml-3">
+            <p class="font-medium text-gray-900">Talent Pool</p>
+            <p class="text-sm text-gray-500 mt-1">
+              Build a pool of performers and cast them into shows.
+              <span class="text-gray-600 font-medium">Best for:</span> theater companies, dance troupes, improv groups.
+            </p>
+          </div>
+        </div>
+      </div>
+    </label>
+
+    <!-- Manual option -->
+    <label class="block cursor-pointer">
+      <div id="manual-option" class="p-4 rounded-lg border-2 transition-colors <%= source == 'manual' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300">
+        <div class="flex items-start">
+          <input type="radio" name="casting_source" value="manual"
+                 <%= "checked" if source == 'manual' %>
+                 class="mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500">
+          <div class="ml-3">
+            <p class="font-medium text-gray-900">Manual Entry</p>
+            <p class="text-sm text-gray-500 mt-1">
+              Add performers by name or email as needed.
+              <span class="text-gray-600 font-medium">Best for:</span> guest artists, one-off events, collaborations.
+            </p>
+          </div>
+        </div>
+      </div>
+    </label>
+
+    <% if allow_none %>
+    <!-- No casting option -->
+    <label class="block cursor-pointer">
+      <div id="no-casting-option" class="p-4 rounded-lg border-2 transition-colors <%= source == 'none' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50' %> hover:border-pink-300">
+        <div class="flex items-start">
+          <input type="radio" name="casting_source" value="none"
+                 <%= "checked" if source == 'none' %>
+                 class="mt-1 h-4 w-4 text-pink-500 border-gray-300 focus:ring-pink-500 accent-pink-500">
+          <div class="ml-3">
+            <p class="font-medium text-gray-900">We don't cast people in this production</p>
+            <p class="text-sm text-gray-500 mt-1">
+              Its dates start with casting off, and nobody is assigned to them.
+              <span class="text-gray-600 font-medium">Best for:</span> rentals, private events, or shows tracked for scheduling only.
+            </p>
+          </div>
+        </div>
+      </div>
+    </label>
+    <% end %>
+  </div>
+
+  <div class="mt-8 flex justify-between items-center">
+    <% if back_path %>
+      <%= link_to back_path, class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
+        ← Back
+      <% end %>
+    <% else %>
+      <span></span>
+    <% end %>
+    <%= render "shared/button", text: next_text, variant: "primary", size: "medium", type: :submit %>
+  </div>
+<% end %>
+
+<script>
+(function() {
+  const options = {
+    talent_pool: document.getElementById('talent-pool-option'),
+    manual: document.getElementById('manual-option'),
+    none: document.getElementById('no-casting-option')
+  };
+
+  document.querySelectorAll('input[name="casting_source"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+      Object.entries(options).forEach(([value, el]) => {
+        if (!el) return;
+        if (value === this.value) {
+          el.classList.add('border-pink-500', 'bg-pink-50');
+          el.classList.remove('border-gray-200', 'bg-gray-50');
+        } else {
+          el.classList.remove('border-pink-500', 'bg-pink-50');
+          el.classList.add('border-gray-200', 'bg-gray-50');
+        }
+      });
+    });
+  });
+})();
+</script>

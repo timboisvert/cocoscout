@@ -127,6 +127,26 @@ class Production < ApplicationRecord
     act_based: "act_based"
   }, default: :role_based
 
+  # Whether people are cast in this production (Tim, 2026-11-18): the stored
+  # answer, casts_people, "We cast people in this production" or "We don't
+  # cast people in this production". A new date follows it
+  # (Show.casting_default_for), and the casting board and the production's
+  # page say which it is. casting_setup_completed says the set-up questions
+  # (who is cast, roles or acts, the roles, which dates) have been answered:
+  # by the new-production wizard, by Set up casting, or by adding a role.
+  #
+  #   :off         we don't cast people in it
+  #   :not_set_up  we do, and nothing has been set up yet
+  #   :on          we do, and it's set up
+  def casting_state
+    return :off unless casts_people?
+
+    casting_setup_completed? ? :on : :not_set_up
+  end
+
+  def casting_set_up? = casting_state == :on
+  def casting_not_set_up? = casting_state == :not_set_up
+
   # How a show's payout calculation is chosen (Settle up, Tim, 2026-11-04):
   # once for the production (every show starts from its calculation), or
   # asked for each show on the day's page. Either way the production's

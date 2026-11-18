@@ -1,0 +1,7 @@
+<%= render layout: "manage/casting_setup/wizard_layout", locals: { step: :who, step_name: "Who you cast" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Who do you cast in <%= @production.name %>?</h2>
+  <p class="text-gray-600 mb-6">This is where the people you assign to a date come from. You can change it later in Casting Settings.</p>
+
+  <%= render "manage/casting_steps/source", url: manage_casting_setup_save_who_path(@production), source: @wizard_state[:casting_source],
+        back_path: nil, allow_none: false %>
+<% end %>

@@ -126,6 +126,15 @@ RSpec.describe ContractConnections do
       expect(own.reload.linked_show_id).to be_nil
     end
 
+    it "brings a show in with casting off when people aren't cast in their production" do
+      # A date that arrives follows the production it arrives in (Tim,
+      # 2026-11-18): "We don't cast people in this production".
+      their_production.update!(casts_people: false)
+
+      connect!
+      expect(their_production.shows.where.not(linked_show_id: nil).pluck(:casting_enabled)).to eq([ false, false ])
+    end
+
     it "puts every date on the contract into their production, following it" do
       connection = nil
       expect { connection = connect! }.to change(user.notifications, :count).by(1)

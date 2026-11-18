@@ -351,14 +351,16 @@ RSpec.describe CastingModeConverter do
       to_acts!
       lineup = production.roles.production_roles.reload.to_a
       lineup[1].update_columns(name: "Solo")            # Dancer Solo Dancer Dancer Dancer Host
-      lineup[4].update_columns(category: "technical")   # last Dancer differs, so it doesn't fold either
+      # The last Dancer is restricted to one person, so it doesn't fold either.
+      create(:role_eligibility, role: lineup[4], member: create(:person))
+      lineup[4].update_columns(restricted: true)
 
       to_roles!
 
       lineup = production.roles.production_roles.reload
       expect(lineup.map { |r| [ r.name, r.quantity, r.category ] }).to eq([
         [ "Dancer", 1, "performing" ], [ "Solo", 1, "performing" ], [ "Dancer (2)", 2, "performing" ],
-        [ "Dancer (3)", 1, "technical" ], [ "Host", 1, "performing" ]
+        [ "Dancer (3)", 1, "performing" ], [ "Host", 1, "performing" ]
       ])
       expect(lineup.map(&:position)).to eq([ 0, 1, 2, 3, 4 ])
       expect(lineup).to all(be_valid)
@@ -440,7 +442,7 @@ RSpec.describe CastingModeConverter do
   end
 
   describe "show roles (standing) through a round trip" do
-    let!(:kittens) { create(:role, production: production, name: "Stage Kitten", category: "technical", quantity: 2, position: 2) }
+    let!(:kittens) { create(:role, production: production, name: "Stage Kitten", quantity: 2, position: 2) }
     let(:kitten_people) { (1..2).map { |i| create(:person, name: "Kitten #{i}").tap { |p| org.people << p } } }
 
     before { kitten_people.each_with_index { |p, i| cast!(show, kittens, p, i + 1) } }
@@ -455,19 +457,30 @@ RSpec.describe CastingModeConverter do
       described_class.to_roles!(production)
     end
 
-    it "keeps a technical role as one show role with its slots instead of splitting it into acts" do
-      summary = to_acts!
+    # A role has no Performing / Technical kind (Tim, 2026-11-18: crew is
+    # Staffing's), so nothing is kept whole on its say-so: a role that isn't
+    # an act is made a show role in the lineup.
+    it "splits every multi-person role into acts, with its cast carried over" do
+      to_acts!
+
+      acts = production.roles.production_roles.where(name: "Stage Kitten")
+      expect(acts.count).to eq(2)
+      expect(acts.map(&:quantity)).to eq([ 1, 1 ])
+      expect(acts.map(&:standing?)).to eq([ false, false ])
+      expect(ShowPersonRoleAssignment.where(role: acts).count).to eq(2)
+      expect(production.roles.production_roles.where(name: "Dancer").count).to eq(5)
+    end
+
+    it "keeps a role made a show role whole, with its slots and its cast" do
+      kittens.update!(standing: true)
+      to_acts!
 
       kittens.reload
-      expect(summary.roles_kept_standing).to eq(1)
       expect(kittens).to be_standing
-      expect(kittens.category).to eq("technical")
       expect(kittens.quantity).to eq(2)
       expect(kittens).not_to be_act
       expect(production.roles.production_roles.where(name: "Stage Kitten").count).to eq(1)
       expect(kittens.show_person_role_assignments.count).to eq(2)
-      # The dancers still split into acts.
-      expect(production.roles.production_roles.where(name: "Dancer").count).to eq(5)
     end
 
     it "never splits a show role, however many slots it holds" do
@@ -478,14 +491,15 @@ RSpec.describe CastingModeConverter do
       expect(ushers.reload.quantity).to eq(3)
     end
 
-    it "clears the flag on the way back, so the technical role comes back exactly as it was" do
+    it "clears the flag on the way back, so a show role comes back as the role it was" do
+      kittens.update!(standing: true)
       to_acts!
       summary = to_roles!
 
       kittens.reload
       expect(summary.standing_cleared).to eq(1)
       expect(kittens).not_to be_standing
-      expect(kittens.category).to eq("technical")
+      expect(kittens.category).to eq("performing")
       expect(kittens.quantity).to eq(2)
       expect(kittens.show_person_role_assignments.count).to eq(2)
       expect(production.roles.production_roles.map(&:name)).to eq([ "Dancer", "Host", "Stage Kitten" ])
@@ -500,15 +514,15 @@ RSpec.describe CastingModeConverter do
       expect(runs.map(&:size)).to eq([ 1, 1 ])
     end
 
-    it "gives one show its own copy when only a technical role needs to become a show role" do
+    it "gives one show its own copy when a role of the production's needs splitting for it" do
       dancer.update!(quantity: 1)
       show.update!(casting_mode: "act_based")
       summary = described_class.to_acts_for_show!(show)
 
       expect(summary.lineups_copied).to eq(1)
       expect(show.reload.use_custom_roles?).to be(true)
-      expect(show.custom_roles.find_by(name: "Stage Kitten")).to be_standing
-      expect(kittens.reload).not_to be_standing
+      expect(show.custom_roles.where(name: "Stage Kitten").count).to eq(2)
+      expect(kittens.reload.quantity).to eq(2)
     end
   end
 
@@ -516,8 +530,11 @@ RSpec.describe CastingModeConverter do
     it "groups adjacent look-alike acts, skips breaks, and keeps different acts apart" do
       production.update!(casting_mode: "act_based")
       names = [ [ "Magic", "performing" ], [ "Magic", "performing" ], [ "Intermission", "break" ],
-                [ "Magic", "performing" ], [ "Magic", "technical" ], [ "Clown", "performing" ] ]
+                [ "Magic", "performing" ], [ "Magic", "performing" ], [ "Clown", "performing" ] ]
       roles = names.each_with_index.map { |(n, c), i| create(:role, production: production, name: n, category: c, position: 10 + i) }
+      # The fifth is restricted to one person, so it reads as a different act.
+      create(:role_eligibility, role: roles[4], member: create(:person))
+      roles[4].update_columns(restricted: true)
 
       runs = described_class.mergeable_runs(roles)
 

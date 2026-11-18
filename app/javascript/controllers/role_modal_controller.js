@@ -143,8 +143,8 @@ export default class extends Controller {
             this.quantityInputTarget.value = button.dataset.roleQuantity || 1
         }
         if (this.hasCategorySelectTarget) {
-            // In act mode the select's value is the role's kind; a show role
-            // keeps its category (performing/technical) behind the flag.
+            // In act mode the select's value is the role's kind (an act, an
+            // intermission, or a show role).
             this.categorySelectTarget.value = isShowRole ? "show_role" : (button.dataset.roleCategory || "performing")
         }
         this.showTypeSelect(true)

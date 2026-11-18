@@ -328,10 +328,12 @@ class LinkedDates
     def create_following!(production, contract_show)
       # The date keeps its kind: a contract can book rehearsals as well as
       # shows (Tim, 2026-11-18: "They're rehearsing at our theater"), and a
-      # rehearsal arrives as a rehearsal, with casting as that kind starts.
+      # rehearsal arrives as a rehearsal. Its casting follows the production
+      # it arrives in and its kind, as every new date's does
+      # (Show.casting_default_for): off when people aren't cast in the
+      # production, otherwise on for a show and off for a rehearsal.
       kind = contract_show.event_type.presence || "show"
       production.shows.create!(linked_show: contract_show, following_contract: true, event_type: kind,
-                               casting_enabled: EventTypes.casting_enabled_default(kind),
                                date_and_time: contract_show.date_and_time, duration_minutes: contract_show.duration_minutes,
                                canceled: contract_show.canceled)
     end

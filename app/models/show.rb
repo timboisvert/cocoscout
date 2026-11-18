@@ -258,6 +258,12 @@ class Show < ApplicationRecord
   # Set default attendance_enabled based on event type
   before_validation :set_attendance_enabled_default, on: :create
 
+  # A new date's casting follows its production and its kind
+  # (Show.casting_default_for), whoever makes it: the add-a-date wizard, a
+  # contract, a course, a date that arrives from a connected contract. A
+  # caller that passes casting_enabled itself (the wizard's tick box) wins.
+  before_validation :set_casting_enabled_default, on: :create
+
   # A room only makes sense within its own location — drop it if the location
   # changed (or was cleared, e.g. when the show went online)
   before_validation :clear_mismatched_location_space
@@ -704,6 +710,20 @@ class Show < ApplicationRecord
     end
   end
 
+  # THE one place that decides whether a new date starts with casting on
+  # (Tim, 2026-11-18): off when people aren't cast in the production
+  # (Production#casts_people); otherwise what its kind starts with
+  # (config/event_types.yml: on for shows, classes, workshops, and open mics;
+  # off for rehearsals and meetings). like: a date it's a copy of (the next
+  # date of a series, a duplicate), whose own setting it keeps while people
+  # are cast in the production.
+  def self.casting_default_for(production, event_type, like: nil)
+    return false if production && !production.casts_people?
+    return like.casting_enabled? if like
+
+    EventTypes.casting_enabled_default(event_type.presence || "show")
+  end
+
   # Attendance tracking helpers
   def attendance_enabled_default?
     # Check production default first, then fall back to event type
@@ -837,6 +857,15 @@ class Show < ApplicationRecord
   def set_attendance_enabled_default
     return if attendance_enabled.present? # Don't override if explicitly set
     self.attendance_enabled = attendance_enabled_default?
+  end
+
+  # The column's own default is true, so "nobody said" can't be read from the
+  # value: casting_enabled_came_from_user? is true only when a caller
+  # assigned it.
+  def set_casting_enabled_default
+    return if casting_enabled_came_from_user? && !casting_enabled.nil?
+
+    self.casting_enabled = Show.casting_default_for(production, event_type)
   end
 
   def clear_mismatched_location_space

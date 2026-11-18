@@ -1,0 +1,70 @@
+<%# "Which dates are cast?": every coming date of a production with a tick
+    box, its kind, and where it is. A date that follows another
+    organization's contract says "Booked at <organization>". Shared by Set
+    up casting (its Dates step) and Casting Settings (its Dates section);
+    the page around it writes the heading.
+
+    Locals:
+      production
+      dates      - the coming dates, soonest first (CastingAnswer.upcoming)
+      chosen     - ids of the dates that are ticked
+      cast_ids   - ids of the dates somebody is already cast in (a Set)
+      url, method (default :post)
+      back_path  - the step before (set-up), nil on a settings page
+      submit_text %>
+<%
+  method = local_assigns[:method] || :post
+  back_path = local_assigns[:back_path]
+  chosen = Array(chosen).to_set
+  checkbox = "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+%>
+<%= form_with url: url, method: method, local: true, id: "casting-dates-form", data: { controller: "select-all" } do %>
+  <% if dates.any? %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden" data-casting-dates>
+      <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-gray-50 border-b border-gray-200">
+        <span class="text-sm font-semibold text-gray-900"><%= pluralize(dates.size, "date") %> coming up</span>
+        <%= render "shared/button", text: (dates.all? { |show| chosen.include?(show.id) } ? "Deselect all" : "Select all"), variant: "secondary", size: "small", type: :button,
+              data: { action: "click->select-all#toggleAll", select_all_target: "toggleButton" } %>
+      </div>
+      <% dates.each do |show| %>
+        <%
+          place = if show.follows_contract? && (show.followed_organization || show.venue_location)
+            "Booked at #{show.followed_organization&.name || show.venue_location&.name}"
+          elsif show.is_online
+            "Online"
+          else
+            show.location_space&.name || show.location&.name
+          end
+          cast_here = cast_ids.include?(show.id)
+        %>
+        <label class="flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-gray-50" data-casting-date="<%= show.id %>">
+          <input type="checkbox" name="show_ids[]" value="<%= show.id %>" <%= "checked" if chosen.include?(show.id) %>
+                 data-select-all-target="checkbox" data-action="change->select-all#updateButtonText" class="<%= checkbox %>">
+          <span class="min-w-0 flex-1 text-sm">
+            <span class="font-semibold text-gray-900 <%= 'line-through' if show.canceled %>"><%= show.date_and_time.strftime("%a %b %-d, %-l:%M %p") %></span>
+            <span class="text-gray-600">· <%= [ event_type_label(show.event_type), place ].compact_blank.join(" · ") %></span>
+            <% if show.canceled %><span class="text-gray-600">· Canceled</span><% end %>
+          </span>
+          <% if cast_here %>
+            <span class="text-xs text-gray-600 flex-shrink-0">People are cast in it</span>
+          <% end %>
+        </label>
+      <% end %>
+    </div>
+    <p class="text-sm text-gray-600 mt-3">Unticking a date switches its casting off. Anyone already cast in it stays on it.</p>
+  <% else %>
+    <p class="text-sm text-gray-600" data-casting-dates-none>No dates are coming up in <%= production.name %> yet.</p>
+  <% end %>
+  <p class="text-sm text-gray-600 mt-3">A new date follows its kind: shows, classes, workshops, and open mics start with casting on, and rehearsals and meetings start with it off. You can change any one date.</p>
+
+  <div class="mt-8 flex justify-between items-center">
+    <% if back_path %>
+      <%= link_to back_path, class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>
+        ← Back
+      <% end %>
+    <% else %>
+      <span></span>
+    <% end %>
+    <%= render "shared/button", text: submit_text, variant: "primary", size: "medium", type: :submit %>
+  </div>
+<% end %>

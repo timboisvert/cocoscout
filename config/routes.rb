@@ -826,6 +826,7 @@ Rails.application.routes.draw do
     patch "/shows/:production_id/:id/add_to_series", to: "shows#add_to_series", as: "add_to_series_show"
     post "/shows/:production_id/:id/link_into_series", to: "shows#link_into_series", as: "link_into_series_show"
     post "/shows/:production_id/:id/toggle_attendance", to: "shows#toggle_attendance", as: "toggle_attendance_show"
+    post "/shows/:production_id/:id/turn_casting_on", to: "shows#turn_casting_on", as: "turn_casting_on_show"
     get  "/shows/:production_id/:id/attendance", to: "shows#attendance", as: "attendance_show"
     patch "/shows/:production_id/:id/update_attendance", to: "shows#update_attendance", as: "update_attendance_show"
     post "/shows/:production_id/:id/create_walkin", to: "shows#create_walkin", as: "create_walkin_show"
@@ -1108,6 +1109,25 @@ Rails.application.routes.draw do
     get  "/casting/:production_id/search_people", to: "casting#search_people", as: "casting_search_people"
     # The shared People Picker's search (V1.1 plan §5), for every picker sheet.
     get  "/people-picker/search", to: "people_picker#search", as: "people_picker_search"
+
+    # "We cast people in this production" / "We don't": the production's answer,
+    # and which of its coming dates are cast.
+    patch "/casting/:production_id/settings/answer", to: "casting_settings#update_answer", as: "casting_answer"
+    patch "/casting/:production_id/settings/dates", to: "casting_settings#update_dates", as: "casting_dates"
+
+    # Casting > Set up casting, step by step (the first time; later changes
+    # happen in Casting Settings)
+    get    "/casting/:production_id/setup",        to: "casting_setup#who",        as: "casting_setup"
+    post   "/casting/:production_id/setup/who",    to: "casting_setup#save_who",   as: "casting_setup_save_who"
+    get    "/casting/:production_id/setup/style",  to: "casting_setup#style",      as: "casting_setup_style"
+    post   "/casting/:production_id/setup/style",  to: "casting_setup#save_style", as: "casting_setup_save_style"
+    get    "/casting/:production_id/setup/roles",  to: "casting_setup#roles",      as: "casting_setup_roles"
+    post   "/casting/:production_id/setup/roles",  to: "casting_setup#save_roles", as: "casting_setup_save_roles"
+    get    "/casting/:production_id/setup/dates",  to: "casting_setup#dates",      as: "casting_setup_dates"
+    post   "/casting/:production_id/setup/dates",  to: "casting_setup#save_dates", as: "casting_setup_save_dates"
+    get    "/casting/:production_id/setup/review", to: "casting_setup#review",     as: "casting_setup_review"
+    post   "/casting/:production_id/setup/finish", to: "casting_setup#finish",     as: "casting_setup_finish"
+    delete "/casting/:production_id/setup/cancel", to: "casting_setup#cancel",     as: "casting_setup_cancel"
 
     # Casting > Availability (new URL pattern: /manage/casting/:production_id/availability)
     get  "/casting/:production_id/availability", to: "casting_availability#index", as: "casting_availability"

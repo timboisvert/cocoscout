@@ -1,0 +1,24 @@
+<%# Where the production's casting stands, said once at the top of its
+    casting board: the "Not set up" panel with the way in, or one line
+    ("Casting on" with its counts, or "Off"). The same three states the
+    production's page shows (CastingStatus). Locals: status, can_manage. %>
+<% production = status.production %>
+<% if status.state == :not_set_up && can_manage %>
+  <div data-casting-status="not_set_up">
+    <%= render "shared/alert_panel",
+          eyebrow: "Not set up",
+          headline: "Set up casting for #{production.name}",
+          body: "Say who you cast, add your roles, and choose which dates are cast. It takes a few minutes, and you can change any of it later.",
+          actions: [ { text: "Set it up", path: manage_casting_setup_path(production) } ] %>
+  </div>
+<% else %>
+  <div class="bg-white border border-gray-200 rounded-lg px-5 py-4 mb-6 flex flex-wrap items-center justify-between gap-3" data-casting-status="<%= status.state %>">
+    <div class="flex flex-wrap items-center gap-2 min-w-0">
+      <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium <%= status.badge %>"><%= status.label %></span>
+      <span class="text-sm text-gray-900"><%= status.words %></span>
+    </div>
+    <% if status.state == :off && can_manage %>
+      <%= render "shared/button", text: "Change this", variant: "secondary", size: "small", path: manage_casting_settings_path(production) %>
+    <% end %>
+  </div>
+<% end %>

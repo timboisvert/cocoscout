@@ -60,7 +60,7 @@ RSpec.describe "Phase 3 pages on a phone", type: :request do
     expect(picker.at_css("[data-tabs-target='sectionLabel']").text.squish).to eq("Basic Information")
     items = tabs.css("#production-edit-sections-sheet [data-tabs-target='sectionItem']")
     labels = items.map { |b| b.text.squish.delete_suffix(" Pro") }
-    expect(labels).to eq([ "Basic Information", "Visual Assets", "Documents", "Production Team", "Agreement", "Public Listing", "Pay", "Tickets", "Services", "Danger Zone" ])
+    expect(labels).to eq([ "Basic Information", "Visual Assets", "Documents", "Production Team", "Agreement", "Public Listing", "Pay", "Tickets", "Services", "Casting", "Danger Zone" ])
     expect(items.map { |b| b["data-index"].to_i }).to eq((0...labels.size).to_a)
     expect(items.map { |b| b["data-action"] }.uniq).to eq([ "tabs#select modal#close" ])
     panels = tabs.css("[data-tabs-target='panel']")
