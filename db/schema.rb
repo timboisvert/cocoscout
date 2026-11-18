@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_18_214309) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_18_233411) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2808,6 +2808,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_18_214309) do
     t.string "casting_source", default: "talent_pool", null: false
     t.boolean "casting_setup_completed", default: false, null: false
     t.boolean "casts_people", default: true, null: false
+    t.string "casting_event_matching", default: "all", null: false
+    t.jsonb "casting_event_type_filter", default: [], null: false
     t.boolean "default_signup_based_casting", default: false, null: false
     t.boolean "default_attendance_enabled", default: false, null: false
     t.string "production_type", default: "in_house", null: false

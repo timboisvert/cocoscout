@@ -17,7 +17,7 @@
     <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-2 gap-3">
       <%= render "manage/casting_settings/choice", name: "casts_people", value: "yes", checked: yes,
             title: "We cast people in this production",
-            help: "New shows, classes, workshops, and open mics start with casting on. Rehearsals and meetings start with it off." %>
+            help: production.casting_dates_words(cast: true) %>
       <%= render "manage/casting_settings/choice", name: "casts_people", value: "no", checked: !yes,
             title: "We don't cast people in this production",
             help: "Every new date starts with casting off, and casting is switched off on the coming dates nobody is cast in. Anyone already cast stays." %>

@@ -1,11 +1,7 @@
 <%# Casting: whether people are cast in this production, where they come
-    from, which of its coming dates are cast, and attendance on new dates.
+    from, which of its dates are cast, and attendance on new dates.
     One card a question, each with its own Save, the way Ticketing and
     Money settings are laid out. %>
-<%
-  on, total = @casting_status.upcoming
-  dates_open = params[:dates].present? && @dates.any?
-%>
 <%= render "manage/casting/answer_card", production: @production %>
 
 <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="source">
@@ -28,24 +24,25 @@
   <% end %>
 </div>
 
-<div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="dates">
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden" id="dates" data-settings-card="dates">
   <div class="px-6 py-4 border-b border-gray-200">
-    <h2 class="text-lg font-semibold text-gray-900">Dates</h2>
-    <p class="text-sm text-gray-600 mt-1">Which of the dates coming up are cast.</p>
+    <h2 class="text-lg font-semibold text-gray-900">Which dates?</h2>
+    <p class="text-sm text-gray-600 mt-1">The dates of <%= @production.name %> you cast people in. You can still turn casting on or off for any one date from its own page.</p>
   </div>
-  <div class="px-6 py-4 flex flex-wrap items-center justify-between gap-3">
-    <p class="text-sm text-gray-900" data-casting-dates-count>
-      <% if @dates.empty? %>
-        No dates are coming up in <%= @production.name %>.
-      <% else %>
-        <%= @casting_dates_words %>
-      <% end %>
-    </p>
-    <% if @dates.any? %>
-      <%= render "shared/button", text: "Choose dates", variant: "secondary", size: "small", type: :button,
-            data: { controller: "modal", action: "click->modal#open", modal_id: "casting-dates-modal" } %>
+  <% if @production.casts_people? %>
+    <%= form_with url: manage_casting_dates_path(@production), method: :patch, local: true, data: { turbo_action: "replace" } do %>
+      <div class="px-6 py-5">
+        <%= render "manage/casting_steps/which_dates", production: @production, dates: @dates, matching: @production.casting_event_matching,
+              event_types: @production.casting_event_types, chosen: @dates.select(&:casting_enabled?).map(&:id), cast_ids: @cast_ids %>
+        <p class="text-sm text-gray-600 mt-4">Saving switches casting on for the dates coming up that this covers, and off for the rest. Anyone already cast stays on their date.</p>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+      </div>
     <% end %>
-  </div>
+  <% else %>
+    <p class="px-6 py-5 text-sm text-gray-600" data-casting-dates-off>We don't cast people in <%= @production.name %>, so none of its dates are cast. A single date can still be cast: turn casting on from that date's own page.</p>
+  <% end %>
 </div>
 
 <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="attendance">
@@ -70,30 +67,3 @@
     </div>
   <% end %>
 </div>
-
-<%# "Choose dates": every coming date with a tick box, in a window, so the
-    tab stays short however long the run is. %>
-<% if @dates.any? %>
-  <div id="casting-dates-modal" class="<%= 'hidden' unless dates_open %> fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-       data-controller="modal" data-action="click->modal#closeOnBackdrop">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden" data-action="click->modal#stopPropagation">
-      <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4 flex-shrink-0">
-        <h3 class="text-lg font-semibold text-white">Which dates are cast</h3>
-        <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" aria-label="Close">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-        </button>
-      </div>
-      <%= form_with url: manage_casting_dates_path(@production), method: :patch, local: true, id: "casting-dates-form",
-            class: "flex flex-col min-h-0", data: { controller: "select-all" } do %>
-        <div class="p-6 overflow-y-auto min-h-0">
-          <p class="text-sm text-gray-600 mb-4">Tick the dates you cast people in, and untick any you don't.</p>
-          <%= render "manage/casting_steps/date_ticks", dates: @dates, chosen: @dates.select(&:casting_enabled?).map(&:id), cast_ids: @cast_ids %>
-        </div>
-        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-2 flex-shrink-0">
-          <%= render "shared/button", text: "Cancel", variant: "secondary", size: "small", type: :button, data: { action: "click->modal#close" } %>
-          <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
-        </div>
-      <% end %>
-    </div>
-  </div>
-<% end %>

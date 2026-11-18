@@ -1,15 +1,12 @@
-<%# "Which dates are cast?", as a step of Set up casting: the tick list
-    (casting_steps/date_ticks), what a new date starts with, then Back and
-    Next. The page around it writes the heading.
+<%# "Which dates are cast?", as a step of Set up casting: the three choices
+    (casting_steps/which_dates), then Back and Next. The page around it
+    writes the heading.
 
-    Locals: production, dates, chosen, cast_ids, url, back_path, submit_text. %>
-<%= form_with url: url, method: :post, local: true, id: "casting-dates-form", data: { controller: "select-all" } do %>
-  <% if dates.any? %>
-    <%= render "manage/casting_steps/date_ticks", dates: dates, chosen: chosen, cast_ids: cast_ids %>
-  <% else %>
-    <p class="text-sm text-gray-600" data-casting-dates-none>No dates are coming up in <%= production.name %> yet.</p>
-  <% end %>
-  <p class="text-sm text-gray-600 mt-3">A new date follows its kind: shows, classes, workshops, and open mics start with casting on, and rehearsals and meetings start with it off. You can change any one date.</p>
+    Locals: production, dates, matching, event_types, chosen, cast_ids, url,
+    back_path, submit_text. %>
+<%= form_with url: url, method: :post, local: true, id: "casting-dates-form" do %>
+  <%= render "manage/casting_steps/which_dates", production: production, dates: dates, matching: matching, event_types: event_types, chosen: chosen, cast_ids: cast_ids %>
+  <p class="text-sm text-gray-600 mt-4">You can still turn casting on or off for any one date from its own page.</p>
 
   <div class="mt-8 flex justify-between items-center">
     <%= link_to back_path, class: "text-gray-500 hover:text-gray-700 text-sm py-2" do %>

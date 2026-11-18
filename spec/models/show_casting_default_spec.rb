@@ -29,6 +29,39 @@ RSpec.describe Show, "a new date's casting" do
     expect(new_date(event_type: "class").casting_enabled).to be(false)
   end
 
+  # Which dates are cast is the production's choice, the one Ticketing
+  # offers for which dates it sells: all performances, by event type, or
+  # specific dates.
+  it "is on only for the kinds of event the production casts, when it casts by event type" do
+    production.update!(casting_event_matching: "event_types", casting_event_type_filter: %w[show rehearsal])
+
+    expect(new_date(event_type: "show").casting_enabled).to be(true)
+    expect(new_date(event_type: "rehearsal").casting_enabled).to be(true)
+    expect(new_date(event_type: "class").casting_enabled).to be(false)
+  end
+
+  it "starts off, to be picked, when the production casts specific dates" do
+    production.update!(casting_event_matching: "manual")
+
+    expect(new_date(event_type: "show").casting_enabled).to be(false)
+  end
+
+  it "says what a new date starts with, truthfully for each choice" do
+    expect(production.casting_dates_words).to eq("New shows, classes, workshops, and open mics start with casting on. Rehearsals and meetings start with it off.")
+
+    production.update!(casting_event_matching: "event_types", casting_event_type_filter: %w[show rehearsal])
+    expect(production.casting_dates_words).to eq("New shows and rehearsals start with casting on. Meetings, classes, workshops, and open mics start with it off.")
+
+    production.update!(casting_event_type_filter: EventTypes.all)
+    expect(production.casting_dates_words).to eq("Every new date starts with casting on.")
+
+    production.update!(casting_event_matching: "manual")
+    expect(production.casting_dates_words).to eq("A new date starts with casting off until you pick it.")
+
+    production.update!(casts_people: false)
+    expect(production.casting_dates_words).to eq("Every new date starts with casting off.")
+  end
+
   it "keeps the answer a caller passed, either way" do
     expect(new_date(event_type: "rehearsal", casting_enabled: true).casting_enabled).to be(true)
     expect(new_date(event_type: "show", casting_enabled: false).casting_enabled).to be(false)

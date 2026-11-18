@@ -10,7 +10,7 @@
   <div class="flex items-start justify-between gap-4">
     <div>
       <div class="text-sm font-medium text-gray-900">Cast this <%= kind %></div>
-      <div class="text-xs text-gray-600 mt-0.5">On, you can assign people to its roles. <%= @production.castable? && !@production.casts_people? ? "We don't cast people in #{@production.name}, so its dates start with casting off." : "Shows, classes, and workshops start on; rehearsals and meetings start off." %></div>
+      <div class="text-xs text-gray-600 mt-0.5">On, you can assign people to its roles. <%= @production.castable? ? (@production.casts_people? ? @production.casting_dates_words : "We don't cast people in #{@production.name}, so its dates start with casting off.") : "Shows, classes, and workshops start on; rehearsals and meetings start off." %></div>
     </div>
     <%= render "shared/toggle_switch", form: form, field: :casting_enabled %>
   </div>

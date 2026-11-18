@@ -147,6 +147,50 @@ class Production < ApplicationRecord
   def casting_set_up? = casting_state == :on
   def casting_not_set_up? = casting_state == :not_set_up
 
+  # Which dates are cast, chosen the way Ticketing chooses which dates it
+  # sells (Tim, 2026-11-18): all performances, only some kinds of events, or
+  # only the dates picked. A date's own switch (shows.casting_enabled) is
+  # still what every screen reads; this is what a new date starts from and
+  # what saving the choice brings the coming dates into line with
+  # (Show.casting_default_for, CastingAnswer.choose_rule!).
+  CASTING_EVENT_MATCHING = %w[all event_types manual].freeze
+  validates :casting_event_matching, inclusion: { in: CASTING_EVENT_MATCHING }
+  before_validation { self.casting_event_type_filter = Array(casting_event_type_filter).compact_blank.map(&:to_s).uniq & EventTypes.all }
+
+  # The kinds of event a new date is cast for. "All performances" is every
+  # kind that takes a cast (a show, a class, a workshop, an open mic), never
+  # a rehearsal or a meeting; picked dates have no kinds.
+  def casting_event_types
+    case casting_event_matching
+    when "event_types" then casting_event_type_filter.presence || EventTypes.casting_enabled_defaults
+    when "manual" then []
+    else EventTypes.casting_enabled_defaults
+    end
+  end
+
+  # Whether a new date of this kind starts with casting on.
+  def casts_event_type?(event_type)
+    casts_people? && casting_event_types.include?(event_type.presence&.to_s || "show")
+  end
+
+  # What a new date starts with, as a sentence that's true for this
+  # production's choice. cast: false reads it for a production people
+  # aren't cast in.
+  def casting_dates_words(cast: casts_people?)
+    return "Every new date starts with casting off." unless cast
+
+    kinds = casting_event_types
+    if casting_event_matching == "manual"
+      "A new date starts with casting off until you pick it."
+    elsif (EventTypes.all - kinds).empty?
+      "Every new date starts with casting on."
+    else
+      on = kinds.map { |kind| EventTypes.labels[kind].to_s.downcase.pluralize }
+      off = (EventTypes.all - kinds).map { |kind| EventTypes.labels[kind].to_s.downcase.pluralize }
+      "New #{on.to_sentence} start with casting on. #{off.to_sentence.upcase_first} start with it off."
+    end
+  end
+
   # How a show's payout calculation is chosen (Settle up, Tim, 2026-11-04):
   # once for the production (every show starts from its calculation), or
   # asked for each show on the day's page. Either way the production's

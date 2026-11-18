@@ -1,0 +1,96 @@
+<%# "Which dates are cast?", asked the way Ticketing asks which dates it
+    sells (Tim, 2026-11-18: "all events, just events of the following type,
+    or types... or only specific dates. Like ticketing got this right."):
+    all performances, by event type, or specific dates. The same markup and
+    the same two scripts (event-matching, multi-event-select) as
+    manage/production_ticketings/sections/_dates, so the two read alike.
+
+    It sits inside a form. Used by Casting Settings' Dates card and by Set
+    up casting's Dates step.
+
+    Posts: matching ("all", "event_types", or "manual"), event_types[],
+    and show_ids[].
+
+    Locals:
+      production
+      dates       - the coming dates, soonest first (CastingAnswer.upcoming)
+      matching    - the choice so far
+      event_types - the kinds ticked under "By event type"
+      chosen      - ids of the dates ticked under "Specific dates"
+      cast_ids    - ids of the dates somebody is already cast in (a Set) %>
+<%
+  matching = matching.presence_in(Production::CASTING_EVENT_MATCHING) || "all"
+  kinds = Array(event_types).map(&:to_s).presence || EventTypes.casting_enabled_defaults
+  chosen = Array(chosen).to_set
+  option_class = ->(value) { "block cursor-pointer p-4 rounded-lg border-2 transition-colors hover:border-pink-300 #{matching == value ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-gray-50'}" }
+%>
+<div class="space-y-3" data-controller="event-matching" data-event-matching-selected-value="<%= matching %>" data-casting-which-dates>
+  <div class="<%= option_class.call('all') %>" data-event-matching-target="option" data-value="all" data-action="click->event-matching#select">
+    <input type="radio" name="matching" value="all" <%= "checked" if matching == "all" %> class="sr-only" data-event-matching-target="input">
+    <p class="font-medium text-gray-900">All performances</p>
+    <p class="text-sm text-gray-500 mt-1">Every show, class, workshop, and open mic of <%= production.name %>, never rehearsals or meetings. New ones are cast on their own.</p>
+  </div>
+
+  <div class="<%= option_class.call('event_types') %>" data-event-matching-target="option" data-value="event_types" data-action="click->event-matching#select">
+    <input type="radio" name="matching" value="event_types" <%= "checked" if matching == "event_types" %> class="sr-only" data-event-matching-target="input">
+    <p class="font-medium text-gray-900">By event type</p>
+    <p class="text-sm text-gray-500 mt-1">Only some kinds of events. New ones of those kinds are cast on their own.</p>
+  </div>
+  <div data-event-matching-target="eventTypes" class="<%= matching == 'event_types' ? '' : 'hidden' %> ml-4">
+    <div class="flex flex-wrap gap-2">
+      <% EventTypes.for_select.each do |label, key| %>
+        <% ticked = kinds.include?(key.to_s) %>
+        <div class="px-3 py-1.5 rounded-full border-2 cursor-pointer transition-colors text-sm <%= ticked ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-gray-300 bg-white text-gray-700' %> hover:border-pink-300"
+             data-event-matching-target="eventTypeChip" data-value="<%= key %>" data-action="click->event-matching#selectEventType">
+          <input type="checkbox" name="event_types[]" value="<%= key %>" <%= "checked" if ticked %> class="sr-only accent-pink-500" data-event-matching-target="eventTypeInput">
+          <%= label %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="<%= option_class.call('manual') %>" data-event-matching-target="option" data-value="manual" data-action="click->event-matching#select">
+    <input type="radio" name="matching" value="manual" <%= "checked" if matching == "manual" %> class="sr-only" data-event-matching-target="input">
+    <p class="font-medium text-gray-900">Specific dates</p>
+    <p class="text-sm text-gray-500 mt-1">Only the dates you pick. New ones aren't cast until you pick them.</p>
+  </div>
+  <div data-event-matching-target="manual" class="<%= matching == 'manual' ? '' : 'hidden' %> ml-4 space-y-2 max-h-80 overflow-y-auto" data-controller="multi-event-select">
+    <% dates.each do |show| %>
+      <%
+        ticked = chosen.include?(show.id)
+        place = if show.follows_contract? && (show.followed_organization || show.venue_location)
+          "Booked at #{show.followed_organization&.name || show.venue_location&.name}"
+        elsif show.is_online
+          "Online"
+        else
+          show.location_space&.name || show.location&.name
+        end
+      %>
+      <div class="flex items-center px-3 py-2 border-2 rounded-lg cursor-pointer transition-all hover:border-pink-300 <%= ticked ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-white' %>"
+           data-multi-event-select-target="row" data-show-id="<%= show.id %>" data-casting-date="<%= show.id %>" data-action="click->multi-event-select#toggle">
+        <input type="checkbox" name="show_ids[]" value="<%= show.id %>" <%= "checked" if ticked %> class="sr-only accent-pink-500" data-multi-event-select-target="input">
+        <div class="flex-shrink-0 w-12 mr-3 flex items-center gap-1.5">
+          <span class="text-xl leading-none font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></span>
+          <span class="text-[10px] leading-tight uppercase">
+            <span class="block font-semibold text-pink-600"><%= show.date_and_time.strftime("%b") %></span>
+            <span class="block text-gray-500"><%= show.date_and_time.strftime("%a") %></span>
+          </span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="font-medium text-gray-900 text-sm truncate <%= 'line-through' if show.canceled %>"><%= show.display_name %></div>
+          <div class="text-xs text-gray-600"><%= [ event_type_label(show.event_type), show.time_range_display, place, ("Canceled" if show.canceled), ("People are cast in it" if cast_ids.include?(show.id)) ].compact_blank.join(" · ") %></div>
+        </div>
+        <div class="ml-2" data-checkmark>
+          <% if ticked %>
+            <div class="w-6 h-6 rounded-full bg-pink-500 flex items-center justify-center"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></div>
+          <% else %>
+            <div class="w-6 h-6 rounded-full border-2 border-gray-300"></div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+    <% if dates.empty? %>
+      <p class="text-sm text-gray-500 py-4 text-center" data-casting-dates-none>No upcoming dates on the calendar.</p>
+    <% end %>
+  </div>
+</div>

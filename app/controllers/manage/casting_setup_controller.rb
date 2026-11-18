@@ -58,12 +58,16 @@ module Manage
       redirect_to manage_casting_setup_dates_path(@production)
     end
 
-    # Step 4: which dates are cast
+    # Step 4: which dates are cast (all performances, by event type, or
+    # specific dates: the choice Ticketing offers for which dates it sells)
     def dates
-      @chosen = chosen_date_ids
+      @picked = picked_date_ids
     end
 
     def save_dates
+      matching = params[:matching].to_s
+      @wizard_state[:date_matching] = Production::CASTING_EVENT_MATCHING.include?(matching) ? matching : "all"
+      @wizard_state[:date_event_types] = Array(params[:event_types]).map(&:to_s) & EventTypes.all
       @wizard_state[:date_ids] = Array(params[:show_ids]).map(&:to_i) & @dates.map(&:id)
       save_wizard_state
       redirect_to manage_casting_setup_review_path(@production)
@@ -71,19 +75,19 @@ module Manage
 
     # Step 5: review
     def review
-      @chosen = chosen_date_ids
+      load_review
     end
 
     def finish
       Production.transaction do
         @production.update!(casting_source: wizard_casting_source, casting_mode: wizard_casting_mode, casting_setup_completed: true)
         create_wizard_roles!(@production)
-        CastingAnswer.choose_dates!(@production, chosen_date_ids)
+        CastingAnswer.choose_rule!(@production, matching: wizard_date_matching, event_types: @wizard_state[:date_event_types], show_ids: picked_date_ids)
       end
       clear_wizard_state
       redirect_to manage_casting_production_path(@production), notice: "Casting is set up for #{@production.name}."
     rescue ActiveRecord::RecordInvalid => e
-      @chosen = chosen_date_ids
+      load_review
       flash.now[:alert] = e.message
       render :review, status: :unprocessable_content
     end
@@ -124,14 +128,29 @@ module Manage
       @cast_ids = CastingAnswer.cast_show_ids(@production).to_set
     end
 
-    # The dates ticked on the Dates step; before it has been answered, the
-    # ones that start ticked (CastingAnswer.starts_cast?).
-    def chosen_date_ids
+    # The Dates step's choice so far: "all" until it's answered.
+    def wizard_date_matching
+      @wizard_state[:date_matching].to_s.presence_in(Production::CASTING_EVENT_MATCHING) || "all"
+    end
+    helper_method :wizard_date_matching
+
+    # The dates ticked under "Specific dates"; before the step has been
+    # answered, the ones that have casting on today or anybody cast in them.
+    def picked_date_ids
       if @wizard_state.key?(:date_ids)
         Array(@wizard_state[:date_ids]).map(&:to_i) & @dates.map(&:id)
       else
-        @dates.select { |show| CastingAnswer.starts_cast?(show, @cast_ids) }.map(&:id)
+        @dates.select { |show| show.casting_enabled? || @cast_ids.include?(show.id) }.map(&:id)
       end
+    end
+
+    # What Review says about the dates: the choice as it would be saved
+    # (held on the production in memory only), and the coming dates it
+    # covers.
+    def load_review
+      @production.assign_attributes(casting_event_matching: wizard_date_matching,
+                                    casting_event_type_filter: wizard_date_matching == "event_types" ? Array(@wizard_state[:date_event_types]) : [])
+      @covered = CastingAnswer.covered_ids(@production, @dates, picked_date_ids)
     end
 
     def load_wizard_state

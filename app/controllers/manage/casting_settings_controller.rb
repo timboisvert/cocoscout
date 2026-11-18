@@ -10,7 +10,7 @@ module Manage
     # first four read as a mess):
     #
     #   general      "Casting": are people cast in it, where they come from,
-    #                which coming dates are cast (a window), attendance
+    #                which dates are cast, attendance
     #   roles        roles or acts, then the roles (the lineup, for acts)
     #   talent_pool  the people it casts from
     SECTIONS = %w[general roles talent_pool].freeze
@@ -21,8 +21,8 @@ module Manage
     }.freeze
     DEFAULT_SECTION = "general"
     # Addresses the older tabs had: each lands on the tab that holds it now
-    # ("dates" with the Choose dates window open).
-    MOVED_SECTIONS = { "source" => {}, "dates" => { dates: 1 } }.freeze
+    # ("dates" at its card).
+    MOVED_SECTIONS = { "source" => {}, "dates" => { anchor: "dates" } }.freeze
 
     before_action :set_production
     # Production team viewers look; managers change things (Tim, 2026-10-17).
@@ -70,10 +70,15 @@ module Manage
       redirect_to answer_return_path, notice: notice
     end
 
-    # Which of the coming dates are cast (the Choose dates window).
+    # Which dates are cast (the Which dates? card): all performances, only
+    # some kinds of events, or only the dates picked.
     def update_dates
-      CastingAnswer.choose_dates!(@production, params[:show_ids])
-      redirect_to manage_casting_settings_path(@production), notice: "The dates were updated."
+      unless @production.casts_people?
+        redirect_to manage_casting_settings_path(@production), alert: "We don't cast people in #{@production.name}. Change that first." and return
+      end
+
+      CastingAnswer.choose_rule!(@production, matching: params[:matching], event_types: params[:event_types], show_ids: params[:show_ids])
+      redirect_to manage_casting_settings_path(@production, anchor: "dates"), notice: "The dates were updated."
     end
 
     private
@@ -117,8 +122,6 @@ module Manage
       when "general"
         @dates = CastingAnswer.upcoming(@production).includes(:location, :location_space, linked_show: { production: :organization }).to_a
         @cast_ids = CastingAnswer.cast_show_ids(@production).to_set
-        @casting_status = CastingStatus.new(@production)
-        @casting_dates_words = "#{@casting_status.dates_words}."
       when "roles"
         load_roles_data
         load_talent_pool_data

@@ -69,7 +69,7 @@ RSpec.describe "Casting set-up", type: :request do
       note = board.at_css("[data-casting-list-note]")
       expect(response.body).not_to include("No upcoming shows scheduled.")
       expect(text_of(note)).to include("Casting is off for all 2 dates coming up, so there is nothing to cast here.")
-      expect(note.at_css("a")["href"]).to eq(manage_casting_settings_path(production, dates: 1))
+      expect(note.at_css("a")["href"]).to eq(manage_casting_settings_path(production, anchor: "dates"))
     end
 
     it "says how many more dates have casting off under the ones it lists, and says so plainly when there are none at all" do
@@ -117,30 +117,40 @@ RSpec.describe "Casting set-up", type: :request do
       expect(response).to redirect_to(manage_casting_setup_dates_path(production))
       follow_redirect!
 
-      # Every coming date with its kind: shows ticked, the rehearsal not,
-      # and the one from a contract says who it's booked with.
-      rows = doc.css("[data-casting-date]")
+      # The choice Ticketing offers for which dates it sells: all
+      # performances (where it starts), by event type, or specific dates.
+      which = doc.at_css("[data-casting-which-dates]")
+      expect(which.css("input[name=matching]").map { |radio| [ radio["value"], radio["checked"].present? ] })
+        .to eq([ [ "all", true ], [ "event_types", false ], [ "manual", false ] ])
+      expect(text_of(which)).to include("All performances", "By event type", "Specific dates")
+      expect(which.css("input[name='event_types[]']").select { |box| box["checked"] }.map { |box| box["value"] }).to eq(%w[show class workshop open_mic])
+      # Under Specific dates, every coming date with its kind: the ones
+      # with casting on today ticked, and the one from a contract says who
+      # it's booked with.
+      rows = which.css("[data-casting-date]")
       expect(rows.map { |row| row["data-casting-date"].to_i }).to eq([ rehearsal.id, show.id, booked.id ])
       expect(rows.map { |row| row.at_css("input[type=checkbox]")["checked"].present? }).to eq([ false, true, true ])
       expect(text_of(rows[0])).to include("Rehearsal")
       expect(text_of(rows[2])).to include("Show", "Booked at Stars & Garters")
-      expect(rows.css("input[type=checkbox]").map { |box| box["class"] }).to all(include("accent-pink-500"))
+      expect(which.css("input[type=checkbox]").map { |box| box["class"] }).to all(include("accent-pink-500"))
 
-      post manage_casting_setup_save_dates_path(production), params: { show_ids: [ show.id, rehearsal.id ] }
+      post manage_casting_setup_save_dates_path(production), params: { matching: "manual", show_ids: [ show.id, rehearsal.id ] }
       expect(response).to redirect_to(manage_casting_setup_review_path(production))
       follow_redirect!
       review = text_of(doc.at_css("[data-casting-setup-review]"))
       expect(review).to include("Anyone, added by name or email as you need them.", "Roles: named positions to fill.", "Host and Performer ×4",
-                                "2 of the 3 dates coming up are cast.")
+                                "Specific dates: only the ones you picked.", "2 of the 3 dates coming up are cast.",
+                                "A new date starts with casting off until you pick it.")
 
-      expect(production.reload).to have_attributes(casting_source: "talent_pool", casting_setup_completed: false)
+      expect(production.reload).to have_attributes(casting_source: "talent_pool", casting_setup_completed: false, casting_event_matching: "all")
       expect(production.roles).to be_empty
       expect(rehearsal.reload.casting_enabled).to be(false)
 
       post manage_casting_setup_finish_path(production)
       expect(response).to redirect_to(manage_casting_production_path(production))
 
-      expect(production.reload).to have_attributes(casting_source: "manual", casting_mode: "role_based", casting_setup_completed: true, casting_state: :on)
+      expect(production.reload).to have_attributes(casting_source: "manual", casting_mode: "role_based", casting_setup_completed: true, casting_state: :on,
+                                                   casting_event_matching: "manual")
       # Whatever a stale page posts, a role made here is a plain role.
       expect(production.roles.order(:position).pluck(:name, :quantity, :category)).to eq([ [ "Host", 1, "performing" ], [ "Performer", 4, "performing" ] ])
       expect(show.reload.casting_enabled).to be(true)
@@ -149,6 +159,21 @@ RSpec.describe "Casting set-up", type: :request do
 
       follow_redirect!
       expect(doc.at_css("[data-casting-status='on']")).to be_present
+    end
+
+    it "casts only the kinds of event ticked, when that is the choice" do
+      post manage_casting_setup_save_who_path(production), params: { casting_source: "talent_pool" }
+      post manage_casting_setup_save_style_path(production), params: { casting_mode: "role_based" }
+      post manage_casting_setup_save_roles_path(production), params: { has_roles: "no" }
+      post manage_casting_setup_save_dates_path(production), params: { matching: "event_types", event_types: %w[show rehearsal] }
+      follow_redirect!
+      expect(text_of(doc.at_css("[data-casting-setup-review]"))).to include("By event type: shows and rehearsals.", "All 3 dates coming up are cast.")
+
+      post manage_casting_setup_finish_path(production)
+      expect(production.reload).to have_attributes(casting_event_matching: "event_types", casting_event_type_filter: %w[show rehearsal])
+      expect(production.shows.pluck(:casting_enabled)).to all(be(true))
+      expect(production.shows.create!(event_type: "rehearsal", date_and_time: 6.weeks.from_now, is_online: true).casting_enabled).to be(true)
+      expect(production.shows.create!(event_type: "class", date_and_time: 6.weeks.from_now, is_online: true).casting_enabled).to be(false)
     end
 
     it "builds a lineup when the production casts by acts" do
@@ -246,32 +271,55 @@ RSpec.describe "Casting set-up", type: :request do
       expect(strip.css("a").map { |a| a["class"] }).to all(satisfy { |classes| !classes.include?("-mb-px") })
     end
 
-    it "says how many coming dates are cast, and opens every one of them in a window to choose from" do
+    # Tim, 2026-11-18: "all events, just events of the following type, or
+    # types... or only specific dates. Like ticketing got this right."
+    it "asks which dates are cast the way Ticketing asks which it sells, and saving brings the coming dates into line" do
       get manage_casting_settings_path(production)
 
-      card = doc.at_css("[data-settings-card='dates']")
-      expect(text_of(card.at_css("[data-casting-dates-count]"))).to eq("Casting is on for 1 of the 2 dates coming up.")
-      expect(card.at_css("button")["data-modal-id"]).to eq("casting-dates-modal")
+      card = doc.at_css("#dates[data-settings-card='dates']")
+      expect(text_of(card.at_css("h2"))).to eq("Which dates?")
+      expect(card.css("input[name=matching]").map { |radio| [ radio["value"], radio["checked"].present? ] })
+        .to eq([ [ "all", true ], [ "event_types", false ], [ "manual", false ] ])
+      expect(card.css("[data-casting-date]").map { |row| [ row["data-casting-date"].to_i, row.at_css("input")["checked"].present? ] })
+        .to eq([ [ rehearsal.id, false ], [ show.id, true ] ])
 
-      modal = doc.at_css("#casting-dates-modal")
-      expect(modal["class"]).to include("hidden")
-      rows = modal.css("[data-casting-date]")
-      expect(rows.map { |row| [ row["data-casting-date"].to_i, row.at_css("input")["checked"].present? ] }).to eq([ [ rehearsal.id, false ], [ show.id, true ] ])
-
-      patch manage_casting_dates_path(production), params: { show_ids: [ rehearsal.id ] }
-      expect(response).to redirect_to(manage_casting_settings_path(production))
+      patch manage_casting_dates_path(production), params: { matching: "event_types", event_types: %w[rehearsal] }
+      expect(response).to redirect_to(manage_casting_settings_path(production, anchor: "dates"))
+      expect(production.reload).to have_attributes(casting_event_matching: "event_types", casting_event_type_filter: %w[rehearsal])
       expect(rehearsal.reload.casting_enabled).to be(true)
       expect(show.reload.casting_enabled).to be(false)
+
+      patch manage_casting_dates_path(production), params: { matching: "manual", show_ids: [ show.id ] }
+      expect(production.reload.casting_event_matching).to eq("manual")
+      expect(show.reload.casting_enabled).to be(true)
+      expect(rehearsal.reload.casting_enabled).to be(false)
+      get manage_casting_settings_path(production)
+      expect(doc.at_css("#dates input[name=matching][value=manual]")["checked"]).to be_present
+
+      patch manage_casting_dates_path(production), params: { matching: "all" }
+      expect(production.reload.casting_event_matching).to eq("all")
+      expect(show.reload.casting_enabled).to be(true)
+      expect(rehearsal.reload.casting_enabled).to be(false)
     end
 
-    it "lands an old address on the tab that holds it now, the dates one with the window open" do
+    it "has nothing to choose under Which dates? when people aren't cast in the production" do
+      production.update!(casts_people: false)
+
+      get manage_casting_settings_path(production)
+      card = doc.at_css("[data-settings-card='dates']")
+      expect(card.at_css("input[name=matching]")).to be_nil
+      expect(text_of(card.at_css("[data-casting-dates-off]"))).to include("We don't cast people in The Holly Problem, so none of its dates are cast.")
+
+      patch manage_casting_dates_path(production), params: { matching: "manual", show_ids: [ show.id ] }
+      expect(production.reload.casting_event_matching).to eq("all")
+    end
+
+    it "lands an old address on the tab that holds it now, the dates one at its card" do
       get manage_casting_settings_section_path(production_id: production, section: "source")
       expect(response).to redirect_to(manage_casting_settings_path(production))
 
       get manage_casting_settings_section_path(production_id: production, section: "dates")
-      expect(response).to redirect_to(manage_casting_settings_path(production, dates: 1))
-      follow_redirect!
-      expect(doc.at_css("#casting-dates-modal")["class"]).not_to include("hidden")
+      expect(response).to redirect_to(manage_casting_settings_path(production, anchor: "dates"))
     end
 
     it "saves who you cast and attendance from their own cards, and roles or acts from the Roles tab" do

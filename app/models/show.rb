@@ -712,16 +712,18 @@ class Show < ApplicationRecord
 
   # THE one place that decides whether a new date starts with casting on
   # (Tim, 2026-11-18): off when people aren't cast in the production
-  # (Production#casts_people); otherwise what its kind starts with
-  # (config/event_types.yml: on for shows, classes, workshops, and open mics;
-  # off for rehearsals and meetings). like: a date it's a copy of (the next
-  # date of a series, a duplicate), whose own setting it keeps while people
-  # are cast in the production.
+  # (Production#casts_people); otherwise the production's own choice of
+  # which dates are cast (Production#casting_event_types: all performances,
+  # only some kinds of events, or only picked dates, which start off). like:
+  # a date it's a copy of (the next date of a series, a duplicate), whose
+  # own setting it keeps while people are cast in the production. With no
+  # production to ask, what its kind starts with (config/event_types.yml).
   def self.casting_default_for(production, event_type, like: nil)
-    return false if production && !production.casts_people?
+    return EventTypes.casting_enabled_default(event_type.presence || "show") unless production
+    return false unless production.casts_people?
     return like.casting_enabled? if like
 
-    EventTypes.casting_enabled_default(event_type.presence || "show")
+    production.casts_event_type?(event_type)
   end
 
   # Attendance tracking helpers
