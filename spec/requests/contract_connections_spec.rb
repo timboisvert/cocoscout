@@ -68,7 +68,7 @@ RSpec.describe "Contract connections", type: :request do
       # Who the contract is with and what it's for, not "X is your show, and you run it in X".
       expect(response.body).to include("Stars and Garters has a contract with #{contractor.name} to present The Holly Problem.")
         .and include("You also run an organization of your own on CocoScout, The Holly Problem.")
-        .and include("the dates, ticket sales and mailing lists")
+        .and include("the dates, ticket sales, and mailing lists")
 
       get my_connect_contract_production_path(contract)
       expect(response.body).to include("Where would you like these dates to go?").and include("Same name as the contract").and include("Create a new production for them")

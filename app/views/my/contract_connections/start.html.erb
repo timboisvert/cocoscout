@@ -25,10 +25,10 @@
     <%= org %> has a contract with <%= contractor %><%= " to present #{show_name}" if show_name.present? && !show_name.casecmp?(contractor) %>.
     <% if none_yet %>
       If you run this show yourself on CocoScout, in an organization of your own, you can connect it to <%= possessive(org) %> contract.
-      The dates, ticket sales and mailing lists are then linked, and your team is able to see much more information.
+      The dates, ticket sales, and mailing lists are then linked, and your team is able to see much more information.
     <% else %>
       You also run <%= @organizations.one? ? "an organization of your own on CocoScout, #{@organizations.first.name}" : "organizations of your own on CocoScout" %>.
-      When you connect <%= @organizations.one? ? "your organization" : "one of them" %> to <%= possessive(org) %> contract, the dates, ticket sales and mailing lists
+      When you connect <%= @organizations.one? ? "your organization" : "one of them" %> to <%= possessive(org) %> contract, the dates, ticket sales, and mailing lists
       are linked, and your team is able to see much more information.
     <% end %>
   </p>
@@ -46,7 +46,7 @@
         <li><span class="block font-medium text-gray-900">The people who follow your shows come with it.</span>
           If <%= org %> keeps a mailing list for your shows, the people on it appear in your own organization's Mailing lists.</li>
         <li><span class="block font-medium text-gray-900">The ticket page can show your own art.</span>
-          <%= possessive(org) %> ticket page for these dates will use the poster, wide image and description from your production, unless <%= org %> chooses to keep its own.</li>
+          <%= possessive(org) %> ticket page for these dates will use the poster, wide image, and description from your production, unless <%= org %> chooses to keep its own.</li>
       </ul>
     </div>
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -55,9 +55,9 @@
         <li><span class="block font-medium text-gray-900">Your contract and what it pays don't change.</span>
           Connecting adds nothing to the contract, and you can unlink whenever you like.</li>
         <li><span class="block font-medium text-gray-900">Your side of the show stays private.</span>
-          Who's in it, your rehearsals, call times, messages and what you pay people are never shared with <%= org %>.</li>
+          Who's in it, your rehearsals, call times, messages, and what you pay people are never shared with <%= org %>.</li>
         <li><span class="block font-medium text-gray-900"><%= org %> still runs the box office.</span>
-          Prices, ticket types, the door, comps and settling each date remain theirs.</li>
+          Prices, ticket types, the door, comps, and settling each date remain theirs.</li>
       </ul>
     </div>
   </div>

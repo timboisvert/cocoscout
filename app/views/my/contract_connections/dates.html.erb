@@ -52,7 +52,7 @@
   <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Let's check your dates against the contract</h2>
   <p class="text-gray-600 mt-2">
     <%= @production.name %> already has some dates in it. Below is how they compare with the dates on your <%= org %> contract.
-    Nothing of yours will be changed unless you tell us that two dates are the same show, and your cast, roles, call times
+    Nothing of yours will be changed unless you tell us that two dates are the same show, and your cast, roles, call times,
     and notes stay exactly where they are.
   </p>
 
@@ -116,7 +116,7 @@
                 </div>
                 <div class="text-sm text-gray-500">
                   We'll keep your date and set it to the contract's show time, <%= clock.call(contract_show.date_and_time) %> to <%= clock.call(contract_show.ends_at) %>, in <%= possessive(org) %> room.
-                  Its cast, roles and notes won't change. If anyone is cast, you'll be asked to let them know about the new time.
+                  Its cast, roles, and notes won't change. If anyone is cast, you'll be asked to let them know about the new time.
                 </div>
                 <% if has_call.call(show) %>
                   <div class="text-sm text-gray-500 mt-1">
