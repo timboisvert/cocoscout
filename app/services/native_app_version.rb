@@ -2,7 +2,10 @@
 
 # Which app build is asking, from its user agent. V1.1 builds put
 # "CocoScout/1.1 (12; nav 2)" ahead of Hotwire Native's own user agent
-# (AppConfig on iOS and Android); V1 builds put nothing there.
+# (AppConfig on iOS and Android); V1 builds put nothing there. Builds whose
+# Coco menu button sits in the top bar (Tim, 2026-11-09) add "CocoMenu/bar"
+# after it: "CocoScout/1.1.4 (9; nav 2) CocoMenu/bar". After, not inside, so
+# a server without this still reads the build's navigation generation.
 #
 # The navigation generation is what matters, not the version number: Tap to
 # Pay builds can carry a higher version (Android's is already 1.2) while still
@@ -26,6 +29,13 @@ module NativeAppVersion
 
   def version(user_agent)
     PATTERN.match(user_agent.to_s)&.[](:version)
+  end
+
+  # Where the build draws its Coco menu button: in the top bar, beside the
+  # back arrow, for builds that say so. Every earlier install floats it over
+  # the page's bottom right corner.
+  def menu_in_bar?(user_agent)
+    user_agent.to_s.include?("CocoMenu/bar")
   end
 
   # Production mode and the generation-2 menu: everywhere on the web, and in

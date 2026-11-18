@@ -100,8 +100,10 @@ class ContentTemplate < ApplicationRecord
   # (The push columns are read through has_attribute? so a database that
   # hasn't run their migration yet — the pre-deploy validation on a dev
   # machine — still loads templates: no push text, push on.)
+  # Plain text means a literal "&": strip_tags escapes it, and "Stars &amp;
+  # Garters" is not a name.
   def render_push_body(variables = {})
-    ActionController::Base.helpers.strip_tags(interpolate(push_text.presence || subject, variables)).squish
+    CGI.unescapeHTML(ActionController::Base.helpers.strip_tags(interpolate(push_text.presence || subject, variables))).squish
   end
 
   # Does the in-app message this template creates buzz the phone? Only

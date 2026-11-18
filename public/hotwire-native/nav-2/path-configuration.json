@@ -38,6 +38,15 @@
     },
     {
       "patterns": [
+        "^/manage/organizations/new$"
+      ],
+      "properties": {
+        "context": "default",
+        "pull_to_refresh_enabled": false
+      }
+    },
+    {
+      "patterns": [
         "/my/signups/[^/]+/form$",
         "/my/auditions/[^/]+/form$",
         "/my/questionnaires/[^/]+/form$",
@@ -96,7 +105,6 @@
     },
     {
       "patterns": [
-        "^/superadmin",
         "^/$",
         "^/for-performers",
         "^/for-producers",
@@ -119,7 +127,19 @@
         "^/rails/active_storage/",
         "/manage/reports/[^/]+\\.csv$",
         "/staffing/taxes/1099s\\.csv$",
-        "/courses/[0-9]+/roster\\.csv$"
+        "/courses/[0-9]+/roster\\.csv$",
+        "/pay/invoice/[^/]+/invoice$",
+        "/manage/money/invoices/[^/]+/pdf",
+        "/manage/money/files/[0-9]+",
+        "/manage/money/books/statements\\.(pdf|csv)",
+        "/manage/money/books/taxes\\.csv",
+        "/manage/money/books/bank/rules/export",
+        "/manage/ticketing/taxes\\.csv",
+        "^/superadmin/finances\\.csv",
+        "^/superadmin/finances/costs/(export|receipts)",
+        "^/superadmin/finances/costs/[0-9]+/documents/",
+        "^/superadmin/finances/(statements|invoices)/",
+        "^/superadmin/content_templates/export"
       ],
       "properties": {
         "open_in": "document"

@@ -88,6 +88,35 @@ RSpec.describe "Manage::MoneyIncoming received history", type: :request do
     expect(response.body).to include("$250.00 collected all time")
   end
 
+  # A charge taken out of their share on a payout run is settled, but nobody
+  # paid it: it isn't money received (Tim, 2026-11-08).
+  it "leaves out charges that were deducted from a payout" do
+    create(:contract_payment, :paid, contract: contract, direction: "incoming", amount: 250,
+                                     description: "Rent, paid by check", due_date: 1.week.ago.to_date)
+      .update!(payment_method: "check")
+    create(:contract_payment, :paid, contract: contract, direction: "incoming", amount: 50,
+                                     description: "Booth Tech — Nov 5, 2026", due_date: 3.days.ago.to_date,
+                                     settlement_method: "payout_deduction")
+      .update!(payment_method: "payout_deduction")
+
+    get manage_money_incoming_path
+    expect(response.body).to include("All received payments (1)", "Rent, paid by check")
+    expect(response.body).not_to include("Booth Tech", "Deducted from payout")
+
+    get manage_money_incoming_received_path
+    expect(response.body).to include("1 payment ·", "$250.00 collected all time")
+    expect(response.body).not_to include("Booth Tech", "Deducted from payout")
+  end
+
+  it "shows no Recently received section when the only settled charges were deducted from a payout" do
+    create(:contract_payment, :paid, contract: contract, direction: "incoming", amount: 50,
+                                     due_date: 3.days.ago.to_date, settlement_method: "payout_deduction")
+      .update!(payment_method: "payout_deduction")
+
+    get manage_money_incoming_path
+    expect(response.body).not_to include("Recently received")
+  end
+
   it "shows no Recently received section while nothing has been collected" do
     create(:contract_payment, contract: contract, direction: "incoming", amount: 100,
                               due_date: 1.week.from_now.to_date)

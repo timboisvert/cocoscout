@@ -40,6 +40,11 @@ development:
   square_morning_pull:
     class: SquareMorningPullJob
     schedule: every day at 5am
+  # Google Calendar: every organization's calendar written again, so anything
+  # edited or deleted in Google is put back.
+  google_calendar_nightly:
+    class: GoogleCalendarNightlyJob
+    schedule: every day at 4am
   stripe_balance_import:
     class: StripeBalanceImportJob
     schedule: every hour at minute 20
@@ -116,6 +121,16 @@ development:
     class: CourseRemindersJob
     schedule: at 10am every day America/Chicago
 
+  # Invoices set to remind by themselves: three days before they're due, and
+  # once when they're overdue.
+  invoice_reminders:
+    class: InvoiceRemindersJob
+    schedule: at 9am every day America/Chicago
+
+  staff_shift_reminders:
+    class: StaffShiftRemindersJob
+    schedule: every hour at minute 15
+
   production_ticketing_dates:
     class: ProductionTicketingDatesJob
     schedule: every hour
@@ -166,6 +181,11 @@ production:
   square_morning_pull:
     class: SquareMorningPullJob
     schedule: every day at 5am
+  # Google Calendar: every organization's calendar written again, so anything
+  # edited or deleted in Google is put back.
+  google_calendar_nightly:
+    class: GoogleCalendarNightlyJob
+    schedule: every day at 4am
   stripe_balance_import:
     class: StripeBalanceImportJob
     schedule: every hour at minute 20
@@ -204,6 +224,18 @@ production:
   contract_signature_reminders:
     class: ContractSignatureRemindersJob
     schedule: at 9am every day
+
+  # Closes contractors' date requests the calendar has passed by, and reminds
+  # the organization once about one nobody has answered in three days.
+  contract_date_requests_sweep:
+    class: ContractDateRequestsSweepJob
+    schedule: at 9:10am every day
+
+  # How much mail CocoScout has sent against its Mailgun plan: superadmins
+  # are notified when the month gets close, or when it's time to move up.
+  mail_volume_check:
+    class: MailVolumeCheckJob
+    schedule: at 8:20am every day
 
   w9_reminders:
     class: W9RemindersJob
@@ -283,6 +315,16 @@ production:
   course_reminders:
     class: CourseRemindersJob
     schedule: at 10am every day America/Chicago
+
+  # Invoices set to remind by themselves: three days before they're due, and
+  # once when they're overdue.
+  invoice_reminders:
+    class: InvoiceRemindersJob
+    schedule: at 9am every day America/Chicago
+
+  staff_shift_reminders:
+    class: StaffShiftRemindersJob
+    schedule: every hour at minute 15
 
   # Productions with ticketing set up list the shows their setup includes,
   # so dates added to the calendar join on their own.

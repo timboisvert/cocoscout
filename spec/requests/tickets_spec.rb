@@ -39,6 +39,46 @@ RSpec.describe "Public ticketing", type: :request do
     expect(response.body.scan(/<link rel="canonical" href="([^"]+)"/).flatten).to eq([ "http://www.example.com/" ])
   end
 
+  # A show renamed (Of Santa and Satan became The Holly Problem; Tim,
+  # 2026-11-09): links already out there keep working.
+  it "sends a production's old address on to its new one, query and all" do
+    old_key = production.public_key
+    expect(production.update_public_key("thehollyproblem")).to be(true)
+
+    get tickets_event_path(org: "starsandgarters", event: old_key, date: "dec-5")
+    expect(response).to have_http_status(:moved_permanently)
+    expect(response).to redirect_to(tickets_event_path(org: "starsandgarters", event: "thehollyproblem", date: "dec-5"))
+
+    get tickets_event_path(org: "starsandgarters", event: "thehollyproblem")
+    expect(response).to have_http_status(:ok)
+    get tickets_event_path(org: "starsandgarters", event: "never-was")
+    expect(response).to have_http_status(:not_found)
+  end
+
+  it "serves a ticket page at the address ticketing gives it, and sends the production's and its earlier ones there" do
+    public_key = production.public_key
+    setup = ProductionTicketing.create!(production: production, page_key: "holly")
+    get tickets_event_path(org: "starsandgarters", event: "holly")
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(tickets_event_path(org: "starsandgarters", event: "holly", date: listing.slug))
+    get tickets_box_office_path(org: "starsandgarters")
+    expect(response.body).not_to include(tickets_event_path(org: "starsandgarters", event: public_key))
+
+    get tickets_event_path(org: "starsandgarters", event: public_key, date: "dec-5")
+    expect(response).to redirect_to(tickets_event_path(org: "starsandgarters", event: "holly", date: "dec-5"))
+
+    setup.update!(page_key: "thehollyproblem")
+    get tickets_event_path(org: "starsandgarters", event: "holly")
+    expect(response).to redirect_to(tickets_event_path(org: "starsandgarters", event: "thehollyproblem"))
+
+    # Back to the production's own: both earlier addresses land on it.
+    setup.update!(page_key: nil)
+    get tickets_event_path(org: "starsandgarters", event: "thehollyproblem")
+    expect(response).to redirect_to(tickets_event_path(org: "starsandgarters", event: public_key))
+    get tickets_event_path(org: "starsandgarters", event: public_key)
+    expect(response).to have_http_status(:ok)
+  end
+
   # Andy opened the show's sales link after curtain and found sales closed
   # (Tim, 2026-10-16): someone who works this door is sent to it instead.
   describe "for someone who works the door" do
@@ -431,6 +471,44 @@ RSpec.describe "Public ticketing", type: :request do
       expect(page).not_to include("<select")
     end
 
+    # Tim (2026-11-11): a box office shows prices all in, or the ticket's
+    # own price with what's added named beside it: taxes and fees, and only
+    # the ones a buyer really pays. The all-in price is a tap away.
+    it "shows the ticket's own price plus what's added when the box office says so" do
+      panel = ->(body) { body[%r{<details class="mt-0.5">.*?</details>}m].to_s.gsub(/\s+/, " ") }
+      # The words beside each ticket's price.
+      notes = ->(body) { body.scan(%r{<span class="text-xs font-normal text-gray-600">(.*?)</span>}m).flatten.map(&:strip) }
+      TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")
+      profile.update!(price_display: "base")
+
+      # Buyers pay the fees, and tax is added.
+      get tickets_event_path(org: "starsandgarters", event: listing.slug)
+      expect(response.body).to include("$20.00")
+      expect(notes.call(response.body)).to eq([ "+ taxes &amp; fees" ])
+      expect(panel.call(response.body)).to include("<dt>Fees</dt>", "<dt>Sales tax</dt>", "One ticket, with taxes &amp; fees", "$23.53")
+
+      get tickets_box_office_path(org: "starsandgarters")
+      expect(response.body).to include("$20.00 + taxes &amp; fees")
+
+      # The organization absorbs the fees: fees are never mentioned.
+      listing.update!(fee_mode: "org")
+      get tickets_event_path(org: "starsandgarters", event: listing.slug)
+      expect(notes.call(response.body)).to eq([ "+ tax" ])
+      expect(panel.call(response.body)).to include("One ticket, with tax", "$22.05")
+
+      # Tax inside the price was never added: nothing on top at all.
+      TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "included")
+      get tickets_event_path(org: "starsandgarters", event: listing.slug)
+      expect(notes.call(response.body)).to eq([ "incl. tax" ])
+
+      # No tax, buyers pay the fees: only the fees are named.
+      TicketTaxSetting.save!(org, name: "", percent: "", mode: "added")
+      listing.update!(fee_mode: "buyer")
+      get tickets_event_path(org: "starsandgarters", event: listing.slug)
+      expect(notes.call(response.body)).to eq([ "+ fees" ])
+      expect(panel.call(response.body)).to include("One ticket, with fees", "$21.42")
+    end
+
     # Tim (2026-10-01): the price on each ticket is what one really costs —
     # fees and tax in — so the total never jumps above it.
     # And a tap on the price opens what it's made of (Tim, 2026-10-02),
@@ -445,7 +523,7 @@ RSpec.describe "Public ticketing", type: :request do
 
       TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")
       get tickets_event_path(org: "starsandgarters", event: listing.slug)
-      expect(response.body).to include("$23.53", "incl. fees &amp; tax")
+      expect(response.body).to include("$23.53", "incl. taxes &amp; fees")
       expect(panel.call(response.body)).to include("$20.00", "<dt>Fees</dt>", "$1.48", "<dt>Sales tax</dt>", "$2.05", "$23.53")
 
       listing.update!(fee_mode: "org")

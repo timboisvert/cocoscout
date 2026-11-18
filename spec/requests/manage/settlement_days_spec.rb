@@ -18,6 +18,65 @@ RSpec.describe "Settle up", type: :request do
     get manage_path
   end
 
+  # No revenue (Tim, 2026-11-14): a show that sold nothing says so from its
+  # card and is confirmed; one marked so by mistake can take it back.
+  describe "a show that took no money" do
+    it "offers No revenue on its card, which confirms it, and takes it back" do
+      get manage_money_settle_up_day_path(date.iso8601)
+      doc = Nokogiri::HTML(response.body)
+      expect(doc.at_css("#show-#{show.id} form[action='#{manage_no_revenue_money_settle_up_day_path(date.iso8601, show_id: show.id)}']")).to be_present
+
+      patch manage_no_revenue_money_settle_up_day_path(date.iso8601, show_id: show.id)
+      expect(show.reload.show_financials.attributes.slice("non_revenue_override", "data_confirmed")).to eq("non_revenue_override" => true, "data_confirmed" => true)
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body).to include("No revenue", "It had revenue after all", "Every piece is confirmed")
+
+      patch manage_no_revenue_money_settle_up_day_path(date.iso8601, show_id: show.id, undo: 1)
+      expect(show.reload.show_financials.attributes.slice("non_revenue_override", "data_confirmed")).to eq("non_revenue_override" => false, "data_confirmed" => false)
+    end
+
+    it "doesn't offer No revenue once money came in" do
+      create(:show_financials, show: show, ticket_revenue: 40.0, ticket_count: 2)
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body).not_to include(manage_no_revenue_money_settle_up_day_path(date.iso8601, show_id: show.id))
+    end
+
+    # A production that takes no money settles its shows on its own.
+    it "settles a no-money production's show as no revenue by itself, unless money came in" do
+      production.update!(no_revenue: true)
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body).to include("No revenue: Halloween Show takes no money", "Every piece is confirmed")
+      expect(MoneyTodoService.shows_awaiting_financials([ production ])).to be_empty
+
+      post manage_settle_money_settle_up_day_path(date.iso8601)
+      expect(SettlementDay.find_by!(organization: org, date: date)).to be_settled
+    end
+
+    it "treats a no-money production's show that did take money as an ordinary show" do
+      production.update!(no_revenue: true)
+      create(:show_financials, show: show, ticket_revenue: 40.0, ticket_count: 2)
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body).to include("0 of 1 confirmed")
+      expect(response.body).not_to include("takes no money")
+    end
+  end
+
+  # On Basic Information, which every production has: a contract production
+  # has no Pay tab (Tim, 2026-11-14: "I don't see a pay tab").
+  it "lets a manager switch a production to taking no money from Basic Information, a contract production too" do
+    contracted = create(:production, organization: org, name: "A Random Memory", production_type: "third_party")
+    get edit_manage_production_path(contracted)
+    expect(Nokogiri::HTML(response.body).at_css("[data-no-revenue-card]").text.squish).to include("Money in", "This production never takes money")
+    get edit_manage_production_path(production)
+    expect(Nokogiri::HTML(response.body).css("[data-no-revenue-card]").size).to eq(1)
+
+    patch update_no_revenue_manage_production_path(production), params: { no_revenue: "1" }
+    expect(response).to redirect_to(edit_manage_production_path(production, tab: 0))
+    expect(production.reload.no_revenue).to be(true)
+    patch update_no_revenue_manage_production_path(production), params: { no_revenue: "0" }
+    expect(production.reload.no_revenue).to be(false)
+  end
+
   it "lists the day to settle, shows its worksheet, checks the show, settles and reopens the day" do
     get manage_money_settle_up_path
     expect(response).to have_http_status(:ok)
@@ -41,7 +100,8 @@ RSpec.describe "Settle up", type: :request do
     expect(record.settled_by).to eq(owner)
 
     get manage_money_settle_up_day_path(date.iso8601)
-    expect(response.body).to include("is settled", "Reopen this day")
+    expect(response.body).to include(%(id="day-settled"), "Settled", "Reopen this day")
+    expect(response.body).not_to include("Confirm each piece")
 
     post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "A count was fixed later" }
     expect(record.reload).to be_open
@@ -64,6 +124,157 @@ RSpec.describe "Settle up", type: :request do
     expect(response.body).to include("Settled", "To settle", "Not over yet, or history")
     expect(response.body).to include(%(aria-label="#{date.strftime("%A, %B %-d")} · to settle"))
     expect(response.body).not_to include("No earlier day")
+  end
+
+  it "types the ticket money for a show CocoScout doesn't sell: tickets, a flat fee or no revenue, and a note, with no link to the old page" do
+    back = manage_money_settle_up_day_path(date.iso8601)
+    get back
+    expect(response.body).to include(%(data-modal-id="tickets-#{show.id}"), %(data-modal-id="notes-#{show.id}"), "nothing entered yet", "This show had no revenue")
+    expect(CGI.unescapeHTML(response.body)).not_to include("This show's page")
+
+    patch manage_update_money_show_financials_path(show), params: { return_to: back, revenue_choice: "ticket_sales",
+      show_financials: { flat_fee: "", ticket_sales_lines_attributes: { "0" => { ticket_source_id: "", tickets_sold: "30", amount: "450" } } } }
+    expect(response).to redirect_to(back)
+    fin = show.reload.show_financials
+    expect([ fin.ticket_count, fin.ticket_revenue.to_f, fin.data_confirmed ]).to eq([ 30, 450.0, false ])
+    get back
+    # A ticket with no type of its own reads as the plain one.
+    expect(response.body).to include("30 General Admission</span>", "", "Outside tickets", "Ticket type")
+
+    # Another type for the same show: every line names its type, on the card and in the modal.
+    tailor = org.ticket_sources.create!(name: "Ticket Tailor")
+    patch manage_update_money_show_financials_path(show), params: { return_to: back, revenue_choice: "ticket_sales",
+      show_financials: { ticket_sales_lines_attributes: { "0" => { ticket_source_id: tailor.id, ticket_type: " VIP ", tickets_sold: "2", amount: "80" },
+                                                           "1" => { ticket_source_id: tailor.id, ticket_type: "General Admission", tickets_sold: "5", amount: "100" } } } }
+    expect(fin.reload.ticket_sales_lines.where(ticket_source: tailor).pluck(:ticket_type, :tickets_sold)).to contain_exactly([ "VIP", 2 ], [ "General Admission", 5 ])
+    get back
+    expect(response.body).to include("2 VIP,</span>", "5 General Admission</span>", "$180.00")
+    expect(response.body.scan(/name="show_financials\[ticket_sales_lines_attributes\]\[\d+\]\[ticket_type\]"[^>]*value="VIP"/).size).to eq(1)
+    fin.ticket_sales_lines.where(ticket_source: tailor).each(&:destroy!)
+
+    patch manage_update_money_show_financials_path(show), params: { return_to: back, revenue_choice: "flat_fee", show_financials: { flat_fee: "500" } }
+    expect(fin.reload).to be_flat_fee
+    get back
+    expect(response.body).to include("A flat fee instead of tickets", "$500.00")
+
+    # A note changes no money, so the mark stays lit.
+    patch manage_check_show_money_settle_up_day_path(date.iso8601, show_id: show.id), params: { checked: "1" }
+    patch manage_update_money_show_financials_path(show), params: { return_to: back, show_financials: { notes: "Rained out early" } }
+    expect([ fin.reload.notes, fin.data_confirmed ]).to eq([ "Rained out early", true ])
+    get back
+    expect(response.body).to include("Rained out early")
+
+    # No revenue: nothing counted, nobody paid, still confirmed with the day, and chosen back the same way.
+    patch manage_update_money_show_financials_path(show), params: { return_to: back, revenue_choice: "none", show_financials: { flat_fee: "500" } }
+    expect([ fin.reload.non_revenue_override, fin.data_confirmed ]).to eq([ true, false ])
+    expect(SettleUp.day(org, date).shows.first.in_cents).to eq(0)
+    get back
+    expect(response.body).to include("this show had no revenue", "No revenue, not confirmed", "Nobody is paid from a show with no revenue")
+    patch manage_check_show_money_settle_up_day_path(date.iso8601, show_id: show.id), params: { checked: "1" }
+    expect(fin.reload.data_confirmed).to be(true)
+    patch manage_update_money_show_financials_path(show), params: { return_to: back, revenue_choice: "flat_fee", show_financials: { flat_fee: "500" } }
+    expect([ fin.reload.non_revenue_override, fin.flat_fee.to_f ]).to eq([ false, 500.0 ])
+  end
+
+  it "opens the same outside tickets modal on a settled day, to read and not to change" do
+    tailor = org.ticket_sources.create!(name: "Ticket Tailor")
+    org.ticket_sources.create!(name: "Hot Tix")
+    fin = show.show_financials || show.create_show_financials!
+    fin.ticket_sales_lines.create!(ticket_source: tailor, tickets_sold: 9, amount: 150)
+    back = manage_money_settle_up_day_path(date.iso8601)
+
+    get back
+    expect(response.body).to include("9 General Admission</span>", "", %(data-modal-id="tickets-#{show.id}"), "show_financials[ticket_sales_lines_attributes]", "Hot Tix")
+
+    patch manage_check_show_money_settle_up_day_path(date.iso8601, show_id: show.id), params: { checked: "1" }
+    post manage_settle_money_settle_up_day_path(date.iso8601)
+    expect(SettlementDay.find_by!(organization: org, date: date)).to be_settled
+
+    get back
+    body = CGI.unescapeHTML(response.body)
+    expect(body).to include("9 General Admission</span>", "", %(data-modal-id="tickets-#{show.id}"), "The day is settled. Reopen it to change these.")
+    # Only what sold is listed, as plain numbers.
+    expect(body).not_to include("show_financials[ticket_sales_lines_attributes]", "Edit ticket sources")
+  end
+
+  it "uses that modal for a show sold through CocoScout too, a line per site and ticket type of its own" do
+    tailor = org.ticket_sources.create!(name: "Ticket Tailor")
+    listing = TicketListing.create!(show: show)
+    general = listing.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 60)
+    vip = listing.ticket_tiers.create!(name: "VIP", price_cents: 4_000, quantity: 10)
+    back = manage_money_settle_up_day_path(date.iso8601)
+
+    get back
+    expect(response.body).to include("Sold on other sites", "Outside tickets", %(action="#{manage_ticket_listing_outside_sales_path(listing)}"),
+                                     %(name="sales[#{tailor.id}][#{general.id}][tickets]"), %(name="sales[#{tailor.id}][#{vip.id}][amount]"))
+    expect(response.body).not_to include("revenue_choice", "Sold elsewhere")
+
+    patch manage_ticket_listing_outside_sales_path(listing), params: { return_to: back,
+      sales: { tailor.id.to_s => { general.id.to_s => { tickets: "4", amount: "80" }, vip.id.to_s => { tickets: "1", amount: "40" } } } }
+    expect(response).to redirect_to(back)
+    get back
+    expect(response.body).to include("4 General,</span>", "1 VIP</span>", "$120.00")
+
+    # What sold through CocoScout names its ticket types the same way.
+    order = TicketOrder.create!(organization: org, ticket_listing: listing, buyer_email: "pat@example.com", buyer_name: "Pat", status: "paid", channel: "online", money_path: "cocoscout", fee_mode: "buyer")
+    2.times { order.tickets.create!(ticket_listing: listing, ticket_tier: general, price_cents: 2_000, status: "valid") }
+    order.tickets.create!(ticket_listing: listing, ticket_tier: vip, price_cents: 4_000, status: "valid")
+    TicketSalesSync.sync!(show)
+    get back
+    expect(response.body).to include("Sold through CocoScout", "2 General,</span>", "1 VIP</span>", "$80.00")
+    expect(response.body).not_to include("from Ticketing</span><span class='tabular-nums text-gray-900'><a")
+  end
+
+  it "says a show sold here once before anything sells, and gives other sites one line for a ticket that has a door price too" do
+    tailor = org.ticket_sources.create!(name: "Ticket Tailor")
+    listing = TicketListing.create!(show: show)
+    online = listing.ticket_tiers.create!(name: "Reserve a spot", price_cents: 1_500, quantity: 30, sells_at: "online")
+    door = listing.ticket_tiers.create!(name: "Reserve a spot", price_cents: 2_000, quantity: 30, sells_at: "door", position: 1)
+    back = manage_money_settle_up_day_path(date.iso8601)
+
+    get back
+    expect(response.body).to include("Sold through CocoScout", "0 tickets</span>", "Sold on other sites", %(name="sales[#{tailor.id}][#{online.id}][tickets]"))
+    expect(response.body).not_to include("nothing entered", ">Enter<", "Checked in", %(name="sales[#{tailor.id}][#{door.id}][tickets]"), %(name="sales[new][#{door.id}][tickets]"))
+
+    # Numbers already saved against the door's type stay in sight, each line saying its price.
+    TicketOutsideSales.record!(listing, { tailor.id.to_s => { door.id.to_s => { "tickets" => "2", "amount" => "40" } } })
+    get back
+    expect(response.body).to include(%(name="sales[#{tailor.id}][#{door.id}][tickets]"), "$15.00, online only", "$20.00, at the door only")
+  end
+
+  it "keeps a show's financials page as a read-only record of its day's card and what was left" do
+    fin = show.show_financials || show.create_show_financials!
+    fin.update!(ticket_count: 30, ticket_revenue: 450, data_confirmed: true)
+    fin.expense_items.create!(category: ExpenseItem::CATEGORIES.first, description: "Pizza", amount: 50)
+
+    org.update!(settle_up_starts_on: date)
+    get manage_money_show_financials_path(show)
+    expect(response).to have_http_status(:ok)
+    body = CGI.unescapeHTML(response.body)
+    expect(body).to include("Settles with #{date.strftime('%A, %B %-d')}", "Settle up, #{date.strftime('%b %-d')}", "30 tickets</span>", "", "What was left", "Came in", "$400.00")
+    # The ticket numbers open the same modal as on the day, to read: nothing to type or save.
+    expect(body).to include(%(data-modal-id="tickets-#{show.id}"), "Outside tickets")
+    expect(body).not_to include("Enter Financial Data", "Mark as Non-Revenue", "show_financials[ticket_sales_lines_attributes]", "Confirm</span>")
+    # A needs-financials row and the payout page send people to the day, the card open.
+    expect(SettleUp.money_entry_href(org, show)).to eq(manage_money_settle_up_day_path(date.iso8601, open: show.id, anchor: "show-#{show.id}"))
+
+    # From before the start date: the record says how to bring it in.
+    org.update!(settle_up_starts_on: date + 30)
+    get manage_money_show_financials_path(show)
+    expect(CGI.unescapeHTML(response.body)).to include("From before Settle up started", "Change the start date")
+    expect(SettleUp.money_entry_href(org, show)).to eq(manage_money_show_financials_path(show))
+  end
+
+  it "brings days already confirmed in settled when the start date moves earlier, and leaves unfinished ones to settle" do
+    other = create(:show, production: production, date_and_time: 5.days.ago.change(hour: 20))
+    (show.show_financials || show.create_show_financials!).update!(ticket_count: 10, ticket_revenue: 100, data_confirmed: true)
+    (other.show_financials || other.create_show_financials!).update!(ticket_count: 5, ticket_revenue: 50, data_confirmed: false)
+    org.update!(settle_up_starts_on: Date.current)
+
+    patch manage_money_settings_settle_up_path, params: { settlement_day_mode: "smart", settlement_day_starts_at: "5", settle_up_starts_on: 10.days.ago.to_date.iso8601 }
+    expect(flash[:notice]).to include("1 day already confirmed came in settled; 1 is waiting to settle")
+    expect(SettlementDay.find_by(organization: org, date: date)).to be_settled
+    expect(SettlementDay.find_by(organization: org, date: SettlementDay.day_for(org, other.date_and_time))).to be_nil
   end
 
   it "opens a show's expenses and other revenue in their own modals, and saves each back onto the day" do
@@ -98,24 +309,73 @@ RSpec.describe "Settle up", type: :request do
     expect(fin.reload.expense_items).to be_empty
   end
 
-  it "counts the door cash, and puts an over or short on the books when the day settles" do
-    patch manage_door_cash_money_settle_up_day_path(date.iso8601), params: { counted: "5.00", float_kept: "0", note: "Found a five in the box" }
-    record = SettlementDay.find_by!(organization: org, date: date)
-    expect(record.counted_cents).to eq(500)
+  # Cash taken at the door is part of its show's ticket sales: said on the
+  # show, never a piece of its own to count or confirm (Tim, 2026-11-11).
+  it "shows cash taken at the door on its show, with nothing to count, and settles without it" do
+    listing = create(:ticket_listing, show: show)
+    create(:ticket_order, ticket_listing: listing, status: "paid", channel: "door_cash", money_path: "cash",
+                          subtotal_cents: 4_000, total_cents: 4_410, paid_at: show.date_and_time)
+
     get manage_money_settle_up_day_path(date.iso8601)
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("over", "Found a five in the box")
+    expect(response.body).to include("Paid in cash at the door", "1 sale, already in the tickets", "$44.10", "0 of 1 confirmed")
+    expect(response.body).not_to include("Door cash", "Counted at close", "Kept as float", "Should be in the box")
+    expect(SettleUp.day(org, date).checks.map(&:key)).to eq([ "show-#{show.id}" ])
 
     patch manage_check_show_money_settle_up_day_path(date.iso8601, show_id: show.id), params: { checked: "1" }
     post manage_settle_money_settle_up_day_path(date.iso8601)
-    expect(record.reload).to be_settled
-    entry = JournalEntry.live.find_by(organization: org, source: record, kind: "settlement")
-    expect(entry).to be_present
-    expect(ChartOfAccounts.account(org, :other_income).natural_balance_cents).to eq(500)
-
-    post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "Counted again" }
+    record = SettlementDay.find_by!(organization: org, date: date)
+    expect(record).to be_settled
     expect(JournalEntry.live.where(organization: org, source: record, kind: "settlement")).not_to exist
-    expect(ChartOfAccounts.account(org, :other_income).natural_balance_cents).to eq(0)
+  end
+
+  # The clock doesn't know the night is over; the person at the bar does
+  # (Tim, 2026-11-11).
+  it "lets a manager settle a day that is still going, once every piece is confirmed, and says what that means" do
+    # A fixed night well away from the file's other show (two days before the
+    # real today), which landed on this same day on 2026-11-13 and left the
+    # day with a piece unconfirmed.
+    travel_to(Time.zone.local(2027, 3, 3, 23, 30)) do
+      tonight = create(:show, production: production, date_and_time: Time.zone.local(2027, 3, 3, 19))
+      today = SettlementDay.day_for(org, tonight.date_and_time)
+      expect(SettlementDay.ended?(org, today)).to be(false)
+
+      patch manage_check_show_money_settle_up_day_path(today.iso8601, show_id: tonight.id), params: { checked: "1" }
+      get manage_money_settle_up_day_path(today.iso8601)
+      expect(response.body).to include("The day closes at 2 AM, when the door closes; settle it now if the night is done", "settle now only if the night is done", "is not in the day until you reopen it")
+      expect(response.body).not_to include("Confirm every piece first")
+
+      post manage_settle_money_settle_up_day_path(today.iso8601)
+      expect(SettlementDay.find_by!(organization: org, date: today)).to be_settled
+    end
+  end
+
+  # Today is on the list while it's still going (Tim, 2026-11-13), in a box
+  # of its own; it isn't a "day to settle" for Home or the hub until it's over.
+  it "puts today at the top of To settle while it's still going, without counting it as a day to settle" do
+    travel_to(Time.zone.local(2027, 3, 3, 21, 0)) do
+      tonight = create(:show, production: production, date_and_time: Time.zone.local(2027, 3, 3, 19))
+      today = SettlementDay.day_for(org, tonight.date_and_time)
+
+      get manage_money_settle_up_path
+      box = Nokogiri::HTML(response.body).at_css("[data-settle-today]")
+      expect(box.text.squish).to include("Today", "Still going: it closes at 2 AM, when the door closes", "Start settling")
+      expect(box.at_css("a[href='#{manage_money_settle_up_day_path(today.iso8601)}']")).to be_present
+      expect(SettleUp.open_dates(org)).not_to include(today)
+
+      # Once it's settled it's gone from the top.
+      patch manage_check_show_money_settle_up_day_path(today.iso8601, show_id: tonight.id), params: { checked: "1" }
+      post manage_settle_money_settle_up_day_path(today.iso8601)
+      get manage_money_settle_up_path
+      expect(Nokogiri::HTML(response.body).at_css("[data-settle-today]")).to be_nil
+    end
+  end
+
+  it "has no Today box on a day with nothing in it" do
+    travel_to(Time.zone.local(2027, 3, 9, 12, 0)) do
+      get manage_money_settle_up_path
+      expect(Nokogiri::HTML(response.body).at_css("[data-settle-today]")).to be_nil
+    end
   end
 
   it "shows days to settle on the Money hub and on Home" do
@@ -124,6 +384,42 @@ RSpec.describe "Settle up", type: :request do
     expect(response.body).to include("1 day to settle up", "Days to settle")
     get manage_path
     expect(response.body).to include("1 day to settle up")
+    # Home's line opens the oldest day, not the list.
+    expect(response.body).to include(manage_money_settle_up_day_path(date.iso8601))
+  end
+
+  it "counts the days to settle without building them, and builds only the ones a list shows" do
+    older = create(:show, production: production, date_and_time: 9.days.ago.change(hour: 20))
+    older_date = SettlementDay.day_for(org, older.date_and_time)
+    create(:show, production: production, date_and_time: 3.days.from_now.change(hour: 20))
+    settled = create(:show, production: production, date_and_time: 6.days.ago.change(hour: 20))
+    SettlementDay.create!(organization: org, date: SettlementDay.day_for(org, settled.date_and_time), status: "settled", settled_at: Time.current)
+
+    expect(SettleUp.open_dates(org)).to eq([ older_date, date ])
+    expect(SettleUp).not_to receive(:build)
+    expect(MoneyTodoService.new(user: owner, organization: org, row_limit: 0).settle_days.count).to eq(2)
+    RSpec::Mocks.space.proxy_for(SettleUp).reset
+
+    expect(SettleUp.to_settle(org, limit: 1).map(&:date)).to eq([ older_date ])
+    expect(SettleUp.to_settle(org).map(&:date)).to eq([ older_date, date ])
+    # A day someone opened keeps what they did: the list reads its record.
+    SettlementDay.create!(organization: org, date: date, status: "open", register_checked_at: Time.current)
+    expect(SettleUp.to_settle(org).last.record).to be_present
+
+    # A list of days never works out who gets paid.
+    expect(SettleUp).not_to receive(:pay_for)
+    get manage_money_settle_up_path
+    expect(response.body).to include("2 days", "Halloween Show")
+    get manage_money_index_path
+    expect(response.body).to include("2 days to settle up")
+  end
+
+  it "steps to the nearest day with money in it each way without building it" do
+    older = create(:show, production: production, date_and_time: 9.days.ago.change(hour: 20))
+    older_date = SettlementDay.day_for(org, older.date_and_time)
+    expect(SettleUp).to receive(:build).once.and_call_original
+    get manage_money_settle_up_day_path(date.iso8601)
+    expect(response.body).to include(manage_money_settle_up_day_path(older_date.iso8601), manage_money_settle_up_day_path((date + 1).iso8601))
   end
 
   it "saves the when-a-day-ends setting" do
@@ -166,8 +462,16 @@ RSpec.describe "Manage::SettlementDays with a register", type: :request do
     get manage_money_settle_up_day_path(date.iso8601)
     expect(response.body).to include("Bar, Lincoln Lodge", "$100.00", "$20.00", "Sales tax collected", "Tips, $15.00", "Pat Bartender", "To your bank from Square", "Pulled in automatically from Square, which sends the money straight to your bank, not through CocoScout.", "Manage Square integration")
 
+    # With no tip rule, nobody is offered a share until someone says who
+    # gets the tips: an even split across everyone on a shift once gave a
+    # bartender's tips to house staff and the booth tech (Tim, 2026-11-11).
+    expect(SettleUp.day(org, date).tips.hand_rows.map { |row| row[:cents] }).to eq([ 0 ])
     patch manage_check_register_money_settle_up_day_path(date.iso8601), params: { checked: "1" }
+    expect(flash[:alert]).to include("Say who gets the tips first")
+    expect(SettlementDay.find_by(organization: org, date: date)&.tip_shares.to_a).to be_blank
+
     patch manage_tips_money_settle_up_day_path(date.iso8601), params: { split: "even", checked: "1", shares: { bartender.id => { amount: "15.00", method: "payout" } } }
+    patch manage_check_register_money_settle_up_day_path(date.iso8601), params: { checked: "1" }
     record = SettlementDay.find_by!(organization: org, date: date)
     expect(record.tip_shares.sum(:amount_cents)).to eq(1_500)
 
@@ -176,6 +480,13 @@ RSpec.describe "Manage::SettlementDays with a register", type: :request do
     expect(ChartOfAccounts.account(org, :bar_income).natural_balance_cents).to eq(10_000 - 500)
     expect(ChartOfAccounts.account(org, :merchandise_income).natural_balance_cents).to eq(2_000 - 100)
     expect(ChartOfAccounts.account(org, :tax_to_remit).natural_balance_cents).to eq(1_000)
+    # The register's sales tax is counted where tax is counted: the books'
+    # check agrees, and the Sales tax page and the year's summary show it.
+    expect(RegisterSalesTax.owed_total_cents(org)).to eq(1_000)
+    expect(BooksReconciliation.check(org)).to be_empty
+    get manage_ticket_taxes_path(period: date.strftime("%Y-%m"))
+    expect(response.body).to include("$10.00 collected at your register", "Lincoln Lodge")
+    expect(BooksTaxSummary.new(org, year: date.year).sales_tax[:register_cents]).to eq(1_000)
     expect(ChartOfAccounts.account(org, :tips_owed).natural_balance_cents).to eq(1_500)
     expect(ChartOfAccounts.account(org, :ticketing_fees).natural_balance_cents).to eq(330)
     expect(ChartOfAccounts.account(org, :bank).natural_balance_cents).to eq(12_000 + 1_000 + 1_500 - 600 - 330)
@@ -189,6 +500,8 @@ RSpec.describe "Manage::SettlementDays with a register", type: :request do
     post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "Wrong split" }
     expect(ChartOfAccounts.account(org, :bank).natural_balance_cents).to eq(0)
     expect(TipShare.waiting_for(org)).to be_empty
+    expect(RegisterSalesTax.owed_total_cents(org)).to eq(0)
+    expect(BooksReconciliation.check(org)).to be_empty
   end
 end
 
@@ -271,7 +584,10 @@ RSpec.describe "Manage::SettlementDays tips by the clock", type: :request do
       get manage_money_settle_up_day_path(date.iso8601)
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Worked out from who was on when each sale rang up: Bartender keeps what rang up while on; Bar back 15% off the top")
-      expect(response.body).to include("Miles", "Camille", "From 32 orders while on.", "Change the split", "Add a person who worked", "Change the rule", "6 pm to 10 pm")
+      expect(response.body).to include("Miles", "Camille", "From 32 orders while on.", "Change the split", "Add someone", "Take off", "Change the rule", "6 pm to 10 pm")
+      # One small way into the math, and the math itself: the shared stretch, what rang up in it, and each one's half.
+      expect(response.body.scan("View share calculation").size).to eq(1)
+      expect(response.body).to include("Share calculation", "By who was on", "Adds up to")
       expect(response.body).not_to include(%(name="shares[#{pat.id}][amount]"))
       expect(response.body).to include(%(name="shares[#{miles.id}][amount]" inputmode="decimal" value="120.00"))
       expect(response.body).to include(%(name="shares[#{miles.id}][from]" value="18:00"), %(name="shares[#{miles.id}][to]" value="22:00"))
@@ -320,6 +636,41 @@ RSpec.describe "Manage::SettlementDays tips by the clock", type: :request do
       expect(ChartOfAccounts.account(org, :other_income).natural_balance_cents).to eq(4_000)
     end
 
+    it "works the split out again with someone added or taken off, saving nothing until Save the split" do
+      miles_row = { amount: "120.00", shown: "120.00", method: "payout", from: "18:00", to: "22:00", span_shown: "18:00-22:00", house_role_id: bartender.id }
+      camille_row = { amount: "120.00", shown: "120.00", method: "payout", from: "20:00", to: "00:00", span_shown: "20:00-00:00", house_role_id: bartender.id }
+
+      # Jo added on the bar back from 8 to 10: $12 off the top, shown at once, saved nowhere.
+      post manage_tips_preview_money_settle_up_day_path(date.iso8601), params: { mode: "rule", modal_id: "tips-split-x",
+        shares: { miles.id => miles_row, camille.id => camille_row },
+        new_share: { person_id: jo.id, house_role_id: bar_back.id, from: "20:00", to: "22:00" } }
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(%(id="tips-split-x"), "Jo Back", %(name="shares[#{jo.id}][amount]" inputmode="decimal" value="12.00"))
+      expect(response.body).to include(%(name="shares[#{miles.id}][span_shown]" value="18:00-22:00"), %(name="shares[#{jo.id}][span_shown]" value=""))
+      expect(TipShare.joins(:settlement_day).where(settlement_days: { organization_id: org.id }).count).to eq(0)
+
+      # Save the split with what the preview showed: Jo is kept, with the span.
+      patch manage_tips_money_settle_up_day_path(date.iso8601), params: { mode: "rule",
+        shares: { miles.id => miles_row.merge(amount: "114.00", shown: "114.00"), camille.id => camille_row.merge(amount: "114.00", shown: "114.00"),
+                  jo.id => { amount: "12.00", shown: "12.00", method: "payout", from: "20:00", to: "22:00", span_shown: "", house_role_id: bar_back.id } } }
+      record = SettlementDay.find_by!(organization: org, date: date)
+      expect(record.tip_shares.find_by!(person: jo)).to have_attributes(amount_cents: 1_200, worked_from: night.change(hour: 20), worked_to: night.change(hour: 22))
+      expect(record.tip_shares.sum(:amount_cents)).to eq(24_000)
+
+      # Taken off again in the modal: gone from the rows, carried to Save, still saved until then.
+      post manage_tips_preview_money_settle_up_day_path(date.iso8601), params: { mode: "rule",
+        shares: { jo.id => { amount: "12.00", shown: "12.00", method: "payout", from: "20:00", to: "22:00", span_shown: "20:00-22:00", house_role_id: bar_back.id, remove: "1" } } }
+      expect(response.body).not_to include(%(name="shares[#{jo.id}][amount]"))
+      expect(response.body).to include(%(name="shares[#{jo.id}][remove]" value="1"), %(name="shares[#{miles.id}][amount]" inputmode="decimal" value="120.00"))
+      expect(record.tip_shares.reload.find_by(person: jo)).to be_present
+    end
+
+    it "keeps a share typed before the preview as typed on Save" do
+      post manage_tips_preview_money_settle_up_day_path(date.iso8601), params: { mode: "rule",
+        shares: { camille.id => { amount: "100.00", shown: "120.00", method: "payout" } } }
+      expect(response.body).to include(%(name="shares[#{camille.id}][typed]" value="1"))
+    end
+
     it "saves the split, adds a bar back with a span, keeps a typed share, and sends the shares to the run on settle" do
       # Saved as worked out: $120 each.
       patch manage_tips_money_settle_up_day_path(date.iso8601), params: { mode: "rule", checked: "0",
@@ -366,9 +717,16 @@ RSpec.describe "Manage::SettlementDays tips by the clock", type: :request do
       # Settling puts nothing on the run: the shares wait on Pay People.
       expect(PayoutContribution.where(payee: [ miles, camille, jo ]).count).to eq(0)
       expect(TipShare.waiting_for(org).sum(:amount_cents)).to eq(24_000)
+      # The settled day says so, in one pill on the tips, and the reopen modal says they'd stop waiting.
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body.scan("Waiting on Pay People").size).to eq(1)
+      expect(CGI.unescapeHTML(response.body)).to include("Its tips, $240.00 for 3 people, stop waiting on Pay People until the day settles again.")
 
       # Pay People offers them like approved hours, and ties each share to the
-      # run's Tips line when the week's pay goes on.
+      # run's Tips line when the week's pay goes on. Someone left off the pay
+      # grid (an owner who tended bar) is on it while their tips wait (Tim,
+      # 2026-11-11: his and a manager's tips waited where nobody could see).
+      org.organization_staff_members.find_by!(person: camille).update!(excluded_from_pay: true)
       get manage_staffing_pay_path
       expect(response.body).to include("3 people", "tips waiting from Settle up — $240.00 to pay through us", "Pull in tips")
       miles_share = record.tip_shares.find_by!(person: miles)
@@ -381,9 +739,130 @@ RSpec.describe "Manage::SettlementDays tips by the clock", type: :request do
       expect(miles_share.payout_contribution.payout_batch).to be_open
       expect(TipShare.waiting_for(org).map(&:person)).to contain_exactly(camille, jo)
 
-      # Reopening the day takes Miles's share back off the draft run.
+      # Now the pill counts where each share stands, and each row tags its own.
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body).to include("2 waiting on Pay People · 1 on the draft payout run", "· on a payout run")
+
+      # Another settled day's share for Miles rides the same Tips line (a week's tips are one line).
+      earlier = SettlementDay.create!(organization: org, date: date - 1, status: "settled", settled_at: Time.current)
+      line = miles_share.payout_contribution
+      other_share = earlier.tip_shares.create!(person: miles, amount_cents: 1_500, method: "payout", source: "computed", payout_contribution: line)
+      line.update!(amount_cents: line.amount_cents + 1_500, worksheet: line.worksheet_entries + [ { "date" => other_share.day_label, "amount_cents" => 1_500 } ])
+      line.payout_ledger_entries.update_all(amount_cents: line.amount_cents)
+      line.payout_batch_item.settle_amount!
+
+      # Reopening the day takes Miles's share back off the draft run, and says so.
       post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "Wrong split" }
+      expect(response).to redirect_to(manage_money_settle_up_day_path(date.iso8601))
+      expect(flash[:notice]).to include("Miles's tips came off the draft payout run")
       expect(miles_share.reload.payout_contribution).to be_nil
+      # Only this day's share came off: the other day's stays on the line, which is now just its amount.
+      expect(other_share.reload.payout_contribution).to eq(line)
+      expect(line.reload).to have_attributes(amount_cents: 1_500, worksheet: [ { "date" => other_share.day_label, "amount_cents" => 1_500 } ])
+      expect(line.payout_ledger_entries.pluck(:amount_cents)).to eq([ 1_500 ])
+      expect(line.payout_batch_item.reload.amount_cents).to eq(1_500)
+      expect(TipShare.waiting_for(org)).not_to include(miles_share)
+      expect(record.reload).not_to be_settled
+
+      # With nothing else on the line, the line and the person's place on the run go with it, and the page still comes back.
+      earlier.update!(status: "settled")
+      post manage_reopen_money_settle_up_day_path((date - 1).iso8601), params: { reason: "And this one" }
+      expect(response).to redirect_to(manage_money_settle_up_day_path((date - 1).iso8601))
+      expect(other_share.reload.payout_contribution).to be_nil
+      expect(PayoutContribution.exists?(line.id)).to be(false)
+    end
+
+    # Paid means the run was submitted (Tim, 2026-11-04). A day reopened
+    # after that keeps what was paid and lets the split change: more owed
+    # waits on Pay People, overpaid comes out of the person's next pay.
+    it "keeps tips a submitted run paid when the day is reopened, and carries the difference through Pay People" do
+      day_label = date.strftime("%b %-d")
+      split = ->(miles_to) do
+        patch manage_tips_money_settle_up_day_path(date.iso8601), params: { mode: "rule", checked: "1",
+          shares: { miles.id => { amount: "0", shown: "0", method: "payout", from: "18:00", to: miles_to, span_shown: "x", house_role_id: bartender.id },
+                    camille.id => { amount: "0", shown: "0", method: "payout", from: "20:00", to: "00:00", span_shown: "x", house_role_id: bartender.id } } }
+      end
+      settle = -> do
+        patch manage_check_register_money_settle_up_day_path(date.iso8601), params: { checked: "1" }
+        post manage_settle_money_settle_up_day_path(date.iso8601)
+      end
+      pay_out = ->(run) do
+        run.update!(status: "completed")
+        run.items.each { |item| item.mark_paid!(transfer_id: "tr_#{item.id}") }
+      end
+      member = ->(person) { org.organization_staff_members.find_by!(person: person) }
+
+      split.call("22:00")
+      settle.call
+      record = SettlementDay.find_by!(organization: org, date: date)
+      miles_share = record.tip_shares.find_by!(person: miles)
+      camille_share = record.tip_shares.find_by!(person: camille)
+      expect([ miles_share.amount_cents, camille_share.amount_cents ]).to eq([ 12_000, 12_000 ])
+
+      # The week's pay goes on a run with both shares, and the run is submitted and paid.
+      post manage_create_staffing_pay_path, params: { payday: Date.current.iso8601, lines: {
+        member.call(miles).id => { tips: "120.00", tips_sheet: [ "#{day_label}|120.00" ], tip_share_ids: [ miles_share.id ] },
+        member.call(camille).id => { tips: "120.00", tips_sheet: [ "#{day_label}|120.00" ], tip_share_ids: [ camille_share.id ] } } }
+      first_run = PayoutBatch.current_open_draft(org)
+      pay_out.call(first_run)
+
+      get manage_money_settle_up_day_path(date.iso8601)
+      body = CGI.unescapeHTML(response.body)
+      expect(body).to include("Already paid, and staying paid", "Miles, $120.00 in tips", "Camille, $120.00 in tips", "tips wait on Pay People")
+      expect(body).not_to include("stop waiting on Pay People until the day settles again")
+
+      # Reopening leaves the money paid and frees the split.
+      post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "Miles left at 8" }
+      expect(flash[:notice]).not_to include("came off the draft payout run")
+      expect(miles_share.reload).to have_attributes(paid_cents: 12_000, payout_contribution_id: nil, amount_cents: 12_000)
+      expect(first_run.reload.payout_contributions.sum(:amount_cents)).to eq(24_000)
+
+      # Miles off at 8: $80 for him, $160 for Camille.
+      split.call("20:00")
+      expect([ miles_share.reload.amount_cents, camille_share.reload.amount_cents ]).to eq([ 8_000, 16_000 ])
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(CGI.unescapeHTML(response.body)).to include("Paid $120.00. The $40.00 over comes out of their next pay.", "Paid $120.00. $40.00 more waits on Pay People.")
+
+      settle.call
+      expect(TipShare.waiting_for(org)).to contain_exactly(camille_share)
+      expect(TipShare.overpaid_for(org)).to contain_exactly(miles_share)
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body).to include("1 overpaid, comes out of their next pay · 1 waiting on Pay People")
+
+      # Pay People offers Camille only the difference, and says what comes out of Miles's pay.
+      get manage_staffing_pay_path
+      body = CGI.unescapeHTML(response.body)
+      expect(body).to include("tips waiting from Settle up — $40.00 to pay through us", "$40.00 in tips paid over on #{day_label} comes out of their next pay that covers it.",
+        %(data-comes-out-cents="4000"), { id: camille_share.id, date: day_label, amount: "40.00", method: "payout" }.to_json)
+
+      # A pay too small to cover it is left whole.
+      post manage_create_staffing_pay_path, params: { payday: Date.current.iso8601, lines: { member.call(miles).id => { bonus: "30.00" } } }
+      run = PayoutBatch.current_open_draft(org)
+      expect(run.items.find_by(payee: miles).amount_cents).to eq(3_000)
+      expect(miles_share.reload.payout_contribution).to be_nil
+
+      # The next one that covers it pays that much less, on a line of its own; Camille's difference rides her Tips line.
+      post manage_create_staffing_pay_path, params: { payday: Date.current.iso8601, lines: {
+        member.call(miles).id => { bonus: "100.00" },
+        member.call(camille).id => { tips: "40.00", tips_sheet: [ "#{day_label}|40.00" ], tip_share_ids: [ camille_share.id ] } } }
+      expect(run.items.find_by(payee: miles).reload.amount_cents).to eq(3_000 + 10_000 - 4_000)
+      expect(miles_share.reload.payout_contribution).to have_attributes(label: "Tips paid over", amount_cents: -4_000, category: "staffing",
+                                                                        worksheet: [ { "date" => day_label, "amount_cents" => -4_000 } ])
+      expect(camille_share.reload.payout_contribution).to have_attributes(label: "Tips", amount_cents: 4_000)
+      expect(TipShare.overpaid_for(org)).to be_empty
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body).to include("On the draft payout run")
+
+      # Paid out, everyone's staff balance is square.
+      pay_out.call(run)
+      expect([ miles, camille ].map { |person| org.payout_balance_cents_for(person, category: "staffing") }).to eq([ 0, 0 ])
+
+      # Reopened once more with nothing changed: nothing is owed either way.
+      post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "Just looking" }
+      expect([ miles_share.reload.paid_cents, camille_share.reload.paid_cents ]).to eq([ 8_000, 16_000 ])
+      settle.call
+      expect(TipShare.waiting_for(org)).to be_empty
+      expect(TipShare.overpaid_for(org)).to be_empty
     end
   end
 end
@@ -464,7 +943,7 @@ RSpec.describe "Manage::SettlementDays pays people", type: :request do
       expect(payout.line_items.map { |l| [ l.payee_name, l.amount.to_f, l.pay_choice ] }).to contain_exactly([ "Ana Diaz", 100.0, "run" ], [ "Ben Lee", 100.0, "run" ])
 
       get manage_money_settle_up_day_path(date.iso8601, open: show.id)
-      expect(response.body).to include("$200.00 to 2 people", "2 people on the run when the day settles", "Hold, not yet", "Paid another way…", "Remove from this show", "Who's paid and how", "$200.00 for 2 people goes on the payout run")
+      expect(response.body).to include("$200.00 to 2 people", "Hold, not yet", "Paid another way…", "Remove from this show", "Who's paid and how", "$200.00 for 2 people goes on the payout run")
       expect(response.body).not_to include("<select name=\"pay_choice\"")
       expect(response.body).not_to include("Recalculate")
 
@@ -492,22 +971,22 @@ RSpec.describe "Manage::SettlementDays pays people", type: :request do
       expect(flash[:notice]).to include("Ben Lee: held for now")
 
       post manage_settle_money_settle_up_day_path(date.iso8601)
-      expect(flash[:notice]).to include("$100.00 for 1 person went on the payout run")
+      expect(flash[:notice]).to include("$100.00 for 1 person went on the draft payout run")
       run = PayoutBatch.current_open_draft(org)
       expect(run).to be_present
       expect(PayoutContribution.find_by(source: payout.line_items.find_by(payee: ana))&.payout_batch).to eq(run)
       expect(PayoutContribution.find_by(source: ben_line)).to be_nil
 
       get manage_money_settle_up_day_path(date.iso8601)
-      expect(response.body).to include("is settled", "1 on a payout run", "1 held", "The payout run")
+      expect(response.body).to include(%(id="day-settled"), "1 payout from this day is on the draft payout run.", "1 on the draft payout run", "1 held", "The payout run")
 
       # The reopen modal says what it undoes and asks about the payouts on the draft run.
-      expect(CGI.unescapeHTML(response.body)).to include("Reopening undoes what settling did", "1 payout from this day, $100.00, is on the open payout run.",
+      expect(CGI.unescapeHTML(response.body)).to include("Reopening undoes what settling did", "1 payout from this day, $100.00, is on the draft payout run.",
         "Take it off the run, so the pay can change.", "Leave it on the run. I'm changing something else")
 
       # Kept on the run: the day opens, the line stays and its show stays locked.
       post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "Door cash was off", payouts: "keep" }
-      expect(flash[:notice]).to include("Its payouts stayed on the payout run")
+      expect(flash[:notice]).to include("Its payouts stayed on the draft payout run")
       expect(PayoutContribution.find_by(source: payout.line_items.find_by(payee: ana))&.payout_batch).to eq(run)
       patch manage_check_show_money_settle_up_day_path(date.iso8601, show_id: show.id), params: { checked: "1" }
       post manage_settle_money_settle_up_day_path(date.iso8601)
@@ -515,10 +994,114 @@ RSpec.describe "Manage::SettlementDays pays people", type: :request do
 
       # Taken off (the default): the line comes back off the draft and rides again on settling.
       post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "A ticket count was wrong" }
-      expect(flash[:notice]).to include("$100.00 for 1 person came off the payout run")
+      expect(flash[:notice]).to include("$100.00 for 1 person came off the draft payout run")
       expect(PayoutContribution.where(source_type: "ShowPayoutLineItem", source_id: payout.line_items.ids)).not_to exist
       get manage_money_settle_up_day_path(date.iso8601)
-      expect(response.body).to include("1 person on the run when the day settles")
+      expect(response.body).to include("1 held", "$100.00 for 1 person goes on the payout run when the day settles")
+    end
+
+    # Paid means the run was submitted (Tim, 2026-11-04): from then on the
+    # money stays paid, and a day reopened after it carries the difference.
+    def submit_and_pay!(run)
+      run.update!(status: "completed")
+      run.items.each do |item|
+        item.mark_paid!(transfer_id: "tr_#{item.id}")
+        PayoutBatchService.settle_item_sources!(item, "tr_#{item.id}")
+      end
+    end
+
+    def settle_day!
+      patch manage_check_show_money_settle_up_day_path(date.iso8601, show_id: show.id), params: { checked: "1" }
+      post manage_settle_money_settle_up_day_path(date.iso8601)
+    end
+
+    it "keeps what a submitted run paid when the day is reopened, and puts more owed on the next draft run" do
+      patch manage_calculate_show_money_settle_up_day_path(date.iso8601, show_id: show.id)
+      settle_day!
+      first_run = PayoutBatch.current_open_draft(org)
+      submit_and_pay!(first_run)
+      payout = show.reload.show_payout
+      expect(payout.line_items.map(&:paid?)).to eq([ true, true ])
+
+      # Reopening takes nothing back: the run was submitted.
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(CGI.unescapeHTML(response.body)).to include("Already paid, and staying paid", "Ana Diaz, $100.00", "Ben Lee, $100.00",
+        "more owed goes on the next payout run", "anything overpaid comes out of their next pay")
+      post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "Hot Tix sent more" }
+      expect(payout.reload.line_items.map(&:paid?)).to eq([ true, true ])
+
+      # The show took more: it can be worked out again, and the paid lines stand.
+      travel 2.seconds
+      show.show_financials.update!(ticket_revenue: 260.0)
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body).to include("The numbers changed since this was worked out", "$260.00 to 2 people", "Recalculate")
+      patch manage_calculate_show_money_settle_up_day_path(date.iso8601, show_id: show.id)
+      expect(flash[:notice]).to eq("Pavlov Show: $260.00 to 2 people.")
+      lines = payout.reload.line_items.order(:id)
+      expect(lines.map { |l| [ l.payee_name, l.amount.to_f, l.paid?, l.correction? ] }).to contain_exactly(
+        [ "Ana Diaz", 100.0, true, false ], [ "Ben Lee", 100.0, true, false ], [ "Ana Diaz", 30.0, false, true ], [ "Ben Lee", 30.0, false, true ])
+      expect(org.payout_balance_cents_for(ana, category: "performer")).to eq(3000)
+
+      get manage_money_settle_up_day_path(date.iso8601, open: show.id)
+      body = CGI.unescapeHTML(response.body)
+      expect(body).to include("$260.00 to 2 people", "Paid $100.00. $30.00 more goes on the payout run when the day settles.", "$60.00 for 2 people goes on the payout run")
+
+      # Settling again puts only the difference on the new draft run.
+      settle_day!
+      expect(flash[:notice]).to include("$60.00 for 2 people went on the draft payout run")
+      second_run = PayoutBatch.current_open_draft(org)
+      expect(second_run).not_to eq(first_run)
+      expect(second_run.items.find_by(payee: ana).amount_cents).to eq(3000)
+      expect(second_run.payout_contributions.pluck(:label).uniq).to eq([ "#{show.name_with_date} (correction)" ])
+      get manage_money_settle_up_day_path(date.iso8601, open: show.id)
+      expect(CGI.unescapeHTML(response.body)).to include("Paid $100.00. $30.00 more is on the draft payout run.")
+
+      # Reopened again before that run is submitted: the corrections come back off, the paid lines stay.
+      post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "One more look" }
+      expect(flash[:notice]).to include("$60.00 for 2 people came off the draft payout run")
+      expect(PayoutContribution.where(source: payout.line_items.where.not(correction_of_id: nil))).not_to exist
+      expect(first_run.reload.payout_contributions.count).to eq(2)
+    end
+
+    it "takes what was overpaid out of the person's next pay" do
+      patch manage_calculate_show_money_settle_up_day_path(date.iso8601, show_id: show.id)
+      settle_day!
+      submit_and_pay!(PayoutBatch.current_open_draft(org))
+      payout = show.reload.show_payout
+
+      post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "A refund came in" }
+      travel 2.seconds
+      show.show_financials.update!(ticket_revenue: 160.0)
+      patch manage_calculate_show_money_settle_up_day_path(date.iso8601, show_id: show.id)
+      expect(payout.reload.line_items.where.not(correction_of_id: nil).map { |l| [ l.payee_name, l.amount.to_f ] }).to contain_exactly([ "Ana Diaz", -20.0 ], [ "Ben Lee", -20.0 ])
+      expect(org.payout_balance_cents_for(ana, category: "performer")).to eq(-2000)
+
+      get manage_money_settle_up_day_path(date.iso8601, open: show.id)
+      body = CGI.unescapeHTML(response.body)
+      expect(body).to include("$160.00 to 2 people", "Overpaid $20.00", "Paid $100.00. The $20.00 over comes out of their next pay.")
+      expect(body).not_to include("goes on the payout run when the day settles")
+
+      # Nothing rides the run for this day: there is nothing more to pay.
+      settle_day!
+      expect(flash[:notice]).not_to include("went on the draft payout run")
+      expect(PayoutBatch.current_open_draft(org)).to be_nil
+
+      # Their next show pays them that much less.
+      later = create(:show, production: production, date_and_time: 1.day.ago.change(hour: 20))
+      create(:show_financials, show: later, ticket_count: 10, ticket_revenue: 100.0, expenses: 0)
+      create(:show_person_role_assignment, show: later, assignable: ana)
+      later_date = SettlementDay.day_for(org, later.date_and_time)
+      patch manage_calculate_show_money_settle_up_day_path(later_date.iso8601, show_id: later.id)
+      patch manage_check_show_money_settle_up_day_path(later_date.iso8601, show_id: later.id), params: { checked: "1" }
+      post manage_settle_money_settle_up_day_path(later_date.iso8601)
+      run = PayoutBatch.current_open_draft(org)
+      expect(run.payout_contributions.find_by(payee: ana).amount_cents).to eq(10_000)
+      expect(run.items.find_by(payee: ana).amount_cents).to eq(8000)
+
+      submit_and_pay!(run)
+      expect(org.payout_balance_cents_for(ana, category: "performer")).to eq(0)
+      get manage_money_settle_up_day_path(date.iso8601, open: show.id)
+      expect(CGI.unescapeHTML(response.body)).to include("The $20.00 over came out of their next pay.")
     end
 
     it "records a line paid another way from the day, and a hand edit to the money darkens the mark" do
@@ -575,6 +1158,22 @@ RSpec.describe "Manage::SettlementDays pays people", type: :request do
       post manage_add_missing_cast_money_show_payout_path(show), params: { return_to: back, amount: "30" }
       expect(response).to redirect_to(back)
       expect(payout.reload.line_items.find_by(payee: ben).amount.to_f).to eq(30.0)
+
+      # Add someone is the People Picker, not a menu of everyone: it knows who is on the payout already.
+      get back
+      picker = Nokogiri::HTML(response.body).at_css("[data-people-picker='pay-picker-#{show.id}']")
+      asks = JSON.parse(picker["data-people-picker-params-value"])
+      expect(asks).to include("scope" => "people", "production_id" => production.id, "exclude_label" => "On the payout")
+      expect(asks["exclude"]).to match_array([ ana.id, ben.id ])
+      expect(response.body).to include("Pick a person", 'data-person-field-target="field"')
+      expect(response.body).not_to include('<select name="payee_id"')
+      cy = create(:person, name: "Cy Vane")
+      org.people << cy
+      get manage_people_picker_search_path(asks.merge("q" => "Cy"))
+      expect(response.body).to include("Cy Vane")
+      post manage_add_line_item_money_show_payout_path(show), params: { return_to: back, payee_type: "Person", payee_id: cy.id, amount: "15" }
+      expect(response).to redirect_to(back)
+      expect(payout.reload.line_items.find_by(payee: cy).amount.to_f).to eq(15.0)
     end
 
     it "keeps a show whose day isn't settled off the Money hub's To pay list, and the old pages point at the day" do
@@ -587,5 +1186,96 @@ RSpec.describe "Manage::SettlementDays pays people", type: :request do
       expect(response.body).to include("go on the payout run when", "Settle up #{date.strftime('%b %-d')}")
       expect(response.body).not_to include("Add to payout run")
     end
+  end
+end
+
+# A contract show's settlement that was already paid when its day was
+# reopened (Tim, 2026-11-04): it stays as paid, and the difference is a
+# correction on the contract. More owed rides the next run; overpaid comes
+# out of their next share.
+RSpec.describe "Manage::SettlementDays corrects a paid contract settlement", type: :request do
+  let(:password) { "Password123!" }
+  let(:owner) { create(:user, password: password) }
+  let!(:org) { create(:organization, :pro, owner: owner, settlement_day_mode: "calendar", settle_up_starts_on: Date.current - 30) }
+  let!(:owner_role) { create(:organization_role, :manager, user: owner, organization: org) }
+  let!(:production) { create(:production, organization: org, production_type: "third_party", name: "Witches") }
+  let(:person) { create(:person, name: "Wanda West", stripe_account_id: "acct_w", payouts_enabled: true) }
+  let(:contractor) { create(:contractor, organization: org, person: person, name: "Windy City Witches") }
+  let(:contract) do
+    create(:contract, :active, organization: org, production: production, contractor: contractor, contractor_name: contractor.name,
+                               draft_data: { "payment_structure" => "revenue_share",
+                                             "payment_config" => { "revenue_our_share" => 50, "revenue_their_share" => 50, "revenue_settlement" => "per_event" } })
+  end
+  let!(:show) { create(:show, production: production, date_and_time: 2.days.ago.change(hour: 20)) }
+  let(:date) { SettlementDay.day_for(org, show.date_and_time) }
+  let!(:share) do
+    create(:show_financials, show: show, ticket_count: 48, ticket_revenue: 480.0, expenses: 0)
+    create(:contract_payment, :outgoing, contract: contract, show: show, description: "50% to them", amount: 240, due_date: date,
+                                         notes: "Auto-calculated from show financials:")
+  end
+
+  before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
+
+  def settle_day!
+    patch manage_check_show_money_settle_up_day_path(date.iso8601, show_id: show.id), params: { checked: "1" }
+    post manage_settle_money_settle_up_day_path(date.iso8601)
+  end
+
+  def submit_and_pay!(run)
+    run.update!(status: "completed")
+    run.items.each do |item|
+      item.mark_paid!(transfer_id: "tr_#{item.id}")
+      PayoutBatchService.settle_item_sources!(item, "tr_#{item.id}")
+    end
+  end
+
+  it "puts more owed on the next run, and takes what was paid over out of their next share" do
+    settle_day!
+    expect(flash[:notice]).to include("$240.00 for 1 person went on the draft payout run")
+    submit_and_pay!(PayoutBatch.current_open_draft(org))
+    expect(share.reload).to be_status_paid
+
+    get manage_money_settle_up_day_path(date.iso8601)
+    expect(CGI.unescapeHTML(response.body)).to include("Already paid, and staying paid", "Windy City Witches, $240.00")
+
+    # Reopened, and Hot Tix sent more: their half is $260 now.
+    post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "Hot Tix sent more" }
+    show.show_financials.update!(ticket_revenue: 520.0)
+    expect(share.reload.amount.to_f).to eq(240.0)
+    get manage_money_settle_up_day_path(date.iso8601, open: show.id)
+    expect(CGI.unescapeHTML(response.body)).to include("Ticket sales now make it $20.00 more, which goes on the payout run when the day settles.")
+
+    settle_day!
+    expect(flash[:notice]).to include("$20.00 for 1 person went on the draft payout run")
+    more = share.corrections.sole
+    expect(more).to have_attributes(direction: "outgoing", amount: 20.to_d, show_id: show.id, description: "Correction for #{show.date_and_time.strftime('%b %-d')}: more owed")
+    expect(more.payout_contribution.payout_batch).to be_open
+    expect(PayoutBatch.current_open_draft(org).total_cents).to eq(2_000)
+
+    # Reopened before that run is submitted: the correction comes off and goes; the paid settlement stays.
+    post manage_reopen_money_settle_up_day_path(date.iso8601), params: { reason: "A refund" }
+    expect(share.reload.corrections).to be_empty
+    expect(share).to be_status_paid
+    expect(PayoutContribution.where(payee: person).where.not(source: share)).not_to exist
+
+    # Now a refund: their half is $220, so $20 was paid over.
+    show.show_financials.update!(ticket_revenue: 440.0)
+    get manage_money_settle_up_day_path(date.iso8601, open: show.id)
+    expect(CGI.unescapeHTML(response.body)).to include("Ticket sales now make it $20.00 less, which comes out of their next share.")
+    settle_day!
+    expect(flash[:notice]).not_to include("went on the draft payout run")
+    over = share.reload.corrections.sole
+    expect(over).to have_attributes(direction: "incoming", settlement_method: "payout_deduction", amount: 20.to_d, status: "pending")
+    get manage_money_settle_up_day_path(date.iso8601, open: show.id)
+    expect(CGI.unescapeHTML(response.body)).to include("$20.00 paid over comes out of their next share.")
+
+    # Their next share on the contract pays that much less.
+    next_share = create(:contract_payment, :outgoing, contract: contract, description: "Next night", amount: 100, due_date: Date.current)
+    ContractorPayoutRunService.add_contract_payment!(next_share)
+    run = PayoutBatch.current_open_draft(org)
+    expect(run.items.find_by(payee: person).amount_cents).to eq(8_000)
+    expect(over.reload).to be_status_paid
+    get manage_money_settle_up_day_path(date.iso8601, open: show.id)
+    expect(CGI.unescapeHTML(response.body)).to include("$20.00 paid over came out of a later share.")
   end
 end

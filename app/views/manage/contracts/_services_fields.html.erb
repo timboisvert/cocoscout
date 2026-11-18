@@ -8,6 +8,9 @@
   Posts the same rows as before, so the wizard and amend parsers are unchanged:
   services[i][include|service_id|name|unit|per_event|quantity|unit_price|direction|settlement]
   and, per date, services[i][events][j][include|starts_at|hours|unit_price].
+  A service unticked in a date's Edit can come off every later date too
+  ("and every date after it": contract-services does it in the form; a post
+  with events[j][and_after] and no include is read the same way).
   Each date's inputs live in that date's Edit; contract-services keeps the
   chips and totals in step. The caller supplies the <form> and nav buttons.
 
@@ -109,8 +112,13 @@
             </span>
           </label>
 
-          <div class="<%= 'hidden' unless line[:on] %> mt-3 pl-7 flex flex-wrap items-end gap-3" data-contract-services-target="body">
-            <div class="w-28">
+          <%# A phone: price and hours side by side, then each dropdown across the
+              width (they read cut off in half a column), from the checkbox's
+              edge. From sm up, one indented row of fixed widths. hidden is on a
+              plain wrapper, since grid would win over it. %>
+          <div class="<%= 'hidden' unless line[:on] %>" data-contract-services-target="body">
+          <div class="mt-3 grid grid-cols-2 gap-3 sm:pl-7 sm:flex sm:flex-wrap sm:items-end">
+            <div class="min-w-0 order-1 sm:order-none sm:w-28">
               <label class="block text-xs font-medium text-gray-600 mb-1"><%= option.hourly? ? "Rate/hr" : "Price" %></label>
               <div class="relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
@@ -118,13 +126,13 @@
                        data-contract-services-target="price" data-action="input->contract-services#priceChanged" class="<%= input %> pl-7">
               </div>
             </div>
-            <div class="w-36">
+            <div class="min-w-0 col-span-2 order-3 sm:order-none sm:w-36">
               <label class="block text-xs font-medium text-gray-600 mb-1">Who pays</label>
               <%= select_tag "services[#{i}][direction]", options_for_select(dir_options, line[:direction]), class: input,
                     data: { contract_services_target: "direction", action: "change->contract-services#refresh" } %>
             </div>
             <% if can_deduct %>
-              <div class="w-60">
+              <div class="min-w-0 col-span-2 order-3 sm:order-none sm:w-60">
                 <label class="block text-xs font-medium text-gray-600 mb-1">How it's settled</label>
                 <%= select_tag "services[#{i}][settlement]",
                       options_for_select([ [ "Taken out of their payout", "payout_deduction" ], [ "They pay it directly", "direct" ] ], line[:settlement]),
@@ -134,7 +142,7 @@
               <%= hidden_field_tag "services[#{i}][settlement]", "direct", id: nil %>
             <% end %>
             <% if line[:per_event] %>
-              <div class="w-44">
+              <div class="min-w-0 col-span-2 order-3 sm:order-none sm:w-44">
                 <label class="block text-xs font-medium text-gray-600 mb-1">Usually on</label>
                 <select class="<%= input %>" data-contract-services-target="usual" data-action="change->contract-services#usualChanged" aria-label="<%= option.name %>: usually on">
                   <% (usual_choices + (line[:usual] == "some" ? [ [ "Some dates", "some" ] ] : [])).each do |label, value| %>
@@ -143,19 +151,20 @@
                 </select>
               </div>
               <% if option.hourly? %>
-                <div class="w-20">
+                <div class="min-w-0 order-2 sm:order-none sm:w-20">
                   <label class="block text-xs font-medium text-gray-600 mb-1">Hours</label>
                   <input type="number" step="0.5" min="0" value="<%= line[:default_hours] %>" class="<%= input %>"
                          data-contract-services-target="defaultHours" data-action="change->contract-services#hoursChanged" aria-label="<%= option.name %>: usual hours">
                 </div>
               <% end %>
             <% else %>
-              <div class="w-24">
+              <div class="min-w-0 order-2 sm:order-none sm:w-24">
                 <label class="block text-xs font-medium text-gray-600 mb-1"><%= option.hourly? ? "Hours" : "Quantity" %></label>
                 <input type="number" step="0.5" min="0" name="services[<%= i %>][quantity]"
                        value="<%= line[:chosen] && !line[:chosen]["per_event"] ? line[:chosen]["quantity"] : 1 %>" class="<%= input %>">
               </div>
             <% end %>
+          </div>
           </div>
         </div>
       <% end %>
@@ -191,14 +200,16 @@
           <div class="divide-y divide-gray-100">
             <% settled = dates.select { |d| locked.include?(d[:key]) } %>
             <% if settled.any? %>
-              <div class="px-4 py-3 bg-gray-50 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600">
-                <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M8 11V7a4 4 0 018 0v4"/></svg>
-                <span class="flex-1 min-w-0">
+              <div class="px-4 py-3 bg-gray-50 flex items-start sm:items-center gap-3 text-sm text-gray-600">
+                <svg class="w-4 h-4 mt-0.5 sm:mt-0 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M8 11V7a4 4 0 018 0v4"/></svg>
+                <div class="flex-1 min-w-0 flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                <span class="min-w-0">
                   <%= settled.size == 1 ? "1 date already settled, #{settled.first[:at].strftime('%b %-d')}." : "#{settled.size} dates already settled, #{settled.first[:at].strftime('%b %-d')} to #{settled.last[:at].strftime('%b %-d')}." %>
                   They stay as they are.
                 </span>
-                <%= render "shared/button", text: "Show them", variant: "ghost", size: "small", type: :button, classes: "text-pink-600",
+                <%= render "shared/button", text: "Show them", variant: "ghost", size: "small", type: :button, classes: "text-pink-600 -ml-3 sm:ml-0 flex-shrink-0",
                       data: { action: "contract-services#toggleSettled", contract_services_target: "settledToggle" } %>
+                </div>
               </div>
             <% end %>
             <% dates.each_with_index do |date, j| %>
@@ -250,6 +261,8 @@
         <%# Each date's Edit: every per-event service, its hours and its price that date. %>
         <% dates.each_with_index do |date, j| %>
           <% frozen = locked.include?(date[:key]) %>
+          <%# Dates after this one that can still change: where "every date after it" reaches. %>
+          <% later = frozen ? 0 : dates[(j + 1)..].count { |d| !locked.include?(d[:key]) } %>
           <div class="hidden fixed inset-0 z-[60] bg-black/50 flex items-stretch sm:items-center justify-center sm:p-4"
                data-contract-services-target="dateModal" data-date="<%= j %>" data-action="click->contract-services#backdrop">
             <div class="bg-white w-full sm:max-w-xl sm:rounded-xl shadow-2xl overflow-hidden flex flex-col text-left">
@@ -272,15 +285,17 @@
                       hours = saved ? hours_text.(saved["hours"]) : (option.hourly? ? line[:default_hours] : 1)
                       own_price = saved && saved.key?("unit_price") ? saved["unit_price"].to_f : nil
                     %>
-                    <div class="px-3 py-2.5 flex flex-wrap items-center gap-3 min-h-14" data-contract-services-target="slot" data-index="<%= i %>" data-date="<%= j %>">
+                    <div class="px-3 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-2 min-h-14" data-contract-services-target="slot" data-index="<%= i %>" data-date="<%= j %>">
                       <input <%= "disabled" if frozen %> type="hidden" name="services[<%= i %>][events][<%= j %>][starts_at]" value="<%= date[:iso] %>">
-                      <label class="flex-1 min-w-[8rem] flex items-center gap-3 cursor-pointer">
+                      <%# A phone: the name and this date's amount on one line, the hours and
+                          price under them. From sm up, all in one row. %>
+                      <label class="order-1 sm:order-none flex-1 min-w-[8rem] flex items-center gap-3 cursor-pointer">
                         <input <%= "disabled" if frozen %> type="checkbox" name="services[<%= i %>][events][<%= j %>][include]" value="1" class="<%= check %>"
                                data-role="on" data-action="change->contract-services#slotChanged" <%= "checked" if on %>>
                         <span class="text-sm font-medium text-gray-900"><%= option.name %></span>
                       </label>
                       <% if option.hourly? %>
-                        <span class="flex items-center gap-1.5">
+                        <span class="order-3 sm:order-none flex items-center gap-1.5 pl-7 sm:pl-0">
                           <input <%= "disabled" if frozen %> type="number" step="0.5" min="0" name="services[<%= i %>][events][<%= j %>][hours]" value="<%= hours %>"
                                  aria-label="<%= option.name %> hours" data-role="hours" data-action="input->contract-services#slotChanged" class="w-16 <%= small_input %>">
                           <span class="text-xs text-gray-500">hrs</span>
@@ -288,16 +303,29 @@
                       <% else %>
                         <input <%= "disabled" if frozen %> type="hidden" name="services[<%= i %>][events][<%= j %>][hours]" value="1" data-role="hours">
                       <% end %>
-                      <span class="relative w-28">
+                      <span class="order-3 sm:order-none relative w-28 <%= 'ml-7 sm:ml-0' unless option.hourly? %>">
                         <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
                         <input <%= "disabled" if frozen %> type="number" step="0.01" min="0" name="services[<%= i %>][events][<%= j %>][unit_price]"
                                value="<%= format('%.2f', own_price || line[:price]) %>" aria-label="<%= option.name %> price this date"
                                data-role="price" data-own="<%= own_price ? 1 : 0 %>" data-action="input->contract-services#slotPriced" class="w-full pl-6 pr-2 <%= small_input.sub('px-2 ', '') %>">
                       </span>
-                      <span class="ml-auto w-20 text-right text-sm text-gray-900 tabular-nums" data-role="amount"></span>
+                      <span class="order-2 sm:order-none ml-auto w-20 text-right text-sm text-gray-900 tabular-nums" data-role="amount"></span>
+                      <span class="order-2 basis-full h-0 sm:hidden" aria-hidden="true"></span>
+                      <% if later.positive? %>
+                        <%# Shown once the service is unticked here. hidden sits on this plain wrapper. %>
+                        <div class="hidden order-4 sm:order-none basis-full pl-7" data-role="afterWrap">
+                          <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                            <input type="checkbox" name="services[<%= i %>][events][<%= j %>][and_after]" value="1" class="<%= check %>" data-role="after">
+                            <span>Take <%= option.name %> off <%= later == 1 ? "the date after this one too" : "the #{later} dates after this one too" %></span>
+                          </label>
+                        </div>
+                      <% end %>
                     </div>
                   <% end %>
                 </div>
+                <% if later.positive? %>
+                  <p class="text-xs text-gray-500">Untick a service to take it off this date, or this date and every one after it. Earlier dates keep what they have.</p>
+                <% end %>
               </div>
               <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 px-5 py-4 bg-gray-50 border-t border-gray-200">
                 <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, classes: "w-full sm:w-auto min-h-11 sm:min-h-0",
@@ -324,18 +352,18 @@
               <div class="rounded-lg border border-gray-200 divide-y divide-gray-100">
                 <% per_event_lines.each do |line| %>
                   <% option = line[:option] %>
-                  <div class="px-3 py-2.5 flex flex-wrap items-center gap-3 min-h-14" data-contract-services-target="severalRow" data-index="<%= line[:index] %>">
-                    <label class="flex-1 min-w-[8rem] flex items-center gap-3 cursor-pointer">
+                  <div class="px-3 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-2 min-h-14" data-contract-services-target="severalRow" data-index="<%= line[:index] %>">
+                    <label class="basis-full sm:basis-auto sm:flex-1 min-w-[8rem] flex items-center gap-3 cursor-pointer">
                       <input type="checkbox" class="<%= check %>" data-role="on">
                       <span class="text-sm font-medium text-gray-900"><%= option.name %></span>
                     </label>
                     <% if option.hourly? %>
-                      <span class="flex items-center gap-1.5">
+                      <span class="flex items-center gap-1.5 pl-7 sm:pl-0">
                         <input type="number" step="0.5" min="0" value="<%= line[:default_hours] %>" data-role="hours" aria-label="<%= option.name %> hours" class="w-16 <%= small_input %>">
                         <span class="text-xs text-gray-500">hrs</span>
                       </span>
                     <% end %>
-                    <span class="relative w-28">
+                    <span class="relative w-28 <%= 'ml-7 sm:ml-0' unless option.hourly? %>">
                       <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
                       <input type="number" step="0.01" min="0" value="<%= format('%.2f', line[:price]) %>" data-role="price" aria-label="<%= option.name %> price"
                              class="w-full pl-6 pr-2 <%= small_input.sub('px-2 ', '') %>">

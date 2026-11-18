@@ -60,7 +60,7 @@
   # Check for regular performers (non-guests) who can't be paid on a run yet
   # because they haven't connected a bank.
   regular_line_items = @show_payout.line_items.where(payee_type: "Person").where(is_guest: [false, nil])
-  performers_without_payment = regular_line_items.reject(&:paid?).select { |li| li.payee && !li.auto_payout? }
+  performers_without_payment = regular_line_items.reject(&:paid?).reject(&:overpaid?).select { |li| li.payee && !li.auto_payout? }
 
   # Check for people with unpaid advances who haven't connected a bank
   show_advances_for_setup = @production.person_advances.for_show(@show).unpaid.includes(:person)
@@ -97,17 +97,16 @@
   </div>
 
   <% if @financials_unconfirmed %>
-    <%# The numbers are in but not marked final: say so above everything, and
-        open the worksheet right here; saving it comes back to this page. %>
+    <%# The numbers are in but not confirmed: say so above everything, and
+        send them to where that happens, the show's day on Settle up (the
+        worksheet is gone; Tim, 2026-11-04). %>
     <%= render "shared/alert_panel",
           eyebrow: "Financials",
-          headline: "Not marked complete yet",
-          body: "This show's numbers are in, but nobody has ticked “The data entered is complete and ready for payout” on its worksheet, so it still counts as needing financials.",
+          headline: "Not confirmed yet",
+          body: "This show's numbers are in, but nobody has confirmed them, so it still counts as needing financials. That happens on its day in Settle up.",
           actions: [
-            { text: "Open the worksheet", type: :button, onclick: "document.getElementById('financialWorksheet').classList.remove('hidden')" },
-            { text: "Financials page", path: manage_money_show_financials_path(@show) }
+            { text: (SettleUp.in_settle_up?(Current.organization, @show) ? "Settle up, #{SettlementDay.day_for(Current.organization, @show.date_and_time).strftime('%b %-d')}" : "The show's money"), path: SettleUp.money_entry_href(Current.organization, @show) }
           ] %>
-    <%= render "manage/show_financials/worksheet_modal", return_to: manage_money_show_payout_path(@show) %>
   <% end %>
 
   <% if @contract&.revenue_share? %>
@@ -1688,7 +1687,7 @@
     %>
     <% if phone_state %>
       <div class="sm:hidden h-24" aria-hidden="true"></div>
-      <div class="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 pl-4 <%= turbo_native_app? ? 'pr-[96px]' : 'pr-4' %> pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex items-center gap-3" data-payout-phone-bar>
+      <div class="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 <%= phone_bar_room %> flex items-center gap-3" data-payout-phone-bar>
         <span class="flex-1 min-w-0 text-sm font-semibold text-gray-900 truncate"><%= phone_state %></span>
         <% if phone_candidates.any? %>
           <%= render "shared/button", text: "Add to run", variant: "primary", size: "medium", type: :button,
@@ -1696,7 +1695,7 @@
         <% elsif phone_run && !@show_payout.paid? %>
           <%= render "shared/button", text: "Open the run", variant: "primary", size: "medium", path: manage_payout_batch_path(phone_run) %>
         <% elsif @show_payout.awaiting_financials? %>
-          <%= render "shared/button", text: "Enter financials", variant: "primary", size: "medium", path: manage_edit_money_show_financials_path(@show, return_to: manage_money_show_payout_path(@show)) %>
+          <%= render "shared/button", text: "Enter financials", variant: "primary", size: "medium", path: SettleUp.money_entry_href(Current.organization, @show) %>
         <% elsif @show_payout.awaiting_calculation? %>
           <%= form_with url: manage_calculate_money_show_payout_path(@show), method: :post, local: true do %>
             <%= render "shared/button", text: "Calculate", variant: "primary", size: "medium", type: :submit %>

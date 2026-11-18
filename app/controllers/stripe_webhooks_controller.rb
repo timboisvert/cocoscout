@@ -339,7 +339,7 @@ class StripeWebhooksController < ApplicationController
 
     # Anyone paying an invoice on its page (see InvoiceCheckout).
     if metadata["invoice_id"].present?
-      invoice = Invoice.find_by(id: metadata["invoice_id"])
+      invoice = Invoice.standalone.find_by(id: metadata["invoice_id"])
       InvoiceCollection.settle!(invoice, session) if invoice
       return
     end

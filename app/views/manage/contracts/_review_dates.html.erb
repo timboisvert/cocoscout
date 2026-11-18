@@ -107,9 +107,8 @@
           <% if row.field %>
             <%= render "manage/contracts/date_terms_modal", id: modal_id, url: edit_path, method: :patch,
                   title: "#{row.at.strftime('%a, %b %-d')} · #{row.kind}", contract: contract,
-                  sections: [ { event_type: row.event_type,
-                                value: (row.terms[row.field.to_s] || row.usual),
-                                copy: date_term_field_copy(contract, row.event_type) } ],
+                  sections: [ date_term_field_copy(contract, row.event_type, row: row).then { |copy|
+                                { event_type: row.event_type, value: (copy[:value] || row.terms[row.field.to_s] || row.usual), copy: copy } } ],
                   dates: [ row.starts_at ], note: row.terms["note"] %>
           <% end %>
         <% end %>

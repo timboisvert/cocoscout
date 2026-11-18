@@ -7,8 +7,15 @@ module Manage
   # Which dates are included works the way sign-ups' repeating events do: all
   # performances, some event types, or dates picked by hand.
   class ProductionTicketingsController < Manage::TicketingBaseController
-    SECTIONS = { "dates" => "Dates", "tickets" => "Tickets", "products" => "Products", "sales" => "Sales & page", "refunds" => "Refunds",
-                 "codes" => "Discount codes", "comps" => "Comps", "seating" => "Seating", "pricing" => "Pricing rules" }.freeze
+    # Comps sits left of Refunds here too, as on the box office's tabs (Tim, 2026-11-13).
+    # The tabs, as the box office's run (Tim, 2026-11-13): Basic info (which
+    # dates, and whether it's selling), Tickets, Fees and taxes, Comps,
+    # Refunds, Discount codes, Products, and the ticket page last. "fees" has
+    # no save of its own: its box saves through "sales" and comes back.
+    # 1.4's own tabs (Seating, Pricing rules) follow, where they were: at the end.
+    SECTIONS = { "dates" => "Basic info", "tickets" => "Tickets", "fees" => "Fees and taxes", "comps" => "Comps",
+                 "refunds" => "Refunds", "codes" => "Discount codes", "products" => "Products", "sales" => "Ticket page",
+                 "boxes" => "Checkout boxes", "seating" => "Seating", "pricing" => "Pricing rules" }.freeze
     CLOSE_CHOICES = [ [ "At showtime", 0 ], [ "15 minutes before", 15 ], [ "30 minutes before", 30 ], [ "1 hour before", 60 ],
                       [ "2 hours before", 120 ], [ "The day before", 1440 ] ].freeze
 
@@ -41,7 +48,15 @@ module Manage
       @stats = Ticketing::ListingStats.for(@listings)
       matching = @setup&.enabled? ? @setup.matching_shows.pluck(:id).to_set : Set.new
       # Dates that stopped matching the setup but have tickets sold stay on sale.
-      @unmatched = @setup&.enabled? ? @listings.select { |l| l.inherits_tiers && !matching.include?(l.show_id) && @filter == "upcoming" } : []
+      # A canceled date isn't one of them: it left the setup because it was
+      # canceled, and it isn't on sale (Tim, 2026-11-11).
+      @unmatched = if @setup&.enabled? && @filter == "upcoming"
+        @listings.select do |l|
+          l.inherits_tiers && !matching.include?(l.show_id) && l.status != "canceled" && !l.show.canceled && l.worth_keeping?
+        end
+      else
+        []
+      end
     end
 
     def edit
@@ -57,6 +72,7 @@ module Manage
       when "refunds" then update_refunds
       when "products" then update_products
       when "comps" then update_comps
+      when "boxes" then update_boxes
       when "seating" then update_seating
       when "pricing" then update_pricing
       else redirect_to section_path("codes")
@@ -80,6 +96,18 @@ module Manage
       code = Current.organization.ticket_discount_codes.where(production: @production).find(params[:code_id])
       code.update!(active: false)
       redirect_to section_path("codes"), notice: "#{code.code} removed."
+    end
+
+    # The Codes tab's ⋯ menu (DiscountCodeCsv): the codes as a spreadsheet,
+    # and a spreadsheet's codes added for every date.
+    def export_codes
+      codes = Current.organization.ticket_discount_codes.where(production: @production, active: true).order(:code)
+      send_data DiscountCodeCsv.export(codes), filename: "#{@production.name.parameterize}-discount-codes.csv", type: "text/csv"
+    end
+
+    def import_codes
+      result = DiscountCodeCsv.import(organization: Current.organization, production: @production, file: params[:file], text: params[:text])
+      redirect_to section_path("codes"), (result.ok? ? :notice : :alert) => result.summary
     end
 
     # Who sees the code beside the ticket link (TicketDiscountCode::SHARED_WITH).
@@ -205,7 +233,7 @@ module Manage
 
     def update_sales
       raw = params.require(:production_ticketing)
-      permitted = raw.permit(:max_per_order, :fee_mode, :low_stock_threshold, :title, :description,
+      permitted = raw.permit(:max_per_order, :fee_mode, :cash_tax, :price_display, :low_stock_threshold, :title, :description, :page_key,
                              :door_note, :age_note, :accessibility_note).to_h.transform_values(&:presence)
       permitted[:waitlist] = raw[:waitlist] == "1" if raw.key?(:waitlist)
       if raw.key?(:age_choice)
@@ -214,8 +242,18 @@ module Manage
 
         permitted[:minimum_age] = age
       end
-      @setup.update!(permitted)
-      redirect_to section_path("sales"), notice: "Saved. Dates without their own settings use these."
+      # The override switches (manage/ticketing/own_switch): off, the box
+      # office's again, so what the box covers is cleared.
+      permitted.merge!(fee_mode: nil, cash_tax: nil, price_display: nil) if raw[:own_fees] == "0"
+      permitted[:max_per_order] = nil if raw[:own_orders] == "0"
+      # The fees box lives on Fees and taxes, the orders boxes on Basic info;
+      # each comes back to its own tab.
+      back = params[:from].to_s.presence_in(%w[fees dates]) || "sales"
+      unless @setup.update(permitted)
+        return redirect_to(section_path(back), alert: @setup.errors.full_messages.first.sub(/\APage key/, "The address"))
+      end
+
+      redirect_to section_path(back), notice: "Saved. Dates without their own settings use these."
     end
 
     # The Refunds tab: its own refund policy (the switch on), or the box
@@ -223,8 +261,8 @@ module Manage
     def update_refunds
       raw = params.require(:production_ticketing)
       attrs = if raw[:own_refund_policy] == "1"
-        chosen = RefundPolicy.attributes_for(raw[:refund_choice], raw[:refund_days]) || {}
-        chosen.reverse_merge(refund_window_hours: nil).merge(refund_fees: raw[:refund_fees] == "1", refund_policy_note: raw[:refund_policy_note].to_s.strip.presence)
+        chosen = RefundPolicy.attributes_for(RefundPolicy.choice_from(raw), raw[:refund_days]) || {}
+        chosen.reverse_merge(refund_window_hours: nil).merge(refund_fees: raw[:refund_fees] == "1" && RefundPolicy.choice_from(raw).to_s != "none", refund_policy_note: raw[:refund_policy_note].to_s.strip.presence)
       else
         { refund_policy: nil, refund_window_hours: nil, refund_fees: nil, refund_policy_note: nil }
       end
@@ -235,8 +273,24 @@ module Manage
 
     # The Comps tab: its own comp rules (the switch on), or the box office's
     # (off: every field cleared). Its dates follow it (CompRules).
+    # Which of the organization's other mailing lists put their box on this
+    # production's checkout (MailingListProduction, the same thing a list's
+    # own page writes). A list that is here through a contract, and the main
+    # list, aren't chosen here.
+    def update_boxes
+      lists = Current.organization.mailing_lists.active.where(kind: "group", source_list_id: nil)
+      wanted = lists.where(id: Array(params[:mailing_list_ids])).pluck(:id)
+      MailingList.transaction do
+        MailingListProduction.where(production_id: @production.id, mailing_list_id: lists.select(:id)).where.not(mailing_list_id: wanted).destroy_all
+        (wanted - MailingListProduction.where(production_id: @production.id).pluck(:mailing_list_id)).each do |id|
+          MailingListProduction.create!(production_id: @production.id, mailing_list_id: id)
+        end
+      end
+      redirect_to section_path("boxes"), notice: "Saved. #{@production.name}'s checkout shows #{helpers.pluralize(MailingList.for_checkout(@production).size, 'box')}."
+    end
+
     def update_comps
-      raw = params.require(:production_ticketing).permit(:own_comps, *CompRules::FIELDS)
+      raw = params.require(:production_ticketing).permit(:own_comps, *CompRules::PARAMS)
       own = raw[:own_comps] == "1"
       @setup.update!(CompRules.attributes_from(raw, own: own).merge(own_comps: own))
       notice = own ? "Saved. #{@production.name} has its own comp rules: #{@setup.comp_rules_words}." : "Saved. #{@production.name} follows your box office's comp rules."

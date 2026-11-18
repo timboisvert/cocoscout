@@ -35,8 +35,40 @@ RSpec.describe "Manage::BooksStatements", type: :request do
     get manage_money_statements_path(format: :csv)
     expect(response.body).to include("Profit and loss", "Sponsorship,900.00", "Profit,660.00")
 
+    # The whole ledger is asked for, put together in the background, listed
+    # on the page to download, and the person who asked is told.
     get manage_money_statements_ledger_path
-    expect(response.body).to include("Entry,Earned on,Moved on", "Sponsorship", "900.00")
+    expect(response).to redirect_to(manage_money_statements_path(anchor: "downloads"))
+    download = org.books_downloads.last
+    expect(download).to be_pending
+    get manage_money_statements_path
+    expect(response.body).to include("The whole ledger", "Being put together", "auto-refresh")
+    # Asking again while it's being made gets the same one.
+    get manage_money_statements_ledger_path
+    expect(org.books_downloads.count).to eq(1)
+
+    expect { perform_enqueued_jobs(only: BooksDownloadJob) }.to change { owner.notifications.where(kind: "books_download_ready").count }.by(1)
+    expect(download.reload).to be_ready
+    expect(download.file.blob.key).to start_with("organizations/#{org.id}/books_downloads/#{download.id}/")
+    expect(download.file.download).to include("Entry,Earned on,Moved on", "Sponsorship", "900.00")
+    get manage_money_statements_path
+    expect(response.body).to include(manage_money_file_path(download.file.attachment, download: 1))
+    expect(response.body).not_to include("Being put together")
+    get manage_money_file_path(download.file.attachment, download: 1)
+    expect(response).to have_http_status(:redirect)
+
+    # Kept a week: the next download made after that clears it away.
+    download.update_column(:created_at, 8.days.ago)
+    perform_enqueued_jobs { get manage_money_statements_ledger_path }
+    expect(org.books_downloads.pluck(:id)).not_to include(download.id)
+  end
+
+  it "writes the whole ledger in date order, however the lines were written" do
+    org.money_records.create!(kind: "out", on: Date.current.beginning_of_month - 40, amount_cents: 5_000, category_key: "supplies", counterparty: "Earlier", via: "bank", recorded_by: owner)
+    rows = CSV.parse(BooksStatements.new(org).ledger_csv)
+    dates = rows.drop(1).map { |row| row[1] }
+    expect(dates).to eq(dates.sort)
+    expect(dates.first).to eq((Date.current.beginning_of_month - 40).iso8601)
   end
 
   it "shows the balance sheet, which agrees with itself, and cash flow" do

@@ -160,11 +160,15 @@ RSpec.describe "Ticket waitlist", type: :request do
     expect(flash[:notice]).to include("Avery Waits is off the list")
   end
 
-  it "is off until the production's Sales settings turn it on" do
+  # The switch sits with the orders boxes on Basic info since the settings were
+  # tidied (2026-11-13); they save through the ticket page's action.
+  it "is off until the production's Basic info turns it on" do
     setup.update!(waitlist: false)
     post handle_signin_path, params: { email_address: owner.email_address, password: password }
     get manage_path
     get manage_edit_production_ticketing_path(production, section: "sales")
+    expect(response.body).not_to include("production_ticketing[waitlist]")
+    get manage_edit_production_ticketing_path(production, section: "dates")
     expect(response.body).to include("production_ticketing[waitlist]")
 
     patch manage_update_production_ticketing_path(production, section: "sales"), params: { production_ticketing: { waitlist: "1", max_per_order: 10, fee_mode: "buyer" } }

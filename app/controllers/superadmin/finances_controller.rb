@@ -2,7 +2,7 @@
 
 # Superadmin Finances: CocoScout's own money, every organization's money,
 # the bills CocoScout sends, and the daily check against Stripe. Four pages
-# and an org page:
+# and an org page (a fifth, Costs, is Superadmin::CostsController):
 #
 #   /superadmin/finances                CocoScout: ours now, owed to us, owed back, profit by stream
 #   /superadmin/finances/organizations  each org: held, in flight, billed, paid us
@@ -23,7 +23,7 @@ module Superadmin
       respond_to do |format|
         format.html
         format.csv do
-          send_data ledger_csv(@finances.entries.includes(:organization).order(:occurred_at)),
+          send_data ledger_csv(@finances.entries.includes(:organization).order(:occurred_at), @finances.outside_costs.order(:period_month, :vendor, :id)),
                     filename: "cocoscout-ledger-#{@finances.period}-#{Date.current.iso8601}.csv", type: "text/csv"
         end
       end
@@ -99,7 +99,8 @@ module Superadmin
       ids = (OrgCashEntry.distinct.pluck(:organization_id) + BillingInvoice.distinct.pluck(:organization_id) +
              CocoScoutLedgerEntry.where.not(organization_id: nil).distinct.pluck(:organization_id) +
              Organization.where(comped_indefinitely: true).or(Organization.where(comped_until: Time.current..))
-                         .or(Organization.where(subscription_status: SubscriptionSyncService::ACCESS_STATUSES)).pluck(:id)).uniq
+                         .or(Organization.where(subscription_status: SubscriptionSyncService::ACCESS_STATUSES)).pluck(:id) +
+             pro_on_monthly_bill_ids).uniq
       paid_us = CocoScoutLedgerEntry.where(organization_id: ids, occurred_at: month, entry_type: CocoScoutLedgerEntry.types_in(:income))
                                     .group(:organization_id).sum(:amount_cents)
       unpaid = BillingInvoice.unpaid.where(organization_id: ids).group(:organization_id).sum(:amount_remaining_cents)
@@ -197,6 +198,17 @@ module Superadmin
 
     private
 
+    # Organizations on Pro through the monthly bill (the other way onto Pro,
+    # besides a Pro subscription of its own). Without these, a paying Pro
+    # organization stayed off Organizations until money first moved for it
+    # (Tim, 2026-11-14: The Holly Problem).
+    def pro_on_monthly_bill_ids
+      now = Time.current
+      Organization.where(pro_monthly_from: ..now)
+                  .merge(Organization.where(pro_monthly_until: nil).or(Organization.where(pro_monthly_until: now..)))
+                  .pluck(:id)
+    end
+
     def give_back_how
       params[:how] == "credit" ? "credit" : "refund"
     end
@@ -210,13 +222,19 @@ module Superadmin
       @show_superadmin_sidebar = true
     end
 
-    def ledger_csv(entries)
+    # CocoScout's ledger for the period, then the bills paid outside Stripe
+    # (the Costs page), each dated to the month it's for.
+    def ledger_csv(entries, outside_costs = [])
       require "csv"
       CSV.generate do |csv|
         csv << [ "Date", "Kind", "Organization", "Amount", "Description" ]
         entries.find_each do |entry|
           csv << [ entry.occurred_at.in_time_zone.to_date.iso8601, entry.label, entry.organization&.name,
                    format("%.2f", entry.amount_cents / 100.0), entry.description ]
+        end
+        outside_costs.each do |bill|
+          csv << [ bill.period_month.iso8601, "#{bill.category_label} (paid outside Stripe)", nil, format("%.2f", -bill.amount_cents / 100.0),
+                   [ bill.vendor, bill.description, bill.bill_number ].compact.join(" ") ]
         end
       end
     end

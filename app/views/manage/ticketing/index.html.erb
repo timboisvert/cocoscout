@@ -28,6 +28,23 @@
           { icon: "cog", text: "Settings", description: "Box office, fees, tax and door access", path: manage_ticketing_settings_path }
         ] %>
 
+  <%# Dates another organization sells for this one, under a contract
+      (LinkedDates): shown first, read-only, and never added to the numbers
+      below. With them, a closed box office is a plain fact, not a prompt. %>
+  <% d.sold_elsewhere_productions.each do |production| %>
+    <%= render "manage/production_sales/sold_elsewhere_card", production: production %>
+  <% end %>
+  <% if d.sold_elsewhere_productions.any? && !profile.enabled? %>
+    <div class="mb-6 bg-white border border-gray-200 rounded-lg px-4 py-3 flex flex-wrap items-center justify-between gap-3" data-own-box-office-closed>
+      <div class="min-w-0">
+        <div class="text-sm font-semibold text-gray-900">Your own box office is closed</div>
+        <p class="text-sm text-gray-600">You don't need one for the dates above. Open it only to sell tickets yourself, for dates that aren't sold by another organization.</p>
+      </div>
+      <%= render "shared/button", text: "Open your box office", variant: "secondary", size: "small",
+            path: manage_ticketing_settings_section_path(section: "box_office") %>
+    </div>
+  <% end %>
+
   <%= render "shared/intro_guide", guide_key: "ticketing_intro", title: "How ticketing works",
         body: %(<ol class="list-decimal pl-5 space-y-1"><li>Set a production up once: its ticket types, prices and seats. Every date goes on sale as soon as it's listed, and new dates join on their own.</li><li>Share the production's short link or QR code; buyers check out here and get QR tickets by email.</li><li>On the night, open the Door on a phone: find people by name, scan tickets, sell at the door.</li><li>Each sale lands in your CocoScout balance and fills in the show's financials; our fee is 50¢ a paid ticket.</li></ol>).html_safe %>
 
@@ -84,7 +101,6 @@
                 <%= render "manage/ticketing/played_row", listing: listing, stats: stats %>
               <% end %>
             </div>
-            <%= link_to "Every date, with totals", manage_ticketing_attendance_path(filter: "this_month"), class: "mt-2 inline-block text-sm font-medium text-pink-600 hover:text-pink-700" %>
           <% else %>
             <div class="mt-2 bg-white border border-gray-200 rounded-xl px-5 py-6 text-sm text-gray-600">No dates have played yet.</div>
           <% end %>
@@ -109,7 +125,6 @@
         <section>
           <div class="flex items-baseline justify-between mb-2">
             <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Just played</h2>
-            <%= link_to "Every date, with totals", manage_ticketing_attendance_path(filter: "last_7_days"), class: "text-xs text-pink-600 hover:text-pink-700" %>
           </div>
           <div class="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
             <% just_played.each do |listing, stats| %>
@@ -133,8 +148,6 @@
       </div>
 
       <%= render "shared/action_list", items: [
-        { text: "Attendance", description: "Everyone holding a ticket, date by date, for any week", path: manage_ticketing_attendance_path,
-          icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" },
         { text: "Memberships", description: "Levels built from a menu of perks, and who's a member", path: manage_ticket_memberships_path,
           icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
         { text: "Reports", description: "Ticket sales by show, type and channel, in Reports", path: manage_reports_path,

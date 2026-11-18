@@ -41,9 +41,20 @@ class BankRule < ApplicationRecord
     phrases.any? { |p| text.include?(p.downcase) }
   end
 
+  # The lines of a scope this rule fits. The database narrows them to the
+  # ones whose description holds a phrase and goes the right way, so a rule
+  # never has every line read to it; matches? then has the last word.
+  def fitting(lines)
+    return [] if phrases.empty?
+
+    lines = lines.where("bank_statement_lines.amount_cents > 0") if direction == "in"
+    lines = lines.where("bank_statement_lines.amount_cents < 0") if direction == "out"
+    lines.where("bank_statement_lines.description ILIKE ANY (ARRAY[?])", phrases.map { |p| "%#{self.class.sanitize_sql_like(p)}%" }).select { |line| matches?(line) }
+  end
+
   # The lines waiting that this rule fits.
   def waiting_lines
-    organization.bank_statement_lines.to_deal_with.select { |line| matches?(line) }
+    fitting(organization.bank_statement_lines.to_deal_with)
   end
 
   def category_label

@@ -7,13 +7,24 @@ module Manage
   # every piece is checked, and can be reopened with a reason (§9.7).
   class SettlementDaysController < Manage::ManageController
     before_action :set_date, except: :index
-    before_action :require_change!, only: %i[settle reopen door_cash check_show check_register tips choose_calculation calculate_show pay_line]
+    before_action :require_change!, only: %i[settle reopen check_show no_revenue check_register tips tips_preview choose_calculation calculate_show pay_line]
+
+    LISTED = 60
 
     def index
       @filter = params[:filter].presence_in(%w[to_settle settled all]) || "to_settle"
       @month = params[:month].present? ? Date.strptime(params[:month], "%Y-%m") : Date.current.beginning_of_month
-      @to_settle = SettleUp.to_settle(Current.organization)
-      @month_days = SettleUp.days(Current.organization, @month..@month.end_of_month)
+      # Only the list being looked at is built: the days to settle (the
+      # oldest LISTED of them), or the month's.
+      @open_dates = SettleUp.open_dates(Current.organization)
+      @to_settle = @filter == "to_settle" ? SettleUp.to_settle(Current.organization, limit: LISTED) : []
+      @month_days = @filter == "to_settle" ? [] : SettleUp.days(Current.organization, @month..@month.end_of_month)
+      # Today, while it's still going (Tim, 2026-11-13: "I should be able to
+      # start with settling today up. Not just if it's in the past"): at the
+      # top of To settle from the moment it has a show or a register day, so
+      # nobody goes to All days to find it. It isn't counted as a day to
+      # settle anywhere (Home, the Money hub) until it's over.
+      @today = SettleUp.today_in_progress(Current.organization) if @filter == "to_settle"
     rescue ArgumentError
       redirect_to manage_money_settle_up_path
     end
@@ -24,8 +35,10 @@ module Manage
       @open_show_id = params[:open].to_s
       # A modal to arrive with open, when a choice was made from inside it (the chooser, from Who's paid and how).
       @open_modal_id = params[:modal].to_s
-      @prev_day = SettleUp.days(Current.organization, (@date - 90)..(@date - 1)).first
-      @next_day = SettleUp.days(Current.organization, (@date + 1)..(@date + 90)).last
+      # The nearest day with money in it each way: their dates are all the
+      # arrows need, so no day is built for them.
+      @prev_date = SettleUp.dates(Current.organization, (@date - 90)..(@date - 1)).max
+      @next_date = SettleUp.dates(Current.organization, (@date + 1)..(@date + 90)).min
       # The day picker Home has: earlier, the day (a two-month calendar), later, Today.
       @today = SettlementDay.day_for(Current.organization, Time.current)
       @calendar_months = calendar_months_around(@date)
@@ -53,6 +66,21 @@ module Manage
       redirect_to manage_money_settle_up_day_path(@date), notice: (checking ? "#{show.display_name} confirmed." : "#{show.display_name} unconfirmed.")
     end
 
+    # No revenue (Tim, 2026-11-14): a show that wasn't canceled and took
+    # nothing is marked so from its card, and confirmed; nobody is paid from
+    # it. Taking it back leaves it unconfirmed, to enter its money.
+    def no_revenue
+      show = find_show
+      financials = show.show_financials || show.create_show_financials!(revenue_type: "ticket_sales")
+      if params[:undo] == "1"
+        financials.update!(non_revenue_override: false, data_confirmed: false)
+        return redirect_to manage_money_settle_up_day_path(@date), notice: "#{show.display_name} counts its money again."
+      end
+
+      financials.update!(non_revenue_override: true, data_confirmed: true)
+      redirect_to manage_money_settle_up_day_path(@date), notice: "#{show.display_name} marked as no revenue and confirmed."
+    end
+
     # The Calculate step (Tim, 2026-11-04): work out who gets paid from the
     # numbers as they stand, or work it out again once they changed. Each
     # line keeps its choice. The card opens on what it found.
@@ -60,7 +88,7 @@ module Manage
       show = find_show
       result = SettlementPayer.calculate!(show)
       if result[:success]
-        count = result[:line_items].size
+        count = result[:line_items].map(&:pay_choice_key).uniq.size
         redirect_to manage_money_settle_up_day_path(@date, open: show.id), notice: "#{show.display_name}: #{helpers.number_to_currency(result[:total])} to #{count} #{"person".pluralize(count)}."
       else
         redirect_to manage_money_settle_up_day_path(@date, open: show.id), alert: "#{show.display_name} couldn't be worked out: #{result[:error]}."
@@ -126,18 +154,6 @@ module Manage
       redirect_to manage_money_settle_up_day_path(@date, open: show.id), notice: "#{line.payee_name}: #{line.held? ? 'held for now' : 'on the run when the day settles'}."
     end
 
-    def door_cash
-      record = SettlementDay.find_or_initialize_by(organization: Current.organization, date: @date)
-      counted = params[:counted].to_s.strip
-      record.door_cash = {
-        "counted_cents" => (counted.present? ? (counted.delete("$,").to_f * 100).round : nil),
-        "float_kept_cents" => (params[:float_kept].to_s.delete("$,").to_f * 100).round,
-        "note" => params[:note].to_s.strip
-      }.compact
-      record.save!
-      redirect_to manage_money_settle_up_day_path(@date), notice: "Door cash saved."
-    end
-
     # "Looks right" on the register card covers the tips on it too (Tim,
     # 2026-11-03: tips from Square belong in the Square card). Checking
     # writes the split as it stands, so settling pays the rows; it waits
@@ -150,6 +166,9 @@ module Manage
         if tips.unresolved.any?
           return redirect_to manage_money_settle_up_day_path(@date), alert: "Say who gets the tips rung up with nobody on the bar first: Change the split on the register."
         end
+        if tips.undecided?
+          return redirect_to manage_money_settle_up_day_path(@date), alert: "Say who gets the tips first: Change the split on the register."
+        end
       end
       record.register_checked_at = checking ? Time.current : nil
       record.tips_checked_at = record.register_checked_at
@@ -161,6 +180,91 @@ module Manage
     # The day's tips: how they're split, each person's share and how it's
     # paid, and who gets each stretch with nobody on the bar.
     def tips
+      apply_tip_changes!
+      redirect_to manage_money_settle_up_day_path(@date), notice: "Tips saved."
+    end
+
+    # The tips modal, worked out again with what it holds now, and nothing
+    # saved (Tim, 2026-11-13): add someone or take someone off and the
+    # shares change in front of you; Save the split is what keeps them. The
+    # same changes Save makes, run and rolled back, so the two never differ.
+    def tips_preview
+      html = nil
+      ActiveRecord::Base.transaction do
+        apply_tip_changes!
+        day = SettleUp.day(Current.organization, @date)
+        tips = day.tips
+        roles_by_id = tips.rule&.enabled? ? Current.organization.house_roles.index_by(&:id) : {}
+        html = render_to_string(partial: "manage/settlement_days/tips_modal", formats: [ :html ],
+                                locals: { id: params[:modal_id].presence || "tips-split-#{day.param}", day: day, tips: tips,
+                                          hand_rows: tips.hand_rows, roles_by_id: roles_by_id, carried: tip_carry_over })
+        raise ActiveRecord::Rollback
+      end
+      render html: html
+    end
+
+    def settle
+      day = SettleUp.day(Current.organization, @date)
+      unless day.all_checked?
+        return redirect_to manage_money_settle_up_day_path(@date), alert: "Confirm every piece first; #{day.checked_count} of #{day.checks.size} are confirmed."
+      end
+
+      record = SettlementDay.find_or_initialize_by(organization: Current.organization, date: @date)
+      record.settle!(by: Current.user)
+      SettlementPoster.post!(record)
+      # Settling is what puts the day's payouts on the open run (Tim, 2026-11-04).
+      staged = SettlementPayer.stage!(day, by: Current.user)
+      notice = "#{@date.strftime('%A, %B %-d')} is settled."
+      notice += " #{staged.words} went on the draft payout run." if staged.any?
+      notice += " #{staged.notes.join(' ')}" if staged.notes.any?
+      redirect_to manage_money_settle_up_day_path(@date), notice: notice
+    end
+
+    def reopen
+      record = SettlementDay.find_by!(organization: Current.organization, date: @date)
+      if params[:reason].to_s.strip.blank?
+        return redirect_to manage_money_settle_up_day_path(@date), alert: "Say why the day is being reopened."
+      end
+
+      # Reopening undoes what settling did, all of it or none (a failure
+      # part way must not leave the day open with its tips still on a run):
+      # the books, the tips (off a draft run, and no longer waiting on Pay
+      # People), and, unless the modal says to keep them, the day's payouts
+      # on the draft run (Tim, 2026-11-04). Off is the default.
+      notice = "#{@date.strftime('%A, %B %-d')} is open again."
+      ActiveRecord::Base.transaction do
+        waiting = record.tip_shares.where(payout_contribution_id: nil, method: "payout").where("amount_cents > COALESCE(paid_cents, 0)").count
+        record.reopen!(by: Current.user, reason: params[:reason])
+        tipped = SettlementPoster.unpost!(record)
+        if params[:payouts] == "keep"
+          notice += " Its payouts stayed on the draft payout run."
+        else
+          taken = SettlementPayer.unstage!(SettleUp.day(Current.organization, @date))
+          notice += " #{taken.words} came off the draft payout run; it goes back on when the day settles." if taken.any?
+        end
+        notice += " #{tipped.map { |name| "#{name}'s" }.to_sentence} tips came off the draft payout run." if tipped.any?
+        notice += " Its tips stopped waiting on Pay People." if waiting.positive?
+      end
+      redirect_to manage_money_settle_up_day_path(@date), notice: "#{notice} Settle it when it's right."
+    end
+
+    private
+
+    # What the preview's form has to carry to Save, since the preview saved
+    # nothing: who was taken off, whose share was typed, and each span as the
+    # page first showed it (so Save still tells a changed span from one left
+    # alone).
+    def tip_carry_over
+      given = params.fetch(:shares, {}).to_unsafe_h
+      removed = given.select { |_, attrs| attrs["remove"] == "1" }.keys.map(&:to_i)
+      typed = given.select { |_, attrs| attrs["typed"] == "1" || (attrs["shown"].present? && cents_from(attrs["amount"]) != cents_from(attrs["shown"])) }.keys.map(&:to_i)
+      spans = given.to_h { |pid, attrs| [ pid.to_i, attrs["span_shown"].to_s ] }
+      { removed: removed, typed: params[:recompute] == "1" ? [] : typed, spans: spans, added: params.dig(:new_share, :person_id).presence&.to_i }
+    end
+
+    # Everything the modal changes, from what it sent: the split, the
+    # stretches with nobody on, each share, and someone added.
+    def apply_tip_changes!
       record = SettlementDay.find_or_initialize_by(organization: Current.organization, date: @date)
       by_rule = params[:mode] == "rule"
       record.tips_split = by_rule ? "rule" : (params[:split].presence_in(%w[even hours typed]) || "even")
@@ -185,58 +289,18 @@ module Manage
           share.update!(amount_cents: cents, method: attrs["method"].presence_in(TipShare::METHODS) || "payout",
                         source: record.tips_split == "typed" ? "typed" : "computed")
         elsif share.persisted?
-          share.destroy!
+          share.drop!
         end
       end
       add_person_to_tips(record, params[:new_share]) if params.dig(:new_share, :person_id).present?
       write_tip_shares(record) if by_rule || record.tip_shares.where.not(worked_from: nil).exists?
-      redirect_to manage_money_settle_up_day_path(@date), notice: "Tips saved."
     end
-
-    def settle
-      day = SettleUp.day(Current.organization, @date)
-      unless day.all_checked?
-        return redirect_to manage_money_settle_up_day_path(@date), alert: "Confirm every piece first; #{day.checked_count} of #{day.checks.size} are confirmed."
-      end
-
-      record = SettlementDay.find_or_initialize_by(organization: Current.organization, date: @date)
-      record.settle!(by: Current.user)
-      SettlementPoster.post!(record)
-      # Settling is what puts the day's payouts on the open run (Tim, 2026-11-04).
-      staged = SettlementPayer.stage!(day, by: Current.user)
-      notice = "#{@date.strftime('%A, %B %-d')} is settled."
-      notice += " #{staged.words} went on the payout run." if staged.any?
-      notice += " #{staged.notes.join(' ')}" if staged.notes.any?
-      redirect_to manage_money_settle_up_day_path(@date), notice: notice
-    end
-
-    def reopen
-      record = SettlementDay.find_by!(organization: Current.organization, date: @date)
-      if params[:reason].to_s.strip.blank?
-        return redirect_to manage_money_settle_up_day_path(@date), alert: "Say why the day is being reopened."
-      end
-
-      record.reopen!(by: Current.user, reason: params[:reason])
-      SettlementPoster.unpost!(record)
-      # Reopening undoes what settling did; the modal asks whether the day's
-      # payouts come off the draft run too (Tim, 2026-11-04). Off is the default.
-      notice = "#{@date.strftime('%A, %B %-d')} is open again."
-      if params[:payouts] == "keep"
-        notice += " Its payouts stayed on the payout run."
-      else
-        taken = SettlementPayer.unstage!(SettleUp.day(Current.organization, @date))
-        notice += " #{taken.words} came off the payout run; it goes back on when the day settles." if taken.any?
-      end
-      redirect_to manage_money_settle_up_day_path(@date), notice: "#{notice} Settle it when it's right."
-    end
-
-    private
 
     # One row of the worked-out split, as the worksheet sent it back (§9.14):
     # taken off, a span changed, a share typed over, or left as worked out.
     def save_rule_share(share, attrs, cents)
       if attrs["remove"] == "1"
-        share.destroy! if share.persisted?
+        share.drop! if share.persisted?
         return
       end
 
@@ -251,7 +315,7 @@ module Manage
       end
       if params[:recompute] == "1"
         share.source = "computed"
-      elsif attrs["shown"].present? && cents != cents_from(attrs["shown"])
+      elsif attrs["typed"] == "1" || (attrs["shown"].present? && cents != cents_from(attrs["shown"]))
         share.source = "typed"
       end
       share.amount_cents = cents
@@ -310,7 +374,7 @@ module Manage
       end
       # A share for anyone the rule leaves out (an older even split, a role
       # taken out of the rule since) goes: settling pays the rows, nothing else.
-      record.tip_shares.where(payout_contribution_id: nil).where.not(person_id: tips.rows.map { |r| r.person.id }).destroy_all
+      record.tip_shares.where(payout_contribution_id: nil).where.not(person_id: tips.rows.map { |r| r.person.id }).each(&:drop!)
     end
 
     # "18:00" and "01:30" on the day's own clock: anything before the day

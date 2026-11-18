@@ -34,11 +34,15 @@ RSpec.describe "Compose on a phone", type: :request do
     expect(compose.at_css("[data-compose-message-target='recipientCards']")["class"]).to include("grid-cols-1", "sm:grid-cols-3")
   end
 
-  it "keeps the buttons clear of the Coco button in the app" do
+  it "keeps the buttons clear of the Coco button only in app builds that can't move it" do
     compose("User-Agent" => app_ua).css("[data-compose-phone-actions]").each do |bar|
       expect(bar["class"]).to include("max-sm:pr-[96px]")
     end
     compose.css("[data-compose-phone-actions]").each do |bar|
+      expect(bar["class"]).not_to include("pr-[96px]")
+    end
+    moves_it = "#{app_ua}; bridge-components: [form menu menu-button push]"
+    compose("User-Agent" => moves_it).css("[data-compose-phone-actions]").each do |bar|
       expect(bar["class"]).not_to include("pr-[96px]")
     end
   end

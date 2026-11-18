@@ -38,7 +38,7 @@ class ContractPeopleAdder
     existing = TeamInvitation.find_by(email: email, contract: contract, accepted_at: nil)
     return Result.new(outcome: :invited_already, name: name.to_s.squish.presence || email, invitation: existing) if existing
 
-    invitation = TeamInvitation.create!(email: email, organization: contract.organization, contract: contract, person: person)
+    invitation = TeamInvitation.create!(email: email, organization: contract.organization, contract: contract, person: person, invited_by: by&.person)
     Manage::TeamMailer.contract_invite(invitation, name: name.to_s.squish.presence).deliver_later
     Result.new(outcome: :invited, name: name.to_s.squish.presence || email, invitation: invitation)
   end

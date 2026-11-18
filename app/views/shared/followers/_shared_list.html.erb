@@ -1,0 +1,52 @@
+<%# One mailing list shared through a contract (SharedFollowers), as the
+    people it's shared with see it: everyone still following, newest first,
+    with when each joined and how, a search, Download and Copy addresses.
+    Read-only: nothing is sent from here.
+    Locals:
+      list           the sharing organization's MailingList
+      rows           SharedFollowers.rows(list, q:)
+      title          the card's heading
+      intro          one line under it
+      download_path  where Download goes
+      q              the search words, if any
+      search_path    where the search form posts (GET) %>
+<%
+  q = local_assigns[:q].to_s
+  addresses = rows.map(&:email).join(", ")
+%>
+<section class="bg-white border border-gray-200 rounded-lg overflow-hidden" data-shared-list="<%= list.id %>">
+  <%= render "shared/section_heading", padding: "px-4 py-3", title: title, intro: intro do %>
+    <% if rows.any? %>
+      <span data-controller="copy-text" data-copy-text-text-value="<%= addresses %>">
+        <%= render "shared/button", text: "Copy addresses", variant: "secondary", size: "small", type: :button, data: { action: "click->copy-text#copy" } %>
+      </span>
+      <%= render "shared/button", text: "Download", variant: "primary", size: "small", path: download_path, data: { turbo: false } %>
+    <% end %>
+  <% end %>
+  <div class="px-4 py-3 border-b border-gray-100">
+    <%= form_with url: search_path, method: :get, data: { turbo_action: "replace" } do %>
+      <%= render "shared/filters/search_input", placeholder: "Search by name or email...", value: q, name: "q", full_width: true %>
+    <% end %>
+  </div>
+  <% if rows.any? %>
+    <div class="divide-y divide-gray-100">
+      <% rows.each do |row| %>
+        <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 px-4 py-2.5 text-sm">
+          <div class="min-w-0 sm:w-64 sm:flex-shrink-0">
+            <div class="font-semibold text-gray-900 truncate"><%= row.name.presence || row.email %></div>
+            <% if row.name.present? %><div class="text-xs text-gray-500 truncate"><%= row.email %></div><% end %>
+          </div>
+          <div class="min-w-0 flex-1 text-gray-600 truncate"><%= row.from %></div>
+          <div class="text-xs text-gray-500 tabular-nums sm:flex-shrink-0">Joined <%= row.joined_at.strftime("%b %-d, %Y") %></div>
+        </div>
+      <% end %>
+    </div>
+  <% elsif q.present? %>
+    <p class="px-4 py-6 text-sm text-gray-600">Nobody on this list matches "<%= q %>".</p>
+  <% else %>
+    <p class="px-4 py-6 text-sm text-gray-600">Nobody has joined this list yet. People are added as they buy tickets and tick its box, or when <%= list.organization.name %> adds them.</p>
+  <% end %>
+</section>
+<% if rows.any? %>
+  <p class="text-xs text-gray-500 mt-1.5">Newest first. Someone who has stopped following, or whose address bounced, is no longer listed.</p>
+<% end %>

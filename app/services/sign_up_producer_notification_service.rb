@@ -100,11 +100,7 @@ class SignUpProducerNotificationService
     end
 
     def find_notifiable_users(production)
-      ProductionNotificationSetting.ensure_settings_for(production)
-      ProductionNotificationSetting.where(production: production, enabled: true)
-                                   .includes(:user)
-                                   .map(&:user)
-                                   .compact
+      ProductionNotificationSetting.users_to_notify(production)
     end
 
     def find_sender(production)

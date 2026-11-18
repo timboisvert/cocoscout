@@ -204,4 +204,56 @@ RSpec.describe "Telling people a show changed", type: :request do
     get manage_show_changes_path(ShowChange.last.batch)
     expect(response).to redirect_to(manage_path)
   end
+
+  # §4 of the staffing notices plan: the words follow the tick, name the
+  # shift, and say what's still on that day.
+  it "tells the staff the shift stands when the shifts aren't taken off, and what remains when they are" do
+    # Tess also works the bar that night, so "you don't need to come in" would be a lie.
+    bar_shift.shift_assignments.create!(person: tess)
+    patch manage_cancel_show_path(production, seven), params: { scope: "this" }
+    change = ShowChange.last
+    get manage_show_changes_path(change.batch)
+    draft = Nokogiri::HTML(response.body).at_css("[data-tell-section='staff_off'] input[name='body']")["value"]
+    expect(draft).to include("so this shift is off", "You're still on Bartender that night, 6:00–11:59 PM.")
+
+    tell(change.batch, "staff_off", [ tess ], shift_action: "0")
+    n = tess.user.notifications.order(:id).last
+    expect(n.title).to eq("Show off: your Booth Tech shift, #{saturday.strftime('%a, %b %-d')}, stands for now")
+    expect(n.body).to include("Your shift stands for now; a manager will be in touch")
+    expect(n.body).not_to include("so this shift is off", "still on Bartender")
+    expect(booth_shift.reload.shift_assignments.map(&:person)).to include(tess)
+  end
+
+  it "names the shift and the night's other shift when the shifts do come off" do
+    bar_shift.shift_assignments.create!(person: tess)
+    patch manage_cancel_show_path(production, seven), params: { scope: "this" }
+    change = ShowChange.last
+    get manage_show_changes_path(change.batch)
+    tell(change.batch, "staff_off", [ tess ], shift_action: "1")
+    n = tess.user.notifications.order(:id).last
+    expect(n.title).to eq("Shift off: Booth Tech, #{saturday.strftime('%a, %b %-d')}, 6:30 PM")
+    expect(n.body).to include("so this shift is off", "You're still on Bartender that night, 6:00–11:59 PM.")
+    expect(n.body).not_to include("don't need to come in")
+  end
+
+  it "says nothing else is on that day when nothing is, and a moved shift is told once" do
+    tess_row = booth_shift.shift_assignments.find_by(person: tess)
+    tess_row.update!(StaffScheduleNotices.told_attributes(booth_shift))
+    seven.update!(date_and_time: seven.date_and_time + 1.hour)
+    change = ShowChange.last
+    get manage_show_changes_path(change.batch)
+    tell(change.batch, "staff_moved", [ tess ], shift_action: "1")
+    n = tess.user.notifications.order(:id).last
+    expect(n.title).to eq("New time: Booth Tech, #{saturday.strftime('%a, %b %-d')}, 7:30 PM")
+    expect(n.body).to include("so your shift moved with it")
+    # Told here: the week's Notify updates has nothing more to say about it.
+    expect(tess_row.reload.told_starts_at).to eq(booth_shift.reload.starts_at)
+    expect(StaffScheduleNotices.changed?(tess_row)).to be(false)
+
+    patch manage_cancel_show_path(production, seven), params: { scope: "this" }
+    change = ShowChange.last
+    get manage_show_changes_path(change.batch)
+    tell(change.batch, "staff_off", [ tess ], shift_action: "1")
+    expect(tess.user.notifications.order(:id).last.body).to include("Nothing else is on your schedule that night.")
+  end
 end

@@ -10,9 +10,12 @@ module Manage
   # organization's own site) is off the list until embeds are ready to offer
   # (Tim, 2026-10-19); the embed pages themselves still work.
   class TicketingSettingsController < Manage::TicketingBaseController
-    SECTIONS = %w[box_office page rooms refunds tax notifications door sharing comps].freeze
-    SECTION_LABELS = { "box_office" => "Box office", "page" => "Box office page", "rooms" => "Rooms and seating", "refunds" => "Refunds", "tax" => "Tax",
-                       "notifications" => "Notifications", "door" => "Door", "sharing" => "Who sees sales", "comps" => "Comps" }.freeze
+    # The tabs' order (Tim, 2026-11-13): fees and taxes beside the box office,
+    # comps left of refunds, the landing page just left of sales visibility.
+    # 1.4's Rooms and seating follows them, at the end.
+    SECTIONS = %w[box_office tax comps refunds notifications door page sharing rooms].freeze
+    SECTION_LABELS = { "box_office" => "Basic info", "page" => "Landing page", "refunds" => "Refunds", "tax" => "Fees and taxes", "notifications" => "Notifications and emails",
+                       "door" => "Door", "sharing" => "Sales visibility", "comps" => "Comps", "rooms" => "Rooms and seating" }.freeze
     DEFAULT_SECTION = "box_office"
 
     before_action :set_section, only: %i[show]
@@ -54,7 +57,10 @@ module Manage
       saved = notifications.save_plan!(key, plan: params[:plan].to_s, kinds: Array(params[:kinds]).compact_blank, email: params[:email])
       plan = TicketingNotifications::PLANS.find { |p| p.key == saved.plan }
       what = saved.plan == "custom" ? "their own pick" : plan.label.downcase_first
-      notice = saved.kinds.empty? ? "Saved. #{saved.name} gets no Ticketing email." : "Saved. #{saved.name} gets #{what}: #{helpers.pluralize(saved.kinds.size, 'email')}."
+      # A manager's sales as they happen are notifications, not emails.
+      sends = [ (helpers.pluralize(saved.emailed_kinds.size, "email") if saved.emailed_kinds.any?),
+                ("#{helpers.pluralize(saved.notified_kinds.size, 'kind')} as notifications" if saved.notified_kinds.any?) ].compact
+      notice = sends.empty? ? "Saved. #{saved.name} gets no Ticketing email." : "Saved. #{saved.name} gets #{what}: #{sends.to_sentence}."
       redirect_to section_path("notifications"), notice: notice
     rescue ArgumentError => e
       redirect_to section_path("notifications"), alert: e.message
@@ -68,9 +74,9 @@ module Manage
     # The Refunds tab: the policy buyers see, for every production that
     # doesn't set its own (RefundPolicy).
     def update_refunds
-      raw = params.require(:ticketing_profile).permit(:refund_choice, :refund_days, :refund_fees, :refund_policy_note)
-      attrs = { refund_fees: raw[:refund_fees] == "1", refund_policy_note: raw[:refund_policy_note].to_s.strip.presence }
-      attrs.merge!(RefundPolicy.attributes_for(raw[:refund_choice], raw[:refund_days]) || {})
+      raw = params.require(:ticketing_profile).permit(:refund_choice, :refund_window, :refund_days, :refund_fees, :refund_policy_note)
+      attrs = { refund_fees: raw[:refund_fees] == "1" && RefundPolicy.choice_from(raw).to_s != "none", refund_policy_note: raw[:refund_policy_note].to_s.strip.presence }
+      attrs.merge!(RefundPolicy.attributes_for(RefundPolicy.choice_from(raw), raw[:refund_days]) || {})
 
       if ticketing_profile.update(attrs)
         redirect_to section_path("refunds"), notice: "Refund policy saved."
@@ -97,7 +103,7 @@ module Manage
     # The box office's comp rules (CompRules): on at all, how many a date can
     # give away, and the production team's share of them.
     def update_comps
-      raw = params.require(:ticketing_profile).permit(*CompRules::FIELDS)
+      raw = params.require(:ticketing_profile).permit(*CompRules::PARAMS)
       if ticketing_profile.update(CompRules.attributes_from(raw))
         redirect_to section_path("comps"), notice: "Saved. #{ticketing_profile.comp_rules_words.upcase_first}."
       else
@@ -114,7 +120,7 @@ module Manage
       attrs[:welcome_line] = attrs[:welcome_line].to_s.squish.presence if attrs.key?(:welcome_line)
       ticketing_profile.wide_image.purge_later if params[:remove_wide_image] == "1" && ticketing_profile.wide_image.attached?
       if ticketing_profile.update(attrs)
-        redirect_to section_path("page"), notice: "Box office page saved."
+        redirect_to section_path("page"), notice: "Landing page saved."
       else
         @section = "page"
         flash.now[:alert] = ticketing_profile.errors.full_messages.to_sentence
@@ -136,14 +142,18 @@ module Manage
 
     def update
       attrs = params.require(:ticketing_profile)
-                    .permit(:slug, :support_email, :default_fee_mode, :default_max_per_order,
+                    .permit(:slug, :support_email, :default_fee_mode, :price_display, :cash_tax, :default_max_per_order,
                             :reminder_days_before, :attach_pdf_tickets, :enabled)
       # Closing a box office (or reopening it from here) is a superadmin's call;
       # managers open theirs with open_box_office.
-      attrs.delete(:enabled) unless Current.user.superadmin?
+      # (The Selling tickets switch: a manager can switch a closed one on.)
+      opening = attrs[:enabled] == "1" && !ticketing_profile.enabled?
+      attrs.delete(:enabled) unless Current.user.superadmin? || opening
 
       if ticketing_profile.update(attrs)
-        redirect_to section_path("box_office"), notice: "Box office settings saved."
+        # The fees box sits on the Fees and taxes tab and comes back to it.
+        back = params[:from].to_s.presence_in(SECTIONS) || "box_office"
+        redirect_to section_path(back), notice: { "tax" => "Fees and prices saved.", "notifications" => "Buyer emails saved." }.fetch(back, "Basic info saved.")
       else
         @section = "box_office"
         flash.now[:alert] = ticketing_profile.errors.full_messages.to_sentence

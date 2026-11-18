@@ -331,6 +331,16 @@ RSpec.describe "Manage::Casting running order", type: :request do
       expect(body["from_default"].map { |o| o["name"] }).to eq([ "Variety" ])
     end
 
+    it "doesn't offer an intermission as an act to run again" do
+      post manage_casting_show_running_order_acts_path(production, show), params: { kind: "break" }
+      expect(show.custom_roles.reload.map(&:name)).to include("Intermission")
+
+      get manage_casting_show_running_order_act_options_path(production, show)
+
+      names = JSON.parse(response.body)["in_show"].map { |o| o["name"] }
+      expect(names).to contain_exactly("Magic", "Variety")
+    end
+
     it "suggests act names used before in this production, minus what's already offered" do
       other = create(:show, production: production) # copies Magic, Variety at creation
       other.custom_roles.create!(name: "Juggling", production: production, position: 20)

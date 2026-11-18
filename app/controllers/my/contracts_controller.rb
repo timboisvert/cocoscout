@@ -18,11 +18,42 @@ module My
       # The contracts they're the contractor on: the ones with money to receive or pay.
       @people_ids = person_ids.map(&:id)
       @payee_contract_ids = @contracts.select { |contract| contract.payee_among?(@people_ids) }.map(&:id).to_set
-      # Whether they still need to connect a bank to be paid, when there's a contract that pays them.
-      @needs_bank = @payee_contract_ids.any? && Current.user.people.select(&:can_receive_payouts?).empty?
+      # Whether they still need to connect a bank to be paid: only when a
+      # contract has something to pay them (Tim, 2026-11-17: the panel showed
+      # on a contract where they pay the organization). The organizations
+      # that would pay are named on it.
+      # A contract whose payments go into their own organization's balance
+      # needs no bank (ContractConnections.pay_target).
+      @paying_organizations = if @payee_contract_ids.any?
+        Contract.where(id: @payee_contract_ids.to_a)
+                .where(id: ContractPayment.where(direction: "outgoing").where.not(status: %w[cancelled paid]).select(:contract_id))
+                .includes(:organization).reject { |contract| ContractConnections.pay_target(contract) }
+                .map { |contract| contract.organization.name }.uniq.sort
+      else
+        []
+      end
+      @needs_bank = @paying_organizations.any? && Current.user.people.select(&:can_receive_payouts?).empty?
       # Live ticket sales for the contracts' upcoming shows, when the theater
       # sells them on CocoScout and shares the numbers (TicketSalesAccess).
       @ticket_sales = ticket_sales_by_contract
+      # What the contractor has asked about each contract's dates, and where
+      # each request stands (ContractDateRequests).
+      @date_requests = ContractDateRequest.where(contract_id: @payee_contract_ids.to_a).showing_to_asker
+                                          .includes(:show, :organization).order(:created_at).group_by(&:contract_id)
+      # Each contract's connection to an organization of the contractor's own
+      # (ContractConnections): the latest one, and whether one can be requested.
+      @connections = ContractConnection.where(contract_id: @contracts.map(&:id)).includes(:linked_organization, :linked_production)
+                                       .order(:created_at).index_by(&:contract_id)
+      managed = ContractConnections.managed_organization_ids(Current.user)
+      # A contract connected to an organization they run shows its ticket
+      # numbers there, not here: the card points to it instead.
+      @moved_contract_ids = @connections.values.select { |connection| connection.connected? && managed.include?(connection.linked_organization_id) }
+                                        .map(&:contract_id).to_set
+      @moved_contract_ids.each { |id| @ticket_sales[id] = [] }
+      @connectable_contract_ids = @contracts.select do |contract|
+        @payee_contract_ids.include?(contract.id) && contract.status_active? && !@connections[contract.id]&.live? &&
+          (managed - [ contract.organization_id ]).any?
+      end.map(&:id).to_set
     end
 
     # Case 2: the contractor enters ticket sales for each show themselves. We

@@ -16,6 +16,40 @@ RSpec.describe BooksOutsidePoster do
     ChartOfAccounts.account(org, key).natural_balance_cents
   end
 
+  it "posts a show once per save, however many lines the save wrote, and not at all when it rolls back" do
+    financials = ShowFinancials.create!(show: show, revenue_type: "ticket_sales")
+    expect(described_class).to receive(:post_financials!).once.and_call_original
+    financials.update!(
+      other_revenue_details: [ { "description" => "Bar", "amount" => 150 } ],
+      ticket_sales_lines_attributes: [ { ticket_source_id: tailor.id, tickets_sold: 40, amount: 800 }, { ticket_source_id: org.ticket_sources.create!(name: "Hot Tix").id, tickets_sold: 5, amount: 50 } ],
+      expense_items_attributes: [ { category: "venue", amount: 300 }, { category: "marketing", amount: 25 }, { category: "venue", amount: 10 } ]
+    )
+    expect(balance(:ticket_income)).to eq(85_000)
+    expect(balance(:venue)).to eq(31_000)
+    expect(balance(:other_income)).to eq(15_000)
+    RSpec::Mocks.space.proxy_for(described_class).reset
+
+    # The $300 venue line, by id: a bare .first reads whichever row the
+    # database hands back first, which changes once rows have been updated.
+    room = financials.expense_items.order(:id).first
+    # A line saved on its own still posts, once.
+    expect(described_class).to receive(:post_financials!).once.and_call_original
+    room.update!(amount: 100)
+    expect(balance(:venue)).to eq(11_000)
+    RSpec::Mocks.space.proxy_for(described_class).reset
+
+    expect(described_class).not_to receive(:post_financials!)
+    ShowFinancials.transaction do
+      room.update!(amount: 999)
+      raise ActiveRecord::Rollback
+    end
+    RSpec::Mocks.space.proxy_for(described_class).reset
+    expect(balance(:venue)).to eq(11_000)
+    # Nothing is left waiting: the next save posts.
+    room.update!(amount: 50)
+    expect(balance(:venue)).to eq(6_000)
+  end
+
   it "posts a show's outside ticket sales, other revenue and expenses, and restates them as the worksheet changes" do
     financials = ShowFinancials.create!(show: show, revenue_type: "ticket_sales")
     financials.ticket_sales_lines.create!(ticket_source: tailor, tickets_sold: 40, amount: 800.00)
@@ -263,6 +297,7 @@ RSpec.describe BooksOutsidePoster do
       expect(row.financials).to eq(1)
       expect(row.mismatches).to eq([])
       expect(row.trial_balance_cents).to eq(0)
+      expect(result.failures).to eq([])
 
       JournalLine.where(journal_entry_id: JournalEntry.where(organization: org).select(:id)).delete_all
       JournalEntry.where(organization: org).delete_all
@@ -273,6 +308,24 @@ RSpec.describe BooksOutsidePoster do
       expect(LedgerPosting.trial_balance(org).values.sum).to eq(0)
       expect(balance(:cocoscout_balance)).to eq(5_000)
       expect(balance(:ticket_income)).to eq(8_000)
+    end
+
+    it "posts each organization by itself: one that fails is rolled back and named, and the rest still post" do
+      other = create(:organization)
+      [ org, other ].each { |o| OrgCashEntry.post!(organization: o, entry_type: "opening_balance", amount_cents: 5_000, source: o, description: "Opening", occurred_at: Time.current) }
+      JournalLine.where(organization_id: [ org.id, other.id ]).delete_all
+      JournalEntry.where(organization_id: [ org.id, other.id ]).delete_all
+      allow(BooksPoster).to receive(:post!).and_wrap_original do |original, entry|
+        original.call(entry)
+        raise "a row that can't be posted" if entry.organization_id == other.id
+      end
+
+      result = BooksBackfill.run!(dry_run: false, organization_ids: [ org.id, other.id ])
+      expect(result.rows.map(&:organization)).to eq([ org ])
+      expect(result.failures.map { |f| [ f.organization, f.error ] }).to eq([ [ other, "RuntimeError: a row that can't be posted" ] ])
+      expect(balance(:cocoscout_balance)).to eq(5_000)
+      # What the failed one had posted before it failed went with it.
+      expect(JournalEntry.where(organization: other)).to be_empty
     end
   end
 

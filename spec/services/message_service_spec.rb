@@ -224,6 +224,23 @@ RSpec.describe MessageService do
       expect(message.visibility).to eq("personal")
     end
 
+    it "leaves out a manager whose notifications for the production are off" do
+      quiet_user = create(:user)
+      quiet_person = create(:person, user: quiet_user)
+      quiet_user.update!(default_person: quiet_person)
+      create(:organization_role, organization: organization, user: quiet_user, company_role: :manager)
+      ProductionNotificationSetting.create!(production: production, user: manager_user, enabled: true)
+      ProductionNotificationSetting.create!(production: production, user: quiet_user, enabled: false)
+
+      message = described_class.send_to_production_team(
+        production: production, sender: cast_person.user, subject: "Question", body: "Content"
+      )
+
+      expect(message.recipient?(manager_person)).to be true
+      expect(message.recipient?(quiet_person)).to be false
+      expect(message.subscribed?(quiet_user)).to be false
+    end
+
     it "includes production managers as recipients" do
       message = described_class.send_to_production_team(
         production: production,

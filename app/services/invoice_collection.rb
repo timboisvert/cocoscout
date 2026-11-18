@@ -2,7 +2,8 @@
 
 # An invoice paid on its page (plan D2): the money lands in the
 # organization's CocoScout balance exactly as a contract payment collected
-# online does, less the card or bank fee; the receipt goes out by itself.
+# online does, less the card or bank fee; the receipt goes out by itself,
+# and whoever made the invoice gets a notification (BooksNotices.invoice_paid).
 class InvoiceCollection
   class << self
     def settle!(invoice, session)
@@ -21,6 +22,7 @@ class InvoiceCollection
       OrgCashEntry.post!(organization: invoice.organization, entry_type: "invoice_payment", amount_cents: payment.amount_cents - fee.to_i,
                          source: payment, description: "Invoice #{invoice.display_number} paid online", occurred_at: Time.current)
       InvoiceDelivery.send_receipt!(invoice) if invoice.paid?
+      BooksNotices.invoice_paid(invoice, payment)
       true
     rescue ActiveRecord::RecordNotUnique
       false

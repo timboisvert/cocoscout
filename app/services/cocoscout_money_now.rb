@@ -5,7 +5,9 @@
 # out today, and what organizations owe it. Not tied to a period.
 #
 #   earned to date      every dollar earned (bills sent count, paid or not)
-#                       less every dollar spent
+#                       less every dollar spent, in Stripe or outside it
+#   paid outside Stripe what running CocoScout cost from the company's bank
+#                       (Amazon, Claude): spent, but never in Stripe
 #   not yet collected   bills sent and not yet paid
 #   sent to our bank    payouts to CocoScout's bank, less money added back
 #   paid by hand        organizations CocoScout paid from its own bank: the
@@ -36,9 +38,15 @@ class CocoScoutMoneyNow
 
   # Earned less spent since we started: counting every bill sent, less what
   # we charged too much (owed back), less credit given back that hasn't paid
-  # a bill yet.
+  # a bill yet, less what running CocoScout cost outside Stripe.
   def profit_cents
-    collected_profit_cents + not_collected_cents - owed_back_cents - unused_credit_cents
+    collected_profit_cents + not_collected_cents - owed_back_cents - unused_credit_cents - outside_cost_cents
+  end
+
+  # Bills paid from the company's bank, never from Stripe (CompanyExpense,
+  # the Costs page): they lower profit without touching what's in Stripe.
+  def outside_cost_cents
+    @outside_cost_cents ||= CompanyExpense.confirmed.sum(:amount_cents)
   end
 
   # The same, counting only what's been paid: the ledger.
@@ -251,7 +259,8 @@ class CocoScoutMoneyNow
       debiting = PayoutBatch.where.not(funding_payment_intent_id: nil).where("COALESCE(funding_started_at, created_at) BETWEEN ? AND ?", range.first, range.last)
                             .distinct.pluck(:organization_id) +
                  BalanceTopUp.where(created_at: range).where.not(stripe_payment_intent_id: nil).distinct.pluck(:organization_id) +
-                 BalanceWithdrawal.not_failed.where(created_at: range).distinct.pluck(:organization_id)
+                 BalanceWithdrawal.not_failed.where(created_at: range).distinct.pluck(:organization_id) +
+                 FollowerEmailBlock.where(created_at: range).distinct.pluck(:organization_id)
       monthly_pro = Organization.where.not(pro_monthly_from: nil).pluck(:id)
       orgs = Organization.where(id: (performers.keys + staff.keys + debiting + monthly_pro).uniq).select { |org| org.bills_usage? || org.pro_on_monthly_bill? }
       rows = orgs.map do |org|
@@ -259,7 +268,7 @@ class CocoScoutMoneyNow
         pro = UsageRules.pro_cents(org, month)
         usage = org.bills_usage? ? performers[org.id].to_i * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS +
                                    staff[org.id].to_i * StaffBillingService::PER_ACTIVE_STAFF_CENTS + debits * UsageRules::EXTRA_BANK_DEBIT_CENTS +
-                                   UsageRules.withdrawal_fee_cents(org, month) : 0
+                                   UsageRules.withdrawal_fee_cents(org, month) + UsageRules.follower_email_blocks_cents(org, month) : 0
         { organization: org, performers: performers[org.id].to_i, staff: staff[org.id].to_i, extra_debits: debits, pro_cents: pro, cents: pro + usage }
       end
       rows.select { |row| row[:cents].positive? }.sort_by { |row| -row[:cents] }

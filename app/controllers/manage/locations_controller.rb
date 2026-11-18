@@ -2,7 +2,7 @@
 
 module Manage
   class LocationsController < Manage::ManageController
-    before_action :set_location, only: %i[show edit update destroy cannot_delete]
+    before_action :set_location, only: %i[show edit update destroy cannot_delete archive restore]
     before_action :ensure_user_is_global_manager, except: %i[index show]
 
     def index
@@ -79,6 +79,25 @@ module Manage
       # Renders the cannot_delete view
     end
 
+    # Out of the locations list and every picker; everything that already
+    # points at it is untouched. The default passes to another location.
+    def archive
+      was_default = @location.default?
+      @location.archive!
+      expire_locations_cache
+      new_default = was_default ? Current.organization.locations.active.find_by(default: true) : nil
+      notice = "#{@location.name} was archived."
+      notice += " #{new_default.name} is now the default location." if new_default
+      redirect_to section_manage_organization_path(Current.organization, section: "locations"),
+                  notice: notice, status: :see_other
+    end
+
+    def restore
+      @location.restore!
+      expire_locations_cache
+      redirect_to manage_location_path(@location), notice: "#{@location.name} was restored.", status: :see_other
+    end
+
     private
 
     def set_location
@@ -93,7 +112,7 @@ module Manage
 
     def fetch_locations
       Rails.cache.fetch(locations_cache_key, expires_in: 10.minutes) do
-        Current.organization.locations.order(:created_at).to_a
+        Current.organization.locations.active.order(:created_at).to_a
       end
     end
 

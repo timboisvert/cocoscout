@@ -19,7 +19,7 @@ class ShiftVacancyInvitationMailer < ApplicationMailer
 
     headers["X-Email-Batch-ID"] = email_batch_id.to_s if email_batch_id.present?
     send_in_app_message(rendered.merge(subject: @subject, body: @body))
-    return if @person.email.blank?
+    return if @person.email.blank? || !NotificationGroups.email?("shift_vacancy_invitation", @person)
 
     mail(to: @person.email, subject: @subject) do |format|
       format.html { render html: @body.html_safe, layout: "mailer" }

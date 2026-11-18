@@ -13,8 +13,8 @@
 
   <% unless @listing.production_ticketing&.waitlist? %>
     <%= render "shared/alert_panel", eyebrow: "Waitlist off", headline: "This production's waitlist is off",
-          body: "Sold-out dates don't take names until it's on, in the production's Sales settings.",
-          actions: [ { text: "Sales settings", path: manage_edit_production_ticketing_path(@listing.production, section: "sales") } ] %>
+          body: "Sold-out dates don't take names until it's switched on, on Basic info in the production's ticketing settings.",
+          actions: [ { text: "Basic info", path: manage_edit_production_ticketing_path(@listing.production, section: "dates") } ] %>
   <% end %>
 
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">

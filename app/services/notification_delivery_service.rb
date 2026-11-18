@@ -187,11 +187,7 @@ class NotificationDeliveryService
     private
 
     def find_notifiable_team_members(production)
-      ProductionNotificationSetting.ensure_settings_for(production)
-      ProductionNotificationSetting.where(production: production, enabled: true)
-                                   .includes(:user)
-                                   .map(&:user)
-                                   .compact
+      ProductionNotificationSetting.users_to_notify(production)
     end
   end
 end

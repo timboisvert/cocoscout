@@ -7,8 +7,8 @@
 # the organization cancels is always refunded in full, whatever this says.
 #
 # The box office sets it (TicketingProfile); a production can set its own
-# (ProductionTicketing, blank fields follow the box office), and its dates
-# follow it. Each order keeps the policy it was sold under (to_snapshot);
+# (ProductionTicketing, blank fields follow the box office); its dates
+# follow it, and a date can set its own again (TicketListing). Each order keeps the policy it was sold under (to_snapshot);
 # TicketOrderRefund.policy_check holds a refund to the more generous of that
 # and today's.
 class RefundPolicy
@@ -19,7 +19,23 @@ class RefundPolicy
   MAX_HOURS = 365 * 24
   NOTE_LIMIT = 500
 
-  # The settings form's cards: [value, title, hint].
+  # The settings form (Tim, 2026-11-07: one row, not a column of eight):
+  # three cards side by side, and under the first its cutoff as pills.
+  # No refunds first (Tim, 2026-11-13).
+  KIND_CHOICES = [
+    [ "none", "No refunds", "All sales final. A show you cancel is still refunded in full." ],
+    [ "window", "Up to a cutoff", "Refunds until a point before the show." ],
+    [ "case_by_case", "Case by case", "No window: buyers are told to ask you, and every refund is your call." ]
+  ].freeze
+  WINDOW_CHOICES = [
+    [ "window_0", "Until the show starts" ],
+    [ "window_24", "24 hours before" ],
+    [ "window_48", "48 hours before" ],
+    [ "window_168", "7 days before" ],
+    [ "window_720", "30 days before" ]
+  ].freeze
+
+  # Every choice as one flat list: [value, title, hint].
   CHOICES = [
     [ "window_0", "Until the show starts", "Any time before showtime." ],
     [ "window_24", "Up to 24 hours before", "The usual window." ],
@@ -36,6 +52,12 @@ class RefundPolicy
     return kind if %w[none case_by_case].include?(kind.to_s)
 
     WINDOWS.include?(hours.to_i) ? "window_#{hours.to_i}" : "custom"
+  end
+
+  # The form's choice: the kind card, and for a window the cutoff pill
+  # (refund_window); a flat choice (window_24, none) still reads as itself.
+  def self.choice_from(raw)
+    raw[:refund_choice].to_s == "window" ? raw[:refund_window] : raw[:refund_choice]
   end
 
   # The columns a card (and, for custom, its day count) saves as; nil for
@@ -60,8 +82,20 @@ class RefundPolicy
     @contact = contact
   end
 
-  # The policy a date sells under: its production's, else the box office's.
+  # The policy a date sells under: its own when it has one (blank fields
+  # follow the one above), else its production's, else the box office's.
   def self.for(listing)
+    profile = TicketingProfile.for(listing.organization)
+    above = of_setup(listing.production_ticketing, profile)
+    return above unless listing.refund_policy.present?
+
+    new(kind: listing.refund_policy, hours: listing.refund_window_hours || above.hours,
+        fees: listing.refund_fees.nil? ? above.fees : listing.refund_fees, note: listing.refund_policy_note,
+        contact: above.contact)
+  end
+
+  # What a date follows while it has none of its own.
+  def self.above(listing)
     of_setup(listing.production_ticketing, TicketingProfile.for(listing.organization))
   end
 

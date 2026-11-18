@@ -2,8 +2,9 @@
 
 require "rails_helper"
 
-# V1.1 plan Phase 2: a show's settings on a phone open on a list of
-# sections you drill into, each with a way back and Save pinned to the bottom.
+# A show's settings on a phone: the section row and its sheet, as on every
+# settings page (Tim, 2026-11-08; it was a list you drilled into), and Save
+# pinned to the bottom.
 RSpec.describe "Show edit on a phone", type: :request do
   let(:password) { "Password123!" }
   let(:manager) { create(:user, password: password) }
@@ -20,24 +21,26 @@ RSpec.describe "Show edit on a phone", type: :request do
 
   let(:doc) { Nokogiri::HTML(response.body) }
 
-  it "opens on a drill-in list of every section" do
-    expect(doc.at_css("[data-controller~='tabs']")["data-tabs-drill-value"]).to eq("true")
-    list = doc.at_css("[data-show-edit-sections]")
-    expect(list["data-tabs-target"]).to eq("list")
-    labels = list.css("button").map { |b| b.text.squish }
+  it "opens every section from the section row's sheet" do
+    tabs = doc.at_css("[data-controller~='tabs']")
+    expect(tabs["data-tabs-drill-value"]).to be_nil
+    picker = doc.at_css("[data-show-edit-sections] [data-section-picker]")
+    expect(picker.at_css("button")["data-modal-id"]).to eq("show-edit-sections-sheet")
+    expect(picker.at_css("[data-tabs-target='sectionLabel']").text.squish).to eq("Basic Information")
+    items = doc.css("#show-edit-sections-sheet [data-tabs-target='sectionItem']")
+    labels = items.map { |b| b.text.squish.delete_suffix(" Pro") }
     expect(labels.first).to eq("Basic Information")
     expect(labels).to include("Schedule", "Location", "Linked Events", "Danger Zone")
     expect(labels.size).to eq(doc.css("[data-tabs-target='panel']").size)
+    expect(items.map { |b| b["data-action"] }.uniq).to eq([ "tabs#select modal#close" ])
   end
 
-  it "gives every section a way back and pins Save for the ones that save" do
+  it "pins Save for the sections that save, and has no list to go back to" do
     panels = doc.css("[data-tabs-target='panel']")
-    panels.each do |panel|
-      header = panel.at_css("[data-show-edit-section-header]")
-      expect(header.at_css("button")["data-action"]).to eq("tabs#showList")
-    end
+    expect(response.body).not_to include("tabs#showList")
     saving = panels.select { |p| p.at_css("[data-sticky-actions]") }
-    expect(saving.map { |p| p.at_css("[data-show-edit-section-header]").text.squish }).to include("Sections / Basic Information", "Sections / Schedule")
+    expect(saving.size).to be >= 2
+    expect(panels.first.at_css("[data-sticky-actions]")).to be_present
     expect(panels.last.at_css("[data-sticky-actions]")).to be_nil # Danger Zone acts through its modals
     expect(doc.at_css("select[data-tabs-target='menu']")).to be_nil
   end

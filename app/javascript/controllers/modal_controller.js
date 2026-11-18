@@ -35,6 +35,11 @@ export default class extends Controller {
                     modal.dataset.modalReturnTo = closeId
                     modal.querySelectorAll('input[name="reopen"]').forEach(input => { input.value = closeId })
                 }
+                // Opened from a row inside a sheet (a ⋯ menu's item): that
+                // sheet has done its job, so it goes rather than sit under
+                // the new one.
+                const sheet = event.currentTarget.closest('[data-sheet]')
+                if (sheet && sheet !== modal) sheet.classList.add('hidden')
                 modal.classList.remove('hidden')
                 document.addEventListener('keydown', this.keyHandler)
                 this.currentModal = modal

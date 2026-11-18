@@ -27,9 +27,9 @@ RSpec.describe "Joining mailing lists at ticket checkout", type: :request do
     Nokogiri::HTML(response.body).css("[data-follow-boxes] label").map { |label| [ label.text.squish, label.at_css("input")["checked"].present? ] }
   end
 
-  it "shows a producer's box and the main list's box on their show, ticked, and only the main one on an in-house show" do
+  it "shows the main list's box first and a producer's box after it on their show, ticked, and only the main one on an in-house show" do
     dan_order = TicketCheckout.start!(listing: (l = listing_for(dans)), quantities: { l.ticket_tiers.first.id.to_s => "1" })
-    expect(boxes(dan_order)).to eq([ [ "Send me news about Dan Feltey's shows", true ], [ "Send me news from Stars & Garters", true ] ])
+    expect(boxes(dan_order)).to eq([ [ "Send me news from Stars & Garters", true ], [ "Send me news about Dan Feltey's shows", true ] ])
 
     house_order = TicketCheckout.start!(listing: (l2 = listing_for(in_house)), quantities: { l2.ticket_tiers.first.id.to_s => "1" })
     expect(boxes(house_order)).to eq([ [ "Send me news from Stars & Garters", true ] ])

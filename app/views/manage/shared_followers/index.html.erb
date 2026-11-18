@@ -1,0 +1,36 @@
+<%# The followers another organization shares with this one through a
+    connected contract (Manage::SharedFollowersController). What Mailing
+    lists opens as on the free plan. From the controller: @lists, @rows (by
+    list id), @pro, @q. %>
+<% content_for :title, "Followers" %>
+<div class="w-full mb-10 max-w-4xl">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: (@pro ? [ [ "Mailing lists", manage_mailing_lists_path ] ] : []), text: (@pro ? "Shared with you" : "Mailing lists"), links: [] } %>
+
+  <p class="text-sm text-gray-600 mb-5 max-w-3xl">
+    <%= @lists.map { |list| list.organization.name }.uniq.to_sentence %> <%= @lists.map(&:organization_id).uniq.one? ? "shares" : "share" %> the people who asked to hear about your shows.
+    You can download a list or copy the addresses.
+    <% if @pro %>They are also on your own mailing lists, where you can email them.<% end %>
+  </p>
+
+  <div class="space-y-6">
+    <% @lists.each do |list| %>
+      <div>
+        <%= render "shared/followers/shared_list", list: list, rows: @rows[list.id], q: @q,
+              title: "From #{list.organization.name}",
+              intro: "#{list.name} · #{pluralize(SharedFollowers.count(list), 'follower')}",
+              download_path: manage_shared_followers_download_path(list), search_path: manage_shared_followers_path %>
+      </div>
+    <% end %>
+  </div>
+
+  <% unless @pro %>
+    <div class="mt-6 bg-white border border-gray-200 rounded-lg px-4 py-3 flex flex-wrap items-center justify-between gap-3" data-sending-is-pro>
+      <div class="min-w-0 max-w-2xl">
+        <div class="text-sm font-semibold text-gray-900">Emailing them from CocoScout is part of Pro</div>
+        <p class="text-sm text-gray-600">On Pro these followers join your own mailing list, and you can email them from here: <%= FollowerEmailAllowance::INCLUDED_PER_MONTH %> emails a month are included.</p>
+      </div>
+      <%= render "shared/button", text: "See what Pro includes", variant: "secondary", size: "small", path: manage_billing_path %>
+    </div>
+  <% end %>
+</div>

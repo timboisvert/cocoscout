@@ -15,7 +15,7 @@ class GroupInvitationMailer < ApplicationMailer
 
     rendered = ContentTemplateService.render("group_invitation", {
       group_name: @group.name,
-      inviter_name: @invited_by&.full_name || "A group member",
+      inviter_name: @invited_by&.name.presence || "A group member",
       accept_url: accept_url,
       custom_message: message
     })

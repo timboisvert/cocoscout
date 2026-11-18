@@ -25,7 +25,8 @@
     <%= form_with url: manage_ticketing_settings_notifications_path, method: :patch,
           data: { controller: "notification-plan",
                   notification_plan_plans_value: TicketingNotifications.plan_kinds.to_json,
-                  notification_plan_custom_value: kinds_on.to_json } do %>
+                  notification_plan_custom_value: kinds_on.to_json,
+                  notification_plan_notified_value: (address ? [] : TicketingNotifications::AS_THEY_HAPPEN).to_json } do %>
       <%= hidden_field_tag :recipient, r&.key || "new", id: nil %>
       <%= hidden_field_tag "kinds[]", "", id: nil %>
       <div class="px-4 sm:px-6 py-5 space-y-5">
@@ -62,6 +63,9 @@
               <span class="text-xs font-semibold uppercase tracking-wide text-gray-500"><%= group %></span>
               <span class="text-xs text-gray-500" data-notification-plan-target="groupCount" data-group="<%= group %>"></span>
             </div>
+            <% if !address && kinds.any? { |kind| TicketingNotifications::AS_THEY_HAPPEN.include?(kind.key) } %>
+              <p class="px-4 pb-1 text-xs text-gray-500">These reach a manager as notifications, not emails.</p>
+            <% end %>
             <% kinds.each do |kind| %>
               <div class="flex items-center gap-3 px-4 py-2">
                 <div class="min-w-0 flex-1">

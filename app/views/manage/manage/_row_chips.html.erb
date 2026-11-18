@@ -1,0 +1,15 @@
+<%# A show's state chips (HomeHelper#home_row_chips), each tinted by its
+    state: green, nothing to do; amber, something open; red, someone's
+    missing; pink, happening now. Locals: chips; long (the long words, else
+    the short ones); small (the desktop week's size). %>
+<% small = local_assigns[:small] %>
+<% if chips.any? %>
+  <span class="flex flex-wrap gap-1">
+    <% chips.each do |key, (chip_tone, short, long_words), icon| %>
+      <span class="inline-flex items-center gap-1 rounded-full border px-1.5 py-px font-semibold whitespace-nowrap <%= small ? 'text-[10.5px]' : 'text-[11px]' %> <%= HomeHelper::CHIP_TONES[chip_tone] %>" data-chip="<%= key %>" data-tone="<%= chip_tone %>">
+        <svg class="<%= small ? 'w-3 h-3' : 'w-3.5 h-3.5' %> flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="<%= key.in?(%w[tickets signups]) ? 2 : 2.4 %>" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="<%= icon %>"/></svg>
+        <%= local_assigns[:long] ? long_words : short %>
+      </span>
+    <% end %>
+  </span>
+<% end %>

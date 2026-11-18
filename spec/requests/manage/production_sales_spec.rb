@@ -44,7 +44,7 @@ RSpec.describe "Production sales for the production team", type: :request do
     expect(response.body).not_to include(manage_ticketing_path)
 
     get manage_production_show_path(production, show)
-    expect(response.body).to include("Tickets sold", manage_production_sale_path(production, listing), "See who&#39;s coming", "Give comps · 2 of 2 left")
+    expect(response.body).to include("Tickets sold", manage_production_sale_path(production, listing), "See who&#39;s coming", "Issue comps · 2 of 2 left")
 
     get manage_production_sales_path(production)
     expect(response).to have_http_status(:ok)
@@ -53,7 +53,7 @@ RSpec.describe "Production sales for the production team", type: :request do
 
     get manage_production_sale_path(production, listing)
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Who's coming", "Dana Scully", "Sold here", "Your comps for this date", "0 of 2 given", 'id="comps-modal"',
+    expect(response.body).to include("Who's coming", "Dana Scully", "Sold here", "Your comps for this date", "0 of 2 issued", 'id="comps-modal"',
                                      manage_production_sale_comps_path(production, listing))
     expect(response.body).not_to include("dana@example.com", "/manage/ticketing", "You keep")
   end
@@ -62,23 +62,23 @@ RSpec.describe "Production sales for the production team", type: :request do
     sign_in(manager)
     post manage_production_sale_comps_path(production, listing), params: { name: "Bea Thornton", quantity: "1", tier_id: general.id, email_them: "0" }
     expect(response).to redirect_to(manage_production_sale_path(production, listing, anchor: "guests"))
-    expect(flash[:notice]).to eq("Gave 1 ticket to Bea Thornton. They're on the list.")
+    expect(flash[:notice]).to eq("Issued 1 ticket to Bea Thornton. They're on the list.")
     expect(listing.ticket_orders.where(channel: "comp", issued_by: manager).count).to eq(1)
 
     get manage_production_sale_path(production, listing)
-    expect(response.body).to include("1 of 2 given", "Give comps · 1 of 2 left", "You can give 1 more for this date.")
+    expect(response.body).to include("1 of 2 issued", "Issue comps · 1 of 2 left", "You can issue 1 more for this date.")
 
     post manage_production_sale_comps_path(production, listing), params: { name: "Too Many", quantity: "2", tier_id: general.id, email_them: "0" }
-    expect(flash[:alert]).to eq("You can give 1 more comp for this date.")
+    expect(flash[:alert]).to eq("You can issue 1 more comp for this date.")
     expect(listing.ticket_orders.where(channel: "comp").count).to eq(1)
 
     post manage_production_sale_comps_path(production, listing), params: { name: "Eli Park", quantity: "1", tier_id: general.id, email_them: "0" }
     post manage_production_sale_comps_path(production, listing), params: { name: "One Over", quantity: "1", tier_id: general.id, email_them: "0" }
-    expect(flash[:alert]).to eq("You can't give comps for this date.")
+    expect(flash[:alert]).to eq("You can't issue comps for this date.")
     expect(listing.ticket_orders.where(channel: "comp").count).to eq(2)
 
     get manage_production_sale_path(production, listing)
-    expect(response.body).to include("None left to give")
+    expect(response.body).to include("None left to issue")
     expect(response.body).not_to include('id="comps-modal"')
   end
 
@@ -105,7 +105,7 @@ RSpec.describe "Production sales for the production team", type: :request do
 
     get manage_production_show_path(production, show)
     expect(response.body).to include("Tickets sold", manage_production_sale_path(production, listing))
-    expect(response.body).not_to include("See who", "Give comps", "in sales")
+    expect(response.body).not_to include("See who", "Issue comps", "in sales")
 
     get manage_production_sale_path(production, listing)
     expect(response).to have_http_status(:ok)

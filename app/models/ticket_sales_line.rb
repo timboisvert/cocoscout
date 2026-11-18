@@ -13,6 +13,8 @@ class TicketSalesLine < ApplicationRecord
   validates :tickets_sold, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   validates :amount, numericality: { greater_than_or_equal_to: 0 }
 
+  normalizes :ticket_type, with: ->(name) { name.to_s.squish.presence }
+
   scope :ordered, -> { order(:position, :id) }
 
   # One write path for the rollup, so the cached columns can never drift from
@@ -21,7 +23,8 @@ class TicketSalesLine < ApplicationRecord
   after_destroy -> { show_financials&.recalculate_ticket_totals!(emptied: true) }
   # The rollup above writes with update_columns, which fires nothing, so the
   # books are told from here.
-  after_commit { show_financials&.post_to_books }
+  after_save { ShowFinancials.post_to_books_after_commit(show_financials_id) }
+  after_destroy { ShowFinancials.post_to_books_after_commit(show_financials_id) }
 
   # What this line is called on screen. A line entered before the org named any
   # sources — or one whose source was archived away — still has an amount worth

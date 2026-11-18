@@ -56,7 +56,9 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
       expect(body).to include("$162.00", "Less bills sent, not collected yet", "Since we started")
       expect(body).to include("Owed to us", "Late", late.title, "$42.00", "Bills not yet paid")
       expect(body).to include("Tickets", "50¢ ticket fees (300 tickets)", "$150.00", "card processing on tickets", "less $80.00", "We kept", "$160.00")
-      expect(body).to include("Running CocoScout", "Stripe: Connect: Active Accounts", "Cost us", "$60.00")
+      expect(body).to include("platform fees", "Stripe: Connect: Active Accounts", "Cost us", "$60.00")
+      # Stripe's fees are their own kind of cost: $240 earned, $140 of it went on to Stripe.
+      expect(body).to include("Went on to Stripe", "$140.00", "Left after Stripe", "Building and running", "To Stripe")
       expect(body).to include("Month by month", "Bills sent in this period", "Pro plan", "Paid")
     end
 
@@ -215,6 +217,26 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
                                        "Course payments recorded by hand")
       get finances_org_courses_path(org_id: organization.id)
       expect(response.body).to include("Course Breakdown")
+    end
+
+    it "lists an organization on Pro through the monthly bill before any money has moved for it" do
+      on_bill = create(:organization, name: "On The Bill Players")
+      on_bill.update!(pro_monthly_from: 1.day.ago)
+      ended = create(:organization, name: "Ended Pro Players")
+      ended.update!(pro_monthly_from: 2.months.ago, pro_monthly_until: 1.month.ago)
+      get finances_organizations_path
+      expect(response.body).to include("On The Bill Players")
+      expect(response.body).not_to include("Ended Pro Players")
+    end
+
+    it "says a part-month Pro on the next bill is Pro, not usage" do
+      travel_to Time.zone.local(2026, 11, 14, 12) do
+        organization.update!(pro_monthly_from: Time.zone.local(2026, 11, 13, 9))
+        get finances_org_detail_path(org_id: organization.id)
+        expect(response.body).to include("0 staff members and 0 others paid",
+                                         "Next month's bill so far: $17.40, Pro $17.40 for part of the month and usage $0.00")
+        expect(response.body).not_to include("next month's usage bill")
+      end
     end
 
     it "shows plans, comps and bills" do

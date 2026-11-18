@@ -6,7 +6,7 @@ require "rails_helper"
 # spreadsheet or CSV, one ticket type and one "email them" for the batch, a
 # preview of who gets what against the comps, seats and allowance left, then
 # all of them given in one go, or none.
-RSpec.describe "Giving comps from a pasted list", type: :request do
+RSpec.describe "Issuing comps from a pasted list", type: :request do
   include ActiveJob::TestHelper
 
   let(:password) { "Password123!" }
@@ -72,7 +72,7 @@ RSpec.describe "Giving comps from a pasted list", type: :request do
                        text: "Dana Scully, dana@example.com, 2\nFox Mulder <fox@example.com>\nWalter Skinner, walter@example.com, 1, VIP" }
       }.to have_enqueued_job(TicketOrderConfirmationJob).exactly(3).times
       expect(response).to redirect_to(back)
-      expect(flash[:notice]).to eq("Gave 4 tickets to 3 people. They're on the guest list.")
+      expect(flash[:notice]).to eq("Issued 4 tickets to 3 people. They're on the guest list.")
       expect(comps.order(:id).map { |o| [ o.buyer_name, o.buyer_email, o.note, o.issued_by_id, o.tickets.map { |t| t.ticket_tier.name } ] }).to eq([
         [ "Dana Scully", "dana@example.com", "Press night", owner.id, %w[General General] ],
         [ "Fox Mulder", "fox@example.com", "Press night", owner.id, %w[General] ],
@@ -98,7 +98,7 @@ RSpec.describe "Giving comps from a pasted list", type: :request do
 
       listing.update!(own_comps: true, comps_limit: "fixed", comps_per_show: 2)
       post manage_ticket_listing_comps_path(listing), params: { mode: "paste", tier_id: general.id, text: "Dana Scully\nFox Mulder\nWalter Skinner" }
-      expect(flash[:alert]).to eq("This date has 2 comps left to give, and this list is 3.")
+      expect(flash[:alert]).to eq("This date has 2 comps left to issue, and this list is 3.")
       expect(comps.count).to eq(0)
     end
 
@@ -139,20 +139,20 @@ RSpec.describe "Giving comps from a pasted list", type: :request do
 
       text = "Dana Scully, 2\nFox Mulder, 2"
       post manage_production_sale_comps_preview_path(production, listing), params: { tier_id: general.id, text: text }
-      expect(response.body).to include('data-comps-paste-ready="0"', "You can give 3 more comps for this date, and this list is 4.")
+      expect(response.body).to include('data-comps-paste-ready="0"', "You can issue 3 more comps for this date, and this list is 4.")
 
       post manage_production_sale_comps_path(production, listing), params: { mode: "paste", tier_id: general.id, text: text }
       expect(response).to redirect_to(sale)
-      expect(flash[:alert]).to eq("You can give 3 more comps for this date, and this list is 4.")
+      expect(flash[:alert]).to eq("You can issue 3 more comps for this date, and this list is 4.")
       expect(comps.count).to eq(0)
 
       post manage_production_sale_comps_path(production, listing), params: { mode: "paste", tier_id: general.id, text: "Dana Scully, 2\nFox Mulder" }
-      expect(flash[:notice]).to eq("Gave 3 tickets to 2 people. They're on the guest list.")
+      expect(flash[:notice]).to eq("Issued 3 tickets to 2 people. They're on the guest list.")
       expect(comps.where(issued_by: manager).count).to eq(2)
 
       # The allowance used up: no more, one at a time or pasted.
       post manage_production_sale_comps_path(production, listing), params: { mode: "paste", tier_id: general.id, text: "Walter Skinner" }
-      expect(flash[:alert]).to eq("You can't give comps for this date.")
+      expect(flash[:alert]).to eq("You can't issue comps for this date.")
       expect(comps.count).to eq(2)
     end
   end

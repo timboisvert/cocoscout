@@ -1,0 +1,29 @@
+<%# Building and running CocoScout for a period: the costs owed with or without a single payment (Amazon, Claude, GitHub), in their two parts.
+    locals: finances (CocoScoutFinances) %>
+<% parts = finances.fixed_costs %>
+<% if parts.any? %>
+  <div class="mt-4 rounded-lg border border-gray-200 bg-white">
+    <div class="px-4 py-3 border-b border-gray-200">
+      <h2 class="text-sm font-semibold text-gray-900">Building and running CocoScout</h2>
+      <p class="text-xs text-gray-500 mt-0.5">Owed with or without a single payment. Each bill is on <%= link_to "Costs", finances_costs_path, class: "text-pink-600 hover:underline", data: { turbo_frame: "_top" } %>.</p>
+    </div>
+    <dl class="divide-y divide-gray-100 text-sm">
+      <% parts.each do |part| %>
+        <div class="flex justify-between gap-4 px-4 py-2 bg-gray-50">
+          <dt class="font-medium text-gray-900"><%= part[:name] %></dt>
+          <dd class="tabular-nums font-medium text-gray-900"><%= usd(part[:cents]) %></dd>
+        </div>
+        <% part[:lines].each do |label, cents| %>
+          <div class="flex justify-between gap-4 px-4 py-2 pl-8">
+            <dt class="text-gray-700"><%= label %></dt>
+            <dd class="tabular-nums text-gray-700"><%= usd(cents) %></dd>
+          </div>
+        <% end %>
+      <% end %>
+      <div class="flex justify-between gap-4 px-4 py-2 bg-gray-50 font-semibold">
+        <dt class="text-gray-900">Cost us</dt>
+        <dd class="tabular-nums text-gray-900"><%= usd(finances.outside_cost_cents) %></dd>
+      </div>
+    </dl>
+  </div>
+<% end %>

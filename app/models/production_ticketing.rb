@@ -54,17 +54,41 @@ class ProductionTicketing < ApplicationRecord
   validates :refund_window_hours, numericality: { only_integer: true, in: 0..RefundPolicy::MAX_HOURS }, allow_nil: true
   validates :refund_policy_note, length: { maximum: RefundPolicy::NOTE_LIMIT }
   validates :fee_mode, inclusion: { in: TicketingProfile::FEE_MODES }, allow_nil: true
+  validates :cash_tax, inclusion: { in: TicketingProfile::CASH_TAXES }, allow_nil: true
+  validates :price_display, inclusion: { in: TicketingProfile::PRICE_DISPLAYS }, allow_nil: true
   validates :max_per_order, numericality: { only_integer: true, in: 1..100 }, allow_nil: true
   # Its own comp rules (own_comps on), or the box office's (CompRules).
   include CompRules
   validates :comps_limit, inclusion: { in: TicketingProfile::COMPS_LIMITS }, allow_nil: true
   validates :team_comps_limit, inclusion: { in: TicketingProfile::TEAM_COMPS_LIMITS }, allow_nil: true
-  validates :comps_per_show, :team_comps_per_show, numericality: { only_integer: true, in: 0..10_000 }, allow_nil: true
+  validates :comps_per_show, :team_comps_per_show, :contract_comps_per_show, numericality: { only_integer: true, in: 0..10_000 }, allow_nil: true
   # Blank is all ages (AgeLimit).
   validates :minimum_age, numericality: { only_integer: true, in: AgeLimit::AGES }, allow_nil: true
   validate :production_belongs_to_organization
 
+  # The ticket page's own address, /tickets/<org>/<page_key>, when it isn't
+  # the production's public URL (blank: Production#ticket_page_key). A show
+  # renamed after its links went out changes it here; the addresses it had
+  # (old_page_keys) keep landing on the page.
+  PAGE_KEY = /\A[a-z0-9][a-z0-9-]{2,29}\z/
+  # "members" and "access" are 1.4's own pages under the box office's address.
+  RESERVED_PAGE_KEYS = %w[passes checkout embed orders members access].freeze
+  normalizes :page_key, with: ->(value) { value.to_s.strip.downcase.presence }
+  before_validation { self.page_key = nil if page_key.present? && page_key == production&.public_key }
+  validates :page_key, format: { with: PAGE_KEY, message: "must be 3 to 30 lowercase letters, numbers and hyphens" }, allow_nil: true
+  validate :page_key_is_free, if: -> { page_key.present? && page_key_changed? }
+  before_save :keep_old_page_key, if: :page_key_changed?
+
   before_validation { self.organization ||= production&.organization }
+
+  # The production whose ticket page is, or used to be, at this address.
+  def self.production_at(organization, key)
+    where(organization_id: organization.id).find_by(page_key: key)&.production
+  end
+
+  def self.production_once_at(organization, key)
+    where(organization_id: organization.id).where("old_page_keys @> ?", [ key ].to_json).order(updated_at: :desc).first&.production
+  end
   before_validation { self.event_type_filter = Array(event_type_filter).compact_blank.map(&:to_s).uniq }
   # The production's short code is issued the first time it's set up to sell.
   after_create_commit { ShortLink.canonical_for!(production) }
@@ -119,6 +143,19 @@ class ProductionTicketing < ApplicationRecord
   end
 
   private
+
+  def page_key_is_free
+    taken = RESERVED_PAGE_KEYS.include?(page_key) ||
+            organization.productions.where.not(id: production_id).exists?(public_key: page_key) ||
+            ProductionTicketing.where(organization_id: organization_id).where.not(id: id).exists?(page_key: page_key) ||
+            organization.ticket_listings.exists?(slug: page_key)
+    errors.add(:base, "That address is already taken by another page.") if taken
+  end
+
+  def keep_old_page_key
+    was = page_key_was
+    self.old_page_keys = (Array(old_page_keys) + [ was ]).compact.uniq - [ page_key ]
+  end
 
   def production_belongs_to_organization
     errors.add(:production, "belongs to another organization") if production && organization && production.organization_id != organization_id

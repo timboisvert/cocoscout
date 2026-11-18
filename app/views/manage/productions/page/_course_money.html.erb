@@ -1,0 +1,21 @@
+<%# The current run's money for the organization's managers (the course's
+    own books, CourseOffering#financials_summary): what registrations
+    brought in, the instructor's share, what's left. Drawn once there's
+    money in it. Locals: page. %>
+<%
+  run = page.current_run
+  money = page.course_money
+%>
+<section class="<%= ProductionPageHelper::CARD %>" data-production-course-money>
+  <%= render "shared/section_heading", padding: "px-4 py-3", title_basis: "basis-24", title: "Money" do %>
+    <%= render "shared/button", text: "This run's money", variant: "secondary", size: "small", path: manage_course_money_path(run) %>
+  <% end %>
+  <div class="px-4 py-3">
+    <% if page.runs.size > 1 %><div class="text-xs text-gray-500 mb-2"><%= run.title %></div><% end %>
+    <%= render "manage/productions/page/tiles", tiles: [
+          [ "Registrations", money[:gross_cents] / 100.0, "#{money[:confirmed_count]} paid" ],
+          [ "Instructor's share", money[:payout_cents] / 100.0, nil ],
+          [ "What's left", money[:net_cents] / 100.0, "after fees" ]
+        ] %>
+  </div>
+</section>

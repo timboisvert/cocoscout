@@ -59,6 +59,17 @@ RSpec.describe "Mics pre-launch checklist", type: :request do
       expect(event).not_to be_nil
       expect(event["eventStatus"]).to start_with("https://schema.org/Event")
       expect(event["location"]["@type"]).to eq("Place")
+      # Search Console, 2026-11-08: Events missing endDate, offers, organizer, performer.
+      expect(Time.iso8601(event["endDate"])).to eq(Time.iso8601(event["startDate"]) + 2.hours)
+      expect(event["organizer"]).to eq("@type" => "Organization", "name" => "Cafe Mustache")
+      expect(event["performer"]).to eq("@type" => "PerformingGroup", "name" => "Mustache Mic")
+      expect(event["offers"]).to eq([ { "@type" => "Offer", "name" => "Free", "price" => "0.00", "priceCurrency" => "USD",
+                                        "availability" => "https://schema.org/InStock", "url" => mics_detail_url(mic.slug) } ])
+
+      mic.update!(cost: :pay_to_perform, cover_amount_cents: 500)
+      get mics_detail_path(mic.slug)
+      offer = jsonld_blocks(response.body).detect { |b| b["@type"] == "Event" }["offers"].first
+      expect(offer).to include("name" => "Pay to perform", "price" => "5.00")
       breadcrumb = blocks.detect { |b| b["@type"] == "BreadcrumbList" }
       expect(breadcrumb["itemListElement"].size).to be >= 2
     end
@@ -78,6 +89,29 @@ RSpec.describe "Mics pre-launch checklist", type: :request do
         expect(doc.at('meta[property="og:description"]')).not_to be_nil
         expect(doc.at('meta[name="twitter:card"]')).not_to be_nil
         expect(doc.at('link[rel="canonical"]')).not_to be_nil
+      end
+    end
+  end
+
+  # Search Console, 2026-11-09: 562 filter combinations each named themselves
+  # as the original, and Google had to pick between them.
+  describe "a filtered page names the page without its filters" do
+    def canonical_and_og_url
+      doc = Nokogiri::HTML(response.body)
+      [ doc.css('link[rel="canonical"]').map { |l| l["href"] }, doc.at('meta[property="og:url"]')["content"] ]
+    end
+
+    it "on a city, a bucket, a mic and a search" do
+      {
+        "/mics/chicago-il?access=fully&age=21&signup=online&view=map&when=tonight" => "/mics/chicago-il",
+        "/mics/chicago-il/tonight?access=fully&signup=in_person" => "/mics/chicago-il/tonight",
+        "#{mics_detail_path(mic.slug)}?view=list" => mics_detail_path(mic.slug),
+        "/mics/search?q=mustache" => "/mics/search",
+        "/mics/chicago-il" => "/mics/chicago-il"
+      }.each do |visited, named|
+        get visited
+        expect(response).to have_http_status(:ok), visited
+        expect(canonical_and_og_url).to eq([ [ "http://www.example.com#{named}" ], "http://www.example.com#{named}" ]), visited
       end
     end
   end

@@ -19,10 +19,11 @@ RSpec.describe "V1.1 decisions", type: :request do
     expect(response.body).not_to include("Start producing")
   end
 
-  it "keeps superadmin, billing and the marketing pages out of the app" do
+  it "keeps billing and the marketing pages out of the app, and superadmin in it (Tim, 2026-11-14)" do
     rules = JSON.parse(Rails.root.join("public/hotwire-native/nav-2/path-configuration.json").read)["rules"]
     safari = rules.find { |r| r.dig("properties", "open_in") == "safari" }
-    expect(safari["patterns"]).to include("^/superadmin", "^/manage/billing", "^/pricing", "^/for-producers")
+    expect(safari["patterns"]).to include("^/manage/billing", "^/pricing", "^/for-producers")
+    expect(safari["patterns"]).not_to include("^/superadmin")
   end
 
   it "reorders roles by touch from the grip only, so the page still scrolls over the cards" do

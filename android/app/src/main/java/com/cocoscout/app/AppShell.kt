@@ -63,6 +63,14 @@ object AppShell {
             .apply()
     }
 
+    private val _menuOpen = MutableStateFlow(false)
+    /** The menu sheet is up: Coco in a page's toolbar opens it (MenuOverlay draws it). */
+    val menuOpen: StateFlow<Boolean> = _menuOpen.asStateFlow()
+
+    fun showMenu(show: Boolean = true) {
+        _menuOpen.value = show
+    }
+
     private var activity: MainActivity? = null
     /** Signed in or out, as the screen was last built for (from the cache at launch). */
     private var shownSignedIn: Boolean? = null
@@ -73,7 +81,7 @@ object AppShell {
     private lateinit var appContext: Context
 
     /**
-     * Starts with last time's menu, so the button is there right away for
+     * Starts with last time's menu, so Coco is there right away for
      * someone still signed in, and last time's V1.1 menu, so the first tap
      * draws it. It used to start without one, so a tap before the first
      * page's message flashed the V1 sheet (Tim, 2026-11-02). The page's own
@@ -185,6 +193,7 @@ object AppShell {
      * page that sent the menu finishes first.
      */
     private fun startOver(path: String?) {
+        _menuOpen.value = false
         val navigator = activity?.currentNavigator ?: return
         android.os.Handler(android.os.Looper.getMainLooper()).post {
             navigator.reset {

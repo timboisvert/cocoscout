@@ -282,12 +282,20 @@
 
       <%# Tickets and staff on the dates coming off: said, never acted on. When
           there's anything, Apply waits for "I'll take care of these". %>
-      <% gate = @removal_impact&.any? %>
+      <% staff_gate = @staff_impact&.people? %>
+      <% gate = @removal_impact&.any? || staff_gate %>
       <%= render "date_removal_impact", impact: @removal_impact, wizard: true if @removal_impact %>
+      <%# Who's scheduled for a service this takes off a date: those shifts do
+          come off, when the amendment takes effect. %>
+      <% if @staff_impact %>
+        <%= render "service_staff_impact", impact: @staff_impact,
+              lead: (@contract.signing_mode_esign? && @contract.contract_versions.any? ? "This amendment taking effect (now, or once it's signed if you send it for a signature)" : "Applying this amendment") %>
+      <% end %>
 
       <%= form_with url: apply_amendments_manage_contract_path(@contract), method: :post, local: true,
             data: (gate ? { controller: "acknowledge-gate" } : {}) do %>
-        <%= render "date_removal_acknowledge", impact: @removal_impact if gate %>
+        <%= render "date_removal_acknowledge", impact: @removal_impact if @removal_impact&.any? %>
+        <%= render "service_staff_acknowledge", impact: @staff_impact if staff_gate %>
         <%# Does the counterparty need to sign this? Only meaningful for e-sign
             contracts that have been signed once already — an offline one has no
             signature to re-engage. %>

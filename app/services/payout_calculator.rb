@@ -22,8 +22,13 @@ class PayoutCalculator
     # { "Person_12" => 2, "guest_9" => 1 }. role_names — the show roles each
     # payee holds, { "Person_12" => ["MC"] } — is read off the show's cast
     # unless given.
-    def calculate(show:, rules:, act_counts: {}, role_names: nil, persist: true)
-      new(show: show, rules: rules, act_counts: act_counts, role_names: role_names, persist: persist).calculate
+    # keep: lines that are already paid (or on a submitted run) and must
+    # stand as they are. Everyone else's lines are rebuilt; for a payee with
+    # a kept line, the difference between what the show now pays them and
+    # what the kept lines add up to becomes a correction line (see
+    # ShowPayoutLineItem#correction_of).
+    def calculate(show:, rules:, act_counts: {}, role_names: nil, persist: true, keep: [])
+      new(show: show, rules: rules, act_counts: act_counts, role_names: role_names, persist: persist, keep: keep).calculate
     end
 
     # Preview calculation without persisting (for UI feedback)
@@ -32,7 +37,8 @@ class PayoutCalculator
     end
   end
 
-  def initialize(show: nil, rules:, preview_financials: nil, preview_performer_count: nil, act_counts: {}, role_names: nil, persist: true)
+  def initialize(show: nil, rules:, preview_financials: nil, preview_performer_count: nil, act_counts: {}, role_names: nil, persist: true, keep: [])
+    @keep = Array(keep)
     @show = show
     @rules = rules&.deep_stringify_keys || {}
     @preview_financials = preview_financials
@@ -221,16 +227,18 @@ class PayoutCalculator
     # Persist line items
     payout = @show.show_payout
     ActiveRecord::Base.transaction do
-      # Clear existing line items (also clears advance recoveries via dependent: :destroy)
-      payout.line_items.destroy_all
+      # Clear existing line items (also clears advance recoveries via dependent: :destroy).
+      # Lines already paid stand; each is matched to its payee below.
+      kept = payout.line_items.where(id: @keep.map(&:id)).to_a
+      payout.line_items.where.not(id: kept.map(&:id)).destroy_all
+      kept_by_payee = kept.group_by(&:pay_choice_key)
 
       line_item_hashes.each do |item|
         # A guest has no record of their own; the slot they were paid for
         # rides along in the details so the line can be matched back to it.
         details = item[:calculation_details] || {}
         details = details.merge(guest_assignment_id: item[:guest_assignment_id]) if item[:is_guest]
-
-        payout.line_items.create!(
+        attrs = {
           payee: item[:payee],
           is_guest: item[:is_guest] || false,
           guest_name: item[:guest_name],
@@ -238,9 +246,22 @@ class PayoutCalculator
           shares: item[:shares],
           calculation_details: details,
           is_individual_allocation: item[:is_individual_allocation] || false
-        )
+        }
+
+        key = [ item[:payee]&.class&.polymorphic_name, item[:payee]&.id, item[:guest_name], attrs[:is_individual_allocation] ]
+        if (paid = kept_by_payee.delete(key))
+          correct!(payout, paid, attrs)
+        else
+          payout.line_items.create!(attrs)
+        end
         # Advances are no longer deducted at calc time — earnings post gross and
         # advances net against them on the payout ledger (see AdvancePayoutService).
+      end
+      # Paid, and the show no longer pays them anything: all of it is overpaid.
+      kept_by_payee.each_value do |paid|
+        first = paid.first
+        correct!(payout, paid, { payee: first.payee, is_guest: first.is_guest, guest_name: first.guest_name, amount: 0, shares: nil,
+                                 calculation_details: {}, is_individual_allocation: first.is_individual_allocation })
       end
 
       payout.update!(
@@ -256,6 +277,20 @@ class PayoutCalculator
   rescue => e
     Rails.logger.error "PayoutCalculator error: #{e.message}"
     { success: false, error: e.message }
+  end
+
+  # The difference between what the show now pays someone and what their
+  # paid lines add up to, as a correction line beside them. Nothing when
+  # they were paid exactly what the show pays.
+  def correct!(payout, paid, attrs)
+    difference = attrs[:amount].to_d - paid.sum { |line| line.amount.to_d }
+    return if difference.zero?
+
+    original = paid.find { |line| !line.correction? } || paid.first
+    details = (attrs[:calculation_details] || {}).merge("correction" => { "now" => attrs[:amount].to_f, "paid" => paid.sum { |line| line.amount.to_d }.to_f })
+    payout.line_items.create!(attrs.merge(amount: difference, calculation_details: details, correction_of: original))
+    # More is owed on a payout that read as paid: it is waiting on a payout again.
+    payout.revert_to_awaiting_payout! if difference.positive?
   end
 
   # Preview calculation without persisting

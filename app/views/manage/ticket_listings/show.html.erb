@@ -95,9 +95,9 @@
         # it has some left to give (CompRules); otherwise it says why not.
         comps_left = @listing.comps_left
         comps_open = live && @listing.effective_comps_enabled && (comps_left.nil? || comps_left.positive?)
-        comps_note = if !@listing.effective_comps_enabled then "Given away free · off on #{comp_rules_where(@listing)}"
-                     elsif live && comps_left == 0 then "Given away free · none left to give"
-                     elsif comps_open && comps_left then "Given away free · give #{comps_left} more"
+        comps_note = if !@listing.effective_comps_enabled then "Issued free · off on #{comp_rules_where(@listing)}"
+                     elsif live && comps_left == 0 then "Issued free · none left to issue"
+                     elsif comps_open && comps_left then "Issued free · issue #{comps_left} more"
                      end
       %>
       <%= render "shared/ticketing/show_numbers", stats: @stats, comps_modal: ("comps-modal" if comps_open), comps_note: comps_note, outside_modal: ("outside-sales-modal" if live) %>
@@ -127,8 +127,9 @@
       <div class="hidden sm:block"><%= render "shared/action_list", items: actions %></div>
       <% if live %>
         <%= render "manage/ticket_listings/comps_modal", id: "comps-modal", listing: @listing if comps_open %>
-        <%= render "manage/ticket_listings/outside_sales_modal", id: "outside-sales-modal", listing: @listing,
-              sources: @outside_sources, rows: @outside_rows %>
+        <%# The same table the show's day in Settle up opens (Tim, 2026-11-04). %>
+        <%= render "manage/settlement_days/outside_tickets_modal", id: "outside-sales-modal", title: "Sold elsewhere", show: show, listing: @listing,
+              financials: show.show_financials, editable: true, return_to: nil, settled: false %>
       <% end %>
 
       <div class="bg-white rounded-lg border border-gray-200 p-5">
@@ -166,14 +167,17 @@
 
   <%# On a phone (V1.1 plan §4): the show's status, its other actions in a ⋯
       menu, and the Door a thumb away (the existing /door page; tonight it's
-      the way in). %>
+      the way in). Only the status: how many are sold is in the tiles above
+      (Tim, 2026-11-06). %>
   <% door_action = actions.compact.find { |a| a[:text] == "Door" } %>
   <% menu_items = actions.compact.reject { |a| a[:text] == "Door" }.map { |a| { text: a[:text], path: a[:path], icon: Array(a[:icon]).join(" ") } } %>
   <div class="sm:hidden h-24" aria-hidden="true"></div>
-  <div class="sm:hidden fixed inset-x-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-gray-200 pl-4 <%= turbo_native_app? ? 'pr-[96px]' : 'pr-4' %> pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex items-center gap-2" data-ticketing-phone-bar>
-    <span class="flex-1 min-w-0 flex flex-col">
-      <span class="inline-flex self-start items-center rounded-md px-2 py-0.5 text-xs font-medium <%= status_classes %>"><%= status_label %></span>
-      <span class="text-xs text-gray-600 truncate mt-0.5"><%= @stats.sold %> sold<% if door_phase.in?(%i[presale door]) %> · tonight<% end %></span>
+  <%# The frosted white is on a layer behind the bar's content, not on the
+      bar: a blur on the bar itself would hold the ⋯ sheet inside it, with
+      no dimmed page behind and nowhere to tap to close. %>
+  <div class="sm:hidden fixed inset-x-0 bottom-0 z-30 before:content-[''] before:absolute before:inset-0 before:-z-10 before:bg-white/95 before:backdrop-blur border-t border-gray-200 <%= phone_bar_room %> flex items-center gap-2" data-ticketing-phone-bar>
+    <span class="flex-1 min-w-0">
+      <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium <%= status_classes %>"><%= status_label %></span>
     </span>
     <%= render "shared/action_menu", id: "ticket-listing-#{@listing.id}-actions", items: menu_items, title: "This show" %>
     <% if door_action %>

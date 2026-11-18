@@ -4,6 +4,8 @@
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
 
   <% delete_location_cid = "confirm-delete-location-#{@location.id}" %>
+  <% archive_location_cid = "confirm-archive-location-#{@location.id}" %>
+  <% other_locations = Current.organization.locations.active.where.not(id: @location.id).order(:created_at) %>
   <%= render partial: "shared/top_menu", locals: {
     breadcrumbs: [
       ["Organizations", manage_organizations_path],
@@ -12,11 +14,34 @@
     text: @location.name,
     links: (@is_owner || @role == "manager") ? [
       { icon: "pencil", text: "Edit Location", path: "#", data: { action: "click->location-spaces#openEditLocationModal" } },
+      { icon: "archive-box", text: (@location.archived? ? "Restore Location" : "Archive Location"), type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: archive_location_cid } },
       { icon: "trash", text: "Delete Location", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: delete_location_cid }, variant: "primary" }
     ] : []
   } %>
 
   <% if @is_owner || @role == "manager" %>
+    <% if @location.archived? %>
+      <%= render "shared/confirm_modal",
+            id: archive_location_cid,
+            title: "Restore this location?",
+            message: "#{@location.name} will be back in the locations list and can be chosen for new shows and events.",
+            confirm_text: "Restore",
+            url: restore_manage_location_path(@location),
+            method: :patch %>
+    <% else %>
+      <% archive_message = "#{@location.name} and its spaces will leave the locations list and can't be chosen for anything new. Past and upcoming shows, rentals and contracts that already use it keep it, and you can restore it at any time." %>
+      <% if @location.default? && other_locations.any? %>
+        <% archive_message += " #{other_locations.first.name} will become the default location." %>
+      <% end %>
+      <%= render "shared/confirm_modal",
+            id: archive_location_cid,
+            title: "Archive this location?",
+            message: archive_message,
+            confirm_text: "Archive",
+            confirm_icon: "archive-box",
+            url: archive_manage_location_path(@location),
+            method: :patch %>
+    <% end %>
     <%= render "shared/confirm_modal",
           id: delete_location_cid,
           title: "Delete location?",
@@ -32,6 +57,13 @@
     <div class="lg:col-span-1">
       <div class="bg-white border border-gray-200 rounded-lg p-6">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">Location Details</h2>
+
+        <% if @location.archived? %>
+          <p class="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mb-4">
+            <span class="font-medium text-gray-900">Archived <%= @location.archived_at.strftime("%b %-d, %Y") %>.</span>
+            It isn't offered for anything new. Shows, rentals and contracts that already use it are unchanged.
+          </p>
+        <% end %>
 
         <dl class="space-y-3">
           <div>

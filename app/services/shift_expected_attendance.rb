@@ -5,9 +5,8 @@
 # everyone holding a ticket, comps and tickets sold on other sites included.
 # Just the number: no names, no money.
 #
-# A shift covers the shows it's tied to (Shift#covered_shows); a house shift
-# with none covers the organization's shows it overlaps, the rule the
-# scheduling page uses for coverage. A show with nothing on sale is listed
+# The shows are the shift's Shift#shows_on_duty: a show-specific shift's own
+# show(s), a house shift's whole night. A show with nothing on sale is listed
 # with no count.
 class ShiftExpectedAttendance
   Line = Data.define(:show, :expected) do
@@ -30,11 +29,7 @@ class ShiftExpectedAttendance
     shifts = shifts.select { |shift| showing.include?(shift.organization_id) }
     return {} if shifts.empty?
 
-    targets = shifts.to_h do |shift|
-      covered = shift.covered_shows
-      covered = overlapping_shows(shift) if covered.empty?
-      [ shift.id, covered.reject(&:canceled).uniq.sort_by(&:date_and_time) ]
-    end
+    targets = shifts.to_h { |shift| [ shift.id, shift.shows_on_duty ] }
     show_ids = targets.values.flatten.map(&:id).uniq
     listings = TicketListing.where(show_id: show_ids).where.not(status: %w[draft canceled]).index_by(&:show_id)
     stats = Ticketing::ListingStats.for(listings.values)
@@ -46,14 +41,4 @@ class ShiftExpectedAttendance
       end
     end
   end
-
-  # The organization's shows a house shift overlaps (a show that starts before
-  # the shift ends and ends after it starts).
-  def self.overlapping_shows(shift)
-    Show.joins(:production).where(productions: { organization_id: shift.organization_id }, canceled: false)
-        .where("shows.date_and_time < ? AND shows.date_and_time > ?", shift.ends_at, shift.starts_at - 12.hours)
-        .includes(:production, :space_rental).to_a
-        .select { |show| shift.starts_at < show.ends_at && shift.ends_at > show.date_and_time }
-  end
-  private_class_method :overlapping_shows
 end

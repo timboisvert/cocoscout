@@ -12,9 +12,9 @@
         android:layout_height="match_parent"
         app:defaultNavHost="false" />
 
-    <!-- The floating Coco menu button (MenuButton), over every page. -->
+    <!-- The menu sheet and Tap to Pay's screens, over every page. -->
     <androidx.compose.ui.platform.ComposeView
-        android:id="@+id/menu_button"
+        android:id="@+id/overlays"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end" />

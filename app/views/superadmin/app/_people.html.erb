@@ -1,0 +1,43 @@
+<%
+  period = report.active(report.days)
+  stickiness = report.stickiness
+  people = report.most_active
+  daily = report.daily
+  average = (daily.sum { |_, counts| counts.values.sum } / daily.size.to_f).round(1)
+%>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+  <div class="bg-white border border-gray-200 rounded-lg p-4">
+    <div class="text-sm text-gray-500">In the app, last <%= report.days %> days</div>
+    <div class="text-3xl font-semibold text-gray-900 tabular-nums mt-1"><%= number_with_delimiter(period[:total]) %></div>
+  </div>
+  <div class="bg-white border border-gray-200 rounded-lg p-4">
+    <div class="text-sm text-gray-500">On a usual day</div>
+    <div class="text-3xl font-semibold text-gray-900 tabular-nums mt-1"><%= average %></div>
+    <div class="text-xs text-gray-500 mt-1">people a day, on average</div>
+  </div>
+  <div class="bg-white border border-gray-200 rounded-lg p-4">
+    <div class="text-sm text-gray-500">Daily share of the month's people</div>
+    <div class="text-3xl font-semibold text-gray-900 tabular-nums mt-1"><%= stickiness ? "#{stickiness}%" : "–" %></div>
+    <div class="text-xs text-gray-500 mt-1">the average day against everyone in 30 days</div>
+  </div>
+</div>
+
+<div class="bg-white border border-gray-200 rounded-lg p-5" data-most-active>
+  <h2 class="font-semibold text-gray-900 mb-1">In the app most often</h2>
+  <p class="text-xs text-gray-500 mb-3">Days in the app out of the last <%= report.days %>.</p>
+  <% if people.any? %>
+    <table class="w-full text-sm">
+      <tbody class="divide-y divide-gray-100">
+        <% people.each do |user, days| %>
+          <% person = user.default_person %>
+          <tr>
+            <td class="py-1.5"><%= person ? link_to(person.name, person_detail_path(person), class: "text-pink-600 hover:text-pink-700") : user.email_address %></td>
+            <td class="py-1.5 text-right tabular-nums"><%= pluralize(days, "day") %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p class="text-sm text-gray-500">Nobody in the app in the last <%= report.days %> days.</p>
+  <% end %>
+</div>

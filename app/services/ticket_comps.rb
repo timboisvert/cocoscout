@@ -80,7 +80,7 @@ class TicketComps
       if name.nil?
         problem.call("No name or email on this line.")
       elsif count && !count.between?(1, 99)
-        problem.call("#{count} isn't a number of tickets to give.")
+        problem.call("#{count} isn't a number of tickets to issue.")
       elsif email_them && email.nil?
         problem.call("No email to send #{name} their tickets.")
       elsif email && seen[email]
@@ -129,10 +129,10 @@ class TicketComps
     blockers << "This show was canceled." if listing.status == "canceled" || listing.show.canceled
     blockers << "Comps are off for this show." unless listing.effective_comps_enabled
     if comps_left && total > comps_left
-      blockers << "This date has #{comps_left.zero? ? 'no' : comps_left} #{'comp'.pluralize(comps_left)} left to give, and this list is #{total}."
+      blockers << "This date has #{comps_left.zero? ? 'no' : comps_left} #{'comp'.pluralize(comps_left)} left to issue, and this list is #{total}."
     end
     if allowance_left && total > allowance_left
-      blockers << "You can give #{allowance_left.zero? ? 'no' : allowance_left} more #{'comp'.pluralize(allowance_left)} for this date, and this list is #{total}."
+      blockers << "You can issue #{allowance_left.zero? ? 'no' : allowance_left} more #{'comp'.pluralize(allowance_left)} for this date, and this list is #{total}."
     end
     short = seats.select { |s| s[:left] && s[:asked] > s[:left] }
     short.each { |s| blockers << "#{s[:tier].name} has #{s[:left]} #{'seat'.pluralize(s[:left])} left, and this list needs #{s[:asked]}." }
@@ -151,7 +151,7 @@ class TicketComps
     # gives no more than it has left, whoever is giving.
     raise Error, "Comps are off for this show." unless listing.effective_comps_enabled
     if (left = listing.comps_left) && left < guests.sum { |g| g.quantity.to_i }
-      raise Error, left.zero? ? "This date has no comps left to give." : "This date has #{left} #{'comp'.pluralize(left)} left to give."
+      raise Error, left.zero? ? "This date has no comps left to issue." : "This date has #{left} #{'comp'.pluralize(left)} left to issue."
     end
 
     bad = guests.find { |g| g.name.blank? || g.quantity.to_i < 1 || g.tier.nil? || (g.email.present? && !g.email.match?(URI::MailTo::EMAIL_REGEXP)) }
@@ -182,6 +182,76 @@ class TicketComps
     orders
   rescue Ticketing::Inventory::SoldOut
     raise Error, sold_out_message(listing, requests)
+  end
+
+  # ---- Changing a comp after it's issued (Tim, 2026-11-17) --------------
+  # The side that issued a comp can change the guest's name or email, or
+  # remove it, until the show starts: the people on a contract from the
+  # date's ticket sales page on My, and the people who run a connected
+  # organization or a production team manager from their sales page
+  # (GivesComps). Any of them, for any comp their side issued: it doesn't
+  # matter who on it did (TicketSalesAccess.comp_side). The organization's
+  # own managers do the same from the order's page.
+
+  # The comps on a date this person's side issued: order ids.
+  def self.side_ids(listing, user)
+    user ? TicketSalesAccess.comp_ids_of(listing, TicketSalesAccess.comp_side(user, listing)) : []
+  end
+
+  # ...and the ones they may still change: all of them until the show starts.
+  def self.changeable_ids(listing, user)
+    listing.show.date_and_time > Time.current ? side_ids(listing, user) : []
+  end
+
+  # Whether this comp is one of them, and still holds tickets.
+  def self.changeable_by?(order, user)
+    return false unless order&.channel == "comp"
+
+    changeable_ids(order.ticket_listing, user).include?(order.id) && order.tickets.any? { |ticket| Ticket::SOLD_STATUSES.include?(ticket.status) }
+  end
+
+  # The guest's name and email, corrected. The email works as it does when
+  # a comp is issued (Tim, 2026-11-17). A comp that has an email had its
+  # tickets sent there: the email stays required, and a changed address
+  # gets the tickets. A comp without one keeps none unless email_them is
+  # on, which needs the email and sends the tickets. Returns whether the
+  # tickets were sent.
+  def self.change!(order, name:, email:, by:, email_them: false)
+    raise Error, "This comp can't be changed any more." unless changeable_by?(order, by)
+
+    name = name.to_s.squish
+    email = email.to_s.strip.downcase.presence
+    had = order.buyer_email.presence
+    raise Error, "Add the guest's name." if name.blank?
+    if had
+      raise Error, "Add their email. Their tickets were sent to #{had}, so this comp needs an address." if email.blank?
+    elsif email_them
+      raise Error, "Add their email to send their tickets, or switch off Email them their tickets." if email.blank?
+    else
+      email = nil
+    end
+    raise Error, "\"#{email}\" isn't an email address. Nothing was changed." if email && !email.match?(URI::MailTo::EMAIL_REGEXP)
+
+    send_tickets = email.present? && email != had&.downcase
+    order.update!(buyer_name: name, buyer_email: email)
+    TicketOrderConfirmationJob.perform_later(order.id) if send_tickets
+    send_tickets
+  rescue ActiveRecord::RecordInvalid => e
+    raise Error, e.record.errors.full_messages.to_sentence
+  end
+
+  # The comp taken back: its tickets stop working, its seats are free and
+  # it no longer counts against the giver's number. The guest is emailed if
+  # the comp has their address. Not once any of them has checked in.
+  def self.remove!(order, by:)
+    raise Error, "This comp can't be removed any more." unless changeable_by?(order, by)
+    if order.tickets.any?(&:checked_in?)
+      raise Error, "#{order.buyer_name.presence || 'This guest'} has already checked in, so this comp can't be removed."
+    end
+
+    TicketOrderRefund.issue!(order, by: by, reason: "Comp removed from the guest list", notify: true)
+  rescue TicketOrderRefund::Error => e
+    raise Error, e.message
   end
 
   # Which type ran short, and where its seats went: "Front Row VIP has no

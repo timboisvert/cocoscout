@@ -153,7 +153,8 @@ class VacancyNotificationService
 
         # Send as email
         if channel == :email || channel == :both
-          should_email = user.notification_enabled?(:vacancy_notifications)
+          # A notification now, with no email (NotificationGroups.email?).
+          should_email = NotificationGroups.email?(template_key, user) && user.notification_enabled?(:vacancy_notifications)
           if should_email
             begin
               VacancyNotificationMailer.with(
@@ -174,11 +175,7 @@ class VacancyNotificationService
     end
 
     def find_notifiable_users(production)
-      ProductionNotificationSetting.ensure_settings_for(production)
-      ProductionNotificationSetting.where(production: production, enabled: true)
-                                   .includes(:user)
-                                   .map(&:user)
-                                   .compact
+      ProductionNotificationSetting.users_to_notify(production)
     end
 
     def system_sender(_production)

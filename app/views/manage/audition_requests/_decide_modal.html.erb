@@ -1,0 +1,48 @@
+<%#
+  Decide one sign-up and send its email (cycles with no audition sessions):
+  the email this person will get, editable, then Send. The form carries its
+  own inputs, so it is an inline modal rather than shared/confirm_modal.
+
+  Locals: id, decision ("cast" or "rejected"), draft ({ subject:, body: }),
+  title, intro, confirm_text.
+%>
+<div id="<%= id %>"
+     class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+     data-controller="modal"
+     data-action="click->modal#closeOnBackdrop">
+  <%# A bottom sheet on a phone, a centered card from sm up. %>
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-xl sm:mx-4 overflow-hidden max-h-[92vh] flex flex-col"
+       data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between gap-3 bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white"><%= title %></h3>
+      <button type="button" data-action="click->modal#close" aria-label="Close"
+              class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <%= form_with url: manage_decide_signups_auditions_cycle_request_path(@production, @audition_cycle, @audition_request),
+          method: :post, class: "flex flex-col min-h-0" do %>
+      <%= hidden_field_tag :decision, decision, id: nil %>
+      <div class="px-6 py-5 space-y-4 overflow-y-auto">
+        <p class="text-sm text-gray-600"><%= intro %></p>
+        <div>
+          <label for="<%= id %>-subject" class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+          <%= text_field_tag :subject, draft[:subject], id: "#{id}-subject", required: true,
+                class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+        </div>
+        <div>
+          <label for="<%= id %>-body" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <%= rich_text_area_tag :body, draft[:body], id: "#{id}-body", class: "w-full min-h-[160px]" %>
+        </div>
+      </div>
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 px-6 py-4 bg-gray-50 border-t border-gray-200">
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button,
+              classes: "w-full sm:w-auto", data: { action: "click->modal#close" } %>
+        <%= render "shared/button", text: confirm_text, variant: "primary", size: "medium", type: :submit, classes: "w-full sm:w-auto" %>
+      </div>
+    <% end %>
+  </div>
+</div>

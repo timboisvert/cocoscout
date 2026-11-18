@@ -116,6 +116,8 @@ class LedgerPosting
     })
     raise Unbalanced, "entry #{entry.id} doesn't balance" unless entry.reload.balanced?
 
+    # A month already kept as a balance no longer is (BooksBalances).
+    BooksBalances.posted!(organization, [ entry_date, cash_date ].compact.min)
     entry
   end
 

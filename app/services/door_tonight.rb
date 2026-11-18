@@ -9,9 +9,12 @@
 # A show's door is open from the morning of the show (or 12 hours before, for
 # a show after midnight), or door_hours_before it when the organization sets
 # that, until an hour after it ends. A show with no end time set stays open
-# until 2 AM the night of the show, since nobody can say when it's done.
+# until 2 AM the night of the show, since nobody can say when it's done; one
+# that starts in the daytime, 4 hours after it starts (Tim, 2026-11-14: a
+# 1 PM matinee was still on Ticketing's coming up at 5 PM).
 module DoorTonight
-  ENDS_LATE = 2 # o'clock, the morning after a show with no end time
+  ENDS_LATE = 2 # o'clock, the morning after an evening show with no end time
+  DAYTIME_OPEN = 4.hours # after a daytime show with no end time starts
   AFTER_END = 1.hour
   # Before this hour, a show belongs to the night before (a 1 AM show is Friday night's).
   NIGHT_ROLLOVER = 6
@@ -43,14 +46,16 @@ module DoorTonight
   end
 
   # The listings in scope (joined to their shows) whose show is still on:
-  # today's, and last night's until its door closes. Lists of tonight's and
-  # upcoming shows (the Door's, Ticketing's) go by this, so a late show
+  # one that hasn't started, and one that has until its door closes. Lists of
+  # tonight's and upcoming shows (Ticketing's) go by this, so a late show
   # doesn't drop off at midnight while people are still buying at the door
-  # (Tim, 2026-10-15: until it ends, or 2 AM when nobody knows the end).
+  # (Tim, 2026-10-15: until it ends, or 2 AM when nobody knows the end), and
+  # a morning show is gone by the afternoon (Tim, 2026-11-14: an 11 AM show
+  # was still coming up at 5 PM; it went by the day, not the door).
   def self.still_on(scope, at: Time.current)
-    late = scope.where(shows: { date_and_time: (at - 1.day)...at.beginning_of_day })
-                .includes(show: :space_rental).select { |listing| closes(listing.show) > at }.map(&:id)
-    scope.where("shows.date_and_time >= ? OR ticket_listings.id IN (?)", at.beginning_of_day, late.presence || [ 0 ])
+    started = scope.where(shows: { date_and_time: (at - 1.day)...at })
+                   .includes(show: :space_rental).select { |listing| closes(listing.show) > at }.map(&:id)
+    scope.where("shows.date_and_time >= ? OR ticket_listings.id IN (?)", at, started.presence || [ 0 ])
   end
 
   # Where a show stands for the door (Tim, 2026-10-16), so pages lead with
@@ -103,9 +108,15 @@ module DoorTonight
   def self.closes(show)
     starts = show.date_and_time
     return show.ends_at + AFTER_END if show.duration_minutes.present? || show.space_rental.present?
+    return starts + DAYTIME_OPEN if daytime?(starts)
 
     night = (starts - NIGHT_ROLLOVER.hours).to_date
     [ (night + 1).in_time_zone.change(hour: ENDS_LATE), starts + 4.hours ].max
+  end
+
+  # From 6 AM until evening, when a show today says "Tonight" (ApplicationHelper).
+  def self.daytime?(starts)
+    starts.hour >= NIGHT_ROLLOVER && starts.hour < ApplicationHelper::EVENING_STARTS_AT_HOUR
   end
 
   def self.listings(organization_ids)

@@ -77,9 +77,14 @@ class DoorController < ApplicationController
   end
 
   # A tap on a party's row checks in one person (one: 1); its All button,
-  # everyone still out.
+  # everyone still out; a ticket's Check in in the party sheet, that ticket
+  # (ticket_id).
   def check_in_order
     order = @listing.ticket_orders.paid_like.find(params[:order_id])
+    if params[:ticket_id].present?
+      return render json: result_json(door.admit(order.tickets.find(params[:ticket_id])))
+    end
+
     if params[:one].present?
       result = door.check_in_next(order)
       return render json: result_json(result) if result
@@ -89,18 +94,42 @@ class DoorController < ApplicationController
     end
 
     results = door.check_in_order(order)
-    admitted = results.count { |r| r.kind == :admitted }
-    render json: { kind: admitted.positive? ? "admitted" : "already",
-                   message: admitted.positive? ? "Admitted #{admitted} — #{order.buyer_name.presence || order.code}" : "Everyone on this order is already in",
+    admitted = results.select { |r| r.kind == :admitted }
+    render json: { kind: admitted.any? ? "admitted" : "already",
+                   message: admitted.any? ? "Admitted #{admitted.size} — #{order.buyer_name.presence || order.code}" : "Everyone on this order is already in",
                    holder: order.buyer_name.presence, party: party_line(order), items: items_json(order),
+                   # The banner's Uncheck takes back the whole tap.
+                   ticket_id: admitted.any? ? admitted.map { |r| r.ticket.id }.join(",") : nil,
                    counts: door.counts }
   end
 
-  def undo
-    ticket = @listing.tickets.find(params[:ticket_id])
-    ok = door.undo(ticket, manager: @level == :manager)
-    render json: { ok: ok, message: ok ? "Check-in undone" : "That can't be undone from here", counts: door.counts }
+  # A party's sheet (Tim, 2026-11-16), opened by tapping its name: each
+  # ticket in or out, with Check in or Uncheck, and everyone at once.
+  def party
+    order = @listing.ticket_orders.paid_like.includes(tickets: [ :ticket_tier, :ticket_pass, :bundle_tier, { checked_in_by: :default_person } ]).find(params[:order_id])
+    render partial: "door/party_sheet", locals: { order: order, listing: @listing, ahead: @listing.door_ahead? }
   end
+
+  # Check-ins taken back (TicketDoor#uncheck): the tickets named (ticket_id,
+  # one or several joined by commas: a banner's Uncheck), or everyone on an
+  # order (order_id).
+  def uncheck
+    tickets = if params[:order_id].present?
+      @listing.ticket_orders.paid_like.find(params[:order_id]).tickets.where(status: "checked_in").to_a
+    else
+      @listing.tickets.where(id: params[:ticket_id].to_s.split(",").map(&:strip).compact_blank).to_a
+    end
+    taken = door.uncheck(tickets)
+    order = taken.first&.ticket_order || tickets.first&.ticket_order
+    who = order && (order.buyer_name.presence || order.code)
+    message = if taken.empty? then "Nobody to uncheck there"
+    elsif taken.size == 1 then [ "Unchecked", who ].compact.join(" — ")
+    else [ "Unchecked #{taken.size}", who ].compact.join(" — ")
+    end
+    render json: { ok: taken.any?, message: message, party: order && party_line(order.reload), counts: door.counts }
+  end
+  # The iOS and Android scanners' Undo on a fresh scan calls this address.
+  alias_method :undo, :uncheck
 
   # The door list filters on the page; pass holders aren't on it, so the
   # filter box asks here for them alone (passes_only).
@@ -301,6 +330,7 @@ class DoorController < ApplicationController
   def set_listing
     @listing = TicketListing.includes(:organization, :production, show: %i[location location_space]).find(params[:listing_id])
     @level = TicketingDoorAccess.level_for(Current.user, @listing.organization)
+    use_time_zone_of(@listing.organization)
     profile = @listing.organization.ticketing_profile
     raise ActiveRecord::RecordNotFound unless @level && profile&.enabled?
   end

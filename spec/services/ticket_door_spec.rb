@@ -3,7 +3,7 @@
 require "rails_helper"
 
 # The door on show night: scans, the wrong-ticket cases, whole parties,
-# undoing a mistake, and cash sales and comps at the door.
+# unchecking a mistake, and cash sales and comps at the door.
 RSpec.describe TicketDoor do
   let(:org) { create(:organization, :pro) }
   # Tonight's show, its door open (DoorTonight): the door before it opens
@@ -96,19 +96,34 @@ RSpec.describe TicketDoor do
     expect(door.check_in_next(order)).to be_nil
   end
 
-  describe "#undo" do
-    it "lets door staff undo their own check-in for a couple of minutes, and managers any time" do
-      ticket = sold_order(1).tickets.sole
-      door.check_in(ticket.code)
-      expect(door.undo(ticket.reload)).to be(true)
-      expect(ticket.reload.status).to eq("valid")
+  describe "#uncheck" do
+    # Tim, 2026-11-16: a mistake is often found later, by someone else.
+    it "lets anyone at tonight's door take back any check-in, at any time, and keeps a record" do
+      order = sold_order(2)
+      first, second = order.tickets.order(:id).to_a
+      door.check_in_order(order)
+      other = create(:user)
 
-      door.check_in(ticket.code)
-      travel 3.minutes do
-        expect(door.undo(ticket.reload)).to be(false)
-        expect(described_class.new(listing, create(:user)).undo(ticket, manager: false)).to be(false)
-        expect(described_class.new(listing, create(:user)).undo(ticket, manager: true)).to be(true)
+      travel 30.minutes do
+        expect(described_class.new(listing, other).uncheck([ first.reload ])).to eq([ first ])
       end
+      expect([ first.reload.status, first.checked_in_at, first.checked_in_by_id ]).to eq([ "valid", nil, nil ])
+      expect(second.reload.status).to eq("checked_in")
+      record = first.unchecks.sole
+      expect([ record.unchecked_by, record.checked_in_by, record.ticket_listing ]).to eq([ other, door_person, listing ])
+      expect(record.checked_in_at).to be_present
+
+      # Its code scans again.
+      expect(door.check_in(first.code).kind).to eq(:admitted)
+    end
+
+    it "skips a ticket that isn't in, and one for another show" do
+      ticket = sold_order(1).tickets.sole
+      elsewhere = create(:ticket_listing, organization: org)
+      expect(door.uncheck([ ticket ])).to eq([])
+      door.check_in(ticket.code)
+      expect(described_class.new(elsewhere, door_person).uncheck([ ticket.reload ])).to eq([])
+      expect(TicketUncheck.count).to eq(0)
     end
   end
 
@@ -129,6 +144,53 @@ RSpec.describe TicketDoor do
 
       line = listing.show.reload.show_financials.ticket_sales_lines.sole
       expect([ line.tickets_sold, line.amount.to_f ]).to eq([ 2, 40.0 ])
+    end
+
+    # Cash that holds its tax (Tim, 2026-11-13): nobody makes change in
+    # coins. The box office says so once; a production and a date can each
+    # say otherwise. Cards and online sales are never changed by it.
+    context "when the box office holds cash's tax included in the price" do
+      before do
+        TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")
+        TicketingProfile.for(org).update!(cash_tax: "included")
+      end
+
+      it "takes a round $20 a ticket and carves the tax out of it, in the order and in the books" do
+        order = door.sell({ general.id.to_s => "2" }, kind: "cash")
+
+        expect([ order.subtotal_cents, order.tax_cents, order.total_cents ]).to eq([ 4_000, 372, 4_000 ])
+        expect(TaxLine.where(taxable: order.tickets).pluck(:included).uniq).to eq([ true ])
+        expect(ChartOfAccounts.account(org, :door_cash).natural_balance_cents).to eq(4_000)
+        expect(ChartOfAccounts.account(org, :ticket_income).natural_balance_cents).to eq(3_628)
+        expect(ChartOfAccounts.account(org, :tax_to_remit).natural_balance_cents).to eq(372)
+        expect(LedgerPosting.trial_balance(org).values.sum).to eq(0)
+      end
+
+      it "leaves a card sale as it was: tax on top" do
+        order = TicketCheckout.start!(listing: listing, quantities: { general.id.to_s => "1" }, channel: "door_card", at_door: true)
+        expect(order.tax_cents).to eq(205)
+        expect(TaxLine.where(taxable: order.tickets).pluck(:included).uniq).to eq([ false ])
+      end
+
+      it "follows the date's own say first, then the production's, then the box office's" do
+        expect(listing.effective_cash_tax).to eq("included")
+
+        listing.update!(cash_tax: "same")
+        expect(listing.effective_cash_tax).to eq("same")
+        expect(door.sell({ general.id.to_s => "1" }, kind: "cash").total_cents).to eq(2_205)
+
+        listing.update!(cash_tax: nil)
+        setup = ProductionTicketing.create!(organization: org, production: listing.production, cash_tax: "same")
+        listing.update_columns(production_ticketing_id: setup.id) if listing.has_attribute?(:production_ticketing_id)
+        expect(listing.reload.effective_cash_tax).to eq(listing.production_ticketing ? "same" : "included")
+      end
+    end
+
+    it "prices cash like any other sale unless the box office says otherwise" do
+      TicketTaxSetting.save!(org, name: "Sales tax", percent: "10.25", mode: "added")
+      expect(TicketingProfile.for(org).cash_tax).to eq("same")
+      expect(listing.cash_tax_mode).to be_nil
+      expect(door.sell({ general.id.to_s => "1" }, kind: "cash").total_cents).to eq(2_205)
     end
 
     it "comps for free: nothing in the books, counted as comped, not sold, and they're in" do

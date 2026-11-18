@@ -98,9 +98,15 @@ module Manage
         shows.first&.date_and_time&.to_date || @range.first
       pro_manager = Current.organization.on_paid_plan? && (Current.user.superadmin? || Current.organization.manageable_by?(Current.user))
       @home = HomeWeek.new(organization: Current.organization, user: Current.user, days: @range.to_a,
-                           shows: shows, show_cast: build_show_cast(shows), pro_manager: pro_manager)
+                           shows: shows, show_cast: build_show_cast(shows), pro_manager: pro_manager,
+                           productions: @productions)
       @calendar_months = calendar_months_around(@week_start)
       @show_dates = calendar_show_dates(@calendar_months.first.beginning_of_week, @calendar_months.last.end_of_month.end_of_week, productions: @productions)
+      # A day of auditions is a day with something on it, in the pickers too.
+      @show_dates |= AuditionSession.joins(:audition_cycle)
+                                    .where(audition_cycles: { production_id: @productions.map(&:id) })
+                                    .where(start_at: @calendar_months.first.beginning_of_week.beginning_of_day..@calendar_months.last.end_of_month.end_of_week.end_of_day)
+                                    .pluck(:start_at).map { |t| t.in_time_zone.to_date }.to_set
       @week_statuses = @home.staffing_on? ? calendar_week_statuses(@calendar_months.first.beginning_of_week, @calendar_months.last.end_of_month.end_of_week) : {}
 
 
@@ -110,7 +116,7 @@ module Manage
         # Only what can be paid now: money already in a run, or for a show
         # that hasn't happened, isn't anything to do (Tim, 2026-11-02).
         payable = todo.payouts.amounts[:to_pay].to_f
-        @home_attention = { days: todo.settle_days.count.to_i, oldest_day: todo.settle_days.items.first&.param, payouts: payable > 0.004 ? 1 : 0, payouts_amount: payable,
+        @home_attention = { days: todo.settle_days.count.to_i, oldest_day: todo.settle_dates.first&.iso8601, payouts: payable > 0.004 ? 1 : 0, payouts_amount: payable,
                             hours: Current.organization.staff_time_entries.pending.distinct.count(:person_id) }
       end
       @home_status = home_status_items(pro_manager)
@@ -179,6 +185,15 @@ module Manage
         c = Current.organization.contracts.where(signing_state: "out_for_signature").count
         items << { key: "contracts", topic: "Contracts", tone: :gray, text: "#{c} #{'contract'.pluralize(c)} out for signature", action: { path: manage_contracts_path } } if c.positive?
       end
+      # A contract of this user's own, with another organization, that can
+      # be connected to this one (ContractConnections.offer!): theirs alone
+      # to see, and gone once they connect it or say "Not now".
+      ContractConnections.offers_for(Current.user, Current.organization).each do |contract|
+        items << { key: "connect-#{contract.id}", topic: "Contracts", tone: :pink,
+                   text: "Your show is booked at #{contract.organization.name}: you can connect that contract to #{Current.organization.name}",
+                   detail: "Its dates and their ticket sales would appear here, in a production of yours.",
+                   action: { path: my_connect_contract_path(contract) } }
+      end
       items.concat(home_status_examples(items.map { |i| i[:key] })) if params[:all_actions].present? && (Rails.env.development? || Current.user.superadmin?)
       items.sort_by { |i| [ TOPIC_ORDER.index(i[:topic]) || 99, TONE_ORDER[i[:tone]] || 9 ] }
     end
@@ -199,7 +214,9 @@ module Manage
         { key: "ticketing-withdrawal", topic: "Ticketing", tone: :amber, text: "A withdrawal to your bank didn't go through", action: { path: manage_ticketing_path } },
         { key: "financials", topic: "Money", tone: :gray, text: "2 shows that need financials", action: { path: manage_money_financials_path } },
         { key: "pay", topic: "Money", tone: :pink, text: "$380.00 to pay", action: { path: manage_money_payouts_path } },
-        { key: "contracts", topic: "Contracts", tone: :gray, text: "1 contract out for signature", action: { path: manage_contracts_path } }
+        { key: "contracts", topic: "Contracts", tone: :gray, text: "1 contract out for signature", action: { path: manage_contracts_path } },
+        { key: "connect", topic: "Contracts", tone: :pink, text: "Your show is booked at Stars & Garters: you can connect that contract to #{Current.organization.name}",
+          detail: "Its dates and their ticket sales would appear here, in a production of yours.", action: { path: my_contracts_path } }
       ].reject { |i| present.include?(i[:key]) }.map { |i| i.merge(example: true) }
     end
 
@@ -376,7 +393,7 @@ module Manage
     # Shared data fetchers for use across controllers
     def fetch_locations
       Rails.cache.fetch(locations_cache_key, expires_in: 10.minutes) do
-        Current.organization.locations.order(:created_at).to_a
+        Current.organization.locations.active.order(:created_at).to_a
       end
     end
 

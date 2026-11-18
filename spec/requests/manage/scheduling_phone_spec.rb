@@ -118,6 +118,47 @@ RSpec.describe "Scheduling on a phone", type: :request do
     expect(doc.at_css("[data-shift-assign-sheet]")).to be_nil
   end
 
+  # The day's work was half a screen down, under four rows of buttons and
+  # pills (Tim, 2026-11-09). A phone now has an Actions box as Home does, a ⋯
+  # beside the day's name, and the bottom bar.
+  it "keeps desktop's status row off a phone, and shows the pages around Scheduling as section tiles" do
+    doc = page
+    expect(doc.at_css("[data-status-bar]")["class"]).to include("max-sm:hidden")
+    tiles = doc.at_css("[data-phone-scheduling-links]")
+    expect(tiles["class"]).to include("sm:hidden")
+    expect(tiles.css("[data-section-tiles] a").map { |a| a.text.squish }).to eq(%w[Availability Roles])
+    expect(doc.at_css("[data-scheduling-phone-bar]").text).to include("Draft")
+    # Nothing waiting: no lines above the calendar.
+    expect(doc.at_css("[data-scheduling-actions]")).to be_nil
+  end
+
+  it "says who can't make it in one line above the calendar, in the shape of Home's Actions" do
+    person = create(:person, name: "Haley", user: create(:user))
+    org.people << person
+    assignment = open_shift.shift_assignments.create!(person: person)
+    post manage_finalize_staffing_path(week_start: week_start.to_s)
+    assignment.decline!(reason: "Out of town")
+
+    doc = day_page(friday)
+    box = doc.at_css("[data-phone-day] [data-scheduling-actions]")
+    # Home's "Actions" heading, but no "Staff" topic: the page is already Scheduling.
+    expect(box.at_css("h2").text.squish).to eq("Actions")
+    row = box.at_css("[data-status='declined']")
+    expect(row.text.squish).to eq("1 person can't make it")
+    expect(row["data-modal-id"]).to eq("scheduling-declined")
+    # Above the calendar.
+    html = doc.at_css("[data-phone-day]").to_html
+    expect(html.index("data-scheduling-actions")).to be < html.index("data-day-strip")
+  end
+
+  it "says how staffed the day is, and never counts the shows listed right under it" do
+    summary = day_page(friday).at_css("[data-phone-day] [data-day-summary]")
+    expect(summary.text.squish).to match(/\AStaffed \d+ of \d+/)
+    expect(summary.text).not_to match(/\d+ shows?/)
+    # A day with a show and no shifts has nothing to count, so no bar at all.
+    expect(day_page(tuesday).at_css("[data-phone-day] [data-day-summary]")).to be_nil
+  end
+
   it "pins Publish to the bottom while the week is a draft" do
     bar = page.at_css("[data-scheduling-phone-bar]")
     expect(bar.text).to include("Draft", "Publish & notify")

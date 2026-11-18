@@ -48,17 +48,34 @@ RSpec.describe "Phase 3 pages on a phone", type: :request do
     expect(chips.at_css("button").text).to eq("{{#{fields.first}}}")
   end
 
-  it "drills into a production's sections on a phone, each with a way back" do
+  # Tim, 2026-11-08: the list you drilled into was a second way to do
+  # sections; a production's settings use the row and sheet like the rest.
+  it "opens a production's sections from the same sheet on a phone" do
     get edit_manage_production_path(production)
     tabs = doc.at_css("[data-controller='tabs']")
-    expect(tabs["data-tabs-drill-value"]).to eq("true")
-    list = tabs.at_css("[data-production-edit-sections]")
-    labels = list.css("button").map { |b| b.text.squish.delete_suffix(" Pro") }
+    expect(tabs["data-tabs-drill-value"]).to be_nil
+    picker = tabs.at_css("[data-production-edit-sections] [data-section-picker]")
+    expect(picker["class"]).to include("sm:hidden")
+    expect(picker.at_css("button")["data-modal-id"]).to eq("production-edit-sections-sheet")
+    expect(picker.at_css("[data-tabs-target='sectionLabel']").text.squish).to eq("Basic Information")
+    items = tabs.css("#production-edit-sections-sheet [data-tabs-target='sectionItem']")
+    labels = items.map { |b| b.text.squish.delete_suffix(" Pro") }
     expect(labels).to eq([ "Basic Information", "Visual Assets", "Documents", "Production Team", "Agreement", "Public Listing", "Pay", "Tickets", "Services", "Danger Zone" ])
+    expect(items.map { |b| b["data-index"].to_i }).to eq((0...labels.size).to_a)
+    expect(items.map { |b| b["data-action"] }.uniq).to eq([ "tabs#select modal#close" ])
     panels = tabs.css("[data-tabs-target='panel']")
     expect(panels.size).to eq(labels.size)
-    expect(panels.map { |p| p.at_css("[data-section-panel-header]").text.squish }).to eq(labels.map { |l| "Sections / #{l}" })
+    expect(response.body).not_to include("tabs#showList")
     expect(tabs.at_css("nav")["class"]).to include("hidden sm:flex")
+  end
+
+  it "heads a production's settings with its poster shape and name, and no counts" do
+    get edit_manage_production_path(production)
+    card = doc.at_css("[data-production-info-card]")
+    expect(card.at_css(".aspect-\\[3\\/4\\]")).to be_present
+    expect(card.at_css(".aspect-square")).to be_nil
+    expect(card.text).to include(production.name)
+    expect(card.text).not_to match(/\d+ shows|in talent pool/)
   end
 
   describe "a casting table" do

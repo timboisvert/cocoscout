@@ -1,4 +1,5 @@
-<%# One day in the Settle up list. Locals: day (SettleUp::Day) %>
+<%# One day in the Settle up list. Locals: day (SettleUp::Day), start
+    (optional: true for today while it's still going, whose button says so). %>
 <% money = ->(cents) { cents.negative? ? "−#{number_to_currency(-cents / 100.0)}" : number_to_currency(cents / 100.0) } %>
 <div class="grid grid-cols-1 sm:grid-cols-[150px_1fr_130px_110px] gap-x-4 gap-y-2 items-center px-5 py-3 border-t border-gray-100">
   <span>
@@ -15,7 +16,7 @@
     <% if day.settled? || day.before_start? %>
       <%= render "shared/button", text: "Open", variant: "secondary", size: "small", path: manage_money_settle_up_day_path(day.param) %>
     <% else %>
-      <%= render "shared/button", text: "Settle up", variant: "primary", size: "small", path: manage_money_settle_up_day_path(day.param) %>
+      <%= render "shared/button", text: (local_assigns[:start] ? "Start settling" : "Settle up"), variant: "primary", size: "small", path: manage_money_settle_up_day_path(day.param) %>
     <% end %>
   </span>
 </div>

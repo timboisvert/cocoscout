@@ -1,0 +1,20 @@
+<%# Inside the confirm form of a step that takes a service off dates where
+    people are scheduled to do it: the manager says they come off the
+    schedule, which unlocks the confirm button (acknowledge-gate on the form).
+    The token is the list they were shown; a list that has changed since
+    sends them back to read it.
+
+    Locals:
+      impact — ContractServiceStaffImpact for the change %>
+<% people = impact.people_count %>
+<% shifts = impact.removals.size %>
+<input type="hidden" name="staff_token" value="<%= impact.token %>">
+<label class="flex items-start gap-2 p-3 mb-4 border border-pink-200 bg-pink-50 rounded-lg cursor-pointer">
+  <input type="checkbox" name="staff_acknowledged" value="1"
+         class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+         data-acknowledge-gate-target="box" data-action="change->acknowledge-gate#update">
+  <span class="text-sm text-gray-900">
+    <span class="font-medium">Take <%= people == 1 ? "this person" : "these #{people} people" %> off the schedule.</span>
+    <span class="text-gray-600">The <%= shifts == 1 ? "shift" : "#{shifts} shifts" %> listed above <%= shifts == 1 ? "comes" : "come" %> off with this change.</span>
+  </span>
+</label>

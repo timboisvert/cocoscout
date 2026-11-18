@@ -1,0 +1,40 @@
+<%# A date's Fees and taxes tab, as its production's (Tim, 2026-11-13): who
+    pays the fees, how prices are shown and what cash comes to, the ones
+    above it or (the one override control) its own, then the tax, which is
+    the organization's. Locals: listing, setup. %>
+<%
+  inherited_fee = setup&.fee_mode.presence || ticketing_profile.default_fee_mode
+  inherited_cash = setup&.cash_tax.presence || ticketing_profile.cash_tax
+  inherited_display = setup&.price_display.presence || ticketing_profile.price_display
+  own_fees = listing.fee_mode.present? || listing.cash_tax.present? || listing.price_display.present?
+  tax = TicketTaxSetting.current(listing.organization)
+%>
+<div class="space-y-6">
+<%= form_with model: listing, url: manage_ticket_listing_path(listing), method: :patch do |f| %>
+  <%= hidden_field_tag :section, "fees" %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="fieldset-toggle" data-settings-card="fees">
+    <%= render "manage/ticketing/own_switch", title: "Fees, prices, and cash", what: "fees, prices, and cash settings", follows: (setup ? listing.production.name : "your box office"),
+          settings_path: (setup ? manage_edit_production_ticketing_path(listing.production, section: "fees") : manage_ticketing_settings_section_path(section: "tax")),
+          intro: "Who pays the fees, how a price reads to a buyer, and what cash comes to at the door.",
+          only: "this date", name: "ticket_listing[own_fees]", id: "ticket_listing_own_fees", checked: own_fees %>
+    <fieldset <%= "disabled" unless own_fees %> data-fieldset-toggle-target="fields" class="px-6 py-5 disabled:opacity-50">
+      <%= render "manage/ticketing/fees_fields", scope: "ticket_listing", fee_mode: listing.fee_mode.presence || inherited_fee,
+            price_display: listing.price_display.presence || inherited_display, cash_tax: listing.cash_tax.presence || inherited_cash %>
+    </fieldset>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
+  </div>
+<% end %>
+
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="tax">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Tax on tickets</h2>
+      <p class="text-sm text-gray-600 mt-1">One tax setting covers every production and date.</p>
+    </div>
+    <p class="px-6 py-4 text-sm text-gray-600">
+      <%= tax.set? ? "#{tax.percent}% #{tax.name.downcase}, #{tax.mode == 'included' ? 'included in prices' : 'added at checkout'}" : "No tax on tickets" %>.
+      <%= link_to "Change it in Ticketing settings", manage_ticketing_settings_section_path(section: "tax"), class: "font-medium text-pink-600 hover:text-pink-700" %>
+    </p>
+  </div>
+</div>

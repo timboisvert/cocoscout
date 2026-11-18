@@ -76,7 +76,7 @@ module Manage
     end
 
     def deliver
-      FollowerEmailSender.send!(@email, Current.user)
+      FollowerEmailSender.send!(@email, Current.user, buy_blocks: params[:buy_blocks].to_i)
       redirect_to manage_follower_email_path(@email), notice: "Sending to #{ActionController::Base.helpers.pluralize(@email.recipient_count, 'person')}."
     rescue FollowerEmailSender::Error => e
       redirect_to manage_edit_follower_email_path(@email), alert: e.message

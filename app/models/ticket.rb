@@ -27,6 +27,8 @@ class Ticket < ApplicationRecord
   belongs_to :seat_section, optional: true
 
   has_many :tax_lines, as: :taxable, dependent: :delete_all
+  # Check-ins taken back at the door, newest last.
+  has_many :unchecks, -> { order(:created_at) }, class_name: "TicketUncheck", dependent: :delete_all, inverse_of: :ticket
 
   validates :status, inclusion: { in: STATUSES }
   validates :code, presence: true, uniqueness: true

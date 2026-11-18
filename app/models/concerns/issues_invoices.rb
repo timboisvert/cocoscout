@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# An organization's invoices for money it's owed under contracts: numbered in
+# What an organization's invoices carry (Invoice, either kind): numbered in
 # order (SG-0012), from the details it sets in Contract Settings → Invoices.
 # Anything it leaves blank falls back to what CocoScout already knows (its
 # name, its tax address, its support email).
@@ -11,8 +11,6 @@ module IssuesInvoices
   INVOICE_DETAIL_KEYS = %w[name address email phone note].freeze
 
   included do
-    has_many :contract_invoices, dependent: :destroy
-
     normalizes :invoice_prefix, with: ->(prefix) { prefix.to_s.strip.upcase.presence }
     validates :invoice_prefix, format: { with: /\A[A-Z0-9]{1,8}\z/, message: "can only be letters and numbers, up to 8" }, allow_nil: true
   end

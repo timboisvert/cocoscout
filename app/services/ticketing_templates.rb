@@ -129,7 +129,7 @@ class TicketingTemplates
       variables: SHOW_VARS + v(:seller_name, :payment_method, :buyer_name, :ticket_count, :ticket_summary, :products, :order_total, :org_net, :sold_line, :products_sold, :order_url) },
     { key: "ticketing_comp_issued", name: "Ticketing: each comp issued", channel: "email",
       subject: "{{ticket_count}} issued: {{show_title}}, {{show_date}}",
-      body: %(<p><strong>{{giver_name}}</strong> gave {{ticket_count}} for <strong>{{show_title}}</strong> on {{show_date}} at {{show_time}}: {{recipients}}.</p><p>{{sold_line}}.</p><p><a href="{{show_url}}">Open this show's ticketing</a></p>#{FOOTER}),
+      body: %(<p><strong>{{giver_name}}</strong> issued {{ticket_count}} for <strong>{{show_title}}</strong> on {{show_date}} at {{show_time}}: {{recipients}}.</p><p>{{sold_line}}.</p><p><a href="{{show_url}}">Open this show's ticketing</a></p>#{FOOTER}),
       variables: SHOW_VARS + v(:giver_name, :ticket_count, :recipients, :sold_line) },
     { key: "ticketing_pass_redeemed", name: "Ticketing: each pass redeemed", channel: "email",
       subject: "Pass redeemed: {{show_title}}, {{show_date}}",
@@ -180,7 +180,7 @@ class TicketingTemplates
       body: %(<p>Canceling <strong>{{show_title}}</strong> on {{show_date}} is done: {{refunded_count}} refunded, {{refunded_amount}} in all.{{#failed_count}} {{failed_count}} couldn't be refunded; open each order to try again.{{/failed_count}}</p><p><a href="{{orders_url}}">Orders for this show</a></p>#{FOOTER}),
       variables: SHOW_VARS + v(:refunded_count, :refunded_amount, :failed_count, :orders_url) },
 
-    # --- The waitlist (advanced ticketing plan §7b), in the theater's frame.
+    # --- The waitlist (advanced ticketing plan §7b), in the organization's frame.
     { key: "ticket_waitlist_joined", name: "Waitlist: you're on the list", channel: "email",
       subject: "You're on the list for {{show_title}}",
       body: %(<p>Hi {{first_name}},</p><p>You're on the waitlist for <strong>{{show_title}}</strong> on {{show_date}} at {{show_time}}, for {{ticket_count}}. If seats come back, we'll email you an offer with a link to buy them; the offer holds the seats for half an hour.</p><p><a href="{{waitlist_url}}">Your place on the list</a> (leave it there any time).</p>),

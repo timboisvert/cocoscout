@@ -133,6 +133,24 @@ RSpec.describe "Show services on Scheduling", type: :request do
     expect(html.scan(%r{<p class="text-sm font-medium text-gray-900">Booth Tech</p>})).to be_empty
   end
 
+  # A contract production's needs come from its contract (Tim, 2026-11-08): a
+  # role a service carries isn't asked of its show unless its services include it.
+  it "doesn't ask a contract show for an every-show role its services would carry but don't include" do
+    booth_role.update!(include_in_role_call: true)
+    rental = create(:production, organization: org, production_type: "third_party", name: "Nuns4Fun")
+    create(:show, production: rental, date_and_time: (week_start + 3).in_time_zone.change(hour: 21), duration_minutes: 60)
+    get manage_staffing_scheduling_path(week_start: week_start.to_s)
+    lines = Nokogiri::HTML(response.body).css("[data-show-line]").map { |line| line.text.squish }
+    expect(lines.find { |line| line.include?("Nuns4Fun") }).not_to include("needs")
+    expect(lines.find { |line| line.include?("Halloween") }).to include("Still needs Booth Tech") # ours is asked as before
+
+    contract = create(:contract, :active, organization: org, production: rental, draft_data: { "services" => [ { "name" => "Booth Tech", "service_id" => booth.id } ] })
+    get manage_staffing_scheduling_path(week_start: week_start.to_s)
+    lines = Nokogiri::HTML(response.body).css("[data-show-line]").map { |line| line.text.squish }
+    expect(contract).to be_persisted
+    expect(lines.find { |line| line.include?("Nuns4Fun") }).to include("needs 1", "Still needs Booth Tech")
+  end
+
   it "says nothing about services without Pro" do
     org.update!(comped_indefinitely: false)
     get manage_staffing_scheduling_path(week_start: week_start.to_s)

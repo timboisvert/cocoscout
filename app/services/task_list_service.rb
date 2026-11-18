@@ -171,13 +171,17 @@ class TaskListService
         next unless instance
 
         form = instance.sign_up_form
+        registration = registrations[[ show.id, entity.id ]]
+        # A paused form asks nobody to sign up. Someone already signed up
+        # keeps their row, so they can still see it and back out.
+        next unless form.active? || registration
+
         if instance.status == "scheduled"
           # Form not yet open — only visible when talent self pre-registration
           # is allowed and we're inside the window.
           next unless form.allows_talent_self_pre_registration? && form.pre_registration_open_for?(show)
         end
 
-        registration = registrations[[ show.id, entity.id ]]
         declined = declined_pairs.include?([ show.id, entity.id ])
         signup_item = self.class.signup_item(show, entity, instance, registration, declined: declined)
 

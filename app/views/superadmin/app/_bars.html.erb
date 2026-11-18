@@ -1,0 +1,23 @@
+<%#
+  A row of stacked bars, one per day or week, iPhone under Android.
+  Locals: bars ([[title, { "ios" => n, "android" => n }], ...]), from, to
+  (the words under each end), height (a Tailwind height class)
+%>
+<%
+  peak = [ bars.map { |_, counts| counts.values.sum }.max.to_i, 1 ].max
+  height = local_assigns.fetch(:height, "h-36")
+%>
+<div class="flex items-end gap-1 <%= height %>" data-bars>
+  <% bars.each do |title, counts| %>
+    <% ios = counts["ios"].to_i %>
+    <% android = counts["android"].to_i %>
+    <div class="flex-1 flex flex-col justify-end h-full" title="<%= title %>: <%= [ (counts.key?('ios') ? "#{ios} iPhone" : nil), (counts.key?('android') ? "#{android} Android" : nil) ].compact.join(', ') %>">
+      <div class="bg-gray-400 rounded-t-sm" style="height: <%= (android * 100.0 / peak).round(1) %>%"></div>
+      <div class="bg-pink-500 <%= android.zero? ? 'rounded-t-sm' : '' %>" style="height: <%= (ios * 100.0 / peak).round(1) %>%"></div>
+      <% if (ios + android).zero? %><div class="bg-gray-100 h-px"></div><% end %>
+    </div>
+  <% end %>
+</div>
+<div class="flex justify-between text-[11px] text-gray-400 mt-1">
+  <span><%= from %></span><span><%= to %></span>
+</div>

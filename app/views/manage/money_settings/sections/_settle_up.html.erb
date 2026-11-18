@@ -36,8 +36,8 @@
         <input type="radio" name="settlement_day_mode" value="smart" <%= "checked" if org.settlement_day_mode == "smart" %> class="mt-1 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500">
         <span class="text-sm">
           <span class="font-semibold text-gray-900">When things stop</span> <span class="text-gray-500">· on for everyone unless you switch</span>
-          <span class="block text-gray-600 mt-0.5">A day runs until the next morning, so a 12:15 am bar round and a 2 am clock-out are still the night before's. Nothing before morning is ever tomorrow.</span>
-          <span class="block text-gray-500 mt-0.5">Friday's shows end at 11:30, the bar rings its last round at 12:15, the staff clock out at 2. That's all Friday's money, and Friday's worksheet shows it.</span>
+          <span class="block text-gray-600 mt-0.5">A day closes when its last show's door closes, as your box office's Door settings say: an hour after the show ends, or with no end time, 4 hours after a daytime show starts or 2 AM after an evening one. It closes by <%= org.settlement_day_starts_at %> am at the latest, and anything before then is still the night before's.</span>
+          <span class="block text-gray-500 mt-0.5">Friday's 9 pm show has no end time, so Friday closes at 2 AM: the bar's 12:15 am round is Friday's money, and Friday's worksheet shows it.</span>
         </span>
       </label>
       <label class="flex items-start gap-3 cursor-pointer">
@@ -53,7 +53,7 @@
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
     <div class="px-6 py-4 border-b border-gray-200">
       <h3 class="text-sm font-semibold text-gray-900">Where Settle up starts</h3>
-      <p class="text-sm text-gray-600 mt-1">Days before this date are history: they never show up to settle, and their money is on the books from each show's Financials. Move it earlier to settle older days here.</p>
+      <p class="text-sm text-gray-600 mt-1">Days before this date are history: they never show up to settle, and each show's money stays as it was left. Move it earlier to change an older day: days already confirmed come in settled, and you reopen the one you need.</p>
     </div>
     <div class="px-6 py-5">
       <label class="flex flex-wrap items-center gap-3 text-sm">

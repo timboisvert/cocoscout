@@ -3,7 +3,7 @@
     show), an optional note, Cancel / Save. On a phone it's a full-height sheet.
 
     Locals: id, url, method, title, sections ([{ event_type:, value:, copy:
-    { label:, unit:, help: }, several: }]), dates (booking starts_at values;
+    { label:, unit:, help:, per:, chosen: }, several: }]), dates (booking starts_at values;
     empty when the ticked rows carry them, through form_id), note, form_id. %>
 <% form_id = local_assigns[:form_id] %>
 <div id="<%= id %>" class="hidden fixed inset-0 z-[60] bg-black/50 flex items-stretch sm:items-center justify-center sm:p-4"
@@ -30,11 +30,23 @@
           %>
           <%= content_tag :div, class: [ "space-y-1.5", ("hidden" if section[:several]) ], data: data do %>
             <label for="<%= input_id %>" class="block text-sm font-medium text-gray-700"><%= section[:copy][:label] %></label>
+            <div class="flex flex-wrap items-center gap-2">
             <div class="flex items-center gap-1 w-40 rounded-lg border border-gray-300 bg-white px-3 py-2.5 shadow-sm focus-within:ring-2 focus-within:ring-pink-500 focus-within:border-pink-500">
               <% if unit == "$" %><span class="text-sm text-gray-400">$</span><% end %>
               <%= number_field_tag "values[#{section[:event_type]}]", shown, id: input_id, step: "0.01", min: "0", max: (unit == "%" ? "100" : nil),
                     disabled: section[:several], class: "w-full border-0 p-0 text-base sm:text-sm text-gray-900 focus:outline-none focus:ring-0" %>
               <% if unit == "%" %><span class="text-sm text-gray-400">%</span><% end %>
+            </div>
+            <%# Charged by the hour: one price for the whole date, or an hourly rate. %>
+            <% if section[:copy][:per] %>
+              <select name="units[<%= section[:event_type] %>]" aria-label="What the price is for" <%= "disabled" if section[:several] %>
+                      data-action="contract-dates#unit"
+                      class="rounded-lg border border-gray-300 bg-white px-3 py-2.5 shadow-sm text-base sm:text-sm text-gray-900 cursor-pointer focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                <% section[:copy][:per].each do |words, key, prefill| %>
+                  <option value="<%= key %>" data-prefill="<%= prefill %>" <%= "selected" if key == section[:copy][:chosen] %>><%= words %></option>
+                <% end %>
+              </select>
+            <% end %>
             </div>
             <p class="text-sm text-gray-500"><%= section[:copy][:help] %></p>
           <% end %>

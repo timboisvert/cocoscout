@@ -53,7 +53,7 @@
           <label class="block text-xs font-medium text-gray-700">Name<%= text_field_tag :name, nil, id: "comp_name", class: input + " mt-1" %></label>
           <label class="block text-xs font-medium text-gray-700">Email <span class="font-normal text-gray-500">(their tickets go here)</span><%= email_field_tag :email, nil, id: "comp_email", class: input + " mt-1" %></label>
           <label class="block text-xs font-medium text-gray-700">Note <span class="font-normal text-gray-500">(optional)</span><%= text_field_tag :note, nil, id: "comp_note", class: input + " mt-1" %></label>
-          <%= render "shared/button", text: "Give the picked seats", variant: "primary", size: "small", type: :submit %>
+          <%= render "shared/button", text: "Issue comps for the picked seats", variant: "primary", size: "small", type: :submit %>
         <% end %>
       </div>
 

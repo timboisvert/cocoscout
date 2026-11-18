@@ -77,6 +77,10 @@ class BooksReport
   # [[group label, [Row...], total cents], ...] — each balance as a person
   # reads it (positive on the account's normal side).
   def groups
+    @groups ||= build_groups
+  end
+
+  def build_groups
     sums = signed_sums
     accounts = @organization.ledger_accounts.active.order(:code).to_a
     GROUPS.filter_map do |type, label|
@@ -98,28 +102,31 @@ class BooksReport
 
   # Every line ever posted sums to zero in healthy books.
   def trial_balance_cents
-    JournalLine.where(organization_id: @organization.id).sum(:amount_cents)
+    BooksBalances.sums(@organization).values.sum
   end
 
   # The Overview as a spreadsheet: every income and spending line in the
   # period, with what it was for and when it was earned and moved.
-  def to_csv(range:, production_id: nil)
-    lines = dated_lines(range).includes(:ledger_account, :production, :show, journal_entry: [])
-                              .where(ledger_accounts: { account_type: %w[income expense] })
-                              .order("journal_entries.entry_date, journal_entries.id, journal_lines.id")
+  # Written to io a batch at a time (BooksLinesCsv); answers how many lines.
+  def write_csv(io, range:, production_id: nil)
+    lines = dated_lines(range).joins(:ledger_account).where(ledger_accounts: { account_type: %w[income expense] })
     lines = lines.where(production_id: production_id) if production_id.present?
-    CSV.generate do |csv|
-      csv << [ "Earned on", "Moved on", "What", "Description", "Category", "Production", "Show", "In", "Out" ]
-      lines.each do |line|
-        entry = line.journal_entry
-        income = line.ledger_account.account_type == "income"
-        cents = income ? -line.amount_cents : line.amount_cents
-        csv << [ entry.entry_date, entry.cash_date, KIND_LABELS.fetch(entry.kind, entry.kind.humanize), entry.memo,
-                 line.ledger_account.name, line.production&.name, line.show && "#{line.show.date_and_time.strftime('%Y-%m-%d')} #{line.show.display_name}",
-                 (income ? format("%.2f", cents / 100.0) : nil), (income ? nil : format("%.2f", cents / 100.0)) ]
-      end
+    walker = BooksLinesCsv.new(@organization)
+    io << CSV.generate_line([ "Earned on", "Moved on", "What", "Description", "Category", "Production", "Show", "In", "Out" ])
+    count = 0
+    walker.each(lines) do |line|
+      _, name, type = walker.account(line.ledger_account_id)
+      income = type == "income"
+      cents = income ? -line.amount_cents : line.amount_cents
+      io << CSV.generate_line([ line.entry_date, line.cash_date, walker.kind_label(line.kind), line.entry_memo, name,
+                                walker.production_name(line.production_id), walker.show_label(line.show_id),
+                                (income ? format("%.2f", cents / 100.0) : nil), (income ? nil : format("%.2f", cents / 100.0)) ])
+      count += 1
     end
+    count
   end
+
+  def to_csv(range:, production_id: nil) = StringIO.new.tap { |io| write_csv(io, range: range, production_id: production_id) }.string
 
   def entries(account_id: nil, show_id: nil, kind: nil)
     scope = JournalEntry.where(organization_id: @organization.id)
@@ -133,22 +140,37 @@ class BooksReport
     scope
   end
 
-  # Ticket money by show: still waiting on the show, recognized as income,
-  # and the tax collected for it.
-  def by_show
-    keys = %w[advance_ticket_sales ticket_income tax_to_remit]
-    accounts = @organization.ledger_accounts.where(key: keys).index_by(&:key)
-    return [] if accounts.empty?
+  # The shows with ticket money on the books, newest first. A relation, so
+  # the page takes fifty at a time: a show is found by its own lines (the
+  # index on the lines' show), never by reading every ticket line there is.
+  def shows_with_ticket_money
+    ids = ticket_money_accounts.values.map(&:id)
+    return Show.none if ids.empty?
 
-    sums = JournalLine.where(organization_id: @organization.id, ledger_account_id: accounts.values.map(&:id))
-                      .where.not(show_id: nil)
+    Show.joins(:production).where(productions: { organization_id: @organization.id })
+        .where("EXISTS (SELECT 1 FROM journal_lines WHERE journal_lines.show_id = shows.id AND journal_lines.organization_id = ? AND journal_lines.ledger_account_id IN (?))", @organization.id, ids)
+        .preload(:production).order(date_and_time: :desc, id: :desc)
+  end
+
+  # Ticket money by show: still waiting on the show, recognized as income,
+  # and the tax collected for it. shows: the ones to say it for (a page of
+  # shows_with_ticket_money), in the order given.
+  def by_show(shows = shows_with_ticket_money)
+    shows = shows.to_a
+    accounts = ticket_money_accounts
+    return [] if accounts.empty? || shows.empty?
+
+    sums = JournalLine.where(organization_id: @organization.id, ledger_account_id: accounts.values.map(&:id), show_id: shows.map(&:id))
                       .group(:show_id, :ledger_account_id).sum(:amount_cents)
-    shows = Show.where(id: sums.keys.map(&:first).uniq).includes(:production).index_by(&:id)
     pick = ->(show_id, key) { accounts[key] ? -sums.fetch([ show_id, accounts[key].id ], 0) : 0 }
-    shows.values.sort_by(&:date_and_time).reverse.map do |show|
+    shows.map do |show|
       ShowRow.new(show: show, waiting_cents: pick.call(show.id, "advance_ticket_sales"),
                   income_cents: pick.call(show.id, "ticket_income"), tax_cents: pick.call(show.id, "tax_to_remit"))
     end
+  end
+
+  def ticket_money_accounts
+    @ticket_money_accounts ||= @organization.ledger_accounts.where(key: %w[advance_ticket_sales ticket_income tax_to_remit]).index_by(&:key)
   end
 
   # Everything the Overview shows for a period, read from the lines. Dates
@@ -247,9 +269,7 @@ class BooksReport
   end
 
   def signed_sums
-    lines = JournalLine.where(organization_id: @organization.id).joins(:journal_entry)
-    lines = lines.where.not(journal_entries: { cash_date: nil }) if @basis == :cash
-    lines.group(:ledger_account_id).sum(:amount_cents)
+    BooksBalances.sums(@organization, basis: @basis)
   end
 
   public :dated_lines

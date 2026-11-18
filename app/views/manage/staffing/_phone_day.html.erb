@@ -21,20 +21,55 @@
      data-day-swipe-prev-url-value="<%= manage_staffing_scheduling_path(day: (day - 1).iso8601) %>"
      data-day-swipe-next-url-value="<%= manage_staffing_scheduling_path(day: (day + 1).iso8601) %>"
      data-action="touchstart->day-swipe#start touchend->day-swipe#end">
+  <%# What's waiting this week, in lines like Home's Actions, above the
+      calendar, under the same "Actions" heading. No topic on the left: the
+      page is already Scheduling, so a line says only what it is (Tim,
+      2026-11-09). Draft and updates to
+      send are the bottom bar's; the pages around Scheduling are the tiles
+      at the top of the page. %>
+  <%
+    declined = @declined_this_week.size
+    declined_elsewhere = @declined_other_weeks.size
+    still = @still_to_staff
+    missing_shifts = @missing_service_shifts&.size.to_i
+    waiting = []
+    if declined.positive?
+      waiting << { key: "declined", tone: :red, text: "#{pluralize(declined, 'person')} can't make it", action: { modal: "scheduling-declined" } }
+    elsif declined_elsewhere.positive?
+      waiting << { key: "declined", text: "#{pluralize(declined_elsewhere, 'person')} can't make it in other weeks", action: { modal: "scheduling-declined" } }
+    end
+    if still.present?
+      waiting << { key: "still-to-staff", text: "#{pluralize(still.size, 'service')} to staff",
+                   detail: (missing_shifts.positive? ? "#{pluralize(missing_shifts, 'shift')} to add" : nil), action: { modal: "scheduling-still-to-staff" } }
+    end
+    waiting << { key: "roles", text: "Add staffing roles to begin", action: { path: manage_staffing_house_roles_path } } if @house_role_count.zero?
+
+    # Regulars who match this week and can still be assigned: one line, and
+    # only while there are some. The ones already scheduled don't count (it
+    # used to say 3 when all three were on the schedule; Tim, 2026-11-09).
+    regulars_open = @regulars_enabled ? @regulars_matches.count(&:selectable?) : 0
+    if regulars_open.positive?
+      waiting << { key: "regulars", text: "#{pluralize(regulars_open, 'regular')} can be scheduled", action: { modal: "regulars-apply-modal" } }
+    end
+    # A published week with nothing new to send can be sent again.
+    if @shifts_by_day.any? && @week_finalized && @comms[:update].none?
+      waiting << { key: "published", text: "Published", detail: "resend notifications", action: { modal: "confirm-resend-all" } }
+    end
+  %>
+  <%= render "shared/actions_box", items: waiting, id: "scheduling-actions-title", data: { scheduling_actions: true } %>
+
   <%= render "shared/day_strip", day: day, id: "scheduling-jump", show_dates: @show_dates, months: @calendar_months, busy: busy_day,
         day_path: ->(d) { manage_staffing_scheduling_path(day: d.iso8601) } %>
 
-  <% if day_shows.any? || day_shifts.any? %>
+  <%# How staffed the day is, once it has shifts. It used to open with a
+      count of the day's shows, which are listed right below (Tim, 2026-11-09). %>
+  <% if stats[:total].positive? %>
     <div class="bg-white border border-gray-200 rounded-lg px-3 py-2 flex items-center gap-2.5 text-xs" data-day-summary>
-      <span class="text-gray-600 whitespace-nowrap"><%= day_shows.any? ? pluralize(day_shows.size, "show") : "No shows" %></span>
-      <% if stats[:total].positive? %>
-        <span class="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden"><span class="block h-full <%= meter %>" style="width: <%= pct %>%"></span></span>
-        <span class="whitespace-nowrap font-semibold <%= stats[:declined].positive? ? 'text-red-700' : (pct >= 100 ? 'text-green-700' : 'text-amber-700') %>">
-          <%= stats[:staffed] %> of <%= stats[:total] %><%= " · #{stats[:declined]} can't" if stats[:declined].positive? %>
-        </span>
-      <% else %>
-        <span class="flex-1"></span>
-      <% end %>
+      <span class="text-gray-600 whitespace-nowrap">Staffed</span>
+      <span class="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden"><span class="block h-full <%= meter %>" style="width: <%= pct %>%"></span></span>
+      <span class="whitespace-nowrap font-semibold <%= stats[:declined].positive? ? 'text-red-700' : (pct >= 100 ? 'text-green-700' : 'text-amber-700') %>">
+        <%= stats[:staffed] %> of <%= stats[:total] %><%= " · #{stats[:declined]} can't" if stats[:declined].positive? %>
+      </span>
     </div>
   <% end %>
 

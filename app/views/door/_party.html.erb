@@ -1,6 +1,9 @@
 <%# One party at the door: who, what they hold, what's waiting for them, and
     a box that checks one person in per tap, a bar per ticket filling in under
     it. Once some are in, an All button takes the rest (Tim, 2026-10-21).
+    Tapping the name, or the green check once everyone's in, opens the
+    party's sheet (door/_party_sheet), where a check-in is taken back
+    (Tim, 2026-11-16: no Uncheck button on every row).
     Locals: order, listing, ahead (before the door opens: who and what,
     no taps). %>
 <%
@@ -32,20 +35,22 @@
         <% end %>
       </div>
     <% else %>
-      <span class="flex-shrink-0 w-[4.5rem] h-11 rounded-lg bg-green-600 flex items-center justify-center text-white" title="All checked in">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-        <span class="sr-only">All checked in</span>
-      </span>
+      <button type="button" class="flex-shrink-0 w-[4.5rem] h-11 rounded-lg bg-green-600 flex items-center justify-center text-white cursor-pointer" title="All checked in"
+              data-action="click->door#openParty" data-url="<%= door_party_path(listing, order_id: order.id) %>">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+        <span class="sr-only">All checked in. Open to uncheck</span>
+      </button>
     <% end %>
-    <div class="min-w-0 flex-1">
-      <div class="font-medium truncate <%= state == 'in' ? 'text-gray-500' : 'text-gray-900' %>"><%= order.buyer_name.presence || "No name" %> <span class="text-xs font-normal text-gray-400"><%= order.code %></span></div>
-      <div class="text-xs text-gray-500 truncate">
+    <%= tag.send(ahead ? :div : :button, class: "min-w-0 flex-1 text-left#{' cursor-pointer' unless ahead}",
+          type: (ahead ? nil : "button"), data: (ahead ? {} : { action: "click->door#openParty", url: door_party_path(listing, order_id: order.id) })) do %>
+      <span class="block font-medium truncate <%= state == 'in' ? 'text-gray-500' : 'text-gray-900' %>"><%= order.buyer_name.presence || "No name" %> <span class="text-xs font-normal text-gray-400"><%= order.code %></span></span>
+      <span class="block text-xs text-gray-500 truncate">
         <%= by_type %><% if how %> · <%= how %><% end %><% if state == "some" %> · <%= inside %> of <%= tickets.size %> checked in<% elsif state == "in" %> · Checked in<% end %>
-      </div>
+      </span>
       <% if order.access_request && !order.access_request.empty? %>
-        <div class="text-xs text-pink-700 font-medium truncate">Access: <%= order.access_request.words %></div>
+        <span class="block text-xs text-pink-700 font-medium truncate">Access: <%= order.access_request.words %></span>
       <% end %>
-    </div>
+    <% end %>
     <% if state == "some" && !ahead %>
       <%= render "shared/button", text: "All #{waiting}", variant: "secondary", size: "xs", type: :button, title: "Check in all #{waiting}",
             classes: "h-11 !rounded-lg flex-shrink-0 disabled:opacity-50",

@@ -1,0 +1,39 @@
+<%#
+  A settlement's working, line by line (ContractSettlementWorking): each
+  night's ticket sales, our fee or their share, what they owe that comes out,
+  and what moves. The contract page's row and View calculation both draw this.
+
+  Locals: working
+%>
+<%
+  money = ->(cents) { cents.negative? ? "−#{number_to_currency(-cents / 100.0)}" : number_to_currency(cents / 100.0) }
+  settlement_lines = working.lines.reject { |line| line.kind == :charge }
+  charge_lines = working.lines.select { |line| line.kind == :charge }
+  net = working.net_cents
+  total_label = "#{working.direction_words}#{working.in_progress? && !net.zero? ? ', so far' : ''}"
+%>
+<dl class="max-w-xl grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-1 text-sm" data-settlement-working="<%= working.payment.id %>">
+  <% settlement_lines.each do |line| %>
+    <dt class="min-w-0 text-gray-600"><%= line.label %></dt>
+    <dd class="text-right tabular-nums <%= line.counted? ? 'text-gray-900' : 'text-gray-500' %>"><%= money.call(line.cents) %></dd>
+  <% end %>
+  <% if charge_lines.any? %>
+    <dt class="col-span-2 pt-1 text-xs font-medium text-purple-700"><%= working.settlement_cents.positive? ? "Taken out of their share" : "What they owe for services" %></dt>
+    <% charge_lines.each do |line| %>
+      <dt class="min-w-0 text-gray-600"><%= line.label %></dt>
+      <dd class="text-right tabular-nums text-gray-900"><%= money.call(line.cents) %></dd>
+    <% end %>
+  <% end %>
+  <div class="col-span-2 border-t border-gray-200 my-0.5" aria-hidden="true"></div>
+  <dt class="font-medium text-gray-900"><%= total_label %></dt>
+  <dd class="text-right tabular-nums font-semibold text-gray-900"><%= number_to_currency(net.abs / 100.0) %></dd>
+  <% if working.in_progress? %>
+    <dd class="col-span-2 text-xs text-gray-500">
+      <% if working.nights_to_come.any? %>
+        Where it stands from ticket sales today. It's settled <%= working.when_words %>, and nothing is paid or collected before then.
+      <% else %>
+        Nothing is paid or collected until every day it covers is settled: it goes ahead <%= working.when_words %>.
+      <% end %>
+    </dd>
+  <% end %>
+</dl>

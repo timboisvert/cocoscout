@@ -40,7 +40,7 @@ module Manage
       if @bill.save
         redirect_to manage_money_bill_path(@bill), notice: "Added. #{@bill.vendor_name}, #{helpers.number_to_currency(@bill.amount)}, due #{@bill.due_on.strftime('%b %-d')}."
       else
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
       end
     end
 
@@ -50,7 +50,7 @@ module Manage
       if @bill.update(bill_params)
         redirect_to manage_money_bill_path(@bill), notice: "Saved."
       else
-        render :edit, status: :unprocessable_entity
+        render :edit, status: :unprocessable_content
       end
     end
 

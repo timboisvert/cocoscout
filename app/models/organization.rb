@@ -22,6 +22,7 @@ class Organization < ApplicationRecord
   has_many :productions, dependent: :destroy
   has_many :contracts, dependent: :destroy
   has_many :contractors, dependent: :destroy
+  has_many :follower_email_blocks, dependent: :destroy
   # What the organization offers its productions (Organization settings →
   # Services): booth tech, ticket taking, a projector. Contracts pick from it.
   has_many :house_services, dependent: :destroy
@@ -62,13 +63,20 @@ class Organization < ApplicationRecord
   has_many :payout_batches, dependent: :destroy
   # The books (see LedgerPosting). Entries are permanent, so deleting an org
   # clears them in bulk, lines first — the order these are declared in.
+  has_many :ledger_month_balances, dependent: :delete_all
+  has_one :books_rollup, dependent: :delete
   has_many :journal_lines, dependent: :delete_all
   has_many :journal_entries, dependent: :delete_all
   has_many :money_records, dependent: :destroy
   has_many :integrations, dependent: :destroy
   has_many :bills, dependent: :destroy
-  has_many :invoices, dependent: :destroy
+  # The invoices it wrote to anyone. A contract payment's invoice is a row in
+  # the same table (Invoice, kind "contract") that reads everything from its
+  # payment, so it belongs in none of the lists and totals these feed.
+  has_many :invoices, -> { standalone }, dependent: :destroy
+  has_many :contract_invoices, -> { for_contracts }, class_name: "Invoice", dependent: :destroy
   has_many :bank_statement_imports, dependent: :destroy
+  has_many :books_downloads, dependent: :destroy
   has_many :bank_statement_lines, dependent: :destroy
   has_many :bank_rules, dependent: :destroy
   has_many :bank_rule_dismissals, dependent: :destroy
@@ -143,6 +151,9 @@ class Organization < ApplicationRecord
   validates :name, presence: true
   validates :settlement_day_mode, inclusion: { in: %w[smart calendar] }
   validates :settlement_day_starts_at, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than: 24 }
+  # The clock the organization's pages, forms, notices and reminders read in
+  # (TimeZones). Central unless it picked another.
+  validates :time_zone, inclusion: { in: ->(_) { ActiveSupport::TimeZone.all.map(&:name) }, message: "isn't a time zone we know" }
 
   # Whether staff must sign an agreement before working here. A required pointer to
   # an inactive/deleted template counts as "not required" (defensive).
@@ -288,6 +299,17 @@ class Organization < ApplicationRecord
   end
 
   before_create :generate_invite_token
+  # CocoScout's superadmins hear about every new organization (SuperadminNotices).
+  after_create_commit { SuperadminNotices.organization_created(self) }
+  # Someone who now runs an organization can connect the contracts they're
+  # the contractor on to it: they're notified once (ContractConnections.offer!).
+  after_create_commit :offer_owner_their_contracts
+
+  def offer_owner_their_contracts
+    ContractConnections.offer_all_for(owner)
+  rescue StandardError => e
+    Rails.logger.error("[Organization] #{id} offer to connect: #{e.class}: #{e.message}")
+  end
 
   # Generate or ensure invite token exists
   def ensure_invite_token!
@@ -366,9 +388,24 @@ class Organization < ApplicationRecord
   # Start Pro on the monthly bill: the month's bill carries the plan from
   # today, and the subscription that sends that bill is made if it isn't
   # there yet.
+  #
+  # Superadmins hear when this is an upgrade: the organization wasn't paying
+  # for Pro already (a canceled monthly plan still running out its month, or
+  # a Pro subscription of its own, is paying). Starting twice, from the
+  # success page and the webhook at once, tells them once: the row lock.
   def start_pro_on_monthly_bill!(at: Time.current)
-    update!(pro_monthly_from: at, pro_monthly_until: nil)
+    upgraded = false
+    with_lock do
+      upgraded = !paying_for_pro?(at)
+      update!(pro_monthly_from: at, pro_monthly_until: nil)
+    end
     StaffMeterService.ensure_staffing_subscription!(self)
+    SuperadminNotices.pro_started(self, via: :monthly_bill) if upgraded
+  end
+
+  # Paying CocoScout for Pro, one way or the other (a comp is not paying).
+  def paying_for_pro?(at = Time.current)
+    pro_on_monthly_bill?(at) || subscription_status.in?(SubscriptionSyncService::ACCESS_STATUSES)
   end
 
   # Cancel it: Pro lasts to the end of the month, which the last bill carries.
@@ -504,6 +541,13 @@ class Organization < ApplicationRecord
       people_count: person_ids.size,
       groups_count: group_ids.size
     }
+  end
+
+  # The rooms a calendar colors by: every room of every location, by
+  # location then name.
+  def calendar_rooms
+    @calendar_rooms ||= LocationSpace.joins(:location).where(locations: { organization_id: id, archived_at: nil })
+                                     .order("locations.name, location_spaces.name").includes(:location).to_a
   end
 
   private

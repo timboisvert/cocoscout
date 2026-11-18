@@ -16,6 +16,11 @@ class PayoutContribution < ApplicationRecord
   # post none — their earning lives on the ShowPayoutLineItem). dependent:
   # :destroy so removing a contribution from an open run reverses what it owed.
   has_many :payout_ledger_entries, as: :source, dependent: :destroy
+  # A Tips line carries the tip shares Pay People pulled onto it (Settle up).
+  # When the line goes (taken out of a draft, the draft discarded, the day
+  # reopened), its shares are simply not on a run any more: they wait on
+  # Pay People again instead of blocking the delete.
+  has_many :tip_shares, dependent: :nullify
 
   # Negative amounts are real: a contract service settled by payout deduction
   # is a negative line on the item, so the payee sees their gross share and
@@ -43,8 +48,11 @@ class PayoutContribution < ApplicationRecord
   # organization itself (collected contract payments). An OUTGOING contract
   # payment to a contractor is normal bank-funded money — its source is also a
   # ContractPayment, which is why direction is judged by payee, not source.
+  # Another organization as the payee (a contract share paid into a
+  # contractor's own organization's balance) is not held money: it's owed
+  # like any payee's, and the run funds it.
   def held_funds?
-    payee_type == "Organization" || HELD_SOURCE_TYPES.include?(source_type)
+    (payee_type == "Organization" && payee_id == payout_batch&.organization_id) || HELD_SOURCE_TYPES.include?(source_type)
   end
 
   # What kind of money this line is, for "what's in this run" on the run page.
@@ -95,7 +103,9 @@ class PayoutContribution < ApplicationRecord
   # sees "Tips · Jun 12 – Jul 3" instead of a bare "Tips". Tips/cash-tips use
   # their per-day worksheet; worked-hours lines use the time entries tied to
   # this run. Nil for undated lines (bonus, reimbursement, balance payouts).
-  def covered_date_range
+  # hours_spans: { run id => [first, last started_at] } for this payee, when
+  # the caller read them all at once.
+  def covered_date_range(hours_spans: nil)
     worksheet_dates = worksheet_entries.filter_map do |w|
       Date.parse(w["date"].to_s)
     rescue Date::Error
@@ -104,8 +114,8 @@ class PayoutContribution < ApplicationRecord
     return [ worksheet_dates.min, worksheet_dates.max ] if worksheet_dates.any?
 
     if label.to_s.start_with?("Worked hours") && payee_type == "Person"
-      min, max = StaffTimeEntry.where(payout_batch_id: payout_batch_id, person_id: payee_id)
-                               .pluck(Arel.sql("MIN(started_at)"), Arel.sql("MAX(started_at)")).first
+      min, max = hours_spans ? hours_spans[payout_batch_id] : StaffTimeEntry.where(payout_batch_id: payout_batch_id, person_id: payee_id)
+                                                                           .pluck(Arel.sql("MIN(started_at)"), Arel.sql("MAX(started_at)")).first
       return [ min.to_date, max.to_date ] if min && max
     end
 

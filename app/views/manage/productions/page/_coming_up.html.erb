@@ -1,0 +1,61 @@
+<%# The next few dates, each a line that opens it: the day, the time and
+    room (and what it is, when it isn't a show), and Home's chips for where
+    its tickets, staffing and cast stand. With nothing coming: one line and
+    the way to add a date, then the last date played. Locals: page. %>
+<%
+  production = page.production
+  can_add = page.manager? && !page.contract_production? && !page.course?
+  all_words = page.course? ? "All sessions and events" : "All shows and events"
+%>
+<section class="<%= ProductionPageHelper::CARD %>" data-production-coming-up>
+  <%= render "shared/section_heading", padding: "px-4 py-3", title_basis: "basis-24", title: "Coming up" do %>
+    <% if can_add && page.rows.any? %>
+      <%= render "shared/button", text: "Add a date", variant: "secondary", size: "small", path: manage_shows_wizard_path(production) %>
+    <% end %>
+  <% end %>
+  <% if page.rows.empty? %>
+    <div class="px-4 py-3 flex flex-wrap items-center gap-3 border-b border-gray-100 last:border-b-0">
+      <p class="min-w-0 flex-1 text-sm text-gray-500">No upcoming dates.</p>
+      <% if can_add %>
+        <%= render "shared/button", text: "Add a date", variant: "primary", size: "small", path: manage_shows_wizard_path(production) %>
+      <% end %>
+    </div>
+    <% if page.past[:last] %>
+      <div class="<%= ProductionPageHelper::ROW %>" data-production-last-date>
+        <div class="min-w-0 flex-1 text-gray-500">Last date: <%= page.past[:last].strftime("%a, %b %-d, %Y") %> · <%= pluralize(page.past[:count], "date") %> in all</div>
+        <%= link_to all_words, manage_production_shows_path(production), class: ProductionPageHelper::ROW_LINK %>
+      </div>
+    <% end %>
+  <% else %>
+    <% page.rows.each do |row| %>
+      <%
+        show = row.show
+        run = page.run_for(show)
+        number = page.session_number(show)
+        where = [ ("Class #{number.first} of #{number.last}" if number), production_page_where(show, kind: !number).presence, (show.secondary_name.presence unless number) ].compact.join(" · ")
+      %>
+      <%= link_to manage_show_path(production, show), class: "#{ProductionPageHelper::ROW} hover:bg-gray-50 transition-colors #{'bg-gray-50' if show.canceled}", data: { production_date: show.id } do %>
+        <span class="flex-shrink-0 w-14 flex items-center gap-1.5">
+          <span class="text-xl leading-none font-bold text-gray-900"><%= show.date_and_time.strftime("%-d") %></span>
+          <span class="text-[10px] leading-tight uppercase">
+            <span class="block font-semibold text-pink-600"><%= show.date_and_time.strftime("%b") %></span>
+            <span class="block text-gray-500"><%= show.date_and_time.strftime("%a") %></span>
+          </span>
+        </span>
+        <span class="min-w-0 flex-1 flex flex-col gap-1">
+          <span class="block">
+            <span class="font-semibold tabular-nums <%= show.canceled ? 'line-through text-gray-500' : 'text-gray-900' %>"><%= show.date_and_time.strftime("%-l:%M %p") %></span><% if where.present? %><span class="text-gray-500"> · <%= where %></span><% end %>
+            <% if show.canceled %><span class="ml-1 text-[11px] font-semibold text-red-700">Canceled</span><% end %>
+          </span>
+          <% if run && !show.canceled %><span class="block text-xs text-gray-500"><%= run.title %> · <%= pluralize(page.students(run), "student") %></span><% end %>
+          <%= render "manage/manage/row_chips", chips: production_page_chips(page, row), long: true %>
+        </span>
+        <span class="hidden sm:inline <%= ProductionPageHelper::ROW_LINK %>">Open</span>
+        <svg class="sm:hidden w-4 h-4 text-gray-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+      <% end %>
+    <% end %>
+    <%= link_to manage_production_shows_path(production), class: ProductionPageHelper::FOOT, data: { production_all_dates: true } do %>
+      <%= all_words %><% if page.more_dates.positive? %> · <%= page.more_dates %> more coming<% end %>
+    <% end %>
+  <% end %>
+</section>

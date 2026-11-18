@@ -526,18 +526,15 @@ class Message < ApplicationRecord
     MessageSubscription.exists?(user: user, message: root)
   end
 
-  # Subscribe all managers/viewers of the production
+  # Subscribe the production's team: the people with its notifications on
+  # (the whole team when nobody has). Managers with them off still find the
+  # thread in their inbox (manage_inbox_for); it just never counts as unread
+  # for them or buzzes their phone.
   def subscribe_production_team!
     return unless production
 
-    # Global org managers/viewers
-    production.organization.organization_roles.where(company_role: [ :manager, :viewer ]).find_each do |role|
-      subscribe!(role.user)
-    end
-
-    # Production-specific permissions
-    production.production_permissions.where(role: [ :manager, :viewer ]).find_each do |permission|
-      subscribe!(permission.user)
+    ProductionNotificationSetting.users_to_notify(production, whole_team_if_none: true).each do |user|
+      subscribe!(user)
     end
   end
 

@@ -974,10 +974,12 @@ export default class extends Controller {
     assignFromModal(event) {
         event.preventDefault();
         const button = event.currentTarget;
-        this.assignPick(button.dataset.assignableType, button.dataset.assignableId, button.dataset.memberName);
+        this.assignPick(button.dataset.assignableType, button.dataset.assignableId, button.dataset.memberName, button);
     }
 
-    assignPick(assignableType, assignableId, memberName) {
+    // sourceButton: the sheet row that was tapped, when there is one. The
+    // People Picker closes on a pick, so it passes none.
+    assignPick(assignableType, assignableId, memberName, sourceButton = null) {
         const showId = this.showId;
         const productionId = this.productionId;
         const roleId = this.currentAssignRoleId;
@@ -1030,7 +1032,7 @@ export default class extends Controller {
                     alert(data.error);
                     return;
                 }
-                this.markAssignedInSheet(button);
+                this.markAssignedInSheet(sourceButton);
                 // Update roles list
                 if (data.roles_html) {
                     document.getElementById("show-roles").outerHTML = data.roles_html;
@@ -1056,7 +1058,14 @@ export default class extends Controller {
         event.stopPropagation();
     }
 
+    // An act being dragged to a new place in the running order crosses the
+    // slots too. It isn't a person: the running-order controller handles it.
+    isActDrag(event) {
+        return Array.from(event.dataTransfer?.types || []).includes("application/x-running-order");
+    }
+
     allowDrop(event) {
+        if (this.isActDrag(event)) return;
         event.preventDefault();
 
         // Check if this is a restricted role
@@ -1120,6 +1129,7 @@ export default class extends Controller {
         event.preventDefault();
         const roleElement = event.currentTarget;
         roleElement.classList.remove('ring-2', 'ring-pink-400', 'bg-pink-50', 'ring-amber-400', 'bg-amber-50');
+        if (this.isActDrag(event)) return;
 
         // All roles now use role-id (both production and show-specific roles)
         const roleId = roleElement.dataset.roleId;

@@ -56,5 +56,26 @@ RSpec.describe ShiftVacancyInvitation, type: :model do
       vacancy.mark_not_filling!
       expect(described_class.unresolved).not_to include(invitation)
     end
+
+    it "drops it once the shift is over, however the vacancy stands" do
+      invitation = vacancy.invitations.create!(person: priya)
+      vacancy.mark_finding_replacement!
+      travel_to(shift.ends_at - 1.minute) { expect(described_class.unresolved).to include(invitation) }
+      travel_to(shift.ends_at + 1.minute) { expect(described_class.unresolved).not_to include(invitation) }
+    end
+  end
+
+  # Tim, 2026-11-07: claim invitations go away when the show happens. An old
+  # open hole had kept its claim page and home-page card for weeks.
+  it "is over once the shift has ended: expired, not claimable, and a claim does nothing" do
+    invitation = vacancy.invitations.create!(person: priya)
+    vacancy.mark_finding_replacement!
+    travel_to(shift.ends_at + 1.hour) do
+      expect(invitation).to be_expired
+      expect(invitation.can_claim?).to be(false)
+      expect(invitation.claim!).to be(false)
+      expect(vacancy.reload).to be_finding_replacement
+      expect(shift.shift_assignments.active.where(person: priya)).not_to exist
+    end
   end
 end

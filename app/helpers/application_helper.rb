@@ -3,6 +3,14 @@
 module ApplicationHelper
   CANONICAL_HOST = "https://cocoscout.com"
 
+  # A show today says "Tonight" from 6 PM and "Today"
+  # before (Tim, 2026-11-14: an 11 AM matinee said "Tonight"; he set 6 PM).
+  EVENING_STARTS_AT_HOUR = 18
+
+  def today_or_tonight(time)
+    time.hour >= EVENING_STARTS_AT_HOUR ? "Tonight" : "Today"
+  end
+
   # Every page names its one address for search engines: cocoscout.com (the
   # apps' host), not www, and no query string. Google listed the same pages
   # under both hosts as duplicates (Search Console, 2026-10-22). A page that
@@ -11,8 +19,13 @@ module ApplicationHelper
   def canonical_link_tag(path = nil)
     return if path.nil? && content_for(:head).to_s.include?('rel="canonical"')
 
+    tag.link(rel: "canonical", href: canonical_address(path || request.path))
+  end
+
+  # A path's one address: on cocoscout.com, with no query string.
+  def canonical_address(path = request.path)
     base = Rails.env.production? ? CANONICAL_HOST : request.base_url
-    tag.link(rel: "canonical", href: "#{base}#{path || request.path}")
+    "#{base}#{path}"
   end
 
   # `impersonating?` / `impersonator_user_id` live on ApplicationController

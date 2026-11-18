@@ -21,8 +21,13 @@ object AppConfig {
     val pathConfigurationUrl = "$baseUrl/hotwire-native/nav-$NAV_GENERATION/path-configuration.json"
     const val PATH_CONFIGURATION_ASSET = "nav-$NAV_GENERATION/path-configuration.json"
 
-    /** "CocoScout/1.2 (3; nav 2)", ahead of Hotwire Native's own user agent. */
-    val userAgentPrefix = "CocoScout/${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}; nav $NAV_GENERATION)"
+    /**
+     * "CocoScout/1.2 (3; nav 2) CocoMenu/bar", ahead of Hotwire Native's own
+     * user agent. "CocoMenu/bar": the Coco menu button is in the toolbar, not
+     * floating over the page, so the server leaves no room for it
+     * (NativeAppVersion.menu_in_bar?).
+     */
+    val userAgentPrefix = "CocoScout/${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}; nav $NAV_GENERATION) CocoMenu/bar"
 
     fun url(path: String): String = if (path.startsWith("http")) path else baseUrl + path
 }

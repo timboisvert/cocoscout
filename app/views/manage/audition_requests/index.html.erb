@@ -112,12 +112,17 @@
               <%= render "shared/review_card", member: requestable, size: :sm,
                     vote_counts: (current_user_can_review?(@production) ? vote_counts : nil) %>
             <% end %>
+            <% if (decision = @decisions&.dig([ audition_request.requestable_type, audition_request.requestable_id ])) %>
+              <span class="self-center ml-2 flex-shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium <%= decision.cast? ? 'bg-pink-100 text-pink-700' : 'bg-gray-100 text-gray-600' %>">
+                <%= decision.cast? ? "Added to the talent pool" : "Not chosen" %>
+              </span>
+            <% end %>
           </div>
         <% end %>
 
         <% if current_user_can_manage?(@production) %>
           <!-- Bulk Archive Action Bar -->
-          <div data-bulk-select-target="actionBar" class="hidden mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-30 max-sm:mt-0 max-sm:rounded-none max-sm:border-x-0 max-sm:border-b-0 max-sm:bg-white/95 max-sm:backdrop-blur max-sm:pl-4 <%= turbo_native_app? ? 'max-sm:pr-[96px]' : 'max-sm:pr-4' %> max-sm:pt-3 max-sm:pb-[calc(env(safe-area-inset-bottom)+12px)]">
+          <div data-bulk-select-target="actionBar" class="hidden mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-30 max-sm:mt-0 max-sm:rounded-none max-sm:border-x-0 max-sm:border-b-0 max-sm:bg-white/95 max-sm:backdrop-blur max-sm:pl-4 <%= coco_button_in_the_way? ? 'max-sm:pr-[96px]' : 'max-sm:pr-4' %> max-sm:pt-3 max-sm:pb-[calc(env(safe-area-inset-bottom)+12px)]">
             <div class="flex items-center gap-3">
               <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox"

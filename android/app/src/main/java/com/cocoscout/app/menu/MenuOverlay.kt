@@ -6,47 +6,36 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.cocoscout.app.AppShell
 import com.cocoscout.app.R
 
-/** The floating Coco button, and the menu it opens. Hidden while signed out. */
+/**
+ * The menu sheet, over whatever page is showing. Coco in each page's toolbar
+ * opens it (MenuButton, in ToolbarIcons). Nothing while signed out.
+ */
 @Composable
 fun MenuOverlay() {
     val state by AppShell.state.collectAsState()
     val nav by AppShell.nav.collectAsState()
-    var showMenu by remember { mutableStateOf(false) }
+    val showMenu by AppShell.menuOpen.collectAsState()
 
     if (!state.signedIn) return
-
-    // V1.1: no badge on Coco; the toolbar's Messages and Notifications carry the counts.
-    MenuButton(badge = if (nav != null) null else AppShell.badgeText(state.badgeTotal)) { showMenu = true }
 
     // Always the V1.1 sheet: without a nav yet (only the first launch after
     // upgrading from V1, before the first page's message) the tap waits and
@@ -57,13 +46,13 @@ fun MenuOverlay() {
         NavMenuSheet(
             nav = currentNav,
             person = state.person,
-            onDismiss = { showMenu = false },
+            onDismiss = { AppShell.showMenu(false) },
             onOpen = { path ->
-                showMenu = false
+                AppShell.showMenu(false)
                 AppShell.openFromMenu(path)
             },
             onSignOut = {
-                showMenu = false
+                AppShell.showMenu(false)
                 AppShell.signOut()
             }
         )
@@ -71,25 +60,32 @@ fun MenuOverlay() {
 }
 
 /**
- * Coco's face in a white circle with a pink ring, at the bottom right, with
- * the total of every badge. Like MenuButton.swift.
+ * The menu button: Coco's face in a white circle with a pink ring, at the
+ * right end of every page's toolbar, after Messages and Notifications and
+ * the size of each of them (ToolbarIcons). It used to float over the page's
+ * bottom right corner and was always over something (Tim, 2026-11-09).
+ * Nothing while signed out. Like MenuButton.swift.
  */
 @Composable
-fun MenuButton(badge: String?, onClick: () -> Unit) {
+fun MenuButton() {
+    val state by AppShell.state.collectAsState()
+    if (!state.signedIn) return
+
+    // 44dp to tap, as the icons beside it; a 36dp circle to look at.
     Box(
+        contentAlignment = Alignment.Center,
         modifier = Modifier
-            .navigationBarsPadding()
-            .padding(end = 20.dp, bottom = 16.dp, top = 8.dp, start = 8.dp)
+            .size(44.dp)
+            .clip(CircleShape)
+            .clickable { AppShell.showMenu() }
             .semantics { contentDescription = "Menu" }
     ) {
         Box(
             modifier = Modifier
-                .size(60.dp)
-                .shadow(8.dp, CircleShape)
+                .size(36.dp)
                 .clip(CircleShape)
                 .background(Color.White)
-                .border(3.dp, Pink, CircleShape)
-                .clickable(onClick = onClick),
+                .border(2.dp, Pink, CircleShape),
             contentAlignment = Alignment.TopCenter
         ) {
             // A little wider than the circle and nudged down, so the face fills it.
@@ -98,25 +94,9 @@ fun MenuButton(badge: String?, onClick: () -> Unit) {
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
-                    .padding(top = 5.dp)
-                    .requiredWidth(66.dp)
+                    .padding(top = 3.dp)
+                    .requiredWidth(40.dp)
                     .aspectRatio(721f / 768f)
-            )
-        }
-        if (badge != null) {
-            Text(
-                text = badge,
-                color = Color.White,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = 4.dp, y = (-4).dp)
-                    .defaultMinSize(minWidth = 20.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFFE60076))
-                    .border(2.dp, Color.White, RoundedCornerShape(10.dp))
-                    .padding(horizontal = 6.dp, vertical = 1.dp)
             )
         }
     }

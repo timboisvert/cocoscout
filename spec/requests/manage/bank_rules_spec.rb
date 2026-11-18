@@ -65,7 +65,7 @@ RSpec.describe "Manage::BankRules", type: :request do
 
     # Recording needs to know income from spending: the page comes back with the mistake.
     post manage_money_bank_rules_path, params: { bank_rule: { contains: "FLOOD BROTHERS", direction: "any", action: "record", category_key: "production" } }
-    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response).to have_http_status(:unprocessable_content)
     expect(response.body).to include("money in or money out")
 
     # The lines already dealt with say whether a rule as typed agrees with them.
@@ -200,5 +200,16 @@ RSpec.describe "Manage::BankRules", type: :request do
     expect(org.bank_rules.count).to eq(0)
     get manage_money_bank_sort_path
     expect(response).to redirect_to(manage_money_bank_path)
+  end
+  it "finds a rule's lines in the database the way matches? reads them: either case, the right way, a % or _ as itself" do
+    fee = line(Date.new(2026, 10, 3), -1_500, "Card Fee 3% of_sale")
+    line(Date.new(2026, 10, 4), -1_500, "CARD FEE 35 ofXsale")
+    refund = line(Date.new(2026, 10, 5), 1_500, "CARD FEE 3% OF_SALE REVERSED")
+    rule = org.bank_rules.new(contains: "fee 3% of_sale", direction: "out", action: "ignore")
+
+    expect(rule.waiting_lines).to eq([ fee ])
+    rule.direction = "any"
+    expect(rule.fitting(org.bank_statement_lines.order(:id))).to eq([ fee, refund ])
+    expect(org.bank_rules.new(contains: " , ", direction: "any", action: "ignore").waiting_lines).to eq([])
   end
 end

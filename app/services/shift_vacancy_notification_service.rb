@@ -24,18 +24,67 @@ class ShiftVacancyNotificationService
               ))
     end
 
+    # Claimed by the person themself: they're covering it. Put on by a manager
+    # (fill! with accepted: false, fill_from_assignment!): they haven't said
+    # yes, so the words say "put on", not "covering", and say whether they've
+    # heard: told at once when a manager picked them by hand
+    # (StaffScheduleNotices.tell_new_shift!), otherwise with the week's next
+    # updates, and never "will be told" of someone with no login. The one who
+    # dropped it reads "you", not their own name.
     def notify_filled(vacancy)
       shift = vacancy.shift
       organization = shift.organization
-      variables = shift_variables(shift).merge(person_name: vacancy.vacated_by.name, filled_by_name: vacancy.filled_by&.name.to_s)
+      filled_by = vacancy.filled_by
+      row = shift.shift_assignments.find_by(person_id: filled_by&.id)
+      claimed = row&.accepted_at.present?
+      variables = shift_variables(shift).merge(person_name: vacancy.vacated_by.name, filled_by_name: filled_by&.name.to_s)
+      role = variables[:role_name]
+      subject = claimed ? "#{filled_by&.name} is covering the #{role} shift on #{variables[:shift_date]}" :
+                          "#{filled_by&.name} has been put on the #{role} shift on #{variables[:shift_date]}"
+      told = if row&.notified_at.present? then ", and has been notified"
+      elsif filled_by&.user.nil? then ""
+      else ", and will be notified"
+      end
+      words = ->(dropper) do
+        who = dropper ? "you" : vacancy.vacated_by.name
+        claimed ? "#{filled_by&.name} is covering the <strong>#{role}</strong> shift on <strong>#{variables[:shift_time]}</strong> that #{who} couldn't make." :
+                  "#{filled_by&.name} has been put on the <strong>#{role}</strong> shift on <strong>#{variables[:shift_time]}</strong> that #{who} couldn't make#{told}."
+      end
 
       managers = organization.staffing_notification_recipients
       if managers.any?
         deliver("shift_vacancy_filled", managers, organization, for_managers: true,
-                variables: variables.merge(link_url: vacancy_url(vacancy), link_text: "See the shift"))
+                variables: variables.merge(covering_subject: subject, covering_words: words.call(false), link_url: vacancy_url(vacancy), link_text: "See the shift"))
       end
       deliver("shift_vacancy_filled", [ vacancy.vacated_by ], organization, for_managers: false,
-              variables: variables.merge(link_url: my_shifts_url, link_text: "My Shifts"))
+              variables: variables.merge(covering_subject: subject, covering_words: words.call(true), link_url: my_shifts_url, link_text: "My Shifts"))
+      notify_others_asked(vacancy)
+    end
+
+    # Everyone else who was asked and hasn't answered hears it's gone (Tim,
+    # 2026-11-10: "this shift has been covered and is no longer available"),
+    # however it was covered; their claim link alone said so before. A
+    # notification only. Not whoever has the shift, not someone who already
+    # said no, not once the shift is over, and only people with a login.
+    def notify_others_asked(vacancy)
+      shift = vacancy.shift
+      return unless vacancy.filled? && shift.ends_at.future?
+
+      vacancy.invitations.pending.includes(person: :user).map(&:person).uniq.each do |person|
+        next if person.user.nil? || person.id == vacancy.filled_by_id
+
+        deliver("shift_vacancy_covered_invitee", [ person ], shift.organization, for_managers: false,
+                variables: shift_variables(shift).merge(recipient_name: ShiftWords.first_name(person)))
+      end
+    end
+
+    # They claimed it from an invitation: their confirmation, the moment it
+    # happens (the claim page said it and nothing else did).
+    def notify_claimed(invitation)
+      vacancy = invitation.shift_vacancy
+      shift = vacancy.shift
+      deliver("shift_claim_confirmed", [ invitation.person ], shift.organization, for_managers: false,
+              variables: ShiftWords.variables(shift, invitation.person).merge(vacated_by_name: vacancy.vacated_by.name))
     end
 
     def notify_reclaimed(vacancy)
@@ -53,7 +102,7 @@ class ShiftVacancyNotificationService
     # and claim link. Without a person, those two tokens stay for the mailer.
     def invitation_variables(vacancy, person: nil, claim_url: nil)
       shift = vacancy.shift
-      shows = shift.covered_shows.map { |s| "#{s.production&.name} (#{s.date_and_time.strftime("%-l:%M %p")})" }
+      shows = shift.shows_on_duty.map { |s| "#{s.production&.name} (#{s.date_and_time.strftime("%-l:%M %p")})" }
       location = shift.house_role&.location&.name || shift.source.try(:location).try(:name)
       shift_variables(shift).merge(
         person_name: vacancy.vacated_by.name,
@@ -87,7 +136,8 @@ class ShiftVacancyNotificationService
     def shift_variables(shift)
       starts = shift.starts_at
       {
-        role_name: shift.house_role&.name || "staff",
+        # The whole label: a Bartender + Door shift isn't a Bartender shift.
+        role_name: shift.role_label.presence || "staff",
         shift_date: starts.strftime("%a, %b %-d"),
         shift_time: starts.strftime("%A, %B %-d at %-l:%M %p"),
         organization_name: shift.organization.name

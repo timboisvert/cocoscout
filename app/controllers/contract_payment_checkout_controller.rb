@@ -6,7 +6,7 @@
 # in My Contracts. The token is the only credential, so it names exactly one
 # payment and nothing else about the contract is exposed.
 #
-# The page is the invoice (ContractInvoice): numbered, downloadable as a PDF,
+# The page is the invoice (Invoice, kind "contract"): numbered, downloadable as a PDF,
 # and once paid, the receipt.
 #
 # CocoScout collects the money into its own balance (like course registrations)
@@ -101,7 +101,7 @@ class ContractPaymentCheckoutController < ApplicationController
   # waiting on its amount has none yet; a cancelled one shows the one it had,
   # void.
   def invoice_for(payment)
-    payment.invoiceable? ? ContractInvoice.for!(payment) : payment.contract_invoice
+    payment.invoiceable? ? Invoice.for!(payment) : payment.invoice
   end
 
   def set_payment
@@ -119,7 +119,7 @@ class ContractPaymentCheckoutController < ApplicationController
   def redirect_to_combined_payment
     return false if @token.blank?
 
-    host = ContractInvoice.find_by(payment_token: @token)&.combined_into_payment
+    host = Invoice.for_contracts.find_by(payment_token: @token)&.combined_into_payment
     return false if host&.payment_token.blank?
 
     redirect_to pay_contract_path(token: host.payment_token), notice: "This payment was combined with others into one invoice."

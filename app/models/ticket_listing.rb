@@ -49,6 +49,14 @@ class TicketListing < ApplicationRecord
   validates :slug, presence: true, uniqueness: { scope: :organization_id },
                    format: { with: /\A[a-z0-9][a-z0-9-]*\z/ }
   validates :fee_mode, inclusion: { in: TicketingProfile::FEE_MODES }, allow_nil: true
+  validates :cash_tax, inclusion: { in: TicketingProfile::CASH_TAXES }, allow_nil: true
+  validates :price_display, inclusion: { in: TicketingProfile::PRICE_DISPLAYS }, allow_nil: true
+  # Its own refund policy, or (blank) its production's, then the box
+  # office's (RefundPolicy.for).
+  normalizes :refund_policy, with: ->(value) { value.to_s.strip.presence }
+  validates :refund_policy, inclusion: { in: RefundPolicy::KINDS }, allow_nil: true
+  validates :refund_window_hours, numericality: { only_integer: true, in: 0..RefundPolicy::MAX_HOURS }, allow_nil: true
+  validates :refund_policy_note, length: { maximum: RefundPolicy::NOTE_LIMIT }
   validates :max_per_order, numericality: { only_integer: true, in: 1..100 }, allow_nil: true
   # Blank follows the production; 0 is all ages for this date (AgeLimit).
   validates :minimum_age, numericality: { only_integer: true, in: 0..AgeLimit::AGES.max }, allow_nil: true
@@ -103,8 +111,12 @@ class TicketListing < ApplicationRecord
     @production_ticketing = production&.production_ticketing
   end
 
+  # The date's own words, the production's ticketing setup, then the
+  # production's: the contractor's own production's first, when the show is
+  # theirs and sold here under a connected contract (LinkedArt).
   def effective_description
-    description.presence || production_ticketing&.description.presence || production&.description.presence
+    description.presence || production_ticketing&.description.presence ||
+      LinkedArt.source_for_show(show)&.description.presence || production&.description.presence
   end
 
   def effective_door_note
@@ -180,6 +192,18 @@ class TicketListing < ApplicationRecord
     fee_mode.presence || production_ticketing&.fee_mode.presence || profile&.default_fee_mode || "buyer"
   end
 
+  # Cash at the door: this date's say, else its production's, else the box
+  # office's. "included" holds the tax included in the price paid in cash.
+  def effective_cash_tax
+    cash_tax.presence || production_ticketing&.cash_tax.presence || profile&.cash_tax || "same"
+  end
+
+  # The tax mode a cash sale forces on the tax engine: "included", or nil
+  # to leave it to the organization's tax setting.
+  def cash_tax_mode
+    effective_cash_tax == "included" ? "included" : nil
+  end
+
   def effective_max_per_order
     max_per_order || production_ticketing&.max_per_order || profile&.default_max_per_order || 10
   end
@@ -234,13 +258,18 @@ class TicketListing < ApplicationRecord
     comp_rules.team_comps_per_show || 2
   end
 
-  # How many comps this date can still give away, whoever gives them: nil
-  # when there's no limit. People cast counts each person once.
-  def comps_left
-    return nil if effective_comps_limit == "unlimited"
+  # How many comps the people on a contract may issue for this date, between
+  # all of them: 0 is none.
+  def effective_contract_comps
+    comp_rules.contract_comps_per_show.to_i
+  end
 
-    limit = effective_comps_limit == "fixed" ? effective_comps_per_show : show.show_person_role_assignments.visible_to_performers.distinct.count(:assignable_id)
-    [ limit - Ticketing::ListingStats.of(self).comps, 0 ].max
+  # How many comps this date can still give away, whoever gives them: nil
+  # when there's no limit.
+  def comps_left
+    return nil unless effective_comps_limit == "fixed"
+
+    [ effective_comps_per_show - Ticketing::ListingStats.of(self).comps, 0 ].max
   end
 
   # "Only 3 left" when a count is at or under the threshold, else nil.
@@ -250,6 +279,18 @@ class TicketListing < ApplicationRecord
 
   def buyer_pays_fees?
     effective_fee_mode == "buyer"
+  end
+
+  # Whether this date's prices read before taxes and fees ("$20.00 + taxes
+  # & fees"): the box office's choice (Ticketing settings → Box office).
+  # How prices are shown: this date's say, else its production's, else the
+  # box office's.
+  def effective_price_display
+    price_display.presence || production_ticketing&.price_display.presence || profile&.price_display || "all_in"
+  end
+
+  def prices_before_extras?
+    effective_price_display == "base"
   end
 
   # When members may buy (advanced ticketing §2b): the date's own time, else

@@ -91,8 +91,8 @@ module Manage
 
       @talent_pool = @production.effective_talent_pool
 
-      if @audition_cycle.video_only?
-        # For video-only auditions, use audition requests instead of auditions
+      if @audition_cycle.decided_from_requests?
+        # No sessions (video-only, or never set up): the requests are who auditioned
         audition_requests = @audition_cycle.audition_requests.includes(:requestable)
         @auditioned_people = audition_requests.map(&:requestable).compact.sort_by { |r| r.name.to_s }
       else
@@ -115,8 +115,8 @@ module Manage
       @talent_pool = @production.effective_talent_pool
       @auditionee_vote_counts = {}
 
-      if @audition_cycle.video_only?
-        # For video-only auditions, use audition requests instead of auditions
+      if @audition_cycle.decided_from_requests?
+        # No sessions (video-only, or never set up): the requests are who auditioned
         audition_requests = @audition_cycle.audition_requests
                               .includes(:audition_request_votes, :requestable)
 
@@ -613,6 +613,11 @@ module Manage
       cast_notifications = []
       rejection_notifications = []
 
+      # The subject and body the manager edited in the form (rendered with
+      # [Name], filled in per person below). Blank falls back to the template.
+      cast_draft = edited_email_draft(:cast_email_draft)
+      not_cast_draft = edited_email_draft(:not_cast_email_draft)
+
       # Get pending stages grouped by decision type
       pending_cast_stages = cast_assignment_stages.where(status: :pending, decision_type: :cast)
       pending_rejection_stages = cast_assignment_stages.where(status: :pending, decision_type: :rejected)
@@ -624,8 +629,8 @@ module Manage
 
         talent_pool = talent_pools_by_id[stage.talent_pool_id]
         email_result = generate_default_cast_email(assignable, talent_pool, @production)
-        email_subject = email_result[:subject]
-        email_body = email_result[:body]
+        email_subject = cast_draft[:subject].presence || email_result[:subject]
+        email_body = cast_draft[:body].presence || email_result[:body]
 
         # Add assignable to the actual talent pool (not just the staging area)
         membership_exists = TalentPoolMembership.exists?(
@@ -653,7 +658,7 @@ module Manage
             person: person,
             talent_pool: talent_pool,
             body: personalized_body,
-            subject: email_subject
+            subject: email_subject.gsub("[Name]", person.name)
           }
         end
 
@@ -666,8 +671,8 @@ module Manage
         next unless assignable
 
         email_result = generate_default_rejection_email(assignable, @production)
-        email_subject = email_result[:subject]
-        email_body = email_result[:body]
+        email_subject = not_cast_draft[:subject].presence || email_result[:subject]
+        email_body = not_cast_draft[:body].presence || email_result[:body]
 
         # Get recipients - for Person it's just them, for Group it's all members with notifications enabled
         recipients = assignable.is_a?(Group) ? assignable.group_memberships.select(&:notifications_enabled?).map(&:person) : [ assignable ]
@@ -679,7 +684,7 @@ module Manage
           rejection_notifications << {
             person: person,
             body: personalized_body,
-            subject: email_subject
+            subject: email_subject.gsub("[Name]", person.name)
           }
         end
 
@@ -939,6 +944,14 @@ module Manage
         redirect_to manage_signups_auditions_cycle_session_audition_path(@production, @audition_cycle, @audition.audition_session, @audition),
                     alert: "This audition cycle is archived. Voting is not allowed."
       end
+    end
+
+    # { subject:, body: } from the finalize form's draft fields (title, body).
+    def edited_email_draft(key)
+      draft = params[key]
+      return {} unless draft.respond_to?(:[])
+
+      { subject: draft[:title].to_s.strip, body: draft[:body].to_s.strip }
     end
 
     def generate_default_cast_email(person, _talent_pool, production)

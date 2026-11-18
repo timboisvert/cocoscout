@@ -44,13 +44,13 @@ module Manage
 
     def create
       @rule = Current.organization.bank_rules.new(rule_params.merge(created_by: Current.user))
-      return render :form, status: :unprocessable_entity unless @rule.save
+      return render :form, status: :unprocessable_content unless @rule.save
 
       run(@rule, "Rule saved.")
     end
 
     def update
-      return render :form, status: :unprocessable_entity unless @rule.update(rule_params)
+      return render :form, status: :unprocessable_content unless @rule.update(rule_params)
 
       run(@rule, "Rule changed.")
     end
@@ -98,7 +98,7 @@ module Manage
     def run(rule, saved)
       org = Current.organization
       rules = rule ? [ rule ] : org.bank_rules.order(:id).to_a
-      lines = org.bank_statement_lines.to_deal_with.to_a.select { |line| rules.any? { |r| r.matches?(line) } }
+      lines = rule ? rule.waiting_lines : org.bank_statement_lines.to_deal_with.to_a.select { |line| rules.any? { |r| r.matches?(line) } }
       lead = saved ? "#{saved} " : ""
       back = params[:back] == "bank" ? manage_money_bank_path : manage_money_bank_rules_path
       if lines.empty?

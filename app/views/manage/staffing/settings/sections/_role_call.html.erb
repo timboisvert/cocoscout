@@ -1,7 +1,9 @@
 <%# Staffing Settings → Role Call (Tim, 2026-10-16): two boxes, one Save. The
     first is Role Call itself, on or off. The second is the roles every show
     has to have whatever its services (a house manager); what else a show
-    needs comes from its services (after-V1 #6). %>
+    needs comes from its services (after-V1 #6). A role a service carries is
+    asked of a contract show only through its services (RoleCall; Tim,
+    2026-11-08). %>
 <%= form_with url: manage_staffing_settings_path, method: :patch, class: "space-y-6" do %>
   <%# Markers, so an unchecked switch and an all-unchecked list still save. %>
   <%= hidden_field_tag :updating_coverage, "1" %>
@@ -22,7 +24,7 @@
 
   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
     <%= render "shared/section_heading", title: "More roles every show needs",
-          intro: "Roles that aren't a service but every show still has to have, like a house manager. Role Call checks these on every show, whatever its services." %>
+          intro: "Roles that aren't a service but every show still has to have, like a house manager. Role Call checks these on every show. A role that one of your services carries is asked of a contract production's show only when that show's services include it: what a contract production needs comes from its contract." %>
     <% if @role_call_roles.present? %>
       <div class="divide-y divide-gray-100">
         <% @role_call_roles.each do |role| %>

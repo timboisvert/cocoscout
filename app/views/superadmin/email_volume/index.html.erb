@@ -1,0 +1,126 @@
+<%# Superadmin → Finances → Email (Superadmin::EmailVolumeController): this
+    month's mail against the Mailgun plan, where it's heading, follower mail
+    against its ceiling, the blocks of extra follower emails bought, and the
+    plan's size. From the controller: @volume (MailVolume), @months,
+    @blocks, @blocks_this_month, @holding. %>
+<% content_for :title, "Finances · Email" %>
+<%
+  v = @volume
+  number = ->(n) { number_with_delimiter(n) }
+  input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  tone = v.percent >= 100 ? "border-red-200 bg-red-50" : (v.close? ? "border-amber-200 bg-amber-50" : "border-gray-200 bg-white")
+%>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Superadmin", superadmin_path ], [ "Finances", finances_path ] ], text: "Email", links: [] } %>
+  <%= render "superadmin/finances/tabs", current: :email %>
+
+  <p class="mt-4 text-sm text-gray-600 max-w-3xl">
+    Every email CocoScout sends is counted as it goes out: sign-in, tickets, contracts and email to followers. This page sets that against
+    the Mailgun plan. CocoScout counts what it sends and can't see what Mailgun bills, so the plan's size at the bottom is yours to keep right.
+  </p>
+
+  <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="rounded-lg border <%= tone %> p-4" data-mail-sent>
+      <div class="text-xs text-gray-500 uppercase tracking-wider">Sent in <%= v.month.strftime("%B") %></div>
+      <div class="text-xl font-semibold text-gray-900 mt-1 tabular-nums"><%= number.call(v.sent) %> of <%= number.call(v.plan_emails) %></div>
+      <div class="text-xs text-gray-600 mt-0.5">
+        <%= v.percent %>% of the plan.
+        <% if v.counted_from.nil? %>Nothing has been counted yet this month. Counting starts with the next email that goes out.
+        <% elsif v.counted_from.to_date > v.month %>Counted since <%= v.counted_from.strftime("%b %-d") %>, when counting began.<% end %>
+      </div>
+    </div>
+    <div class="rounded-lg border border-gray-200 bg-white p-4" data-mail-pace>
+      <div class="text-xs text-gray-500 uppercase tracking-wider">Heading for</div>
+      <div class="text-xl font-semibold text-gray-900 mt-1 tabular-nums"><%= v.projected ? "About #{number.call(v.projected)}" : "Too early to say" %></div>
+      <div class="text-xs text-gray-600 mt-0.5">
+        <%# Three reasons there's no pace yet, each said as what it is: nothing
+            counted, counting only just begun, or the month only just begun. %>
+        <% if v.counted_from.nil? %>There is nothing to work a pace out from yet.
+        <% elsif v.projected.nil? && v.counted_from.to_date > v.month %>Counting began on <%= v.counted_from.strftime("%b %-d") %>. A pace means little until it has run for <%= MailVolume::PACE_FROM_DAY %> days.
+        <% elsif v.projected.nil? %>A month's pace means little in its first few days.
+        <% elsif v.upgrade_near? %>Past <%= number.call(v.upgrade_at) %> the next plan up costs less than paying for the extra.
+        <% elsif v.projected > v.plan_emails %>Over the plan, and still cheaper than moving up one.
+        <% else %>Within the plan at this pace.<% end %>
+      </div>
+    </div>
+    <div class="rounded-lg border border-gray-200 bg-white p-4" data-mail-followers>
+      <div class="text-xs text-gray-500 uppercase tracking-wider">Email to followers</div>
+      <div class="text-xl font-semibold text-gray-900 mt-1 tabular-nums"><%= number.call(v.follower_sent) %> of <%= number.call(v.follower_cap) %></div>
+      <div class="text-xs text-gray-600 mt-0.5">Every organization together. At <%= number.call(v.follower_cap) %> sending stops until next month.</div>
+    </div>
+    <div class="rounded-lg border border-gray-200 bg-white p-4" data-mail-paid>
+      <div class="text-xs text-gray-500 uppercase tracking-wider">Paid for, not sent yet</div>
+      <div class="text-xl font-semibold text-gray-900 mt-1 tabular-nums"><%= number.call(v.paid_unused) %></div>
+      <div class="text-xs text-gray-600 mt-0.5">Extra follower emails organizations bought and still hold. They can send them in any month.</div>
+    </div>
+  </div>
+
+  <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+    <div class="lg:col-span-2 bg-white border border-gray-200 rounded-lg overflow-hidden" data-blocks>
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "Extra follower emails bought",
+            intro: "#{pluralize(@blocks_this_month.count, 'block')} this month, #{number_to_currency(@blocks_this_month.sum(:price_cents) / 100.0)}. Each is 1,000 emails for $3, on the organization's next bill." %>
+      <% if @blocks.any? %>
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <tr><th class="px-4 py-2">Organization</th><th class="px-4 py-2">Bought</th><th class="px-4 py-2">By</th><th class="px-4 py-2 text-right">Emails</th><th class="px-4 py-2 text-right">Price</th></tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <% @blocks.each do |block| %>
+              <tr>
+                <td class="px-4 py-2 text-gray-900"><%= link_to block.organization.name, finances_org_detail_path(org_id: block.organization_id), class: "text-pink-600 hover:text-pink-700" %></td>
+                <td class="px-4 py-2 text-gray-700"><%= block.created_at.strftime("%b %-d, %Y") %></td>
+                <td class="px-4 py-2 text-gray-700"><%= block.bought_by&.person&.name || block.bought_by&.email_address || "Someone no longer here" %></td>
+                <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= number.call(block.emails) %></td>
+                <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= number_to_currency(block.price_cents / 100.0) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% else %>
+        <p class="px-4 py-6 text-sm text-gray-600">Nobody has bought extra emails yet.</p>
+      <% end %>
+    </div>
+
+    <div class="space-y-5">
+      <% if @holding.any? %>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden" data-holding>
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Who still holds paid emails" %>
+          <ul class="divide-y divide-gray-100 text-sm">
+            <% @holding.each do |name, left| %>
+              <li class="flex items-center justify-between gap-3 px-4 py-2"><span class="text-gray-900"><%= name %></span><span class="tabular-nums text-gray-700"><%= number.call(left) %></span></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden" data-mail-plan>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "The Mailgun plan",
+              intro: "Change these when you change plans. You are notified at #{(MailVolume::CLOSE_AT * 100).round}% of the plan, and when the month's pace passes the second number." %>
+        <%= form_with url: finances_email_path, method: :patch, local: true, class: "p-4 space-y-4" do %>
+          <label class="block">
+            <span class="block text-sm font-medium text-gray-700 mb-1.5">Emails the plan includes each month</span>
+            <%= number_field_tag :plan_emails, v.plan_emails, min: 1, class: input %>
+          </label>
+          <label class="block">
+            <span class="block text-sm font-medium text-gray-700 mb-1.5">Monthly volume where the next plan up is cheaper</span>
+            <%= number_field_tag :upgrade_at, v.upgrade_at, min: 1, class: input %>
+            <span class="block text-xs text-gray-500 mt-1.5">From the $15 plan this is about 21,000: the $35 plan costs $20 more, and each extra 1,000 here costs about $1.80.</span>
+          </label>
+          <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+        <% end %>
+      </div>
+
+      <% if @months.size > 1 %>
+        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden" data-mail-months>
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: "Month by month" %>
+          <ul class="divide-y divide-gray-100 text-sm">
+            <% @months.each do |row| %>
+              <li class="flex items-center justify-between gap-3 px-4 py-2"><span class="text-gray-900"><%= row.month.strftime("%B %Y") %></span><span class="tabular-nums text-gray-700"><%= number.call(row.sent) %></span></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

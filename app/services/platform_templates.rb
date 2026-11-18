@@ -67,7 +67,21 @@ class PlatformTemplates
                    { "name" => "value_lines", "description" => "What Pro did for them in the last three months, as a list (empty when nothing happened)" },
                    { "name" => "price_line", "description" => "What Pro costs: the plan and the usage" },
                    { "name" => "lose_lines", "description" => "What they'd lose on Producer, as a list" },
-                   { "name" => "keep_url", "description" => "Their Billing & Plan page, where Keep Pro is" } ] }
+                   { "name" => "keep_url", "description" => "Their Billing & Plan page, where Keep Pro is" } ] },
+    # One email, once, to everyone with an account who hasn't opened the app
+    # (AppAnnouncement). Its own links, so the layout leaves its footer line
+    # about the app off. Tim and Andie's words (2026-11-13); the store badges
+    # ride along inline (AppMailer's inline_images), since email apps don't
+    # show SVG or web fonts.
+    { key: "get_the_app_announcement", name: "CocoScout has an app", channel: "email",
+      subject: "New: CocoScout app for iOS and Android",
+      body: %(<p>Hello {{first_name}}!</p><p>Your pleas have been heard. The wait is over. The CocoScout app is now available for iOS and Android.</p><p>With this new mobile app, you’ll have the same functionality as the website, with the added benefit of real-time alerts and one-tap access that make CocoScout easier to use on the go.</p><p><strong>For performers:</strong> find auditions and mics, see your show/rehearsal schedule, communicate with fellow cast members and producers, get paid (and more!).</p><p><strong>For producers:</strong> cast your shows, manage communications, sell your tickets, pay your people (and more!).</p><p><strong>For venues:</strong> manage your contracts, staff your shows, sell your tickets, keep your books, pay your people (and more!).</p><p style="margin:16px 0 8px;line-height:0;font-size:0;"><a href="{{ios_url}}" style="display:inline-block;margin:0 8px 8px 0;text-decoration:none;"><img src="{{app_store_badge_src}}" alt="Download on the App Store" width="120" height="40" style="display:block;border:0;width:120px;height:40px;"></a><a href="{{android_url}}" style="display:inline-block;margin:0 0 8px 0;text-decoration:none;"><img src="{{google_play_badge_src}}" alt="Get it on Google Play" width="135" height="40" style="display:block;border:0;width:135px;height:40px;"></a></p><p>CocoScout is growing quickly, and we’re pleased to have you on our platform. Can’t wait to see the shows you and CocoScout put on together!</p><p>Andie and Tim and Coco</p>),
+      variables: [ { "name" => "first_name", "description" => "Their first name" },
+                   { "name" => "ios_url", "description" => "The App Store page" },
+                   { "name" => "android_url", "description" => "The Google Play page" },
+                   { "name" => "app_store_badge_src", "description" => "The App Store badge, attached to the email" },
+                   { "name" => "google_play_badge_src", "description" => "The Google Play badge, attached to the email" },
+                   { "name" => "app_url", "description" => "cocoscout.com/app: a phone goes to its own store" } ] }
   ].freeze
 
   def self.ensure!(keys: nil, overwrite: false)

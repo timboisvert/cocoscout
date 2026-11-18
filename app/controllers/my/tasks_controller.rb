@@ -32,11 +32,14 @@ module My
         return render json: { error: "Not authorized" }, status: :forbidden
       end
 
-      # Find the sign-up form instance for this show (open or scheduled for pre-registration)
+      # Find the sign-up form instance for this show (open or scheduled for
+      # pre-registration). A paused form takes nobody: Rising Stars' rehearsal
+      # sign-ups were paused in September and this still signed people up
+      # through November (Tim, 2026-11-11).
       instance = SignUpFormInstance.joins(:sign_up_form)
                                    .where(show_id: show.id)
                                    .where(status: %w[open scheduled])
-                                   .where(sign_up_forms: { archived_at: nil })
+                                   .where(sign_up_forms: { archived_at: nil, active: true })
                                    .first
 
       unless instance
@@ -65,7 +68,13 @@ module My
         return redirect_to my_tasks_path, alert: "No spots available for this event."
       end
 
-      registration = SignUpRegistration.find_or_initialize_by(
+      # Someone already signed up for this event stays on the spot they have:
+      # a second tap used to take the next free spot as well.
+      registration = SignUpRegistration.where(person: person).where.not(status: "cancelled")
+                                       .where(sign_up_slot_id: instance.sign_up_slots.select(:id))
+                                       .or(SignUpRegistration.where(person: person, sign_up_form_instance_id: instance.id).where.not(status: "cancelled"))
+                                       .first
+      registration ||= SignUpRegistration.find_or_initialize_by(
         person: person,
         sign_up_slot: slot,
         sign_up_form_instance: instance

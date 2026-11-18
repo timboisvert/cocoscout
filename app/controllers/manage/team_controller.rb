@@ -78,6 +78,7 @@ module Manage
           email: person.email,
           organization: Current.organization,
           person: person,
+          invited_by: Current.user.person,
           accepted_at: Time.current
         )
         Manage::TeamMailer.invite(team_invitation, invitation_subject, invitation_message).deliver_later
@@ -91,6 +92,7 @@ module Manage
       @team_invitation = TeamInvitation.new(team_invitation_params)
       @team_invitation.organization = Current.organization
       @team_invitation.person_id = person&.id
+      @team_invitation.invited_by = Current.user.person
       # Someone found on CocoScout is invited at their own address, which the
       # picker doesn't show for people outside the organization.
       @team_invitation.email = person.email if person && @team_invitation.email.blank?

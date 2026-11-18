@@ -6,6 +6,17 @@
   section_path = ->(section, extra = {}) { manage_money_books_section_path({ section: section, basis: basis_param, period: period_param }.merge(extra).compact) }
   # This page, with other filters.
   page_path = ->(extra = {}) { @tab == "overview" ? manage_money_books_path(extra.compact) : manage_money_books_section_path(extra.merge(section: @tab).compact) }
+  # Previous and Next under a section's list, when it runs past one page.
+  pager = lambda do |section, extra = {}|
+    next "".html_safe unless @pagy && @pagy.pages > 1
+
+    buttons = [ [ "Previous", @pagy.previous ], [ "Next", @pagy.next ] ].filter_map do |text, page|
+      render("shared/button", text: text, variant: "secondary", size: "small", path: section_path.call(section, extra.merge(page: page))) if page
+    end
+    tag.div(class: "max-w-4xl mt-4 flex items-center justify-between") do
+      tag.div("Page #{@pagy.page} of #{@pagy.pages}", class: "text-sm text-gray-500") + tag.div(safe_join(buttons), class: "flex gap-2")
+    end
+  end
   section_titles = { "accounts" => "Accounts", "entries" => "Entries", "shows" => "By show", "checks" => "Checks" }
   books_description = <<~HTML
     <p>What happened, in dollars. Every ticket, class, contract, payout run, bill and receipt lands here the moment it happens, on real double-entry books you never have to look at.</p>
@@ -280,15 +291,7 @@
           </details>
         <% end %>
       </div>
-      <% if @pagy.pages > 1 %>
-        <div class="max-w-4xl mt-4 flex items-center justify-between">
-          <div class="text-sm text-gray-500">Page <%= @pagy.page %> of <%= @pagy.pages %></div>
-          <div class="flex gap-2">
-            <% if @pagy.previous %><%= render "shared/button", text: "Previous", variant: "secondary", size: "small", path: section_path.call("entries", account_id: @account&.id, page: @pagy.previous) %><% end %>
-            <% if @pagy.next %><%= render "shared/button", text: "Next", variant: "secondary", size: "small", path: section_path.call("entries", account_id: @account&.id, page: @pagy.next) %><% end %>
-          </div>
-        </div>
-      <% end %>
+      <%= pager.call("entries", account_id: @account&.id, kind: params[:kind].presence) %>
       <p class="max-w-4xl mt-2 text-xs text-gray-500">Open an entry to see its lines: money coming into an account on the left, going out on the right. Every entry balances.</p>
     <% else %>
       <%= render "shared/empty_state", icon: "money", title: "No entries yet" %>
@@ -331,6 +334,7 @@
           </tbody>
         </table>
       </div>
+      <%= pager.call("shows") %>
       <p class="max-w-4xl mt-2 text-xs text-gray-500">Ticket money waits as "Tickets sold for upcoming shows" until the day after the show, then becomes income.</p>
     <% else %>
       <%= render "shared/empty_state", icon: "ticket", title: "No ticket money on the books yet" %>

@@ -11,6 +11,7 @@ module Manage
   class BooksController < Manage::ManageController
     include BooksCategoriesGate
     SECTIONS = %w[overview accounts entries shows checks].freeze
+    SHOWS_PER_PAGE = 50
 
     def show
       # ?tab= was the old address of a section; it still answers.
@@ -37,24 +38,33 @@ module Manage
         @records = Current.organization.money_records.with_attached_receipt
                           .where(id: @entries.select { |e| e.source_type == "MoneyRecord" }.map(&:source_id)).index_by(&:id)
       when "shows"
-        @show_rows = @report.by_show
+        @pagy, shows = pagy(@report.shows_with_ticket_money, limit: SHOWS_PER_PAGE)
+        @show_rows = @report.by_show(shows)
       when "checks"
         @disagreements = BooksReconciliation.financials_vs_books(Current.organization, period_key: @period)
       end
       # Nothing to check, and no chart to create, before the first posting.
-      # Every page says how the checks stand (the Checks card's badge).
-      @mismatches = Current.organization.ledger_accounts.exists? ? BooksReconciliation.check(Current.organization) : []
+      # The landing page says how the checks stand (the Checks card's badge)
+      # from the last time they ran; the Checks page itself runs them now.
+      # The other sections don't show them.
+      @mismatches = if !Current.organization.ledger_accounts.exists? then []
+      elsif @tab == "checks" then BooksReconciliation.record!(Current.organization)
+      elsif @tab == "overview" then BooksReconciliation.last(Current.organization)
+      else []
+      end
       load_record_choices unless @tab == "overview"
     end
 
-    # The period's money in and out as a CSV, one row per line, with the show,
-    # production and category it belongs to: "Every line" on Statements.
+    # The period's money in and out as a spreadsheet, one row per line, with
+    # the show, production and category it belongs to: "Every line" on
+    # Statements. Asked for here and put together in the background
+    # (BooksDownload); a GET, so someone who can only look can ask.
     def download
-      report = BooksReport.new(Current.organization, basis: params[:basis])
-      period = params[:period].presence_in(BooksReport::PERIODS.keys) || "this_month"
-      production_id = Current.organization.productions.find_by(id: params[:production])&.id
-      csv = report.to_csv(range: BooksReport.period_range(period), production_id: production_id)
-      send_data csv, type: "text/csv", filename: "books-#{period.tr('_', '-')}-#{report.basis == :cash ? 'when-moved' : 'when-earned'}.csv"
+      BooksDownload.ask!(organization: Current.organization, by: Current.user, kind: "period",
+                         options: { period: params[:period].presence_in(BooksReport::PERIODS.keys) || "this_month",
+                                    basis: (params[:basis] == "cash" ? "cash" : nil),
+                                    production: Current.organization.productions.find_by(id: params[:production])&.id })
+      redirect_to manage_money_statements_path(anchor: "downloads"), notice: "Every line: #{BooksDownload::ASKED}"
     end
 
     private

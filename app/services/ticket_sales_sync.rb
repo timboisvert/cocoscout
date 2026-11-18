@@ -25,14 +25,25 @@ class TicketSalesSync
     source
   end
 
+  # The tickets the CocoScout line counts: sold here for money.
+  def self.paid_tickets(listing)
+    Ticket.joins(:ticket_order)
+          .where(ticket_listing_id: listing.id, status: Ticket::SOLD_STATUSES)
+          .where(ticket_orders: { money_path: %w[cocoscout cash] })
+          .where("tickets.price_cents > tickets.discount_cents")
+  end
+
+  # Those tickets by ticket type, in the types' order: [[ "General Admission", 11 ], ...].
+  def self.by_type(listing)
+    paid_tickets(listing).joins(:ticket_tier).group("ticket_tiers.position", "ticket_tiers.id", "ticket_tiers.name").count
+                         .sort_by { |(position, id, _), _| [ position.to_i, id ] }.map { |(_, _, name), count| [ name, count ] }
+  end
+
   def self.sync!(show)
     listing = show.ticket_listing
     return unless listing
 
-    paid = Ticket.joins(:ticket_order)
-                 .where(ticket_listing_id: listing.id, status: Ticket::SOLD_STATUSES)
-                 .where(ticket_orders: { money_path: %w[cocoscout cash] })
-                 .where("tickets.price_cents > tickets.discount_cents")
+    paid = paid_tickets(listing)
     count = paid.count
     included_tax = TaxLine.where(taxable_type: "Ticket", taxable_id: paid.select(:id), included: true).sum(:tax_cents)
     face_cents = paid.sum("tickets.price_cents - tickets.discount_cents") - included_tax

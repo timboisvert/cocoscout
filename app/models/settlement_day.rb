@@ -7,8 +7,10 @@
 # lives here too.
 #
 # Which day a time belongs to is the organization's call (§9.6):
-#   smart     a day starts at settlement_day_starts_at (6 am) and runs until
-#             the next morning, so a 12:15 am bar round is still Friday's
+#   smart     a day starts at settlement_day_starts_at (6 am) and closes when
+#             its last show's door closes, by the box office's rule, and by
+#             the next morning at the latest (DayClose); anything before the
+#             morning hour is the night before's, so a 12:15 am round is Friday's
 #   calendar  strictly by the date, at midnight
 class SettlementDay < ApplicationRecord
   STATUSES = %w[open settled].freeze
@@ -42,10 +44,18 @@ class SettlementDay < ApplicationRecord
     end
   end
 
-  # A day can be settled once it's over.
+  # A day is over once it closes (DayClose): only the current day can still
+  # be going, since every earlier one is past its morning hour.
   def self.ended?(organization, date, now: Time.current)
-    now >= window(organization, date).end
+    window = window(organization, date)
+    return true if now >= window.end
+    return false if now < window.begin
+
+    now >= DayClose.ends_at(organization, date)
   end
+
+  # When the day closes (DayClose).
+  def self.ends_at(organization, date) = DayClose.ends_at(organization, date)
 
   def settled? = status == "settled"
   def open? = status == "open"

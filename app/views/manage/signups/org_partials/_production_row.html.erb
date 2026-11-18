@@ -32,6 +32,9 @@
       auditions_panel[:value] = "Upcoming"
       auditions_panel[:value_class] = "text-sm font-medium text-amber-600"
       auditions_panel[:sub] = "Opens #{audition_cycle.opens_at.strftime('%b %-d')}"
+    when :paused
+      auditions_panel[:value] = "Paused"
+      auditions_panel[:value_class] = "text-sm font-medium text-gray-500"
     when :closed
       auditions_panel[:value] = "Closed"
       auditions_panel[:value_class] = "text-sm font-medium text-gray-500"

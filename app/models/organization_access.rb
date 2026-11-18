@@ -154,7 +154,7 @@ class OrganizationAccess
     "manage/course_money" => "courses", "manage/course_offering_payouts" => "courses", "manage/course_payout_runs" => "courses",
     "manage/org_documents" => "documents", "manage/documents" => "documents",
     "manage/directory" => "contacts", "manage/people" => "contacts", "manage/groups" => "contacts", "manage/questionnaires" => "contacts",
-    "manage/ticketing" => "ticketing", "manage/ticketing_attendance" => "ticketing", "manage/ticketing_settings" => "ticketing", "manage/ticket_listings" => "ticketing",
+    "manage/ticketing" => "ticketing", "manage/ticketing_settings" => "ticketing", "manage/ticket_listings" => "ticketing",
     "manage/production_ticketings" => "ticketing", "manage/ticket_orders" => "ticketing", "manage/ticket_comps" => "ticketing", "manage/ticket_taxes" => "ticketing",
     "manage/ticket_offers" => "ticketing", "manage/ticket_offer_wizard" => "ticketing", "manage/ticket_passes" => "ticketing", "manage/ticket_products" => "ticketing",
     "manage/ticket_sales_viewers" => "ticketing", "manage/short_links" => "ticketing", "manage/ticket_gift_certificates" => "ticketing",

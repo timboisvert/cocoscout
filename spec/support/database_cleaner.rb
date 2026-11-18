@@ -44,8 +44,10 @@ def seed_content_templates
     { key: "vacancy_reclaimed", name: "Vacancy Reclaimed", subject: "Reclaimed", body: "Reclaimed", category: "vacancies", channel: "both" },
     { key: "show_canceled", name: "Show Canceled", subject: "[{{production_name}}] Canceled: {{event_date}}", body: "<p>Hi {{recipient_name}}, canceled: {{event_date}}</p>", category: "shows", channel: "both" },
     { key: "show_moved", name: "Show moved (cast)", subject: "[{{production_name}}] New time: {{dates}}", body: "<p>Hi {{recipient_name}}, {{changes}}</p>", category: "shows", channel: "both" },
-    { key: "shift_canceled", name: "Shift off (staff)", subject: "{{organization_name}}: your shift on {{dates}} is off", body: "<p>Hi {{recipient_name}}, {{what}}: {{shifts}}</p>", category: "shows", channel: "both" },
-    { key: "shift_moved", name: "Shift moved (staff)", subject: "{{organization_name}}: new time for your shift on {{dates}}", body: "<p>Hi {{recipient_name}}, {{what}}: {{shifts}}</p>", category: "shows", channel: "both" },
+    { key: "shift_canceled", name: "Shift off (staff)", subject: "{{organization_name}}: {{headline}}", push_body: "{{headline}}",
+      body: "<p>Hi {{recipient_name}}, {{what}}{{outcome}}: {{shifts}}</p>{{#remaining}}<p>{{remaining}}</p>{{/remaining}}", category: "shows", channel: "both" },
+    { key: "shift_moved", name: "Shift moved (staff)", subject: "{{organization_name}}: {{headline}}", push_body: "{{headline}}",
+      body: "<p>Hi {{recipient_name}}, {{what}}{{outcome}}: {{shifts}}</p>", category: "shows", channel: "both" },
     { key: "sign_up_confirmation", name: "Sign-Up Confirmation", subject: "Confirmed", body: "Confirmed", category: "sign_ups", channel: "message" },
     { key: "sign_up_queued", name: "Sign-Up Queued", subject: "Waitlisted", body: "Waitlisted", category: "sign_ups", channel: "message" },
     { key: "sign_up_slot_assigned", name: "Slot Assigned", subject: "Assigned", body: "Assigned", category: "sign_ups", channel: "message" },
@@ -98,6 +100,10 @@ def seed_content_templates
     { key: "bank_rules_applied", name: "Bank rules applied",
       subject: "Your bank rules dealt with {{dealt_with}} lines; {{to_deal_with}} left",
       body: "<p>Hi {{recipient_name}}, {{recorded}} recorded, {{ignored}} ignored. <a href=\"{{bank_url}}\">Books → Bank</a>.</p>",
+      category: "books", channel: "message" },
+    { key: "books_download_ready", name: "Books download ready",
+      subject: "{{download}} is ready to download",
+      body: "<p>Hi {{recipient_name}}, {{download}} for {{organization_name}} is ready: {{lines}} lines. <a href=\"{{statements_url}}\">Books → Statements</a>.</p>",
       category: "books", channel: "message" },
     { key: "bank_statement_ready", name: "Bank statement ready",
       subject: "{{statement}} is in: {{matched}} matched the books, {{to_deal_with}} to deal with",
@@ -160,13 +166,44 @@ def seed_content_templates
     { key: "shift_vacancy_invitation", name: "Shift cover invitation", subject: "Can you cover a {{role_name}} shift on {{shift_date}}?",
       body: "<p>Hi {{recipient_name}}, {{organization_name}} needs someone on {{role_name}}: {{shift_info}}.</p><p><a href=\"{{claim_url}}\">Claim this shift</a></p>",
       category: "staffing", channel: "both" },
-    { key: "shift_vacancy_filled", name: "Shift covered", subject: "{{filled_by_name}} is covering the {{role_name}} shift on {{shift_date}}",
-      body: "<p>{{filled_by_name}} is covering the {{role_name}} shift on {{shift_time}} that {{person_name}} couldn't make.</p><p><a href=\"{{link_url}}\">{{link_text}}</a></p>",
+    { key: "shift_vacancy_filled", name: "Shift covered", subject: "{{covering_subject}}", push_body: "{{covering_subject}}",
+      body: "<p>{{covering_words}}</p><p><a href=\"{{link_url}}\">{{link_text}}</a></p>",
+      category: "staffing", channel: "both" },
+    { key: "shift_vacancy_covered_invitee", name: "Shift covered (others asked)", subject: "The {{role_name}} shift on {{shift_date}} has been covered", push_body: "The {{role_name}} shift on {{shift_date}} has been covered",
+      body: "<p>Hi {{recipient_name}}, the <strong>{{role_name}}</strong> shift on <strong>{{shift_time}}</strong> that {{organization_name}} asked you about has been covered and is no longer available.</p><p>There's nothing you need to do.</p>",
+      category: "staffing", channel: "message" },
+    { key: "shift_claim_confirmed", name: "Cover shift claimed (staff)", subject: "You've got the {{role_label}} shift on {{shift_day}}",
+      push_body: "You've got the {{role_label}} shift, {{shift_date_short}}: {{shift_hours}}",
+      body: "<p>Hi {{recipient_name}}, {{role_label}}, {{shift_day}}, {{shift_hours}}{{#location_name}} at {{location_name}}{{/location_name}} is yours. Thanks for covering for {{vacated_by_name}}.</p>{{#shows_line}}<p>{{shows_line}}</p>{{/shows_line}}<p><a href=\"{{shift_url}}\">See this shift</a></p>",
       category: "staffing", channel: "both" },
     { key: "shift_vacancy_reclaimed", name: "Shift can make it after all", subject: "{{person_name}} can make their {{role_name}} shift after all",
       body: "<p>{{person_name}} is back on their {{role_name}} shift on {{shift_time}}.</p><p><a href=\"{{vacancy_url}}\">See the shift</a></p>",
       category: "staffing", channel: "both" },
-    { key: "staff_schedule_notification", name: "Staff Schedule Notification", subject: "Your work schedule — week of {{week_label}}", body: "<p>{{intro}}</p>{{shifts_list}} See your <a href=\"{{my_shifts_link}}\">My Shifts</a>.", category: "shows", channel: "message" },
+    { key: "staff_schedule_notification", name: "Staff Schedule Notification", subject: "Your work schedule — week of {{week_label}}",
+      push_body: "Your shifts for the week of {{week_label}} are set · {{shift_count_words}}",
+      body: "<p>{{intro}}</p>{{#shifts_list}}<ul>{{shifts_list}}</ul>{{/shifts_list}}{{#removals_list}}<p><strong>No longer scheduled:</strong></p><ul>{{removals_list}}</ul>{{/removals_list}}<p>If you can't make one, say so on <a href=\"{{my_shifts_link}}\">My Shifts</a> so the team can sort out cover.</p>", category: "shows", channel: "both" },
+    { key: "staff_shift_reminder", name: "Shift reminder (staff)", subject: "Tomorrow: {{headline}}", push_body: "Tomorrow: {{headline}}",
+      body: "<p>Hi {{recipient_name}}, a reminder for tomorrow, {{shift_day}}, at {{organization_name}}:</p><ul>{{shifts_list}}</ul><p><a href=\"{{shift_url}}\">See this shift</a></p><p>If something's come up, say so on My Shifts so the team can sort out cover.</p>",
+      category: "shows", channel: "both" },
+    { key: "staff_hours_approved", name: "Hours approved (staff)", subject: "Hours approved: {{hours_words}}{{#amount}} · {{amount}}{{/amount}}",
+      push_body: "{{organization_name}} approved {{hours_words}}{{#amount}} · {{amount}}{{/amount}}",
+      body: "<p>Hi {{recipient_name}}, {{organization_name}} approved your hours:</p><ul>{{entries_list}}</ul><p>{{next_line}}</p><p><a href=\"{{my_payments_link}}\">See your pay</a></p>",
+      category: "shows", channel: "message" },
+    { key: "staff_shift_added", name: "Shift added (staff)", subject: "New shift: {{role_label}}, {{shift_day}}",
+      push_body: "New shift: {{role_label}}, {{shift_date_short}}, {{shift_hours}}{{#location_name}} at {{location_name}}{{/location_name}}",
+      body: "<p>Hi {{recipient_name}}, {{organization_name}} put you on {{role_label}}, {{shift_day}}, {{shift_hours}}{{#location_name}} at {{location_name}}{{/location_name}}.</p>{{#shows_line}}<p>{{shows_line}}</p>{{/shows_line}}<p><a href=\"{{shift_url}}\">See this shift</a></p><p>If you can't make it, say so on My Shifts so the team can sort out cover.</p>",
+      category: "shows", channel: "both" },
+    { key: "staff_shift_changed", name: "Shift changed (staff)", subject: "{{change_title}}", push_body: "{{change_title}}",
+      body: "<p>Hi {{recipient_name}}, {{role_label}}, {{shift_day}}{{#location_name}} at {{location_name}}{{/location_name}}:</p>{{changes_list}}<p><a href=\"{{shift_url}}\">See this shift</a></p>",
+      category: "shows", channel: "both" },
+    { key: "staff_shift_removed", name: "No longer scheduled (staff)", subject: "No longer scheduled: {{role_label}}, {{shift_day}}, {{start_time}}",
+      push_body: "No longer scheduled: {{role_label}}, {{shift_date_short}}, {{start_time}}.{{#remaining_line}} {{remaining_line}}{{/remaining_line}}",
+      body: "<p>Hi {{recipient_name}}, your {{role_label}} shift on {{shift_day}}, {{shift_hours}}{{#location_name}} at {{location_name}}{{/location_name}} has come off the schedule at {{organization_name}}{{#day_back}}, so you have that {{day_back}} back{{/day_back}}.</p>{{#remaining_list}}<p><strong>Still on your schedule that day</strong></p><ul>{{remaining_list}}</ul>{{/remaining_list}}{{#rest_list}}<p><strong>The rest of your week</strong></p><ul>{{rest_list}}</ul>{{/rest_list}}<p><a href=\"{{my_shifts_link}}\">See your shifts</a></p>",
+      category: "shows", channel: "both" },
+    { key: "staff_schedule_changes", name: "Several shift changes (staff)", subject: "Changes to your shifts, week of {{week_label}}",
+      push_body: "{{count_words}} to your shifts, week of {{week_label}}: {{summary}}",
+      body: "<p>{{intro}}</p>{{sections}}<p><a href=\"{{my_shifts_link}}\">See your shifts</a></p>",
+      category: "shows", channel: "both" },
     { key: "course_registration_confirmed", name: "Course Registration Confirmed", subject: "You're registered for {{course_title}}!", body: "Hi {{recipient_name}}, your registration for {{course_title}} is confirmed.", category: "courses", channel: "both" },
     { key: "course_registration_producer_notification", name: "Course Registration Producer Notification", subject: "New registration for {{course_title}}", body: "{{registrant_name}} has registered for {{course_title}}.", category: "courses", channel: "message" },
     { key: "ticket_order_confirmation", name: "Ticket Order Confirmation", subject: "Your tickets for {{show_title}}",
@@ -190,6 +227,7 @@ def seed_content_templates
       t.body = attrs[:body]
       t.category = attrs[:category]
       t.channel = attrs[:channel]
+      t.push_body = attrs[:push_body] if t.has_attribute?(:push_body)
       t.active = true
     end
   end
@@ -198,9 +236,12 @@ def seed_content_templates
   TicketingTemplates.ensure!(overwrite: true)
   CourseTemplates.ensure!(overwrite: true)
   PlatformTemplates.ensure!(overwrite: true)
-  ContractInvoiceTemplates.ensure!(overwrite: true)
   ContractPeopleTemplates.ensure!(overwrite: true)
   TapToPayTemplates.ensure!(overwrite: true)
   FollowerTemplates.ensure!(overwrite: true)
   InvoiceTemplates.ensure!(overwrite: true)
+  BooksTemplates.ensure!(overwrite: true)
+  SuperadminTemplates.ensure!(overwrite: true)
+  ContractDateRequestTemplates.ensure!(overwrite: true)
+  ContractConnectionTemplates.ensure!(overwrite: true)
 end

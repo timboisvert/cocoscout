@@ -38,6 +38,11 @@ RSpec.describe TipSplit do
     expect(rows["Miles"].span_words).to eq("6 pm to 10 pm")
     expect(rows["Miles"].how).to eq("From 32 orders while on.")
     expect(split.stretches).to be_empty
+    # The math, by who was on: Miles alone, the two together at $40 each, Camille alone.
+    expect(split).to be_shared
+    expect(split.periods.map { |p| [ p.words, p.cents, p.orders, p.people.size, p.each_cents ] }).to eq([
+      [ "6 pm to 8 pm", 8_000, 16, 1, 8_000.0 ], [ "8 pm to 10 pm", 8_000, 16, 2, 4_000.0 ], [ "10 pm to 12 am", 8_000, 16, 1, 8_000.0 ]
+    ])
     expect(split.rows.sum(&:cents)).to eq(24_000)
   end
 

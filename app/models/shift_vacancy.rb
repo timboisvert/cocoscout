@@ -38,6 +38,14 @@ class ShiftVacancy < ApplicationRecord
     open? || finding_replacement?
   end
 
+  # Over: the shift has ended. A hole in a shift that is over can't be covered
+  # any more, so the claim page and the invitees' home pages let it go (Tim,
+  # 2026-11-07: claim invitations go away when the show happens). The row
+  # stays as it is, a record of the night.
+  def past?
+    shift.ends_at < Time.current
+  end
+
   # The dropped row, from the shift's loaded rows when they are loaded.
   def declined_assignment
     shift.shift_assignments.find { |a| a.person_id == vacated_by_id && a.declined? }
@@ -55,8 +63,8 @@ class ShiftVacancy < ApplicationRecord
     transaction do
       declined_row&.destroy!
       unless shift.shift_assignments.active.exists?(person_id: person.id)
-        shift.shift_assignments.create!(person: person, position: next_position,
-                                        accepted_at: (stamp if accepted), notified_at: (stamp if accepted))
+        told = accepted ? StaffScheduleNotices.told_attributes(shift, at: stamp) : {}
+        shift.shift_assignments.create!(person: person, position: next_position, accepted_at: (stamp if accepted), **told)
       end
       update!(status: :filled, filled_by: person, filled_at: stamp, closed_at: stamp, closed_by: by)
     end

@@ -43,11 +43,18 @@
                    else "What other sites took, as you enter it"
                    end,
                    elsewhere_cents.positive? ? "bg-violet-50 border-violet-200" : nil, outside_modal, "order-4 lg:order-5" ] : nil),
-    [ "Comps", stats.comps.to_s, local_assigns[:comps_note] || (comps_modal ? "Given away free · give tickets" : "Given away free"), stats.comps.positive? ? "bg-blue-50 border-blue-200" : nil, comps_modal, "order-6" ],
+    [ "Comps", stats.comps.to_s, local_assigns[:comps_note] || (comps_modal ? "Issued free · issue tickets" : "Issued free"), stats.comps.positive? ? "bg-blue-50 border-blue-200" : nil, comps_modal, "order-6" ],
     (started ? [ "Checked in", "#{stats.checked_in} of #{stats.sold}", stats.no_shows.to_i.positive? ? "#{stats.no_shows} didn't come" : "Everyone came", nil, nil, "order-7" ] : nil),
     (stats.products_sold.positive? ? [ "Products", stats.products_sold.to_s, "#{money.call(stats.product_cents)} before tax", "bg-pink-50 border-pink-200", nil, "order-8" ] : nil)
   ].compact
   codes = stats.discount_uses
+  # Under Ticket sales here, when tax sits inside some prices: where the
+  # number comes from, so five $20 tickets at $96.28 don't read as a mistake
+  # (Tim, 2026-11-15).
+  inside = stats.included_tax_cents
+  inside_line = if inside.positive?
+    "#{money.call(stats.gross_cents + inside)} at ticket prices, less #{money.call(inside)} tax inside the #{stats.included_tax_all_cash? ? 'cash prices' : 'prices'}"
+  end
 %>
 <div class="space-y-6">
   <%# Four tiles sit in one row; five or six go three to a row (3+2, 3+3), so
@@ -58,6 +65,7 @@
         <div class="text-xs text-gray-500"><%= label %></div>
         <div class="text-xl font-bold tabular-nums text-gray-900 mt-0.5"><%= value %></div>
         <div class="text-xs <%= modal ? 'text-pink-600' : 'text-gray-500' %> mt-0.5"><%= note %></div>
+        <% if label == "Ticket sales here" && inside_line %><div class="text-xs text-gray-500 mt-0.5"><%= inside_line %></div><% end %>
       <% end %>
       <% if modal %>
         <%# A tile that opens its modal: the thing to do is right where the number is. %>

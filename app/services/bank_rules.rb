@@ -53,7 +53,7 @@ class BankRules
     return empty if rule.phrases.empty?
 
     lines = rule.waiting_lines
-    done = organization.bank_statement_lines.done.includes(:money_record).select { |line| rule.matches?(line) }
+    done = rule.fitting(organization.bank_statement_lines.done.includes(:money_record))
     agree, disagree = done.partition do |line|
       if line.state == "recorded" then rule.record? && line.money_record&.category_key == rule.category_key
       elsif line.state == "ignored" then rule.ignore?

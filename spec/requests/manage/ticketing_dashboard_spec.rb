@@ -50,7 +50,7 @@ RSpec.describe "Ticketing dashboard", type: :request do
     # Past (Tim, 2026-10-19): every date that has played, newest first, each
     # with its numbers, no drawers and no Just played beside it.
     get manage_ticketing_path(period: "all_time", dates: "past")
-    expect(response.body).to include(manage_ticket_listing_path(played), "4 sold", "Every date, with totals")
+    expect(response.body).to include(manage_ticket_listing_path(played), "4 sold")
     expect(response.body).not_to include(manage_ticket_listing_path(upcoming), "Just played", "more date")
   end
 
@@ -67,14 +67,14 @@ RSpec.describe "Ticketing dashboard", type: :request do
     expect(rows.first.total).to eq(8)
     expect(rows.last.later).to be_empty
 
-    # Rows carry the production's wide image (never a poster), and leave the
-    # space blank without one (Tim, 2026-10-16).
+    # Rows carry the production's wide image (never a poster), and the
+    # name's two letters in the same box without one (Tim, 2026-11-08).
     production.wide_image.attach(fixture_file_upload("test_image.png", "image/png"))
 
     get manage_ticketing_path
     body = response.body
     expect(body.scan("aspect-video rounded overflow-hidden").size).to eq(1)
-    expect(body.scan(%(aspect-video" aria-hidden="true")).size).to eq(1)
+    expect(Nokogiri::HTML(body).css("[data-wide-thumb-letters]").map { |box| box.text.squish }).to eq([ "LA" ])
     expect(body).not_to include("2 productions, 9 dates")
     expect(body).to include("7 more dates", "All 8 dates of Improvised Animorphs",
                             manage_production_ticketing_path(production), manage_ticket_listing_path(first[5]))
@@ -130,6 +130,27 @@ RSpec.describe "Ticketing dashboard", type: :request do
     end
   end
 
+  it "takes a morning show off coming up once its door closes, into just played (Tim, 2026-11-14)" do
+    saturday = Time.zone.local(2026, 11, 14)
+    matinee = listing_at(saturday.change(hour: 11)).tap { |l| l.show.update!(duration_minutes: 60) } # door shuts 1 PM
+    evening = listing_at(saturday.change(hour: 19, min: 30))
+    next_week = listing_at(saturday.change(hour: 11) + 7.days).tap { |l| l.show.update!(duration_minutes: 60) }
+
+    travel_to(saturday.change(hour: 12, min: 30)) do # still on
+      dashboard = TicketingDashboard.new(org)
+      expect(dashboard.coming_up.flat_map { |row| row.dates.map(&:first) }).to eq([ matinee, evening, next_week ])
+      expect(dashboard.just_played).to be_empty
+    end
+
+    travel_to(saturday.change(hour: 17)) do
+      dashboard = TicketingDashboard.new(org)
+      expect(dashboard.coming_up.flat_map { |row| row.dates.map(&:first) }).to eq([ evening, next_week ])
+      expect(dashboard.tonight.map(&:first)).to eq([ evening ])
+      expect(dashboard.just_played.map(&:first)).to eq([ matinee ])
+      expect(dashboard.past.map(&:first)).to eq([ matinee ])
+    end
+  end
+
   it "leads with every show whose door is open, each with its Work the door, and the row says it too" do
     tonight = listing_at(Time.zone.local(2026, 11, 6, 19, 30))
     later = listing_at(Time.zone.local(2026, 11, 13, 19, 30))
@@ -140,6 +161,12 @@ RSpec.describe "Ticketing dashboard", type: :request do
       expect(html).to include("Today's door · 1 show", "Started 7:30 PM", "Tonight · 7:30 PM")
       expect(html.scan(%(href="#{door_path(tonight)}")).size).to eq(2) # the panel and its row
       expect(html).not_to include(door_path(later))
+      # On the row the button has a line of its own, full width on a phone,
+      # and the row never says online sales have closed (Tim, 2026-11-08).
+      door = Nokogiri::HTML(response.body).at_css("[data-coming-up-door]")
+      expect(door["class"]).to include("col-span-3", "row-start-3")
+      expect(door.at_css("a")["class"]).to include("w-full")
+      expect(door.parent.text).not_to include("Online sales closed")
     end
 
     travel_to(Time.zone.local(2026, 11, 5, 12)) do

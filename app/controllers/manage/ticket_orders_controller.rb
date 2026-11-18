@@ -31,7 +31,7 @@ module Manage
     end
 
     def show
-      @tickets = @order.tickets.includes(:ticket_tier, :checked_in_by, :tax_lines).order(:id).to_a
+      @tickets = @order.tickets.includes(:ticket_tier, :checked_in_by, :tax_lines, unchecks: %i[unchecked_by checked_in_by]).order(:id).to_a
       @items = @order.ticket_order_items.includes(:fulfilled_by).order(:id).to_a
       @refunds = @order.ticket_refunds.order(:created_at).includes(:refunded_by).to_a
       @refundable_ids = TicketOrderRefund.refundable(@order).pluck(:id)

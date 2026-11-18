@@ -6,11 +6,15 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
     static targets = ["switch", "fields"]
 
+    // No switch (a date with nothing above it to follow): leave the fields be.
+
     connect() {
         this.toggle()
     }
 
     toggle() {
+        if (!this.hasSwitchTarget) return
+
         const on = this.switchTarget.checked
         this.fieldsTargets.forEach((fieldset) => { fieldset.disabled = !on })
     }

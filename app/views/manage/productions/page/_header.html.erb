@@ -1,0 +1,49 @@
+<%# Who the production is: its poster (3:4, or its two letters), what kind
+    it is and how much is coming, its description, its production team, and
+    the two ways out everyone needs. Locals: page. %>
+<%
+  production = page.production
+  description = production.description
+  description = description.respond_to?(:to_plain_text) ? description.to_plain_text : strip_tags(description.to_s)
+  coming = page.upcoming_count
+  words = []
+  # What kind it is is the organization's business; the team sees the dates.
+  if page.org_manager?
+    words << page.kind_words
+    words << "with #{page.contract.contractor_name}" if page.contract
+    words << pluralize(page.runs.size, "run") if page.course? && page.runs.any?
+  end
+  words << (coming.positive? ? "#{pluralize(coming, 'date')} coming" : "no upcoming dates")
+  mine = page.team.find { |permission| permission.user_id == page.user.id }
+  waiting = page.invitations.size
+%>
+<div class="<%= ProductionPageHelper::CARD %> p-3 sm:p-4 flex flex-wrap items-center gap-x-4 gap-y-3 sm:gap-x-5" data-production-header>
+  <%= render "shared/production_image", production: production, width: "w-[76px] sm:w-[108px]", classes: "shadow-sm flex-shrink-0",
+        initials_class: "text-2xl sm:text-3xl", fallback_aspect: "poster" %>
+  <div class="min-w-0 flex-1 basis-52 flex flex-col gap-2">
+    <div class="text-xs text-gray-500" data-production-kind><%= words.join(" · ").sub(/\A[a-z]/, &:upcase) %></div>
+    <% if description.present? %>
+      <p class="text-sm text-gray-600 line-clamp-2 max-w-xl"><%= description.squish %></p>
+    <% end %>
+    <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+      <%= render "manage/productions/page/team_faces", page: page, size: "w-8 h-8 sm:w-10 sm:h-10" %>
+      <span class="text-xs text-gray-500">
+        <% if page.team.empty? && page.invitations.empty? %>
+          No production team assigned
+        <% else %>
+          Production team<% if mine && !page.org_manager? %> · you're a <%= ProductionPageHelper::TEAM_ROLES[mine.role]&.downcase %><% elsif waiting.positive? && page.manager? %> · <%= pluralize(waiting, "invitation") %> waiting<% end %>
+        <% end %>
+      </span>
+      <% if page.contract_people.any? && page.org_manager? %>
+        <%= render "shared/faces", people: page.contract_people.map(&:first), size: "w-8 h-8 sm:w-10 sm:h-10", max: 4 %>
+        <span class="text-xs text-pink-600">On the contract</span>
+      <% end %>
+    </div>
+  </div>
+  <div class="w-full sm:w-auto grid grid-cols-2 sm:flex sm:flex-wrap gap-2" data-production-header-actions>
+    <%= render "shared/button", text: "Messages", variant: "secondary", size: "small", classes: "max-sm:w-full max-sm:py-2.5", path: production_manage_messages_path(production) %>
+    <% if page.manager? %>
+      <%= render "shared/button", text: "Settings", variant: "secondary", size: "small", classes: "max-sm:w-full max-sm:py-2.5", path: edit_manage_production_path(production) %>
+    <% end %>
+  </div>
+</div>

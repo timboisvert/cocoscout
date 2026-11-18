@@ -22,7 +22,7 @@
         <%= f.number_field :discount_percent, min: 0, max: 100, class: input, "aria-label": "Percent off" %>
       </div>
       <div class="py-3 grid grid-cols-1 sm:grid-cols-[1fr_8rem] gap-3 items-center">
-        <div><p class="text-sm font-medium text-gray-900">Early access, days before public on-sale</p><p class="text-xs text-gray-500">0 means none. A date can set its own members-first time on its Sales settings.</p></div>
+        <div><p class="text-sm font-medium text-gray-900">Early access, days before public on-sale</p><p class="text-xs text-gray-500">0 means none. A date can set its own members-first time on Basic info in its settings.</p></div>
         <%= f.number_field :presale_days, min: 0, max: 365, class: input, "aria-label": "Days before" %>
       </div>
       <label class="py-3 flex items-start gap-3"><%= f.check_box :free_exchanges, class: check + " mt-1" %><span><span class="block text-sm font-medium text-gray-900">Free date exchanges</span><span class="block text-xs text-gray-500">Listed on their card; the box office honors it when moving their tickets.</span></span></label>

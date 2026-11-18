@@ -57,7 +57,7 @@
      data-controller="modal" data-action="click->modal#closeOnBackdrop" data-comps-sheet>
   <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-2xl sm:mx-4 overflow-hidden max-h-[92vh] sm:max-h-[85vh] overflow-y-auto pb-[env(safe-area-inset-bottom)] sm:pb-0" data-action="click->modal#stopPropagation">
     <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
-      <h3 class="text-lg font-semibold text-white">Give tickets</h3>
+      <h3 class="text-lg font-semibold text-white">Issue comps</h3>
       <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" aria-label="Close">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
@@ -102,7 +102,7 @@
             <div class="flex items-center justify-between gap-4">
               <div>
                 <div class="text-sm font-medium text-gray-900">Email them their tickets</div>
-                <div class="text-xs text-gray-600 mt-0.5">The usual email with their QR codes. Off, you hand them over yourself.</div>
+                <div class="text-xs text-gray-600 mt-0.5">The usual email with their QR codes. Turn this off to hand them over yourself.</div>
               </div>
               <%= render "shared/toggle_switch", name: "email_them", checked: false, hidden_false: true, id: "comp_email_them", aria_label: "Email them their tickets",
                     data: { toggle_section_target: "toggle", fieldset_toggle_target: "switch", action: "change->toggle-section#toggle change->fieldset-toggle#toggle" } %>
@@ -138,7 +138,7 @@
           <div class="pt-5 border-t border-gray-200 flex items-center justify-between gap-4">
             <div>
               <div class="text-sm font-medium text-gray-900">Email them their tickets</div>
-              <div class="text-xs text-gray-600 mt-0.5">Everyone on the list, so every line needs an email. Off, you hand them over yourself.</div>
+              <div class="text-xs text-gray-600 mt-0.5">Everyone on the list, so every line needs an email. Turn this off to hand them over yourself.</div>
             </div>
             <%= render "shared/toggle_switch", name: "email_them", checked: false, hidden_false: true, id: "comp_paste_email_them", aria_label: "Email them all their tickets",
                   data: { action: "change->comps-paste#edited" } %>
@@ -150,11 +150,11 @@
 
       <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
         <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
-        <%= render "shared/button", text: "Give tickets", variant: "primary", size: "medium", type: :submit, form_id: one_form,
+        <%= render "shared/button", text: "Issue comps", variant: "primary", size: "medium", type: :submit, form_id: one_form,
               data: { comps_paste_target: "giveOne" } %>
         <%= render "shared/button", text: "Preview", variant: "primary", size: "medium", type: :button, style: "display: none",
               data: { comps_paste_target: "preview", action: "comps-paste#preview" } %>
-        <%= render "shared/button", text: "Give comps", variant: "primary", size: "medium", type: :submit, form_id: paste_form, style: "display: none",
+        <%= render "shared/button", text: "Issue comps", variant: "primary", size: "medium", type: :submit, form_id: paste_form, style: "display: none",
               data: { comps_paste_target: "give" } %>
       </div>
     </div>

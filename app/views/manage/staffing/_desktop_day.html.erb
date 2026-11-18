@@ -2,7 +2,8 @@
   One day on desktop (1 day; Tim, 2026-11-04): the phone's day page at full
   width. The day's roles run on a timeline, by role or by person (each bar
   opens its shift's menu), with the day's shows across the top of it, which
-  is the only place they're listed; Add a role and Add a shift below. The
+  is the only place they're listed; Add a shift below (roles are Manage
+  roles, at the top of the page). The
   week this day belongs to still owns the status bar, Publish and Notify
   updates above.
 %>
@@ -53,12 +54,13 @@
     <% else %>
       <p class="px-4 pt-4 text-sm text-gray-500"><%= day_shows.any? ? "No shifts yet for these shows." : "Nothing scheduled this day." %></p>
     <% end %>
-    <div class="flex items-center gap-2 px-4 py-2.5 border-t border-gray-100">
-      <%= render "shared/button", text: "+ Add a role", variant: "dashed", size: "small", type: :link, path: manage_staffing_house_roles_path %>
-      <% if @house_role_count.positive? %>
+    <% if @house_role_count.positive? %>
+      <div class="flex items-center gap-2 px-4 py-2.5 border-t border-gray-100">
         <%= render "shared/button", text: "+ Add a shift", variant: "dashed", size: "small", type: :button,
               data: shift_add_data(day, day_shows, @house_roles).merge(action: "click->shift-add#open") %>
-      <% end %>
-    </div>
+      </div>
+    <% else %>
+      <div class="pb-4"></div>
+    <% end %>
   </div>
 </div>

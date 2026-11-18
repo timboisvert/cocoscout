@@ -30,7 +30,7 @@ RSpec.describe ContractPaymentReceiptJob do
     expect(mail[:from].display_names).to eq([ "Stars & Garters via CocoScout" ])
     expect(mail.html_part.body.decoded).to include("by check")
     expect(mail.attachments.reject(&:inline?).map(&:filename)).to eq([ "Invoice SG-0001.pdf" ])
-    expect(payment.reload.contract_invoice.receipt_emailed_at).to be_present
+    expect(payment.reload.invoice.receipt_emailed_at).to be_present
 
     perform_enqueued_jobs { described_class.perform_now(payment.id) }
     expect(ActionMailer::Base.deliveries.size).to eq(1)

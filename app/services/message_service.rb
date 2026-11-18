@@ -58,25 +58,13 @@ class MessageService
       )
     end
 
-    # Send to production team (cast → managers)
+    # Send to production team (cast → managers). It reaches the people with
+    # this production's notifications on (Production team, in its settings),
+    # not every manager in the organization; with nobody on, the whole team,
+    # so the message always lands with someone.
     def send_to_production_team(production:, sender:, subject:, body:, parent_message: nil)
-      # Get org-level managers/viewers for this production's organization
-      org_manager_user_ids = production.organization
-        .organization_roles
-        .where(company_role: [ :manager, :viewer ])
-        .pluck(:user_id)
-
-      # Get production-level managers/viewers
-      production_manager_user_ids = production
-        .production_permissions
-        .where(role: [ :manager, :viewer ])
-        .pluck(:user_id)
-
-      # Combine and get unique user IDs
-      manager_user_ids = (org_manager_user_ids + production_manager_user_ids).uniq
-
-      # Get people for these users (use default_person association)
-      people = User.where(id: manager_user_ids).includes(:default_person).map(&:person).compact
+      people = ProductionNotificationSetting.users_to_notify(production, whole_team_if_none: true)
+                                            .map(&:person).compact
 
       create_message(
         sender: sender,

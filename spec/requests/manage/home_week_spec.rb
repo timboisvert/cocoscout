@@ -27,6 +27,22 @@ RSpec.describe "Production Home, show by show", type: :request do
     Nokogiri::HTML(response.body)
   end
 
+  # The show's own time leads; a booking that runs longer sits under it
+  # (Tim, 2026-11-09). A booking that matches the show says nothing more.
+  it "says when the space is booked, under the show's time, when the booking runs longer" do
+    contract = create(:contract, organization: org)
+    rental = create(:space_rental, contract: contract, starts_at: thu_show.date_and_time - 30.minutes, ends_at: thu_show.date_and_time + 2.hours)
+    thu_show.update!(space_rental: rental)
+    same = create(:space_rental, contract: contract, starts_at: sat_show.date_and_time, ends_at: sat_show.ends_at)
+    sat_show.update!(space_rental: same)
+
+    doc = page(week_start: week_start.to_s)
+    modal = doc.at_css("#show-modal-#{thu_show.id}")
+    expect(modal.text).to include("8:00–9:30 PM")
+    expect(modal.at_css("[data-space-booked]").text).to eq("Space booked 7:30–10:00 PM")
+    expect(doc.at_css("#show-modal-#{sat_show.id} [data-space-booked]")).to be_nil
+  end
+
   it "puts a row per show under its day, in time order, each opening its modal" do
     doc = page(week_start: week_start.to_s)
     grid = doc.at_css("[data-home-week]")
@@ -117,6 +133,35 @@ RSpec.describe "Production Home, show by show", type: :request do
       expect(row.text).to include("Canceled")
       expect(row.at_css("[data-chip='tickets']").text).to include("2 to refund")
     end
+
+    # Tim, 2026-11-06: Home said 7 (5 sold here + 2 comps) where the show page
+    # and Ticketing said 17 of 58 (5 here, 12 on Ticket Tailor, 2 comps).
+    it "count tickets sold on other sites, and say where each sold in the show's modal" do
+      listing = create(:ticket_listing, organization: org, show: thu_show)
+      order = create(:ticket_order, ticket_listing: listing, status: "paid", paid_at: Time.current)
+      2.times { create(:ticket, ticket_order: order) }
+      comp = create(:ticket_order, ticket_listing: listing, status: "paid", paid_at: Time.current, channel: "comp")
+      create(:ticket, ticket_order: comp, price_cents: 0)
+      tailor = TicketSource.create!(organization: org, name: "Ticket Tailor")
+      TicketOutsideSale.create!(organization: org, ticket_listing: listing, ticket_tier: listing.ticket_tiers.first,
+                                ticket_source: tailor, tickets_sold: 12, amount_cents: 0)
+      stats = Ticketing::ListingStats.of(listing)
+      expect(stats.sold_anywhere).to eq(14)
+
+      doc = page(week_start: week_start.to_s)
+      expect(doc.at_css("[data-home-show='#{thu_show.id}'] [data-chip='tickets']").text.squish).to eq("14")
+      expect(doc.at_css("[data-day-header='#{thu_show.date_and_time.to_date.iso8601}']").text).to include("14 sold")
+      modal = doc.at_css("#show-modal-#{thu_show.id}")
+      expect(modal.at_css("[data-modal-sold]").text.squish).to eq("Sold#{stats.sold_words.delete_suffix(' sold')} · $40 so far · 1 comp")
+      expect(modal.at_css("[data-modal-place='CocoScout']").text.squish).to eq("2 on CocoScout$40")
+      expect(modal.at_css("[data-modal-place='Ticket Tailor']").text.squish).to eq("12 on Ticket Tailornot reported yet")
+
+      # Once its money is typed in, the place says it and the total isn't "so far".
+      TicketOutsideSale.where(ticket_listing: listing).update_all(amount_cents: 18_000)
+      modal = page(week_start: week_start.to_s).at_css("#show-modal-#{thu_show.id}")
+      expect(modal.at_css("[data-modal-sold]").text.squish).to include("$220 · 1 comp")
+      expect(modal.at_css("[data-modal-place='Ticket Tailor']").text.squish).to eq("12 on Ticket Tailor$180")
+    end
   end
 
   it "shows the cast as faces with the name on hover in the show's modal" do
@@ -155,6 +200,18 @@ RSpec.describe "Production Home, show by show", type: :request do
     doc = page(days: 7, week_start: week_start.to_s)
     expect(doc.at_css("[data-days-toggle] .bg-pink-500").text).to eq("7 days")
     expect(doc.css("[data-home-week] [data-day-header]").size).to eq(2)
+  end
+
+  # Tim, 2026-11-08: an event that isn't a show says what it is, next to
+  # the room; a show says nothing.
+  it "names an event that isn't a show on the phone's row, and leaves a show's alone" do
+    rehearsal = create(:show, :rehearsal, production: production, date_and_time: saturday.in_time_zone.change(hour: 14))
+    day = page(day: saturday.iso8601).at_css("[data-home-day]")
+    row = day.at_css("[data-home-show='#{rehearsal.id}']")
+    expect(row.at_css("[data-home-show-kind]").text).to eq("Rehearsal")
+    venue = rehearsal.location_space&.name || rehearsal.location&.name
+    expect(row.at_css("[data-home-show-where]").text.squish).to eq([ "Rehearsal", venue ].compact.join(" · "))
+    expect(day.at_css("[data-home-show='#{sat_show.id}'] [data-home-show-kind]")).to be_nil
   end
 
   it "opens a week calendar whose rows go to that week, and has no month grid" do

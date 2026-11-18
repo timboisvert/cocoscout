@@ -24,4 +24,20 @@ RSpec.describe Dev::EnvironmentLabel do
     expect(described_class.title_prefix).to eq("[DEV] ")
     expect(ApplicationController.render(partial: "shared/dev_indicator")).to include("bg-amber-400", "Dev · production data from Nov 1")
   end
+
+  # The app's top bar has little room for a title, and the dev ribbon sits
+  # right under it (Tim, 2026-11-09).
+  it "leaves the title alone in the app, and marks it in a browser" do
+    allow(Rails.env).to receive(:development?).and_return(true)
+    helper = Class.new do
+      include NativeAppHelper
+      attr_accessor :app
+      def turbo_native_app? = app
+    end.new
+
+    helper.app = true
+    expect(helper.dev_title_prefix).to eq("")
+    helper.app = false
+    expect(helper.dev_title_prefix).to eq("[DEV] ")
+  end
 end

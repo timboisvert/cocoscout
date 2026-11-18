@@ -52,6 +52,66 @@ RSpec.describe "Manage books", type: :request do
     expect(response.body).to include("The books balance", "The books agree with the records behind them", "Financials and Books")
   end
 
+  it "says how the checks stand from the last time they ran, and runs them again on the Checks page and overnight" do
+    sell(2)
+    sign_in(superadmin)
+    allow(BooksReconciliation).to receive(:check).and_call_original
+
+    # The first look at Books runs them once and keeps the answer.
+    get manage_money_books_path
+    expect(response.body).to include("The books agree with every record behind them")
+    expect(BooksReconciliation.last_run_at(org.reload)).to be_present
+    expect(BooksReconciliation).to have_received(:check).once
+
+    # After that a Books page reads what was kept, and never runs them.
+    get manage_money_books_path
+    get manage_money_books_section_path(section: "accounts")
+    get manage_money_books_section_path(section: "entries")
+    expect(BooksReconciliation).to have_received(:check).once
+
+    # A tax payment the books never heard about: the kept answer stands
+    # until the checks run again, on the Checks page or overnight.
+    SalesTaxRemittance.insert!({ organization_id: org.id, tax_name: "Sales tax", rate_bps: 1_025, period_start: Date.current.beginning_of_month,
+                                 period_end: Date.current.end_of_month, paid_on: Date.current, amount_cents: 100, created_at: Time.current, updated_at: Time.current })
+    get manage_money_books_path
+    expect(response.body).to include("The books agree with every record behind them")
+    get manage_money_books_section_path(section: "checks")
+    expect(response.body).to include("1 account disagree with the records behind them")
+    get manage_money_books_path
+    expect(response.body).to include("1 account disagree with the records behind them")
+
+    org.update_column(:books_check, {})
+    BooksReconciliationJob.perform_now
+    expect(BooksReconciliation.last(org.reload).map(&:account)).to eq([ "tax_to_remit" ])
+  end
+
+  it "pages ticket money by show, newest first, adding up only the page's shows" do
+    production = create(:production, organization: org)
+    older = create(:show, production: production, date_and_time: Time.zone.local(2026, 3, 6, 20))
+    newer = create(:show, production: production, date_and_time: Time.zone.local(2026, 9, 4, 20))
+    elsewhere = create(:show, date_and_time: Time.zone.local(2026, 9, 5, 20))
+    { older => 11_100, newer => 22_200 }.each do |show, cents|
+      LedgerPosting.post!(organization: org, source: nil, kind: "sale", entry_date: show.date_and_time.to_date,
+                          lines: [ { account: :cocoscout_balance, amount_cents: cents, show: show }, { account: :ticket_income, amount_cents: -cents, show: show } ])
+    end
+    stub_const("Manage::BooksController::SHOWS_PER_PAGE", 1)
+    sign_in(superadmin)
+
+    report = BooksReport.new(org)
+    expect(report.shows_with_ticket_money.to_a).to eq([ newer, older ])
+    expect(report.by_show.map { |row| [ row.show, row.income_cents ] }).to eq([ [ newer, 22_200 ], [ older, 11_100 ] ])
+    expect(report.by_show([ older ]).map(&:income_cents)).to eq([ 11_100 ])
+    expect(BooksReport.new(elsewhere.production.organization).shows_with_ticket_money).to be_empty
+
+    get manage_money_books_section_path(section: "shows")
+    expect(response.body).to include("Sep 4, 2026", "$222.00", "Page 1 of 2", manage_money_books_section_path(section: "shows", page: 2))
+    expect(response.body).not_to include("$111.00")
+
+    get manage_money_books_section_path(section: "shows", page: 2)
+    expect(response.body).to include("Mar 6, 2026", "$111.00", "Page 2 of 2")
+    expect(response.body).not_to include("$222.00")
+  end
+
   it "opens for any manager of a Pro organization" do
     sign_in(create(:user, password: password))
     get manage_money_books_path

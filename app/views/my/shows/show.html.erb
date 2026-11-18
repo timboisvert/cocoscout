@@ -580,7 +580,7 @@
           count, and for someone on the contract the way into how it sold. %>
       <% tickets_past = @show.date_and_time <= Time.current %>
       <div class="border border-gray-200 rounded-lg overflow-hidden bg-white" data-tickets-card>
-        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Tickets" %>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Tickets", intro: ("Sold by #{@ticket_seller.name}" if @ticket_seller) %>
         <%# Two tiles like the Manage show page's: every ticket sold anywhere,
             here and on other sites, of the seats to sell once comps are set
             aside (ListingStats#sold_words), with where its sales stand; and
@@ -636,11 +636,12 @@
           <% end %>
         </div>
       </div>
-    <% elsif @show.location.present? %>
+    <% elsif @show.venue_location.present? %>
+      <%# A date that follows a contract date shows the other organization's venue (LinkedDates). %>
       <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
-        <%= render "shared/section_heading", padding: "px-4 py-3", title: @show.location.name %>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: @show.venue_location.name %>
         <div class="p-4 flex flex-col lg:flex-row gap-4">
-          <% loc = @show.location %>
+          <% loc = @show.venue_location %>
           <% if loc.present? %>
             <% address = [loc.address1, loc.address2, loc.city, loc.state, loc.postal_code].compact.reject(&:blank?).join(', ') %>
 

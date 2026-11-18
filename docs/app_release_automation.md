@@ -56,9 +56,10 @@ What's in the repo:
 - `ios/CocoScout.xcodeproj/xcshareddata/xcschemes/CocoScout.xcscheme`: the
   CocoScout scheme, shared. Xcode Cloud only sees shared schemes in git;
   before this the scheme existed only on Tim's Mac. Archive uses Release,
-  which signs with `CocoScout-Release.entitlements`. That file must keep Tap
-  to Pay out until Apple grants it (`ios/tap_to_pay.md`); Xcode Cloud builds
-  exactly what is committed, so nothing changes there.
+  which signs with `CocoScout-Release.entitlements`. That file kept Tap to
+  Pay out until Apple granted the publishing entitlement (2026-11-10); from
+  1.2 it carries it (`ios/tap_to_pay.md`). Xcode Cloud builds exactly what
+  is committed, and its automatic signing makes the profile to match.
 - No `ci_post_clone.sh`: nothing to install. The two Swift packages
   (hotwire-native-ios, stripe-terminal-ios) are public and pinned by the
   committed `Package.resolved`, and the app needs no gitignored file to build.
@@ -108,6 +109,36 @@ needs the version bumped first. Where to see it: Xcode's Report navigator
 Cost: the Apple Developer Program includes 25 compute hours a month; one
 archive takes well under one.
 
+## Android: the release build is shrunk (R8, from 1.1.2 build 7)
+
+Google Play flagged 1.1.1 on 2026-11-04 ("DEX code optimization is below our
+threshold", obfuscation 1%; under 25% in any category "may impact your
+visibility and publishing capabilities"). The release build now runs R8
+(`isMinifyEnabled`, `isShrinkResources`), with the app's rules in
+`android/app/proguard-rules.pro`.
+
+- **Run it before every upload.** A shrunk build can break at runtime in ways
+  the debug build never shows (the first one died at launch). From `android/`,
+  with the emulator up and `adb reverse tcp:3000 tcp:3000`:
+  `./gradlew installShrunk` installs the release build exactly, pointed at
+  this Mac and signed with the debug key. Sign in, open the menu, a page, the
+  door's Scan, and a notification link
+  (`adb shell am start -a android.intent.action.VIEW -d "cocoscout://open?path=/my" com.cocoscout.app`).
+  The emulator can't run Tap to Pay; that needs a real phone.
+- **The score Google uses** is inside the bundle:
+  `unzip -p app/build/outputs/bundle/release/app-release.aab BUNDLE-METADATA/com.android.tools/r8.json`
+  (`stats`: each "no…Percentage" subtracted from 100). Build 7: obfuscation
+  24.4%, optimization 24.2%, shrinking 44.4%.
+- **What holds it under 25%:** Stripe Terminal's own rules (four artifacts)
+  keep every `com.stripe`, `kotlinx.coroutines`, `okhttp3`, Play services,
+  Tink and Jackson name. Its Tap to Pay code is protected and calls those by
+  name, so they are left alone. Hotwire's blanket `com.google.**` rule was the
+  other block; it is switched off (`ignoreFrom("dev.hotwire:core")`) and
+  restated narrowly in `proguard-rules.pro`. Check that copy when Hotwire is
+  upgraded, and look for a Stripe Terminal release with narrower rules.
+- R8 needs the 6 GB Gradle heap in `android/gradle.properties`. The mapping
+  file rides inside the bundle, so Play's crash reports stay readable.
+
 ## Android: Gradle Play Publisher
 
 What's in the repo: the `com.github.triplet.play` plugin (Gradle Play
@@ -128,6 +159,13 @@ characters; that file is fine in git). Claude never runs `publishListing` or
 
 ### Tim's one-time steps (Google Cloud and Play Console, about 15 minutes)
 
+**Done 2026-11-08.** The project is `cocoscout-play`, the service account is
+`play-publisher@cocoscout-play.iam.gserviceaccount.com`, the key is in place,
+and Claude's check read the app's listing with it. The first upload with it
+went through the same day: 1.1.3 (build 8) to internal testing as a draft,
+`publishReleaseBundle` with no flags. The steps stay here for a new Mac or a
+replaced key.
+
 1. **Google Cloud console** (console.cloud.google.com), signed in as the
    Play developer account's owner: pick or create a project (e.g.
    `cocoscout-play`).
@@ -140,6 +178,14 @@ characters; that file is fine in git). Claude never runs `publishListing` or
 4. Open the service account → **Keys → Add key → Create new key → JSON**. A
    `.json` file downloads. It is a password: never into the repo, a chat, or
    a commit.
+   Google refused this at first ("Service account key creation is disabled",
+   policy `iam.disableServiceAccountKeyCreation`, on by default for newer
+   organizations). The way past it, for this project only: on the
+   organization, **IAM → Grant access** gives your own account the role
+   Organization Policy Administrator; then on `cocoscout-play`, **IAM & Admin
+   → Organization Policies → Disable service account key creation (Legacy) →
+   Manage policy → Override parent's policy**, one rule with enforcement
+   **Off**. That override is still set.
 5. Save that file in 1Password (CocoScout, next to the upload key), then put
    it where the build looks for it:
    ```bash
@@ -154,8 +200,12 @@ characters; that file is fine in git). Claude never runs `publishListing` or
    user**. (Google can take up to a day before the new account's uploads are
    accepted.)
 7. Tell Claude it's done. Claude checks the key reads the app's listing
-   (`./gradlew bootstrapListing` into a throwaway copy, nothing uploaded),
-   and the first upload rides the next release.
+   (`./gradlew bootstrapListing --app-details --listings --release-notes`
+   in a throwaway copy of `android/` made without the keystore, nothing
+   uploaded), and the first upload rides the next release. The three flags
+   matter: a bare `bootstrapListing` also asks for in-app products, and
+   Google answers that one with 403 "Please migrate to the new publishing
+   API" whatever the key's permissions.
 
 If Tim would rather the key never sit on disk, Claude can run the upload as
 `ANDROID_PUBLISHER_CREDENTIALS="$(op read 'op://<vault>/<item>/<file>')" ./gradlew publishReleaseBundle`

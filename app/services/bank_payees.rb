@@ -57,7 +57,7 @@ class BankPayees
     def suggested = lines.select(&:suggested?)
     def open = lines.select(&:open?)
     # What the bank calls it, each spelling with its count.
-    def spellings = lines.group_by { |l| BankPayees.read(l.description).phrase }.map { |phrase, ls| [ phrase, ls.size ] }.sort_by { |_, n| -n }
+    def spellings = lines.group_by { |l| l.payee.phrase }.map { |phrase, ls| [ phrase, ls.size ] }.sort_by { |_, n| -n }
   end
 
   class << self
@@ -113,18 +113,18 @@ class BankPayees
     def groups(organization, lines: organization.bank_statement_lines.to_deal_with.to_a)
       lines.group_by { |l| group_key_for(l) }.map do |key, ls|
         # Named the way the bank spells it most often.
-        reading = ls.map { |l| read(l.description) }.group_by(&:name).max_by { |_, rs| rs.size }.last.first
+        reading = ls.map(&:payee).group_by(&:name).max_by { |_, rs| rs.size }.last.first
         direction = reading.kind == "transfer" ? "any" : (ls.first.deposit? ? "in" : "out")
         # A provider's marker on money out is a vendor who bills through one, not a payout.
         kind = reading.kind == "provider" && direction == "out" ? "draft" : reading.kind
         Group.new(key: key, name: reading.name, kind: kind, direction: direction,
                   lines: ls.sort_by { |l| [ -l.on.jd, -l.id ] }, provider: (kind == "provider"),
-                  phrases: ls.filter_map { |l| read(l.description).phrase }.uniq { |p| p.downcase })
+                  phrases: ls.filter_map { |l| l.payee.phrase }.uniq { |p| p.downcase })
       end.sort_by { |g| [ -g.count, ORDER.index(g.kind) || ORDER.size, g.name ] }
     end
 
     def group_key_for(line)
-      reading = read(line.description)
+      reading = line.payee
       reading.kind == "transfer" ? "transfer" : "#{reading.group_key}:#{line.deposit? ? 'in' : 'out'}"
     end
 

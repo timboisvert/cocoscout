@@ -71,9 +71,10 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
       expect(day.at_css("[data-day-view-target='ganttPeople']").text).to include("Dana Morris")
       expect(day.at_css("[data-day-view-target='ganttRoles']").text).to include(early_show.production.name)
       expect(day.at_css("[data-shows-this-day]")).to be_nil
-      # Add a role, then Add a shift, both the dashed "add one here" buttons.
+      # Add a shift is the one dashed "add one here" button; roles are Manage
+      # roles, at the top of the page.
       adds = day.css("a, button").select { |b| b.text.strip.start_with?("+ Add") }
-      expect(adds.map { |b| b.text.strip }).to eq([ "+ Add a role", "+ Add a shift" ])
+      expect(adds.map { |b| b.text.strip }).to eq([ "+ Add a shift" ])
       expect(adds.map { |b| b["class"] }).to all(include("border-dashed"))
       expect(page.at_css("[data-week-picker] a[title='Earlier']")["href"]).to eq(manage_staffing_scheduling_path(days: 1, day: (show_day - 1).iso8601))
       expect(page.at_css("[data-week-picker] a[title='Later']")["href"]).to eq(manage_staffing_scheduling_path(days: 1, day: (show_day + 1).iso8601))
@@ -203,8 +204,11 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
       add = doc.at_css("[data-cell='#{role.id}-#{empty_day.iso8601}'] button[aria-label^='Add a Bartender shift']")
       expect(add["data-action"]).to eq("click->shift-add#openForRole")
       expect(JSON.parse(add["data-role-defaults"])[role.id.to_s]["starts_at"]).to eq(empty_day.in_time_zone.change(hour: 17).strftime("%Y-%m-%dT%H:%M"))
-      # The phone's day says so too, with its own add.
-      phone = doc.at_css("[data-phone-day='#{empty_day.iso8601}']") || doc
+      # The phone's day says so too, with its own add. The phone shows one
+      # day, today unless asked: ask for the empty one, or this fails on the
+      # weekday the show is on.
+      get manage_staffing_scheduling_path(day: empty_day.iso8601)
+      phone = Nokogiri::HTML(response.body).at_css("[data-phone-day='#{empty_day.iso8601}']")
       expect(phone.text).to include("Nothing scheduled this day.")
     end
 
@@ -352,10 +356,11 @@ RSpec.describe "Manage::Staffing scheduling", type: :request do
       expect(menu.at_css("[data-action='click->shift-menu#close click->shift-edit#open']")["data-shift-id"]).to eq(shift.id.to_s)
     end
 
-    it "points the last row at the roles page, and keeps adding on a day with no shifts" do
+    it "leaves roles to Manage roles, and keeps adding on a day with no shifts" do
       shift.destroy!
       g = grid
-      expect(g.at_css("a[href='#{manage_staffing_house_roles_path}']").text).to eq("+ Add a role")
+      expect(g.at_css("a[href='#{manage_staffing_house_roles_path}']")).to be_nil
+      expect(response.body).to include("Manage roles")
       expect(g.at_css("[data-cell='#{bartender.id}-#{show_day.iso8601}'] button[aria-label^='Add a Bartender shift']")).to be_present
       expect(response.body).to include("+ Add a shift")
     end

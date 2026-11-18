@@ -49,4 +49,35 @@ RSpec.describe BankStatementMatcher do
     described_class.run!(org)
     expect(again.reload.state).to eq("open")
   end
+  describe "a statement coming in" do
+    let(:october) { org.bank_statement_imports.create!(imported_by: owner, filename: "oct.csv", format: "csv", lines_count: 0, status: "matching") }
+
+    def record(on, cents, payee)
+      org.money_records.create!(kind: "out", on: on, amount_cents: cents, category_key: "production", counterparty: payee, via: "bank", recorded_by: owner)
+    end
+
+    it "looks again at an older open line only when the books gained something near it since the last statement" do
+      import.update!(status: "ready", matched_at: 1.hour.ago)
+      # On the books before the last statement was matched: nothing new to say about it.
+      before = record(Date.new(2026, 6, 2), 9_900, "Old Vendor")
+      JournalLine.where(journal_entry_id: before.journal_entries.map(&:id)).update_all(created_at: 2.hours.ago)
+      march = line(Date.new(2026, 3, 10), -5_000, "ACE HARDWARE 221")
+      june = line(Date.new(2026, 6, 3), -9_900, "OLD VENDOR")
+      mine = october.bank_statement_lines.create!(organization: org, on: Date.new(2026, 10, 5), amount_cents: -1_200, description: "COFFEE")
+      since = org.bank_statement_imports.where.not(id: october.id).maximum(:matched_at)
+
+      expect(described_class.lines_to_match(org, october, since: since)).to contain_exactly(mine)
+
+      # Someone records the March purchase: that line is worth another look, June's still isn't.
+      record(Date.new(2026, 3, 9), 5_000, "Ace Hardware")
+      expect(described_class.lines_to_match(org, october, since: since)).to contain_exactly(mine, march)
+      # Before any statement was ever matched, every open line.
+      expect(described_class.lines_to_match(org, october, since: nil)).to contain_exactly(mine, march, june)
+
+      BankStatementMatchJob.perform_now(october.id)
+      expect(march.reload.state).to eq("matched")
+      expect(june.reload.state).to eq("open")
+      expect(october.reload.matched_at).to be_within(1.minute).of(Time.current)
+    end
+  end
 end

@@ -13,6 +13,12 @@ class Contract < ApplicationRecord
   has_many :contract_documents, dependent: :destroy
   has_many :contract_payments, dependent: :destroy
   has_many :space_rentals, dependent: :destroy
+  # A contract going live, or being cancelled, puts its rentals on the
+  # organization's Google Calendar or takes them off.
+  after_commit :keep_google_calendar, if: :saved_change_to_status?
+  # A contract that has just gone live is offered to its contractor to
+  # connect, when they run an organization of their own (ContractConnections.offer!).
+  after_commit :offer_to_connect, if: -> { saved_change_to_status? && status_active? }
   has_many :ticket_listings, dependent: :nullify
   # A contract is FOR one production (the real-world show). A production can be the
   # subject of many contracts over time — see Production#contracts.
@@ -28,6 +34,10 @@ class Contract < ApplicationRecord
   # contractor's visibility on My, never a production permission. The
   # contractor's own person isn't a row here; Contract.for_people counts both.
   has_many :contract_people, dependent: :destroy
+  # What the contractor has asked about its dates (ContractDateRequests).
+  has_many :date_requests, class_name: "ContractDateRequest", dependent: :destroy
+  # Connecting it to the contractor's own organization (ContractConnections).
+  has_many :connections, class_name: "ContractConnection", dependent: :destroy
   has_many :people, through: :contract_people
 
   # The contracts these people are on: as the contractor's person or as a
@@ -607,8 +617,11 @@ class Contract < ApplicationRecord
       events = shows.map do |show|
         hours = show.duration_minutes.to_i.positive? ? (show.duration_minutes / 60.0).round(2) : 1
         event = { "starts_at" => show.date_and_time.iso8601, "hours" => hours }
-        # A date with its own rate (Review the dates); $0 bills nothing.
-        own = terms_for(show)["amount"]
+        # A date with its own rate (Review the dates); $0 bills nothing. One
+        # price for the whole of an hourly date is that price over its hours.
+        terms = terms_for(show)
+        own = terms["amount"]
+        own = terms["total"].to_f / hours if terms.key?("total") && rate["unit"] == "hourly"
         own.nil? ? event : event.merge("unit_price" => own.to_f)
       end
       { "name" => EventTypes.labels[rate["event_type"]] || rate["event_type"].to_s.titleize,
@@ -692,10 +705,13 @@ class Contract < ApplicationRecord
 
       events_raw = row["events"]
       events_raw = events_raw.values if events_raw.respond_to?(:values) && !events_raw.is_a?(Array)
-      events = Array(events_raw).filter_map do |ev|
-        ev = ev.to_unsafe_h if ev.respond_to?(:to_unsafe_h)
-        ev = ev.stringify_keys
+      events_raw = Array(events_raw).map { |ev| (ev.respond_to?(:to_unsafe_h) ? ev.to_unsafe_h : ev).stringify_keys }
+      # "And every date after it": a date unticked that way takes the service
+      # off each later date too, whatever those post. Earlier dates stay.
+      off_from = events_raw.filter_map { |ev| ContractServicesChange.time_key(ev["starts_at"]) if ev["include"] != "1" && ev["and_after"] == "1" }.min
+      events = events_raw.filter_map do |ev|
         next unless ev["include"] == "1" && ev["starts_at"].present?
+        next if off_from && ContractServicesChange.time_key(ev["starts_at"]).to_i >= off_from
 
         hours = ev["hours"].to_f
         hours = 1 if hours <= 0
@@ -985,6 +1001,10 @@ class Contract < ApplicationRecord
     # the run netted what was due by then and its amount is fixed. A charge
     # added afterwards (an amendment's new rehearsal) can't ride it.
     open_settlements = settlements.select { |s| s.status_pending? && !s.in_payout_run? }
+    # A week still being played whose sales so far sit under our fee faces us
+    # for now (a shortfall), and is still the week's one settlement: its
+    # booth tech rides it, never a row to collect on its own (Tim, 2026-11-13).
+    open_settlements = (open_settlements + rest.select { |p| shortfall_in_progress?(p) }).sort_by(&:due_date)
     run_hosts = settlements.each_with_object({}) do |s, h|
       batch_id = s.payout_contribution&.payout_batch_id
       h[batch_id] ||= s if batch_id
@@ -1012,6 +1032,31 @@ class Contract < ApplicationRecord
       charges = attached[payment.id].sort_by(&:due_date)
       { payment: payment, deductions: charges, deduction_total: charges.sum { |c| c.amount.to_f } }
     end
+  end
+
+  # A settlement whose stretch of shows isn't finished: a night still to come,
+  # or (for an organization that settles up) a day of it not settled yet.
+  # Until then its amount is "so far": sales can still land, and nothing is
+  # paid or collected (Tim, 2026-11-13).
+  def settlement_in_progress?(payment)
+    return false unless payment.status_pending? && !payment.in_payout_run?
+    return false unless (revenue_share? || ticket_revenue_minus_fee?) && settlement_payment?(payment)
+
+    shows = settlement_shows_for(payment).select(&:date_and_time)
+    return false if shows.empty?
+
+    shows.map(&:date_and_time).max > Time.current || SettleUp.awaiting_settlement(organization, shows).any?
+  end
+
+  # The same settlement while it faces us: sales so far are under our fee.
+  def shortfall_in_progress?(payment)
+    payment.direction_incoming? && payment.auto_shortfall? && settlement_in_progress?(payment)
+  end
+
+  # Does a charge they owe have a week in progress to ride, though that week
+  # faces us for now? (ContractPayment#deduct_from_payout?)
+  def shortfall_in_progress_for?(charge)
+    contract_payments.any? { |p| p.id != charge.id && p.due_date && charge.due_date && p.due_date >= charge.due_date && shortfall_in_progress?(p) }
   end
 
   # --- Versions ---------------------------------------------------------------
@@ -1093,7 +1138,15 @@ class Contract < ApplicationRecord
     update_draft_step(:payment_structure, amend["payment_structure"]) if amend.key?("payment_structure")
     update_draft_step(:payment_config, amend["payment_config"]) if amend.key?("payment_config")
     update_draft_step(:ticketing, amend["ticketing"]) if amend.key?("ticketing")
-    reconcile_service_payments!(amend["services"]) if amend.key?("services")
+    if amend.key?("services")
+      # The shifts the manager agreed come off with the services they were
+      # for (ContractServiceStaffImpact), read before the services change.
+      staff = if Array(amend["unschedule_shift_ids"]).any?
+        ContractServiceStaffImpact.new(self, amend["services"], skip_rental_ids: removed_rental_ids + (amend["moved_rentals"] || {}).keys)
+      end
+      reconcile_service_payments!(amend["services"])
+      staff&.unschedule!(only: amend["unschedule_shift_ids"])
+    end
 
     if staged_name.present? && staged_name != production_name.to_s
       update!(production_name: staged_name)
@@ -1553,6 +1606,18 @@ class Contract < ApplicationRecord
     contract_payments.where(direction: "incoming", status: "paid").sum(:amount)
   end
 
+  # The part of total_incoming they actually paid us: on a pay link, or
+  # recorded by hand. The rest was settled without money arriving, by coming
+  # out of their share on a payout run; the contract page says which is which
+  # (Tim, 2026-11-08: a deducted Booth Tech charge isn't a payment received).
+  def total_payments_arrived
+    contract_payments.direction_incoming.status_paid.money_arrived.sum(:amount)
+  end
+
+  def total_deducted_from_payouts
+    total_incoming - total_payments_arrived
+  end
+
   def total_outgoing
     contract_payments.where(direction: "outgoing").where.not(status: "cancelled").sum(:amount)
   end
@@ -1771,6 +1836,58 @@ class Contract < ApplicationRecord
     end
   end
 
+  # A settlement for a stretch of shows (a week, a month, the whole run) rather
+  # than one night. It belongs to no single show, so a show link on it is never
+  # the answer to "which shows does this cover": a week's settlement tied to
+  # its first night counted one night's fee and one night's ticket sales
+  # (contract 107, 2026-11-08: "Our fee −$70.00" on a $250 a show deal).
+  PER_NIGHT_CADENCES = %w[per_event next_day same_day].freeze
+
+  def period_settlement?(payment)
+    return false unless revenue_share? || ticket_revenue_minus_fee?
+    return false if PER_NIGHT_CADENCES.include?(settlement_cadence)
+
+    payment.amount_tbd? || payment.auto_shortfall? ||
+      payment.description.to_s.start_with?("Ticket revenue") || payment.description.to_s.match?(/revenue share/i)
+  end
+
+  # Our fee night by night, as [show, fee] pairs, for a settlement that lists
+  # its working a day at a time (Tim, 2026-11-08: "tickets for this day, our
+  # fee for this day, booth tech for this day"). Nil when the nights' fees
+  # don't add up to `total` (a whole-run fee that rounds), or when there are
+  # too many nights to list; the caller then shows one line for the fee.
+  FEE_LINES_LIMIT = 7
+
+  def fee_by_night(shows, total: nil)
+    shows = Array(shows).select(&:date_and_time).sort_by(&:date_and_time)
+    return nil unless ticket_revenue_minus_fee? && shows.size.between?(1, FEE_LINES_LIMIT)
+
+    lines = shows.map { |show| [ show, fee_for_show(show).round(2) ] }
+    total ||= flat_fee_for_shows(shows)
+    (lines.sum(&:last) - total.to_f).abs < 0.005 ? lines : nil
+  end
+
+  # What a minus-fee settlement is called while it faces them: the fee for
+  # every show it covers and the stretch it's for, the way the contract first
+  # wrote it ("Ticket revenue less $750.00 fee — week of Nov 2"). The sync used
+  # to rename a week for one show's fee and the nights whose sales were in so
+  # far ("less $250.00 fee — Nov 5–Nov 6").
+  def minus_fee_settlement_name(payment, shows = nil)
+    covered = settlement_shows_for(payment)
+    fee = covered.any? ? flat_fee_for_shows(covered) : flat_fee_per_show
+    label =
+      case settlement_cadence
+      when "once" then nil
+      when "weekly" then "week of #{payment.due_date.beginning_of_week.strftime('%b %-d')}"
+      when "monthly" then payment.due_date.strftime("%B %Y")
+      else
+        night = Array(shows).filter_map(&:date_and_time).min || covered.filter_map(&:date_and_time).min || payment.due_date
+        night.strftime("%b %-d")
+      end
+    base = "Ticket revenue less #{deal_money(fee)} fee"
+    label ? "#{base} — #{label}" : base
+  end
+
   # The fee due across a given number of shows. A per-show deal is simply the
   # price times the count; a whole-contract total is allocated proportionally,
   # and lands on exactly flat_fee_amount once every show is counted so a run
@@ -1780,7 +1897,9 @@ class Contract < ApplicationRecord
   # night, a deal that settles once covers every show, a weekly/monthly one
   # covers the shows in its period.
   def settlement_shows_for(payment)
-    return money_shows.select { |s| s.id == payment.show_id } if payment.show_id.present?
+    if payment.show_id.present? && !period_settlement?(payment)
+      return money_shows.select { |s| s.id == payment.show_id }
+    end
 
     case settlement_cadence
     when "once" then money_shows
@@ -1859,7 +1978,7 @@ class Contract < ApplicationRecord
     direct = contract_payments.where(show_id: show.id)
                               .where.not(settlement_method: "payout_deduction")
                               .order(:id).to_a
-                              .reject { |p| service_charge?(p) }
+                              .reject { |p| service_charge?(p) || period_settlement?(p) }
                               .first
     return direct if direct
 
@@ -1897,8 +2016,10 @@ class Contract < ApplicationRecord
 
     # Link the show_id for future lookups if we found a match — but never to a
     # show that's been destroyed (the after_destroy sync lands here), which
-    # would violate the contract_payments→shows FK.
-    if payment && payment.show_id.nil? && !show.destroyed?
+    # would violate the contract_payments→shows FK. Only a one-night payment
+    # is linked: a week's or a month's settlement covers every show in it, and
+    # tying it to whichever show asked first made it read as that night's alone.
+    if payment && payment.show_id.nil? && !show.destroyed? && PER_NIGHT_CADENCES.include?(settlement)
       payment.update_column(:show_id, show.id)
     end
 
@@ -1922,8 +2043,9 @@ class Contract < ApplicationRecord
 
   # Get all shows that map to a given ContractPayment
   def shows_for_payment(payment)
-    # If payment has a direct show link, use it
-    if payment.show_id.present?
+    # If payment has a direct show link, use it (a period's settlement never
+    # answers by one: see #period_settlement?)
+    if payment.show_id.present? && !period_settlement?(payment)
       show = Show.includes(:show_financials).find_by(id: payment.show_id)
       return show ? [ show ] : []
     end
@@ -2369,6 +2491,17 @@ class Contract < ApplicationRecord
                                 .find_each { |item| item.course_offering_payout.settle_contract_payments!(item) }
   end
 
+  def keep_google_calendar
+    GoogleCalendarFullSyncJob.perform_later(organization_id) if GoogleCalendarSync.on_for?(organization_id)
+  end
+
+  # An offer that can't be made never undoes the contract going live.
+  def offer_to_connect
+    ContractConnections.offer!(self)
+  rescue StandardError => e
+    Rails.logger.error("[Contract] #{id} offer to connect: #{e.class}: #{e.message}")
+  end
+
   private
 
   # Who's on the other side of the deal, as the document names them.
@@ -2565,9 +2698,28 @@ class Contract < ApplicationRecord
         start: starts_at.strftime("%-l:%M %p"),
         end: ends_at ? ends_at.strftime("%-l:%M %p") : "—",
         stage: space_id ? (space_names[space_id] || "Stage") : "Entire venue",
-        rent: rent_by_date[starts_at.to_date] || rent_label
+        rent: license_rated_rent(b) || rent_by_date[starts_at.to_date] || rent_label
       }
     end
+  end
+
+  # A rehearsal (any kind of date with its own rate) is outside the deal: it
+  # has no payment row of its own on the draft, so the deal's rent would land
+  # on it. It costs its own rate, or that date's own terms: four hours at an
+  # hourly rate, two of them included, read $300 (the per-show fee) on the
+  # signed document instead of $60 (Tim, 2026-11-13).
+  def license_rated_rent(booking)
+    event_type = booking["event_type"].presence || "show"
+    rate = event_rate_for_type(event_type)
+    return nil unless rate
+
+    terms = date_terms_for_booking(booking["starts_at"])
+    cost = if hourly_rated?(event_type)
+      hourly_date_cost(event_type, terms, booking_hours(booking))
+    else
+      terms.key?("amount") ? terms["amount"].to_f : rate["amount"].to_f
+    end
+    deal_money(cost)
   end
 
   def parse_booking_time(value)

@@ -25,7 +25,12 @@
     </div>
   <% end %>
 
-  <%= form_with url: apply_amend_services_manage_contract_path(@contract), method: :post, local: true do %>
+  <% gate = @staff_impact&.people? %>
+  <%= render "service_staff_impact", impact: @staff_impact, lead: "Applying these changes" if @staff_impact %>
+
+  <%= form_with url: apply_amend_services_manage_contract_path(@contract), method: :post, local: true,
+        data: (gate ? { controller: "acknowledge-gate" } : {}) do %>
+    <%= render "service_staff_acknowledge", impact: @staff_impact if gate %>
     <label class="block">
       <span class="block text-sm font-medium text-gray-700 mb-1">Why the change? <span class="font-normal text-gray-500">(kept in the contract's history)</span></span>
       <textarea name="reason" rows="2"
@@ -35,7 +40,9 @@
     <div class="flex justify-between items-center gap-3 pt-6 mt-6 border-t border-gray-200">
       <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", icon: "arrow-left", path: amend_services_manage_contract_path(@contract) %>
       <% if @changes.any? %>
-        <%= render "shared/button", text: "Apply changes", variant: "primary", size: "medium", type: :submit %>
+        <%= render "shared/button", text: "Apply changes", variant: "primary", size: "medium", type: :submit,
+              disabled: gate, classes: "disabled:opacity-50 disabled:cursor-not-allowed",
+              data: (gate ? { acknowledge_gate_target: "submit" } : {}) %>
       <% end %>
     </div>
   <% end %>

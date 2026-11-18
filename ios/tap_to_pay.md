@@ -72,7 +72,8 @@ Tap to Pay is V1.2. The redesign, production mode and the new navigation
 per-build path-configuration address (`AppConfig.swift`) and the user-agent
 version marker (the Release section), so its server changes can't reach V1
 installs. Tap to Pay ships whenever Apple grants the publishing entitlement
-below, before or after V1.1.
+below, before or after V1.1. **Apple granted it on 2026-11-10; what's left
+is "The grant, and shipping 1.2" at the end of this file.**
 
 ## Apple's publishing review (guide and checklist v1.8, Oct 2026)
 
@@ -107,8 +108,9 @@ Simulator with Stripe's simulated reader: the splash, setting up from its
 page (location, Apple's terms, progress, Apple's guide, "Try it out at the
 door"), the getting-ready screen over a sale, a paid sale with its receipt
 code, a canceled one, and a second sale on a warm reader with no reconnect.
-It shows only in Debug builds (TapToPayComponent registers under `#if DEBUG`)
-and only where an organization has Tap to Pay on iPhone switched on
+Until 1.2 it showed only in Debug builds (TapToPayComponent registered under
+`#if DEBUG`); from 1.2 every build registers it. It shows only where an
+organization has Tap to Pay on iPhone switched on
 (Ticketing settings → Door → Tap to Pay on iPhone → Manage; a superadmin
 sees that card on every organization, and switching it on offers it there).
 
@@ -156,7 +158,7 @@ and the disclaimer sheet is headed "About Tap to Pay on iPhone".
 Before it: remove the merchant ID (step 6 above) and wait 15 minutes, or
 Apple's terms won't show. Deploy main first: Get started needs the page's
 `?setup=1`. Try a screen recording first; if Apple's sheets come out black,
-have Andy film it in good light. Start recording at the app's welcome
+have Andie film it in good light. Start recording at the app's welcome
 screen.
 
 1. Sign in as yourself.
@@ -316,3 +318,136 @@ Checking out
 
 Marketing
 - 6.1 Launch email: Done. Apple's Launch email, to the people who can sell at a door that has Tap to Pay on iPhone. Send it with `TapToPayLaunch.announce!` once Apple approves (dry run first).
+
+## The grant, and shipping 1.2 (2026-11-10)
+
+Apple granted the full publishing entitlement on 2026-11-10 (email from
+Tap to Pay on iPhone, Wallet Entitlements: "Your entitlement request for
+Tap to Pay on iPhone has been granted"). It covers the Team ID and Bundle
+ID for good: no new request for updates, new versions or regions. The same
+day iPhone 1.1.4 went live, so nothing is ahead of 1.2 in Apple's review.
+Tim settled the names that day: Tap to Pay is app version 1.2, Books stays
+V1.3.
+
+### What changed in the code for 1.2
+
+- `ios/CocoScout-Release.entitlements` carries
+  `com.apple.developer.proximity-reader.payment.acceptance`, as the Debug
+  file always has.
+- `SceneDelegate.swift` registers `TapToPayComponent` and warms the reader
+  up in every build; both were under `#if DEBUG`. Nothing else held Tap to
+  Pay back: the server offers it to an app by the "tap-to-pay" bridge
+  component in its user agent (`NativeAppHelper#native_tap_to_pay`), so
+  1.1.x installs are never offered it.
+- Both apps say 1.2 (iPhone `MARKETING_VERSION`; Android `versionName` 1.2,
+  `versionCode` 10). The Android app has registered Tap to Pay in its
+  release builds all along, so Android 1.2 is the same code as 1.1.4 under
+  the new number.
+
+Checked here: the Release configuration builds for the Simulator and for a
+device (unsigned), the built app says 1.2 and contains the component.
+**Not checked, and can't be from here:** signing with the entitlement
+(that needs Apple's provisioning profile, on Xcode Cloud), and a real tap
+in a build that isn't Debug. Step 3 below is that check.
+
+### Tim's steps, in order
+
+1. **Apple's developer site** (Account Holder): Certificates, IDs &
+   Profiles → Identifiers → the CocoScout App ID → Additional Capabilities
+   → make sure **Tap to Pay on iPhone** is ticked → Save. Apple adds the
+   granted entitlement there as a managed capability; the development one
+   was already on. Xcode Cloud signs with cloud-managed certificates and
+   automatic signing, so it makes the new profile itself on the next build:
+   nothing to download.
+2. **Say "push it".** Claude pushes main and the tag `ios-v1.2`; Xcode
+   Cloud builds, signs and puts the build in internal TestFlight
+   (`docs/app_release_automation.md`). If the build fails saying the
+   provisioning profile doesn't include the proximity-reader entitlement,
+   step 1 hasn't taken: fix it and rebuild (Xcode ⌘9 → Cloud → Rebuild, or
+   the tag `ios-v1.2-2`).
+3. **Try the TestFlight build on the iPhone before submitting.** It is the
+   first build that isn't run from Xcode to take a tap. Delete the Xcode
+   build first. Sign in, Settings → Tap to Pay on iPhone: it should set up
+   and say Ready. On a show day, sell one ticket with a real tap, then
+   refund the order from the website.
+4. **The reviewer account.** Run the App Review block in
+   `ios/app_store_submission.md` again from `kamal console` (it adds the
+   next 14 nights, and from 2026-11-10 it switches Tap to Pay on iPhone on
+   for the sample organization). Sign in to the app as the reviewer once
+   and check the door shows the Tap to Pay on iPhone button.
+5. **Film one more take, with a second phone.** Apple's grant email:
+   "Tap to Pay on iPhone transaction views cannot be recorded with screen
+   recording tools. Use a second device to capture video." The three
+   videos sent for the entitlement were screen recordings, and Apple's
+   card screen comes out black in one. Have Andie film the checkout (video
+   3's steps) over your shoulder: cart, the Tap to Pay on iPhone button, the
+   tap, Paid with the receipt code. The enrolment take of 10/28 ("1
+   Existing user") shows Apple's terms clearly and can go as it is.
+6. **App Store Connect:** a new version 1.2, attach the build, What's New,
+   paste the review notes below, attach the videos under App Review
+   Information → Attachment, answer the App Privacy questions again (see
+   `ios/app_store_submission.md`: location is used now), then Add for
+   Review. If App Review wants more, it arrives as a rejection: answer on
+   that thread.
+7. **Android 1.2**, whenever you say: `./gradlew installShrunk` on the
+   emulator first, then the upload (`docs/app_release_automation.md`).
+   It needs no review of Tap to Pay; it's the version label catching up.
+8. **Once 1.2 is live:** offer Tap to Pay on iPhone to the organizations
+   that should have it (Superadmin sees its card on every organization's
+   Ticketing settings → Door), then send Apple's launch email and the
+   notification, dry run first:
+   `TapToPayLaunch.announce!(organizations: [org], sender: User.find_by!(email_address: "..."), dry_run: true)`.
+9. **Then Books.** V1.3 was held until Tap to Pay shipped.
+
+### App Review notes for 1.2 (paste into App Store Connect)
+
+These replace the 1.1 notes: those say no money changes hands in the app,
+which stops being true with 1.2.
+
+> CocoScout is a free companion app for performers, crew and door staff at
+> performing-arts organizations. The account above is a performer at a
+> sample organization who also has box-office access to its door.
+>
+> NEW IN 1.2: TAP TO PAY ON IPHONE
+>
+> How we use the entitlement: door staff can take payment for tickets to a
+> live show by having the buyer tap a card or phone on the iPhone. It is
+> one of several ways to pay at the door, beside cash, comps and a QR code
+> the buyer pays from on their own phone. It is not shown to every user:
+> only to people an organization has given box-office access, at an
+> organization where Tap to Pay on iPhone is switched on. We switch it on
+> organization by organization from our server; there is no feature flag
+> inside the app.
+>
+> CocoScout is the merchant: every organization's ticket sales go through
+> CocoScout's own payment account, with Stripe as the payment service
+> provider. Apple's Tap to Pay on iPhone Terms and Conditions are accepted
+> once for that merchant, by a CocoScout administrator, in the app. Door
+> staff are authorized on our website by their organization's managers
+> (the exception for pre-authorized users, entitlement Case-ID 22828656).
+> Tickets to live events are physical-world services, so nothing here is
+> an in-app purchase.
+>
+> To see it with the test account:
+> 1. Sign in. A full-screen "Tap to Pay on iPhone" page appears once: tap
+>    "Get started with Tap to Pay on iPhone", allow location (card
+>    networks require it), and wait for setup to finish. Apple's guide
+>    opens, then the page says Ready. You will not be shown Apple's Terms
+>    and Conditions: they are already accepted for our merchant account.
+>    The attached video "1 Existing user" shows them being accepted.
+> 2. Open the menu → "Work the door" → tonight's show → Sell. Add one
+>    General ticket ($15.00). "Tap to Pay on iPhone" is the first way to
+>    pay.
+> 3. A tap charges a real card, about $15. If you make one, we refund it
+>    the same day. The attached video "3 Checkout" shows a
+>    complete sale: the cart, the tap, Paid, and the receipt code.
+>
+> Attached videos: "1 Existing user" (enrolment, including Apple's Terms
+> and Conditions), "2 New user" (a new door person setting up),
+> "3 Checkout" (a cart, starting Tap to Pay on iPhone, a completed
+> transaction), "4 Website setup" (how a manager authorizes door staff).
+>
+> The rest of the app is as before: Calendar, Messages and Shows for the
+> performer; "Manage" (the organization's side) is a website and opens in
+> Safari; Scan at the door uses the camera; notifications are optional;
+> Settings → Delete my account files a request we complete within 30 days.

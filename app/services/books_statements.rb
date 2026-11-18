@@ -38,8 +38,10 @@ class BooksStatements
   # Income and spending for a period, by account; optionally a column per
   # production (and one for money not tied to any).
   def profit_and_loss(range, by_production: false)
+    # The totals come from the kept month-end balances; only a column per
+    # production reads the lines, which carry the production.
+    sums = BooksBalances.sums(@organization, basis: @basis, from: range&.begin, to: range&.end)
     lines = @report.dated_lines(range).joins(:ledger_account).where(ledger_accounts: { account_type: %w[income expense] })
-    sums = lines.group("ledger_accounts.id").sum(:amount_cents)
     prod_sums = by_production ? lines.group("ledger_accounts.id", :production_id).sum(:amount_cents) : {}
     accounts = @organization.ledger_accounts.active.where(id: sums.keys).order(:code).to_a
     productions = by_production ? production_columns(prod_sums.keys.map(&:last)) : []
@@ -67,11 +69,7 @@ class BooksStatements
   # dollar of income less spending to that day sits in retained earnings,
   # so the two sides always agree.
   def balance_sheet(as_of)
-    lines = JournalLine.where(organization_id: @organization.id).joins(:journal_entry, :ledger_account)
-    date_column = @basis == :cash ? "journal_entries.cash_date" : "journal_entries.entry_date"
-    lines = lines.where.not(journal_entries: { cash_date: nil }) if @basis == :cash
-    lines = lines.where("#{date_column} <= ?", as_of)
-    sums = lines.group("ledger_accounts.id").sum(:amount_cents)
+    sums = BooksBalances.sums(@organization, basis: @basis, to: as_of)
     accounts = @organization.ledger_accounts.active.where(id: sums.keys).order(:code).to_a
 
     section = lambda do |type, title, total_label|
@@ -98,12 +96,12 @@ class BooksStatements
   def cash_flow(range)
     cash_ids = @organization.ledger_accounts.where(key: CASH_ACCOUNTS).pluck(:id)
     base = JournalLine.where(organization_id: @organization.id, ledger_account_id: cash_ids).joins(:journal_entry).where.not(journal_entries: { cash_date: nil })
-    opening = base.where("journal_entries.cash_date < ?", range.begin.to_date).sum(:amount_cents)
+    opening = BooksBalances.sums(@organization, basis: :cash, to: range.begin.to_date - 1, account_ids: cash_ids).values.sum
     in_period = base.where(journal_entries: { cash_date: range.begin.to_date..range.end.to_date })
     by_kind = in_period.group("journal_entries.kind").sum(:amount_cents)
     ins = by_kind.select { |_, c| c.positive? }.map { |k, c| Line.new(label: BooksReport::KIND_LABELS.fetch(k, k.humanize), cents: c) }.sort_by { |l| -l.cents }
     outs = by_kind.select { |_, c| c.negative? }.map { |k, c| Line.new(label: BooksReport::KIND_LABELS.fetch(k, k.humanize), cents: -c) }.sort_by { |l| -l.cents }
-    closing_by_account = base.where("journal_entries.cash_date <= ?", range.end.to_date).group(:ledger_account_id).sum(:amount_cents)
+    closing_by_account = BooksBalances.sums(@organization, basis: :cash, to: range.end.to_date, account_ids: cash_ids)
     accounts = @organization.ledger_accounts.where(id: cash_ids).order(:code)
     where = accounts.map { |a| Line.new(label: a.name, cents: closing_by_account[a.id].to_i) }
     sections = [
@@ -132,21 +130,24 @@ class BooksStatements
     end
   end
 
-  # Every line ever posted, for an accountant's own tools.
-  def ledger_csv
-    lines = JournalLine.where(organization_id: @organization.id).includes(:ledger_account, :production, :show, :journal_entry)
-                       .joins(:journal_entry).order("journal_entries.entry_date, journal_entries.id, journal_lines.id")
-    CSV.generate do |csv|
-      csv << [ "Entry", "Earned on", "Moved on", "What", "Memo", "Account code", "Account", "Debit", "Credit", "Production", "Show", "Payee", "Line memo", "Source", "Reverses entry" ]
-      lines.find_each(batch_size: 2000) do |line|
-        e = line.journal_entry
-        csv << [ e.id, e.entry_date, e.cash_date, BooksReport::KIND_LABELS.fetch(e.kind, e.kind.humanize), e.memo, line.ledger_account.code, line.ledger_account.name,
-                 (line.amount_cents.positive? ? dollars(line.amount_cents) : nil), (line.amount_cents.negative? ? dollars(-line.amount_cents) : nil),
-                 line.production&.name, line.show && "#{line.show.date_and_time.strftime('%Y-%m-%d')} #{line.show.display_name}",
-                 line.payee_type && "#{line.payee_type} #{line.payee_id}", line.memo, e.source_type && "#{e.source_type} #{e.source_id}", e.reversal_of_id ]
-      end
+  # Every line ever posted, for an accountant's own tools, in date order.
+  # Written to io a batch at a time (BooksLinesCsv); answers how many lines.
+  def write_ledger_csv(io)
+    walker = BooksLinesCsv.new(@organization)
+    io << CSV.generate_line([ "Entry", "Earned on", "Moved on", "What", "Memo", "Account code", "Account", "Debit", "Credit", "Production", "Show", "Payee", "Line memo", "Source", "Reverses entry" ])
+    count = 0
+    walker.each(JournalLine.where(organization_id: @organization.id).joins(:journal_entry)) do |line|
+      code, name = walker.account(line.ledger_account_id)
+      io << CSV.generate_line([ line.entry_id, line.entry_date, line.cash_date, walker.kind_label(line.kind), line.entry_memo, code, name,
+                                (line.amount_cents.positive? ? dollars(line.amount_cents) : nil), (line.amount_cents.negative? ? dollars(-line.amount_cents) : nil),
+                                walker.production_name(line.production_id), walker.show_label(line.show_id),
+                                line.payee_type && "#{line.payee_type} #{line.payee_id}", line.memo, line.source_type && "#{line.source_type} #{line.source_id}", line.reversal_of_id ])
+      count += 1
     end
+    count
   end
+
+  def ledger_csv = StringIO.new.tap { |io| write_ledger_csv(io) }.string
 
   private
 

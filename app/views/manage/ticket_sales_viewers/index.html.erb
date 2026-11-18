@@ -32,7 +32,7 @@
     %>
     <p class="text-sm text-gray-600 rounded-lg bg-gray-50 border border-gray-200 px-4 py-3">
       <%= possessive(@production.name) %> production team already sees these sales by role: its managers <%= managers_words %>, its viewers <%= viewers_words %>, and the cast <%= cast_words %>.
-      Change that for every production in <%= link_to "Who sees sales", manage_ticketing_settings_section_path(section: "sharing"), class: "text-pink-600 hover:text-pink-700 underline" %>.
+      Change that for every production in <%= link_to "Sales visibility", manage_ticketing_settings_section_path(section: "sharing"), class: "text-pink-600 hover:text-pink-700 underline" %>.
     </p>
 
     <%# The contractor: automatic, with a switch per contract. %>

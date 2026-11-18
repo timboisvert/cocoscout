@@ -11,7 +11,8 @@ class RoleVacancyInvitation < ApplicationRecord
   # Still worth showing the invitee: not claimed, and the vacancy is still
   # active (open, or finding_replacement once invitations are out, which is
   # the state every invited vacancy is in).
-  scope :unresolved, -> { joins(:role_vacancy).where(claimed_at: nil).merge(RoleVacancy.active) }
+  # Gone once the show has happened (RoleVacancy#past?).
+  scope :unresolved, -> { joins(role_vacancy: :show).where(claimed_at: nil).merge(RoleVacancy.active).where("shows.date_and_time >= ?", Time.current) }
 
   validates :token, uniqueness: true, allow_nil: true
 
@@ -49,13 +50,14 @@ class RoleVacancyInvitation < ApplicationRecord
     true
   end
 
+  # Filled or closed, or the show has happened.
   def expired?
-    !role_vacancy.active?
+    !role_vacancy.active? || role_vacancy.past?
   end
 
-  # Can still claim if declined but vacancy is still open
+  # Can still claim if declined but vacancy is still open, and the show is ahead.
   def can_claim?
-    !claimed? && role_vacancy.active?
+    !claimed? && role_vacancy.active? && !role_vacancy.past?
   end
 
   private

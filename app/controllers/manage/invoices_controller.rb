@@ -21,7 +21,7 @@ module Manage
         redirect_to manage_money_invoice_path(@invoice), notice: (to ? "Invoice #{@invoice.display_number} sent to #{to}." : "Invoice #{@invoice.display_number} is ready. Send it when you like.")
       else
         @invoice.invoice_lines.build(quantity: 1) if @invoice.invoice_lines.empty?
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
       end
     end
 

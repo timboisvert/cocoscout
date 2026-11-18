@@ -20,6 +20,7 @@ class OrgStatementBuilder
     "ticket_sale" => "Ticket sales", "ticket_refund" => "Ticket refunds", "ticket_dispute" => "Disputed charges",
     "ticket_exchange_in" => "Tickets moved in from another date", "ticket_exchange_out" => "Tickets moved to another date",
     "course_registration" => "Course registrations", "refund" => "Course refunds", "contract_payment" => "Contract payments collected",
+    "partner_payment_in" => "Contract payments paid into your balance",
     "funding" => "Added from your bank for payout runs", "top_up" => "Added from your bank", "transfer" => "Paid out (payees and withdrawals)",
     "transfer_reversal" => "Payouts that came back", "opening_balance" => "Opening balance", "adjustment" => "Corrections"
   }.freeze

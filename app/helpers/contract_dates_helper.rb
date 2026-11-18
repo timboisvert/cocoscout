@@ -16,7 +16,7 @@ module ContractDatesHelper
       next unless at
 
       type = booking["event_type"].presence || "show"
-      hours = booking_hours(booking, at)
+      hours = contract.booking_hours(booking)
       space = spaces_map[booking["space_id"].to_i] if booking["space_id"].present?
       location = locations_map[booking["location_id"].to_i]
       terms = contract.date_terms_for_booking(booking["starts_at"])
@@ -117,11 +117,29 @@ module ContractDatesHelper
   end
 
   # What Edit asks for on this kind of date: { label:, unit: "$" | "%", help: }.
-  def date_term_field_copy(contract, event_type)
+  # A kind charged by the hour also gets :per, the choice between one price
+  # for the whole date and an hourly rate: [[words, "date" | "hour", prefill]],
+  # and :chosen. Given the row (one date's Edit), the whole date leads and
+  # each choice carries that date's figure; several dates start on the rate.
+  def date_term_field_copy(contract, event_type, row: nil)
     usual = contract.usual_date_term(event_type).to_f
     money = number_to_currency(usual, precision: usual % 1 == 0 ? 0 : 2)
     kind = (EventTypes.labels[event_type] || event_type.to_s.titleize)
-    if (rate = contract.event_rate_for_type(event_type))
+    if contract.hourly_rated?(event_type)
+      whole = "for the whole #{kind.downcase}"
+      if row
+        rate = row.terms.key?("amount") ? row.terms["amount"].to_f : usual
+        length = date_length_words(row.hours)
+        usually = number_to_currency(contract.hourly_date_cost(event_type, {}, row.hours))
+        { label: "#{kind} price for this date", unit: "$",
+          per: [ [ whole, "date", format("%.2f", row.fixed_amount.to_f) ], [ "an hour", "hour", format("%.2f", rate) ] ],
+          chosen: row.terms.key?("amount") ? "hour" : "date", value: (row.terms.key?("amount") ? rate : row.fixed_amount.to_f),
+          help: "Usually #{money} an hour#{", #{usually} for #{length}" if length}. $0 means no charge." }
+      else
+        { label: "#{kind} price for each date", unit: "$", per: [ [ "an hour", "hour", nil ], [ whole, "date", nil ] ], chosen: "hour",
+          help: "Usually #{money} an hour. $0 means no charge." }
+      end
+    elsif (rate = contract.event_rate_for_type(event_type))
       per = rate["unit"] == "hourly" ? " an hour" : " per #{kind.downcase}"
       { label: "#{kind} rate for this date", unit: "$", help: "Usually #{money}#{per}. $0 means no charge." }
     elsif contract.per_event_deal?
@@ -136,20 +154,13 @@ module ContractDatesHelper
 
   private
 
-  def booking_hours(booking, at)
-    if booking["ends_at"].present?
-      ends = (Time.zone.parse(booking["ends_at"].to_s) rescue nil)
-      return ((ends - at) / 3600.0).round(2) if ends
-    end
-    booking["duration"].to_f.positive? ? booking["duration"].to_f : nil
-  end
-
   # Dollars this date costs on its own (a rehearsal's rate, a per-event fee),
   # nil when it rides on ticket sales or a whole-contract fee.
   def fixed_amount_for(contract, type, terms, hours)
     if (rate = contract.event_rate_for_type(type))
-      price = terms.key?("amount") ? terms["amount"].to_f : rate["amount"].to_f
-      rate["unit"] == "hourly" ? (price * (hours || 1)).round(2) : price
+      return contract.hourly_date_cost(type, terms, hours) if rate["unit"] == "hourly"
+
+      terms.key?("amount") ? terms["amount"].to_f : rate["amount"].to_f
     elsif contract.per_event_deal?
       terms.key?("amount") ? terms["amount"].to_f : contract.usual_date_term(type).to_f
     end

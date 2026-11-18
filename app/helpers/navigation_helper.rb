@@ -222,6 +222,9 @@ module NavigationHelper
     items << { label: "My Contracts", path: my_contracts_path, icon: "documents", active: controller_name == "contracts" } if Current.user&.has_contracts?
     items << { label: "My Payments", path: my_payments_path, icon: "payments", active: controller_name == "payments" }
     items << { label: "My Shifts", path: my_shifts_path, icon: "shifts", active: controller_name == "shifts" } if Current.user&.shows_my_shifts?
+    # My Followers (Tim, 2026-11-17): only when a list is shared through a
+    # contract they're on (SharedFollowers).
+    items << { label: "My Followers", path: my_followers_path, icon: "followers", active: controller_path == "my/followers" } if SharedFollowers.lists_for(Current.user).exists?
     # No Door item here (Tim, 2026-10-17): the Door is the "Work the door"
     # bar under the menu (door_bar_item), on the website as in the app.
     # No Ticket Sales entry here (Tim, 2026-10-17): ticket information lives
@@ -254,12 +257,12 @@ module NavigationHelper
         { label: "Overview", path: superadmin_path, icon: "overview", active: controller_name == "superadmin" && action_name == "index" },
         { label: "People", path: people_list_path, icon: "people", active: %w[people_list person_detail].include?(action_name) },
         { label: "Organizations", path: organizations_list_path, icon: "organizations", active: %w[organizations_list organization_detail organization_consolidation production_transfer].include?(action_name) },
-        { label: "App usage", path: app_usage_path, icon: "overview", active: action_name == "app_usage" },
         { label: "Open Mics", path: mics_index_path, icon: "mics", active: controller_name == "mics" }
       ] },
       { label: "Business", items: [
         { label: "Finances", path: finances_path, icon: "money", active: action_name.to_s.start_with?("finances") },
-        { label: "Promo Codes", path: promo_codes_path, icon: "promo", active: action_name.to_s.start_with?("promo_code") }
+        { label: "Promo Codes", path: promo_codes_path, icon: "promo", active: action_name.to_s.start_with?("promo_code") },
+        { label: "App", path: app_usage_path, icon: "overview", active: action_name == "app_usage" }
       ] },
       { label: "Content", items: [
         { label: "Profiles", path: profiles_monitor_path, icon: "profiles", active: action_name == "profiles" },

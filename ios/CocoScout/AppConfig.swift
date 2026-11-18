@@ -32,12 +32,15 @@ enum AppConfig {
     /// reaches phones running the other.
     static let pathConfigurationURL = baseURL.appendingPathComponent("hotwire-native/nav-\(navGeneration)/path-configuration.json")
 
-    /// "CocoScout/1.1 (12; nav 2)", ahead of Hotwire Native's own user agent.
+    /// "CocoScout/1.1.4 (9; nav 2) CocoMenu/bar", ahead of Hotwire Native's own
+    /// user agent. "CocoMenu/bar": the Coco menu button is in the top bar, not
+    /// floating over the page, so the server leaves no room for it
+    /// (NativeAppVersion.menu_in_bar?).
     static let userAgentPrefix: String = {
         let info = Bundle.main.infoDictionary
         let version = info?["CFBundleShortVersionString"] as? String ?? "0"
         let build = info?["CFBundleVersion"] as? String ?? "0"
-        return "CocoScout/\(version) (\(build); nav \(navGeneration))"
+        return "CocoScout/\(version) (\(build); nav \(navGeneration)) CocoMenu/bar"
     }()
 
     static func url(_ path: String) -> URL {

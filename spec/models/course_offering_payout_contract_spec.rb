@@ -65,4 +65,44 @@ RSpec.describe CourseOfferingPayout, "and the contract it settles" do
 
     expect(settlement.reload).to be_status_pending
   end
+
+  # Tim, 2026-11-17: contract 113 was amended to add a January date after
+  # September's run was paid. Opening the contract marked January paid with
+  # September's $75.60.
+  context "when a date is added to the contract after the run was paid" do
+    before { line.update_columns(manually_paid: true, paid_at: Time.zone.local(2026, 10, 6, 12), payment_method: "stripe") }
+
+    it "leaves a later date's settlement waiting on a show that isn't one of the run's sessions" do
+      settlement.update_columns(status: "paid", amount: 75.60, amount_tbd: false, paid_date: Date.new(2026, 10, 6))
+      january = create(:show, production: production, date_and_time: Time.zone.local(2027, 1, 17, 13))
+      added = create(:contract_payment, :outgoing, contract: contract, description: "Jan 17 — 50% to them", amount: 0, amount_tbd: true,
+                                                   due_date: Date.new(2027, 1, 17), show: january)
+
+      contract.sync_course_payouts_to_payments
+
+      expect(added.reload).to have_attributes(status: "pending", amount: 0.to_d, amount_tbd: true, paid_date: nil)
+    end
+
+    it "leaves it waiting when the new date was added to the same course run" do
+      settlement.update_columns(status: "paid", amount: 75.60, amount_tbd: false, paid_date: Date.new(2026, 10, 6))
+      january = create(:show, production: production, course_offering: offering, date_and_time: Time.zone.local(2027, 1, 17, 13))
+      added = create(:contract_payment, :outgoing, contract: contract, description: "Jan 17 — 50% to them", amount: 0, amount_tbd: true,
+                                                   due_date: Date.new(2027, 1, 17), show: january)
+
+      contract.sync_course_payouts_to_payments
+
+      expect(added.reload).to be_status_pending
+    end
+
+    it "still settles the run's own date, and only that one, when both are waiting" do
+      january = create(:show, production: production, date_and_time: Time.zone.local(2027, 1, 17, 13))
+      added = create(:contract_payment, :outgoing, contract: contract, description: "Jan 17 — 50% to them", amount: 0, amount_tbd: true,
+                                                   due_date: Date.new(2027, 1, 17), show: january)
+
+      contract.sync_course_payouts_to_payments
+
+      expect(settlement.reload).to have_attributes(status: "paid", amount: 75.60.to_d)
+      expect(added.reload).to be_status_pending
+    end
+  end
 end

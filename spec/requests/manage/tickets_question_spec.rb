@@ -41,12 +41,13 @@ RSpec.describe "The Tickets question", type: :request do
     expect(TicketingProfile.for(org).reload.enabled?).to be(true)
 
     get manage_production_path(production)
-    expect(response.body).to include("Sold on CocoScout", "1 upcoming date", "/t/#{ShortLink.canonical_for!(production).code}", "Open ticketing")
+    expect(response.body).to include("data-production-tickets-state", "Selling", "1 upcoming date", "/t/#{ShortLink.canonical_for!(production).code}",
+                                     "Ticketing for this production", manage_production_ticketing_path(production))
 
     # The show page shows where the tickets are, small, for reading only.
     get manage_production_show_path(production, show)
     expect(response.body).to include("Tickets sold", "of 70", manage_ticket_listing_path(show.ticket_listing))
-    expect(response.body).not_to include("Give tickets", "Where do people get tickets")
+    expect(response.body).not_to include("Issue comps", "Where do people get tickets")
 
     # A date answering for itself leaves the production's CocoScout sales; following it again rejoins.
     patch manage_show_path(production, show), params: { show: { tickets_override: "1", tickets_mode: "none" } }

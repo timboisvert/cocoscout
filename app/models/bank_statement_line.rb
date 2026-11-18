@@ -83,8 +83,14 @@ class BankStatementLine < ApplicationRecord
     update!(state: "open", journal_line: nil, journal_line_ids: [], money_record: nil, note: nil)
   end
 
-  # Who the bank says it is from or to (BankPayees).
-  def payee = BankPayees.read(description)
+  # Who the bank says it is from or to (BankPayees). Read once a line: a
+  # page of payee groups asks several times.
+  def payee
+    return @payee if @payee_of == description
+
+    @payee_of = description
+    @payee = BankPayees.read(description)
+  end
 
   # Money recorded by hand from this line: the record's own bank line is the match.
   def recorded!(record)

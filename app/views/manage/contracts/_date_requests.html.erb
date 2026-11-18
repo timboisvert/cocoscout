@@ -1,0 +1,73 @@
+<%# Contract page: what the contractor has requested about its dates and nobody
+    has answered yet (ContractDateRequests), one panel each, above the
+    contract. Two answers: amend the contract (the Change dates step opens on
+    what they requested; the request closes itself when the date changes), or
+    keep the date, with a note. Either way they're notified.
+
+    Locals:
+      requests — the contract's open ContractDateRequests, oldest first %>
+<% requests.each do |request| %>
+  <%
+    contractor = @contract.contractor_name
+    keep_modal = "keep-date-request-#{request.id}"
+    question = request.kind == "question"
+    amend_path = case request.kind
+    when "move", "cancel" then amend_dates_manage_contract_path(@contract, request: request.id)
+    when "add" then amend_bookings_manage_contract_path(@contract)
+    else amend_choose_manage_contract_path(@contract)
+    end
+    amend = { text: "Amend Contract", type: :link, path: amend_path }
+    keep = { text: request.keep_button_words, type: :button, data: { action: "click->modal#open", modal_id: keep_modal } }
+    ticketed = request.show && request.kind.in?(%w[move cancel]) && ContractDateChanges.tickets_held?([ request.show ])
+    on_contract = request.kind == "move" && request.original_local ? "It's #{request.clock_words(request.original_local)} on the contract. " : ""
+    asked_on = request.created_at.in_time_zone.strftime("%b %-d")
+    body = question ? "Sent #{asked_on}." : "#{on_contract}Requested #{asked_on}. Nothing has changed: the contract changes only when you amend it."
+    details = capture do %>
+      <% if request.note.present? %>
+        <div class="mt-3 rounded-lg bg-white/70 border border-pink-100 px-4 py-3 text-sm text-gray-700">"<%= request.note %>"</div>
+      <% end %>
+      <% if ticketed %>
+        <p class="mt-3 text-sm text-gray-600">
+          People hold tickets for this date.
+          <%= request.kind == "move" ? "Moving it keeps their tickets." : "Canceling it leaves their tickets to refund, from its ticketing page." %>
+        </p>
+      <% end %>
+    <% end %>
+  <div data-date-request="<%= request.id %>">
+    <%= render "shared/alert_panel",
+          eyebrow: (question ? "A question about a date" : "A request about a date"),
+          headline: "#{contractor} #{request.requests_words}",
+          body: body,
+          actions: (question ? [ keep, amend ] : [ amend, keep ]),
+          details: details %>
+
+    <div id="<%= keep_modal %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" data-action="click->modal#closeOnBackdrop">
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden" data-action="click->modal#stopPropagation">
+        <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+          <h3 class="text-lg font-semibold text-white"><%= request.keep_title_words(contractor) %></h3>
+          <button type="button" data-action="click->modal#close" aria-label="Close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+        <%= form_with url: keep_date_request_manage_contract_path(@contract, request_id: request.id), method: :post, local: true,
+              data: { turbo_action: "replace" } do %>
+          <div class="p-6 space-y-4">
+            <p class="text-sm text-gray-700"><%= contractor %> will be notified.<%= " Nothing changes on the contract." unless question %></p>
+            <label class="block">
+              <span class="block text-sm font-medium text-gray-700 mb-1">
+                <%= question ? "Your reply" : "A note to #{contractor}" %>
+                <% unless question %><span class="font-normal text-gray-500">(optional)</span><% end %>
+              </span>
+              <textarea name="answer_note" rows="3" maxlength="2000" <%= "required" if question %>
+                        class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"></textarea>
+            </label>
+          </div>
+          <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-2">
+            <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+            <%= render "shared/button", text: (question ? "Send reply" : "Send answer"), variant: "primary", size: "medium", type: :submit %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>

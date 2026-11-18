@@ -72,9 +72,56 @@ RSpec.describe "App usage", type: :request do
       tiles = doc.css("[data-active-tile]").map { |t| t.text.squish }
       expect(tiles[0]).to include("Today 1", "1 iPhone · 0 Android")
       expect(tiles[2]).to include("Last 30 days 2", "1 iPhone · 1 Android")
-      rows = ->(selector) { doc.css("#{selector} tbody tr").map { |tr| tr.css("td").map { |td| td.text.squish } } }
-      expect(rows.call("[data-versions]")).to eq([ %w[Android V1 1], [ "iPhone", "1.1", "1" ] ])
-      expect(rows.call("[data-top-pages]")).to eq([ %w[door#show 2] ])
+      expect(doc.at_css("[data-ever]").text.squish).to include("Ever opened the app 2")
+
+      # Each screen is its own address; the builds and the pages moved to theirs.
+      rows = lambda do |section, selector|
+        get app_usage_path(section)
+        Nokogiri::HTML(response.body).css("#{selector} tbody tr").map { |tr| tr.css("td").map { |td| td.text.squish } }
+      end
+      expect(rows.call("builds", "[data-versions]")).to eq([ [ "Android", "V1", "1", "100%" ], [ "iPhone", "1.1", "1", "100%" ] ])
+      expect(rows.call("screens", "[data-top-pages]")).to eq([ [ "door#show", "", "2" ] ])
+      %w[growth people].each do |section|
+        get app_usage_path(section)
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    # All, iPhone or Android, kept from screen to screen (Tim, 2026-11-13).
+    it "filters every screen by platform and keeps the choice in the screens' links" do
+      ios_person = create(:user)
+      android_person = create(:user)
+      AppActivityDay.record!(ios_person, platform: "ios", app_version: "1.2", nav: 2)
+      AppActivityDay.record!(android_person, platform: "android", app_version: "1.2", nav: 2)
+      AppPageDay.count!("door#show", platform: "ios")
+      3.times { AppPageDay.count!("my/shifts#index", platform: "android") }
+
+      sign_in(superadmin)
+      get app_usage_path(platform: "android", days: 7)
+      doc = Nokogiri::HTML(response.body)
+      expect(doc.css("[data-active-tile]").first.text.squish).to include("Today 1", "1 Android")
+      expect(doc.css("[data-active-tile]").first.text).not_to include("iPhone")
+      expect(doc.css("nav[aria-label='Settings sections'] a").map { |a| a["href"] }).to all(include("platform=android").and(include("days=7")))
+
+      get app_usage_path("screens", platform: "android")
+      pages = Nokogiri::HTML(response.body).css("[data-top-pages] tbody tr td:first-child").map { |td| td.text.squish }
+      expect(pages).to eq([ "my/shifts#index" ])
+    end
+
+    it "counts people new to the app by the week of their first day" do
+      travel_to Date.new(2026, 11, 11) do
+        early = create(:user)
+        late = create(:user)
+        AppActivityDay.record!(early, platform: "ios", app_version: "1.1", nav: 2, day: Date.new(2026, 10, 20))
+        AppActivityDay.record!(early, platform: "ios", app_version: "1.2", nav: 2, day: Date.new(2026, 11, 10))
+        AppActivityDay.record!(late, platform: "android", app_version: "1.2", nav: 2, day: Date.new(2026, 11, 10))
+
+        report = AppUsageReport.new
+        expect(report.ever).to include(total: 2, ios: 1, android: 1)
+        expect(report.growth.last).to include(week: Date.new(2026, 11, 9), new: { "ios" => 0, "android" => 1 }, total: 2)
+        expect(report.new_people(7)).to eq(now: 1, before: 0)
+        expect(AppUsageReport.new(platform: "ios").ever[:total]).to eq(1)
+      end
     end
 
     it "is for superadmins only" do

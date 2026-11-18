@@ -8,6 +8,16 @@ class ShowPayoutLineItem < ApplicationRecord
   has_one :show, through: :show_payout
   has_one :production, through: :show_payout
 
+  # A correction (Tim, 2026-11-04): the day was reopened after this person
+  # was paid, and the show now pays them a different amount. The paid line
+  # stays exactly as it was paid; the difference is a line of its own for
+  # the same person, pointing back at it. More owed is a positive line that
+  # rides the next run like any other. Overpaid is a negative line: it never
+  # rides a run, and its negative earning on the payee ledger is what takes
+  # the money out of their next pay.
+  belongs_to :correction_of, class_name: "ShowPayoutLineItem", optional: true
+  has_many :corrections, class_name: "ShowPayoutLineItem", foreign_key: :correction_of_id, dependent: :destroy, inverse_of: :correction_of
+
   has_many :advance_recoveries, dependent: :destroy
   has_many :person_advances, through: :advance_recoveries
 
@@ -34,9 +44,12 @@ class ShowPayoutLineItem < ApplicationRecord
   # Payout statuses for tracking payment state
   PAYOUT_STATUSES = %w[pending success failed].freeze
 
-  validates :amount, presence: true, numericality: { greater_than_or_equal_to: 0 }
-  # Allow same person to have multiple line items if one is an individual allocation
-  validates :payee_id, uniqueness: { scope: [ :show_payout_id, :payee_type, :is_individual_allocation ] }, if: -> { payee_id.present? }
+  validates :amount, presence: true
+  validates :amount, numericality: { greater_than_or_equal_to: 0 }, unless: :correction?
+  # Allow same person to have multiple line items if one is an individual
+  # allocation; a correction sits beside the line it corrects.
+  validates :payee_id, uniqueness: { scope: [ :show_payout_id, :payee_type, :is_individual_allocation ], conditions: -> { where(correction_of_id: nil) } },
+                       if: -> { payee_id.present? && !correction? }
   validates :payment_method, inclusion: { in: PAYMENT_METHODS }, allow_nil: true
   validates :payout_status, inclusion: { in: PAYOUT_STATUSES }, allow_nil: true
 
@@ -47,6 +60,17 @@ class ShowPayoutLineItem < ApplicationRecord
   validates :pay_choice, inclusion: { in: PAY_CHOICES }
 
   def held? = pay_choice == "hold"
+  def correction? = correction_of_id.present?
+  # Overpaid: a negative correction, taken out of their next pay by the ledger.
+  def overpaid? = correction? && amount.to_d.negative?
+  # Paid as Tim means it (2026-11-04): paid another way, sent, or on a
+  # payout run that has been submitted. Only a draft run can still change.
+  def paid_or_submitted?
+    return true if paid?
+
+    batch = payout_contribution&.payout_batch
+    batch.present? && !batch.open?
+  end
   # Who this line pays, for matching a line across a recalculation.
   def pay_choice_key = [ payee_type, payee_id, guest_name, is_individual_allocation ]
 
@@ -206,13 +230,18 @@ class ShowPayoutLineItem < ApplicationRecord
 
   # Post a `payout` entry when this line item is paid (manually/offline), or
   # remove it when unpaid. Keeps the ledger balance in step with the paid state.
+  # A line paid through a payout run posts nothing of its own: the run's item
+  # posted the payout (see #mark_paid_via_payout_run!), and a second entry
+  # here would take the same money out of the payee's balance twice. That
+  # used to happen whenever a show's earnings were synced again after one of
+  # its lines had gone out on a run.
   def sync_payout_ledger_entry!
     return unless ledger_eligible?
 
     org = show_payout&.production&.organization
     return unless org
 
-    if paid?
+    if paid? && (manually_paid? || payout_contribution.nil?)
       PayoutLedgerEntry.post!(
         organization: org,
         payee: payee,
@@ -310,8 +339,9 @@ class ShowPayoutLineItem < ApplicationRecord
     payout = show_payout.reload
     return if payout.paid? # Already paid
 
-    # Check if all line items are now paid
-    if payout.line_items.all?(&:paid?)
+    # Check if all line items are now paid (an overpaid correction is never
+    # paid: it comes out of later pay)
+    if payout.line_items.all? { |line| line.paid? || line.overpaid? }
       # Directly update to paid status (skip the approval requirement for manual payments)
       payout.update!(status: "paid")
     end

@@ -175,7 +175,7 @@ module Manage
     # Step 2: Bookings (space/time reservations)
     def bookings
       @step = 2
-      @locations = Current.organization.locations.includes(:location_spaces)
+      @locations = Current.organization.locations.pickable(Location.ids_named_in(@contract.draft_data)).includes(:location_spaces)
       @existing_rules = @contract.draft_booking_rules || {}
     end
 
@@ -354,7 +354,7 @@ module Manage
         picked = dates.select { |d| types[d] == type }
         next unless field && picked.any?
 
-        @contract.set_draft_date_terms!(picked, value: value, note: params[:note], field: field)
+        @contract.set_draft_date_terms!(picked, value: value, note: params[:note], field: field, whole: params.dig(:units, type) == "date")
         saved += picked.size
       end
       redirect_to manage_review_dates_contract_wizard_path(@contract),

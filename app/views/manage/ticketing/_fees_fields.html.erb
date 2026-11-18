@@ -1,0 +1,49 @@
+<%#
+  Who pays the fees, how prices are shown and what cash comes to, as the
+  box office's Fees and taxes tab asks them (the same rows of side-by-side
+  choices), for a
+  production's or a date's own (Tim, 2026-11-13: "it should feel like the
+  box office page, but with the ability to override").
+  Locals: scope (the param prefix), fee_mode, price_display, cash_tax (what's
+  chosen now).
+%>
+<%
+  example = [ { price_cents: 2_000 } ]
+  buyer_total = TicketPricing.quote(items: example, fee_mode: "buyer").total_cents
+  absorbed_net = TicketPricing.quote(items: example, fee_mode: "org").org_net_cents
+  tax_form = TicketTaxSetting.current(Current.organization)
+  tax_on_top = tax_form.set? && tax_form.mode == "added"
+  example_tax = tax_on_top ? (2_000 * tax_form.percent.to_d / 100).round : 0
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  card = "flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50"
+  radio = "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500"
+  rows = [
+    [ "fee_mode", "Who pays our 50¢ and card processing", fee_mode, [
+      [ "buyer", "Buyers pay the fees", "A $20 ticket costs the buyer #{money.(buyer_total)}, and you keep the full $20." ],
+      [ "org", "You absorb the fees", "A $20 ticket costs the buyer $20, and you keep #{money.(absorbed_net)}." ] ] ],
+    [ "price_display", "How prices are shown", price_display, [
+      [ "all_in", "All in", "A ticket shows the most it can cost, with taxes and fees in." ],
+      [ "base", "Before taxes and fees", "A ticket shows its own price, and names what's added. A tap on the price shows the total." ] ] ],
+    [ "cash_tax", "Cash at the door", cash_tax, [
+      [ "same", "The same as any other sale", (tax_on_top ? "Tax is added on top: a $20 ticket is #{money.(2_000 + example_tax)} in cash." : "A $20 ticket is $20.00 in cash.") ],
+      [ "included", "Tax is included in the price", "A $20 ticket is $20.00 in cash, and the tax comes out of that $20. Cards and online sales aren't changed." ] ] ]
+  ]
+%>
+<div class="space-y-6">
+  <% rows.each do |field, legend, chosen, choices| %>
+    <fieldset>
+      <legend class="block text-sm font-medium text-gray-700 mb-1.5"><%= legend %></legend>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <% choices.each do |value, title, explanation| %>
+          <label class="<%= card %>">
+            <%= radio_button_tag "#{scope}[#{field}]", value, chosen == value, id: "#{scope}_#{field}_#{value}", class: radio %>
+            <span>
+              <span class="block text-sm font-medium text-gray-900"><%= title %></span>
+              <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
+            </span>
+          </label>
+        <% end %>
+      </div>
+    </fieldset>
+  <% end %>
+</div>

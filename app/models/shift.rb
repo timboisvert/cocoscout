@@ -53,6 +53,16 @@ class Shift < ApplicationRecord
     all_role_names.join(" + ")
   end
 
+  # Where: the role's place, else the booking's. Nil when neither has one.
+  def location_name
+    ShiftWords.location(self)
+  end
+
+  # The week this shift belongs to on the staffing schedule (Monday).
+  def week_start
+    starts_at.to_date.beginning_of_week
+  end
+
   # The extra roles that apply to one covered show: those covering every show
   # plus those scoped to this one. Reads the loaded rows, so a preloaded week
   # costs nothing more.
@@ -157,6 +167,29 @@ class Shift < ApplicationRecord
     else
       [ source ].select { |s| s.is_a?(::Show) }
     end
+  end
+
+  # The shows this shift is there for, as its staff see them (My Shifts, the
+  # notices, the claim page). A show-specific role's shift: the show(s) it's
+  # tied to. A house shift covers the night: every one of the organization's
+  # shows it overlaps, whichever show it was added from, plus any it's tied
+  # to (Tim, 2026-11-08: a House Staff shift from 4:30 to 9:30, added from the
+  # 4:30 show, is there for the 8:00 shows too). Canceled shows left out,
+  # ordered by show start. Managers' pages keep covered_shows: there a shift
+  # tied to one show is that show's.
+  def shows_on_duty
+    tied = covered_shows.reject(&:canceled?)
+    tied = (tied + overlapping_shows).uniq(&:id) unless house_role&.show_specific?
+    tied.sort_by(&:date_and_time)
+  end
+
+  # The organization's shows this shift overlaps: a show that starts before
+  # the shift ends and ends after it starts.
+  def overlapping_shows
+    ::Show.joins(:production).where(productions: { organization_id: organization_id }, canceled: false)
+          .where("shows.date_and_time < ? AND shows.date_and_time > ?", ends_at, starts_at - 12.hours)
+          .includes(:production, :space_rental).to_a
+          .select { |show| starts_at < show.ends_at && ends_at > show.date_and_time }
   end
 
   private

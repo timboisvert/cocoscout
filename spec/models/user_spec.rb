@@ -7,6 +7,22 @@ describe User, type: :model do
     expect(build(:user)).to be_valid
   end
 
+  # The bot sign-ups' addresses, which no mail provider accepts (2026-11-13).
+  it 'refuses an address with two dots in a row or a dot at either end of the name' do
+    %w[j.u.s.ti.n..t.g9@gmail.com .ada@example.com ada.@example.com ada@example..com].each do |email|
+      user = build(:user, email_address: email)
+      expect(user).not_to be_valid, email
+      expect(user.errors[:email_address]).to include("must be a valid email address")
+    end
+    expect(build(:user, email_address: "ada.b.lovelace@example.co.uk")).to be_valid
+  end
+
+  it 'still saves an account that already has such an address' do
+    user = create(:user)
+    user.update_column(:email_address, "pranay...rp.i@gmail.com")
+    expect(user.reload.update(last_seen_at: Time.current)).to be(true)
+  end
+
   it 'is invalid without an email_address' do
     user = build(:user, email_address: nil)
     expect(user).not_to be_valid

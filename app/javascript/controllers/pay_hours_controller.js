@@ -11,7 +11,7 @@ import { Controller } from "@hotwired/stimulus"
 // commits the modal UI to those inputs; syncAll re-reads them (draft restore)
 // back into the UI, row datasets, and button labels.
 export default class extends Controller {
-    static targets = ["row", "modal", "button", "pullModal", "pullCheckbox"]
+    static targets = ["row", "modal", "button", "pullModal", "pullCheckbox", "pullBar"]
 
     connect() {
         this.openModalEl = null
@@ -201,6 +201,23 @@ export default class extends Controller {
     // never clobber in-progress edits.
     syncAll() {
         this.rowTargets.forEach(row => this.syncRow(row, { syncModalUi: this.openModalEl === null }))
+        this.syncPullBar()
+    }
+
+    // "Pull in approved hours" is offered only while someone it lists still
+    // has an approved entry that isn't on their row (Tim, 2026-11-11: it
+    // came back on every visit, with everything already pulled).
+    syncPullBar() {
+        if (!this.hasPullBarTarget) return
+        const left = this.pullCheckboxTargets.some(cb => {
+            const memberId = cb.dataset.memberId
+            const modal = this.modalFor(memberId)
+            if (!modal) return false
+            const holder = document.getElementById(`pay-entries-${memberId}`)
+            const pulled = new Set(Array.from(holder ? holder.querySelectorAll("input") : []).map(input => String(input.value)))
+            return Array.from(modal.querySelectorAll("[data-entry-id]")).some(entry => !pulled.has(String(entry.dataset.entryId)))
+        })
+        this.pullBarTarget.classList.toggle("hidden", !left)
     }
 
     syncRow(row, { syncModalUi } = { syncModalUi: false }) {

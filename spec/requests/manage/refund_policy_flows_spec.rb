@@ -44,7 +44,7 @@ RSpec.describe "Refund policy", type: :request do
     expect(response.body).not_to include("Up to 24 hours before")
 
     get manage_ticketing_settings_section_path(section: "refunds")
-    expect(response.body).to include("Refund policy", "Up to 24 hours before", "No refunds", "Case by case",
+    expect(response.body).to include("Refund policy", "Up to a cutoff", "24 hours before", "No refunds", "Case by case",
                                      "Buyers see:</span> Refunds up to 24 hours before the show. Fees aren&#39;t refunded.")
 
     patch manage_ticketing_settings_refunds_path, params: { ticketing_profile: { refund_choice: "custom", refund_days: "10", refund_fees: "1", refund_policy_note: "Exchanges welcome." } }
@@ -62,10 +62,11 @@ RSpec.describe "Refund policy", type: :request do
 
     get manage_edit_production_ticketing_path(production, section: "sales")
     expect(response.body).to include(manage_edit_production_ticketing_path(production, section: "refunds"))
-    expect(response.body).not_to include("follows your box office")
+    expect(response.body).not_to include("Refund policy")
 
+    # The one override switch: what it follows while off, and who it's for.
     get manage_edit_production_ticketing_path(production, section: "refunds")
-    expect(response.body).to include("Refund policy", "Boylesque follows your box office's: refunds up to 24 hours before the show")
+    expect(response.body).to include("Refund policy", "your box office&#39;s refund policy settings</a>", "for Boylesque", manage_ticketing_settings_section_path(section: "refunds"))
 
     patch manage_update_production_ticketing_path(production, section: "refunds"),
           params: { production_ticketing: { own_refund_policy: "1", refund_choice: "none", refund_fees: "0" } }
@@ -77,6 +78,48 @@ RSpec.describe "Refund policy", type: :request do
     expect(flash[:notice]).to eq("Saved. Boylesque follows your box office's refund policy.")
     expect(setup.reload.refund_policy).to be_nil
     expect(RefundPolicy.for(TicketListing.find(listing.id)).kind).to eq("window")
+  end
+
+  # A date can have its own again (Tim, 2026-11-13: something a date
+  # couldn't override before), by the same override line, linked to the
+  # settings it overrides.
+  it "lets a date set its own, over its production's or the box office's, and go back" do
+    setup = ProductionTicketing.for(production)
+    sign_in
+
+    get manage_edit_ticket_listing_path(listing, section: "refunds")
+    expect(response.body).to include("Refund policy", "your box office&#39;s refund policy settings</a>", "for this date",
+                                     manage_ticketing_settings_section_path(section: "refunds"))
+
+    patch manage_ticket_listing_path(listing, section: "refunds"), params: { ticket_listing: { own_refund_policy: "1", refund_choice: "none", refund_fees: "0" } }
+    expect(flash[:notice]).to eq("Saved. This date has its own refund policy.")
+    expect(RefundPolicy.for(TicketListing.find(listing.id)).kind).to eq("none")
+    # Its production's other dates are untouched.
+    expect(RefundPolicy.of_setup(setup.reload, profile).kind).to eq("window")
+
+    # With a production policy above it, the line names the production.
+    setup.update!(refund_policy: "case_by_case")
+    get manage_edit_ticket_listing_path(listing, section: "refunds")
+    expect(response.body).to include("Boylesque&#39;s refund policy settings</a>", manage_edit_production_ticketing_path(production, section: "refunds"))
+
+    patch manage_ticket_listing_path(listing, section: "refunds"), params: { ticket_listing: { own_refund_policy: "0" } }
+    expect(TicketListing.find(listing.id).attributes.slice("refund_policy", "refund_window_hours", "refund_fees", "refund_policy_note").values).to all(be_nil)
+    expect(RefundPolicy.for(TicketListing.find(listing.id)).kind).to eq("case_by_case")
+  end
+
+  # No refunds comes first, and under it there are no fees to give back
+  # (Tim, 2026-11-13): the switch is hidden, and saved off whatever it said.
+  it "puts No refunds first and drops the fees switch under it" do
+    sign_in
+    get manage_ticketing_settings_section_path(section: "refunds")
+    doc = Nokogiri::HTML(response.body)
+    expect(doc.css("input[name='ticketing_profile[refund_choice]']").map { |i| i["value"] }).to eq(%w[none window case_by_case])
+    expect(doc.at_css("[data-refund-fees]")["class"]).not_to include("hidden")
+
+    patch manage_ticketing_settings_refunds_path, params: { ticketing_profile: { refund_choice: "none", refund_fees: "1" } }
+    expect(profile.reload.attributes.slice("refund_policy", "refund_fees")).to eq("refund_policy" => "none", "refund_fees" => false)
+    get manage_ticketing_settings_section_path(section: "refunds")
+    expect(Nokogiri::HTML(response.body).at_css("[data-refund-fees]")["class"]).to include("hidden")
   end
 
   describe "the check" do

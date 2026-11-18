@@ -11,10 +11,12 @@ gem "importmap-rails"
 gem "kamal", require: false
 gem "mail", "~> 2.9.0" # Pin to 2.8.x to avoid breaking changes in 2.9.0
 gem "pagy", "~> 43.2.2"
+gem "pdf-reader" # reads the bills uploaded to superadmin Finances (Amazon invoices, receipts)
 gem "pg"
 gem "prawn"        # PDF generation (signed contract documents)
 gem "prawn-table"  # tables inside those PDFs
 gem "rqrcode", "~> 3.2" # ticket QR codes (SVG on pages, PNG in emails)
+gem "rubyzip", require: "zip" # the year's receipts in one download, for the CPA
 # prawn requires matrix at load time but does not declare it, and matrix stopped
 # being a default gem in Ruby 3.1. It used to arrive via poppler -> cairo.
 gem "matrix"

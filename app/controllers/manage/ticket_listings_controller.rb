@@ -14,9 +14,14 @@ module Manage
 
     GUEST_FILTERS = %w[all waiting in comps refunded].freeze
     # A date's Settings, a tab each with its own Save.
-    SETTINGS = { "tickets" => "Tickets", "products" => "Products", "sales" => "Sales", "page" => "Page", "codes" => "Discount codes", "comps" => "Comps", "seating" => "Seating" }.freeze
+    # A date's tabs, laid out as its production's are (Tim, 2026-11-13).
+    # "sales" is Basic info (when it sells, the order limit) and "page" the
+    # ticket page; the keys stay as they were so old links keep working.
+    # 1.4's Seating tab follows, where it was: at the end.
+    SETTINGS = { "sales" => "Basic info", "tickets" => "Tickets", "fees" => "Fees and taxes", "comps" => "Comps", "refunds" => "Refunds",
+                 "codes" => "Discount codes", "products" => "Products", "page" => "Ticket page", "seating" => "Seating" }.freeze
 
-    before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code destroy_code cancel
+    before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code destroy_code export_codes import_codes cancel
                                            change_review tell_change mark_change_told outside_sales tier_availability]
     before_action :set_settings_section, only: %i[edit update]
 
@@ -39,9 +44,6 @@ module Manage
       @guest_filter = params[:guests].presence_in(GUEST_FILTERS) || "all"
       @query = params[:q].to_s.strip
       @guest_orders = guest_orders(@guest_filter, @query)
-      # The Sold elsewhere modal: the organization's other sites and what each sold here, by type.
-      @outside_sources = Current.organization.ticket_sources.hand_made.active.ordered.to_a
-      @outside_rows = @listing.ticket_outside_sales.index_by { |row| [ row.ticket_source_id, row.ticket_tier_id ] }
       @waitlist_count = @listing.waitlist_entries.live.count
       @group_count = @listing.group_bookings.live.count
     end
@@ -123,6 +125,7 @@ module Manage
     def update
       return update_comps if @section == "comps"
       return update_own_codes if @section == "codes"
+      return update_refunds if @section == "refunds"
 
       attrs = listing_params
       notice = "Saved."
@@ -194,7 +197,40 @@ module Manage
       end
     end
 
+    # The Codes tab's ⋯ menu (DiscountCodeCsv): this date's codes as a
+    # spreadsheet, and a spreadsheet's codes added to this date only.
+    def export_codes
+      codes = @listing.ticket_discount_codes.where(active: true).order(:code)
+      send_data DiscountCodeCsv.export(codes), filename: "#{ticket_listing_file_stem}-discount-codes.csv", type: "text/csv"
+    end
+
+    def import_codes
+      result = DiscountCodeCsv.import(organization: Current.organization, ticket_listing: @listing, file: params[:file], text: params[:text])
+      @listing.update!(own_codes: true) if result.added.any? && !@listing.own_codes?
+      redirect_to settings_path("codes"), (result.ok? ? :notice : :alert) => result.summary
+    end
+
+    # "stargazers-2026-11-21", for a file about this date.
+    def ticket_listing_file_stem
+      "#{@listing.production.name.parameterize}-#{@listing.show.date_and_time.to_date.iso8601}"
+    end
+
     # The Codes tab's switch: this date's own codes instead of the production's.
+    # The Refunds tab: this date's own refund policy (the override on), or
+    # the one above it (off: every field cleared), as a production's does.
+    def update_refunds
+      raw = params.require(:ticket_listing)
+      attrs = if raw[:own_refund_policy] == "1"
+        chosen = RefundPolicy.attributes_for(RefundPolicy.choice_from(raw), raw[:refund_days]) || {}
+        chosen.reverse_merge(refund_window_hours: nil).merge(refund_fees: raw[:refund_fees] == "1" && RefundPolicy.choice_from(raw).to_s != "none", refund_policy_note: raw[:refund_policy_note].to_s.strip.presence)
+      else
+        { refund_policy: nil, refund_window_hours: nil, refund_fees: nil, refund_policy_note: nil }
+      end
+      @listing.update!(attrs)
+      notice = @listing.refund_policy.present? ? "Saved. This date has its own refund policy." : "Saved. This date follows the refund policy above it."
+      redirect_to settings_path("refunds"), notice: notice
+    end
+
     def update_own_codes
       own = params.dig(:ticket_listing, :own_codes) == "1"
       @listing.update!(own_codes: own)
@@ -313,7 +349,7 @@ module Manage
     # The Comps tab: this date's own comp rules (the switch on), or the ones
     # it follows, its production's or the box office's (CompRules).
     def update_comps
-      raw = params.require(:ticket_listing).permit(:own_comps, *CompRules::FIELDS)
+      raw = params.require(:ticket_listing).permit(:own_comps, *CompRules::PARAMS)
       own = raw[:own_comps] == "1"
       @listing.update!(CompRules.attributes_from(raw, own: own).merge(own_comps: own))
       notice = own ? "Saved. This date has its own comp rules: #{@listing.comp_rules_words}." : "Saved. This date follows #{@listing.comp_rules_source == :production ? "#{helpers.possessive(@listing.production.name)} comp rules" : "your box office's comp rules"}."
@@ -321,8 +357,8 @@ module Manage
     end
 
     def set_settings_section
-      @section = params[:section].presence || "tickets"
-      redirect_to settings_path("tickets") unless SETTINGS.key?(@section)
+      @section = params[:section].presence || "sales"
+      redirect_to settings_path("sales") unless SETTINGS.key?(@section)
     end
 
     def settings_path(section)
@@ -340,17 +376,29 @@ module Manage
 
     def listing_params
       permitted = params.require(:ticket_listing).permit(
-        :title, :description, :on_sale_at, :off_sale_at, :members_on_sale_at, :max_per_order, :fee_mode, :low_stock_threshold,
+        :title, :description, :on_sale_at, :off_sale_at, :members_on_sale_at, :max_per_order, :fee_mode, :cash_tax, :price_display, :low_stock_threshold,
         :door_note, :age_note, :accessibility_note, :sell_products, :seating_mode, :seat_chart_id,
         ticket_tiers_attributes: %i[id name price quantity admits bundle_of_tier_id description position sells_at _destroy]
       )
       permitted[:fee_mode] = permitted[:fee_mode].presence if permitted.key?(:fee_mode)
+      permitted[:cash_tax] = permitted[:cash_tax].presence if permitted.key?(:cash_tax)
+      permitted[:price_display] = permitted[:price_display].presence if permitted.key?(:price_display)
       permitted[:seating_mode] = permitted[:seating_mode].presence if permitted.key?(:seating_mode)
       permitted[:seat_chart_id] = Current.organization.seat_charts.find_by(id: permitted[:seat_chart_id])&.id if permitted.key?(:seat_chart_id)
       permitted[:max_per_order] = permitted[:max_per_order].presence if permitted.key?(:max_per_order)
       permitted[:low_stock_threshold] = permitted[:low_stock_threshold].presence if permitted.key?(:low_stock_threshold)
       # The Page tab's ages: the production's, all ages here, or an age.
-      if (choice = params.dig(:ticket_listing, :age_choice))
+      # The one override switch on each box (manage/ticketing/own_switch): off,
+      # the date follows its production again, so what the box covers is
+      # cleared. (A disabled box sends none of its fields.)
+      raw = params[:ticket_listing]
+      permitted.merge!(fee_mode: nil, cash_tax: nil, price_display: nil) if raw[:own_fees] == "0"
+      permitted.merge!(max_per_order: nil, low_stock_threshold: nil) if raw[:own_orders] == "0"
+      permitted.merge!(title: nil, description: nil, door_note: nil, accessibility_note: nil) if raw[:own_page] == "0"
+      if raw[:own_ages] == "0"
+        permitted.merge!(minimum_age: nil, age_note: nil)
+      elsif (choice = params.dig(:ticket_listing, :age_choice))
+        permitted[:age_note] = raw[:age_note].to_s.strip.presence if raw.key?(:age_note)
         permitted[:minimum_age] = AgeLimit.value_for(choice, params.dig(:ticket_listing, :age_other), inherit: true)
       end
       if permitted[:ticket_tiers_attributes]

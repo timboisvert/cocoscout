@@ -135,6 +135,69 @@ RSpec.describe "Production ticketing", type: :request do
     expect(response.body).not_to include("New dates join on their own")
   end
 
+  # Tim, 2026-11-11: a canceled date with nothing sold was reported as "1 date
+  # no longer matches your settings. It has tickets sold, so it stays on sale."
+  it "names an unpicked date that sold and stays on sale, and says nothing about a canceled one" do
+    save_tickets("0" => { name: "General", price: "20", position: "0" })
+    save_dates
+    second_show.update!(canceled: true)
+    second_show.ticket_listing.update_columns(status: "canceled")
+
+    get manage_production_ticketing_path(production)
+    expect(response.body).not_to include("Still on sale", "No longer in your selection")
+
+    create(:ticket_order, ticket_listing: first_show.ticket_listing, status: "paid", paid_at: Time.current)
+    save_dates(event_matching: "manual", selected_show_ids: [ "" ])
+    get manage_production_ticketing_path(production)
+    expect(response.body).to include("Still on sale", first_show.date_and_time.strftime("%A, %B %-d at %-l:%M %p"),
+                                     "no longer one of the dates you chose to sell", "Open that date")
+    expect(response.body.scan("No longer in your selection").size).to eq(1)
+  end
+
+  # Cash at the door cascades like the fees (Tim, 2026-11-13): the box
+  # office's, unless the production says, unless the date says.
+  it "lets a production, then a date, say how cash is taxed" do
+    # The production's Fees and taxes tab: the one override switch, its line
+    # a link to the box office's own settings.
+    get manage_edit_production_ticketing_path(production, section: "fees")
+    expect(response.body).to include("Cash at the door", "your box office&#39;s fees, prices, and cash settings</a>", "for Rising Stars", "How prices are shown",
+                                     manage_ticketing_settings_section_path(section: "tax"), "Tax on tickets")
+    # The order limit is its own override, on Basic info.
+    get manage_edit_production_ticketing_path(production, section: "dates")
+    expect(response.body).to include("your box office&#39;s order limit</a>", "Low seats note")
+
+    patch manage_update_production_ticketing_path(production, section: "sales"), params: { from: "fees", production_ticketing: { own_fees: "1", cash_tax: "included" } }
+    expect(response).to redirect_to(manage_edit_production_ticketing_path(production, section: "fees"))
+    expect(production.reload.production_ticketing.cash_tax).to eq("included")
+    listing = production.production_ticketing.listings.first
+    if listing
+      expect(listing.effective_cash_tax).to eq("included")
+      patch manage_ticket_listing_path(listing), params: { section: "sales", ticket_listing: { own_fees: "1", cash_tax: "same", fee_mode: "org", own_orders: "1", max_per_order: "4" } }
+      expect(listing.reload.effective_cash_tax).to eq("same")
+      expect([ listing.fee_mode, listing.max_per_order ]).to eq([ "org", 4 ])
+      # Each box's switch off, and what it covers follows the production again.
+      patch manage_ticket_listing_path(listing), params: { section: "sales", ticket_listing: { own_fees: "0", own_orders: "1", max_per_order: "4" } }
+      expect(listing.reload.attributes.slice("fee_mode", "cash_tax", "max_per_order")).to eq("fee_mode" => nil, "cash_tax" => nil, "max_per_order" => 4)
+      patch manage_ticket_listing_path(listing), params: { section: "sales", ticket_listing: { own_fees: "0", own_orders: "0" } }
+      expect(listing.reload.attributes.slice("fee_mode", "cash_tax", "max_per_order", "low_stock_threshold").values).to all(be_nil)
+      expect(listing.effective_cash_tax).to eq("included")
+    end
+
+    # How prices show follows the same switch, down to the date.
+    patch manage_update_production_ticketing_path(production, section: "sales"), params: { from: "fees", production_ticketing: { own_fees: "1", price_display: "base" } }
+    expect(production.reload.production_ticketing.price_display).to eq("base")
+    expect(production.production_ticketing.listings.first&.prices_before_extras?).to be(true) if production.production_ticketing.listings.any?
+
+    patch manage_update_production_ticketing_path(production, section: "sales"), params: { production_ticketing: { own_fees: "0" } }
+    expect(production.reload.production_ticketing.attributes.slice("fee_mode", "cash_tax", "price_display").values).to all(be_nil)
+
+    patch manage_update_production_ticketing_path(production, section: "sales"), params: { from: "dates", production_ticketing: { own_orders: "1", max_per_order: "6" } }
+    expect(response).to redirect_to(manage_edit_production_ticketing_path(production, section: "dates"))
+    expect(production.reload.production_ticketing.max_per_order).to eq(6)
+    patch manage_update_production_ticketing_path(production, section: "sales"), params: { from: "dates", production_ticketing: { own_orders: "0" } }
+    expect(production.reload.production_ticketing.max_per_order).to be_nil
+  end
+
   it "saves seats, fees and words for every date, and production-wide codes" do
     patch manage_update_production_ticketing_path(production, section: "sales"),
           params: { production_ticketing: { max_per_order: "6", fee_mode: "org", title: "Rising Stars Showcase", door_note: "" } }
@@ -150,6 +213,47 @@ RSpec.describe "Production ticketing", type: :request do
 
     delete manage_production_ticketing_code_path(production, code_id: code.id)
     expect(code.reload.active).to be(false)
+  end
+
+  # A show renamed after its links went out (Tim, 2026-11-09): the ticket
+  # page's address is the production's own unless Sales & page gives it one.
+  it "gives the ticket page its own address, or the production's when blank" do
+    get manage_edit_production_ticketing_path(production, section: "sales")
+    expect(response.body).to include("Address", %(placeholder="#{production.public_key}"), "Links to the old address keep working.")
+
+    save = ->(key) { patch manage_update_production_ticketing_path(production, section: "sales"), params: { production_ticketing: { page_key: key } } }
+    save.("The-Holly-Problem")
+    expect(production.reload.ticket_page_key).to eq("the-holly-problem")
+
+    save.("no")
+    expect(flash[:alert]).to eq("The address must be 3 to 30 lowercase letters, numbers and hyphens")
+    other = create(:production, organization: org, name: "Other Show")
+    save.(other.public_key)
+    expect(flash[:alert]).to eq("That address is already taken by another page.")
+    expect(production.reload.ticket_page_key).to eq("the-holly-problem")
+
+    # Its own public URL typed in, or blank, is the production's again; the
+    # one it had is remembered.
+    save.(production.public_key)
+    setup = production.reload.production_ticketing
+    expect([ setup.page_key, setup.old_page_keys, production.ticket_page_key ]).to eq([ nil, [ "the-holly-problem" ], production.public_key ])
+  end
+
+  # The Codes tab's ⋯ menu (Tim, 2026-11-07): export the codes as a
+  # spreadsheet, import a spreadsheet's.
+  it "exports its codes and imports a spreadsheet's, skipping the ones already there" do
+    org.ticket_discount_codes.create!(production: production, code: "FRIENDS", kind: "fixed", amount_cents: 500)
+    get manage_production_ticketing_codes_export_path(production)
+    expect(response.headers["Content-Disposition"]).to include("rising-stars-discount-codes.csv")
+    expect(response.body.lines.map(&:chomp)).to eq([ "Code,Kind,Amount,Most uses,Shared with", "FRIENDS,$ off,5.00,,Production team and cast" ])
+
+    file = Rack::Test::UploadedFile.new(StringIO.new("Code,Kind,Amount\nFRIENDS,$ off,5\nCAST,% off,20\n"), "text/csv", original_filename: "codes.csv")
+    post manage_production_ticketing_codes_import_path(production), params: { file: file }
+    expect(flash[:notice]).to eq("Added CAST. Already here, skipped: FRIENDS.")
+    expect(org.ticket_discount_codes.where(production: production, active: true).pluck(:code)).to contain_exactly("FRIENDS", "CAST")
+
+    get manage_edit_production_ticketing_path(production, section: "codes")
+    expect(response.body).to include("Export codes", "Import codes", "export-codes-modal", "import-codes-modal")
   end
 
   it "can't reach another theater's production" do
@@ -175,9 +279,19 @@ RSpec.describe "Production ticketing", type: :request do
       get manage_ticket_listing_path(listing)
       expect(response.body).to include(manage_production_ticketing_path(production), ">Rising Stars<")
 
+      # A date's tabs run as its production's do, and open on Basic info.
       get manage_edit_ticket_listing_path(listing)
+      tabs = Nokogiri::HTML(response.body).css("nav[aria-label='Settings sections'] a").map { |a| a.text.squish }
+      # 1.4's Seating follows them.
+      expect(tabs).to eq([ "Basic info", "Tickets", "Fees and taxes", "Comps", "Refunds", "Discount codes", "Products", "Ticket page", "Seating" ])
+      # ...all but Checkout boxes (the mailing lists a checkout offers are the production's, never one date's)
+      # and Pricing rules (a production's, for all its dates).
+      expect(tabs).to eq(Manage::ProductionTicketingsController::SECTIONS.values - [ "Checkout boxes", "Pricing rules" ])
+      expect(response.body).to include("When sales open and close")
+
+      get manage_edit_ticket_listing_path(listing, section: "tickets")
       expect(response.body).to include("Settings for #{listing.show.date_and_time.strftime('%a, %b %-d')}", "only.",
-                                       "uses Rising Stars&#39; ticketing", "Set tickets and prices for this date only",
+                                       "uses Rising Stars&#39; ticketing", "Rising Stars&#39; ticket types and prices</a>", "for this date",
                                        "<fieldset disabled", 'value="General"', "Discount codes")
 
       # The switch on, with a price of this date's own.
@@ -202,11 +316,56 @@ RSpec.describe "Production ticketing", type: :request do
       expect(listing.ticket_tiers.map(&:price_cents)).to eq([ 2_500 ])
     end
 
+    # One way to override (Tim, 2026-11-13): a box's switch. On, the date has
+    # its own; off, what the box covers is cleared and it follows again.
+    it "gives a date its own page words by the box's switch, and clears them when it's switched off" do
+      get manage_edit_ticket_listing_path(listing, section: "page")
+      doc = Nokogiri::HTML(response.body)
+      expect(doc.css("[data-own-switch]").map { |n| n["data-own-switch"] }).to eq(%w[ticket_listing_own_page ticket_listing_own_ages])
+      # One line each: the switch, then the words, the settings a link to the production's.
+      expect(doc.css("[data-own-switch] [data-override-line]").map { |n| n.text.squish }).to eq([
+        "Override Rising Stars' ticket page words for this date", "Override Rising Stars' ages settings for this date"
+      ])
+      expect(doc.css("[data-override-line] a").map { |a| a["href"] }.uniq).to eq([ manage_edit_production_ticketing_path(production, section: "sales") ])
+
+      patch manage_ticket_listing_path(listing), params: { section: "page", ticket_listing: { own_page: "1", title: "Closing night", door_note: "Doors at 7" } }
+      expect(listing.reload.attributes.slice("title", "door_note")).to eq("title" => "Closing night", "door_note" => "Doors at 7")
+
+      patch manage_ticket_listing_path(listing), params: { section: "page", ticket_listing: { own_page: "0" } }
+      expect(listing.reload.attributes.slice("title", "door_note", "accessibility_note").values).to all(be_nil)
+    end
+
+    # The date's own Fees and taxes tab: all three choices follow one
+    # override, and each falls back a level at a time.
+    it "overrides fees, how prices show and cash on the date's Fees and taxes tab, and clears all three when switched off" do
+      profile = TicketingProfile.for(org)
+      expect([ listing.effective_fee_mode, listing.effective_price_display, listing.effective_cash_tax ])
+        .to eq([ profile.default_fee_mode, profile.price_display, profile.cash_tax ])
+
+      patch manage_ticket_listing_path(listing), params: { section: "fees", ticket_listing: { own_fees: "1", fee_mode: "org", price_display: "base", cash_tax: "included" } }
+      expect(response).to redirect_to(manage_edit_ticket_listing_path(listing, section: "fees"))
+      fresh = TicketListing.find(listing.id)
+      expect([ fresh.effective_fee_mode, fresh.effective_price_display, fresh.effective_cash_tax ]).to eq(%w[org base included])
+      expect(fresh.prices_before_extras?).to be(true)
+      expect(fresh.cash_tax_mode).to eq("included")
+
+      # The production's own sit between the date and the box office.
+      patch manage_ticket_listing_path(listing), params: { section: "fees", ticket_listing: { own_fees: "0" } }
+      production.reload.production_ticketing.update!(price_display: "base")
+      fresh = TicketListing.find(listing.id)
+      expect(fresh.attributes.slice("fee_mode", "price_display", "cash_tax").values).to all(be_nil)
+      expect(fresh.effective_price_display).to eq("base")
+      expect(fresh.effective_fee_mode).to eq(profile.default_fee_mode)
+    end
+
     it "keeps each tab's form to itself" do
       get manage_edit_ticket_listing_path(listing, section: "sales")
-      expect(response.body).to include("When sales open and close", "Who pays the fees")
+      expect(response.body).to include("When sales open and close", "Most tickets in one order")
+      expect(response.body).not_to include("Who pays our 50¢")
+      get manage_edit_ticket_listing_path(listing, section: "fees")
+      expect(response.body).to include("Fees, prices, and cash", "Who pays our 50¢", "How prices are shown", "Cash at the door", "Tax on tickets")
       get manage_edit_ticket_listing_path(listing, section: "codes")
-      expect(response.body).to include("good for this date")
+      expect(response.body).to include("This date's own codes", "Rising Stars&#39; discount codes</a>")
     end
   end
 end

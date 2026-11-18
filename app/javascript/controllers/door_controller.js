@@ -12,7 +12,7 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
     static targets = ["video", "viewport", "startButton", "stopButton", "banner", "checkedIn", "sold", "comped", "available", "tierLeft", "deliveries",
                       "modeButton", "listPanel", "scanPanel", "filterInput", "filterChip", "deliverChip", "results", "party", "nobody",
-                      "sellPanel", "passHolders"]
+                      "sellPanel", "passHolders", "partySheet"]
     static values = { checkInUrl: String, statsUrl: String, listUrl: String, undoUrl: String, deliveriesUrl: String, listingId: Number,
                       passesUrl: String, inApp: Boolean, ahead: Boolean }
 
@@ -183,17 +183,71 @@ export default class extends Controller {
         } catch { /* the next refresh tries again */ }
     }
 
+    // The banner's Uncheck: the ticket just checked in, or every ticket an
+    // All tap took (their ids joined by commas).
     undo(event) {
         this.undoTicket(event.currentTarget.dataset.ticketId)
     }
 
-    async undoTicket(ticketId) {
+    async undoTicket(ticketIds) {
         try {
-            const data = await this.post(this.undoUrlValue, { ticket_id: ticketId })
-            this.showBanner(data.ok ? "already" : "error", data.message)
+            const data = await this.post(this.undoUrlValue, { ticket_id: ticketIds })
+            this.showBanner(data.ok ? "already" : "error", [data.message, data.party].filter(Boolean))
             if (data.counts) this.updateCounts(data.counts)
             this.refreshList()
+            this.refreshParty()
         } catch {
+            this.showBanner("error", "Couldn't reach CocoScout. Try again.")
+        }
+    }
+
+    // A party's sheet (door/_party_sheet), from a tap on its name or its
+    // green check: every ticket in or out, to check in or uncheck.
+    async openParty(event) {
+        this.partyUrl = event.currentTarget.dataset.url
+        const sheet = document.getElementById("door-party")
+        if (!sheet || !this.hasPartySheetTarget) return
+        this.partySheetTarget.innerHTML = ""
+        sheet.classList.remove("hidden")
+        if (!(await this.refreshParty())) {
+            this.partySheetTarget.textContent = "Couldn't reach CocoScout. Close this and try again."
+        }
+    }
+
+    // The open sheet, fresh from the server; false when it couldn't be read.
+    async refreshParty() {
+        const sheet = document.getElementById("door-party")
+        if (!this.partyUrl || !sheet || sheet.classList.contains("hidden") || !this.hasPartySheetTarget) return true
+        try {
+            const response = await fetch(this.partyUrl, { headers: { Accept: "text/html" }, credentials: "same-origin" })
+            if (!response.ok) return false
+            this.partySheetTarget.innerHTML = await response.text()
+            const title = this.partySheetTarget.querySelector("[data-door-party-title]")?.dataset.doorPartyTitle
+            const heading = document.getElementById("door-party-title")
+            if (title && heading) heading.textContent = title
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    // A tap in the sheet: one ticket in or unchecked, or everyone at once.
+    // The sheet stays open on the party as it now stands.
+    async partyChange(event) {
+        const button = event.currentTarget
+        button.disabled = true
+        try {
+            const data = await this.post(button.dataset.url, {})
+            if ("ok" in data) {
+                this.showBanner(data.ok ? "already" : "error", [data.message, data.party].filter(Boolean))
+                if (data.counts) this.updateCounts(data.counts)
+            } else {
+                this.showResult(data)
+            }
+            this.refreshList()
+            await this.refreshParty()
+        } catch {
+            button.disabled = false
             this.showBanner("error", "Couldn't reach CocoScout. Try again.")
         }
     }
@@ -230,7 +284,7 @@ export default class extends Controller {
             const undo = document.createElement("button")
             undo.type = "button"
             undo.className = "mt-2 text-sm font-medium underline underline-offset-2"
-            undo.textContent = "Undo"
+            undo.textContent = "Uncheck"
             undo.dataset.ticketId = undoTicketId
             undo.dataset.action = "click->door#undo"
             banner.appendChild(undo)

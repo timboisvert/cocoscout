@@ -1,8 +1,11 @@
 <%# Dev only (Tim, 2026-11-01): a thin amber line across the top and a small
     tab naming the environment, so dev is never mistaken for production. It
     takes no space and passes every click through. Never pink or black, which
-    belong to the mode switch and the door bars. %>
-<% if (label = Dev::EnvironmentLabel.text) %>
+    belong to the mode switch and the door bars. Not on the app's
+    organization sheet: it slides up over a page that already wears the
+    ribbon (Tim, 2026-11-09). %>
+<% on_sheet = turbo_native_app? && current_page?(organization_menu_path) %>
+<% if !on_sheet && (label = Dev::EnvironmentLabel.text) %>
   <div aria-hidden="true" class="pointer-events-none fixed inset-x-0 top-0 z-[9999] h-[3px] bg-amber-400"></div>
   <div aria-hidden="true" class="pointer-events-none fixed top-0 left-1/2 -translate-x-1/2 z-[9999] rounded-b-md bg-amber-400 px-2 pb-0.5 text-[10px] font-bold uppercase tracking-wider leading-4 text-amber-950 shadow-sm"><%= label %></div>
 <% end %>

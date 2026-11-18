@@ -40,6 +40,39 @@ RSpec.describe "Contract date terms", type: :model do
     expect(contract.date_terms_words("rehearsal", { "amount" => 0.0 })).to eq([ "$0 this rehearsal", "Usually $50 per rehearsal", true ])
   end
 
+  it "bills an hourly date its one price for the whole date" do
+    rehearsal_rate.merge!("unit" => "hourly", "amount" => 30.0)
+    contract = revenue_share_contract
+    marked_down, usual = rehearsal_times.map(&:iso8601)
+    contract.set_draft_date_terms!([ marked_down ], value: "10", note: nil, field: :amount, whole: true)
+    contract.activate!
+
+    fees = contract.contract_payments.where("description LIKE 'Rehearsal — %'").order(:due_date)
+    expect(fees.map { |fee| fee.amount.to_f }).to eq([ 10.0, 90.0 ])
+  end
+
+  it "prices a rehearsal on the signed document at its own rate, never the deal's per-event rent" do
+    rehearsal_rate.merge!("unit" => "hourly", "amount" => 30.0)
+    times = rehearsal_times.map(&:iso8601)
+    contract = create(:contract, organization: org, contractor_name: "Live Variety",
+                                 contract_start_date: rehearsal_times.first.to_date, contract_end_date: show_times.last.to_date,
+                                 draft_data: {
+                                   "bookings" => show_times.map { |t| booking(t, "show") } + rehearsal_times.map { |t| booking(t, "rehearsal") },
+                                   "payments" => show_times.map { |t| { "description" => "Event", "amount" => 300, "source" => "Per event",
+                                                                        "direction" => "incoming", "due_date" => t.to_date.iso8601,
+                                                                        "event_date" => t.iso8601 } },
+                                   "payment_structure" => "per_event",
+                                   "payment_config" => { "per_event_amount" => "300", "per_event_timing" => "per_event",
+                                                         "event_rates" => [ rehearsal_rate ] }
+                                 })
+    # Three hours, two included: the date's own hourly rate makes it $30.
+    contract.set_draft_date_terms!([ times.first ], value: "10", note: nil, field: :amount)
+
+    rent = contract.send(:license_schedule_rows).to_h { |row| [ row[:date], row[:rent] ] }
+    expect(rent.values_at(*rehearsal_times.map { |t| t.strftime("%a %b %-d, %Y") })).to eq([ "$30.00", "$90.00" ])
+    expect(rent.values_at(*show_times.map { |t| t.strftime("%a %b %-d, %Y") })).to eq([ "$300.00", "$300.00" ])
+  end
+
   it "keeps a date's own terms, drops ones back to the deal, and stamps them on the shows" do
     contract = revenue_share_contract
     free, paid = rehearsal_times.map(&:iso8601)

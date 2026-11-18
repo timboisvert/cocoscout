@@ -1,0 +1,84 @@
+<%# The next shift first (plan: staffing notifications §5, idea 3; Tim,
+    2026-11-07: this is the one to lay out in full). The nearest shift they're
+    on, as a card above the glance: role and hours, the day, the organization
+    and place; the shows it covers, each with its time, room, call time and
+    how many people to expect where the organization shows it (nothing at all
+    for a shift that covers none); the shift's note; then "I can't make it"
+    (its sheet, rendered by the list) and Directions when the place has an
+    address. Never who else is working (Tim, 2026-11-07). Carries the shift's
+    anchor, so a notice's link lands and opens here. The shifts after this
+    one keep their two-line rows. Uses @hero, @people, @show_lines_by_shift. %>
+<%
+  row = @hero
+  shift = row[:shift]
+  assignment = row[:assignment]
+  org = shift.organization
+  starts = ShiftWords.starts(shift)
+  today = Date.current
+  when_words =
+    if starts.to_date == today then "Today"
+    elsif starts.to_date == today + 1 then "Tomorrow"
+    elsif starts.to_date < today + 6 then starts.strftime("%A")
+    end
+  location = shift.house_role&.location || shift.source.try(:location)
+  location_name = shift.location_name
+  show_lines = (@show_lines_by_shift || {})[shift.id] || []
+  cid = "cant-make-it-#{assignment.id}"
+  directions = location && location.address1.present? ? "https://www.google.com/maps/search/?api=1&query=#{ERB::Util.url_encode(location.full_address)}" : nil
+  label_class = "text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-1.5"
+%>
+<section id="shift-<%= shift.id %>" data-next-shift class="rounded-xl border border-pink-200 bg-white overflow-hidden mb-4 transition-colors">
+  <div class="bg-gradient-to-br from-pink-50 to-white px-5 pt-4 pb-4 border-b border-pink-100">
+    <div class="text-[11px] font-semibold uppercase tracking-wide text-pink-600">Next shift<%= " · #{when_words}" if when_words %></div>
+    <div class="mt-1 text-xl font-bold text-gray-900 coustard-regular"><%= shift.role_label %>, <span class="tabular-nums"><%= ShiftWords.shift_hours(shift) %></span></div>
+    <div class="mt-0.5 text-sm text-gray-700">
+      <%= starts.strftime("%A, %b %-d") %> · <%= org&.name %><% if location_name.present? && location_name != org&.name %> · <%= location_name %><% end %><% if @people.size > 1 %> · <%= row[:person].name %><% end %>
+    </div>
+  </div>
+
+  <div class="px-5 py-4 space-y-4">
+    <% if show_lines.any? %>
+      <div data-next-shift-shows>
+        <div class="divide-y divide-gray-100">
+          <% show_lines.each do |line| %>
+            <% show = line.show %>
+            <% at = ShiftWords.local(shift, show.date_and_time) %>
+            <div class="flex items-start gap-3 py-1.5" data-show-line>
+              <div class="w-[4.5rem] flex-shrink-0 text-sm font-semibold text-gray-900 tabular-nums"><%= at.strftime("%-l:%M %p") %></div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm text-gray-900"><span><%= line.words.sub(/\A\S+ \S+ /, "") %></span><% if show.name_subtitle.present? %> <span class="text-gray-600">· <%= show.name_subtitle %></span><% end %></div>
+                <%
+                  # The room, the call time, and the count: a show on sale always
+                  # says its count, zero included (Tim, 2026-11-07); a show with
+                  # nothing on sale says nothing.
+                  details = []
+                  details << show.location_space.name if show.location_space&.name.present?
+                  details << "call #{ShiftWords.local(shift, show.call_time).strftime('%-l:%M %p')}" if show.call_time_enabled? && show.call_time
+                  details << "#{line.expected} expected" unless line.expected.nil?
+                %>
+                <% if details.any? %><div class="text-xs text-gray-500 tabular-nums" data-show-detail><%= details.join(" · ") %></div><% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <% if shift.notes.present? %>
+      <div>
+        <div class="<%= label_class %>">Notes</div>
+        <div class="text-sm text-gray-900 whitespace-pre-line"><%= shift.notes %></div>
+      </div>
+    <% end %>
+
+    <div class="flex flex-wrap gap-2 pt-1">
+      <%= render "shared/button", text: "I can't make it", variant: "secondary", size: "small", type: :button,
+            data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
+      <% if directions %>
+        <%= link_to directions, target: "_blank", rel: "noopener" do %>
+          <%= render "shared/button", text: "Directions", variant: "secondary", size: "small" %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</section>

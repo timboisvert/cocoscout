@@ -28,7 +28,11 @@ export default class extends Controller {
             const val = f => parseMoney(row.querySelector(`[data-pay-field="${f}"]`)?.value)
             // Pulled per-role pay takes precedence over rate×hours when present.
             const worked = row.dataset.workedCents ? (parseFloat(row.dataset.workedCents) / 100) : rate * val("hours")
-            const total = worked + val("bonus") + val("reimbursement") + val("tips")
+            // Tips they were paid over come out of a pay that more than covers
+            // them (the server does the same: StaffPayRunService.overpaid_tips).
+            const gross = worked + val("bonus") + val("reimbursement") + val("tips")
+            const comesOut = (parseFloat(row.dataset.comesOutCents || "0") || 0) / 100
+            const total = comesOut > 0 && gross > comesOut ? gross - comesOut : gross
             const cell = row.querySelector("[data-pay-total]")
             if (cell) cell.textContent = this.fmt(total)
             if (total > 0) {

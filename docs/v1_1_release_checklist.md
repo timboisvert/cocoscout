@@ -54,7 +54,7 @@ button says "Sending to followers isn't switched on yet."
 
 **Trying it out first (Tim, 2026-10-28):** follower email can share
 cocoscout.com's sending domain under a CocoScout-wide cap of 2,000 a month
-(`FOLLOWERS_MONTHLY_CAP` changes it), switched on with `FOLLOWERS_SENDING: on`
+(`FOLLOWERS_MONTHLY_CAP` changes it), switched on with `FOLLOWERS_SENDING: "on"` (quoted: a bare `on` is read as true, and the app looks for the word)
 under `env.clear` in `config/deploy.yml`. **Not on Mailgun's free plan:** it
 is a hard 100 emails a day for everything, so one email to 150 followers
 would stop sign-in and ticket mail until midnight. Move to Basic ($15 a
@@ -84,10 +84,11 @@ Tim's one-time steps are done: `docs/app_release_automation.md`.
 
 - [ ] Xcode Cloud: create the Release workflow in Xcode
       (`docs/app_release_automation.md`, "Tim's one-time steps (Xcode)").
-- [ ] Google Play: the `play-publisher` service account, its key in
+- [x] Google Play: the `play-publisher` service account, its key in
       1Password and at `~/.config/cocoscout/play-service-account.json`, and
       its invite in Play Console (same doc, "Tim's one-time steps (Google
-      Cloud and Play Console)").
+      Cloud and Play Console)"). Done 2026-11-08; the key read the app's
+      listing and uploaded 1.1.3 (build 8) to internal testing as a draft.
 
 - [x] iOS: archive and upload the V1.1 build from `ios/` (uploaded and submitted for review 2026-10-29; screenshots went in the 6.1"/6.3" box as the 1206×2622 set in `ios/app_store_screenshots/v1.1/6.3-inch/`) (the project at
       `ios/CocoScout.xcodeproj`, scheme CocoScout). What's new: production

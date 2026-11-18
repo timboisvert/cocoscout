@@ -36,7 +36,7 @@ class TicketSalesInvitationsController < ApplicationController
 
     @viewer.accept!(user)
     start_new_session_for(user)
-    redirect_to my_ticket_sales_path, notice: "You can now see the ticket sales for #{@viewer.scope_label}.", status: :see_other
+    redirect_to shared_sales_path(user), notice: "You can now see the ticket sales for #{@viewer.scope_label}.", status: :see_other
   end
 
   private
@@ -45,6 +45,15 @@ class TicketSalesInvitationsController < ApplicationController
     @viewer = TicketSalesViewer.active.find_by(invitation_token: params[:token].to_s)
     return if @viewer && @viewer.user_id.nil?
 
-    redirect_to(Current.user ? my_ticket_sales_path : signin_path, alert: "That invitation has already been used or was withdrawn.")
+    redirect_to(Current.user ? my_shows_path : signin_path, alert: "That invitation has already been used or was withdrawn.")
+  end
+
+  # Where a share lands: its date's Tickets page under the show, or for a
+  # whole production the next date on sale (there is no list of them).
+  def shared_sales_path(user)
+    listings = TicketSalesAccess.listings_for(user)
+    listings = @viewer.scope_type == "TicketListing" ? listings.where(id: @viewer.scope_id) : listings.where(production_id: @viewer.scope_id)
+    listing = listings.where("shows.date_and_time >= ?", Time.current).order("shows.date_and_time").first || listings.order("shows.date_and_time DESC").first
+    listing ? my_show_tickets_path(listing.show_id) : my_shows_path
   end
 end

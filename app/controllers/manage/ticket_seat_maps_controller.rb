@@ -62,7 +62,7 @@ module Manage
     # Free seats picked, a name and an email: comps in exactly those seats.
     def comp
       ids = Array(params[:seat_ids]).map(&:to_i).uniq
-      return redirect_to(manage_ticket_listing_seats_path(@listing), alert: "Tap the seats to give first.") if ids.empty?
+      return redirect_to(manage_ticket_listing_seats_path(@listing), alert: "Tap the seats to issue as comps first.") if ids.empty?
 
       tiers = @listing.ticket_tiers.active.reject(&:bundle?)
       sections = Seat.joins(:seat_section).where(seat_sections: { seat_chart_id: @listing.effective_seat_chart&.id }, id: ids).pluck(:id, :seat_section_id).to_h
@@ -72,7 +72,7 @@ module Manage
 
       guests = by_tier.map { |tier, seat_ids| TicketComps::Guest.new(name: params[:name].to_s, email: params[:email].to_s.strip.downcase, tier: tier, quantity: seat_ids.size) }
       Ticketing::SeatPlan.with(ids) { TicketComps.give!(@listing, guests, by: Current.user, note: params[:note], email_them: params[:email].present?) }
-      redirect_to manage_ticket_listing_seats_path(@listing), notice: "#{helpers.pluralize(ids.size, 'seat')} given to #{params[:name].to_s.squish}."
+      redirect_to manage_ticket_listing_seats_path(@listing), notice: "#{helpers.pluralize(ids.size, 'comp')} issued to #{params[:name].to_s.squish}."
     rescue TicketComps::Error, TicketCheckout::Error => e
       redirect_to manage_ticket_listing_seats_path(@listing), alert: e.message
     end

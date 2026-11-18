@@ -519,6 +519,15 @@ RSpec.describe Message do
       message.subscribe_production_team!
       expect(message.subscribed?(prod_manager)).to be true
     end
+
+    it "subscribes only the people with the production's notifications on" do
+      ProductionNotificationSetting.create!(production: production, user: prod_manager, enabled: true)
+
+      message.subscribe_production_team!
+
+      expect(message.subscribed?(prod_manager)).to be true
+      expect(message.subscribed?(org_manager)).to be false
+    end
   end
 
   describe ".thread_summaries_for" do

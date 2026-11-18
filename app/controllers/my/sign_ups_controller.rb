@@ -119,8 +119,16 @@ module My
       end
 
       # For repeated events with instance_id param, find that specific instance
+      # Only a date that's open right now: a date whose sign-ups have closed
+      # (or haven't opened) can't be signed up for by naming it.
       if @sign_up_form.repeated? && params[:instance_id].present?
-        @instance = @sign_up_form.sign_up_form_instances.find_by(id: params[:instance_id])
+        @instance = @sign_up_form.sign_up_form_instances.joins(:show)
+                                 .where(status: "open").where("shows.date_and_time > ?", Time.current)
+                                 .find_by(id: params[:instance_id])
+        unless @instance
+          flash[:alert] = "Sign-ups for that date are closed."
+          redirect_to my_sign_up_form_path(@code) and return
+        end
       end
       @instance ||= find_current_instance
 

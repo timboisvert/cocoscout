@@ -108,7 +108,7 @@ RSpec.describe "Manage ticketing door access", type: :request do
   end
   it "chooses when the Door shows in the app" do
     get manage_ticketing_settings_section_path(section: "door")
-    expect(response.body).to include("In the CocoScout app", "On show days", "All the time")
+    expect(response.body).to include("In the CocoScout Mobile App", "On show days", "All the time")
 
     patch manage_ticketing_door_in_app_path, params: { ticketing_profile: { door_in_app: "always", door_hours_before: "4" } }
     expect(response).to redirect_to(manage_ticketing_settings_section_path(section: "door"))

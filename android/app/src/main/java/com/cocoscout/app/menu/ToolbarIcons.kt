@@ -31,22 +31,25 @@ import com.cocoscout.app.AppShell
 import com.cocoscout.app.bridge.NavIcon
 
 /**
- * V1.1: Messages and Notifications on the right of every toolbar, with pink
- * counts, the same in both modes. Nothing until a V1.1 menu arrives. Like
+ * The right of every toolbar: Messages and Notifications with pink counts
+ * (once a V1.1 menu has arrived), then Coco, who opens the menu, in the same
+ * 44dp as each of them (Tim, 2026-11-09). The same in both modes. Like
  * WebViewController.swift's bar items.
  */
 @Composable
 fun ToolbarIcons() {
     val nav by AppShell.nav.collectAsState()
-    val icons = nav?.icons ?: return
-    // A gap between the two and off the edge, so neither is cramped.
+    // A gap between each and off the edge, so none is cramped.
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         modifier = Modifier.padding(end = 8.dp)
     ) {
-        ToolbarIcon(Icons.Outlined.Email, "Messages", icons.messages)
-        ToolbarIcon(Icons.Outlined.Notifications, "Notifications", icons.notifications)
+        nav?.icons?.let { icons ->
+            ToolbarIcon(Icons.Outlined.Email, "Messages", icons.messages)
+            ToolbarIcon(Icons.Outlined.Notifications, "Notifications", icons.notifications)
+        }
+        MenuButton()
     }
 }
 

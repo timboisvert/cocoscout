@@ -79,8 +79,10 @@ class CocoScoutInvoice
     debits = UsageRules.extra_bank_debits(@organization, month)
     withdrawn = UsageRules.withdrawn_cents(@organization, month)
     withdrawal_fee = UsageRules.withdrawal_fee_cents(@organization, month, withdrawn)
+    email_blocks = UsageRules.follower_email_blocks(@organization, month)
+    email_blocks_cents = email_blocks.sum(:price_cents)
     counted = staff * StaffBillingService::PER_ACTIVE_STAFF_CENTS + performers * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS +
-              debits * UsageRules::EXTRA_BANK_DEBIT_CENTS + withdrawal_fee + pro
+              debits * UsageRules::EXTRA_BANK_DEBIT_CENTS + withdrawal_fee + pro + email_blocks_cents
     lines = []
     if pro.positive?
       lines << InvoiceDocument::Line.new(description: "Pro plan, #{month.strftime('%B %Y')}",
@@ -97,6 +99,12 @@ class CocoScoutInvoice
       lines << InvoiceDocument::Line.new(description: "Withdrawals over #{dollars(UsageRules::FREE_WITHDRAWAL_CENTS)}: 0.25% of #{dollars(withdrawn - UsageRules::FREE_WITHDRAWAL_CENTS)}",
                                          detail: "Our payment provider's cost for sending money to your bank, passed on. The first #{dollars(UsageRules::FREE_WITHDRAWAL_CENTS)} each month is free.",
                                          amount_cents: withdrawal_fee)
+    end
+    if email_blocks_cents.positive?
+      emails = email_blocks.sum(:emails)
+      lines << InvoiceDocument::Line.new(description: "#{ActiveSupport::NumberHelper.number_to_delimited(emails)} extra emails to followers",
+                                         detail: "Bought in #{month.strftime('%B %Y')}, #{dollars(FollowerEmailBlock::PRICE_CENTS)} for each #{ActiveSupport::NumberHelper.number_to_delimited(FollowerEmailBlock::EMAILS)}. The ones you haven't used stay yours.",
+                                         amount_cents: email_blocks_cents)
     end
     difference = billed - counted
     if difference.positive?

@@ -7,6 +7,13 @@
 
 # For a containerized dev environment, see Dev Containers: https://guides.rubyonrails.org/getting_started_with_devcontainer.html
 
+# Layers are arranged so a deploy that only changes code uploads only the code
+# and the compiled assets (Tim, 2026-11-14: most of a deploy was uploading
+# layers to the build cache). The gems and their bootsnap cache sit in layers
+# that change only with Gemfile.lock; the app's own bootsnap cache is made last,
+# in a small layer of its own. Nothing is chowned recursively after a copy,
+# because that writes every file again as one more layer.
+
 # Make sure RUBY_VERSION matches the Ruby version in .ruby-version
 ARG RUBY_VERSION=3.4.1
 FROM docker.io/library/ruby:$RUBY_VERSION-slim AS base
@@ -25,44 +32,51 @@ ENV RAILS_ENV="production" \
     BUNDLE_PATH="/usr/local/bundle" \
     BUNDLE_WITHOUT="development"
 
-# Throw-away build stage to reduce size of final image
-FROM base AS build
+# Gems: changes only when Gemfile.lock does
+FROM base AS gems
 
 # Install packages needed to build gems
 RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y build-essential git pkg-config libpq-dev libvips poppler-utils libglib2.0-dev libcairo2-dev libgirepository1.0-dev libpoppler-glib-dev && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
-# Install application gems
+# Install application gems, and compile them for bootsnap
 COPY Gemfile Gemfile.lock ./
 RUN bundle install && \
     rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
     bundle exec bootsnap precompile --gemfile
 
+# Throw-away stage for the assets
+FROM gems AS build
+
 # Copy application code
 COPY . .
-
-# Precompile bootsnap code for faster boot times
-RUN bundle exec bootsnap precompile app/ lib/
 
 # Precompiling assets for production without requiring secret RAILS_MASTER_KEY
 RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
 
 
-
-
 # Final stage for app image
 FROM base
 
-# Copy built artifacts: gems, application
-COPY --from=build "${BUNDLE_PATH}" "${BUNDLE_PATH}"
-COPY --from=build /rails /rails
-
-# Run and own only the runtime files as a non-root user for security
 RUN groupadd --system --gid 1000 rails && \
-    useradd rails --uid 1000 --gid 1000 --create-home --shell /bin/bash && \
-    chown -R rails:rails db log storage tmp
+    useradd rails --uid 1000 --gid 1000 --create-home --shell /bin/bash
+
+# Gems and their bootsnap cache: the same layers until Gemfile.lock changes
+COPY --from=gems "${BUNDLE_PATH}" "${BUNDLE_PATH}"
+COPY --from=gems --chown=rails:rails /rails/tmp/cache/bootsnap /rails/tmp/cache/bootsnap
+
+# The application, without the build's caches. Code stays owned by root; the
+# rails user owns only what it writes at runtime.
+COPY --from=build --exclude=tmp/cache --exclude=log --exclude=storage --exclude=db /rails /rails
+COPY --from=build --chown=rails:rails /rails/db /rails/db
+RUN mkdir -p log storage && \
+    chown rails:rails log storage tmp/cache && \
+    find tmp -path tmp/cache -prune -o -exec chown rails:rails {} +
 USER 1000:1000
+
+# Precompile bootsnap code for the app itself: a small layer of its own
+RUN bundle exec bootsnap precompile app/ lib/
 
 # Entrypoint prepares the database.
 ENTRYPOINT ["/rails/bin/docker-entrypoint"]

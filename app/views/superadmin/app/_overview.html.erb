@@ -1,0 +1,68 @@
+<%
+  day = report.active(1)
+  week = report.active(7)
+  month = report.active(30)
+  daily = report.daily
+  share = report.app_share
+  ever = report.ever
+  devices = report.devices
+  fresh = report.new_people
+  split = ->(counts) { [ ("#{number_with_delimiter(counts[:ios].to_i)} iPhone" if report.platforms.include?("ios")), ("#{number_with_delimiter(counts[:android].to_i)} Android" if report.platforms.include?("android")) ].compact.join(" · ") }
+  # "up 3 from the 7 days before", said only when it moved.
+  moved = lambda do |now, before, days|
+    next "the same as the #{days} days before" if now == before
+    "#{now > before ? 'up' : 'down'} #{number_with_delimiter((now - before).abs)} from the #{days} days before"
+  end
+%>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+  <% [ [ "Today", day, nil ], [ "Last 7 days", week, moved.call(week[:total], report.active_before(7), 7) ], [ "Last 30 days", month, moved.call(month[:total], report.active_before(30), 30) ] ].each do |label, counts, trend| %>
+    <div class="bg-white border border-gray-200 rounded-lg p-4" data-active-tile>
+      <div class="text-sm text-gray-500"><%= label %></div>
+      <div class="text-3xl font-semibold text-gray-900 tabular-nums mt-1"><%= number_with_delimiter(counts[:total]) %></div>
+      <div class="text-xs text-gray-500 mt-1"><%= split.call(counts) %></div>
+      <% if trend %><div class="text-xs text-gray-400 mt-0.5"><%= trend.upcase_first %></div><% end %>
+    </div>
+  <% end %>
+</div>
+
+<div class="bg-white border border-gray-200 rounded-lg p-5">
+  <div class="flex items-baseline justify-between gap-3 mb-4">
+    <h2 class="font-semibold text-gray-900">People in the app each day</h2>
+    <%= render "superadmin/app/legend", report: report %>
+  </div>
+  <%= render "superadmin/app/bars", bars: daily.map { |date, counts| [ date.strftime("%a %b %-d"), counts ] },
+        from: daily.first.first.strftime("%b %-d"), to: "Today" %>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  <div class="bg-white border border-gray-200 rounded-lg p-4" data-ever>
+    <div class="text-sm text-gray-500">Ever opened the app</div>
+    <div class="text-3xl font-semibold text-gray-900 tabular-nums mt-1"><%= number_with_delimiter(ever[:total]) %></div>
+    <div class="text-xs text-gray-500 mt-1"><%= split.call(ever) %></div>
+  </div>
+  <div class="bg-white border border-gray-200 rounded-lg p-4" data-new-people>
+    <div class="text-sm text-gray-500">New in the last <%= report.days %> days</div>
+    <div class="text-3xl font-semibold text-gray-900 tabular-nums mt-1"><%= number_with_delimiter(fresh[:now]) %></div>
+    <div class="text-xs text-gray-500 mt-1"><%= moved.call(fresh[:now], fresh[:before], report.days).upcase_first %></div>
+  </div>
+  <div class="bg-white border border-gray-200 rounded-lg p-4" data-devices>
+    <div class="text-sm text-gray-500">Devices with notifications on</div>
+    <div class="text-3xl font-semibold text-gray-900 tabular-nums mt-1"><%= number_with_delimiter(devices[:total]) %></div>
+    <div class="text-xs text-gray-500 mt-1"><%= split.call(devices) %></div>
+  </div>
+  <div class="bg-white border border-gray-200 rounded-lg p-4" data-share>
+    <div class="text-sm text-gray-500">Of everyone active, used an app</div>
+    <div class="text-3xl font-semibold text-gray-900 tabular-nums mt-1"><%= share[:active].zero? ? "0%" : number_to_percentage(share[:in_app] * 100.0 / share[:active], precision: 0) %></div>
+    <div class="text-xs text-gray-500 mt-1"><%= number_with_delimiter(share[:in_app]) %> of <%= number_with_delimiter(share[:active]) %> people, last 30 days</div>
+  </div>
+</div>
+
+<div class="bg-white border border-gray-200 rounded-lg p-5 text-sm text-gray-600" data-store-numbers>
+  <h2 class="font-semibold text-gray-900 mb-1">Downloads</h2>
+  <p>Downloads, re-downloads and deletions are counted by the stores, not here. "Ever opened the app" above is the nearest number of ours: people who signed in and loaded a page.</p>
+  <p class="mt-2">
+    <%= link_to "App Store Connect analytics", "https://appstoreconnect.apple.com/analytics", target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700" %>
+    ·
+    <%= link_to "Play Console statistics", "https://play.google.com/console", target: "_blank", rel: "noopener", class: "text-pink-600 hover:text-pink-700" %>
+  </p>
+</div>

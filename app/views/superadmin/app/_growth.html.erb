@@ -1,0 +1,59 @@
+<%
+  growth = report.growth
+  ever = report.ever
+  fresh = report.new_people
+  retention = report.retention
+%>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+  <div class="bg-white border border-gray-200 rounded-lg p-4">
+    <div class="text-sm text-gray-500">Ever opened the app</div>
+    <div class="text-3xl font-semibold text-gray-900 tabular-nums mt-1"><%= number_with_delimiter(ever[:total]) %></div>
+  </div>
+  <div class="bg-white border border-gray-200 rounded-lg p-4">
+    <div class="text-sm text-gray-500">New in the last <%= report.days %> days</div>
+    <div class="text-3xl font-semibold text-gray-900 tabular-nums mt-1"><%= number_with_delimiter(fresh[:now]) %></div>
+    <div class="text-xs text-gray-500 mt-1"><%= number_with_delimiter(fresh[:before]) %> in the <%= report.days %> days before</div>
+  </div>
+  <div class="bg-white border border-gray-200 rounded-lg p-4">
+    <div class="text-sm text-gray-500">New this week</div>
+    <div class="text-3xl font-semibold text-gray-900 tabular-nums mt-1"><%= number_with_delimiter(growth.last[:new].values.sum) %></div>
+    <div class="text-xs text-gray-500 mt-1"><%= number_with_delimiter(growth[-2][:new].values.sum) %> last week</div>
+  </div>
+</div>
+
+<div class="bg-white border border-gray-200 rounded-lg p-5" data-growth>
+  <div class="flex items-baseline justify-between gap-3 mb-1">
+    <h2 class="font-semibold text-gray-900">New people each week</h2>
+    <%= render "superadmin/app/legend", report: report %>
+  </div>
+  <p class="text-xs text-gray-500 mb-4">A person is new in the week of their first day in the app.</p>
+  <%= render "superadmin/app/bars", bars: growth.map { |row| [ "Week of #{row[:week].strftime('%b %-d')}", row[:new] ] },
+        from: "Week of #{growth.first[:week].strftime('%b %-d')}", to: "This week" %>
+  <table class="w-full text-sm mt-4">
+    <thead><tr class="text-left text-xs text-gray-500"><th class="py-1.5 font-medium">Week of</th><th class="py-1.5 font-medium text-right">New</th><th class="py-1.5 font-medium text-right">Everyone so far</th></tr></thead>
+    <tbody class="divide-y divide-gray-100">
+      <% growth.reverse_each do |row| %>
+        <tr><td class="py-1.5"><%= row[:week].strftime("%b %-d") %></td><td class="py-1.5 text-right tabular-nums"><%= row[:new].values.sum %></td><td class="py-1.5 text-right tabular-nums"><%= number_with_delimiter(row[:total]) %></td></tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<div class="bg-white border border-gray-200 rounded-lg p-5 overflow-x-auto" data-retention>
+  <h2 class="font-semibold text-gray-900 mb-1">Coming back</h2>
+  <p class="text-xs text-gray-500 mb-3">People by the week of their first app day, and how many used the app again each week after.</p>
+  <table class="text-sm">
+    <thead><tr class="text-left text-xs text-gray-500"><th class="py-1.5 pr-3 font-medium">First week</th><th class="py-1.5 pr-3 font-medium text-right">People</th><% (1...retention.size).each do |n| %><th class="py-1.5 px-1.5 font-medium text-right">+<%= n %></th><% end %></tr></thead>
+    <tbody class="divide-y divide-gray-100">
+      <% retention.each do |row| %>
+        <tr>
+          <td class="py-1.5 pr-3 whitespace-nowrap"><%= row[:week].strftime("%b %-d") %></td>
+          <td class="py-1.5 pr-3 text-right tabular-nums"><%= row[:people] %></td>
+          <% row[:returning].each do |n| %>
+            <td class="py-1.5 px-1.5 text-right tabular-nums <%= n.positive? ? 'text-gray-900' : 'text-gray-300' %>"><%= row[:people].zero? ? "–" : number_to_percentage(n * 100.0 / row[:people], precision: 0) %></td>
+          <% end %>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

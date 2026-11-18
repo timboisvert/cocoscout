@@ -9,6 +9,8 @@
     max     show this many, then "+N" (default: all)
     ring    lambda(person) => extra classes (a red ring for someone who
             can't make it), optional
+    more    how many others there are beyond the people handed over, for a
+            list that loaded only its first few (the "+N" counts them too)
 %>
 <%
   size = local_assigns.fetch(:size, "w-8 h-8")
@@ -30,7 +32,8 @@
             class="<%= size %> rounded-lg bg-gray-200 text-gray-700 flex items-center justify-center font-bold <%= text %> <%= extra %>" aria-label="<%= person.name %>"><%= person.initials %></span>
     <% end %>
   <% end %>
-  <% if max && people.size > max %>
-    <span class="<%= size %> rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center font-semibold <%= text %>">+<%= people.size - max %></span>
+  <% hidden = (max && people.size > max ? people.size - max : 0) + local_assigns[:more].to_i %>
+  <% if hidden.positive? %>
+    <span class="<%= size %> rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center font-semibold <%= text %>" data-faces-more>+<%= hidden %></span>
   <% end %>
 </span>

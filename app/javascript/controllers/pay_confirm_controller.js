@@ -112,14 +112,18 @@ export default class extends Controller {
         const bonus = val("bonus")
         const reimb = val("reimbursement")
         const tips = val("tips")
-        const total = worked + bonus + reimb + tips
-        if (total <= 0) return null
+        const gross = worked + bonus + reimb + tips
+        if (gross <= 0) return null
+        const comesOut = (parseFloat(row.dataset.comesOutCents || "0") || 0) / 100
+        const takesOut = comesOut > 0 && gross > comesOut
+        const total = takesOut ? gross - comesOut : gross
 
         const parts = []
         if (worked > 0) parts.push(`${Math.round(workedHours * 100) / 100}h worked · ${this.money(worked)}`)
         if (bonus > 0) parts.push(`${this.money(bonus)} bonus`)
         if (reimb > 0) parts.push(`${this.money(reimb)} reimbursement`)
         if (tips > 0) parts.push(`${this.money(tips)} tips`)
+        if (takesOut) parts.push(`${this.money(comesOut)} in tips paid over comes out`)
         const payable = row.dataset.payable === "true"
         if (!payable) parts.push("no bank connected — stays owed")
         return { name: row.dataset.memberName || "Staff member", parts, total, payable }

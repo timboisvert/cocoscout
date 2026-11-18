@@ -66,7 +66,7 @@ RSpec.describe TicketComps do
     expect(paste.problems.map { |p| [ p.line, p.reason ] }).to eq([
       [ 3, "fox@example isn't an email address." ],
       [ 4, "More than one email on this line." ],
-      [ 5, "0 isn't a number of tickets to give." ]
+      [ 5, "0 isn't a number of tickets to issue." ]
     ])
   end
 
@@ -82,7 +82,7 @@ RSpec.describe TicketComps do
 
     short = described_class.preview(listing, "A, 4\nB, 2", tier: general, email_them: false, allowance_left: 5)
     expect(short.ready?).to be(false)
-    expect(short.blockers).to eq([ "You can give 5 more comps for this date, and this list is 6.", "General has 5 seats left, and this list needs 6." ])
+    expect(short.blockers).to eq([ "You can issue 5 more comps for this date, and this list is 6.", "General has 5 seats left, and this list needs 6." ])
 
     expect(described_class.preview(listing, "A", tier: nil, email_them: false).stopper).to eq("Pick a ticket type.")
     expect(described_class.preview(listing, "", tier: general, email_them: false).stopper).to eq("Paste at least one person, one per line.")

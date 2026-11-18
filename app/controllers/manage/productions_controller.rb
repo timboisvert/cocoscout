@@ -2,13 +2,13 @@
 
 module Manage
   class ProductionsController < Manage::ManageController
-    before_action :set_production, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member update_team_permission toggle_production_notification remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_services]
-    before_action :check_production_access, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_services]
-    before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders update_pay update_services]
+    before_action :set_production, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_no_revenue update_services]
+    before_action :check_production_access, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_no_revenue update_services]
+    before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders update_pay update_no_revenue update_services]
     # Performer pay and agreements are Pro, and Pro is the organization's
     # managers' — a production's own manager (a producer) doesn't get them.
     # Archiving is the organization's call too: a production's own producer can't shelve it.
-    before_action :ensure_org_owner_or_manager, only: %i[agreement_status send_agreement_reminders update_pay update_services archive unarchive destroy confirm_delete]
+    before_action :ensure_org_owner_or_manager, only: %i[agreement_status send_agreement_reminders update_pay update_no_revenue update_services archive unarchive destroy confirm_delete]
 
     def index
       @filter = params[:filter] || "all"
@@ -65,6 +65,10 @@ module Manage
       return if performed?
 
       @dashboard = DashboardService.new(@production).generate
+      # The production's own page, read-only: what's next, what needs doing,
+      # and the way into each part of it (ProductionPage; Tim, 2026-11-08).
+      @page = ProductionPage.new(production: @production, user: Current.user, dashboard: @dashboard, cast_loader: method(:build_show_cast))
+      @home = @page.home
     end
 
     def edit
@@ -195,6 +199,15 @@ module Manage
       redirect_to pay_return_path, notice: notice
     end
 
+    # Whether the production takes money at all (Tim, 2026-11-14): its shows
+    # settle up as no revenue by themselves (SettleUp.show_piece).
+    def update_no_revenue
+      none = params[:no_revenue] == "1"
+      @production.update!(no_revenue: none)
+      notice = none ? "#{@production.name} takes no money: its shows settle up as no revenue by themselves." : "#{@production.name} takes money again: its shows settle up as usual."
+      redirect_to edit_manage_production_path(@production, tab: 0), notice: notice
+    end
+
     def update_public_key
       new_key = params[:production][:public_key]&.strip&.downcase
 
@@ -271,43 +284,31 @@ module Manage
                   alert: "Could not add team member: #{e.message}"
     end
 
+    # A person's tile on the Production team tab: their role here and whether
+    # this production notifies them, saved together. Anyone on the team list
+    # can be saved: the production's own team, and the organization's owner
+    # and managers, whose role isn't this production's to change.
     def update_team_permission
-      user = Current.organization.users.find_by(id: params[:user_id])
-      role = params[:role]
-
-      unless user && %w[manager viewer].include?(role)
-        redirect_to edit_manage_production_path(@production, tab: 3), alert: "Invalid user or role" and return
+      team_ids = ProductionNotificationSetting.team_user_ids(@production).to_a
+      user = User.where(id: team_ids).find_by(id: params[:user_id])
+      unless user
+        redirect_to edit_manage_production_path(@production, tab: 3), alert: "That person isn't on this production's team" and return
       end
 
       permission = ProductionPermission.find_by(user: user, production: @production)
-
-      if permission&.update(role: role)
-        redirect_to edit_manage_production_path(@production, tab: 3),
-                    notice: "Permission updated for #{user.person&.name || user.email_address}"
-      else
-        redirect_to edit_manage_production_path(@production, tab: 3),
-                    alert: "Could not update permission"
-      end
-    end
-
-    def toggle_production_notification
-      user = Current.organization.users.find_by(id: params[:user_id])
-      enabled = params[:enabled] == "1"
-
-      unless user
-        redirect_to edit_manage_production_path(@production, tab: 3), alert: "User not found" and return
+      if permission && params[:role].present?
+        unless %w[manager viewer].include?(params[:role]) && permission.update(role: params[:role])
+          redirect_to edit_manage_production_path(@production, tab: 3), alert: "Could not update permission" and return
+        end
       end
 
-      setting = ProductionNotificationSetting.find_or_initialize_by(user: user, production: @production)
-      setting.enabled = enabled
-
-      if setting.save
-        redirect_to edit_manage_production_path(@production, tab: 3),
-                    notice: "Notification preference updated for #{user.person&.name || user.email_address}"
-      else
-        redirect_to edit_manage_production_path(@production, tab: 3),
-                    alert: "Could not update notification preference"
+      if params.key?(:notifications)
+        ProductionNotificationSetting.find_or_initialize_by(user: user, production: @production)
+                                     .update!(enabled: params[:notifications] == "1")
       end
+
+      redirect_to edit_manage_production_path(@production, tab: 3),
+                  notice: "Saved for #{user.person&.name || user.email_address}"
     end
 
     def remove_team_member

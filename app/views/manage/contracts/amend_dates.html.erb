@@ -10,6 +10,12 @@
         in the address (Puma takes 10KB of query, then answers an empty 400 that
         Turbo shows as nothing), so a row sends its times only while it's being
         moved: the rest are disabled (amend_date_controller). %>
+    <% if @date_request && @prefill.any? %>
+      <div class="mb-4 rounded-lg border border-pink-200 bg-pink-50 px-4 py-3 text-sm text-gray-700" data-from-date-request>
+        <span class="font-medium text-gray-900"><%= @contract.contractor_name %> <%= @date_request.requests_words %>.</span>
+        That date starts on what they requested. Change anything before you continue.
+      </div>
+    <% end %>
     <%= form_with url: review_amend_dates_manage_contract_path(@contract), method: :get, html: { novalidate: true } do %>
       <div class="space-y-3">
         <% @rentals.each do |rental| %>
@@ -21,6 +27,11 @@
             ticketed = ContractDateChanges.tickets_held?([ show ].compact)
             pending = payments.select { |p| p.status_pending? && !p.in_payout_run? }
             past = rental.starts_at < Time.current
+            # Opened from the contractor's request about this date: it starts
+            # on what they asked (ContractDateRequests.amend_prefill).
+            asked = (@prefill || {})[rental.id]
+            asked_move = asked && asked[:action] == "move"
+            asked_remove = asked && asked[:action] == "remove"
           %>
           <div class="border border-gray-200 rounded-lg p-4 bg-gray-50" data-controller="amend-date">
             <div class="flex items-start justify-between gap-4 flex-wrap">
@@ -55,17 +66,17 @@
 
               <div class="flex items-center gap-3 flex-shrink-0">
                 <label class="flex items-center gap-1.5 text-sm cursor-pointer">
-                  <input type="radio" name="dates[<%= rental.id %>][action]" value="keep" checked
+                  <input type="radio" name="dates[<%= rental.id %>][action]" value="keep" <%= "checked" unless asked %>
                          class="accent-pink-500" data-action="change->amend-date#modeChanged">
                   <span class="text-gray-700">Keep</span>
                 </label>
                 <label class="flex items-center gap-1.5 text-sm cursor-pointer">
-                  <input type="radio" name="dates[<%= rental.id %>][action]" value="move"
+                  <input type="radio" name="dates[<%= rental.id %>][action]" value="move" <%= "checked" if asked_move %>
                          class="accent-pink-500" data-action="change->amend-date#modeChanged">
                   <span class="text-gray-700">Move</span>
                 </label>
                 <label class="flex items-center gap-1.5 text-sm cursor-pointer">
-                  <input type="radio" name="dates[<%= rental.id %>][action]" value="remove"
+                  <input type="radio" name="dates[<%= rental.id %>][action]" value="remove" <%= "checked" if asked_remove %>
                          class="accent-pink-500" data-action="change->amend-date#modeChanged">
                   <span class="text-gray-700"><%= settled || ticketed ? "Cancel" : "Remove" %></span>
                 </label>
@@ -74,8 +85,12 @@
 
             <%# Moving keeps the show itself, so its buyers, cast and staffing follow.
                 The booking and the show inside it each have their own times. %>
-            <div data-amend-date-target="moveFields" class="hidden mt-3 pt-3 border-t border-gray-100">
-              <%= render "manage/contracts/night_times_fields", rental: rental, prefix: "dates[#{rental.id}]", disabled: true %>
+            <div data-amend-date-target="moveFields" class="<%= "hidden" unless asked_move %> mt-3 pt-3 border-t border-gray-100">
+              <% if asked_move %>
+                <%= render "manage/contracts/night_times_fields", rental: rental, prefix: "dates[#{rental.id}]", times: asked[:times], disabled: false %>
+              <% else %>
+                <%= render "manage/contracts/night_times_fields", rental: rental, prefix: "dates[#{rental.id}]", disabled: true %>
+              <% end %>
               <p class="text-xs text-gray-500 mt-3">The show keeps its ticket buyers, cast and staffing; they move with it.</p>
             </div>
           </div>

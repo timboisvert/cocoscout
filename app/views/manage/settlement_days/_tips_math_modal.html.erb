@@ -1,0 +1,134 @@
+<%# The share calculation, shown (Tim, 2026-11-04: "it shows its math"):
+    each stretch of the night with the same people on the bar, what rang
+    up in it and what each of them got from it; then the stretches with
+    nobody on and who they went to; then how each person's pieces add up
+    to the share on the card. To read only.
+    Locals: id, tips, roles_by_id %>
+<%
+  money = ->(cents) { number_to_currency(cents.round / 100.0) }
+  rows = tips.rows
+  names = rows.to_h { |row| [ row.person.id, row.person.name ] }
+  rows_by_person = rows.index_by { |row| row.person.id }
+  periods = tips.periods.select { |period| period.people.any? }
+  takers = rows.reject { |row| row.typed? || row.locked? }
+  columns = "sm:grid-cols-[9.5rem_8.5rem_minmax(0,1fr)_minmax(0,1fr)]"
+  fitted = rows.any? { |row| !row.typed? && (row.on_cents + row.cut_cents + row.given_cents + row.pool_cents - row.cents).abs > 1 }
+%>
+<div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end justify-center sm:items-center sm:p-4"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[85vh]" data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-5 sm:px-6 py-4 flex-shrink-0">
+      <h3 class="text-lg font-semibold text-white">Share calculation</h3>
+      <button type="button" data-action="click->modal#close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" aria-label="Close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="px-5 sm:px-6 py-5 space-y-5 overflow-y-auto min-h-0">
+      <p class="text-sm text-gray-600">
+        <span class="font-medium text-gray-900"><%= money.call(tips.cents) %> in tips.</span>
+        Each sale's tip goes to whoever was on when it rang up: <%= tips.rule.summary(roles_by_id) %>.
+        <% unless tips.shared? %>Nobody was on at the same time as anyone else, so nothing had to be divided.<% end %>
+      </p>
+
+      <div>
+        <div class="text-[11px] font-medium uppercase tracking-wide text-gray-500 mb-1.5">By who was on</div>
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+          <div class="hidden sm:grid <%= columns %> gap-3 px-4 py-2 bg-gray-50 border-b border-gray-200 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+            <span>When</span><span>Rang up</span><span>On the bar</span><span class="text-right">What each got</span>
+          </div>
+          <div class="divide-y divide-gray-100">
+            <% periods.each do |period| %>
+              <div class="grid grid-cols-1 <%= columns %> gap-x-3 gap-y-0.5 px-4 py-2.5 text-sm <%= 'bg-pink-50/40' if period.shared? %>">
+                <span class="text-gray-900 tabular-nums"><%= period.words.sub(/\A./, &:upcase) %></span>
+                <span class="text-gray-900 tabular-nums"><%= money.call(period.cents) %> <span class="text-xs text-gray-500">· <%= pluralize(period.orders, "order") %></span></span>
+                <span class="text-gray-700 min-w-0"><%= period.people.map { |pid| names[pid] }.compact.to_sentence %></span>
+                <span class="sm:text-right tabular-nums text-gray-900">
+                  <% period.cuts.each do |cut| %>
+                    <span class="block"><%= cut[:person_ids].map { |pid| names[pid] }.compact.to_sentence %> <%= money.call(cut[:cents] / cut[:person_ids].size) %><%= " each" if cut[:person_ids].size > 1 %>
+                      <span class="block text-xs text-gray-500"><%= TipSplit.percent_words(cut[:percent]) %> of <%= money.call(period.cents) %> off the top<%= cut[:person_ids].size > 1 ? ", ÷ #{cut[:person_ids].size}" : "" %></span></span>
+                  <% end %>
+                  <% if period.equal_ids.size > 1 %>
+                    <span class="block"><%= money.call(period.each_cents) %> each</span>
+                    <span class="block text-xs text-gray-500"><%= money.call(period.left_cents) %> ÷ <%= period.equal_ids.size %></span>
+                  <% elsif period.equal_ids.size == 1 %>
+                    <span class="block"><%= money.call(period.left_cents) %></span>
+                    <% if period.cuts.any? %><span class="block text-xs text-gray-500">the rest, to <%= names[period.equal_ids.first] %></span><% end %>
+                  <% elsif period.cuts.any? %>
+                    <span class="block text-xs text-amber-700"><%= money.call(period.left_cents) %> left with nobody on to share it</span>
+                  <% end %>
+                </span>
+              </div>
+            <% end %>
+            <% if periods.empty? %>
+              <p class="px-4 py-3 text-sm text-gray-500">Nothing rang up while anyone was on.</p>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <% if tips.stretches.any? %>
+        <div>
+          <div class="text-[11px] font-medium uppercase tracking-wide text-gray-500 mb-1.5">While nobody was on the bar</div>
+          <div class="border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100">
+            <% tips.stretches.each do |stretch| %>
+              <% person = stretch.person_id && rows_by_person[stretch.person_id] %>
+              <div class="grid grid-cols-1 <%= columns %> gap-x-3 gap-y-0.5 px-4 py-2.5 text-sm">
+                <span class="text-gray-900 tabular-nums"><%= stretch.words.sub(/\A./, &:upcase) %></span>
+                <span class="text-gray-900 tabular-nums"><%= money.call(stretch.cents) %><% if stretch.orders.positive? %> <span class="text-xs text-gray-500">· <%= pluralize(stretch.orders, "order") %></span><% end %></span>
+                <span class="sm:col-span-2 sm:text-right <%= stretch.resolved? ? 'text-gray-700' : 'text-amber-700' %>">
+                  <% if !stretch.resolved? %>Not decided yet, so the house holds it
+                  <% elsif stretch.split? && takers.size > 1 %>Split between everyone listed: <span class="tabular-nums text-gray-900"><%= money.call(stretch.cents.to_f / takers.size) %> each</span> <span class="text-xs text-gray-500">(<%= money.call(stretch.cents) %> ÷ <%= takers.size %>)</span>
+                  <% elsif person %>All to <%= person.person.name %>
+                  <% else %>The house keeps it
+                  <% end %>
+                </span>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <div>
+        <div class="text-[11px] font-medium uppercase tracking-wide text-gray-500 mb-1.5">Adds up to</div>
+        <div class="border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100">
+          <% rows.each do |row| %>
+            <%
+              # Their piece of each stretch above, in order, so the sum can be followed.
+              pid = row.person.id
+              parts = periods.flat_map do |period|
+                cut = period.cuts.find { |c| c[:person_ids].include?(pid) }
+                [ (cut[:cents] / cut[:person_ids].size if cut), (period.each_cents if period.equal_ids.include?(pid)) ].compact
+              end.select(&:positive?).map { |cents| money.call(cents) }
+              parts << "#{money.call(row.given_cents)} from when nobody was on" if row.given_cents.positive?
+              parts << "#{money.call(row.pool_cents)} split from when nobody was on" if row.pool_cents.positive?
+              math = if row.typed? then "Typed in, so it stays as typed"
+              elsif parts.empty? then "Nothing rang up while on"
+              else parts.join(" + ")
+              end
+            %>
+            <div class="flex items-baseline justify-between gap-3 px-4 py-2.5 text-sm">
+              <span class="min-w-0"><span class="text-gray-900"><%= row.person.name %></span> <span class="text-xs text-gray-500"><%= math %></span></span>
+              <span class="tabular-nums font-medium text-gray-900 whitespace-nowrap"><%= money.call(row.cents) %></span>
+            </div>
+          <% end %>
+          <% if tips.house_cents.positive? %>
+            <div class="flex items-baseline justify-between gap-3 px-4 py-2.5 text-sm">
+              <span class="text-gray-900">The house</span>
+              <span class="tabular-nums font-medium text-gray-900"><%= money.call(tips.house_cents) %></span>
+            </div>
+          <% end %>
+          <div class="flex items-baseline justify-between gap-3 px-4 py-2.5 text-sm bg-gray-50">
+            <span class="font-semibold text-gray-900">Tips</span>
+            <span class="tabular-nums font-semibold text-gray-900"><%= money.call(rows.sum(&:cents) + tips.house_cents) %></span>
+          </div>
+        </div>
+        <% if fitted %>
+          <p class="mt-1.5 text-xs text-gray-500">A typed share stays as typed; the others are fitted around it, in whole cents, so everything adds up to the day's tips.</p>
+        <% end %>
+      </div>
+    </div>
+    <div class="px-5 sm:px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end flex-shrink-0">
+      <%= render "shared/button", text: "Close", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+    </div>
+  </div>
+</div>

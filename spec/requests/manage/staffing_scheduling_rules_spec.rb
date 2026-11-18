@@ -164,6 +164,24 @@ RSpec.describe "Manage::Staffing::SchedulingRules", type: :request do
       get manage_staffing_scheduling_path(week_start: week_start.to_s)
       expect(response.body).to include("Apply regulars (1)")
       expect(response.body).to include("regulars-apply-modal")
+      # A phone has it as one line above the calendar, only while some match.
+      line = Nokogiri::HTML(response.body).at_css("[data-scheduling-actions] [data-status='regulars']")
+      expect(line.text.squish).to eq("1 regular can be scheduled")
+      expect(line["data-modal-id"]).to eq("regulars-apply-modal")
+    end
+
+    # It used to count every match, so it said 3 when all three were already
+    # on the schedule (Tim, 2026-11-09).
+    it "stops offering it once the regular is already scheduled" do
+      org.update!(staffing_regulars_enabled: true)
+      get manage_staffing_scheduling_path(week_start: week_start.to_s)
+      keys = Nokogiri::HTML(response.body).css("#regulars-apply-modal input[name='match_keys[]']").map { |i| i["value"] }
+      post manage_apply_staffing_scheduling_rules_path, params: { week_start: week_start.to_s, match_keys: keys }
+
+      get manage_staffing_scheduling_path(week_start: week_start.to_s)
+      expect(response.body).to include("Already scheduled")
+      expect(response.body).not_to include("Apply regulars (")
+      expect(Nokogiri::HTML(response.body).at_css("[data-status='regulars']")).to be_nil
     end
 
     it "shows nothing of Regulars when the toggle is off" do

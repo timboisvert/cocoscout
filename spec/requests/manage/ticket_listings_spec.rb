@@ -26,13 +26,14 @@ RSpec.describe "Manage ticket listings", type: :request do
     quiet = create(:production, organization: org, name: "Last Season")
     ProductionTicketing.for(quiet)
     # The production's wide image (never a poster) leads its line, and a
-    # production without one leaves the space blank (Tim, 2026-10-16).
+    # production without one gets its two letters in the same box (Tim,
+    # 2026-11-08).
     production.wide_image.attach(fixture_file_upload("test_image.png", "image/png"))
 
     get manage_ticket_listings_path
     body = response.body
     expect(body.scan("aspect-video rounded overflow-hidden").size).to eq(1)
-    expect(body.scan(%(aspect-video" aria-hidden="true")).size).to eq(1)
+    expect(Nokogiri::HTML(body).css("[data-wide-thumb-letters]").map { |box| box.text.squish }).to eq([ "LS" ])
     # The drawer under a production hangs stepped in, as on Ticketing home.
     expect(body).to include(%(<details class="group mx-3">))
     expect(body).to include("8 dates", "7 more dates", "All 8 dates of Improvised Animorphs",
@@ -116,7 +117,7 @@ RSpec.describe "Manage ticket listings", type: :request do
 
       get manage_ticket_listing_path(listing)
       expect(response.body).to include("Sold elsewhere", 'id="outside-sales-modal"', 'id="comps-modal"', "Eventbrite")
-      expect(response.body).not_to include("Give tickets</div>")
+      expect(response.body).not_to include("Issue comps</div>")
 
       patch manage_ticket_listing_outside_sales_path(listing), params: {
         new_source_name: "Ticket Tailor",
@@ -135,16 +136,18 @@ RSpec.describe "Manage ticket listings", type: :request do
       get manage_ticket_listing_path(listing)
       # Sold counts every ticket sold, here or elsewhere, and says where.
       # Here and elsewhere, each with its money; the whole picture under Sold here.
-      expect(response.body).to include("6 on Ticket Tailor", "4 on Eventbrite", "Sold here", "10 of 70 sold in all", "Add a ticket type", 'data-tier-chip="')
+      expect(response.body).to include("6 on Ticket Tailor", "4 on Eventbrite", "Sold here", "10 of 70 sold in all", "Ticket type", "Add another site")
       expect(response.body).to include("Ticket sales elsewhere", "$80.00", "$80 on Eventbrite", "$0 here")
       expect(response.body).not_to include("$0 on Ticket Tailor")
-      # Only the rows a site has are drawn; the rest come from the template on Add.
-      expect(response.body.scan(/name="sales\[#{eventbrite.id}\]\[\d+\]\[tickets\]"/).size).to eq(1)
+      # The same table as the show's day in Settle up: a line for every site and ticket type, and a new site's lines last.
+      expect(response.body.scan(/name="sales\[#{eventbrite.id}\]\[\d+\]\[tickets\]"/).size).to eq(2)
+      expect(response.body.scan(/name="sales\[new\]\[\d+\]\[tickets\]"/).size).to eq(2)
+      expect(response.body).not_to include("Add a ticket type", "data-tier-chip")
 
-      # The worksheet shows those rows but doesn't let anyone type over them,
-      # and links back to the ticketing page where they're changed.
+      # The show's record shows those rows but doesn't let anyone type over
+      # them; they're changed on the ticketing page or the show's day.
       get manage_money_show_financials_path(friday)
-      expect(response.body).to match(%r{<a [^>]*href="#{manage_ticket_listing_path(listing)}"[^>]*>imported from the ticketing page</a>})
+      expect(response.body).to include("Outside tickets", "4 General</span>", "", "6 VIP</span>", "")
       expect(response.body).not_to match(/ticket_sales_lines_attributes\]\[\d+\]\[ticket_source_id\]"[^>]*value="#{eventbrite.id}"/)
     end
 
@@ -161,7 +164,7 @@ RSpec.describe "Manage ticket listings", type: :request do
 
     it "edits prices in place: changes, additions, and removing an unsold one" do
       vip = listing.ticket_tiers.create!(name: "VIP", price_cents: 3_500)
-      patch manage_ticket_listing_path(listing), params: { ticket_listing: {
+      patch manage_ticket_listing_path(listing), params: { section: "tickets", ticket_listing: {
         fee_mode: "org",
         ticket_tiers_attributes: {
           "0" => { id: general.id, name: "General", price: "22.50", quantity: "50" },
@@ -202,6 +205,16 @@ RSpec.describe "Manage ticket listings", type: :request do
       create(:ticket_order, ticket_listing: listing, ticket_discount_code: code, status: "paid")
       delete manage_ticket_listing_code_path(listing, code_id: code.id)
       expect(code.reload.active).to be(false)
+    end
+
+    it "imports a spreadsheet's codes as this date's own, and exports them" do
+      post manage_ticket_listing_codes_import_path(listing), params: { text: "Code,Amount\nFRIENDS,5\n" }
+      expect(flash[:notice]).to eq("Added FRIENDS.")
+      expect(listing.reload.own_codes?).to be(true)
+      expect(listing.ticket_discount_codes.sole.amount_cents).to eq(500)
+
+      get manage_ticket_listing_codes_export_path(listing)
+      expect(response.body).to include("FRIENDS,$ off,5.00")
     end
 
     it "removes a draft nobody has bought, but not one with orders" do

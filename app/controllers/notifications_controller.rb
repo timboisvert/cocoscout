@@ -12,7 +12,7 @@ class NotificationsController < ApplicationController
   def index
     @filter = params[:filter] == "unread" ? "unread" : "all"
     @area = NotificationGroups.areas.include?(params[:area]) ? params[:area] : nil
-    scope = Current.user.notifications.newest_first.includes(:organization)
+    scope = Current.user.notifications.understood.newest_first.includes(:organization)
     scope = scope.unread if @filter == "unread"
     scope = scope.in_category(NotificationGroups::ALL.select { |g| g.area == @area }.map(&:key)) if @area
     @pagy, @notifications = pagy(scope, limit: 40)
@@ -41,7 +41,7 @@ class NotificationsController < ApplicationController
   # A notice with nothing to link to (it came with its words, from a
   # template that used to be a message): those words, on its own page.
   def show
-    @notification = Current.user.notifications.find(params[:id])
+    @notification = Current.user.notifications.understood.find(params[:id])
     @notification.mark_read!
   end
 

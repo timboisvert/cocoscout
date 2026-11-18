@@ -26,7 +26,7 @@ class PayoutRunCloseOut
   def self.waiting_items(batch)
     batch.items.select do |item|
       PayoutBatch::RETRYABLE_ITEM_STATUSES.include?(item.status) &&
-        !(item.payee.respond_to?(:can_receive_payouts?) && item.payee.can_receive_payouts?)
+        !item.payable_now?
     end
   end
 

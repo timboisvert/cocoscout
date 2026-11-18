@@ -310,7 +310,7 @@ Rails.application.routes.draw do
     delete "/content_templates/:id", to: "superadmin#content_template_destroy", as: "content_template_destroy"
     get  "/content_templates/:id/preview", to: "superadmin#content_template_preview", as: "content_template_preview"
     get  "/keys",               to: "superadmin#keys",                as: "keys_monitor"
-    get  "/app_usage",          to: "superadmin#app_usage",           as: "app_usage"
+    get  "/app_usage(/:section)", to: "superadmin#app_usage",        as: "app_usage"
 
     # Messages Monitor
     get    "/messages",         to: "superadmin#messages_list",       as: "messages_list"
@@ -330,6 +330,19 @@ Rails.application.routes.draw do
 
     # Finances: CocoScout's money, every org's money, bills, and the Stripe check.
     get    "/finances",               to: "superadmin/finances#cocoscout",      as: "finances"
+    # Email: how much mail CocoScout sends against its Mailgun plan, and the
+    # extra follower emails organizations have bought (MailVolume).
+    get    "/finances/email",          to: "superadmin/email_volume#index", as: "finances_email"
+    patch  "/finances/email",          to: "superadmin/email_volume#update"
+    get    "/finances/costs",          to: "superadmin/costs#index",       as: "finances_costs"
+    post   "/finances/costs",          to: "superadmin/costs#create"
+    post   "/finances/costs/upload",   to: "superadmin/costs#upload",      as: "finances_costs_upload"
+    post   "/finances/costs/confirm_all", to: "superadmin/costs#confirm_all", as: "finances_costs_confirm_all"
+    get    "/finances/costs/export",   to: "superadmin/costs#export",      as: "finances_costs_export"
+    get    "/finances/costs/receipts", to: "superadmin/costs#receipts",    as: "finances_costs_receipts"
+    patch  "/finances/costs/:id",      to: "superadmin/costs#update",      as: "finances_cost"
+    delete "/finances/costs/:id",      to: "superadmin/costs#destroy"
+    get    "/finances/costs/:id/documents/:attachment_id", to: "superadmin/costs#document", as: "finances_cost_document"
     get    "/finances/organizations", to: "superadmin/finances#organizations",  as: "finances_organizations"
     get    "/finances/subscriptions", to: "superadmin/finances#subscriptions",  as: "finances_subscriptions"
     get    "/finances/stripe",        to: "superadmin/finances#stripe_check",   as: "finances_stripe_check"
@@ -468,6 +481,8 @@ Rails.application.routes.draw do
   post "/door/:listing_id/check-in",      to: "door#check_in",       as: "door_check_in"
   post "/door/:listing_id/check-in-order", to: "door#check_in_order", as: "door_check_in_order"
   post "/door/:listing_id/undo",          to: "door#undo",           as: "door_undo"
+  post "/door/:listing_id/uncheck",       to: "door#uncheck",        as: "door_uncheck"
+  get  "/door/:listing_id/party/:order_id", to: "door#party",        as: "door_party"
   get  "/door/:listing_id/search",        to: "door#search",         as: "door_search"
   get  "/door/:listing_id/list",          to: "door#list",           as: "door_list"
   get  "/door/:listing_id/stats",         to: "door#stats",          as: "door_stats"
@@ -499,11 +514,11 @@ Rails.application.routes.draw do
   namespace :my do
     get   "/",                              to: "dashboard#index",          as: "dashboard"
     # Ticket sales a theater shares with a producer or performer: read-only.
-    get   "/ticket-sales",                  to: "ticket_sales#index",       as: "ticket_sales"
-    patch "/ticket-sales/daily-email",      to: "ticket_sales#daily_email", as: "ticket_sales_daily_email"
-    get   "/ticket-sales/:id",              to: "ticket_sales#show",        as: "ticket_sale"
-    post  "/ticket-sales/:id/comps",        to: "ticket_sales#create_comp", as: "ticket_sale_comps"
-    post  "/ticket-sales/:id/comps/preview", to: "ticket_sales#preview_comps", as: "ticket_sale_comps_preview"
+    # The old addresses of a date's ticket sales (a list, and a page per
+    # listing), kept only so links already sent land somewhere: the date's
+    # page is under its show now (shows/:id/tickets, below). No page here.
+    get   "/ticket-sales",                  to: redirect("/my/shows")
+    get   "/ticket-sales/:id",              to: "ticket_sales#moved"
 
     # Slim account screen for the mobile app. Routes /my/account → AccountsController#show.
     get   "/account",                       to: "accounts#show",            as: "account"
@@ -540,9 +555,29 @@ Rails.application.routes.draw do
 
     # Contracts held by this person (as a contractor's backing Person).
     get    "/contracts",                    to: "contracts#index",          as: "contracts"
+    # My Followers: mailing lists shared through a contract (SharedFollowers).
+    get    "/followers",                    to: "followers#index",          as: "followers"
+    get    "/followers/:id/download",       to: "followers#download",       as: "followers_download"
     # Case 2: the contractor self-reports their own ticket sales.
     get    "/contracts/:id/report-sales",   to: "contracts#report_sales",   as: "report_contract_sales"
     patch  "/contracts/:id/report-sales",   to: "contracts#save_sales_report"
+    # The contractor asks the organization about one of the contract's dates:
+    # move it, cancel it, add one, or a question (ContractDateRequests).
+    get    "/contracts/:id/ask",                         to: "contract_date_requests#new",      as: "ask_contract_date"
+    post   "/contracts/:id/ask",                         to: "contract_date_requests#create"
+    delete "/contracts/:id/ask/:request_id",             to: "contract_date_requests#withdraw", as: "contract_date_request"
+    patch  "/contracts/:id/ask/:request_id/dismiss",     to: "contract_date_requests#dismiss",  as: "dismiss_contract_date_request"
+    # The contractor connects the contract to an organization of their own
+    # (ContractConnections): what it does, which production, how the dates
+    # line up, what the other side gets, then the request.
+    get    "/contracts/:id/connect",                     to: "contract_connections#start",      as: "connect_contract"
+    get    "/contracts/:id/connect/production",          to: "contract_connections#production", as: "connect_contract_production"
+    get    "/contracts/:id/connect/dates",               to: "contract_connections#dates",      as: "connect_contract_dates"
+    get    "/contracts/:id/connect/review",              to: "contract_connections#review",     as: "connect_contract_review"
+    post   "/contracts/:id/connect",                     to: "contract_connections#create"
+    delete "/contracts/:id/connect",                     to: "contract_connections#withdraw"
+    patch  "/contracts/:id/connect/dismiss",             to: "contract_connections#dismiss",    as: "dismiss_contract_connection"
+    patch  "/contracts/:id/connect/not_now",             to: "contract_connections#not_now",    as: "contract_connection_not_now"
 
     get    "/productions",                  to: "productions#index",        as: "productions"
     get    "/productions/:id",              to: "productions#show",         as: "production"
@@ -562,6 +597,15 @@ Rails.application.routes.draw do
     get   "/courses/:id",                   to: "courses#show",             as: "course"
     get   "/shows",                         to: "shows#index",              as: "shows"
     get   "/shows/:id",                     to: "shows#show",              as: "show"
+    # One date's ticket sales for someone it's shared with or who is on its
+    # contract: a sub-page of the show, reached from the show's own page
+    # (Tim, 2026-11-17). There is no list of them.
+    get   "/shows/:id/tickets",             to: "ticket_sales#show",        as: "show_tickets"
+    patch "/shows/:id/tickets/daily-email", to: "ticket_sales#daily_email", as: "show_tickets_daily_email"
+    post  "/shows/:id/tickets/comps",       to: "ticket_sales#create_comp", as: "show_ticket_comps"
+    post  "/shows/:id/tickets/comps/preview", to: "ticket_sales#preview_comps", as: "show_ticket_comps_preview"
+    delete "/shows/:id/tickets/comps/:order_id", to: "ticket_sales#remove_comp", as: "remove_show_ticket_comp"
+    patch "/shows/:id/tickets/comps/:order_id", to: "ticket_sales#update_comp", as: "show_ticket_comp"
     post  "/shows/:show_id/reclaim_vacancy/:vacancy_id", to: "shows#reclaim_vacancy", as: "reclaim_vacancy"
 
     # House staffing shifts the user has been assigned to.
@@ -697,7 +741,21 @@ Rails.application.routes.draw do
     get    "/productions/:production_id/sales/:id",       to: "production_sales#show",        as: "production_sale"
     post   "/productions/:production_id/sales/:id/comps", to: "production_sales#create_comp", as: "production_sale_comps"
     post   "/productions/:production_id/sales/:id/comps/preview", to: "production_sales#preview_comps", as: "production_sale_comps_preview"
+    patch  "/productions/:production_id/sales/:id/comps/:order_id", to: "production_sales#update_comp", as: "production_sale_comp"
+    delete "/productions/:production_id/sales/:id/comps/:order_id", to: "production_sales#remove_comp", as: "remove_production_sale_comp"
     get "/",                              to: "manage#index"
+
+    # Connections: other organizations' contracts connected to this one, as
+    # the contractor's own organization (ContractConnections). Free, for
+    # owners and managers.
+    get   "/connections",                 to: "connections#index",       as: "connections"
+    patch "/connections/:id",             to: "connections#update",      as: "connection"
+    get   "/connections/:id/unlink",      to: "connections#unlinking",   as: "unlinking_connection"
+    post  "/connections/:id/unlink",      to: "connections#unlink",      as: "unlink_connection"
+    post  "/connections/:id/remove_dates", to: "connections#remove_dates", as: "connection_remove_dates"
+    patch "/connections/:id/pay_to",      to: "connections#pay_to",      as: "connection_pay_to"
+    patch "/connections/:id/notify",      to: "connections#notify",      as: "connection_notify"
+    post  "/connections/:id/dates",       to: "connections#answer_date", as: "connection_dates"
 
     # Messages
     resources :messages, only: [ :index, :show, :create ] do
@@ -815,7 +873,6 @@ Rails.application.routes.draw do
     post "/shows/:production_id/:show_id/roles/:id/execute_slot_change", to: "show_roles#execute_slot_change", as: "execute_slot_change_show_role"
 
     # Visual Assets (production-level)
-    get  "/shows/:production_id/visual_assets", to: "visual_assets#index", as: "production_visual_assets"
     get  "/shows/:production_id/visual_assets/new_poster", to: "visual_assets#new_poster", as: "new_poster_production_visual_asset"
     post "/shows/:production_id/visual_assets/create_poster", to: "visual_assets#create_poster", as: "create_poster_production_visual_asset"
     get  "/shows/:production_id/visual_assets/:id/edit_poster", to: "visual_assets#edit_poster", as: "edit_poster_production_visual_asset"
@@ -943,6 +1000,8 @@ Rails.application.routes.draw do
     delete "/signups/auditions/:production_id/:id/destroy_question/:question_id", to: "audition_cycles#destroy_question", as: "destroy_question_signups_auditions_cycle"
     post "/signups/auditions/:production_id/:id/reorder_questions", to: "audition_cycles#reorder_questions", as: "reorder_questions_signups_auditions_cycle"
     patch "/signups/auditions/:production_id/:id/archive", to: "audition_cycles#archive", as: "archive_signups_auditions_cycle"
+    patch "/signups/auditions/:production_id/:id/pause", to: "audition_cycles#pause", as: "pause_signups_auditions_cycle"
+    patch "/signups/auditions/:production_id/:id/resume", to: "audition_cycles#resume", as: "resume_signups_auditions_cycle"
     get "/signups/auditions/:production_id/:id/delete_confirm", to: "audition_cycles#delete_confirm", as: "delete_confirm_signups_auditions_cycle"
     patch "/signups/auditions/:production_id/:id/toggle_voting", to: "audition_cycles#toggle_voting", as: "toggle_voting_signups_auditions_cycle"
     get "/signups/auditions/:production_id/:id/settings", to: "auditions#settings", as: "settings_signups_auditions_cycle"
@@ -970,6 +1029,7 @@ Rails.application.routes.draw do
     delete "/signups/auditions/:production_id/:cycle_id/requests/:id", to: "audition_requests#destroy", as: "destroy_signups_auditions_cycle_request"
     post "/signups/auditions/:production_id/:cycle_id/requests/:id/archive", to: "audition_requests#archive", as: "archive_signups_auditions_cycle_request"
     post "/signups/auditions/:production_id/:cycle_id/requests/:id/unarchive", to: "audition_requests#unarchive", as: "unarchive_signups_auditions_cycle_request"
+    post "/signups/auditions/:production_id/:cycle_id/requests/:id/decide", to: "audition_requests#decide", as: "decide_signups_auditions_cycle_request"
     get  "/signups/auditions/:production_id/:cycle_id/requests/:id/edit_answers", to: "audition_requests#edit_answers", as: "edit_answers_signups_auditions_cycle_request"
     get  "/signups/auditions/:production_id/:cycle_id/requests/:id/edit_video", to: "audition_requests#edit_video", as: "edit_video_signups_auditions_cycle_request"
     patch "/signups/auditions/:production_id/:cycle_id/requests/:id/update_audition_session_availability", to: "audition_requests#update_audition_session_availability", as: "update_session_availability_signups_auditions_cycle_request"
@@ -1177,6 +1237,12 @@ Rails.application.routes.draw do
     post   "organizations/:id/integrations/square/pull",    to: "integrations#pull",       as: "pull_organization_square"
     delete "organizations/:id/integrations/square",         to: "integrations#disconnect"
     get    "integrations/square/callback",                  to: "integrations#callback",   as: "square_callback"
+    get    "organizations/:id/integrations/google_calendar",         to: "google_calendar#show",       as: "organization_google_calendar"
+    post   "organizations/:id/integrations/google_calendar/connect", to: "google_calendar#connect",    as: "connect_organization_google_calendar"
+    patch  "organizations/:id/integrations/google_calendar",         to: "google_calendar#update"
+    post   "organizations/:id/integrations/google_calendar/sync",    to: "google_calendar#sync",       as: "sync_organization_google_calendar"
+    delete "organizations/:id/integrations/google_calendar",         to: "google_calendar#disconnect"
+    get    "integrations/google_calendar/callback",                  to: "google_calendar#callback",   as: "google_calendar_callback"
 
     # The organization's services (Organization settings → Services; Pro).
     post   "services",     to: "house_services#create",  as: "house_services"
@@ -1279,6 +1345,8 @@ Rails.application.routes.draw do
     resources :locations do
       member do
         get :cannot_delete
+        patch :archive
+        patch :restore
       end
     end
 
@@ -1292,7 +1360,6 @@ Rails.application.routes.draw do
         # Production team management
         post :add_team_member
         patch :update_team_permission
-        patch :toggle_production_notification
         delete :remove_team_member
         delete :revoke_production_invite
         # Agreement management
@@ -1300,6 +1367,7 @@ Rails.application.routes.draw do
         post :send_agreement_reminders
         # Performer pay (Pay tab): paid or not, and which payout scheme is the default
         patch :update_pay
+        patch :update_no_revenue
         # What every show needs (Services tab; Pro)
         patch :update_services
       end
@@ -1392,7 +1460,6 @@ Rails.application.routes.draw do
     get  "staffing/org-chart",                    to: "staffing#org_chart",              as: "staffing_org_chart"
     # Ticketing (Pro; superadmin-only while it's experimental).
     get   "ticketing",                            to: "ticketing#index",                 as: "ticketing"
-    get   "ticketing/attendance",                 to: "ticketing_attendance#index",      as: "ticketing_attendance"
     get   "ticketing/settings",                   to: "ticketing_settings#show",         as: "ticketing_settings"
     patch "ticketing/settings",                   to: "ticketing_settings#update"
     patch "ticketing/settings/page",              to: "ticketing_settings#update_page",  as: "ticketing_settings_page"
@@ -1483,10 +1550,13 @@ Rails.application.routes.draw do
     get    "ticketing/productions/:production_id/settings(/:section)", to: "production_ticketings#edit", as: "edit_production_ticketing"
     patch  "ticketing/productions/:production_id/settings/:section", to: "production_ticketings#update", as: "update_production_ticketing"
     post   "ticketing/productions/:production_id/codes", to: "production_ticketings#create_code", as: "production_ticketing_codes"
+    get    "ticketing/productions/:production_id/codes/export", to: "production_ticketings#export_codes", as: "production_ticketing_codes_export"
+    post   "ticketing/productions/:production_id/codes/import", to: "production_ticketings#import_codes", as: "production_ticketing_codes_import"
     # The production's short links (cocoscout.com/t/CODE): its one code and the named ones.
     get    "ticketing/productions/:production_id/links", to: "short_links#index",  as: "production_ticketing_links"
     post   "ticketing/productions/:production_id/links", to: "short_links#create"
     delete "ticketing/productions/:production_id/links/:id", to: "short_links#destroy", as: "production_ticketing_link"
+    post   "ticketing/productions/:production_id/links/:id/new_code", to: "short_links#regenerate", as: "production_ticketing_link_new_code"
     delete "ticketing/productions/:production_id/codes/:code_id", to: "production_ticketings#destroy_code", as: "production_ticketing_code"
     patch  "ticketing/productions/:production_id/codes/:code_id", to: "production_ticketings#update_code"
     get    "ticketing/shows/:id",                 to: "ticket_listings#show"
@@ -1517,6 +1587,8 @@ Rails.application.routes.draw do
     delete "ticketing/shows/:id",                 to: "ticket_listings#destroy"
     post   "ticketing/shows/:id/status",          to: "ticket_listings#change_status",   as: "ticket_listing_status"
     post   "ticketing/shows/:id/codes",           to: "ticket_listings#create_code",     as: "ticket_listing_codes"
+    get    "ticketing/shows/:id/codes/export",    to: "ticket_listings#export_codes",     as: "ticket_listing_codes_export"
+    post   "ticketing/shows/:id/codes/import",    to: "ticket_listings#import_codes",     as: "ticket_listing_codes_import"
     delete "ticketing/shows/:id/codes/:code_id",  to: "ticket_listings#destroy_code",    as: "ticket_listing_code"
     patch  "ticketing/shows/:id/codes/:code_id",  to: "ticket_listings#update_code"
     post   "ticketing/shows/:id/refund-buyers",   to: "ticket_listings#cancel",          as: "ticket_listing_cancel"
@@ -1673,6 +1745,7 @@ Rails.application.routes.draw do
     post   "staffing/vacancies/:id/send_invitations", to: "staffing/vacancies#send_invitations", as: "send_invitations_staffing_vacancy"
     post   "staffing/vacancies/:id/cancel",       to: "staffing/vacancies#cancel",       as: "cancel_staffing_vacancy"
     post   "staffing/vacancies/:id/reclaim",      to: "staffing/vacancies#reclaim",      as: "reclaim_staffing_vacancy"
+    post   "staffing/vacancies/:id/tell_cover",   to: "staffing/vacancies#tell_cover",   as: "tell_cover_staffing_vacancy"
     # A show canceled, taken away or moved: tell its cast and staff
     # (docs/show_change_notices_plan.md).
     post "show-changes/canceled/:show_id", to: "show_changes#for_canceled_show", as: "tell_canceled_show"
@@ -1742,10 +1815,11 @@ Rails.application.routes.draw do
     get   "money/settle-up/:date", to: "settlement_days#show", as: "money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     post  "money/settle-up/:date/settle", to: "settlement_days#settle", as: "settle_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     post  "money/settle-up/:date/reopen", to: "settlement_days#reopen", as: "reopen_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
-    patch "money/settle-up/:date/door-cash", to: "settlement_days#door_cash", as: "door_cash_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     patch "money/settle-up/:date/shows/:show_id/check", to: "settlement_days#check_show", as: "check_show_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    patch "money/settle-up/:date/shows/:show_id/no-revenue", to: "settlement_days#no_revenue", as: "no_revenue_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     patch "money/settle-up/:date/register/check", to: "settlement_days#check_register", as: "check_register_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     patch "money/settle-up/:date/tips", to: "settlement_days#tips", as: "tips_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
+    post  "money/settle-up/:date/tips/preview", to: "settlement_days#tips_preview", as: "tips_preview_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     # Paying people from the day (Tim, 2026-11-04): a show's calculation, and each line's choice.
     patch "money/settle-up/:date/shows/:show_id/calculation", to: "settlement_days#choose_calculation", as: "choose_calculation_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
     patch "money/settle-up/:date/shows/:show_id/calculate", to: "settlement_days#calculate_show", as: "calculate_show_money_settle_up_day", constraints: { date: /\d{4}-\d{2}-\d{2}/ }
@@ -1847,7 +1921,6 @@ Rails.application.routes.draw do
 
     # Show financials - the main financial data view for a show
     get "money/shows/:id/financials", to: "show_financials#show", as: "money_show_financials"
-    get "money/shows/:id/financials/edit", to: "show_financials#edit", as: "edit_money_show_financials"
     patch "money/shows/:id/financials", to: "show_financials#update", as: "update_money_show_financials"
     post "money/shows/:id/financials/mark_non_revenue", to: "show_financials#mark_non_revenue", as: "mark_non_revenue_money_show_financials"
     post "money/shows/:id/financials/unmark_non_revenue", to: "show_financials#unmark_non_revenue", as: "unmark_non_revenue_money_show_financials"
@@ -1905,6 +1978,12 @@ Rails.application.routes.draw do
     # Contractors - manage contractor records
     # Mailing lists (Pro, V1.1; Tim 2026-10-23): followers in lists, segments,
     # and emails to them.
+    # Followers shared with this organization through a connected contract,
+    # and the dates another organization sells for it: read-only, and free.
+    get    "/shared-followers",                               to: "shared_followers#index",         as: "shared_followers"
+    get    "/shared-followers/:id/download",                  to: "shared_followers#download",      as: "shared_followers_download"
+    get    "/ticket-sales",                                   to: "sold_elsewhere#index",           as: "sold_elsewhere"
+    patch  "/mailing-lists/:id/contractor",                   to: "mailing_lists#update_contractor", as: "mailing_list_contractor"
     get    "/mailing-lists",                                  to: "mailing_lists#index",            as: "mailing_lists"
     post   "/mailing-lists",                                  to: "mailing_lists#create"
     get    "/mailing-lists/settings(/:section)",              to: "mailing_list_settings#show",     as: "mailing_list_settings"
@@ -1997,6 +2076,16 @@ Rails.application.routes.draw do
         # The form GETs review (a preview, no side effects — and a POST that
         # renders 200 HTML would be ignored by Turbo); confirming posts the
         # same params to apply.
+        # The organization's "no" to a contractor's request about a date.
+        post "date_requests/:request_id/keep", action: :keep_date_request, as: :keep_date_request
+        # The contractor's request to connect the contract to their own
+        # organization: accept, decline, and later unlink (ContractConnections).
+        post "connection/accept", action: :accept_connection, as: :accept_connection
+        post "connection/tell", action: :tell_connection, as: :tell_connection
+        post "connection/decline", action: :decline_connection, as: :decline_connection
+        post "connection/unlink", action: :unlink_connection, as: :unlink_connection
+        patch "connection/later_contracts", action: :update_connection_later_contracts, as: :connection_later_contracts
+        patch "connection/images", action: :update_connection_images, as: :connection_images
         get "amend/dates", action: :amend_dates, as: :amend_dates
         get "amend/dates/review", action: :review_amend_dates, as: :review_amend_dates
         post "amend/dates", action: :apply_amend_dates, as: :apply_amend_dates

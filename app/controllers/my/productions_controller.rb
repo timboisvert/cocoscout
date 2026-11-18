@@ -285,24 +285,20 @@ module My
 
     def notify_producers_of_departure(groups_removed)
       # Get all users with notifications enabled for this production
-      ProductionNotificationSetting.ensure_settings_for(@production)
-      notifiable_users = ProductionNotificationSetting.where(production: @production, enabled: true)
-                                                      .includes(:user)
-                                                      .map(&:user)
-                                                      .compact
+      notifiable_users = ProductionNotificationSetting.users_to_notify(@production)
 
       notifiable_users.each do |user|
         next unless user.person.present?
 
         # Build the message
         groups_text = groups_removed.any? ? groups_removed.join(", ") : "the production"
-        talent_pool_url = Rails.application.routes.url_helpers.manage_auditions_url(
-          production_id: @production.id,
+        talent_pool_url = Rails.application.routes.url_helpers.manage_casting_talent_pool_url(
+          @production,
           **Rails.application.config.action_mailer.default_url_options
         )
         rendered = ContentTemplateService.render("talent_left_production", {
           recipient_name: user.person&.first_name || "there",
-          talent_name: Current.user.person&.full_name || "A talent",
+          talent_name: Current.user.person&.name.presence || "A talent",
           production_name: @production.name,
           groups_removed: groups_text,
           talent_pool_url: talent_pool_url

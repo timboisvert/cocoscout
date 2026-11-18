@@ -38,7 +38,7 @@
           </svg>
         </div>
         <h2 class="text-lg font-semibold text-gray-900 mb-2">No Longer Available</h2>
-        <p class="text-gray-600 text-sm">This role has already been filled or the vacancy was cancelled.</p>
+        <p class="text-gray-600 text-sm"><%= @invitation.role_vacancy.active? && @invitation.role_vacancy.past? ? "This show has already happened." : "This role has already been filled or the vacancy was cancelled." %></p>
       </div>
 
     <% else %>

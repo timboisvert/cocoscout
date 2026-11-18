@@ -1,0 +1,113 @@
+# frozen_string_literal: true
+
+module Manage
+  # Connections: other organizations' contracts connected to this one as the
+  # contractor's own organization (ContractConnections). Each brings that
+  # contract's dates into one of this organization's productions, with their
+  # ticket sales read-only. Here: where each stands, who in this
+  # organization sees the sales, any question left about a date, and Unlink.
+  # Free, for owners and managers; it's a page (status and actions), not a
+  # settings tab.
+  class ConnectionsController < Manage::ManageController
+    before_action :ensure_org_owner_or_manager
+    before_action :set_connection, only: %i[update unlinking unlink remove_dates answer_date pay_to notify]
+
+    def index
+      # One card per contract: its latest connection. A contract unlinked and
+      # connected again has earlier rows, and each showed as its own card.
+      @connections = scope.where.not(status: %w[withdrawn declined])
+                          .includes(:organization, :linked_production, :requested_by, contract: :production).order(created_at: :desc).to_a
+                          .uniq(&:contract_id)
+    end
+
+    # Who in this organization sees the ticket sales, below its owners and
+    # managers: the box office's own three choices.
+    def update
+      if @connection.update(params.fetch(:connection, {}).permit(:team_manager_sales, :team_viewer_sales, :cast_sales))
+        redirect_to manage_connections_path, notice: "Saved."
+      else
+        redirect_to manage_connections_path, alert: @connection.errors.full_messages.to_sentence
+      end
+    end
+
+    # Before unlinking: what it ends and what it doesn't, the smaller things
+    # that may be what they're after, and whether the coming dates stay.
+    def unlinking
+      return redirect_to(manage_connections_path) unless @connection.connected?
+
+      @coming = LinkedDates.following_for(@connection).where(canceled: false).where("shows.date_and_time > ?", Time.current).order(:date_and_time).to_a
+      @with_people = @coming.count { |show| LinkedDates.people_on?(show) }
+    end
+
+    def unlink
+      remove = params[:dates] == "remove"
+      ContractConnections.unlink!(@connection, user: Current.user, remove_coming: remove)
+      seller = @connection.organization.name
+      left = LinkedDates.released_coming(@connection).count
+      words = if remove && left.zero?
+        "The coming dates were removed from #{@connection.production_name}."
+      elsif remove
+        "The coming dates nobody was on were removed. #{helpers.pluralize(left, 'date')} with people on #{left == 1 ? 'it' : 'them'} stayed in #{@connection.production_name}, as your own."
+      else
+        "Its dates stay in #{@connection.production_name} as your own."
+      end
+      redirect_to manage_connections_path, notice: "Unlinked from #{seller}. #{words} #{seller} has been notified."
+    end
+
+    # After the connection has ended (either side): remove the coming dates
+    # kept from it that nobody is on.
+    def remove_dates
+      return redirect_to(manage_connections_path) unless @connection.status == "unlinked"
+
+      removed, kept = LinkedDates.remove_released!(@connection)
+      notice = "#{helpers.pluralize(removed, 'date')} removed from #{@connection.production_name}."
+      notice += " #{helpers.pluralize(kept, 'date')} with people on #{kept == 1 ? 'it' : 'them'} stayed: cancel #{kept == 1 ? 'it' : 'them'} yourself, so they're notified." if kept.positive?
+      redirect_to manage_connections_path, notice: notice
+    end
+
+    # Who on this side is notified as the contract's tickets sell and comps
+    # are given, person by person (LinkedSaleNotices).
+    def notify
+      chosen = LinkedSaleNotices.choose!(@connection, params[:user_ids], by: Current.user)
+      notice = chosen.empty? ? "Saved. Nobody is notified as tickets sell." : "Saved. #{helpers.pluralize(chosen.size, 'person')} will be notified as tickets sell."
+      redirect_to manage_connections_path, notice: notice
+    end
+
+    # Where the other organization's payments under the contract are sent:
+    # the contractor's bank, or this organization's CocoScout balance. The contractor's own choice
+    # (ContractConnections.set_pay_to!).
+    def pay_to
+      balance = params[:pay_to] == "balance"
+      ContractConnections.set_pay_to!(@connection, user: Current.user, balance: balance)
+      seller = @connection.organization.name
+      notice = if balance
+        "Saved. #{seller}'s payments for this contract will go into #{Current.organization.name}'s balance. #{seller} has been notified."
+      else
+        "Saved. #{seller}'s payments for this contract will go to your bank. #{seller} has been notified."
+      end
+      redirect_to manage_connections_path, notice: notice
+    rescue ContractConnections::NotAllowed
+      redirect_to manage_connections_path, alert: "Only the contractor on this contract can choose where its payments are sent."
+    end
+
+    # A question left open when connecting: is this date of ours the same
+    # show as theirs?
+    def answer_date
+      LinkedDates.resolve!(@connection, contract_show_id: params[:contract_show_id], show_id: params[:show_id], same: params[:same] == "1")
+      redirect_to manage_connections_path, notice: (params[:same] == "1" ? "Treated as the same show. Its cast stays." : "Kept as two events.")
+    rescue ArgumentError => e
+      redirect_to manage_connections_path, alert: e.message
+    end
+
+    private
+
+    # Only this organization's own: the ones where it is the contractor's side.
+    def scope
+      ContractConnection.where(linked_organization_id: Current.organization.id)
+    end
+
+    def set_connection
+      @connection = scope.find(params[:id])
+    end
+  end
+end

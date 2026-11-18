@@ -104,6 +104,24 @@ class ShowServices
     write_change(show, service, base, needed, people)
   end
 
+  # The services a contract's lines put on one day: a per-event line on the
+  # dates it names, a once line on every date. services are the
+  # organization's, matched by id, else by name.
+  def self.services_in(lines, day, services)
+    by_id = services.index_by(&:id)
+    by_name = services.index_by { |s| s.name.downcase }
+    Array(lines).filter_map do |line|
+      service = by_id[line["service_id"].to_i] || by_name[line["name"].to_s.downcase]
+      next unless service
+
+      if line["per_event"]
+        dates = Array(line["events"]).filter_map { |e| Time.zone.parse(e["starts_at"].to_s)&.to_date rescue nil }
+        next unless dates.include?(day)
+      end
+      service
+    end.uniq
+  end
+
   def self.write_change(show, service, base, wanted, people)
     # Not through show.show_service_changes: a change built there and then
     # not needed would linger in the association and save with the show.
@@ -123,18 +141,7 @@ class ShowServices
     contract = contract_for(show)
     return [] unless contract
 
-    by_id = @services.index_by(&:id)
-    by_name = @services.select { |s| s.organization_id == contract.organization_id }.index_by { |s| s.name.downcase }
-    show_date = show.date_and_time.to_date
-    contract.draft_services.filter_map do |line|
-      service = by_id[line["service_id"].to_i] || by_name[line["name"].to_s.downcase]
-      next unless service && service.organization_id == contract.organization_id
-
-      if line["per_event"]
-        dates = Array(line["events"]).filter_map { |e| Time.zone.parse(e["starts_at"].to_s)&.to_date rescue nil }
-        next unless dates.include?(show_date)
-      end
-      service
-    end.uniq
+    self.class.services_in(contract.draft_services, show.date_and_time.to_date,
+                           @services.select { |s| s.organization_id == contract.organization_id })
   end
 end

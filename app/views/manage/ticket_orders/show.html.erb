@@ -176,6 +176,12 @@
                     <%= ticket.status.humanize %>
                   <% end %>
                 </div>
+                <%# Check-ins taken back at the door (TicketDoor#uncheck). %>
+                <% ticket.unchecks.each do |uncheck| %>
+                  <div class="text-xs text-gray-500">
+                    Unchecked <%= uncheck.created_at.strftime("%b %-d at %-l:%M %p") %><%= " by #{uncheck.unchecked_by.person&.name || uncheck.unchecked_by.email_address}" if uncheck.unchecked_by %><% if uncheck.checked_in_at %> (checked in at <%= uncheck.checked_in_at.strftime("%-l:%M %p") %><%= " by #{uncheck.checked_in_by.person&.name || uncheck.checked_in_by.email_address}" if uncheck.checked_in_by %>)<% end %>
+                  </div>
+                <% end %>
               </div>
             </li>
           <% end %>

@@ -19,7 +19,7 @@ RSpec.describe "Ticketing settings: Who sees sales", type: :request do
   it "shows the three choices with the defaults picked" do
     get manage_ticketing_settings_section_path(section: "sharing")
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Who sees sales", "Production team managers", "Production team viewers", ">Cast<",
+    expect(response.body).to include("Sales visibility", "Production team managers", "Production team viewers", ">Cast<",
                                      "Everyone on the production", "The cast of each date", "Staffing settings → Ticketing",
                                      manage_staffing_settings_section_path(section: "ticketing"))
     expect(response.body).to match(/id="ticketing_profile_team_manager_sales_everything"[^>]*checked/)

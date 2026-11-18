@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 # What settling a day puts on the books, in one entry (kind "settlement",
-# plan §9.2): today, the door cash over or short (a short is a cost, an over
-# is other income; the cash itself is already counted sale by sale). The
-# shows' own money posts from their financials as it always has. Reopening
-# withdraws the entry; settling again restates it, dated the original day.
+# plan §9.2). The shows' own money posts from their financials as it always
+# has, and cash taken at the door posts sale by sale; nobody counts a box
+# here (Tim, 2026-11-11), so there is no over or short. Reopening withdraws
+# the entry; settling again restates it, dated the original day.
 #
 # A register's day (Square, plan §9.3) posts here too, and only here: sales
 # to income by category, the register's fees to card fees, sales tax to tax
@@ -20,7 +20,7 @@ class SettlementPoster
   def self.post!(record)
     organization = record.organization
     day = SettleUp.day(organization, record.date)
-    lines = door_cash_lines(day) + register_lines(day) + tip_lines(day, record)
+    lines = register_lines(day) + tip_lines(day, record)
     LedgerPosting.post!(organization: organization, source: record, kind: "settlement", entry_date: record.date, cash_date: record.date,
                         memo: "Settled #{record.date.strftime('%b %-d, %Y')}", lines: lines)
   rescue StandardError => e
@@ -32,17 +32,6 @@ class SettlementPoster
   def self.unpost!(record)
     LedgerPosting.unpost!(source: record, kind: "settlement")
     unpay_tips!(record)
-  end
-
-  def self.door_cash_lines(day)
-    diff = day.door_cash.over_short_cents.to_i
-    if diff.negative?
-      [ { account: :other_expenses, amount_cents: -diff, memo: "Door cash short" }, { account: :door_cash, amount_cents: diff } ]
-    elsif diff.positive?
-      [ { account: :door_cash, amount_cents: diff }, { account: :other_income, amount_cents: -diff, memo: "Door cash over" } ]
-    else
-      []
-    end
   end
 
   def self.register_lines(day)
@@ -91,24 +80,45 @@ class SettlementPoster
   end
 
   # Reopening takes back a share that Pay People already put on a run, while
-  # that run is still a draft; once a run is funded the money has moved and
-  # the share stands. Shares still waiting on Pay People just stop waiting.
+  # that run is still a draft. Once a run is submitted the money stays paid:
+  # the share lets go of its line and remembers what it paid, so the split
+  # can change and the difference follows the person (TipShare#keep_paid!).
+  # Shares still waiting on Pay People just stop waiting. Cash shares were
+  # handed over at close and stay as recorded.
+  # Answers the names of the people whose tips came off the draft.
   def self.unpay_tips!(record)
-    record.tip_shares.where.not(payout_contribution_id: nil).includes(payout_contribution: %i[payout_batch payout_batch_item]).each do |share|
+    names = []
+    record.tip_shares.where.not(payout_contribution_id: nil).includes(:person, payout_contribution: %i[payout_batch payout_batch_item]).each do |share|
       contribution = share.payout_contribution
-      next unless contribution&.payout_batch&.open?
+      unless contribution&.payout_batch&.open?
+        share.keep_paid! if share.payout? && contribution
+        next
+      end
 
       item = contribution.payout_batch_item
       batch = contribution.payout_batch
+      # What this share put on the line: all of it, or only the difference
+      # when the day had been paid once before.
+      riding = share.owed_cents
       share.update!(payout_contribution: nil)
-      contribution.destroy!
-      item.reload
-      if item.payout_contributions.none?
-        item.destroy!
-      else
+      left = contribution.amount_cents - riding
+      if left != 0
+        # A week's tips are one line: other days ride it too, and only this
+        # day's share comes off (its day leaves the line's worksheet).
+        sheet = contribution.worksheet_entries.dup
+        at = sheet.index { |entry| entry["date"].to_s == share.day_label && entry["amount_cents"].to_i == riding } || sheet.index { |entry| entry["date"].to_s == share.day_label }
+        sheet.delete_at(at) if at
+        contribution.update!(amount_cents: left, worksheet: sheet.presence)
+        contribution.payout_ledger_entries.where(entry_type: "earning").update_all(amount_cents: left, updated_at: Time.current)
         item.settle_amount!
+        batch.recalculate_total!
+      else
+        # The line's own removal re-totals the person's item and the run,
+        # and drops the item when nothing payable is left on it.
+        contribution.destroy!
       end
-      batch.recalculate_total!
+      names << share.person.name
     end
+    names
   end
 end

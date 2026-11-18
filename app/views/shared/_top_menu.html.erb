@@ -1,12 +1,14 @@
 <%# Default links to empty array if not provided %>
 <% links = local_assigns.fetch(:links, []) %>
 <% extra_buttons = local_assigns[:extra_buttons] %>
+<%# links_class: classes for the row of action buttons, for a page that
+    offers them another way on a phone ("max-sm:hidden" on Scheduling). %>
 
 <% if turbo_native_app? %>
   <%# Native: title + breadcrumbs are shown by the native nav bar.
       Only render action buttons, and only when there are some. %>
   <% if links.count > 0 || extra_buttons.present? %>
-    <div class="flex gap-2 flex-wrap mb-4">
+    <div class="flex gap-2 flex-wrap mb-4 <%= local_assigns[:links_class] %>">
       <%= extra_buttons %>
       <% links.each do |link| %>
         <%
@@ -96,7 +98,7 @@
     </div>
 
     <% if links.count > 0 || extra_buttons.present? %>
-      <div class="flex gap-2 flex-wrap flex-shrink-0">
+      <div class="flex gap-2 flex-wrap flex-shrink-0 <%= local_assigns[:links_class] %>">
         <%= extra_buttons %>
         <% links.each do |link| %>
           <%

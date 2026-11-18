@@ -298,7 +298,7 @@ module My
     end
 
     def inactive
-      return unless @audition_cycle.timeline_status == :open && @audition_cycle.form_reviewed && params[:force].blank?
+      return unless @audition_cycle.accepting_requests? && params[:force].blank?
 
       redirect_to submit_audition_request_path(token: @audition_cycle.token), status: :see_other
     end
@@ -316,7 +316,7 @@ module My
     end
 
     def ensure_audition_cycle_is_open
-      return if @audition_cycle.timeline_status == :open && @audition_cycle.form_reviewed
+      return if @audition_cycle.accepting_requests?
 
       redirect_to my_submit_audition_request_inactive_path(token: @audition_cycle.token), status: :see_other
     end

@@ -25,6 +25,10 @@
 #   ticket_exchange_out → negative  (a moved order's money leaving its old show)
 #   ticket_exchange_in  → positive  (the same money joining the new show)
 #   top_up              → positive  (money the theater added from its bank)
+#   partner_payment_in  → positive  (a contract share another organization's
+#                                    payout run paid into this one's balance;
+#                                    the payer's side is that run item's
+#                                    ordinary `transfer`)
 #
 # Balances are always derived by summing — never cached. Posts are idempotent
 # on (source, entry_type), mirroring PayoutLedgerEntry.
@@ -32,7 +36,7 @@ class OrgCashEntry < ApplicationRecord
   ENTRY_TYPES = %w[course_registration contract_payment invoice_payment funding transfer
                    refund transfer_reversal opening_balance adjustment
                    ticket_sale ticket_refund ticket_dispute ticket_exchange_out ticket_exchange_in
-                   top_up pass_sale pass_refund membership_sale].freeze
+                   top_up pass_sale pass_refund partner_payment_in membership_sale].freeze
 
   # Namespace for pg_advisory_xact_lock so our (ns, org_id) pairs can't collide
   # with any other advisory-lock user in the app.

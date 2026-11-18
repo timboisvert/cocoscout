@@ -60,6 +60,10 @@ namespace :routes do
           # Home (V1.1): HomeHelper#home_day_path / #home_week_path build
           # manage_path with the day or week (and the 3/7-day choice) set.
           next if %w[home_day_path home_week_path].include?(helper_name)
+          # A production's page: ProductionPageHelper#production_page_needs_path
+          # picks the real route a Needs doing line goes to (a vacancy, the
+          # auditions, a show change).
+          next if helper_name == "production_page_needs_path"
 
           unless valid_helpers.include?(helper_name)
             relative_path = Pathname.new(file).relative_path_from(Rails.root)

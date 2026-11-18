@@ -1,0 +1,77 @@
+<%# Unlink, from the contractor's side (Manage::ConnectionsController): what
+    it ends and what it doesn't, the smaller things that may be what they're
+    after, and whether the coming dates stay. From the controller:
+    @connection, @coming (its coming dates here), @with_people (how many of
+    those have anyone cast or scheduled). %>
+<% content_for :title, "Unlink" %>
+<%
+  seller = @connection.organization.name
+  mine = Current.organization.name
+  production_name = @connection.production_name
+  choice_class = "flex items-start p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-400 transition-colors has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 bg-white"
+  radio_class = "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500"
+%>
+<div class="w-full mb-10 max-w-3xl">
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Connections", manage_connections_path ] ], text: "Unlink from #{seller}", links: [] } %>
+
+  <p class="text-gray-600">
+    Unlinking ends the sharing between <%= mine %> and <%= seller %> for this contract. It doesn't end the contract itself, and it doesn't
+    undo anything that has already happened.
+  </p>
+
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mt-6">
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "You might not need to unlink" %>
+    <ul class="p-4 space-y-3 text-sm text-gray-700">
+      <li>If you'd like fewer people in <%= mine %> to see ticket sales, you can <%= link_to "change who sees them", manage_connections_path, class: "text-pink-600 hover:text-pink-700 underline" %> without unlinking.</li>
+      <li>If one of the dates has the wrong time, the contractor can ask <%= seller %> to change it with Request date/time change on <%= link_to "My Contracts", my_contracts_path, class: "text-pink-600 hover:text-pink-700 underline" %>.</li>
+    </ul>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mt-4">
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "What happens when you unlink" %>
+    <ul class="p-4 space-y-3 text-sm text-gray-700">
+      <li>You'll stop seeing <%= possessive(seller) %> ticket sales in <%= production_name %>.</li>
+      <li>The dates will no longer follow <%= seller %>. If <%= seller %> moves or cancels one after this, yours won't change, so you'll need to keep an eye on them yourself.</li>
+      <li>Dates that have already happened stay in <%= production_name %>, with their cast and everything else on them.</li>
+      <li><%= seller %> will be notified.</li>
+      <li>You can connect again later from My Contracts, and the dates you kept will be matched up with the contract again.</li>
+    </ul>
+  </div>
+
+  <%= form_with url: manage_unlink_connection_path(@connection), method: :post, local: true, class: "mt-6" do %>
+    <% if @coming.any? %>
+      <fieldset>
+        <legend class="font-semibold text-gray-900">What should happen to the <%= pluralize(@coming.size, "date") %> still to come?</legend>
+        <div class="space-y-2 mt-2">
+          <label class="<%= choice_class %>">
+            <input type="radio" name="dates" value="keep" checked class="<%= radio_class %>">
+            <div class="ml-3">
+              <div class="text-sm font-medium text-gray-900">Keep <%= @coming.size == 1 ? "it" : "them" %> in <%= production_name %></div>
+              <div class="text-sm text-gray-600 mt-0.5"><%= @coming.size == 1 ? "It stays as your own date, with its" : "They stay as your own dates, with their" %> cast and call times. From now on you'll keep <%= @coming.size == 1 ? "its time" : "their times" %> right yourself.</div>
+            </div>
+          </label>
+          <label class="<%= choice_class %>">
+            <input type="radio" name="dates" value="remove" class="<%= radio_class %>">
+            <div class="ml-3">
+              <div class="text-sm font-medium text-gray-900">Remove <%= @coming.size == 1 ? "it" : "them" %></div>
+              <div class="text-sm text-gray-600 mt-0.5">
+                <% if @with_people.zero? %>
+                  We'll delete <%= @coming.size == 1 ? "it" : "them" %> from <%= production_name %>. Nobody is cast in <%= @coming.size == 1 ? "it" : "any of them" %> or scheduled to work <%= @coming.size == 1 ? "it" : "them" %>.
+                <% elsif @with_people == @coming.size %>
+                  <%= @coming.size == 1 ? "This date has" : "All of these dates have" %> people cast or scheduled, so <%= @coming.size == 1 ? "it" : "they" %> will stay. You can cancel <%= @coming.size == 1 ? "it" : "them" %> yourself afterwards, so that the people on <%= @coming.size == 1 ? "it" : "them" %> are notified.
+                <% else %>
+                  We'll delete the <%= pluralize(@coming.size - @with_people, "date") %> that nobody is on. The other <%= @with_people == 1 ? "one has" : "#{@with_people} have" %> people cast or scheduled, so <%= @with_people == 1 ? "it" : "they" %> will stay, and you can cancel <%= @with_people == 1 ? "it" : "them" %> yourself afterwards so that those people are notified.
+                <% end %>
+              </div>
+            </div>
+          </label>
+        </div>
+      </fieldset>
+    <% end %>
+
+    <div class="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
+      <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", path: manage_connections_path %>
+      <%= render "shared/button", text: "Unlink", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+</div>

@@ -40,16 +40,20 @@ RSpec.describe "Manage ticketing settings", type: :request do
       get manage_ticketing_path
       expect(response).to have_http_status(:ok)
 
+      # Selling tickets: the switch itself, and Save.
       get manage_ticketing_settings_section_path(section: "box_office")
-      expect(response.body).to include("Open your box office?", manage_ticketing_open_box_office_path)
+      expect(response.body).to include("Selling tickets", "Your box office is closed.", "ticketing_profile[enabled]")
+      expect(response.body).not_to include("data-live-dot")
       expect(TicketingProfile.for(org).enabled?).to be(false)
       # A Pro organization's money already pools, box office open or not.
       expect(CocoScoutBalance.pooled?(org)).to be(true)
 
-      post manage_ticketing_open_box_office_path
-      expect(response).to redirect_to(manage_ticketing_path)
+      # Switching it on and saving opens it; the box then shows it's live.
+      patch manage_ticketing_settings_path, params: { ticketing_profile: { enabled: "1" } }
       expect(TicketingProfile.for(org).reload.enabled?).to be(true)
       expect(CocoScoutBalance.pooled?(org)).to be(true)
+      get manage_ticketing_settings_section_path(section: "box_office")
+      expect(response.body).to include("data-live-dot", "Your box office is open.")
 
       # Closing it again isn't theirs to do.
       patch manage_ticketing_settings_path, params: { ticketing_profile: { enabled: "0", default_fee_mode: "buyer" } }
@@ -94,9 +98,22 @@ RSpec.describe "Manage ticketing settings", type: :request do
                "support_email" => "box@starsandgarters.com", "enabled" => true)
     end
 
+    # Cash at the door (Tim, 2026-11-13): the same as any other sale until
+    # the box office says cash holds its tax.
+    it "saves how cash is taxed, the same as any other sale by default" do
+      get manage_ticketing_settings_section_path(section: "tax")
+      doc = Nokogiri::HTML(response.body)
+      expect(doc.at_css("[data-cash-tax] input[checked]")["value"]).to eq("same")
+
+      # The fees box saves through the Basic info action and comes back to its own tab.
+      patch manage_ticketing_settings_path, params: { from: "tax", ticketing_profile: { cash_tax: "included" } }
+      expect(response).to redirect_to(manage_ticketing_settings_section_path(section: "tax"))
+      expect(TicketingProfile.for(org).reload.cash_tax).to eq("included")
+    end
+
     it "sets how many days ahead buyers get their reminder, or turns it off" do
-      get manage_ticketing_settings_section_path(section: "box_office")
-      expect(response.body).to include("Reminder email", "1 day before the show", "30 days before the show")
+      get manage_ticketing_settings_section_path(section: "notifications")
+      expect(response.body).to include("Buyer emails", "Reminder email", "1 day before the show", "30 days before the show")
 
       patch manage_ticketing_settings_path, params: { ticketing_profile: { reminder_days_before: "3" } }
       expect(org.reload.ticketing_profile.reminder_days_before).to eq(3)
@@ -108,7 +125,7 @@ RSpec.describe "Manage ticketing settings", type: :request do
 
     it "attaches PDF tickets to the confirmation only once it's turned on" do
       expect(TicketingProfile.for(org).attach_pdf_tickets?).to be(false)
-      get manage_ticketing_settings_section_path(section: "box_office")
+      get manage_ticketing_settings_section_path(section: "notifications")
       expect(response.body).to include("Attach PDF tickets", "ticketing_profile[attach_pdf_tickets]")
 
       patch manage_ticketing_settings_path, params: { ticketing_profile: { attach_pdf_tickets: "1" } }
@@ -118,7 +135,7 @@ RSpec.describe "Manage ticketing settings", type: :request do
     end
 
     it "explains the fee switch with a real $20 ticket; the refund policy's fees are a toggle on its own tab" do
-      get manage_ticketing_settings_section_path(section: "box_office")
+      get manage_ticketing_settings_section_path(section: "tax")
       expect(response.body).to include("$21.42").and include("$18.62")
       expect(response.body).not_to include("refunds_after_show", "refund_fees")
       # Saved settings are toggles, never plain checkboxes (Tim, 2026-10-06).
@@ -220,18 +237,22 @@ RSpec.describe "Manage ticketing settings", type: :request do
       fresh = -> { TicketingNotifications.new(Organization.find(org.id)) }
       patch manage_ticketing_settings_notifications_path, params: { recipient: "user:#{superadmin.id}", plan: "everything", kinds: [ "" ] }
       expect(response).to redirect_to(manage_ticketing_settings_section_path(section: "notifications"))
-      expect(flash[:notice]).to include("gets everything: 15 emails")
-      expect(fresh.call.emails_for("sale")).to eq([ superadmin.email_address ])
+      # A manager's sales as they happen are notifications, not emails (Tim, 2026-11-09).
+      expect(flash[:notice]).to include("gets everything: 11 emails and 4 kinds as notifications.")
+      expect(fresh.call.emails_for("sale")).to eq([])
+      expect(fresh.call.emails_for("daily_summary")).to eq([ superadmin.email_address ])
+      expect(page.at_css("[data-recipient='user:#{superadmin.id}']").text.squish).to include("Everything · 11 emails · 4 notifications")
 
       patch manage_ticketing_settings_notifications_path,
             params: { recipient: "new", email: "box@starsandgarters.com", plan: "custom", kinds: [ "", "sale", "door_sale" ] }
       expect(flash[:notice]).to eq("Saved. box@starsandgarters.com gets their own pick: 2 emails.")
-      expect(fresh.call.emails_for("door_sale")).to contain_exactly(superadmin.email_address, "box@starsandgarters.com")
+      # An address with no account still gets each sale by email: it's all it can get.
+      expect(fresh.call.emails_for("door_sale")).to contain_exactly("box@starsandgarters.com")
       expect(page.at_css("[data-recipient='email:box@starsandgarters.com']").text.squish).to include("Their own pick · 2 emails", "Not a manager here")
 
       patch manage_ticketing_settings_notifications_path, params: { recipient: "email:box@starsandgarters.com", remove: "1", plan: "custom" }
       expect(flash[:notice]).to eq("box@starsandgarters.com won't get Ticketing email any more.")
-      expect(fresh.call.emails_for("sale")).to eq([ superadmin.email_address ])
+      expect(fresh.call.emails_for("sale")).to eq([])
 
       patch manage_ticketing_settings_notifications_path, params: { recipient: "user:#{superadmin.id}", plan: "nothing" }
       expect(flash[:notice]).to end_with("gets no Ticketing email.")

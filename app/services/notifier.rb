@@ -25,7 +25,9 @@ class Notifier
   # for a template in NotificationGroups::TEMPLATES: the words are the
   # template's (push text, else subject); body keeps the full message for the
   # notification's own page and the digest. path is the body's first link to
-  # this site, else nil (the notification opens its own page). digest: the
+  # this site, else nil (the notification opens its own page). A notice in
+  # NotificationGroups::OPENS_ITS_WORDS always opens its own page: its link
+  # goes somewhere that says none of what it says. digest: the
   # unread digest owes it an email, as it did when it was a message.
   # push: false when a Message carries the manager's words and pushes itself
   # (one push per notice).
@@ -34,7 +36,7 @@ class Notifier
     html = body.respond_to?(:to_trix_html) ? body.to_trix_html : body.to_s
     notification = user.notifications.create!(
       category: group.key, kind: kind.to_s, title: (push_body.presence || subject).to_s.squish.truncate(240),
-      body: html.presence, path: first_link_path(html), organization: organization,
+      body: html.presence, path: (NotificationGroups.opens_its_words?(kind) ? nil : first_link_path(html)), organization: organization,
       digest: digest && user.message_digest_enabled? && user.notification_email?(group.key)
     )
     push(notification) if push && user.notification_push?(group.key)
@@ -70,12 +72,14 @@ class Notifier
     )
   end
 
-  # Links arrive as full URLs from email variables; the list keeps the path.
+  # Links arrive as full URLs from email variables; the list keeps the path
+  # (and the anchor, which lands a shift notice on its row in My Shifts).
   def self.local_path(url)
     return nil if url.blank?
 
     uri = URI.parse(url.to_s)
-    [ uri.path.presence || "/", uri.query ].compact.join("?")
+    path = [ uri.path.presence || "/", uri.query ].compact.join("?")
+    uri.fragment.present? ? "#{path}##{uri.fragment}" : path
   rescue URI::InvalidURIError
     nil
   end

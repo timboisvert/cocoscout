@@ -76,8 +76,12 @@
       <h2 class="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">Their bills from CocoScout</h2>
       <% usage = UsageMonth.new(@org) %>
       <p class="px-4 pt-3 text-sm text-gray-700">
-        This month so far: <%= pluralize(usage.staff.size, "staff member") %> and <%= usage.others.size %> others paid<%= ", #{pluralize(usage.extra_debits, 'extra bank debit')}" if usage.extra_debits.positive? %><%= ", #{usd(usage.withdrawn_cents)} withdrawn" if usage.withdrawn_cents.positive? %><% if @org.bills_usage? %>,
-        <%= usd(usage.total_cents) %> on next month's usage bill<% else %> (not billed: <%= @org.on_paid_plan? ? "usage comped" : "not on Pro" %>)<% end %>.
+        This month so far: <%= pluralize(usage.staff.size, "staff member") %> and <%= usage.others.size %> others paid<%= ", #{pluralize(usage.extra_debits, 'extra bank debit')}" if usage.extra_debits.positive? %><%= ", #{usd(usage.withdrawn_cents)} withdrawn" if usage.withdrawn_cents.positive? %><% unless @org.bills_usage? %> (not billed: <%= @org.on_paid_plan? ? "usage comped" : "not on Pro" %>)<% end %>.
+        <%# The bill's total carries Pro too, when Pro is paid on it: say which part is which (Tim, 2026-11-14: a prorated Pro read as usage). %>
+        <% billed_usage_cents = @org.bills_usage? ? usage.usage_cents : 0 %>
+        <% if @org.bills_usage? || usage.pro_cents.positive? %>
+          Next month's bill so far: <%= usd(usage.pro_cents + billed_usage_cents) %><% if usage.pro_cents.positive? %>, Pro <%= usd(usage.pro_cents) %><%= " for part of the month" if usage.pro_cents < SubscriptionPlan::PRO_MONTHLY_CENTS %> and usage <%= usd(billed_usage_cents) %><% end %>.
+        <% end %>
       </p>
       <% invoices = s.invoices.limit(24) %>
       <% if invoices.empty? %>

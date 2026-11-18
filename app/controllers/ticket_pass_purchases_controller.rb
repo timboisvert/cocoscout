@@ -68,6 +68,7 @@ class TicketPassPurchasesController < ApplicationController
 
     @pass = @holdings.first.ticket_pass
     @organization = @purchase.organization
+    use_time_zone_of(@organization)
     @ticketing_profile = TicketingProfile.for(@organization)
   end
 

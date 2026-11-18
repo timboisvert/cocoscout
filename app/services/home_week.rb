@@ -25,14 +25,26 @@ class HomeWeek
   Signups = Data.define(:instance, :count, :capacity, :queued) do
     def form = instance.sign_up_form
   end
-  Tickets = Data.define(:listing, :stats, :phase) do
+  # outside: what other sites sold for this date, [[site, tickets, cents]]
+  # (Ticketing::Inventory.outside_by_site_for), loaded once for the week.
+  Tickets = Data.define(:listing, :stats, :phase, :outside) do
     def draft? = listing.status == "draft"
     def canceled? = listing.status == "canceled" || listing.show.canceled
     def live? = phase.in?(%i[presale door])
     def sold_out? = stats.remaining == 0
+
+    # Where it sold, a line per place with its money, CocoScout first; empty
+    # when it only sold here (the show page's Tickets card reads the same).
+    def places = outside.any? ? [ [ "CocoScout", stats.paid_sold, stats.gross_cents ] ] + outside : []
+    # Ticket money here and on other sites (what was typed for those).
+    def sales_cents = stats.gross_cents + outside.sum { |_, _, cents| cents }
+    # A site with tickets noted but no money entered yet: its sales are still to come.
+    def unreported?(site) = outside.any? { |name, count, cents| name == site && count.positive? && cents.zero? }
+    def so_far? = outside.any? { |_, count, cents| count.positive? && cents.zero? }
   end
-  # missing: the per-show roles Role Call expects on this show that no shift
-  # covers (a show's own; always empty on a day's row).
+  # missing: what Role Call asks of this show that has no shift, by name: its
+  # services, then the every-show roles (a show's own; always empty on a
+  # day's row).
   Staffing = Data.define(:shifts, :staffed, :total, :declined, :day_has_shifts, :missing) do
     def none? = shifts.empty?
     def starts_at = shifts.map(&:starts_at).min
@@ -46,16 +58,31 @@ class HomeWeek
     def complete? = uncast.zero? && vacancies.empty?
   end
 
+  # A day's audition sessions for one audition cycle, as one row (Tim,
+  # 2026-11-12: a Saturday of nine sessions showed "Nothing yet"). Nine
+  # fifteen-minute slots are one thing on the calendar, not nine.
+  Auditions = Data.define(:cycle, :sessions) do
+    def production = cycle.production
+    def starts_at = sessions.map(&:start_at).min
+    def ends_at = sessions.filter_map(&:end_at).max
+    def booked = sessions.sum { |s| s.auditions.size }
+    def location_names = sessions.filter_map { |s| s.location&.name }.uniq
+  end
+
   attr_reader :days, :shows, :shifts, :week_finalized, :declined_this_range
 
-  def initialize(organization:, user:, days:, shows:, show_cast:, pro_manager:)
+  # productions: the ones the person can see; their audition sessions in the
+  # range get rows of their own. Left out (a production's own page), none do.
+  def initialize(organization:, user:, days:, shows:, show_cast:, pro_manager:, productions: nil)
     @organization = organization
     @user = user
     @days = days
     @shows = shows
     @show_cast = show_cast
     @pro_manager = pro_manager
+    @productions = productions
     load_shifts
+    load_auditions
     load_listings
     load_signups
     load_cast
@@ -78,6 +105,11 @@ class HomeWeek
   end
 
   def shows_on(day) = rows_by_day.fetch(day, []).map(&:show)
+
+  # One show's row, whether or not its day is in the range: a production's
+  # page lists its next dates however far off they are (ProductionPage). A
+  # show outside the range gets no staffing, since its shifts weren't loaded.
+  def row(show) = row_for(show)
 
   # { Date => [Staffing] } for the shifts no show row counts: the roles that
   # aren't per show (bartender, house staff, security work the whole night,
@@ -103,15 +135,20 @@ class HomeWeek
     end
   end
 
-  # The day's show rows and staffing rows, in order of start time.
+  # { Date => [Auditions] }: each audition cycle's sessions that day.
+  def audition_days = @audition_days
+
+  # The day's show rows, staffing rows and audition rows, in order of start
+  # time.
   def day_entries(day)
     shows = rows_by_day.fetch(day, []).map { |row| [ row.show.date_and_time, 0, row ] }
     staffing = staffing_days.fetch(day, []).map { |s| [ s.starts_at, 1, s ] }
-    (staffing + shows).sort_by { |at, kind, _| [ at, -kind ] }.map(&:last)
+    auditions = audition_days.fetch(day, []).map { |a| [ a.starts_at, 0, a ] }
+    (staffing + shows + auditions).sort_by { |at, kind, _| [ at, -kind ] }.map(&:last)
   end
 
-  # A day with a show, or with staffing.
-  def busy?(day) = rows_by_day[day].any? || staffing_days.key?(day)
+  # A day with a show, with staffing, or with auditions.
+  def busy?(day) = rows_by_day[day].any? || staffing_days.key?(day) || audition_days.key?(day)
 
   # The range's slots: staffed of needed, and how many can't make it.
   def week_stats
@@ -136,6 +173,24 @@ class HomeWeek
   def row_for(show)
     Row.new(show: show, signups: signups_for(show), tickets: tickets_for(show), staffing: staffing_for(show), cast: cast_for(show),
             told: told_for(show))
+  end
+
+  # --- Auditions ----------------------------------------------------------
+
+  def load_auditions
+    ids = @productions&.map(&:id)
+    sessions = if ids.present?
+      AuditionSession.joins(:audition_cycle)
+                     .where(audition_cycles: { production_id: ids })
+                     .where(start_at: days.first.beginning_of_day..days.last.end_of_day)
+                     .includes(:location, :auditions, audition_cycle: :production)
+                     .order(:start_at).to_a
+    else
+      []
+    end
+    @audition_days = sessions.group_by { |s| s.start_at.to_date }.transform_values do |on_day|
+      on_day.group_by(&:audition_cycle).map { |cycle, rows| Auditions.new(cycle: cycle, sessions: rows) }
+    end
   end
 
   # --- Sign-ups -----------------------------------------------------------
@@ -169,6 +224,7 @@ class HomeWeek
     end
     @listing_by_show = @listings.index_by(&:show_id)
     @stats = @listings.any? ? Ticketing::ListingStats.for(@listings) : {}
+    @outside = @listings.any? ? Ticketing::Inventory.outside_by_site_for(@listings.map(&:id)) : {}
   end
 
   def tickets_for(show)
@@ -177,7 +233,7 @@ class HomeWeek
     listing = @listing_by_show[show.id]
     return nil unless listing
 
-    Tickets.new(listing: listing, stats: @stats.fetch(listing.id), phase: DoorTonight.phase(listing))
+    Tickets.new(listing: listing, stats: @stats.fetch(listing.id), phase: DoorTonight.phase(listing), outside: @outside.fetch(listing.id, []))
   end
 
   # --- Staffing -----------------------------------------------------------
@@ -196,6 +252,10 @@ class HomeWeek
     @week_finalized = staffing_on? && @organization.staffing_finalizations.where(week_start: days.map(&:beginning_of_week).uniq)
                                                    .where.not(finalized_at: nil).exists?
     @declined_this_range = @shifts.flat_map { |s| s.shift_assignments.select(&:declined?) }
+    # Role Call's rules, the ones Scheduling flags a show by (RoleCall).
+    @role_call = if staffing_on? && @organization.alert_uncovered_show_roles?
+      RoleCall.new(organization: @organization, shows: @shows, services: @organization.services_available_to?(@user))
+    end
     # The day Staffing's week puts each shift on (WeekLoaders#staffing_day_for):
     # its show's or rental's day when that's in range, else its own start.
     @shifts_by_day = @shifts.group_by do |s|
@@ -208,32 +268,42 @@ class HomeWeek
   # tied to that show, or tied to none and overlapping it. Roles for the
   # whole night go on the day's own row (staffing_days), never on whichever
   # show their shift happens to be tied to (Tim, 2026-10-30). No chip at all
-  # when the organization has no per-show roles.
+  # for a show with no shift of its own that nothing is asked of: the
+  # organization has no per-show roles, or Role Call is on and wants nothing
+  # more here (a contract show running its own booth, a show excused from
+  # the role). Without Role Call such a show reads "No shifts".
   def staffing_for(show)
-    return nil unless staffing_on? && @per_show_roles.any?
+    return nil unless staffing_on?
     return nil if show.canceled # its row says whether the staff were told (told_for)
+    return nil unless days.include?(show.date_and_time.to_date) # its shifts weren't loaded: say nothing
 
     day_shifts = (@shifts_by_day[show.date_and_time.to_date] || []).select { |s| s.house_role&.show_specific? }
-    mine = day_shifts.select do |shift|
-      covered = shift.covered_shows
-      covered.any? ? covered.any? { |c| c.id == show.id } : (shift.starts_at < show.ends_at && shift.ends_at > show.date_and_time)
-    end
+    mine = day_shifts.select { |shift| RoleCall.shift_for?(shift, show) }
+    missing = missing_for(show, mine)
+    return nil if mine.empty? && missing.empty? && (@role_call || @per_show_roles.empty?)
+
     stats = slot_stats(mine)
     Staffing.new(shifts: mine, staffed: stats[:staffed], total: stats[:total], declined: stats[:declined],
-                 day_has_shifts: day_shifts.any?, missing: missing_roles(show, mine))
+                 day_has_shifts: day_shifts.any?, missing: missing)
   end
 
-  # Role Call's roles for this show (when the organization has Role Call on)
-  # that no shift of the show covers, by name. Like Staffing's Role Call: a
-  # role scoped to another venue, or excused for this show, isn't missing.
-  def missing_roles(show, mine)
-    return [] unless @organization.alert_uncovered_show_roles?
+  # What Role Call asks of this show (when the organization has it on) that
+  # has no shift yet, by name: each service the show needs, then the
+  # every-show roles (RoleCall has the rules, the same ones Scheduling flags
+  # a show by: a contract show isn't asked for a role its services would
+  # carry but don't include). A role excused for this show isn't missing. A
+  # shift nobody's on yet isn't missing either: it reads "0/1".
+  def missing_for(show, mine)
+    return [] unless @role_call
 
-    covered = mine.flat_map { |s| [ s.house_role_id ] + s.shift_additional_roles.select { |r| r.show_id.nil? || r.show_id == show.id }.map(&:house_role_id) }.to_set
+    services = @role_call.needs(show).select(&:needed?)
+                         .reject { |need| @shifts.any? { |shift| RoleCall.on_service?(shift, show, need.service) } }
+                         .map { |need| need.service.name }
+    covered = mine.flat_map { |shift| RoleCall.role_ids_on(shift, show) }.to_set
     exempt = show.staffing_coverage_exempt_role_ids
-    @per_show_roles.select { |r| r.include_in_role_call && (r.location_id.nil? || r.location_id == show.location_id) }
-                   .reject { |r| covered.include?(r.id) || exempt.include?(r.id) }
-                   .map(&:name)
+    roles = @role_call.roles(show).reject { |role| covered.include?(role.id) || exempt.include?(role.id) }.map(&:name)
+    # A service and an every-show role can share a name (Booth Tech); say it once.
+    (services + roles).uniq
   end
 
   # Shifts in runs whose times overlap, each run in start order.

@@ -99,6 +99,35 @@ RSpec.describe MoneyTodoService do
     end
   end
 
+  # A contract payment for a show isn't due until the show's day is settled
+  # (Tim, 2026-11-12): Settle up is what puts it on the run.
+  describe "contract payments for a day Settle up hasn't settled" do
+    let!(:contract) { create(:contract, :active, organization: org, production: production, contractor_name: "Weirdos") }
+    let!(:show) { create(:show, production: production, date_and_time: 2.hours.ago) }
+    let!(:payment) do
+      create(:contract_payment, contract: contract, show: show, direction: "outgoing", amount: 100,
+                                description: "Guarantee", due_date: Date.current)
+    end
+
+    before { org.update!(settle_up_starts_on: 1.month.ago.to_date) }
+
+    it "is upcoming, not due now, until the day is settled" do
+      item = service.payouts.items.find { |i| i[:kind] == :contract }
+      expect(item[:amounts][:to_pay].to_f).to eq(0.0)
+      expect(item[:amounts][:upcoming]).to eq(100.0)
+      expect(service.payouts.due_soon_amount.to_f).to eq(0.0)
+
+      SettlementDay.create!(organization: org, date: SettlementDay.day_for(org, show.date_and_time)).settle!(by: owner)
+      settled = service.payouts.items.find { |i| i[:kind] == :contract }
+      expect(settled[:amounts][:to_pay]).to eq(100.0)
+    end
+
+    it "is due as before for an organization that doesn't use Settle up" do
+      org.update!(settle_up_starts_on: nil)
+      expect(service.payouts.due_soon_amount).to eq(100.0)
+    end
+  end
+
   describe "shows awaiting financials" do
     it "counts a started show with no financials" do
       show = create(:show, production: production, event_type: :show, date_and_time: 2.days.ago)

@@ -1,0 +1,79 @@
+<%# On a review step that takes a service off dates: who's scheduled to do
+    that service there. Applying takes those shifts off the schedule, so the
+    confirm form carries a box saying so (service_staff_acknowledge). Shifts
+    that do the service but stay (already started, doing another role too,
+    there for another show) are listed with why.
+
+    Locals:
+      impact — ContractServiceStaffImpact for the change
+      lead   — when the shifts come off, as the start of a sentence
+               ("Applying this change") %>
+<% lead = local_assigns[:lead].presence || "Applying this change" %>
+<% hours = ->(shift) { ShiftWords.shift_hours(shift) } %>
+<% if impact.any? %>
+  <div class="mb-6" data-service-staff-impact>
+    <% if impact.removals.any? %>
+      <h4 class="text-sm font-semibold text-gray-900 mb-1">
+        <%= impact.people? ? "#{pluralize(impact.people_count, "person")} scheduled for what you're removing" : "Shifts for what you're removing" %>
+      </h4>
+      <p class="text-sm text-gray-600 mb-3">
+        <%= lead %> takes <%= impact.removals.one? ? "this shift" : "these shifts" %> off the schedule.
+        <% if impact.people? %>
+          Anyone who could already see their shift is told they're no longer scheduled the next time you send that week's updates from Scheduling.
+        <% end %>
+      </p>
+      <div class="space-y-2">
+        <% impact.removals_by_day.each do |day, lines| %>
+          <div class="p-4 bg-white border border-gray-200 rounded-lg" data-service-staff-date="<%= day.iso8601 %>">
+            <div class="font-medium text-gray-900 mb-2"><%= day.strftime("%a, %b %-d") %></div>
+            <div class="flex items-start gap-2">
+              <%= icon("users", class: "w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5") %>
+              <div class="text-sm text-gray-700 min-w-0">
+                <ul class="space-y-0.5">
+                  <% lines.each do |line| %>
+                    <% if line.people.any? %>
+                      <% line.people.each do |person| %>
+                        <li>
+                          <span class="text-gray-900"><%= person.name %></span>
+                          <span class="text-gray-500">· <%= line.role %>, <%= hours.(line.shift) %></span>
+                        </li>
+                      <% end %>
+                    <% else %>
+                      <li>
+                        <span class="text-gray-900">Nobody yet</span>
+                        <span class="text-gray-500">· open <%= line.role %> shift, <%= hours.(line.shift) %></span>
+                      </li>
+                    <% end %>
+                  <% end %>
+                </ul>
+                <%= link_to "Scheduling, #{day.strftime("%A, %b %-d")}", manage_staffing_scheduling_path(day: day.iso8601),
+                      class: "inline-flex items-center gap-1 text-pink-600 hover:text-pink-700 font-medium mt-1" %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if impact.kept.any? %>
+      <div class="<%= 'mt-4' if impact.removals.any? %>" data-service-staff-kept>
+        <h4 class="text-sm font-semibold text-gray-900 mb-1">Staying on the schedule</h4>
+        <p class="text-sm text-gray-600 mb-2">
+          <%= impact.kept.one? ? "This shift does" : "These shifts do" %> <%= impact.kept.flat_map(&:services).map(&:name).uniq.to_sentence %> too, and nothing changes on <%= impact.kept.one? ? "it" : "them" %>.
+          Change <%= impact.kept.one? ? "it" : "them" %> on Scheduling if you need to.
+        </p>
+        <ul class="space-y-1.5 text-sm text-gray-700">
+          <% impact.kept.each do |line| %>
+            <li>
+              <span class="text-gray-900"><%= line.people.map(&:name).to_sentence %></span>
+              <span class="text-gray-500">· <%= line.role %>, <%= line.day.strftime("%a, %b %-d") %>, <%= hours.(line.shift) %>.</span>
+              <%= line.reason %>
+              <%= link_to "Scheduling, #{line.day.strftime("%A, %b %-d")}", manage_staffing_scheduling_path(day: line.day.iso8601),
+                    class: "text-pink-600 hover:text-pink-700 font-medium whitespace-nowrap" %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+  </div>
+<% end %>

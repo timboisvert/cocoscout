@@ -42,7 +42,7 @@ module Manage
         end
         @records = { "in" => blank("in"), "out" => blank("out"), "move" => blank("move") }
         @records[@kind] = @record
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
       end
     end
 
@@ -57,7 +57,7 @@ module Manage
       if @record.update(record_params.except(:kind))
         redirect_to manage_money_record_path(@record), notice: "Changed. The earlier entry was reversed, not edited."
       else
-        render :edit, status: :unprocessable_entity
+        render :edit, status: :unprocessable_content
       end
     end
 

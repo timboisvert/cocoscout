@@ -7,7 +7,7 @@
   <div data-location-modal-target="inPersonContainer" class="space-y-4 <%= 'hidden' if @show.is_online %>">
     <div>
       <%= form.label :location_id, "Location", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
-      <%= form.collection_select :location_id, Current.organization.locations.order(:created_at), :id, :name,
+      <%= form.collection_select :location_id, Current.organization.locations.pickable(@show.location_id).order(:created_at), :id, :name,
             { prompt: "Select a location" },
             { class: "#{input_class} #{'!border-pink-500' if @show.errors[:location_id].any?}",
               data: { "location-modal-target": "locationSelect", action: "change->location-modal#handleLocationChange" } } %>

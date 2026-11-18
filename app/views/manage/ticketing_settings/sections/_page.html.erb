@@ -7,13 +7,18 @@
   ]
   wide = profile.safe_wide_image_variant(:small)
 %>
-<%= form_with model: profile, url: manage_ticketing_settings_page_path, method: :patch do |f| %>
-  <div class="space-y-6">
-    <p class="text-sm text-gray-600">What people see at your box office link<% if profile.enabled? %>, <%= link_to tickets_box_office_url(org: profile.slug), tickets_box_office_url(org: profile.slug), class: "text-pink-600 hover:text-pink-700", target: "_blank", rel: "noopener" %><% end %>. The shows on it come from your dates on sale.</p>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="landing-page">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900">Landing page</h2>
+    <p class="text-sm text-gray-600 mt-1">What people see at your box office link<% if profile.enabled? %>, <%= link_to tickets_box_office_url(org: profile.slug), tickets_box_office_url(org: profile.slug), class: "text-pink-600 hover:text-pink-700", target: "_blank", rel: "noopener" %><% end %>. The shows on it come from your dates on sale.</p>
+  </div>
+  <%= form_with model: profile, url: manage_ticketing_settings_page_path, method: :patch do |f| %>
+    <div class="px-6 py-5 space-y-6">
+
 
     <fieldset>
       <legend class="block text-sm font-medium text-gray-700 mb-2">Layout</legend>
-      <div class="space-y-2">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <% layouts.each do |value, label, words| %>
           <label class="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer hover:border-pink-300">
             <%= f.radio_button :box_office_layout, value, class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
@@ -51,9 +56,9 @@
       <%= f.file_field :wide_image, accept: HasWideImage::WIDE_IMAGE_TYPES.join(","), class: "mt-2 block text-sm text-gray-700" %>
       <p class="text-xs text-gray-500 mt-1">A photo of your theater or your season, 16:9, JPG, PNG or WebP up to 10 MB. Shown whole, never cropped.</p>
     </div>
-
-    <div class="pt-2">
-      <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
     </div>
-  </div>
-<% end %>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
+  <% end %>
+</div>

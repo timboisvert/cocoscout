@@ -63,6 +63,12 @@
             <dd class="tabular-nums text-gray-900"><%= usd(m.owed_back_cents + m.unused_credit_cents) %></dd>
           </div>
         <% end %>
+        <% if m.outside_cost_cents.nonzero? %>
+          <div class="flex justify-between gap-4 px-4 py-2">
+            <dt class="text-gray-700">Plus costs paid from our bank, not from Stripe<p class="text-xs text-gray-500">Amazon, Claude and the rest on <%= link_to "Costs", finances_costs_path, class: "text-pink-600 hover:underline" %>: spent, but that money was never in Stripe</p></dt>
+            <dd class="tabular-nums text-gray-900"><%= usd(m.outside_cost_cents) %></dd>
+          </div>
+        <% end %>
         <% moves = m.bank_moves.to_a %>
         <details class="group">
           <summary class="flex justify-between gap-4 px-4 py-2 cursor-pointer hover:bg-gray-50">
@@ -274,33 +280,54 @@
     <%= render "shared/button", text: "Download for the CPA", variant: "secondary", size: "small", path: finances_path(period: @finances.period, format: :csv) %>
   </div>
 
-  <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+  <%# Two kinds of cost: Stripe's fees ride on payments; building and running is owed with or without one. %>
+  <% after_stripe = @finances.after_stripe_cents %>
+  <div class="mt-4 grid grid-cols-2 lg:grid-cols-5 gap-4">
     <div class="rounded-lg border border-gray-200 bg-white p-4">
       <div class="text-sm text-gray-600">Earned</div>
       <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(@finances.income_cents) %></div>
+      <p class="text-xs text-gray-500 mt-1">Fees, plans and usage</p>
     </div>
     <div class="rounded-lg border border-gray-200 bg-white p-4">
-      <div class="text-sm text-gray-600">Spent</div>
-      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(-@finances.costs_cents) %></div>
+      <div class="text-sm text-gray-600">Went on to Stripe</div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(-@finances.stripe_costs_cents) %></div>
+      <p class="text-xs text-gray-500 mt-1">Its fees on those payments; none without them</p>
+    </div>
+    <div class="rounded-lg border border-gray-200 bg-white p-4">
+      <div class="text-sm text-gray-600"><%= after_stripe.negative? ? "Short after Stripe" : "Left after Stripe" %></div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(after_stripe.abs) %></div>
+      <p class="text-xs text-gray-500 mt-1">
+        <% if @finances.income_cents.positive? && !after_stripe.negative? %><%= number_to_percentage(after_stripe * 100.0 / @finances.income_cents, precision: 0) %> of what we earned<% else %>Earned less Stripe's fees<% end %>
+      </p>
+    </div>
+    <div class="rounded-lg border border-gray-200 bg-white p-4">
+      <div class="text-sm text-gray-600">Building and running</div>
+      <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(@finances.outside_cost_cents) %></div>
+      <p class="text-xs text-gray-500 mt-1">Amazon, Claude and the like; owed with no payments at all</p>
     </div>
     <% net = @finances.net_cents %>
     <% if net.negative? %>
-      <div class="rounded-lg border border-amber-200 bg-amber-50 p-4">
+      <div class="col-span-2 lg:col-span-1 rounded-lg border border-amber-200 bg-amber-50 p-4">
         <div class="text-sm text-amber-800">Spent more than earned</div>
         <div class="text-2xl font-bold tabular-nums text-amber-900 mt-0.5"><%= usd(-net) %></div>
         <p class="text-xs text-amber-800 mt-1"><%= usd(-@finances.costs_cents) %> spent against <%= usd(@finances.income_cents) %> earned</p>
       </div>
     <% else %>
-      <div class="rounded-lg border <%= net.positive? ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-white' %> p-4">
+      <div class="col-span-2 lg:col-span-1 rounded-lg border <%= net.positive? ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-white' %> p-4">
         <div class="text-sm text-gray-600">Profit</div>
         <div class="text-2xl font-bold tabular-nums text-gray-900 mt-0.5"><%= usd(net) %></div>
-        <p class="text-xs text-gray-500 mt-1">Earned less spent</p>
+        <p class="text-xs text-gray-500 mt-1">What's left after both</p>
       </div>
     <% end %>
   </div>
 
   <%# Each stream's earnings beside what Stripe charged to bring them in. %>
   <%= render "superadmin/finances/streams", finances: @finances %>
+  <%= render "superadmin/finances/fixed_costs", finances: @finances %>
+  <% waiting = CompanyExpense.to_check.count %>
+  <% if waiting.positive? %>
+    <p class="mt-3 text-sm text-gray-600"><%= pluralize(waiting, "uploaded bill") %> <%= waiting == 1 ? "isn't" : "aren't" %> counted yet. <%= link_to "Check #{waiting == 1 ? 'it' : 'them'} on Costs", finances_costs_path, class: "text-pink-600 hover:underline" %>.</p>
+  <% end %>
 
   <%# Month by month: the twelve months, the current one so far. %>
   <div class="mt-4 rounded-lg border border-gray-200 bg-white overflow-x-auto">
@@ -311,7 +338,9 @@
           <th class="px-4 py-2">Month</th>
           <th class="px-4 py-2 text-right">Tickets</th>
           <th class="px-4 py-2 text-right">Earned</th>
-          <th class="px-4 py-2 text-right">Spent</th>
+          <th class="px-4 py-2 text-right">To Stripe</th>
+          <th class="px-4 py-2 text-right">Left after Stripe</th>
+          <th class="px-4 py-2 text-right">Building and running</th>
           <th class="px-4 py-2 text-right">Profit</th>
         </tr>
       </thead>
@@ -329,7 +358,9 @@
               <%= usd(row[:earned_cents]) %>
               <% if row[:unpaid_cents].positive? %><div class="text-xs text-gray-500"><%= usd(row[:unpaid_cents]) %> not paid yet</div><% end %>
             </td>
-            <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= usd(row[:spent_cents]) %></td>
+            <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= usd(row[:stripe_cents]) %></td>
+            <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= row[:after_stripe_cents].negative? ? "short #{usd(-row[:after_stripe_cents])}" : usd(row[:after_stripe_cents]) %></td>
+            <td class="px-4 py-2 text-right tabular-nums text-gray-700"><%= usd(row[:fixed_cents]) %></td>
             <td class="px-4 py-2 text-right tabular-nums font-medium <%= row[:kept_cents].negative? ? 'text-amber-700' : 'text-gray-900' %>">
               <%= row[:kept_cents].negative? ? "lost #{usd(-row[:kept_cents])}" : usd(row[:kept_cents]) %>
             </td>
@@ -342,12 +373,15 @@
           <td class="px-4 py-2 text-gray-900">Since we started</td>
           <td class="px-4 py-2 text-right tabular-nums text-gray-900"><%= number_with_delimiter(@monthly.sum { |row| row[:tickets] }) %></td>
           <td class="px-4 py-2 text-right tabular-nums text-gray-900"><%= usd(@monthly.sum { |row| row[:earned_cents] }) %></td>
-          <td class="px-4 py-2 text-right tabular-nums text-gray-900"><%= usd(@monthly.sum { |row| row[:spent_cents] }) %></td>
+          <td class="px-4 py-2 text-right tabular-nums text-gray-900"><%= usd(@monthly.sum { |row| row[:stripe_cents] }) %></td>
+          <% left = @monthly.sum { |row| row[:after_stripe_cents] } %>
+          <td class="px-4 py-2 text-right tabular-nums text-gray-900"><%= left.negative? ? "short #{usd(-left)}" : usd(left) %></td>
+          <td class="px-4 py-2 text-right tabular-nums text-gray-900"><%= usd(@monthly.sum { |row| row[:fixed_cents] }) %></td>
           <td class="px-4 py-2 text-right tabular-nums <%= total.negative? ? 'text-amber-700' : 'text-gray-900' %>"><%= total.negative? ? "lost #{usd(-total)}" : usd(total) %></td>
         </tr>
       </tfoot>
     </table>
-    <p class="px-4 py-2 border-t border-gray-200 text-xs text-gray-500">Each month counts what it earned and what it cost, whenever the money moved: a usage bill is the month it covers, and Stripe's monthly fees are the month they're for. Click a month to see where its money came from and went.</p>
+    <p class="px-4 py-2 border-t border-gray-200 text-xs text-gray-500">Each month counts what it earned and what it cost, whenever the money moved. To Stripe is its fees on that month's payments; Building and running is what CocoScout cost to make and keep up, payments or not: a usage bill is the month it covers, Stripe's monthly fees are the month they're for, and so is each bill on <%= link_to "Costs", finances_costs_path, class: "text-pink-600 hover:underline" %> (Amazon, Claude). Click a month to see where its money came from and went.</p>
   </div>
   <% @monthly.each do |row| %>
     <% next unless row[:earned_cents].nonzero? || row[:spent_cents].nonzero? %>

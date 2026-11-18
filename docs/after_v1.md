@@ -146,6 +146,14 @@ https://claude.ai/artifact/3YLGg63hQ4SSpqNhApMGNF). Decided with Tim:
   Settings: a Role Call box whose one control is the on/off toggle, then its
   own "More roles every show needs" box below, one Save at the very bottom.
 - Scheduling: a "Still to staff this week" panel that adds the open shifts.
+- **Contract shows (Tim, 2026-11-08):** a contract production's needs come
+  from its contract, so a role one of the organization's services carries
+  (Booth Tech) is asked of a contract show only when its services include
+  that service, even when the role is ticked under "More roles every show
+  needs". Our own productions are still asked for every ticked role. The
+  rules live in `RoleCall`, which Scheduling, Home and a production's page
+  all read; Home names a show's services nobody has a shift for, and says
+  nothing about staffing on a show Role Call asks nothing of.
 - A service is done by **one or more roles**, "Roles that do it" (never "who":
   that reads as people). Ticket taking ($25 flat): Front of House or House
   Manager. Equipment or a fee has none.

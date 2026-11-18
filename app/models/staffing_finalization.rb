@@ -16,4 +16,10 @@ class StaffingFinalization < ApplicationRecord
   def finalized?
     finalized_at.present?
   end
+
+  # Has this organization published the week this time falls in? Staff see
+  # every shift of a published week on My Shifts, told or not.
+  def self.published?(organization, time)
+    finalized.exists?(organization_id: organization.id, week_start: time.to_date.beginning_of_week)
+  end
 end

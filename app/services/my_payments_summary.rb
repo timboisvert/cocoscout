@@ -94,18 +94,26 @@ class MyPaymentsSummary
 
   # --- Paid ------------------------------------------------------------------
 
+  # The newest HISTORY_LIMIT. Each kind reads only its own newest that many,
+  # so years of weekly pay cost what one year does.
   def payments
     @payments ||= (run_payments + show_payments + hours_payments + offset_payments)
                   .reject { |p| p.cents <= 0 && p.offset_cents.to_i <= 0 }
                   .sort_by { |p| p.paid_at&.to_time || Time.at(0) }.reverse.first(HISTORY_LIMIT)
   end
 
-  def paid_total_cents
-    payments.sum(&:cents)
-  end
-
+  # Everything sent in the year, added up where it's stored: the history
+  # above stops at HISTORY_LIMIT, and a total that stopped with it came up
+  # short for anyone paid more often than that.
   def paid_this_year_cents(year = Date.current.year)
-    payments.select { |p| p.paid_at&.year == year }.sum(&:cents)
+    span = Time.zone.local(year).all_year
+    runs = PayoutBatchItem.where(payee: person, status: "paid", paid_at: span).where("amount_cents > 0").sum(:amount_cents)
+    shows = ShowPayoutLineItem.where(payee: person, manually_paid: true)
+                              .where("COALESCE(paid_at, manually_paid_at) BETWEEN ? AND ?", span.begin, span.end)
+                              .where("amount > COALESCE(advance_deduction, 0)")
+                              .sum(Arel.sql("ROUND((amount - COALESCE(advance_deduction, 0)) * 100)")).to_i
+    hours = offline_hours.where(offline_paid_at: span).sum { |e| [ hours_cents(e), 0 ].max }
+    runs + shows + hours
   end
 
   # Payee words for a line written from the organization's side:
@@ -165,7 +173,7 @@ class MyPaymentsSummary
     return [ Line.new(label: "Balance payout", cents: item.amount_cents) ] if contributions.empty?
 
     lines = PayoutContribution.with_deductions(contributions).map do |c, taken|
-      Line.new(label: self.class.payee_words(c.label), detail: dates_text(c.covered_date_range), cents: c.amount_cents,
+      Line.new(label: self.class.payee_words(c.label), detail: dates_text(c.covered_date_range(hours_spans: hours_spans)), cents: c.amount_cents,
                deductions: taken.map { |d| Line.new(label: d.deduction_label, cents: d.amount_cents) })
     end
     rest = item.amount_cents - lines.sum(&:net_cents)
@@ -173,9 +181,23 @@ class MyPaymentsSummary
     lines
   end
 
-  # Show payouts worked out but not put in a run or paid by hand yet.
+  # The first and last hour worked in each payout run they were in, read
+  # once: a "Worked hours" line says which days it covers.
+  def hours_spans
+    @hours_spans ||= StaffTimeEntry.where(person_id: person.id).where.not(payout_batch_id: nil).group(:payout_batch_id)
+                                   .pluck(:payout_batch_id, Arel.sql("MIN(started_at)"), Arel.sql("MAX(started_at)"))
+                                   .to_h { |id, min, max| [ id, [ min, max ] ] }
+  end
+
+  # Show payouts worked out but not put in a run or paid by hand yet. The
+  # database leaves out the ones already paid or in a run, which after a
+  # while is nearly all of them.
   def unstaged_earning_lines
-    PayoutLedgerEntry.where(payee: person, entry_type: "earning", source_type: "ShowPayoutLineItem")
+    PayoutLedgerEntry.where(payee: person, entry_type: "earning", source_type: "ShowPayoutLineItem").where.not(amount_cents: 0)
+                     .joins("JOIN show_payout_line_items ON show_payout_line_items.id = payout_ledger_entries.source_id")
+                     .where("show_payout_line_items.manually_paid = FALSE")
+                     .where("NOT EXISTS (SELECT 1 FROM payout_contributions WHERE payout_contributions.source_type = 'ShowPayoutLineItem' " \
+                            "AND payout_contributions.source_id = show_payout_line_items.id)")
                      .includes(:organization, source: [ :payout_contribution, { show_payout: { show: :production } } ])
                      .order(:occurred_at).filter_map do |entry|
       li = entry.source
@@ -191,8 +213,7 @@ class MyPaymentsSummary
   # membership keeps its rates).
   def pending_hours_lines
     @pending_hours_lines ||= begin
-      members = OrganizationStaffMember.where(person_id: person.id)
-                                       .includes(staff_role_qualifications: :house_role).index_by(&:organization_id)
+      members = staff_members
       StaffTimeEntry.where(person_id: person.id).pending
                     .includes(:organization, shift_assignment: { shift: :house_role }).chronological.map do |e|
         member = members[e.organization_id]
@@ -217,8 +238,10 @@ class MyPaymentsSummary
   # --- Payments --------------------------------------------------------------
 
   def run_payments
-    PayoutBatchItem.where(payee: person, status: "paid")
+    first_paid_at = PayoutBatchItem.where(payee: person, status: "paid").minimum(:paid_at)
+    PayoutBatchItem.where(payee: person, status: "paid").where("amount_cents > 0").order(paid_at: :desc).limit(HISTORY_LIMIT)
                    .includes(payout_contributions: :source, payout_batch: :organization).map do |item|
+      item.first_payment = item.paid_at.present? && item.paid_at <= first_paid_at
       Payment.new(kind: "run", id: item.id, org: item.payout_batch.organization&.name, paid_at: item.paid_at,
                   method: "stripe", cents: item.amount_cents, offset_cents: nil, lines: item_lines(item),
                   stage: item.deposit_stage, expected_on: item.expected_deposit_date, deposited_on: item.deposited_at&.to_date)
@@ -228,6 +251,7 @@ class MyPaymentsSummary
   # Show payouts paid by hand (Zelle, Venmo…); run-paid ones are in their deposit.
   def show_payments
     ShowPayoutLineItem.where(payee: person, manually_paid: true)
+                      .order(Arel.sql("COALESCE(paid_at, manually_paid_at) DESC NULLS LAST")).limit(HISTORY_LIMIT)
                       .includes(show_payout: { show: { production: :organization } }).map do |li|
       show = li.show_payout&.show
       deductions = li.advance_deduction.to_f.positive? ? [ Line.new(label: "Advance repaid", cents: -(li.advance_deduction.to_d * 100).round) ] : []
@@ -240,12 +264,8 @@ class MyPaymentsSummary
 
   # Staff hours settled outside CocoScout.
   def hours_payments
-    members = OrganizationStaffMember.where(person_id: person.id)
-                                     .includes(staff_role_qualifications: :house_role).index_by(&:organization_id)
-    StaffTimeEntry.where(person_id: person.id).where.not(offline_paid_at: nil)
-                  .includes(:organization, :house_role, shift_assignment: { shift: :house_role }).map do |e|
-      member = members[e.organization_id]
-      cents = e.offline_total_cents || (member ? member.amount_cents_for(e.effective_house_role, hours: e.hours) : 0)
+    offline_hours.order(offline_paid_at: :desc).limit(HISTORY_LIMIT).map do |e|
+      cents = hours_cents(e)
       label = e.offline_reimbursement_only? ? "Reimbursement" : hours_label(e)
       Payment.new(kind: "hours", id: e.id, org: e.organization&.name, paid_at: e.offline_paid_at, method: nil,
                   cents: cents, offset_cents: nil,
@@ -254,10 +274,30 @@ class MyPaymentsSummary
     end
   end
 
+  def offline_hours
+    StaffTimeEntry.where(person_id: person.id).where.not(offline_paid_at: nil)
+                  .includes(:organization, :house_role, shift_assignment: { shift: :house_role })
+  end
+
+  # What an offline settlement handed over: the amount recorded, else the
+  # hours at their rate.
+  def hours_cents(entry)
+    return entry.offline_total_cents if entry.offline_total_cents
+
+    member = staff_members[entry.organization_id]
+    member ? member.amount_cents_for(entry.effective_house_role, hours: entry.hours) : 0
+  end
+
+  def staff_members
+    @staff_members ||= OrganizationStaffMember.where(person_id: person.id)
+                                              .includes(staff_role_qualifications: :house_role).index_by(&:organization_id)
+  end
+
   # A share that went wholly toward what they owed: nothing deposited.
   def offset_payments
     ContractPayment.joins(contract: :contractor).where(contractors: { person_id: person.id })
                    .direction_outgoing.status_paid.where(payment_method: "offset")
+                   .order(paid_date: :desc).limit(HISTORY_LIMIT)
                    .includes(contract: :organization).map do |share|
       cents = (share.amount.to_d * 100).round
       label = "#{share.contract.production_name.presence || share.contract.contractor_name} — #{self.class.payee_words(share.display_name)}"

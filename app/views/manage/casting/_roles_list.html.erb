@@ -272,7 +272,7 @@
                         cant_make_it_vacancy = cancelled_vacancies_by_assignment[[role.id, assignable.class.name, assignable.id]] if assignable
                       end
                     %>
-                    <div class="flex items-center gap-3 p-2 border <%= cant_make_it_vacancy ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white' %> rounded-lg group hover:border-pink-300 hover:bg-pink-50 transition-all relative <%= is_guest ? '' : 'cursor-grab active:cursor-grabbing' %>"
+                    <div class="flex flex-wrap md:flex-nowrap items-center gap-x-3 gap-y-1 p-2 border <%= cant_make_it_vacancy ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white' %> rounded-lg group hover:border-pink-300 hover:bg-pink-50 transition-all relative <%= is_guest ? '' : 'cursor-grab active:cursor-grabbing' %>"
                         <%= is_guest ? '' : 'draggable="true"' %>
                         data-drop-role-target="assignment"
                         data-action="<%= is_guest ? '' : 'dragstart->drop-role#dragStartAssignment dragend->drop-role#dragEnd' %>"
@@ -348,7 +348,8 @@
                           </div>
                         <% end %>
                       </div>
-                      <div class="flex items-center gap-1 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 transition-all">
+                      <%# A phone: the actions on their own line, so the name keeps the width. %>
+                      <div class="flex items-center gap-1 max-md:basis-full max-md:justify-end pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 transition-all">
                         <% if show.casting_finalized? && !is_guest %>
                           <button type="button"
                             class="text-xs font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-100 rounded-md px-2 py-1 cursor-pointer"
@@ -519,7 +520,7 @@
                         cant_make_it_vacancy = cancelled_vacancies_by_assignment[[role.id, assignable.class.name, assignable.id]] if assignable
                       end
                     %>
-                    <div class="flex items-center gap-3 p-2 border <%= cant_make_it_vacancy ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white' %> rounded-lg hover:border-pink-300 hover:bg-pink-50 transition-all group relative <%= is_guest ? '' : 'cursor-grab active:cursor-grabbing' %>"
+                    <div class="flex flex-wrap md:flex-nowrap items-center gap-x-3 gap-y-1 p-2 border <%= cant_make_it_vacancy ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white' %> rounded-lg hover:border-pink-300 hover:bg-pink-50 transition-all group relative <%= is_guest ? '' : 'cursor-grab active:cursor-grabbing' %>"
                         <%= is_guest ? '' : 'draggable="true"' %>
                         data-drop-role-target="assignment"
                         data-action="<%= is_guest ? '' : 'dragstart->drop-role#dragStartAssignment dragend->drop-role#dragEnd' %>"
@@ -595,7 +596,8 @@
                           </div>
                         <% end %>
                       </div>
-                      <div class="flex items-center gap-1 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 transition-all">
+                      <%# A phone: the actions on their own line, so the name keeps the width. %>
+                      <div class="flex items-center gap-1 max-md:basis-full max-md:justify-end pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100 transition-all">
                         <% if show.casting_finalized? && !is_guest %>
                           <button type="button"
                             class="text-xs font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-100 rounded-md px-2 py-1 cursor-pointer"

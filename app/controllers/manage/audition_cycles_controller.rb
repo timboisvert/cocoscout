@@ -6,7 +6,7 @@ module Manage
     before_action :check_production_access
     before_action :set_audition_cycle,
                   only: %i[show form update destroy preview create_question update_question destroy_question reorder_questions
-                           archive delete_confirm toggle_voting]
+                           archive pause resume delete_confirm toggle_voting]
     before_action :set_question, only: %i[update_question destroy_question]
     before_action :ensure_user_is_manager, except: %i[preview show]
 
@@ -212,6 +212,22 @@ module Manage
         redirect_to manage_signups_auditions_path(@production), alert: "Failed to archive Audition Cycle",
                                                                    status: :see_other
       end
+    end
+
+    # Pause auditions (Ronnie couldn't find how to stop Rising Stars taking
+    # applications, 2026-11-11: the only way was a Close At date in Settings,
+    # which an open-ended cycle shouldn't need). The dates stay as they are
+    # and so do the requests already in; Resume takes the pause off.
+    def pause
+      @audition_cycle.update!(paused_at: Time.current)
+      redirect_to manage_signups_auditions_path(@production),
+                  notice: "Auditions are paused. Nobody new can #{@audition_cycle.signup_mode_open? ? 'sign up' : 'send a request'} until you resume them.",
+                  status: :see_other
+    end
+
+    def resume
+      @audition_cycle.update!(paused_at: nil)
+      redirect_to manage_signups_auditions_path(@production), notice: "Auditions are open again.", status: :see_other
     end
 
     # PATCH /audition_cycles/:id/toggle_voting

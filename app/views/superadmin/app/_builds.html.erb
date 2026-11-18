@@ -1,0 +1,21 @@
+<%
+  versions = report.versions
+  platform_name = { "ios" => "iPhone", "android" => "Android" }
+  per_platform = versions.group_by { |row| row[:platform] }.transform_values { |rows| rows.sum { |row| row[:people] } }
+%>
+<div class="bg-white border border-gray-200 rounded-lg p-5" data-versions>
+  <h2 class="font-semibold text-gray-900 mb-1">Builds in use, last <%= report.days %> days</h2>
+  <p class="text-xs text-gray-500 mb-3">V1 builds send no version. A person who updated in the period counts under each build they used.</p>
+  <% if versions.any? %>
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-xs text-gray-500"><th class="py-1.5 font-medium">App</th><th class="py-1.5 font-medium">Build</th><th class="py-1.5 font-medium text-right">People</th><th class="py-1.5 font-medium text-right">Share</th></tr></thead>
+      <tbody class="divide-y divide-gray-100">
+        <% versions.each do |row| %>
+          <tr><td class="py-1.5"><%= platform_name[row[:platform]] %></td><td class="py-1.5"><%= row[:version] %></td><td class="py-1.5 text-right tabular-nums"><%= row[:people] %></td><td class="py-1.5 text-right tabular-nums text-gray-500"><%= number_to_percentage(row[:people] * 100.0 / per_platform[row[:platform]], precision: 0) %></td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p class="text-sm text-gray-500">Nobody in the app in the last <%= report.days %> days.</p>
+  <% end %>
+</div>

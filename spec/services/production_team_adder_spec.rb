@@ -10,6 +10,7 @@ RSpec.describe ProductionTeamAdder do
   let(:owner) { create(:user) }
   let(:org) { create(:organization, :pro, name: "Stars & Garters", owner: owner) }
   let(:production) { create(:production, organization: org, name: "Stargazers", production_type: "third_party") }
+  let!(:owner_profile) { create(:person, user: owner, name: "Clay Owner") }
 
   it "adds someone with an account: the member role, the permission, notifications on" do
     user = create(:user)
@@ -39,11 +40,12 @@ RSpec.describe ProductionTeamAdder do
 
   it "invites someone without an account by email, once" do
     result = nil
-    expect { result = described_class.add!(production, role: "manager", email: "sam@brightlights.org", name: "Sam") }
+    expect { result = described_class.add!(production, role: "manager", by: owner, email: "sam@brightlights.org", name: "Sam") }
       .to have_enqueued_mail(Manage::TeamMailer, :production_invite)
     expect(result.outcome).to eq(:invited)
     invitation = result.invitation
     expect([ invitation.email, invitation.production, invitation.invitation_role ]).to eq([ "sam@brightlights.org", production, "manager" ])
+    expect(invitation.invited_by).to eq(owner_profile)
 
     expect(described_class.add!(production, role: "manager", email: "sam@brightlights.org").outcome).to eq(:invited_already)
     expect(TeamInvitation.where(email: "sam@brightlights.org").count).to eq(1)

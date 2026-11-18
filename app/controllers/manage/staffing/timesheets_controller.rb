@@ -56,11 +56,14 @@ module Manage
           redirect_to manage_staffing_timesheets_path, alert: "Nothing selected to approve." and return
         end
 
+        # Loaded before the stamp: these are the entries the notice lists.
+        entries = scope.includes(:person, :house_role, shift_assignment: { shift: :house_role }).to_a
         count = scope.update_all(
           approved_at: Time.current,
           approved_by_id: Current.user.id,
           updated_at: Time.current
         )
+        StaffHoursApprovedNotice.send!(entries, organization: Current.organization) if count.positive?
 
         redirect_to manage_staffing_timesheets_path,
                     notice: count.positive? ? "Approved #{helpers.pluralize(count, 'hour entry')}." : "Those hours were already handled."
@@ -137,6 +140,7 @@ module Manage
         return unless entry
 
         entry.update!(approved_at: Time.current, approved_by: Current.user)
+        StaffHoursApprovedNotice.send!([ entry ], organization: Current.organization)
         redirect_back fallback_location: manage_approved_staffing_timesheets_path, notice: "Re-approved those hours."
       end
 

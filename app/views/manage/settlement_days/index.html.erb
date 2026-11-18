@@ -1,13 +1,12 @@
 <% content_for :title, "Settle up" %>
 <%
   month_label = @month.strftime("%B %Y")
-  settled_this_month = @month_days.select(&:settled?)
   listed = case @filter
   when "settled" then @month_days.select(&:settled?)
   when "all" then @month_days
   else @to_settle
   end
-  oldest = @to_settle.first
+  oldest = @open_dates.first
 %>
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
@@ -35,8 +34,20 @@
     ].compact %>
   </div>
 
+  <%# Today, still going: its own box above the days that are over. %>
+  <% if @today %>
+    <div class="mb-4 bg-white border border-gray-200 rounded-xl overflow-hidden" data-settle-today>
+      <%= render "shared/section_heading", padding: "px-5 py-3", title: "Today" do %>
+        <span class="text-xs text-gray-500">Still going: <%= @today.closes_words.sub(/\AThe day/, "it") %>. Confirm each piece as it finishes; the day can be settled once every piece is confirmed.</span>
+      <% end %>
+      <%= render "manage/settlement_days/day_row", day: @today, start: true %>
+    </div>
+  <% end %>
+
   <% if listed.empty? %>
-    <% if @filter == "to_settle" %>
+    <% if @filter == "to_settle" && @today %>
+      <p class="px-1 text-sm text-gray-600">Every earlier day is settled.</p>
+    <% elsif @filter == "to_settle" %>
       <%= render "shared/empty_state", icon: "check", title: "Every day is settled", body: "The next show that happens will put its day here." %>
     <% else %>
       <%= render "shared/empty_state", icon: "calendar", title: "No #{@filter == 'settled' ? 'settled ' : ''}days in #{month_label}", body: "Days with nothing in them never appear." %>
@@ -46,7 +57,7 @@
       <%= render "shared/section_heading", padding: "px-5 py-3", title: (@filter == "to_settle" ? "To settle" : (@filter == "settled" ? "Settled in #{month_label}" : month_label)) do %>
         <span class="text-xs text-gray-500">
           <% if @filter == "to_settle" %>
-            <%= pluralize(@to_settle.size, "day") %><% if oldest %>, oldest <%= time_ago_in_words(oldest.date.in_time_zone) %> ago<% end %>
+            <%= pluralize(@open_dates.size, "day") %><% if oldest %>, oldest <%= time_ago_in_words(oldest.in_time_zone) %> ago<% end %>
           <% else %>
             <%= pluralize(listed.size, "day") %>
           <% end %>
@@ -54,6 +65,9 @@
       <% end %>
       <% listed.each do |day| %>
         <%= render "manage/settlement_days/day_row", day: day %>
+      <% end %>
+      <% if @filter == "to_settle" && @open_dates.size > listed.size %>
+        <p class="px-5 py-3 border-t border-gray-100 text-xs text-gray-500">The oldest <%= listed.size %> of <%= @open_dates.size %> days. The rest appear as these are settled.</p>
       <% end %>
     </div>
   <% end %>

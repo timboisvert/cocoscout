@@ -131,6 +131,8 @@ class BooksPoster
       else
         [ balance, { account: :other_income, amount_cents: -cents } ]
       end
+    when "partner_payment_in"
+      partner_payment_lines(entry, balance)
     when "funding"
       [ balance, { account: :bank, amount_cents: -cents } ]
     when "transfer"
@@ -142,13 +144,38 @@ class BooksPoster
     end
   end
 
+  # A contract share another organization's run paid into this one's
+  # balance: contract income, by the production and date it was for here
+  # (the dates that follow the contract's, LinkedDates), one line for each
+  # payment on the run item. A charge netted out of the share is a negative
+  # line, which takes it off the income. If the lines don't add up to what
+  # arrived (the payee ledger netted something else), it's one line.
+  def self.partner_payment_lines(entry, balance)
+    item = entry.source
+    organization = entry.organization
+    income = ->(cents, dims = {}) { { account: :contract_income, amount_cents: -cents, **dims } }
+    return [ balance, income.call(entry.amount_cents) ] unless item.is_a?(PayoutBatchItem)
+
+    contributions = item.payout_contributions.payable.includes(:source).to_a
+    return [ balance, income.call(entry.amount_cents) ] unless contributions.sum(&:amount_cents) == entry.amount_cents
+
+    [ balance ] + contributions.map do |contribution|
+      payment = contribution.source
+      contract = payment.try(:contract)
+      connection = contract && ContractConnection.where(contract_id: contract.id, linked_organization_id: organization.id).order(:id).last
+      production = connection&.linked_production
+      show = production && payment.try(:show_id) && production.shows.find_by(linked_show_id: payment.show_id)
+      income.call(contribution.amount_cents, { production: production, show: show }.compact)
+    end
+  end
+
   # Where a transfer's money went. The org's own remittance lands in its
   # bank; a payee on a run was owed it (the run's payout ledger row says so,
   # and is skipped for that reason); a legacy course run paid an instructor
   # straight out of course money.
   def self.paid_out_account(item)
     return :bank unless item.is_a?(PayoutBatchItem)
-    return :bank if item.payee_type == "Organization"
+    return :bank if item.own_organization?
     return :instructor_pay if item.payout_batch.kind == "course"
 
     :owed_to_payees
@@ -159,14 +186,14 @@ class BooksPoster
   # the money parked under "owed to you"; this clears that.
   def self.returned_account(item)
     return :bank unless item.is_a?(PayoutBatchItem)
-    return :bank if item.payee_type == "Organization"
+    return :bank if item.own_organization?
     return :instructor_pay if item.payout_batch.kind == "course"
 
     PayoutLedgerEntry.exists?(source: item, entry_type: "reversal") ? :owed_to_you : :owed_to_payees
   end
 
   def self.payee_dim(item)
-    item.is_a?(PayoutBatchItem) && item.payee_type != "Organization" ? { payee: item.payee } : {}
+    item.is_a?(PayoutBatchItem) && !item.own_organization? ? { payee: item.payee } : {}
   end
 
   # --- The payout ledger ----------------------------------------------------
@@ -234,6 +261,6 @@ class BooksPoster
     { show: show, production: production }.compact
   end
 
-  private_class_method :post_cash!, :cash_lines, :paid_out_account, :returned_account, :payee_dim,
+  private_class_method :post_cash!, :cash_lines, :partner_payment_lines, :paid_out_account, :returned_account, :payee_dim,
                        :post_owed!, :owed_lines, :pay_account, :adjustment_account, :owed_dims
 end

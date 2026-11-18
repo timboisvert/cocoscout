@@ -63,10 +63,15 @@
           actions: [ { text: "Settle up", path: manage_money_settle_up_day_path(oldest.param) } ] %>
   <% end %>
   <% if @todo.payouts.any? && @todo.payouts.due_soon_amount.to_f > 0.004 %>
+    <%# The same stages as the Payouts page, never one "unpaid" sum: money
+        already on a run isn't waiting on anyone (Tim, 2026-11-11). %>
+    <% stages = @todo.payouts.amounts || {} %>
+    <% rest = [ [ :upcoming, "upcoming" ], [ :in_draft, "in a draft run" ], [ :in_flight, "already on its way" ] ]
+                .filter_map { |key, words| "#{number_to_currency(stages[key])} #{words}" if stages[key].to_f > 0.004 } %>
     <%= render "shared/alert_panel", tone: :amber,
           eyebrow: "To pay",
           headline: "#{number_to_currency(@todo.payouts.due_soon_amount)} due now",
-          body: "#{number_to_currency(@todo.payouts.amount)} unpaid in all, across #{pluralize(@todo.payouts.count, 'production, course or contract')}.",
+          body: (rest.any? ? "#{rest.to_sentence.upcase_first}." : "Nothing else is waiting."),
           actions: [ { text: "Payouts", path: manage_money_payouts_path } ] %>
   <% end %>
   <% if @todo.bills.overdue_count.to_i.positive? %>
@@ -89,13 +94,14 @@
       window onto its own page and links there for the rest. %>
 
   <%= render layout: "manage/money/todo_section",
-        locals: { title: "Days to settle", section: @todo.settle_days, label: "Day",
+        locals: { title: "Days to settle", section: @todo.settle_days_listed, label: "Day",
                   columns: [ "Pieces", "So far" ], min_width: "min-w-[420px]",
                   path: manage_money_settle_up_path, link_text: "Settle up",
                   empty: "Every day is settled." } do %>
-    <% @todo.settle_days.items.each do |day| %>
-      <%= link_to manage_money_settle_up_day_path(day.param), class: "grid grid-cols-[1fr_auto_auto] gap-3 items-center px-4 py-2.5 text-sm hover:bg-gray-50" do %>
-        <span class="min-w-0"><span class="block font-medium text-gray-900"><%= day.date.strftime("%a, %b %-d") %></span><span class="block text-xs text-gray-500 truncate"><%= day.shows.map { |s| s.show.display_name }.to_sentence %></span></span>
+    <% @todo.settle_days_listed.items.each do |day| %>
+      <%# Today, still going, is first and says so; the rest are over. %>
+      <%= link_to manage_money_settle_up_day_path(day.param), class: "grid grid-cols-[1fr_auto_auto] gap-3 items-center px-4 py-2.5 text-sm hover:bg-gray-50", data: ({ settle_today: true } unless day.ended?) do %>
+        <span class="min-w-0"><span class="block font-medium text-gray-900"><%= day.date.strftime("%a, %b %-d") %><% unless day.ended? %> <span class="font-normal text-gray-500">· today, still going</span><% end %></span><span class="block text-xs text-gray-500 truncate"><%= day.shows.map { |s| s.show.display_name }.to_sentence %></span></span>
         <span class="flex flex-wrap gap-1 justify-end">
           <% day.pieces.each do |label, state| %>
             <% dot = { ok: "bg-green-500", wait: "bg-amber-500", miss: "bg-red-500" }.fetch(state) %>

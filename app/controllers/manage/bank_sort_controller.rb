@@ -141,7 +141,7 @@ module Manage
       return unless rule.save
 
       @state.rules_made += 1
-      result = BankRules.apply!(org, rules: [ rule ], lines: org.bank_statement_lines.to_deal_with.where(state: "open").to_a.select { |l| rule.matches?(l) }, by: Current.user)
+      result = BankRules.apply!(org, rules: [ rule ], lines: rule.fitting(org.bank_statement_lines.to_deal_with.where(state: "open")), by: Current.user)
       flash[:notice] = "#{flash[:notice]} Rule saved for #{reading.name}#{result.dealt_with.positive? ? ", and #{pluralize(result.dealt_with, 'more line')} dealt with" : ''}."
     end
 

@@ -123,7 +123,7 @@ module Manage
       # Only mint/expose a pay link when there's actually a settled amount to charge.
       @pay_url = @payment.collectable_online? ? pay_contract_url(token: @payment.payment_token!) : nil
       # Opening the Collect page numbers the invoice, like opening the invoice.
-      @invoice = @payment.invoiceable? ? ContractInvoice.for!(@payment) : @payment.contract_invoice
+      @invoice = @payment.invoiceable? ? Invoice.for!(@payment) : @payment.invoice
       @received_methods = RECEIVED_METHODS
     end
 
@@ -171,9 +171,9 @@ module Manage
                     alert: "There's nothing to invoice on this payment yet." and return
       end
 
-      invoice = ContractInvoice.for!(@payment)
+      invoice = Invoice.for!(@payment)
       reminder = invoice.sent_count.positive?
-      to = ContractInvoiceDelivery.send_invoice!(invoice, sender: Current.user, note: params[:custom_message])
+      to = InvoiceDelivery.send_invoice!(invoice, sender: Current.user, note: params[:custom_message])
       if to
         redirect_to manage_money_incoming_payment_path(@payment),
                     notice: "#{reminder ? 'Reminder about invoice' : 'Invoice'} #{invoice.display_number} sent to #{to}."
@@ -220,10 +220,13 @@ module Manage
     # full Received page.
     RECENT_RECEIVED_LIMIT = 6
 
-    # Money owed to this org that has actually arrived, however it came
-    # (pay link, recorded check, netted out of a payout).
+    # Money owed to this org that has actually arrived: paid on a pay link, or
+    # recorded by hand. A charge netted out of their payout is settled, but
+    # nobody paid it, so it isn't a payment received; it shows as a deduction
+    # on the share it came out of (Tim, 2026-11-08: Received listed six
+    # "Deducted from payout" rows the day two shares joined a payout run).
     def received_scope
-      ContractPayment.direction_incoming.status_paid
+      ContractPayment.direction_incoming.status_paid.money_arrived
                      .joins(:contract)
                      .where(contracts: { organization_id: Current.organization.id })
     end

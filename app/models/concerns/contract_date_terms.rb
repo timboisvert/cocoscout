@@ -6,6 +6,7 @@
 # date depends on the deal:
 #
 #   a rehearsal (any kind with its own rate)  the rate for that date     :amount
+#     priced by the hour                      or one price for the date  "total"
 #   a per-event fee                           that date's fee            :amount
 #   tickets minus our fee, priced per show    our fee for that show      :amount
 #   a revenue share                           our share of that show, %  :share
@@ -51,7 +52,32 @@ module ContractDateTerms
     draft_event_rates.find { |r| r["event_type"] == event_type && r["amount"].to_f.positive? }
   end
 
-  # { booking starts_at => { "amount" | "share" => Float, "note" => String } }
+  # This kind of date is charged by the hour, so one date can take either its
+  # own hourly rate ("amount") or one price for the whole date ("total": two
+  # free hours of a 2.5 hour rehearsal is the price of the half hour left).
+  def hourly_rated?(event_type)
+    event_rate_for_type(event_type)&.dig("unit") == "hourly"
+  end
+
+  # A booking's length in hours, nil when it has none.
+  def booking_hours(booking)
+    at = parse_term_time(booking["starts_at"])
+    ends = parse_term_time(booking["ends_at"])
+    return ((ends - at) / 3600.0).round(2) if at && ends
+
+    booking["duration"].to_f.positive? ? booking["duration"].to_f : nil
+  end
+
+  # What an hourly date costs: its own price for the whole date, or its hours
+  # at its own rate or the deal's.
+  def hourly_date_cost(event_type, terms, hours)
+    return terms["total"].to_f if terms.key?("total")
+
+    rate = terms.key?("amount") ? terms["amount"].to_f : usual_date_term(event_type).to_f
+    (rate * (hours || 1)).round(2)
+  end
+
+  # { booking starts_at => { "amount" | "total" | "share" => Float, "note" => String } }
   def draft_date_terms
     Hash(draft_payment_config["date_terms"])
   end
@@ -63,24 +89,32 @@ module ContractDateTerms
   # Set or clear the terms of these bookings' dates (drafts only; an active
   # contract's dates change through "Change the deal"). A value equal to the
   # deal's, or blank, goes back to the deal; the note stays either way.
-  def set_draft_date_terms!(starts_ats, value:, note:, field:)
-    terms = next_date_terms(starts_ats, value: value, note: note, field: field)
+  def set_draft_date_terms!(starts_ats, value:, note:, field:, whole: false)
+    terms = next_date_terms(starts_ats, value: value, note: note, field: field, whole: whole)
     update_draft_step(:payment_config, draft_payment_config.merge("date_terms" => terms))
   end
 
   # The date terms with these dates changed, read against this contract's own
   # bookings and deal (a stand-in's, in an amendment). Saves nothing.
-  def next_date_terms(starts_ats, value:, note:, field:)
+  # whole: the value is the price of the whole date, not its hourly rate
+  # (only a kind charged by the hour has the two).
+  def next_date_terms(starts_ats, value:, note:, field:, whole: false)
     terms = draft_date_terms.dup
     bookings = draft_bookings.index_by { |b| b["starts_at"].to_s }
     Array(starts_ats).map(&:to_s).each do |starts_at|
       booking = bookings[starts_at]
       next unless booking && date_term_field(booking["event_type"] || "show") == field
 
-      entry = (terms[starts_at] || {}).except("amount", "share")
-      usual = usual_date_term(booking["event_type"] || "show")
+      type = booking["event_type"] || "show"
+      entry = (terms[starts_at] || {}).except("amount", "share", "total")
       number = value.to_s.delete("$,%").presence&.to_f
-      entry[field.to_s] = number.round(2) if number && number != usual
+      if whole && hourly_rated?(type)
+        usual = hourly_date_cost(type, {}, booking_hours(booking))
+        entry["total"] = number.round(2) if number && number.round(2) != usual
+      else
+        usual = usual_date_term(type)
+        entry[field.to_s] = number.round(2) if number && number != usual
+      end
       entry["note"] = note.to_s.strip.presence
       entry.compact!
       entry.empty? ? terms.delete(starts_at) : terms[starts_at] = entry
@@ -277,8 +311,10 @@ module ContractDateTerms
     money = ->(n) { ActionController::Base.helpers.number_to_currency(n, precision: (n.to_f % 1).zero? ? 0 : 2) }
 
     if (rate = event_rate_for_type(event_type))
-      per = rate["unit"] == "hourly" ? "an hour" : "per #{kind}"
-      return [ "#{money.(terms['amount'])} this #{kind}", "Usually #{money.(usual)} #{per}", true ] if terms.key?("amount")
+      hourly = rate["unit"] == "hourly"
+      per = hourly ? "an hour" : "per #{kind}"
+      return [ "#{money.(terms['total'])} for this #{kind}", "Usually #{money.(usual)} #{per}", true ] if hourly && terms.key?("total")
+      return [ "#{money.(terms['amount'])} #{'an hour ' if hourly}this #{kind}", "Usually #{money.(usual)} #{per}", true ] if terms.key?("amount")
 
       [ "#{money.(usual)} #{per}", nil, false ]
     elsif per_event_deal?

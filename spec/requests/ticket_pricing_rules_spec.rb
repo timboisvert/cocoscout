@@ -28,6 +28,21 @@ RSpec.describe "Ticket pricing rules", type: :request do
     get manage_path
   end
 
+  # Prices shown before taxes and fees (the box office's choice, 2026-11-13)
+  # are the prices in effect too, never the list price a rule has moved.
+  it "shows the price in effect when prices are shown before taxes and fees" do
+    patch url, params: { pricing_action: "add", rule: { name: "Early birds", condition: "sold_pct_at_least", threshold: 0, ticket_tier_id: general.id, change_kind: "amount", change_value: "-5" } }
+    profile.update!(price_display: "base")
+    fresh = TicketListing.find(listing.id)
+
+    expect(fresh.prices_before_extras?).to be(true)
+    expect(TicketPricing.shown_price_cents(fresh, date_general)).to eq(1_500)
+    expect(TicketPricing.shown_price_cents(fresh, date_vip)).to eq(5_000)
+    get tickets_event_path(org: profile.slug, event: listing.slug)
+    expect(response.body).to include("data-price=\"1500\"", "$15.00")
+    expect(response.body).not_to include("$20.00")
+  end
+
   it "moves prices by the first matching rule within the floor and ceiling, sells at the price in effect, and logs the flips" do
     get manage_edit_production_ticketing_path(production, section: "pricing")
     expect(response.body).to include("Pricing rules", "No rules yet")

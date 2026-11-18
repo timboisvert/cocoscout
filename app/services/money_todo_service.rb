@@ -60,6 +60,7 @@ class MoneyTodoService
         .where.not(production_id: Production.courses.where(id: ids).select(:id))
         .where(canceled: false)
         .where("date_and_time <= ?", as_of)
+        .where.not(production_id: Production.where(no_revenue: true).select(:id))
         .left_joins(:show_financials)
         .where("show_financials.id IS NULL OR show_financials.data_confirmed = FALSE OR show_financials.data_confirmed IS NULL")
   end
@@ -96,12 +97,15 @@ class MoneyTodoService
     shows = shows_awaiting_financials(productions, as_of: as_of)
     courses = courses_awaiting_financials(productions, as_of: as_of)
 
-    show_rows = shows.includes(:production).order(date_and_time: :desc).limit(limit).map do |show|
+    listed = shows.includes(:production).order(date_and_time: :desc).limit(limit).to_a
+    # One look-up for the organizations, so a row's link (its day on Settle up) costs no query.
+    organizations = Organization.where(id: listed.filter_map { |show| show.production&.organization_id }.uniq).index_by(&:id)
+    show_rows = listed.map do |show|
       { at: show.date_and_time,
         title: "#{show.date_and_time.strftime('%b %-d, %Y')} · #{show.display_name}",
         subtitle: show.production&.name,
         badge: { text: "Needs financials", color: "amber" },
-        href: Rails.application.routes.url_helpers.manage_money_show_financials_path(show) }
+        href: SettleUp.money_entry_href(organizations[show.production.organization_id], show) }
     end
 
     offerings = courses.includes(:production).to_a
@@ -127,6 +131,8 @@ class MoneyTodoService
   # in-memory list without a second round trip.
   def self.awaiting_financials?(show, as_of: Time.current)
     return false unless EventTypes.revenue_event_types.include?(show.event_type)
+    # A production that takes no money has nothing to enter.
+    return false if show.production&.no_revenue? && SettleUp.show_took_nothing?(show)
     return false if show.production&.type_course?
     return false if show.canceled?
     return false if show.date_and_time > as_of
@@ -177,10 +183,23 @@ class MoneyTodoService
   # Days to settle (Books V1.3, plan §9.2): the days that are over, had money
   # in them, and nobody has settled. Oldest first; count covers them all.
   def settle_days
-    @settle_days ||= begin
-      days = SettleUp.to_settle(organization)
-      Section.new(count: days.size, amount: days.sum(&:in_cents) / 100.0, items: row_limit ? days.first(row_limit) : days)
+    @settle_days ||= Section.new(count: settle_dates.size, items: row_limit == 0 ? [] : SettleUp.to_settle(organization, limit: row_limit))
+  end
+
+  # The hub's Days to settle list: today first while it's still going (so the
+  # hub never says "Every day is settled" over a night in progress; Tim,
+  # 2026-11-13), then the days that are over. settle_days stays the days
+  # that are over, which is what the hub's alert and Home count.
+  def settle_days_listed
+    @settle_days_listed ||= begin
+      today = row_limit == 0 ? nil : SettleUp.today_in_progress(organization)
+      Section.new(count: settle_days.count.to_i + (today ? 1 : 0), items: [ today ].compact + settle_days.items)
     end
+  end
+
+  # The dates of those days alone: Home says how many and links the oldest.
+  def settle_dates
+    @settle_dates ||= SettleUp.open_dates(organization)
   end
 
   # Course runs still to settle, apart from the days: a course's money is its
@@ -353,9 +372,11 @@ class MoneyTodoService
   end
 
   def course_payout_items
-    courses = user.accessible_productions.courses
-                  .includes(course_offerings: { course_offering_payout: { line_items: { payout_contribution: :payout_batch } } }).to_a
-    offerings = courses.flat_map(&:course_offerings)
+    # Only the runs with an instructor line still unpaid: a run paid in full
+    # has nothing to say here, and after a few years most runs are.
+    unpaid = CourseOfferingPayout.where(id: CourseOfferingPayoutLineItem.unpaid.select(:course_offering_payout_id)).select(:course_offering_id)
+    offerings = CourseOffering.where(production_id: user.accessible_productions.courses.pluck(:id), id: unpaid).order(:id)
+                              .includes(course_offering_payout: { line_items: { payout_contribution: :payout_batch } }).to_a
     return [] if offerings.empty?
 
     # First session per offering, in one query — the course's own "when", so it
@@ -397,7 +418,10 @@ class MoneyTodoService
 
   def contract_payout_items
     items = []
-    organization.contracts
+    # Only the contracts with a payment to them still pending: every other
+    # one comes to nothing below, and finished contracts pile up.
+    owing = ContractPayment.where(direction: "outgoing", status: "pending").select(:contract_id)
+    organization.contracts.where(id: owing).order(:id)
                 .includes({ contract_payments: [ :show, { payout_contribution: :payout_batch } ] }, :contractor).each do |contract|
       outgoing = contract.contract_payments.select(&:direction_outgoing?)
       pending = outgoing.select(&:status_pending?)
@@ -421,8 +445,12 @@ class MoneyTodoService
       # over (sales so far, ContractPayment#settles_after_show?), or a payment
       # dated past the horizon — a payment for a show next spring is owed,
       # not to pay.
+      # A payment for a show whose day is in Settle up and not settled yet
+      # isn't due (Tim, 2026-11-12: "it's not real until I settle it"): the
+      # day puts it on the run, as it does the show's own payees. Until then
+      # it is upcoming, whatever its date says.
       by_col = pending.group_by do |p|
-        upcoming = p.settles_after_show? || !due_soon?(p.due_date)
+        upcoming = p.settles_after_show? || !due_soon?(p.due_date) || waits_on_settle_up?(contract, p)
         self.class.payout_bucket(p.payout_contribution&.payout_batch, paid: false, upcoming: upcoming)
       end
       paid_payments = outgoing.select(&:status_paid?)
@@ -519,6 +547,19 @@ class MoneyTodoService
         subtitle: parts.join(" · "),
         due_on: payments.filter_map(&:paid_date).min,
         href: href } ]
+  end
+
+  # Is this payment for a show (or a week or month of shows) on a day Settle
+  # up hasn't settled? One already on a run is past that question.
+  def waits_on_settle_up?(contract, payment)
+    return false if payment.payout_contribution
+
+    shows = if contract.period_settlement?(payment)
+      contract.settlement_shows_for(payment)
+    else
+      [ payment.show ].compact
+    end
+    shows.any? && SettleUp.awaiting_settlement(organization, shows).any?
   end
 
   # A dateless payment is due now — better to headline it than to hide it.

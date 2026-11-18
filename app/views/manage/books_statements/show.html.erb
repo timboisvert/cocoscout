@@ -84,6 +84,29 @@
         <h3 class="text-sm font-semibold text-gray-900">For your accountant</h3>
         <p class="mt-1 text-sm text-gray-700">Every line ever posted, as a spreadsheet: date earned and moved, account, debit, credit, production, show, payee and source.</p>
         <div class="mt-3"><%= render "shared/button", text: "The whole ledger (CSV)", variant: "secondary", size: "small", path: manage_money_statements_ledger_path, data: { turbo: false } %></div>
+        <%# What was asked for in the last week (BooksDownload): put together in the background, then downloaded from here. %>
+        <% if @downloads.any? %>
+          <div id="downloads" <%= 'data-controller=auto-refresh data-auto-refresh-interval-value=4000'.html_safe if @downloads.any?(&:pending?) %>>
+            <ul class="mt-3 divide-y divide-gray-100 border-t border-gray-100 text-sm">
+              <% @downloads.each do |download| %>
+                <li class="flex items-center justify-between gap-3 py-2">
+                  <span class="min-w-0">
+                    <span class="block text-gray-900"><%= download.title %></span>
+                    <span class="block text-xs text-gray-500"><%= download.created_at.strftime("%b %-d, %-l:%M %p") %><%= " · #{pluralize(download.lines_count, 'line')}" if download.ready? %></span>
+                  </span>
+                  <% if download.ready? %>
+                    <%= link_to "Download", manage_money_file_path(download.file.attachment, download: 1), class: "text-pink-600 hover:text-pink-700 whitespace-nowrap", data: { turbo: false } %>
+                  <% elsif download.failed? %>
+                    <span class="text-xs text-red-700 text-right">Couldn't be made. Ask for it again.</span>
+                  <% else %>
+                    <span class="text-xs text-gray-500 whitespace-nowrap">Being put together</span>
+                  <% end %>
+                </li>
+              <% end %>
+            </ul>
+            <p class="mt-2 text-xs text-gray-500">Kept here for a week.</p>
+          </div>
+        <% end %>
         <p class="mt-3 text-xs text-gray-500">An accountant can also be given Books, view only, on the organization team.</p>
       </section>
     </div>

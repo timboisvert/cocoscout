@@ -1,21 +1,20 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-    static targets = ["tab", "panel", "hiddenField", "reviewCheckbox", "sendSection", "menu", "list"]
+    static targets = ["tab", "panel", "hiddenField", "reviewCheckbox", "sendSection", "menu", "sectionLabel", "sectionItem"]
     // plain: tabs drawn the settings-page way (no gray fill on the inactive
     // ones), as shared/settings_layout draws its strip.
-    // drill: on a phone the page opens on a list of sections (the list
-    // target) and a tap drills into one; sections come back with showList.
-    // Desktop never sees the list (it's sm:hidden) and always sees a panel.
+    // On a phone the strip gives way to shared/section_picker: a row naming
+    // the section showing (sectionLabel) and a sheet of them all
+    // (sectionItem), both kept in step here.
     // url: false keeps the address out of it (tabs in a modal, where ?tab=
     // and #tab- belong to the page under it).
     // Each switch dispatches tabs:change with { index }, for a controller
     // that changes more than the panels (a modal's footer buttons).
-    static values = { initialTab: { type: Number, default: 0 }, selectKey: String, plain: Boolean, drill: Boolean, url: { type: Boolean, default: true } }
+    static values = { initialTab: { type: Number, default: 0 }, selectKey: String, plain: Boolean, url: { type: Boolean, default: true } }
 
     connect() {
         let initialTab = this.initialTabValue;
-        let requested = false;
 
         // First check if there's a selectKey value - find tab with matching data-key
         // Skip if selectKey is empty, "0", or not set
@@ -26,7 +25,6 @@ export default class extends Controller {
                 const matchingIndex = parseInt(matchingTab.dataset.index, 10);
                 if (!isNaN(matchingIndex)) {
                     initialTab = matchingIndex;
-                    requested = true;
                 }
             }
         }
@@ -39,7 +37,6 @@ export default class extends Controller {
                 const tabIndex = parseInt(tabParam, 10);
                 if (!isNaN(tabIndex) && tabIndex >= 0 && tabIndex < this.tabTargets.length) {
                     initialTab = tabIndex;
-                    requested = true;
                 }
             }
             // Fallback to URL hash
@@ -56,15 +53,6 @@ export default class extends Controller {
         }
 
         this.show(initialTab);
-
-        // Drill mode opens on the list unless a section was asked for (a
-        // save's redirect, a link); then it stays on the list and the
-        // address carries no section.
-        if (this.drillValue) {
-            this.listMode = !requested;
-            this.applyDrill();
-            if (this.listMode) return;
-        }
 
         // Update the URL hash to match the initial tab (but not for modals).
         // ?tab= is a one-shot instruction — a controller redirect saying "come
@@ -102,7 +90,6 @@ export default class extends Controller {
         }
 
         this.show(idx);
-        this.drillInto();
 
         // Update the hidden field if it exists
         if (this.hasHiddenFieldTarget) {
@@ -118,33 +105,8 @@ export default class extends Controller {
         const idx = parseInt(e.target.value, 10);
         if (isNaN(idx)) return;
         this.show(idx);
-        this.drillInto();
         if (this.hasHiddenFieldTarget) this.hiddenFieldTarget.value = idx;
         if (this.urlValue) history.replaceState(null, '', `#tab-${idx}`);
-    }
-
-    // Phone, drill mode: back from a section to the list.
-    showList(e) {
-        e?.preventDefault();
-        this.listMode = true;
-        this.applyDrill();
-        const url = new URL(window.location.href);
-        url.hash = '';
-        history.replaceState(null, '', url.toString());
-        window.scrollTo(0, 0);
-    }
-
-    drillInto() {
-        if (!this.drillValue) return;
-        this.listMode = false;
-        this.applyDrill();
-        window.scrollTo(0, 0);
-    }
-
-    applyDrill() {
-        if (!this.hasListTarget) return;
-        this.listTarget.classList.toggle('hidden', !this.listMode);
-        this.panelTargets.forEach(panel => panel.classList.toggle('max-sm:hidden', this.listMode));
     }
 
     show(idx) {
@@ -163,6 +125,17 @@ export default class extends Controller {
         });
         this.panelTargets.forEach((panel, i) => {
             panel.classList.toggle("hidden", i !== idx);
+        });
+        // The phone's picker: check the section showing, and name it on the row.
+        this.sectionItemTargets.forEach(item => {
+            const active = parseInt(item.dataset.index, 10) === idx;
+            item.classList.toggle("text-pink-600", active);
+            item.classList.toggle("font-medium", active);
+            item.classList.toggle("text-gray-800", !active);
+            item.querySelector("[data-section-check]")?.classList.toggle("hidden", !active);
+            if (active) item.setAttribute("aria-current", "true"); else item.removeAttribute("aria-current");
+            const name = item.querySelector("[data-section-name]");
+            if (active && name && this.hasSectionLabelTarget) this.sectionLabelTarget.innerHTML = name.innerHTML;
         });
         this.dispatch("change", { detail: { index: idx } });
     }

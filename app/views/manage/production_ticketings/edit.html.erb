@@ -13,6 +13,8 @@
   <% case @section %>
   <% when "tickets" %>
     <%= render "manage/production_ticketings/sections/tickets", setup: @setup, production: @production %>
+  <% when "fees" %>
+    <%= render "manage/production_ticketings/sections/fees", setup: @setup, production: @production %>
   <% when "products" %>
     <%= render "manage/production_ticketings/sections/products", setup: @setup, production: @production %>
   <% when "sales" %>
@@ -21,6 +23,8 @@
     <%= render "manage/production_ticketings/sections/refunds", setup: @setup, production: @production %>
   <% when "codes" %>
     <%= render "manage/production_ticketings/sections/codes", setup: @setup, production: @production %>
+  <% when "boxes" %>
+    <%= render "manage/production_ticketings/sections/boxes", setup: @setup, production: @production %>
   <% when "seating" %>
     <%= render "manage/production_ticketings/sections/seating", setup: @setup, production: @production %>
   <% when "comps" %>

@@ -12,8 +12,6 @@ class TicketDoor
   #   :not_found  — no ticket with that code
   Result = Data.define(:kind, :ticket, :message)
 
-  UNDO_WINDOW = 2.minutes
-
   # The buyer's name and email for a door sale, checked: { buyer_name:,
   # buyer_email: }. Ahead of the door opening it's presale and both are
   # required, as online (Tim, 2026-10-23); on the night they're optional.
@@ -88,14 +86,25 @@ class TicketDoor
     ticket && admit(ticket)
   end
 
-  # A mistaken check-in, put right. Door staff can undo their own for a couple
-  # of minutes; managers any time.
-  def undo(ticket, manager: false)
-    return false unless ticket.ticket_listing_id == @listing.id && ticket.checked_in?
-    return false unless manager || (ticket.checked_in_by_id == @user&.id && ticket.checked_in_at > UNDO_WINDOW.ago)
+  # Check-ins taken back (Tim, 2026-11-16: the wrong person tapped, a
+  # party's count too high, the wrong group): each ticket goes back to valid,
+  # so its QR code scans again, and a TicketUncheck keeps who checked it in,
+  # when, and who took it back. Anyone working tonight's door can take back
+  # any check-in at it, not only their own or a fresh one: a mistake is often
+  # found by someone else, later. The tickets taken back; one already out,
+  # or for another show, is skipped.
+  def uncheck(tickets)
+    Array(tickets).select { |ticket| ticket.ticket_listing_id == @listing.id }.filter_map do |ticket|
+      Ticket.transaction do
+        row = Ticket.where(id: ticket.id, status: "checked_in").lock.first
+        next unless row
 
-    Ticket.where(id: ticket.id, status: "checked_in")
-          .update_all(status: "valid", checked_in_at: nil, checked_in_by_id: nil, updated_at: Time.current) == 1
+        TicketUncheck.create!(ticket: row, ticket_listing: @listing, unchecked_by: @user,
+                              checked_in_at: row.checked_in_at, checked_in_by_id: row.checked_in_by_id)
+        row.update_columns(status: "valid", checked_in_at: nil, checked_in_by_id: nil, updated_at: Time.current)
+        row
+      end
+    end
   end
 
   # Walk-ups paying cash, or comps — recorded so the count, the show's
@@ -118,7 +127,7 @@ class TicketDoor
       # The comp rules (CompRules) hold at the door too.
       raise TicketCheckout::Error, "Comps are off for this show." unless @listing.effective_comps_enabled
       if (left = @listing.comps_left) && left < quantities.to_h.values.sum(&:to_i)
-        raise TicketCheckout::Error, left.zero? ? "This date has no comps left to give." : "This date has #{left} #{'comp'.pluralize(left)} left to give."
+        raise TicketCheckout::Error, left.zero? ? "This date has no comps left to issue." : "This date has #{left} #{'comp'.pluralize(left)} left to issue."
       end
     end
 
@@ -146,7 +155,7 @@ class TicketDoor
           tier.seat_prices.each do |cents|
             ticket = order.tickets.create!(ticket_tier: tier.base_tier, bundle_tier: (tier if tier.bundle?), ticket_listing: @listing,
                                            **checked_in, price_cents: cents, discount_cents: kind == "comp" ? cents : 0)
-            record_tax(order, ticket) if kind == "cash"
+            record_tax(order, ticket, mode: @listing.cash_tax_mode) if kind == "cash"
           end
         end
       end
@@ -190,8 +199,10 @@ class TicketDoor
     Result.new(kind: kind, ticket: ticket, message: message)
   end
 
-  def record_tax(order, ticket)
-    tax = TaxCalculator.for_ticket(@listing, ticket.ticket_tier, ticket.price_cents)
+  # mode: the box office's say for cash ("included": the tax is inside the
+  # price they hand over), nil for the organization's tax setting.
+  def record_tax(order, ticket, mode: nil)
+    tax = TaxCalculator.for_ticket(@listing, ticket.ticket_tier, ticket.price_cents, mode: mode)
     tax.lines.each do |line|
       TaxLine.create!(organization_id: order.organization_id, taxable: ticket, tax_rate: line.tax_rate, name: line.name,
                       rate_bps: line.rate_bps, jurisdiction: line.jurisdiction, remitter: line.remitter, included: line.included,

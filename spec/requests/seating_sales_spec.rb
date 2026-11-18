@@ -139,7 +139,7 @@ RSpec.describe "Seating sales", type: :request do
 
     # Comps in exactly those seats.
     post manage_ticket_listing_seat_comps_path(listing), params: { seat_ids: [ seat("A 5").id, seat("A 6").id ], name: "Press", email: "press@example.com" }
-    expect(flash[:notice]).to include("2 seats given to Press")
+    expect(flash[:notice]).to include("2 comps issued to Press")
     comp = TicketOrder.where(channel: "comp").last
     expect(comp.tickets.map(&:seat_label)).to contain_exactly("A 5", "A 6")
     # A taken seat is refused.

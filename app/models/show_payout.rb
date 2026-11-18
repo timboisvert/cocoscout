@@ -165,11 +165,13 @@ class ShowPayout < ApplicationRecord
   # choice made on each line on Settle up (run or hold). Lines are matched
   # on who they pay, the way they come back from the calculator.
   def keeping_pay_choices
-    choices = line_items.to_h { |line| [ line.pay_choice_key, line.pay_choice ] }
+    # A paid line's choice is history; an unpaid one (a correction beside
+    # it included) is the choice that still matters.
+    choices = line_items.sort_by { |line| line.paid? ? 0 : 1 }.to_h { |line| [ line.pay_choice_key, line.pay_choice ] }
     result = yield
     line_items.reload.each do |line|
       choice = choices[line.pay_choice_key]
-      line.update_column(:pay_choice, choice) if choice && choice != line.pay_choice
+      line.update_column(:pay_choice, choice) if choice && choice != line.pay_choice && !line.paid?
     end
     result
   end
