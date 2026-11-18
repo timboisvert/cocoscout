@@ -418,8 +418,7 @@ RSpec.describe "Casting set-up", type: :request do
   # from every place a role is made, edited, or listed.
   describe "a role is its name and how many" do
     let!(:host) { create(:role, production: production, name: "Host", position: 1) }
-    # Marked before the choice went: the mark stays stored and shows nowhere.
-    let!(:crew) { create(:role, production: production, name: "Board Op", category: "technical", position: 2) }
+    let!(:crew) { create(:role, production: production, name: "Board Op", position: 2) }
     let!(:show) { create(:show, production: production, date_and_time: 1.week.from_now) }
 
     it "offers no Performing / Technical choice in Casting Settings and labels no role with one" do
@@ -444,12 +443,12 @@ RSpec.describe "Casting set-up", type: :request do
       expect(response.body).to include("Host", "Board Op")
     end
 
-    it "makes every new role a plain role, whatever is posted, and leaves an old mark as it was" do
+    it "makes every role a plain role, whatever a stale page posts" do
       post manage_create_casting_role_path(production), params: { role: { name: "Usher", quantity: "2", category: "technical", restricted: "0" } }
       expect(production.roles.find_by!(name: "Usher")).to have_attributes(quantity: 2, category: "performing")
 
-      patch manage_update_casting_role_path(production, crew), params: { role: { name: "Board Operator", quantity: "1", restricted: "0" } }
-      expect(crew.reload).to have_attributes(name: "Board Operator", category: "technical")
+      patch manage_update_casting_role_path(production, crew), params: { role: { name: "Board Operator", quantity: "1", category: "technical", restricted: "0" } }
+      expect(crew.reload).to have_attributes(name: "Board Operator", category: "performing")
     end
   end
 

@@ -3,10 +3,11 @@
 class Role < ApplicationRecord
   # Role categories. performing is every ordinary role. break is a
   # running-order marker such as an intermission in an act-based lineup:
-  # never cast, never counted. technical (backstage/crew) is no longer
-  # offered anywhere (Tim, 2026-11-18: crew is Staffing's now); roles marked
-  # with it before then keep the mark, which nothing shows.
-  CATEGORIES = %w[performing technical break].freeze
+  # never cast, never counted. There used to be a third, technical
+  # (backstage/crew): it's gone (Tim, 2026-11-18: crew is Staffing's now),
+  # and the roles that carried it became performing
+  # (CrewRolesBecomePlainRoles).
+  CATEGORIES = %w[performing break].freeze
   BREAK_CATEGORY = "break"
 
   # System role types (for system-managed roles)
@@ -38,7 +39,6 @@ class Role < ApplicationRecord
 
   # Scopes for role categories
   scope :performing, -> { where(category: "performing") }
-  scope :technical, -> { where(category: "technical") }
   # Everything that takes a performer — excludes intermission-style break markers
   scope :castable, -> { where.not(category: BREAK_CATEGORY) }
   scope :breaks, -> { where(category: BREAK_CATEGORY) }
@@ -163,9 +163,8 @@ class Role < ApplicationRecord
 
   # The act-mode editor's Type select: "act" | "break" | "show_role". Setting
   # it maps onto category + standing in one place so every editor (production
-  # roles, a show's lineup, the production wizard) agrees. A show role that
-  # was technical stays technical (the flag is what makes it a show role); an
-  # act or break clears the flag.
+  # roles, a show's lineup, the production wizard) agrees. The flag is what
+  # makes a role a show role; an act or break clears it.
   def lineup_kind
     return "break" if break?
     return "show_role" if standing?
@@ -179,9 +178,7 @@ class Role < ApplicationRecord
   # breaks are one slot, and breaks aren't restricted. A role-based lineup
   # has no kinds at all: a role is its name and how many (Tim, 2026-11-18;
   # the Performing / Technical choice is gone, crew being Staffing's now).
-  # Whatever is posted there is dropped: a new role is a plain one, and a
-  # role marked technical before the choice went keeps that mark untouched
-  # (CastingModeConverter still reads it for those roles).
+  # Whatever is posted there is dropped: every role is a plain one.
   def self.editor_params(permitted, act_based:)
     permitted = permitted.to_h.with_indifferent_access
     category = permitted.delete(:category).to_s
@@ -208,7 +205,7 @@ class Role < ApplicationRecord
       self.category = BREAK_CATEGORY
       self.standing = false
     when "show_role"
-      self.category = "performing" unless category == "technical"
+      self.category = "performing"
       self.standing = true
     when "role"
       self.category = "performing" if break?

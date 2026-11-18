@@ -1790,8 +1790,6 @@ module Manage
       permitted
     end
 
-    # Send cancellation notification emails to cast members
-    # role_categories: optional array of category strings to filter by (e.g., ["performing", "technical"])
     # Everything the reschedule preview and commit share: which events go,
     # which stay, and the dates that replace them. Returns { error: } when the
     # inputs don't make a plan.

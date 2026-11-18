@@ -25,12 +25,14 @@
 # (Magic at 1 and 3, with Clown between) get a " (2)" suffix so a role-based
 # lineup keeps one role per name. Roles → acts → roles is a round trip.
 #
-# Show roles: a role-based lineup's technical roles (Stage Manager ×2) were
-# never acts, so switching to acts marks them standing — "Show roles" cast
-# alongside the lineup, slots kept — instead of splitting them into numbered
-# acts. Standing roles are never split. Switching back to roles clears the
-# flag (a role-based lineup has no running order to sit outside of); the
-# category was kept, so a technical role comes back exactly as it was.
+# Show roles (standing roles, cast alongside the lineup with their slots
+# kept: MC, Stage Kitten ×2) are never split. Switching back to roles clears
+# the flag: a role-based lineup has no running order to sit outside of.
+#
+# A role has no Performing / Technical kind any more (Tim, 2026-11-18: crew
+# is Staffing's). Switching to acts used to keep a technical role whole as a
+# show role; now every multi-person role is split, and one that isn't an act
+# is made a show role in the lineup afterwards.
 #
 # Idempotent both ways: a lineup already in the requested shape is left
 # untouched. Draft casting-table assignments stay on the surviving role.
@@ -38,7 +40,7 @@ class CastingModeConverter
   Summary = Struct.new(:roles_split, :acts_created, :assignments_moved,
                        :notifications_moved, :vacancies_moved, :lineups_copied,
                        :roles_merged, :acts_merged, :breaks_removed, :names_suffixed,
-                       :roles_kept_standing, :standing_cleared,
+                       :standing_cleared,
                        keyword_init: true) do
     def initialize(**)
       super
@@ -47,8 +49,7 @@ class CastingModeConverter
 
     def changed?
       roles_split.positive? || lineups_copied.positive? || roles_merged.positive? ||
-        breaks_removed.positive? || names_suffixed.positive? ||
-        roles_kept_standing.positive? || standing_cleared.positive?
+        breaks_removed.positive? || names_suffixed.positive? || standing_cleared.positive?
     end
 
     def merge!(other)
@@ -134,8 +135,8 @@ class CastingModeConverter
     summary = Summary.new
     Role.transaction do
       production_lineup = @production.roles.production_roles
-      # Only splitting reshapes the shared roles in a way a role-pinned show
-      # would notice; marking technical roles standing is idle in role mode.
+      # Splitting reshapes the shared roles in a way a role-pinned show would
+      # notice, so each takes its own copy first.
       if production_lineup.any? { |r| splittable?(r) }
         @production.shows.where(casting_mode: "role_based", use_custom_roles: false).find_each do |show|
           copy_production_lineup_keeping_cast!(show)
@@ -159,9 +160,9 @@ class CastingModeConverter
     Role.transaction do
       if show.use_custom_roles?
         summary.merge!(split_lineup!(show.custom_roles, show: show))
-      elsif @production.roles.production_roles.any? { |r| splittable?(r) || becomes_standing?(r) }
+      elsif @production.roles.production_roles.any? { |r| splittable?(r) }
         # The production's roles are shared with every other night, so this
-        # show takes its own copy before anything is split or marked.
+        # show takes its own copy before anything is split.
         copy_production_lineup_keeping_cast!(show)
         summary.lineups_copied += 1
         summary.merge!(split_lineup!(show.custom_roles, show: show))
@@ -223,11 +224,6 @@ class CastingModeConverter
     summary = Summary.new
     lineup = lineup_scope.reorder(position: :asc, created_at: :asc, id: :asc).to_a
 
-    # Technical roles were never acts: they become show roles, slots intact.
-    lineup.select { |r| becomes_standing?(r) }.each do |role|
-      role.update_columns(standing: true, updated_at: Time.current)
-      summary.roles_kept_standing += 1
-    end
     return summary if lineup.none? { |r| splittable?(r) }
 
     running_order = []
@@ -259,11 +255,7 @@ class CastingModeConverter
 
   # A show role isn't an act, whatever its slot count — it's never split.
   def splittable?(role)
-    role.castable? && !role.standing? && !becomes_standing?(role) && role.quantity > 1
-  end
-
-  def becomes_standing?(role)
-    role.category == "technical" && !role.standing?
+    role.castable? && !role.standing? && role.quantity > 1
   end
 
   # A new act right after `role`: same name, category, restriction, and

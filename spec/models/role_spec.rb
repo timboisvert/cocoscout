@@ -229,11 +229,9 @@ RSpec.describe Role, type: :model do
           expect(role.category).to eq('performing')
         end
 
-        it 'keeps a technical category behind the show-role flag' do
-          role = build(:role, production: act_production, name: 'Stage Manager', category: 'technical')
-          role.lineup_kind = 'show_role'
-          expect(role.category).to eq('technical')
-          expect(role.lineup_kind).to eq('show_role')
+        it 'has no technical category: a role is performing or a break' do
+          expect(Role::CATEGORIES).to eq(%w[performing break])
+          expect(build(:role, production: act_production, name: 'Stage Manager', category: 'technical')).not_to be_valid
         end
       end
 
@@ -264,11 +262,7 @@ RSpec.describe Role, type: :model do
           expect(made.category).to eq('performing')
         end
 
-        it 'leaves a role marked technical before the choice went as it was, and makes an edited intermission a plain role' do
-          crew = create(:role, production: role_production, name: 'Board Op', category: 'technical')
-          crew.update!(Role.editor_params({ 'name' => 'Board Operator', 'category' => 'performing' }, act_based: false))
-          expect(crew.reload).to have_attributes(name: 'Board Operator', category: 'technical')
-
+        it 'makes an edited intermission a plain role in a role-based lineup' do
           role = build(:role, production: role_production, category: 'break')
           role.assign_attributes(Role.editor_params({ 'name' => 'Interval' }, act_based: false))
           expect(role.category).to eq('performing')
