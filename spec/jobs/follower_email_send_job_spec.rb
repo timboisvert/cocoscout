@@ -71,7 +71,7 @@ RSpec.describe FollowerEmailSendJob do
     stub_const("FollowerEmailAllowance::INCLUDED_PER_MONTH", 2)
     %w[a b c].each { |name| on_list("#{name}@example.com") }
     email = org.follower_emails.create!(subject: "Hi", body: "<p>Hi</p>", targets: { "list_ids" => [ main.id ] })
-    expect { FollowerEmailSender.send!(email, owner) }.to raise_error(FollowerEmailSender::Error, /This would send 3 emails, and 2 are left this month/)
+    expect { FollowerEmailSender.send!(email, owner) }.to raise_error(FollowerEmailSender::Error, /This would send 3 emails, and you have 2 left this month\. Add 1,000 more for \$3/)
     expect(email.reload).to be_draft
   end
 

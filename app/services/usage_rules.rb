@@ -171,7 +171,18 @@ module UsageRules
   # Everything the month's usage bill charges beyond the people paid: Pro
   # when it's paid on this bill, and the fees.
   def fees_cents(organization, month)
-    pro_cents(organization, month) + bank_debit_fee_cents(organization, month) + withdrawal_fee_cents(organization, month)
+    pro_cents(organization, month) + bank_debit_fee_cents(organization, month) + withdrawal_fee_cents(organization, month) +
+      follower_email_blocks_cents(organization, month)
+  end
+
+  # Blocks of extra emails to followers bought in a month (FollowerEmailBlock;
+  # Tim, 2026-11-17): $3 for each 1,000, on that month's bill.
+  def follower_email_blocks(organization, month)
+    organization.follower_email_blocks.bought_in(month)
+  end
+
+  def follower_email_blocks_cents(organization, month)
+    follower_email_blocks(organization, month).sum(:price_cents)
   end
 
   # Pro for the month, when the organization pays it on the monthly bill

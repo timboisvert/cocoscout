@@ -16,6 +16,9 @@ class Contract < ApplicationRecord
   # A contract going live, or being cancelled, puts its rentals on the
   # organization's Google Calendar or takes them off.
   after_commit :keep_google_calendar, if: :saved_change_to_status?
+  # A contract that has just gone live is offered to its contractor to
+  # connect, when they run an organization of their own (ContractConnections.offer!).
+  after_commit :offer_to_connect, if: -> { saved_change_to_status? && status_active? }
   has_many :ticket_listings, dependent: :nullify
   # A contract is FOR one production (the real-world show). A production can be the
   # subject of many contracts over time — see Production#contracts.
@@ -31,6 +34,10 @@ class Contract < ApplicationRecord
   # contractor's visibility on My, never a production permission. The
   # contractor's own person isn't a row here; Contract.for_people counts both.
   has_many :contract_people, dependent: :destroy
+  # What the contractor has asked about its dates (ContractDateRequests).
+  has_many :date_requests, class_name: "ContractDateRequest", dependent: :destroy
+  # Connecting it to the contractor's own organization (ContractConnections).
+  has_many :connections, class_name: "ContractConnection", dependent: :destroy
   has_many :people, through: :contract_people
 
   # The contracts these people are on: as the contractor's person or as a
@@ -2486,6 +2493,13 @@ class Contract < ApplicationRecord
 
   def keep_google_calendar
     GoogleCalendarFullSyncJob.perform_later(organization_id) if GoogleCalendarSync.on_for?(organization_id)
+  end
+
+  # An offer that can't be made never undoes the contract going live.
+  def offer_to_connect
+    ContractConnections.offer!(self)
+  rescue StandardError => e
+    Rails.logger.error("[Contract] #{id} offer to connect: #{e.class}: #{e.message}")
   end
 
   private

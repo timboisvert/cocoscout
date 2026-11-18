@@ -1,0 +1,77 @@
+<%# Connect, step 4: what each side gets, a note, and the request. From the
+    controller: @contract, @organization, @production or @new_name,
+    @comparison (how their dates line up, when the production has any),
+    @managers (names of who runs their organization). `carried` is every
+    choice made so far, posted back as hidden fields. %>
+<% content_for :title, "Connect: what they'll see" %>
+<%
+  org = @contract.organization.name
+  mine = @organization.name
+  production_name = @production&.name || @new_name
+  shows = LinkedDates.contract_shows(@contract).to_a
+%>
+<div class="w-full mb-10 max-w-3xl">
+  <%= render "my/contract_connections/steps", step: 4 %>
+
+  <h1 class="text-3xl coustard-regular text-gray-900">Ready to connect <%= production_name %> to your <%= org %> contract?</h1>
+  <p class="text-gray-600 mt-2">
+    <% if @standing %>
+      Here's what each side will be able to see. <%= org %> has already agreed to connect your later contracts, so this one will connect as soon as you press Connect, and <%= org %> will be notified.
+    <% else %>
+      Here's what each side will be able to see once <%= org %> accepts. Nothing changes for either of you until then.
+    <% end %>
+  </p>
+
+  <div class="grid sm:grid-cols-2 gap-4 mt-6">
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "What #{org} will see" %>
+      <ul class="p-4 space-y-3 text-sm text-gray-700">
+        <li>That you run this show as <%= mine %> on CocoScout.</li>
+        <li>Which of your productions their dates have gone into: <%= production_name %>.</li>
+        <li>How many people in <%= mine %> can see their ticket sales.</li>
+        <li>The poster, wide image and description you set on <%= production_name %>. <%= possessive(org) %> ticket page for these dates will use them, unless <%= org %> chooses to keep its own.</li>
+        <li class="text-gray-500">They'll never see your other dates, your rehearsals, your cast and staff, your contacts or your money.</li>
+      </ul>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "What #{mine} will see" %>
+      <ul class="p-4 space-y-3 text-sm text-gray-700">
+        <li><%= possessive(org) %> <%= pluralize(shows.size, "date") %> for this contract, added to <%= production_name %>.</li>
+        <li>Their ticket sales for those dates, just as you see them on My today. <%= @managers.any? ? "#{@managers.to_sentence} will be able to see them too, as #{@managers.size == 1 ? 'a manager' : 'managers'} of #{mine}." : "You're the only person who manages #{mine}, so for now only you will see them." %></li>
+        <li>What the contract pays for each date, for the people who manage <%= mine %>. Your production team and cast are never shown it.</li>
+        <li>How many tickets have sold, for your team and cast, if you'd like them to.</li>
+        <li class="text-gray-500">You'll never see what <%= org %> keeps from each sale, or the email addresses of the people who bought tickets.</li>
+      </ul>
+    </div>
+  </div>
+
+  <% if @comparison && !@comparison.nothing_to_check? %>
+    <p class="text-sm text-gray-600 mt-4">
+      About your dates: <%= @comparison.summary_words(pair: carried[:pair], join: carried[:join]) %>.
+      <%= link_to "Change your answers", my_connect_contract_dates_path(@contract, carried), class: "text-pink-600 hover:text-pink-700 underline" %>
+    </p>
+  <% end %>
+
+  <%= form_with url: my_connect_contract_path(@contract), method: :post, local: true, class: "mt-6" do %>
+    <% carried.each do |key, value| %>
+      <% if value.is_a?(Hash) %>
+        <% value.each do |inner, chosen| %><input type="hidden" name="<%= key %>[<%= inner %>]" value="<%= chosen %>"><% end %>
+      <% else %>
+        <input type="hidden" name="<%= key %>" value="<%= value %>">
+      <% end %>
+    <% end %>
+    <%# A note goes with a request they have to answer; with their yes already given there's nothing to read it with. %>
+    <% unless @standing %>
+      <label class="block">
+        <span class="block text-sm font-medium text-gray-700 mb-1">Would you like to add a note for <%= org %>? <span class="font-normal text-gray-500">(optional)</span></span>
+        <textarea name="note" rows="3" maxlength="2000" class="block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"></textarea>
+      </label>
+    <% end %>
+
+    <div class="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
+      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium",
+            path: my_connect_contract_production_path(@contract, organization_id: @organization.id) %>
+      <%= render "shared/button", text: @standing ? "Connect" : "Send the request", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+</div>

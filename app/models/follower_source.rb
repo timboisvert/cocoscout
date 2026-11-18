@@ -4,7 +4,7 @@
 # pasted, from Contacts, or added by a producer a list is shared with. The
 # "where they came from" on every list, and what segments read.
 class FollowerSource < ApplicationRecord
-  KINDS = %w[checkout manual paste contacts added_by_share].freeze
+  KINDS = %w[checkout manual paste contacts added_by_share shared].freeze
 
   belongs_to :follower
   belongs_to :production, optional: true
@@ -30,6 +30,9 @@ class FollowerSource < ApplicationRecord
       [ "Added by #{who || 'a producer'}", date ].join(" · ")
     when "contacts"
       [ "From Contacts", date ].join(" · ")
+    when "shared"
+      # Shared through a contract by the organization that sold the tickets.
+      [ "From #{mailing_list&.source_list&.organization&.name || 'another organization'}", date ].join(" · ")
     else
       who = added_by_person && viewer && added_by_person_id == viewer.id ? "you" : added_by_person&.name
       [ who ? "Added by #{who}" : "Added by hand", date ].join(" · ")

@@ -48,8 +48,11 @@ class PayoutContribution < ApplicationRecord
   # organization itself (collected contract payments). An OUTGOING contract
   # payment to a contractor is normal bank-funded money — its source is also a
   # ContractPayment, which is why direction is judged by payee, not source.
+  # Another organization as the payee (a contract share paid into a
+  # contractor's own organization's balance) is not held money: it's owed
+  # like any payee's, and the run funds it.
   def held_funds?
-    payee_type == "Organization" || HELD_SOURCE_TYPES.include?(source_type)
+    (payee_type == "Organization" && payee_id == payout_batch&.organization_id) || HELD_SOURCE_TYPES.include?(source_type)
   end
 
   # What kind of money this line is, for "what's in this run" on the run page.

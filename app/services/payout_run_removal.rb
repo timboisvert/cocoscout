@@ -25,7 +25,10 @@ class PayoutRunRemoval
   def self.removable?(contribution)
     batch = contribution.payout_batch
     return false unless batch&.open? && !contribution.payout_batch_item&.paid?
-    return false if contribution.payee_type == "Organization" || contribution.source_type == "PersonAdvance"
+    # The organization's own remainder stays put; a share going into another
+    # organization's balance comes out like any contract payment.
+    own = contribution.payee_type == "Organization" && contribution.payee_id == batch.organization_id
+    return false if own || contribution.source_type == "PersonAdvance"
     return false if contribution.source_type == "ContractPayment" && contribution.amount_cents.negative?
 
     true

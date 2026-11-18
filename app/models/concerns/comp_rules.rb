@@ -1,21 +1,31 @@
 # frozen_string_literal: true
 
-# The comp rules (Ticketing settings → Comps), the same six fields on the
+# The comp rules (Ticketing settings → Comps), the same seven fields on the
 # box office (TicketingProfile), a production (ProductionTicketing, with
 # own_comps) and a date (TicketListing, with own_comps):
 #
 #   comps_enabled        comps at all; off, nobody gives any
 #   comps_limit          how many a date can give away, whoever gives them:
-#                        unlimited | fixed (comps_per_show) | per_performer
-#   team_comps           production team managers may give some
+#                        unlimited | fixed (comps_per_show)
+#   team_comps           production team managers may issue some
 #   team_comps_limit     how many of them: all | fixed (team_comps_per_show)
-#                        | per_performer
+#   contract_comps_per_show  how many the people on a contract may issue for
+#                        a date the contract covers: 0 is none. One number
+#                        between all of them (TicketSalesAccess.comp_allowance).
+#
+# Comps are none or a number (Tim, 2026-11-17): "one per performer" was an
+# option until then, and is gone until someone asks for it.
 #
 # A date reads the whole rule from one place (TicketListing#comp_rules).
 module CompRules
   extend ActiveSupport::Concern
 
-  FIELDS = %i[comps_enabled comps_limit comps_per_show team_comps team_comps_limit team_comps_per_show].freeze
+  FIELDS = %i[comps_enabled comps_limit comps_per_show team_comps team_comps_limit team_comps_per_show contract_comps_per_show].freeze
+  # What the form sends: the fields, and the switch beside the contract's
+  # number (off saves 0).
+  PARAMS = (FIELDS + %i[contract_comps]).freeze
+  # The number the form offers before anyone has set one.
+  CONTRACT_COMPS_SUGGESTED = 4
 
   # The form's fields → attributes. own: false clears a production's or a
   # date's own rules (it follows the level above again).
@@ -28,30 +38,30 @@ module CompRules
       comps_per_show: raw[:comps_per_show].to_s.strip.presence&.to_i || 10,
       team_comps: raw[:team_comps] == "1",
       team_comps_limit: raw[:team_comps_limit].presence_in(TicketingProfile::TEAM_COMPS_LIMITS) || "all",
-      team_comps_per_show: raw[:team_comps_per_show].to_s.strip.presence&.to_i || 2
+      team_comps_per_show: raw[:team_comps_per_show].to_s.strip.presence&.to_i || 2,
+      contract_comps_per_show: raw[:contract_comps] == "1" ? raw[:contract_comps_per_show].to_i.clamp(0, 10_000) : 0
     }
   end
 
-  # "comps on · no limit per date · production team managers may give any of
-  # them", the way the production's and the date's Comps tabs read back the
+  # "comps on · no limit per date · production team managers may issue any of
+  # them · people on a contract may issue 4 of them", the way the production's and the date's Comps tabs read back the
   # rules they follow.
   def comp_rules_words
     return "comps off" if comps_enabled == false
 
     per_date = case comps_limit.presence || "unlimited"
     when "fixed" then "#{comps_per_show || 10} per date"
-    when "per_performer" then "one per performer cast"
     else "no limit per date"
     end
     team = if team_comps == false
-      "production team managers don't give them"
+      "production team managers don't issue them"
     else
       case team_comps_limit.presence || "all"
-      when "fixed" then "production team managers may give #{team_comps_per_show || 2} of them"
-      when "per_performer" then "production team managers may give one per performer"
-      else "production team managers may give any of them"
+      when "fixed" then "production team managers may issue #{team_comps_per_show || 2} of them"
+      else "production team managers may issue any of them"
       end
     end
-    "comps on · #{per_date} · #{team}"
+    contract = contract_comps_per_show.to_i.positive? ? "people on a contract may issue #{contract_comps_per_show} of them" : "people on a contract don't issue them"
+    "comps on · #{per_date} · #{team} · #{contract}"
   end
 end

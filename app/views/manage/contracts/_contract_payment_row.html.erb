@@ -378,6 +378,9 @@
                     (still_owed.positive? ?
                       "They'll still owe #{number_to_currency(still_owed)}, which comes out of their next share." :
                       "That pays it off exactly.")
+                  elsif (into_balance = ContractConnections.pay_target(contract))
+                    # Their choice (Connections): no bank comes into it.
+                    "Add this payment to your payout run? When the run pays, it goes into #{h(possessive(into_balance.name))} CocoScout balance, with no bank transfer."
                   elsif has_bank
                     "Add this payment to your payout run?"
                   else

@@ -1,0 +1,226 @@
+<%# Connect, step 3: how the dates already in their production compare with
+    the contract's (LinkedDates.compare). Shown only when the production has
+    shows of its own. A GET form: the answers are carried to the last step.
+    Nothing of theirs is changed here, or ever unless they say two dates are
+    the same show. Each side is described in full: on the contract, when the
+    show runs and, when the room is booked for longer, the booking's own
+    hours; in their list, the date's own time, its call time if it has one,
+    and who's cast. From the controller: @contract, @organization,
+    @production, @comparison. %>
+<% content_for :title, "Connect: check your dates" %>
+<%
+  org = @contract.organization.name
+  zone = @comparison.zone
+  local = ->(time) { time.in_time_zone(zone) }
+  stamp = ->(time) { local.call(time).strftime("%a %b %-d, %-l:%M %p") }
+  clock = ->(time) { local.call(time).strftime("%-l:%M %p") }
+  cast = ->(show) { count = show.show_person_role_assignments.count; count.zero? ? "nobody is cast yet" : "#{count} #{'person'.pluralize(count)} cast" }
+  has_call = ->(show) { show.call_time_enabled? && show.call_time.present? }
+  # The contract's side of a date: when the show runs, and the booking's own
+  # hours when the room is held for longer than the show.
+  contract_words = lambda do |contract_show|
+    rental = contract_show.space_rental
+    show_hours = "The show runs from #{clock.call(contract_show.date_and_time)} to #{clock.call(contract_show.ends_at)}."
+    if rental&.has_separate_event_time?
+      "#{show_hours} The room is booked from #{clock.call(rental.starts_at)} to #{clock.call(rental.ends_at)}, which leaves time to set up and clear out."
+    else
+      show_hours
+    end
+  end
+  # Their side: the date's own time, its call time if it has one, who's cast.
+  own_words = lambda do |show|
+    # A date with a name of its own is called by it; one without is "your date".
+    words = "#{show.secondary_name.present? ? "\u201C#{show.secondary_name}\u201D" : 'Your date'} starts at #{clock.call(show.date_and_time)}"
+    words += ", with the cast called for #{clock.call(show.call_time)}" if has_call.call(show)
+    "#{words}, and #{cast.call(show)}."
+  end
+  choice_class = "flex items-start p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-pink-400 transition-colors has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 bg-white"
+  radio_class = "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500"
+  check_class = "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+  pill = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+  fact = "rounded-lg border border-gray-200 bg-white px-3 py-2.5"
+  pair = LinkedDates.plain(params[:pair])
+  calls = LinkedDates.plain(params[:call])
+  answered = params[:pair].present? || params[:join].present?
+  count_words = ->(count, one, many) { count == 1 ? "1 date #{one}" : "#{count} dates #{many}" }
+%>
+<div class="w-full mb-10 max-w-3xl">
+  <%= render "my/contract_connections/steps", step: 3 %>
+
+  <h1 class="text-3xl coustard-regular text-gray-900">Let's check your dates against the contract</h1>
+  <p class="text-gray-600 mt-2">
+    <%= @production.name %> already has some dates in it. Below is how they compare with the dates on your <%= org %> contract.
+    Nothing of yours will be changed unless you tell us that two dates are the same show, and your cast, roles, call times
+    and notes stay exactly where they are.
+  </p>
+
+  <div class="flex flex-wrap gap-2 mt-4">
+    <% if @comparison.matches.any? %><span class="<%= pill %> bg-green-100 text-green-700"><%= count_words.call(@comparison.matches.size, "matches", "match") %></span><% end %>
+    <% if @comparison.questions.any? %><span class="<%= pill %> bg-amber-100 text-amber-700"><%= count_words.call(@comparison.questions.size, "is", "are") %> on the same night at a different time</span><% end %>
+    <% if @comparison.added.any? %><span class="<%= pill %> bg-blue-100 text-blue-700"><%= count_words.call(@comparison.added.size, "is", "are") %> only on the contract</span><% end %>
+    <% if @comparison.theirs_only.any? %><span class="<%= pill %> bg-gray-100 text-gray-600"><%= count_words.call(@comparison.theirs_only.size, "is", "are") %> only in your list</span><% end %>
+  </div>
+
+  <%= form_with url: my_connect_contract_review_path(@contract), method: :get, class: "mt-6 space-y-6" do %>
+    <input type="hidden" name="organization_id" value="<%= @organization.id %>">
+    <input type="hidden" name="production" value="<%= @production.id %>">
+
+    <% @comparison.questions.each do |contract_show, candidates| %>
+      <%
+        rental = contract_show.space_rental
+        likely = @comparison.likely_same(contract_show, candidates)
+        chosen = pair[contract_show.id.to_s].presence || (likely && !answered ? likely.id.to_s : "unsure")
+      %>
+      <div class="border border-amber-200 rounded-lg overflow-hidden bg-white" data-date-question="<%= contract_show.id %>">
+        <div class="px-4 py-3 bg-amber-50 border-b border-amber-200">
+          <h2 class="text-base font-semibold text-gray-900"><%= local.call(contract_show.date_and_time).strftime("%A, %B %-d") %>: are these the same show?</h2>
+          <p class="text-sm text-gray-600 mt-0.5">
+            <% if candidates.one? %>
+              You have a date that night, but it doesn't start at the same time as the one on the contract.
+            <% else %>
+              You have <%= candidates.size %> dates that night, and none of them starts at the same time as the one on the contract.
+            <% end %>
+          </p>
+        </div>
+        <div class="p-4 space-y-3">
+          <div class="grid sm:grid-cols-2 gap-3 text-sm">
+            <div class="<%= fact %>">
+              <div class="text-xs font-semibold uppercase tracking-wide text-gray-500">On the contract</div>
+              <div class="text-gray-700 mt-1"><%= contract_words.call(contract_show) %></div>
+            </div>
+            <div class="<%= fact %>">
+              <div class="text-xs font-semibold uppercase tracking-wide text-gray-500">In your list</div>
+              <% candidates.each do |show| %><div class="text-gray-700 mt-1"><%= own_words.call(show) %></div><% end %>
+            </div>
+          </div>
+
+          <% candidates.each do |show| %>
+            <% if @comparison.reason_for(contract_show, show) == :booking_start %>
+              <p class="text-sm text-gray-700 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                Your date starts at <%= clock.call(show.date_and_time) %>, which is exactly when your booking at <%= org %> begins.
+                The show itself isn't until <%= clock.call(contract_show.date_and_time) %>, so it looks as though this is the same show,
+                entered with the time you can get into the room.
+              </p>
+            <% end %>
+          <% end %>
+
+          <% candidates.each do |show| %>
+            <% later_call = has_call.call(show) && show.call_time > contract_show.date_and_time %>
+            <label class="<%= choice_class %>">
+              <input type="radio" name="pair[<%= contract_show.id %>]" value="<%= show.id %>" <%= "checked" if chosen == show.id.to_s %> class="<%= radio_class %>">
+              <div class="ml-3">
+                <div class="text-sm font-medium text-gray-900">
+                  Yes, <%= candidates.one? ? "they're the same show" : "it's the same show as my #{clock.call(show.date_and_time)} date" %>
+                </div>
+                <div class="text-sm text-gray-500">
+                  We'll keep your date and set it to the contract's show time, <%= clock.call(contract_show.date_and_time) %> to <%= clock.call(contract_show.ends_at) %>, in <%= possessive(org) %> room.
+                  Its cast, roles and notes won't change. If anyone is cast, you'll be asked to let them know about the new time.
+                </div>
+                <% if has_call.call(show) %>
+                  <div class="text-sm text-gray-500 mt-1">
+                    Your <%= clock.call(show.call_time) %> call time stays as it is.
+                    <% if later_call %>That would be after the show starts, so you'll want to change it once you've connected.<% end %>
+                  </div>
+                <% else %>
+                  <label class="flex items-center gap-2 mt-2 text-sm text-gray-700 cursor-pointer">
+                    <input type="checkbox" name="call[<%= contract_show.id %>]" value="1"
+                           <%= "checked" if calls[contract_show.id.to_s] == "1" || (!answered && likely == show) %> class="<%= check_class %>">
+                    Keep <%= clock.call(show.date_and_time) %> as the call time for the cast
+                  </label>
+                <% end %>
+              </div>
+            </label>
+          <% end %>
+          <label class="<%= choice_class %>">
+            <input type="radio" name="pair[<%= contract_show.id %>]" value="separate" <%= "checked" if chosen == "separate" %> class="<%= radio_class %>">
+            <div class="ml-3">
+              <div class="text-sm font-medium text-gray-900">No, they're two different events</div>
+              <div class="text-sm text-gray-500">We'll leave your <%= "date".pluralize(candidates.size) %> exactly as <%= candidates.one? ? "it is" : "they are" %> and add the contract's <%= clock.call(contract_show.date_and_time) %> show alongside, with nobody cast yet. We won't ask you about this again.</div>
+            </div>
+          </label>
+          <label class="<%= choice_class %>">
+            <input type="radio" name="pair[<%= contract_show.id %>]" value="unsure" <%= "checked" if chosen == "unsure" %> class="<%= radio_class %>">
+            <div class="ml-3">
+              <div class="text-sm font-medium text-gray-900">I'm not sure yet</div>
+              <div class="text-sm text-gray-500">That's fine. We'll keep both for now, and you can answer this later from your Connections page.</div>
+            </div>
+          </label>
+          <p class="text-xs text-gray-500 pt-1">
+            If you think the contract's time is the one that's wrong, go ahead and connect, and then use Request date/time change on My Contracts to ask <%= org %> to fix it.
+          </p>
+        </div>
+      </div>
+    <% end %>
+
+    <% if @comparison.matches.any? %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "These dates match",
+              intro: "The dates below start at the same time as the show on the contract, so we'll treat each one as the contract's date. Everything on them stays as it is, including any call time. If one of them is actually a separate event, untick it and we'll keep it as your own." %>
+        <ul class="divide-y divide-gray-100">
+          <% @comparison.matches.each do |contract_show, show| %>
+            <li>
+              <label class="flex items-start gap-3 px-4 py-3 cursor-pointer">
+                <input type="checkbox" name="pair[<%= contract_show.id %>]" value="<%= show.id %>"
+                       <%= "checked" if !answered || pair[contract_show.id.to_s] == show.id.to_s %> class="<%= check_class %> mt-0.5">
+                <span>
+                  <span class="block text-sm font-medium text-gray-900"><%= stamp.call(contract_show.date_and_time) %><%= " (already played)" if contract_show.date_and_time < Time.current %></span>
+                  <span class="block text-sm text-gray-600">In your list: <%= own_words.call(show) %></span>
+                  <span class="block text-sm text-gray-500">On the contract: <%= contract_words.call(contract_show) %></span>
+                </span>
+              </label>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <% if @comparison.added.any? %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "These dates are only on the contract",
+              intro: "You don't have these in #{@production.name} yet, so we'll add them for you. Nobody will be cast in them to begin with." %>
+        <ul class="divide-y divide-gray-100">
+          <% @comparison.added.each do |contract_show| %>
+            <li class="px-4 py-3">
+              <div class="text-sm font-medium text-gray-900"><%= stamp.call(contract_show.date_and_time) %><%= " (already played)" if contract_show.date_and_time < Time.current %></div>
+              <div class="text-sm text-gray-500"><%= contract_words.call(contract_show) %></div>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <% if @comparison.theirs_only.any? %>
+      <% joinable = @comparison.added.select { |contract_show| contract_show.date_and_time > Time.current } %>
+      <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "These dates are only in your list",
+              intro: "The contract doesn't include these, so they'll stay just as they are.#{' If one of them is really the same show as a contract date, choose that date from its menu.' if joinable.any?}" %>
+        <ul class="divide-y divide-gray-100">
+          <% @comparison.theirs_only.each do |show| %>
+            <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+              <div class="min-w-0">
+                <div class="text-sm font-medium text-gray-900"><%= stamp.call(show.date_and_time) %></div>
+                <div class="text-sm text-gray-500"><%= own_words.call(show) %></div>
+              </div>
+              <% if joinable.any? %>
+                <select name="join[<%= show.id %>]" aria-label="Whether this is the same show as one of the contract's dates"
+                        class="px-3 py-1.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500">
+                  <option value="">This is a date of its own</option>
+                  <% joinable.each do |contract_show| %>
+                    <option value="<%= contract_show.id %>" <%= "selected" if params.dig(:join, show.id.to_s) == contract_show.id.to_s %>>This is the same show as <%= stamp.call(contract_show.date_and_time) %></option>
+                  <% end %>
+                </select>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+      <p class="text-xs text-gray-500 -mt-3">We only compare shows. Your rehearsals and other events aren't listed here, and nothing will happen to them.</p>
+    <% end %>
+
+    <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+      <%= render "shared/button", text: "Back", variant: "secondary", size: "medium",
+            path: my_connect_contract_production_path(@contract, organization_id: @organization.id) %>
+      <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+</div>

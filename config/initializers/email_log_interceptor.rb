@@ -10,4 +10,6 @@ Rails.application.config.after_initialize do
   ActionMailer::Base.register_preview_interceptor(EmailButtonInterceptor)
   # A plain-text version beside every HTML email (PlainTextAlternativeInterceptor).
   ActionMailer::Base.register_interceptor(PlainTextAlternativeInterceptor)
+  # Every email that goes out is counted against the Mailgun plan (MailVolume).
+  ActionMailer::Base.register_observer(MailVolumeObserver)
 end

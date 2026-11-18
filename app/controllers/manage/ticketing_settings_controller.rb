@@ -85,7 +85,7 @@ module Manage
     # The box office's comp rules (CompRules): on at all, how many a date can
     # give away, and the production team's share of them.
     def update_comps
-      raw = params.require(:ticketing_profile).permit(*CompRules::FIELDS)
+      raw = params.require(:ticketing_profile).permit(*CompRules::PARAMS)
       if ticketing_profile.update(CompRules.attributes_from(raw))
         redirect_to section_path("comps"), notice: "Saved. #{ticketing_profile.comp_rules_words.upcase_first}."
       else

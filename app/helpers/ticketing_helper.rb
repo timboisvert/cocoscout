@@ -48,7 +48,10 @@ module TicketingHelper
   def ticket_page_image_source(page_image)
     return "No image yet" unless page_image
 
-    whose = page_image.own? ? "This show's" : "The production's"
+    whose = if page_image.own? then "This show's"
+    elsif page_image.partner? then possessive(page_image.from)
+    else "The production's"
+    end
     "#{whose} #{page_image.wide? ? 'wide image' : 'poster'}"
   end
 
@@ -89,26 +92,45 @@ module TicketingHelper
 
   # The comp rules as one sentence, the way the Comps tabs read them back
   # (CompRules): "With these rules, a date can give away as many comps as it
-  # has seats, and its production team managers may give any of them."
+  # has seats, its production team managers may issue any of them, and people
+  # on a contract give none of them."
   # subject: "a date", "a Stargazers date", "this date".
   def comp_rules_sentence(rules, subject: "a date", single: false)
-    return "With these rules, nobody gives comps#{single ? ' on this date' : ''}." if rules.comps_enabled == false
+    return "With these rules, nobody issues comps#{single ? ' on this date' : ''}." if rules.comps_enabled == false
 
     per_date = case rules.comps_limit.presence || "unlimited"
-    when "fixed" then "#{subject} can give away #{pluralize(rules.comps_per_show || 10, 'comp')}"
-    when "per_performer" then "#{subject} can give away one comp per performer cast in it"
-    else "#{subject} can give away as many comps as it has seats"
+    when "fixed" then "#{subject} can issue #{pluralize(rules.comps_per_show || 10, 'comp')}"
+    else "#{subject} can issue as many comps as it has seats"
     end
     team = if rules.team_comps == false
-      "its production team managers give none of them"
+      "its production team managers issue none of them"
     else
       case rules.team_comps_limit.presence || "all"
-      when "fixed" then "its production team managers may give #{rules.team_comps_per_show || 2} of them"
-      when "per_performer" then "its production team managers may give one per performer"
-      else "its production team managers may give any of them"
+      when "fixed" then "its production team managers may issue #{rules.team_comps_per_show || 2} of them"
+      else "its production team managers may issue any of them"
       end
     end
-    "With these rules, #{per_date}, and #{team}."
+    contract = rules.contract_comps_per_show.to_i.positive? ? "people on a contract may issue #{rules.contract_comps_per_show} of them" : "people on a contract issue none of them"
+    "With these rules, #{per_date}, #{team}, and #{contract}."
+  end
+
+  # What someone's comps for a date come to, said to them
+  # (TicketSalesAccess.comp_allowance). For the people on a contract it is
+  # the seller's number, shared between everyone on the contract.
+  def comp_allowance_words(allowance, listing)
+    if allowance[:contract]
+      given = allowance[:team_given]
+      "#{listing.organization.name} allows #{pluralize(allowance[:team_limit], 'comp')} for this date, shared between everyone on the contract. " \
+        "#{given.zero? ? 'None have' : "#{given} #{given == 1 ? 'has' : 'have'}"} been issued so far."
+    elsif allowance[:team_limit] then "#{allowance[:team_given]} of #{allowance[:team_limit]} issued."
+    elsif allowance[:date_left] then "#{pluralize(allowance[:date_left], 'comp')} left on this date."
+    else "No limit, up to the seats left."
+    end
+  end
+
+  # "Issue comps · 2 of 4 left", or "Give comps" with no limit.
+  def comp_allowance_button(allowance)
+    allowance[:left] ? "Issue comps · #{allowance[:left]} of #{allowance[:team_limit] || allowance[:date_left]} left" : "Issue comps"
   end
 
   # Where a date's comp rules come from (CompRules), for "comps are off on …".

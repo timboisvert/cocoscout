@@ -222,6 +222,9 @@ module NavigationHelper
     items << { label: "My Contracts", path: my_contracts_path, icon: "documents", active: controller_name == "contracts" } if Current.user&.has_contracts?
     items << { label: "My Payments", path: my_payments_path, icon: "payments", active: controller_name == "payments" }
     items << { label: "My Shifts", path: my_shifts_path, icon: "shifts", active: controller_name == "shifts" } if Current.user&.shows_my_shifts?
+    # My Followers (Tim, 2026-11-17): only when a list is shared through a
+    # contract they're on (SharedFollowers).
+    items << { label: "My Followers", path: my_followers_path, icon: "followers", active: controller_path == "my/followers" } if SharedFollowers.lists_for(Current.user).exists?
     # No Door item here (Tim, 2026-10-17): the Door is the "Work the door"
     # bar under the menu (door_bar_item), on the website as in the app.
     # No Ticket Sales entry here (Tim, 2026-10-17): ticket information lives

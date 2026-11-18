@@ -8,6 +8,8 @@
   production = page.production
   tickets_tab = edit_manage_production_path(production, tab: production_tickets_tab(production))
 %>
+<%# Dates that follow another organization's contract: that organization sells them (LinkedTicketSales). %>
+<%= render "manage/production_sales/sold_elsewhere_card", production: production, margin: "" %>
 <% if page.team_sales_level %>
   <%= render "manage/production_sales/production_card", production: production, level: page.team_sales_level, margin: "" %>
 <% elsif page.tickets_box? && production.tickets_mode == "cocoscout" %>
@@ -53,6 +55,8 @@
       <% end %>
     </div>
   </section>
+<% elsif page.tickets_box? && production.tickets_mode == "unset" && LinkedTicketSales.connections_for_production(production).exists? %>
+  <%# Another organization sells its dates: nothing here is waiting to be set. %>
 <% elsif page.tickets_box? %>
   <section class="<%= ProductionPageHelper::CARD %>" data-production-tickets>
     <%= render "shared/section_heading", padding: "px-4 py-3", title_basis: "basis-24", title: "Tickets" %>

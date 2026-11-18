@@ -259,7 +259,8 @@ class CocoScoutMoneyNow
       debiting = PayoutBatch.where.not(funding_payment_intent_id: nil).where("COALESCE(funding_started_at, created_at) BETWEEN ? AND ?", range.first, range.last)
                             .distinct.pluck(:organization_id) +
                  BalanceTopUp.where(created_at: range).where.not(stripe_payment_intent_id: nil).distinct.pluck(:organization_id) +
-                 BalanceWithdrawal.not_failed.where(created_at: range).distinct.pluck(:organization_id)
+                 BalanceWithdrawal.not_failed.where(created_at: range).distinct.pluck(:organization_id) +
+                 FollowerEmailBlock.where(created_at: range).distinct.pluck(:organization_id)
       monthly_pro = Organization.where.not(pro_monthly_from: nil).pluck(:id)
       orgs = Organization.where(id: (performers.keys + staff.keys + debiting + monthly_pro).uniq).select { |org| org.bills_usage? || org.pro_on_monthly_bill? }
       rows = orgs.map do |org|
@@ -267,7 +268,7 @@ class CocoScoutMoneyNow
         pro = UsageRules.pro_cents(org, month)
         usage = org.bills_usage? ? performers[org.id].to_i * PerformerBillingService::PER_ACTIVE_PERFORMER_CENTS +
                                    staff[org.id].to_i * StaffBillingService::PER_ACTIVE_STAFF_CENTS + debits * UsageRules::EXTRA_BANK_DEBIT_CENTS +
-                                   UsageRules.withdrawal_fee_cents(org, month) : 0
+                                   UsageRules.withdrawal_fee_cents(org, month) + UsageRules.follower_email_blocks_cents(org, month) : 0
         { organization: org, performers: performers[org.id].to_i, staff: staff[org.id].to_i, extra_debits: debits, pro_cents: pro, cents: pro + usage }
       end
       rows.select { |row| row[:cents].positive? }.sort_by { |row| -row[:cents] }

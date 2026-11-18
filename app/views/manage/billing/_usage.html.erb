@@ -62,6 +62,14 @@
     </div>
   </div>
 
+  <% if now.follower_email_blocks_cents.positive? %>
+    <% blocks = UsageRules.follower_email_blocks(@organization || Current.organization, now.month) %>
+    <p class="mt-3 text-sm text-gray-700 max-w-xl" data-email-blocks>
+      You bought <%= number_with_delimiter(blocks.sum(:emails)) %> extra emails to followers this month, for <%= number_to_currency(now.follower_email_blocks_cents / 100.0) %> on your monthly bill.
+      The ones you haven't used stay yours while you're on Pro.
+    </p>
+  <% end %>
+
   <p class="mt-3 text-xs text-gray-500 max-w-xl">
     Withdrawals to your bank are free up to <%= number_to_currency(UsageRules::FREE_WITHDRAWAL_CENTS / 100.0, precision: 0) %> a month. Above that we pass on our payment
     provider's 0.25% on the part over, on your monthly bill: it's their cost, not a fee we make money on.

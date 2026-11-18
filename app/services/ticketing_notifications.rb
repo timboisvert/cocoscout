@@ -27,7 +27,7 @@ class TicketingNotifications
     # comps, passes. Each has its own email (ticketing_<key>).
     Kind.new("sale", "Sales as they happen", "Each online sale", "Someone buys online or on your website: who, what, and how full the show is now.", false),
     Kind.new("door_sale", "Sales as they happen", "Each door sale", "Tap, scan to pay or cash at the door: who sold it, and how it was paid.", false),
-    Kind.new("comp_issued", "Sales as they happen", "Each comp issued", "Comps from Ticketing, a production team or the door: who gave them, and to whom.", false),
+    Kind.new("comp_issued", "Sales as they happen", "Each comp issued", "Comps from Ticketing, a production team or the door: who issued them, and to whom.", false),
     Kind.new("pass_redeemed", "Sales as they happen", "Each pass redeemed", "Someone uses a pass, online or at the door, and what's left on it.", false),
     Kind.new("daily_summary", "Reports", "Daily summary", "Every morning: yesterday's sales and refunds, and how each upcoming show is selling.", true),
     Kind.new("show_day", "Reports", "Show day", "The morning of each show: tickets sold, comps, and the door list.", true),

@@ -44,7 +44,10 @@ class UsageMonth
   # Pro for the month, when it's paid on this bill.
   def pro_cents = UsageRules.pro_cents(organization, month)
 
-  def usage_cents = staff_cents + others_cents + extra_debits_cents + withdrawal_fee_cents
+  # Blocks of extra emails to followers bought this month.
+  def follower_email_blocks_cents = UsageRules.follower_email_blocks_cents(organization, month)
+
+  def usage_cents = staff_cents + others_cents + extra_debits_cents + withdrawal_fee_cents + follower_email_blocks_cents
   def total_cents = pro_cents + usage_cents
 
   # The bill for the month: the usage bill whose period it is (the first, if

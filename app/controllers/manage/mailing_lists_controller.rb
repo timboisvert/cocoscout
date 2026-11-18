@@ -3,10 +3,10 @@
 module Manage
   # Mailing lists (Pro, V1.1; Tim 2026-10-23): the module's home (lists,
   # segments, emails) and one list's page (its followers, where it collects,
-  # and its actions). Lists aren't shared outside the organization (Tim,
-  # 2026-10-28: My Followers is gone).
+  # and its actions). A list for a contractor is shared with the people on
+  # that contractor's contracts (SharedFollowers; Tim, 2026-11-17).
   class MailingListsController < ManageController
-    before_action :set_list, only: %i[show update update_productions archive unarchive export]
+    before_action :set_list, only: %i[show update update_productions update_contractor archive unarchive export]
 
     PER_PAGE = 50
 
@@ -50,6 +50,11 @@ module Manage
       @status_counts = @list.followers.group(:status).count
       @productions = @list.productions.order(:name).to_a
       @all_productions = Current.organization.productions.active.where.not(production_type: "course").order(:name).to_a
+      # A list for a contractor: who it can be for, and what that brings.
+      unless @list.main? || @list.received?
+        @contractors = Current.organization.contractors.order(:name).to_a
+        @contract_productions = @list.contract_productions.to_a
+      end
     end
 
     def create
@@ -81,6 +86,22 @@ module Manage
         (ids - @list.mailing_list_productions.pluck(:production_id)).each { |id| @list.mailing_list_productions.create!(production_id: id) }
       end
       redirect_to manage_mailing_list_path(@list), notice: ids.any? ? "Checkout for those productions now offers this list." : "This list doesn't collect at checkout now."
+    end
+
+    # Who the list is for: a contractor (it then collects from every
+    # production under a live contract with them, and can be shared with
+    # the people on those contracts), or nobody in particular.
+    def update_contractor
+      return redirect_to(manage_mailing_list_path(@list), alert: "Your main list is everyone's.") if @list.main? || @list.received?
+
+      contractor = Current.organization.contractors.find_by(id: params[:contractor_id])
+      @list.update!(contractor: contractor, shared_with_contractor: contractor ? params[:shared_with_contractor] != "0" : true)
+      SharedFollowersSyncJob.perform_later(@list.id) if @list.shared?
+      notice = if contractor.nil? then "This list isn't for a contractor now."
+      elsif @list.shared? then "This list is for #{contractor.name}, and shared with the people on #{contractor.name}'s contracts."
+      else "This list is for #{contractor.name}. It isn't shared."
+      end
+      redirect_to manage_mailing_list_path(@list), notice: notice
     end
 
     def archive

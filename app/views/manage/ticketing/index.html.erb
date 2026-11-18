@@ -28,6 +28,23 @@
           { icon: "cog", text: "Settings", description: "Box office, fees, tax and door access", path: manage_ticketing_settings_path }
         ] %>
 
+  <%# Dates another organization sells for this one, under a contract
+      (LinkedDates): shown first, read-only, and never added to the numbers
+      below. With them, a closed box office is a plain fact, not a prompt. %>
+  <% d.sold_elsewhere_productions.each do |production| %>
+    <%= render "manage/production_sales/sold_elsewhere_card", production: production %>
+  <% end %>
+  <% if d.sold_elsewhere_productions.any? && !profile.enabled? %>
+    <div class="mb-6 bg-white border border-gray-200 rounded-lg px-4 py-3 flex flex-wrap items-center justify-between gap-3" data-own-box-office-closed>
+      <div class="min-w-0">
+        <div class="text-sm font-semibold text-gray-900">Your own box office is closed</div>
+        <p class="text-sm text-gray-600">You don't need one for the dates above. Open it only to sell tickets yourself, for dates that aren't sold by another organization.</p>
+      </div>
+      <%= render "shared/button", text: "Open your box office", variant: "secondary", size: "small",
+            path: manage_ticketing_settings_section_path(section: "box_office") %>
+    </div>
+  <% end %>
+
   <%= render "shared/intro_guide", guide_key: "ticketing_intro", title: "How ticketing works",
         body: %(<ol class="list-decimal pl-5 space-y-1"><li>Set a production up once: its ticket types, prices and seats. Every date goes on sale as soon as it's listed, and new dates join on their own.</li><li>Share the production's short link or QR code; buyers check out here and get QR tickets by email.</li><li>On the night, open the Door on a phone: find people by name, scan tickets, sell at the door.</li><li>Each sale lands in your CocoScout balance and fills in the show's financials; our fee is 50¢ a paid ticket.</li></ol>).html_safe %>
 

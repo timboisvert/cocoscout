@@ -19,10 +19,16 @@ module MailingListsHelper
   # A list row's second line: where it collects and who can see it.
   def mailing_list_line(list, collects:)
     return "Every production's checkout · added by hand" if list.main?
+    # This organization's own copy of a list shared through a contract.
+    return "Shared through your contract with #{list.source_list.organization.name}" if list.received? && list.source_list
+    # A list for a contractor collects from their contracted productions by itself.
+    if list.for_contractor?
+      total = (MailingList.contract_production_ids(list.contractor_id) | list.mailing_list_productions.pluck(:production_id)).size
+      return [ "For #{list.contractor.name}", ("Collects from #{pluralize(total, 'production')}" if total.positive?),
+               (list.shared_with_contractor ? "Shared" : nil) ].compact.join(" · ")
+    end
 
-    parts = []
-    parts << (collects.to_i.positive? ? "Collects from #{pluralize(collects, 'production')}" : "Doesn't collect at checkout")
-    parts.join(" · ")
+    collects.to_i.positive? ? "Collects from #{pluralize(collects, 'production')}" : "Doesn't collect at checkout"
   end
 
   def follower_status_chip(follower)

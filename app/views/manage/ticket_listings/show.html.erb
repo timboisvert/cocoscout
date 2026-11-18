@@ -92,9 +92,9 @@
         # it has some left to give (CompRules); otherwise it says why not.
         comps_left = @listing.comps_left
         comps_open = live && @listing.effective_comps_enabled && (comps_left.nil? || comps_left.positive?)
-        comps_note = if !@listing.effective_comps_enabled then "Given away free · off on #{comp_rules_where(@listing)}"
-                     elsif live && comps_left == 0 then "Given away free · none left to give"
-                     elsif comps_open && comps_left then "Given away free · give #{comps_left} more"
+        comps_note = if !@listing.effective_comps_enabled then "Issued free · off on #{comp_rules_where(@listing)}"
+                     elsif live && comps_left == 0 then "Issued free · none left to issue"
+                     elsif comps_open && comps_left then "Issued free · issue #{comps_left} more"
                      end
       %>
       <%= render "shared/ticketing/show_numbers", stats: @stats, comps_modal: ("comps-modal" if comps_open), comps_note: comps_note, outside_modal: ("outside-sales-modal" if live) %>

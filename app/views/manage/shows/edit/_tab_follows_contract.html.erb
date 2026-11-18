@@ -1,0 +1,12 @@
+<%# Edit, for a date that follows another organization's contract date
+    (LinkedDates): the Schedule, Location, Tickets and Danger Zone tabs say
+    whose those are, in place of their fields. %>
+<% booked_at = @show.followed_organization&.name || "the organization it's booked with" %>
+<div class="rounded-lg border border-pink-200 bg-pink-50 px-4 py-4 text-sm text-gray-700 max-w-2xl" data-follows-contract>
+  <p class="font-medium text-gray-900">This date is booked at <%= booked_at %></p>
+  <p class="mt-1">
+    Its time, its place, its tickets and whether it goes ahead all follow your contract with <%= booked_at %>. If they move or cancel it,
+    it will change here too, and you'll be asked to let your cast know.
+  </p>
+  <p class="mt-2">If you need a different time, you can request a change from <%= link_to "My Contracts", my_contracts_path, class: "text-pink-600 hover:text-pink-700 underline" %>.</p>
+</div>

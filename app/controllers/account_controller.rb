@@ -117,6 +117,9 @@ class AccountController < ApplicationController
       recipient = settings.recipient("user:#{Current.user.id}")
       [ organization, recipient ] if recipient
     end
+    # Ticket sales of a connected contract that an organization chose to
+    # notify them of: theirs to switch off, and back on (LinkedSaleNotices).
+    @linked_sale_switches = LinkedSaleNotices.switches_for(Current.user).to_a
   end
 
   # Email notification preferences. Only the keys a form sends change, so a
@@ -136,6 +139,9 @@ class AccountController < ApplicationController
         Current.user.set_notification_preference(key, enabled)
       end
     end
+
+    # Their own switch for a connected contract's ticket sales.
+    (params[:linked_sales]&.to_unsafe_h || {}).each { |id, on| LinkedSaleNotices.set_muted!(Current.user, id, on != "1") }
 
     # V1.1's groups: Push and Email per group (NotificationGroups).
     Current.user.set_notification_switches(push: params[:push]&.to_unsafe_h || {}, email: params[:email]&.to_unsafe_h || {})

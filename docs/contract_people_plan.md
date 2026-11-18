@@ -171,8 +171,10 @@ table of who moves and who stays.
   (`contracts#amend_people`, add/remove at once); the contract page lists
   who's on it; `manage/contracts/_people_picker` is the one picker.
 - `TicketSalesAccess`: contract people see sales like the contractor;
-  `comp_allowance` gives anyone on the date's contract comps up to what the
-  date can give (`on_contract_for?`); comps on My Ticket Sales
+  `comp_allowance` gives anyone on the date's contract comps up to the
+  number the comp rules allow the people on a contract, none to start
+  (`on_contract_for?`, `CompRules#contract_comps_per_show`; until
+  2026-11-17 it was whatever the date had left); comps on My Ticket Sales
   (`my/ticket_sales#create_comp`, `GivesComps` shared with the team's page).
 - My shows & events: contract dates as a source, the "Your contract"
   marker, no "Can't make it" on them; the date page's Contract box

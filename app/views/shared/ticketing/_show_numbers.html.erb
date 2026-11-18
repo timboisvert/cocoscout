@@ -43,7 +43,7 @@
                    else "What other sites took, as you enter it"
                    end,
                    elsewhere_cents.positive? ? "bg-violet-50 border-violet-200" : nil, outside_modal, "order-4 lg:order-5" ] : nil),
-    [ "Comps", stats.comps.to_s, local_assigns[:comps_note] || (comps_modal ? "Given away free · give tickets" : "Given away free"), stats.comps.positive? ? "bg-blue-50 border-blue-200" : nil, comps_modal, "order-6" ],
+    [ "Comps", stats.comps.to_s, local_assigns[:comps_note] || (comps_modal ? "Issued free · issue tickets" : "Issued free"), stats.comps.positive? ? "bg-blue-50 border-blue-200" : nil, comps_modal, "order-6" ],
     (started ? [ "Checked in", "#{stats.checked_in} of #{stats.sold}", stats.no_shows.to_i.positive? ? "#{stats.no_shows} didn't come" : "Everyone came", nil, nil, "order-7" ] : nil),
     (stats.products_sold.positive? ? [ "Products", stats.products_sold.to_s, "#{money.call(stats.product_cents)} before tax", "bg-pink-50 border-pink-200", nil, "order-8" ] : nil)
   ].compact

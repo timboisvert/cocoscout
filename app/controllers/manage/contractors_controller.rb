@@ -48,6 +48,10 @@ module Manage
       @person = @contractor.person
       @pending_invitation = @person && PersonInvitation.pending.find_by(email: @person.email, organization: Current.organization)
       @has_cocoscout_access = @person&.user.present?
+      # Their own organizations on CocoScout that a contract of theirs is
+      # connected to (ContractConnections).
+      @linked_organizations = ContractConnection.connected.where(contract_id: @contractor.contracts.select(:id))
+                                                .includes(:linked_organization).map(&:linked_organization).uniq
       @invite_preview = @person && !@has_cocoscout_access ? invitation_preview(@person) : nil
     end
 

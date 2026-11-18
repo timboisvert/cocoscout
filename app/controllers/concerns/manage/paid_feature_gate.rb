@@ -251,6 +251,17 @@ module Manage
         return redirect_to(manage_path, notice: "That part of CocoScout is for your organization's managers.")
       end
 
+      # A Pro part opens read-only on the free plan when a connected
+      # contract gives it something to show (Tim, 2026-11-17): the followers
+      # another organization shares, and the dates it sells.
+      if request.get? && request.format.html? && Current.organization.manageable_by?(Current.user)
+        if feature == :mailing_lists && SharedFollowers.lists_for_organization(Current.organization).exists?
+          return redirect_to(manage_shared_followers_path)
+        elsif feature == :ticketing && TicketingDashboard.new(Current.organization).sold_elsewhere_productions.any?
+          return redirect_to(manage_sold_elsewhere_path)
+        end
+      end
+
       respond_to do |format|
         format.json do
           render json: { error: "upgrade_required", feature: feature }, status: :payment_required

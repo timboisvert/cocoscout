@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_18_031946) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -756,6 +756,76 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
     t.index ["contract_id"], name: "index_contract_appendixes_on_contract_id"
   end
 
+  create_table "contract_connection_watchers", force: :cascade do |t|
+    t.bigint "contract_connection_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "enabled_by_id"
+    t.datetime "muted_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contract_connection_id", "user_id"], name: "index_connection_watchers_one_per_person", unique: true
+    t.index ["user_id"], name: "index_contract_connection_watchers_on_user_id"
+  end
+
+  create_table "contract_connections", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "contract_id", null: false
+    t.bigint "linked_organization_id", null: false
+    t.bigint "linked_production_id"
+    t.string "new_production_name"
+    t.string "status", default: "requested", null: false
+    t.bigint "requested_by_id", null: false
+    t.text "note"
+    t.bigint "answered_by_id"
+    t.datetime "answered_at"
+    t.text "answer_note"
+    t.string "later_contracts", default: "ask", null: false
+    t.jsonb "date_answers", default: {}, null: false
+    t.string "team_manager_sales", default: "everything", null: false
+    t.string "team_viewer_sales", default: "numbers", null: false
+    t.string "cast_sales", default: "production_cast", null: false
+    t.bigint "ended_by_id"
+    t.datetime "ended_at"
+    t.datetime "dismissed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.datetime "reminded_at"
+    t.boolean "use_own_images", default: false, null: false
+    t.boolean "pay_into_balance", default: false, null: false
+    t.datetime "pay_choice_at"
+    t.bigint "pay_choice_by_id"
+    t.index ["contract_id"], name: "index_contract_connections_on_contract_id"
+    t.index ["contract_id"], name: "index_contract_connections_one_live_per_contract", unique: true, where: "((status)::text = ANY (ARRAY[('requested'::character varying)::text, ('connected'::character varying)::text]))"
+    t.index ["linked_organization_id"], name: "index_contract_connections_on_linked_organization_id"
+    t.index ["linked_production_id"], name: "index_contract_connections_on_linked_production_id"
+    t.index ["organization_id", "status"], name: "index_contract_connections_on_organization_id_and_status"
+    t.index ["pay_choice_by_id"], name: "index_contract_connections_on_pay_choice_by_id"
+  end
+
+  create_table "contract_date_requests", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "contract_id", null: false
+    t.bigint "show_id"
+    t.string "kind", null: false
+    t.string "status", default: "open", null: false
+    t.datetime "original_at"
+    t.datetime "proposed_at"
+    t.text "note"
+    t.bigint "requested_by_id", null: false
+    t.text "answer_note"
+    t.bigint "answered_by_id"
+    t.datetime "answered_at"
+    t.datetime "closed_at"
+    t.datetime "reminded_at"
+    t.datetime "dismissed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contract_id", "show_id"], name: "index_contract_date_requests_one_open_per_date", unique: true, where: "(((status)::text = ANY ((ARRAY['open'::character varying, 'amending'::character varying])::text[])) AND (show_id IS NOT NULL) AND ((kind)::text <> 'question'::text))"
+    t.index ["contract_id"], name: "index_contract_date_requests_on_contract_id"
+    t.index ["organization_id", "status"], name: "index_contract_date_requests_on_organization_id_and_status"
+    t.index ["show_id"], name: "index_contract_date_requests_on_show_id"
+  end
+
   create_table "contract_documents", force: :cascade do |t|
     t.bigint "contract_id", null: false
     t.string "name", null: false
@@ -948,6 +1018,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
     t.datetime "sent_for_signature_at"
     t.datetime "executed_at"
     t.boolean "shares_ticket_sales", default: true, null: false
+    t.datetime "connect_offered_at"
+    t.datetime "connect_offer_dismissed_at"
+    t.datetime "connect_told_at"
+    t.bigint "connect_told_by_id"
     t.index ["contract_template_id"], name: "index_contracts_on_contract_template_id"
     t.index ["contractor_id"], name: "index_contracts_on_contractor_id"
     t.index ["organization_id", "status"], name: "index_contracts_on_organization_id_and_status"
@@ -1269,6 +1343,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
     t.index ["feature_type"], name: "index_feature_credits_on_feature_type"
   end
 
+  create_table "follower_email_blocks", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.integer "emails", null: false
+    t.integer "price_cents", null: false
+    t.bigint "bought_by_id"
+    t.bigint "follower_email_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["bought_by_id"], name: "index_follower_email_blocks_on_bought_by_id"
+    t.index ["follower_email_id"], name: "index_follower_email_blocks_on_follower_email_id"
+    t.index ["organization_id"], name: "index_follower_email_blocks_on_organization_id"
+  end
+
   create_table "follower_email_deliveries", force: :cascade do |t|
     t.bigint "follower_email_id", null: false
     t.bigint "follower_id", null: false
@@ -1301,6 +1388,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
     t.integer "recipient_count", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "paid_emails_used", default: 0, null: false
     t.index ["created_by_id"], name: "index_follower_emails_on_created_by_id"
     t.index ["organization_id"], name: "index_follower_emails_on_organization_id"
     t.index ["sent_by_id"], name: "index_follower_emails_on_sent_by_id"
@@ -1645,6 +1733,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
     t.index ["organization_id"], name: "index_locations_on_organization_id"
   end
 
+  create_table "mail_volume_months", force: :cascade do |t|
+    t.date "month", null: false
+    t.integer "sent", default: 0, null: false
+    t.datetime "counted_from"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["month"], name: "index_mail_volume_months_on_month", unique: true
+  end
+
   create_table "mailing_list_memberships", force: :cascade do |t|
     t.bigint "mailing_list_id", null: false
     t.bigint "follower_id", null: false
@@ -1673,8 +1770,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
     t.datetime "archived_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "contractor_id"
+    t.boolean "shared_with_contractor", default: true, null: false
+    t.bigint "source_list_id"
+    t.index ["contractor_id"], name: "index_mailing_lists_on_contractor_id"
     t.index ["organization_id"], name: "index_mailing_lists_on_organization_id"
     t.index ["organization_id"], name: "index_mailing_lists_one_main_per_org", unique: true, where: "((kind)::text = 'main'::text)"
+    t.index ["source_list_id"], name: "index_mailing_lists_on_source_list_id"
   end
 
   create_table "message_poll_options", force: :cascade do |t|
@@ -2678,6 +2780,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
     t.integer "team_comps_per_show"
     t.string "page_key"
     t.jsonb "old_page_keys", default: [], null: false
+    t.integer "contract_comps_per_show"
     t.index ["organization_id", "page_key"], name: "index_production_ticketings_on_org_and_page_key", unique: true, where: "(page_key IS NOT NULL)"
     t.index ["organization_id"], name: "index_production_ticketings_on_organization_id"
     t.index ["production_id"], name: "index_production_ticketings_on_production_id", unique: true
@@ -3483,16 +3586,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
     t.string "tickets_url"
     t.string "tickets_mode"
     t.jsonb "contract_terms", default: {}, null: false
+    t.bigint "linked_show_id"
+    t.bigint "released_connection_id"
     t.index ["casting_mode"], name: "index_shows_on_casting_mode"
     t.index ["casting_source"], name: "index_shows_on_casting_source"
     t.index ["course_offering_id"], name: "index_shows_on_course_offering_id"
     t.index ["date_and_time"], name: "idx_shows_date_and_time"
     t.index ["event_linkage_id"], name: "index_shows_on_event_linkage_id"
+    t.index ["linked_show_id"], name: "index_shows_on_linked_show_id"
     t.index ["location_id"], name: "index_shows_on_location_id"
     t.index ["location_space_id"], name: "index_shows_on_location_space_id"
     t.index ["mic_status"], name: "index_shows_on_mic_status", where: "(mic_status IS NOT NULL)"
     t.index ["production_id", "event_type", "canceled", "date_and_time"], name: "idx_shows_prod_type_canceled_date"
     t.index ["production_id"], name: "index_shows_on_production_id"
+    t.index ["released_connection_id"], name: "index_shows_on_released_connection_id"
     t.index ["space_rental_id"], name: "index_shows_on_space_rental_id"
   end
 
@@ -4256,6 +4363,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
     t.string "team_comps_limit"
     t.integer "team_comps_per_show"
     t.boolean "own_codes", default: false, null: false
+    t.integer "contract_comps_per_show"
     t.index ["contract_id"], name: "index_ticket_listings_on_contract_id"
     t.index ["organization_id", "slug"], name: "index_ticket_listings_on_organization_id_and_slug", unique: true
     t.index ["organization_id", "status"], name: "index_ticket_listings_on_organization_id_and_status"
@@ -4732,6 +4840,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
     t.string "follow_main_words"
     t.boolean "attach_pdf_tickets", default: false, null: false
     t.string "price_display", default: "all_in", null: false
+    t.integer "contract_comps_per_show", default: 0, null: false
     t.index ["organization_id"], name: "index_ticketing_profiles_on_organization_id", unique: true
     t.index ["previous_slugs"], name: "index_ticketing_profiles_on_previous_slugs", using: :gin
     t.index ["slug"], name: "index_ticketing_profiles_on_slug", unique: true
@@ -5003,6 +5112,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
   add_foreign_key "city_hub_memberships", "city_hubs"
   add_foreign_key "cocoscout_ledger_entries", "organizations"
   add_foreign_key "contract_appendixes", "contracts"
+  add_foreign_key "contract_connection_watchers", "contract_connections", on_delete: :cascade
+  add_foreign_key "contract_connection_watchers", "users", column: "enabled_by_id", on_delete: :nullify
+  add_foreign_key "contract_connection_watchers", "users", on_delete: :cascade
+  add_foreign_key "contract_connections", "contracts", on_delete: :cascade
+  add_foreign_key "contract_connections", "organizations", column: "linked_organization_id", on_delete: :cascade
+  add_foreign_key "contract_connections", "organizations", on_delete: :cascade
+  add_foreign_key "contract_connections", "productions", column: "linked_production_id", on_delete: :nullify
+  add_foreign_key "contract_connections", "users", column: "answered_by_id", on_delete: :nullify
+  add_foreign_key "contract_connections", "users", column: "ended_by_id", on_delete: :nullify
+  add_foreign_key "contract_connections", "users", column: "pay_choice_by_id", on_delete: :nullify
+  add_foreign_key "contract_connections", "users", column: "requested_by_id", on_delete: :cascade
+  add_foreign_key "contract_date_requests", "contracts", on_delete: :cascade
+  add_foreign_key "contract_date_requests", "organizations", on_delete: :cascade
+  add_foreign_key "contract_date_requests", "shows", on_delete: :nullify
+  add_foreign_key "contract_date_requests", "users", column: "answered_by_id", on_delete: :nullify
+  add_foreign_key "contract_date_requests", "users", column: "requested_by_id", on_delete: :cascade
   add_foreign_key "contract_documents", "contract_versions"
   add_foreign_key "contract_documents", "contracts"
   add_foreign_key "contract_invoices", "contract_payments", on_delete: :nullify
@@ -5061,6 +5186,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
   add_foreign_key "expense_items", "show_financials", column: "show_financials_id"
   add_foreign_key "feature_credit_redemptions", "feature_credits"
   add_foreign_key "feature_credit_redemptions", "organizations"
+  add_foreign_key "follower_email_blocks", "follower_emails", on_delete: :nullify
+  add_foreign_key "follower_email_blocks", "organizations", on_delete: :cascade
+  add_foreign_key "follower_email_blocks", "users", column: "bought_by_id", on_delete: :nullify
   add_foreign_key "follower_email_deliveries", "follower_emails"
   add_foreign_key "follower_email_deliveries", "followers"
   add_foreign_key "follower_emails", "organizations"
@@ -5107,6 +5235,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
   add_foreign_key "mailing_list_memberships", "mailing_lists"
   add_foreign_key "mailing_list_productions", "mailing_lists"
   add_foreign_key "mailing_list_productions", "productions"
+  add_foreign_key "mailing_lists", "contractors", on_delete: :nullify
+  add_foreign_key "mailing_lists", "mailing_lists", column: "source_list_id", on_delete: :nullify
   add_foreign_key "mailing_lists", "organizations"
   add_foreign_key "message_poll_options", "message_polls"
   add_foreign_key "message_poll_votes", "message_poll_options"
@@ -5278,11 +5408,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_120000) do
   add_foreign_key "show_person_role_assignments", "shows"
   add_foreign_key "show_service_changes", "house_services"
   add_foreign_key "show_service_changes", "shows"
+  add_foreign_key "shows", "contract_connections", column: "released_connection_id", on_delete: :nullify
   add_foreign_key "shows", "course_offerings"
   add_foreign_key "shows", "event_linkages"
   add_foreign_key "shows", "location_spaces"
   add_foreign_key "shows", "locations"
   add_foreign_key "shows", "productions"
+  add_foreign_key "shows", "shows", column: "linked_show_id", on_delete: :nullify
   add_foreign_key "shows", "space_rentals"
   add_foreign_key "sign_up_form_holdouts", "sign_up_forms"
   add_foreign_key "sign_up_form_instances", "shows"

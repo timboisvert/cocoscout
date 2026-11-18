@@ -270,6 +270,87 @@ module Manage
       scope = ShowChange.open.where(contract_id: @contract.id)
       scope = scope.or(ShowChange.open.where(production_id: @contract.production_id)) if @contract.production_id
       @untold_changes = scope.includes(:notices).order(:was_starts_at).select(&:waiting?)
+      # What the contractor has asked about its dates and nobody has answered
+      # (ContractDateRequests). One the calendar has passed by is left out; the
+      # daily pass closes it.
+      @date_requests = @contract.date_requests.where(status: "open").includes(:show, :organization, :requested_by)
+                                .order(:created_at).reject(&:lapsed?)
+      # The contractor's own organization on CocoScout, requested or connected
+      # (ContractConnections).
+      @connection = @contract.connections.live.includes(:linked_organization, :linked_production, :requested_by).first
+    end
+
+    # The contractor requested to connect the contract to their own
+    # organization: yes (with how far it goes for later contracts), no (with
+    # a note), and ending it later. Their dates and numbers are LinkedDates'.
+    # Nothing connects it yet: the organization lets the contractor know it
+    # can be, once (ContractConnections.tell!).
+    def tell_connection
+      if ContractConnections.tell!(@contract, user: Current.user)
+        redirect_to manage_contract_path(@contract), notice: "#{@contract.contractor_name} has been notified."
+      else
+        redirect_to manage_contract_path(@contract)
+      end
+    end
+
+    def accept_connection
+      connection = @contract.connections.requested.first
+      if connection
+        ContractConnections.accept!(connection, user: Current.user, later_contracts: params[:later_contracts])
+        redirect_to manage_contract_path(@contract),
+                    notice: "Connected to #{connection.linked_organization.name}. #{@contract.contractor_name} has been notified."
+      else
+        redirect_to manage_contract_path(@contract), notice: "That request was already answered."
+      end
+    end
+
+    def decline_connection
+      connection = @contract.connections.requested.first
+      if connection
+        ContractConnections.decline!(connection, user: Current.user, note: params[:answer_note])
+        redirect_to manage_contract_path(@contract), notice: "#{@contract.contractor_name} has been notified."
+      else
+        redirect_to manage_contract_path(@contract), notice: "That request was already answered."
+      end
+    end
+
+    def unlink_connection
+      connection = @contract.connections.connected.first
+      if connection
+        ContractConnections.unlink!(connection, user: Current.user)
+        redirect_to manage_contract_path(@contract),
+                    notice: "Unlinked from #{connection.linked_organization.name}. #{@contract.contractor_name} has been notified."
+      else
+        redirect_to manage_contract_path(@contract), notice: "This contract isn't connected."
+      end
+    end
+
+    # Whose poster, wide image and description the ticket page for this show
+    # uses while connected: the contractor's, or this organization's own (LinkedArt).
+    def update_connection_images
+      connection = @contract.connections.connected.first
+      connection&.update!(use_own_images: params[:use_own_images] == "1")
+      redirect_to manage_contract_path(@contract), notice: (connection ? "Saved." : nil)
+    end
+
+    def update_connection_later_contracts
+      connection = @contract.connections.connected.first
+      choice = params[:later_contracts].to_s.presence_in(ContractConnection::LATER_CONTRACTS)
+      ContractConnections.choose_later_contracts!(connection, choice) if connection && choice
+      redirect_to manage_contract_path(@contract), notice: (connection && choice ? "Saved." : nil)
+    end
+
+    # The organization's "no" to a contractor's request about a date: the date
+    # stays as it is, with a note. (Its "yes" is an amendment; the request
+    # closes itself when the date changes.)
+    def keep_date_request
+      date_request = @contract.date_requests.find(params[:request_id])
+      if date_request.open?
+        ContractDateRequests.keep!(date_request, user: Current.user, note: params[:answer_note])
+        redirect_to manage_contract_path(@contract), notice: "#{@contract.contractor_name} has been notified."
+      else
+        redirect_to manage_contract_path(@contract), notice: "That request was already answered."
+      end
     end
 
     def new
@@ -500,6 +581,10 @@ module Manage
       @rentals = @contract.space_rentals.includes(:location, :location_space).order(:starts_at)
       @shows_by_rental = @contract.production&.shows&.where(space_rental_id: @rentals.map(&:id))&.index_by(&:space_rental_id) || {}
       @locations = Current.organization.locations.pickable(@rentals.map(&:location_id)).includes(:location_spaces)
+      # Opened from a contractor's request about a date: its row starts on
+      # what they asked for (ContractDateRequests.amend_prefill).
+      @date_request = @contract.date_requests.waiting.includes(:organization, show: :space_rental).find_by(id: params[:request]) if params[:request].present?
+      @prefill = ContractDateRequests.amend_prefill(@date_request)
     end
 
     # Show the plan before touching anything: the same params apply_amend_dates
@@ -1174,7 +1259,13 @@ module Manage
       payment_contracts = groups.values.flatten(1).map(&:first)
 
       amending = (actives - payment_contracts).select(&:amendment_pending?)
-      recent = (actives - payment_contracts - amending).filter_map do |c|
+      # The contractor asked about a date and nobody has answered (ContractDateRequests).
+      # ...or requested to connect it to their own organization (ContractConnections).
+      connecting_ids = ContractConnection.requested.where(contract_id: actives.map(&:id)).pluck(:contract_id).to_set
+      asked_kinds = ContractDateRequest.where(contract_id: actives.map(&:id), status: "open").pluck(:contract_id, :kind)
+                                       .group_by(&:first).transform_values { |rows| rows.map(&:last) }
+      asking = (actives - payment_contracts - amending).select { |c| asked_kinds.key?(c.id) || connecting_ids.include?(c.id) }
+      recent = (actives - payment_contracts - amending - asking).filter_map do |c|
         signed_at = [ c.executed_at, c.activated_at, c.contract_versions.filter_map(&:executed_at).max ].compact.max
         [ c, signed_at ] if signed_at && signed_at >= since
       end.sort_by { |_, at| -at.to_i }
@@ -1200,12 +1291,19 @@ module Manage
       amending.each do |c|
         @in_motion_badges[c.id] = c.signing_out_for_signature? ? { text: "Amendment out for signature", color: "amber" } : { text: "Amendment ready to send", color: "blue" }
       end
+      asking.each do |c|
+        text = if connecting_ids.include?(c.id) then "Connection requested"
+        elsif asked_kinds[c.id].all? { |kind| kind == "question" } then "Question about a date"
+        else "Date change requested"
+        end
+        @in_motion_badges[c.id] = { text: text, color: "amber" }
+      end
       recent.each do |c, at|
         verb = c.signing_mode_esign? ? "Signed" : "Activated"
         @in_motion_badges[c.id] = { text: "#{verb} #{helpers.time_ago_in_words(at)} ago", color: "green" }
       end
 
-      @in_motion_contracts = payment_contracts + waiting_drafts + amending + other_drafts + recent.map(&:first)
+      @in_motion_contracts = payment_contracts + waiting_drafts + asking + amending + other_drafts + recent.map(&:first)
     end
 
     # Needs a signature, so nothing goes live. The version carries the proposed
@@ -1233,6 +1331,8 @@ module Manage
       # Back to unsent so the existing Prepare → Sign → Send wizard drives the
       # re-signature. amend_data stays put — it's what gets applied on signing.
       @contract.update!(signing_state: :unsent)
+      # A contractor's request this amendment answers now waits on their own signature.
+      ContractDateRequests.staged!(@contract, @amend_data, by: Current.user)
       redirect_to manage_sign_contract_wizard_path(@contract),
                   notice: "#{version.label} is ready. Sign it and send it to #{@contract.contractor_name} — " \
                           "nothing changes on the contract until they sign."

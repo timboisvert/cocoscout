@@ -40,8 +40,8 @@ class TicketingProfile < ApplicationRecord
   CAST_SALES = %w[production_cast show_cast nothing].freeze
   # The comp rules (Ticketing settings → Comps): how many comps a date can
   # give away in all, and how many of them its production team may give.
-  COMPS_LIMITS = %w[unlimited fixed per_performer].freeze
-  TEAM_COMPS_LIMITS = %w[all fixed per_performer].freeze
+  COMPS_LIMITS = %w[unlimited fixed].freeze
+  TEAM_COMPS_LIMITS = %w[all fixed].freeze
 
   belongs_to :organization
   has_many :short_links, as: :target, dependent: :destroy
@@ -83,7 +83,7 @@ class TicketingProfile < ApplicationRecord
   include CompRules
   validates :comps_limit, inclusion: { in: COMPS_LIMITS }
   validates :team_comps_limit, inclusion: { in: TEAM_COMPS_LIMITS }
-  validates :comps_per_show, :team_comps_per_show, numericality: { only_integer: true, in: 0..10_000 }
+  validates :comps_per_show, :team_comps_per_show, :contract_comps_per_show, numericality: { only_integer: true, in: 0..10_000 }
 
   # What a production team role sees of its productions' sales.
   def team_level(role)

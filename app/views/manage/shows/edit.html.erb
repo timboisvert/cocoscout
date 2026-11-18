@@ -19,6 +19,16 @@
     { label: "Linked Events", partial: "tab_linked", save: false },
     { label: "Danger Zone", partial: "tab_danger", danger: true, save: false }
   ].compact
+  # A date that follows another organization's contract date (LinkedDates):
+  # its time, place, tickets and whether it exists are theirs. Those tabs
+  # stay where they are and say so.
+  if @show.follows_contract?
+    edit_tabs.each do |tab|
+      next unless tab[:partial].in?(%w[tab_schedule tab_location tab_tickets tab_danger])
+
+      tab.merge!(partial: "tab_follows_contract", save: false, locked: false, danger: false)
+    end
+  end
 %>
 <div class="w-full mb-10" data-controller="location-modal tabs" data-tabs-plain-value="true"
      data-location-modal-event-type-value="<%= @show.event_type&.titleize&.downcase || 'event' %>" data-location-modal-spaces-value="<%= location_spaces_map.to_json %>">

@@ -7,10 +7,10 @@
 
   <% if @needs_bank %>
     <%= render "shared/alert_panel",
-          eyebrow: "Getting paid",
-          headline: "Connect your bank to get paid",
-          body: "Payments on your contracts are sent straight to your bank account.",
-          actions: [ { text: "Set up payment", path: my_payments_setup_path } ] %>
+          eyebrow: "Getting paid on your contracts",
+          headline: "Connect a bank account for your contract payments",
+          body: "What #{@paying_organizations.to_sentence} #{@paying_organizations.one? ? 'pays' : 'pay'} you under your #{'contract'.pluralize(@paying_organizations.size)} is sent straight to a bank account, and you haven't connected one yet.",
+          actions: [ { text: "Connect a bank account", path: my_payments_setup_path } ] %>
   <% end %>
 
   <% if @contracts.any? %>
@@ -60,6 +60,15 @@
           reports_sales = payee && contract.pending_sales_report?
           has_overdue = due_now.any?
           has_action = needs_signature || reports_sales || to_pay.any?
+          # What they've asked about this contract's dates, and the way to ask
+          # (ContractDateRequests): the contractor only, on a live contract.
+          date_requests = payee ? (@date_requests[contract.id] || []) : []
+          asks_dates = payee && contract.status_active?
+          # Its connection to an organization of the contractor's own
+          # (ContractConnections), and whether one can be requested.
+          connection = @connections[contract.id]
+          connectable = @connectable_contract_ids.include?(contract.id)
+          connection_row = connectable || connection&.live? || (payee && connection && connection.dismissed_at.nil? && connection.status.in?(%w[declined unlinked]))
           border = needs_signature ? "border-amber-300" : (has_overdue ? "border-amber-300" : "border-gray-200")
           status_class = { "active" => "bg-green-100 text-green-700", "completed" => "bg-blue-100 text-blue-700",
                            "cancelled" => "bg-red-100 text-red-700" }[contract.status] || "bg-gray-100 text-gray-600"
@@ -125,7 +134,7 @@
           </div>
 
           <%# Everything you need to DO on this contract, contained in one strip. %>
-          <% if has_action %>
+          <% if has_action || asks_dates || date_requests.any? || connection_row %>
             <div class="border-t border-gray-100 divide-y divide-gray-100">
               <% if needs_signature %>
                 <div class="flex items-center justify-between gap-3 px-5 py-3 bg-amber-50/60">
@@ -205,6 +214,15 @@
                     <% end %>
                   </div>
                 </details>
+              <% end %>
+
+              <% if asks_dates || date_requests.any? %>
+                <%= render "my/contracts/date_requests", contract: contract, requests: date_requests, can_ask: asks_dates %>
+              <% end %>
+
+              <% if connection_row %>
+                <%= render "my/contracts/connection", contract: contract, connection: connection, connectable: connectable, payee: payee,
+                      moved: @moved_contract_ids.include?(contract.id) %>
               <% end %>
             </div>
           <% end %>

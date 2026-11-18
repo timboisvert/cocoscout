@@ -1,0 +1,26 @@
+<%# The Contract box on a date that follows another organization's contract
+    date (LinkedDates), read the contractor's way: "You get", the services
+    that come out of it, and when. For the contractor's own organization's
+    owners and managers, and everyone on the contract: what they already
+    see on My. Nothing for the production team or the cast, and nothing
+    once the other organization stops sharing. Locals: show. %>
+<%
+  connection = LinkedTicketSales.connection_for(show)
+  theirs = show.linked_show
+  contract = connection&.contract
+  contractor = contract && ContractConnections.contractor?(Current.user, contract)
+  visible = connection && theirs && LinkedTicketSales.sharing?(connection) &&
+            (Current.user.superadmin? || Current.organization.manageable_by?(Current.user) || ContractConnections.on_contract?(Current.user, contract))
+%>
+<% if visible %>
+  <% picture = contract.organization.feature_available?(:contracts) ? contract_date_picture(contract, theirs) : nil %>
+  <div data-followed-contract-box>
+    <%= render "shared/contract_date_box", contract: contract, show: theirs, voice: :you,
+          picture: picture,
+          heading_link: (contractor ? link_to("My Contracts", my_contracts_path, class: "text-[13px] font-medium text-pink-600 hover:text-pink-700 flex-shrink-0") : nil),
+          payee_note: (if picture && picture[:payout]
+                         target = ContractConnections.pay_target(contract)
+                         target ? "Payments go into #{possessive(target.name)} CocoScout balance." : "Payments go to #{contract.contractor_name}."
+                       end) %>
+  </div>
+<% end %>

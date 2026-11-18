@@ -112,11 +112,21 @@ class TicketingDashboard
   end
 
   # What needs the theater, most urgent first, at most three.
+  # The productions here whose dates follow another organization's contract:
+  # that organization sells their tickets (LinkedTicketSales).
+  def sold_elsewhere_productions
+    @sold_elsewhere_productions ||= ContractConnection.connected.where(linked_organization_id: @organization.id)
+                                                      .includes(:linked_production).filter_map(&:linked_production).uniq
+  end
+
   def alerts
     routes = Rails.application.routes.url_helpers
     list = []
     profile = TicketingProfile.for(@organization)
-    unless profile.enabled?
+    # An organization whose dates another organization sells (LinkedDates)
+    # isn't pushed to open a box office of its own: Ticketing's home says
+    # so in a plain card there, under those dates.
+    unless profile.enabled? || sold_elsewhere_productions.any?
       list << Alert.new(eyebrow: "Not open yet", headline: "Your box office isn't open yet",
                         body: "Set your shows up and preview their pages as you like; buyers see nothing until you open it.",
                         actions: [ { text: "Open your box office", path: routes.manage_ticketing_settings_section_path(section: "box_office") } ], tone: :pink)

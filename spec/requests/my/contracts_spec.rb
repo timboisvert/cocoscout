@@ -31,9 +31,15 @@ RSpec.describe "My::Contracts", type: :request do
     expect(response.body).to include(org.name)
   end
 
-  it "prompts to connect a bank when the person can't receive payouts yet" do
+  it "prompts to connect a bank when the person can't receive payouts yet, saying who pays" do
     get my_contracts_path
-    expect(response.body).to include("Connect your bank")
+    expect(response.body).to include("Connect a bank account for your contract payments").and include("What #{org.name} pays you under your contract")
+  end
+
+  it "doesn't ask for a bank when no contract has anything to pay them" do
+    payment.update!(status: "cancelled")
+    get my_contracts_path
+    expect(response.body).not_to include("Connect a bank account for your contract payments")
   end
 
   it "groups multiple contracts on one production together" do

@@ -22,6 +22,7 @@ class Organization < ApplicationRecord
   has_many :productions, dependent: :destroy
   has_many :contracts, dependent: :destroy
   has_many :contractors, dependent: :destroy
+  has_many :follower_email_blocks, dependent: :destroy
   # What the organization offers its productions (Organization settings →
   # Services): booth tech, ticket taking, a projector. Contracts pick from it.
   has_many :house_services, dependent: :destroy
@@ -295,6 +296,15 @@ class Organization < ApplicationRecord
   before_create :generate_invite_token
   # CocoScout's superadmins hear about every new organization (SuperadminNotices).
   after_create_commit { SuperadminNotices.organization_created(self) }
+  # Someone who now runs an organization can connect the contracts they're
+  # the contractor on to it: they're notified once (ContractConnections.offer!).
+  after_create_commit :offer_owner_their_contracts
+
+  def offer_owner_their_contracts
+    ContractConnections.offer_all_for(owner)
+  rescue StandardError => e
+    Rails.logger.error("[Organization] #{id} offer to connect: #{e.class}: #{e.message}")
+  end
 
   # Generate or ensure invite token exists
   def ensure_invite_token!

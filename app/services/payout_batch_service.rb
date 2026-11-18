@@ -375,9 +375,16 @@ class PayoutBatchService
     transfer_group = "org_#{batch.organization_id}"
 
     batch.items.pending.find_each do |item|
+      # A contract share going into another organization's CocoScout balance
+      # never touches a bank: it moves between the two balances.
+      if item.partner_organization?
+        pay_into_balance!(batch, item)
+        next
+      end
+
       # No connected bank yet: a transfer would just fail. Leave the item
       # pending — their slice of the funded money waits on this run.
-      next unless item.payee.respond_to?(:can_receive_payouts?) && item.payee.can_receive_payouts?
+      next unless item.payable_now?
 
       params = {
         amount: item.amount_cents,
@@ -457,6 +464,39 @@ class PayoutBatchService
     # which on ACH can be several days earlier.
     PayoutSentPayeeNotificationJob.perform_later(batch.id)
     batch
+  end
+
+  # Pay an item whose payee is another organization (a contractor's own, by
+  # the contractor's choice: ContractConnections.pay_target): the money moves
+  # from this organization's CocoScout balance into theirs, at once, with no
+  # bank transfer and no fee. One transaction: this side's ordinary
+  # `transfer` debit, their `partner_payment_in` credit, the item paid and
+  # its sources settled all land together or not at all.
+  #
+  # A funded run's money is already in this organization's ledger, so its
+  # items are never blocked; a run paid from the balance must fit within it.
+  def self.pay_into_balance!(batch, item)
+    target = item.payee
+    unless ContractConnections.balance_available?(target)
+      item.mark_failed!("#{target.name} can't be paid into a CocoScout balance any more. Take this out of the run and add it again to pay their bank.")
+      return
+    end
+
+    payer = batch.organization
+    ActiveRecord::Base.transaction do
+      OrgCashEntry.debit!(organization: payer, amount_cents: item.amount_cents, source: item,
+                          enforce: batch.funding_status != "succeeded",
+                          description: "Payout run ##{batch.id}: paid into #{target.name}#{target.name.to_s.end_with?('s') ? "'" : "'s"} CocoScout balance")
+      OrgCashEntry.post!(organization: target, entry_type: "partner_payment_in", amount_cents: item.amount_cents, source: item,
+                         description: "From #{payer.name}: #{item.payout_contributions.payable.where('amount_cents > 0').pluck(:label).first(2).to_sentence.presence || 'contract payment'}")
+      item.mark_paid!
+      # It is there the moment the run pays: nothing is on its way to a bank.
+      item.update_columns(deposited_at: Time.current)
+      settle_item_sources!(item, "balance-org-#{target.id}")
+    end
+    ContractConnectionNotices.share_paid_into_balance(item)
+  rescue OrgCashEntry::InsufficientFunds
+    item.mark_failed!("Insufficient held balance — not sent")
   end
 
   # Stripe refused the transfer because the destination account can't receive

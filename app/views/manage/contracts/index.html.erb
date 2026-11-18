@@ -73,7 +73,7 @@
           <span class="ml-1 text-gray-400 font-normal normal-case tracking-normal">(<%= @in_motion_contracts.size %>)</span>
         <% end %>
       </h3>
-      <span class="text-sm text-gray-500 normal-case tracking-normal">Overdue payments, out for signature, drafts, and anything signed in the last <%= Manage::ContractsController::RECENTLY_SIGNED_WINDOW.inspect %></span>
+      <span class="text-sm text-gray-500 normal-case tracking-normal">Overdue payments, out for signature, date requests, drafts, and anything signed in the last <%= Manage::ContractsController::RECENTLY_SIGNED_WINDOW.inspect %></span>
     </div>
     <% if @in_motion_contracts.any? %>
       <%= render "contract_slim_list", contracts: @in_motion_contracts, badges: @in_motion_badges, amounts: @in_motion_amounts %>

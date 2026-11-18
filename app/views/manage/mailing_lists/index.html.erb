@@ -4,11 +4,11 @@
   <%= render "shared/notice", notice: notice, alert: alert %>
   <%= render "shared/module_header",
         title: "Mailing lists",
-        description: "<p>Everyone who asked to hear from you, by list. Ticket buyers join at checkout; add anyone else by hand. Share a list with a producer and they see it in their My Followers.</p>",
+        description: "<p>Everyone who asked to hear from you, by list. Ticket buyers join at checkout; add anyone else by hand. A list for one of your contractors is shared with the people on that contract.</p>",
         actions: [
           { icon: "mail", text: "New email", description: "Write and send to a list", path: manage_new_follower_email_path },
           { icon: "user-plus", text: "Add people", description: "One at a time or many", path: manage_mailing_list_path(@main_list, add: 1) },
-          { icon: "queue-list", text: "New list", description: "For a producer or a show", path: "#",
+          { icon: "queue-list", text: "New list", description: "For a contractor or a kind of show", path: "#",
             data: { controller: "modal", action: "click->modal#open", modal_id: "new-list-modal" } },
           { icon: "cog", text: "Settings", description: "Email look, checkout", path: manage_mailing_list_settings_path }
         ] %>
@@ -66,7 +66,7 @@
     </div>
 
     <section class="lg:col-span-2 bg-white rounded-lg border border-gray-200 overflow-hidden" data-emails>
-      <%= render "shared/section_heading", title: "Emails", intro: "#{number_with_delimiter(@allowance.used)} of #{number_with_delimiter(@allowance.included)} sent this month" do %>
+      <%= render "shared/section_heading", title: "Emails", intro: "#{number_with_delimiter(@allowance.used)} of #{number_with_delimiter(@allowance.included)} sent this month#{@allowance.paid_left.positive? ? ", and #{number_with_delimiter(@allowance.paid_left)} more that you've paid for" : ''}" do %>
         <%= render "shared/button", text: "New email", variant: "primary", size: "small", path: manage_new_follower_email_path %>
       <% end %>
       <% if @drafts.empty? && @sent.empty? %>

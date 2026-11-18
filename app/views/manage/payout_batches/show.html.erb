@@ -34,19 +34,32 @@
       payments list below — click "Waiting on bank info" and you're looking at
       exactly the payees holding the run up. ---- %>
   <%
+    # Lines that go into another organization's CocoScout balance (a
+    # connected contract's payments) involve no bank, so the words below
+    # don't promise one.
+    balance_lines = @items.select(&:partner_organization?)
+    into_words = balance_lines.any? ? "#{balance_lines.map { |i| possessive(i.payee.name) }.uniq.to_sentence} CocoScout balance" : nil
+    send_words = if balance_lines.any? && balance_lines.size == @items.size
+      "It moves into #{into_words} the moment you pay, with no bank transfer."
+    elsif balance_lines.any?
+      "Transfers go straight to each payee's connected bank, and #{number_to_currency(balance_lines.sum(&:amount_cents) / 100.0)} moves into #{into_words} with no bank transfer."
+    else
+      "Transfers go straight to each payee's connected bank."
+    end
+    ready_word = balance_lines.any? ? "ready" : "bank connected"
     boxes = [
       { state: nil,       label: "Total",  cents: @batch.total_cents, count: @items.size, color: "text-gray-900", ring: "ring-gray-300", tint: "bg-white border-gray-200",
         note: "#{pluralize(@items.size, 'payee')} · #{remaining_cents.positive? ? "#{number_to_currency(remaining_cents / 100.0)} still to pay" : "everyone paid"}" },
       { state: :paid,     label: "Paid",   cents: @breakdown[:paid][:cents], count: @breakdown[:paid][:count], color: "text-green-700", ring: "ring-green-300", tint: "bg-green-50 border-green-200",
-        note: @breakdown[:paid][:count].positive? ? "#{pluralize(@breakdown[:paid][:count], 'payee')} · transferred" : "nobody yet" },
+        note: @breakdown[:paid][:count].positive? ? "#{pluralize(@breakdown[:paid][:count], 'payee')} · #{balance_lines.any? ? 'paid' : 'transferred'}" : "nobody yet" },
       { state: :ready,    label: in_flight ? "Paying" : "Ready to pay", cents: @breakdown[:ready][:cents], count: @breakdown[:ready][:count], color: in_flight ? "text-amber-700" : "text-pink-600", ring: in_flight ? "ring-amber-300" : "ring-pink-300", tint: in_flight ? "bg-amber-50 border-amber-200" : "bg-pink-50 border-pink-200",
         note: if @breakdown[:ready][:count].zero? then "nobody waiting on you"
               elsif in_flight then "#{pluralize(@breakdown[:ready][:count], 'payee')} · goes out once funding clears"
-              elsif @batch.open? then "#{pluralize(@breakdown[:ready][:count], 'payee')} · bank connected, fund the run to pay"
-              else "#{pluralize(@breakdown[:ready][:count], 'payee')} · bank connected, pay remaining"
+              elsif @batch.open? then "#{pluralize(@breakdown[:ready][:count], 'payee')} · #{ready_word}, fund the run to pay"
+              else "#{pluralize(@breakdown[:ready][:count], 'payee')} · #{ready_word}, pay remaining"
               end },
       { state: :waiting,  label: "Waiting on bank info", cents: @breakdown[:waiting][:cents], count: @breakdown[:waiting][:count], color: "text-blue-700", ring: "ring-blue-300", tint: "bg-blue-50 border-blue-200",
-        note: if @breakdown[:waiting][:count].zero? then "everyone has a bank connected"
+        note: if @breakdown[:waiting][:count].zero? then (balance_lines.any? ? "nobody is waiting on a bank" : "everyone has a bank connected")
               else "#{pluralize(@breakdown[:waiting][:count], 'payee')} #{@breakdown[:waiting][:count] == 1 ? "hasn't" : "haven't"} connected — can't be paid yet"
               end }
     ]
@@ -168,7 +181,7 @@
           <h2 class="text-sm font-semibold text-gray-900">
             Ready to send <%= number_to_currency(@batch.total_cents / 100.0) %>
           </h2>
-          <p class="text-xs text-gray-600 mt-1">CocoScout is already holding this money for you — no bank debit. Transfers go straight to each payee's connected bank.</p>
+          <p class="text-xs text-gray-600 mt-1">CocoScout is already holding this money for you — no bank debit. <%= send_words %></p>
           <% if @breakdown[:waiting][:count].positive? %>
             <p class="text-xs text-gray-600 mt-1">The <%= number_to_currency(@breakdown[:waiting][:cents] / 100.0) %> for payees without a connected bank stays on this run until they connect.</p>
           <% end %>
@@ -207,7 +220,7 @@
             <h2 class="text-sm font-semibold text-gray-900">
               Ready to send <%= number_to_currency(@batch.total_cents / 100.0) %>
             </h2>
-            <p class="text-xs text-gray-600 mt-1">CocoScout is already holding this money for you — no bank debit. Transfers go straight to each payee's connected bank.</p>
+            <p class="text-xs text-gray-600 mt-1">CocoScout is already holding this money for you — no bank debit. <%= send_words %></p>
             <% if fund_balance_applied.positive? %>
               <p class="text-xs text-gray-600 mt-1">Paid from your CocoScout balance: <%= number_to_currency(fund_balance_applied / 100.0) %>.</p>
             <% end %>
@@ -461,7 +474,12 @@
                   <div class="flex items-center gap-2 min-w-0">
                     <svg class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-90 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                     <div class="min-w-0 sm:flex sm:items-center sm:gap-2">
-                      <div class="text-gray-900 truncate"><%= item.payee&.name %></div>
+                      <%# The balance tag sits under the name: beside it, it took the
+                          name's room and the name was cut to "Co…". %>
+                      <div class="min-w-0">
+                        <div class="text-gray-900 truncate"><%= item.payee&.name %></div>
+                        <% if item.partner_organization? %><span class="inline-flex items-center rounded-full bg-pink-50 px-2 py-0.5 text-[11px] font-medium text-pink-700 mt-0.5" data-into-balance>Into their CocoScout balance</span><% end %>
+                      </div>
                       <div class="text-xs text-gray-400 flex-shrink-0"><%= pluralize(contributions.size, "item") %></div>
                     </div>
                   </div>
@@ -528,6 +546,7 @@
               <div class="px-4 sm:px-5 py-3 flex items-center justify-between gap-3 sm:gap-4">
                 <div class="min-w-0">
                   <span class="text-gray-900"><%= item.payee&.name %></span>
+                  <% if item.partner_organization? %><span class="inline-flex items-center rounded-full bg-pink-50 px-2 py-0.5 text-[11px] font-medium text-pink-700 ml-1" data-into-balance>Into their CocoScout balance</span><% end %>
                   <% if item.error.present? %>
                     <div class="text-xs text-red-600 mt-0.5"><%= item.error %></div>
                   <% end %>

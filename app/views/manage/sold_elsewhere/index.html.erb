@@ -1,0 +1,21 @@
+<%# What Ticketing opens as on the free plan when another organization
+    sells this one's dates under a connected contract
+    (Manage::SoldElsewhereController). From the controller: @productions. %>
+<% content_for :title, "Ticketing" %>
+<div class="w-full mb-10 max-w-4xl">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: { breadcrumbs: [], text: "Ticketing", links: [] } %>
+  <p class="text-sm text-gray-600 mb-5 max-w-3xl">
+    The tickets for these dates are sold by the organization presenting them, under your contract. You can see how each date is selling here.
+  </p>
+  <% @productions.each do |production| %>
+    <%= render "manage/production_sales/sold_elsewhere_card", production: production %>
+  <% end %>
+  <div class="bg-white border border-gray-200 rounded-lg px-4 py-3 flex flex-wrap items-center justify-between gap-3" data-own-box-office-is-pro>
+    <div class="min-w-0 max-w-2xl">
+      <div class="text-sm font-semibold text-gray-900">Selling tickets yourself is part of Pro</div>
+      <p class="text-sm text-gray-600">You don't need it for the dates above. On Pro you can sell tickets for your other dates from your own box office.</p>
+    </div>
+    <%= render "shared/button", text: "See what Pro includes", variant: "secondary", size: "small", path: manage_billing_path %>
+  </div>
+</div>

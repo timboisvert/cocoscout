@@ -7,13 +7,14 @@ module My
   # (/my/shows/:id/tickets), reached from the show's own page; there is no
   # list of them and nothing in the My menu (Tim, 2026-10-17 and 2026-11-17).
   # Nothing here can be changed, and no buyer's email ever shows, except
-  # that someone on a contract that includes the date gives comps for their
-  # own show (TicketSalesAccess.comp_allowance).
+  # that someone on a contract that includes the date issues comps for their
+  # own show (TicketSalesAccess.comp_allowance), and changes or removes the
+  # ones their side issued (TicketComps.changeable_by?).
   class TicketSalesController < ApplicationController
     include GivesComps
 
     before_action :require_authentication
-    before_action :set_listing, only: %i[show create_comp preview_comps daily_email]
+    before_action :set_listing, only: %i[show create_comp preview_comps update_comp remove_comp daily_email]
 
     # A link to the old page for one listing (/my/ticket-sales/:id): on to
     # the show's own.
@@ -26,6 +27,7 @@ module My
       @show_my_sidebar = true
       @stats = Ticketing::ListingStats.of(@listing)
       @allowance = TicketSalesAccess.comp_allowance(Current.user, @listing)
+      @changeable_comp_ids = TicketComps.changeable_ids(@listing, Current.user)
       # Whether the show's own page is theirs to open (it is by contract or
       # by being in the show; a share alone gives only this page).
       @show_page = @listing.show if TicketSalesAccess.on_contract_for?(Current.user, @listing)
@@ -44,6 +46,15 @@ module My
     # A pasted list's preview, within the same allowance.
     def preview_comps
       preview_comps_within_allowance(@listing, TicketSalesAccess.comp_allowance(Current.user, @listing))
+    end
+
+    # A comp their side issued, corrected or taken back (GivesComps).
+    def update_comp
+      change_comp_given(@listing, back: my_show_tickets_path(@listing.show_id, anchor: "guests"))
+    end
+
+    def remove_comp
+      remove_comp_given(@listing, back: my_show_tickets_path(@listing.show_id, anchor: "guests"))
     end
 
     # A morning email on how their shows are selling, on or off for every

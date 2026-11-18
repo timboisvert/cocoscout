@@ -47,7 +47,7 @@ RSpec.describe "The Tickets question", type: :request do
     # The show page shows where the tickets are, small, for reading only.
     get manage_production_show_path(production, show)
     expect(response.body).to include("Tickets sold", "of 70", manage_ticket_listing_path(show.ticket_listing))
-    expect(response.body).not_to include("Give tickets", "Where do people get tickets")
+    expect(response.body).not_to include("Issue comps", "Where do people get tickets")
 
     # A date answering for itself leaves the production's CocoScout sales; following it again rejoins.
     patch manage_show_path(production, show), params: { show: { tickets_override: "1", tickets_mode: "none" } }

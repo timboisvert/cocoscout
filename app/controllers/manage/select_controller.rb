@@ -70,6 +70,12 @@ module Manage
       # that's a change of organization or of mode (OrganizationContext).
       switch_organization!(organization.id)
 
+      # A link that opens one of this organization's own pages (a pointer
+      # from My to what now lives here) goes straight to it: only ever a
+      # path inside Manage.
+      target = params[:return_to].to_s
+      return redirect_to(target, status: :see_other) if target.match?(%r{\A/manage(/[\w\-/]*)?\z})
+
       # Always redirect to manage (or stored intent) - production auto-selection happens there if needed
       redirect_to_intent_or(manage_path, status: :see_other)
     end

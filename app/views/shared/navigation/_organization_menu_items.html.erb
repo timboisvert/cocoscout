@@ -42,6 +42,10 @@
 <% if can_billing %>
   <%= link_to "Plan and billing", section_manage_organization_path(org, section: "billing"), class: item, role: "menuitem" %>
 <% end %>
+<%# Another organization's contract connected to this one (ContractConnections): only once there is one. %>
+<% if can_billing && ContractConnection.where(linked_organization_id: org.id).where.not(status: %w[withdrawn declined]).exists? %>
+  <%= link_to "Connections", manage_connections_path, class: item, role: "menuitem" %>
+<% end %>
 
 <%# Where else you could be %>
 <% others = organizations.reject { |o| o.id == org.id } %>

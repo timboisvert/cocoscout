@@ -117,7 +117,7 @@ RSpec.describe "Manage ticket listings", type: :request do
 
       get manage_ticket_listing_path(listing)
       expect(response.body).to include("Sold elsewhere", 'id="outside-sales-modal"', 'id="comps-modal"', "Eventbrite")
-      expect(response.body).not_to include("Give tickets</div>")
+      expect(response.body).not_to include("Issue comps</div>")
 
       patch manage_ticket_listing_outside_sales_path(listing), params: {
         new_source_name: "Ticket Tailor",

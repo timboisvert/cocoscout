@@ -24,6 +24,10 @@ class TicketingAfterSaleJob < ApplicationJob
 
     if (kind = NOTICES[order.channel])
       TicketingNotifier.notify(order.organization, kind, variables: variables(kind, order, together))
+      # A date sold under a connected contract: whoever the contractor's
+      # organization chose is notified too, with counts only (LinkedSaleNotices).
+      orders = kind == :comp_issued && together.present? ? TicketOrder.includes(:tickets).where(id: together).order(:id).to_a : [ order ]
+      LinkedSaleNotices.after_sale(kind, orders)
     end
     TicketingMilestones.check!(order.ticket_listing)
   end

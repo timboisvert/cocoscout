@@ -95,7 +95,7 @@
       <div class="px-4 pb-4 flex flex-wrap gap-2">
         <%= render "shared/button", text: (show.date_and_time <= Time.current ? "See who came" : "See who's coming"), variant: "secondary", size: "small", path: manage_production_sale_path(production, listing, anchor: "guests") %>
         <% if allowance && (allowance[:left].nil? || allowance[:left].positive?) %>
-          <%= render "shared/button", text: allowance[:left] ? "Give comps · #{allowance[:left]} of #{allowance[:team_limit] || allowance[:date_left]} left" : "Give comps",
+          <%= render "shared/button", text: comp_allowance_button(allowance),
                 variant: "secondary", size: "small", path: manage_production_sale_path(production, listing) %>
         <% end %>
       </div>

@@ -118,8 +118,9 @@ RSpec.describe "Contract people", type: :request do
     expect(html.index(my_show_path(old_show))).to be < html.index(my_show_path(older_show))
   end
 
-  it "gives comps from a pasted list on My Ticket Sales, the whole list or none" do
+  it "issues comps from a pasted list on the date's Tickets page, the whole list or none" do
     listing = open_box_office
+    TicketingProfile.for(org).update!(contract_comps_per_show: 3)
     general = listing.ticket_tiers.first
     sign_in(priya)
     get my_show_tickets_path(listing.show)
@@ -135,34 +136,154 @@ RSpec.describe "Contract people", type: :request do
     expect { post my_show_ticket_comps_path(listing.show), params: { mode: "paste", tier_id: general.id, text: "Abe Comp, abe@example.com, 2\nBea Comp" } }
       .to change { Ticket.where(ticket_listing_id: listing.id).count }.by(3)
     expect(response).to redirect_to(my_show_tickets_path(listing.show, anchor: "guests"))
-    expect(flash[:notice]).to eq("Gave 3 tickets to 2 people. They're on the guest list.")
+    expect(flash[:notice]).to eq("Issued 3 tickets to 2 people. They're on the guest list.")
+
+    # The contract's three are given: a list of one more is turned away.
+    post my_show_ticket_comps_path(listing.show), params: { mode: "paste", tier_id: general.id, text: "Cy Comp" }
+    expect(flash[:alert]).to eq("You can't issue comps for this date.")
   end
 
-  it "sees the date's sales on My Ticket Sales and gives comps for it, up to what the date can give" do
+  it "sees the date's sales on its Tickets page under the show and issues comps for it, up to the number the organization allows the people on a contract" do
     listing = open_box_office
     sign_in(priya)
     get my_show_path(show)
     expect(response.body).to include("data-tickets-card", my_show_tickets_path(listing.show), "View ticket sales")
 
+    # People on a contract start with none (Tim, 2026-11-17): the page shows the sales and no comps.
     get my_show_tickets_path(listing.show)
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Your comps for this date", "Give comps", my_show_ticket_comps_path(listing.show))
+    expect(response.body).not_to include("Your comps for this date", "Issue comps")
+    expect { post my_show_ticket_comps_path(listing.show), params: { name: "Abe Comp", quantity: "1", tier_id: listing.ticket_tiers.first.id } }
+      .not_to(change { Ticket.where(ticket_listing_id: listing.id).count })
+
+    # The box office allows three per date, between everyone on the contract.
+    TicketingProfile.for(org).update!(contract_comps_per_show: 3)
+    get my_show_tickets_path(listing.show)
+    expect(CGI.unescapeHTML(response.body)).to include("Your comps for this date", "Issue comps · 3 of 3 left", my_show_ticket_comps_path(listing.show),
+                                                       "allows 3 comps for this date, shared between everyone on the contract. None have been issued so far.")
 
     expect { post my_show_ticket_comps_path(listing.show), params: { name: "Abe Comp", quantity: "2", tier_id: listing.ticket_tiers.first.id } }
       .to change { Ticket.where(ticket_listing_id: listing.id).count }.by(2)
     expect(response).to redirect_to(my_show_tickets_path(listing.show, anchor: "guests"))
-    expect(flash[:notice]).to include("Gave 2 tickets to Abe Comp")
+    expect(flash[:notice]).to include("Issued 2 tickets to Abe Comp")
+
+    # One number between them: the contractor has what Priya left, and no more.
+    expect(TicketSalesAccess.comp_allowance(dan, TicketListing.find(listing.id))).to include(team_limit: 3, team_given: 2, left: 1, contract: true)
+    get my_show_tickets_path(listing.show)
+    expect(response.body).to include("Issue comps · 1 of 3 left", "2 have been issued so far.")
+    expect { post my_show_ticket_comps_path(listing.show), params: { name: "Bea Comp", quantity: "2", tier_id: listing.ticket_tiers.first.id } }
+      .not_to(change { Ticket.where(ticket_listing_id: listing.id).count })
+    expect(flash[:alert]).to eq("You can issue 1 more comp for this date.")
+    # Their comps are their own number's, not the production team's share.
+    expect(TicketSalesAccess.contract_comps_given(listing)).to eq(2)
+    expect(TicketSalesAccess.team_comps_given(listing)).to eq(0)
 
     # Once the date has started there are no comps to give.
     show.update_columns(date_and_time: 1.hour.ago)
     get my_show_tickets_path(listing.show)
-    expect(response.body).not_to include("Give comps")
+    expect(response.body).not_to include("Issue comps")
 
     # And the date's page says it has happened, with the way into how it sold and no link to share (Tim, 2026-10-18).
     get my_show_path(show)
     html = response.body.gsub(/\s+/, " ")
     expect(html).to include('data-show-state="past"', "has already happened", my_show_tickets_path(listing.show), "View ticket sales")
     expect(html).not_to include("Your link for this date", "Who's coming is in", "Who's coming, and your comps")
+  end
+
+  # Tim, 2026-11-17: the side that issued a comp can change the guest's name or take it back; it doesn't matter who on it did.
+  it "lets them edit and remove a comp the contract's side issued, never the organization's own or a sale" do
+    listing = open_box_office
+    TicketingProfile.for(org).update!(contract_comps_per_show: 3)
+    tier = listing.ticket_tiers.first
+    sign_in(priya)
+    post my_show_ticket_comps_path(listing.show), params: { name: "Abe Comp", quantity: "2", tier_id: tier.id }
+    mine = listing.ticket_orders.find_by!(buyer_name: "Abe Comp")
+    # One the contractor issued, one the organization's own manager issued, and one somebody bought.
+    dans = TicketComps.give!(listing, [ TicketComps::Guest.new(name: "Dan's Guest", email: nil, tier: tier, quantity: 1) ], by: dan, email_them: false).sole
+    houses = TicketComps.give!(listing, [ TicketComps::Guest.new(name: "House Guest", email: nil, tier: tier, quantity: 1) ], by: owner, email_them: false).sole
+    bought = create(:ticket_order, organization: org, ticket_listing: listing, status: "paid", buyer_name: "Paying Buyer")
+    bought.tickets.create!(ticket_tier: tier, ticket_listing: listing, status: "valid", price_cents: 2_000)
+
+    get my_show_tickets_path(listing.show)
+    html = response.body
+    expect(html).to include("Edit or remove this comp", "edit-comp-#{mine.id}", "remove-comp-#{mine.id}", my_show_ticket_comp_path(listing.show, mine.id),
+                            "edit-comp-#{dans.id}")
+    expect(html).not_to include("edit-comp-#{houses.id}", "edit-comp-#{bought.id}", "You issued this")
+
+    # Issued without an email: the Email them their tickets switch is there, off, as when a comp is issued.
+    expect(html).to include("edit_comp_email_them_#{mine.id}", "They haven't been emailed their tickets yet.")
+    expect(html).not_to match(/id="edit_comp_email_them_#{mine.id}"[^>]*checked/)
+
+    # Switch left off: the name changes and no email is kept or sent, whatever was typed.
+    expect { patch my_show_ticket_comp_path(listing.show, mine.id), params: { name: "Abe Corrected", email_them: "0" } }
+      .not_to have_enqueued_job(TicketOrderConfirmationJob)
+    expect(response).to redirect_to(my_show_tickets_path(listing.show, anchor: "guests"))
+    expect(mine.reload).to have_attributes(buyer_name: "Abe Corrected", buyer_email: nil)
+    expect(flash[:notice]).to eq("Saved. The comp is for Abe Corrected now.")
+
+    # Switched on, their email is needed, and the tickets go to it.
+    patch my_show_ticket_comp_path(listing.show, mine.id), params: { name: "Abe Corrected", email_them: "1", email: "" }
+    expect(flash[:alert]).to eq("Add their email to send their tickets, or switch off Email them their tickets.")
+    expect { patch my_show_ticket_comp_path(listing.show, mine.id), params: { name: "Abe Corrected", email_them: "1", email: "abe@example.com" } }
+      .to have_enqueued_job(TicketOrderConfirmationJob).with(mine.id)
+    expect(mine.reload.buyer_email).to eq("abe@example.com")
+    expect(flash[:notice]).to eq("Saved. The comp is for Abe Corrected now. Their tickets are on the way to abe@example.com.")
+
+    # Now the comp has an email: no switch, the email is required, and only a new address gets the tickets again.
+    get my_show_tickets_path(listing.show)
+    expect(response.body).to include("Their tickets were emailed to this address.")
+    expect(response.body).not_to include("edit_comp_email_them_#{mine.id}")
+    patch my_show_ticket_comp_path(listing.show, mine.id), params: { name: "Abe Corrected", email: "" }
+    expect(flash[:alert]).to eq("Add their email. Their tickets were sent to abe@example.com, so this comp needs an address.")
+    expect { patch my_show_ticket_comp_path(listing.show, mine.id), params: { name: "Abe C.", email: "abe@example.com" } }
+      .not_to have_enqueued_job(TicketOrderConfirmationJob)
+    expect { patch my_show_ticket_comp_path(listing.show, mine.id), params: { name: "Abe Corrected", email: "abe.new@example.com" } }
+      .to have_enqueued_job(TicketOrderConfirmationJob).with(mine.id)
+    expect(mine.reload).to have_attributes(buyer_name: "Abe Corrected", buyer_email: "abe.new@example.com")
+
+    patch my_show_ticket_comp_path(listing.show, mine.id), params: { name: "", email: "abe.new@example.com" }
+    expect(flash[:alert]).to eq("Add the guest's name.")
+    expect(mine.reload.buyer_name).to eq("Abe Corrected")
+
+    # The contractor's comp is the contract's too. The organization's own comp and a sale are not.
+    patch my_show_ticket_comp_path(listing.show, dans.id), params: { name: "Dan's Plus-One", email_them: "0" }
+    expect(dans.reload.buyer_name).to eq("Dan's Plus-One")
+    patch my_show_ticket_comp_path(listing.show, houses.id), params: { name: "Mine Now" }
+    expect(response).to have_http_status(:not_found)
+    delete my_show_ticket_comp_path(listing.show, bought.id)
+    expect(response).to have_http_status(:not_found)
+    expect(houses.reload.buyer_name).to eq("House Guest")
+
+    # Removing it frees the seats and gives the number back to the contract.
+    expect(TicketSalesAccess.comp_allowance(priya, TicketListing.find(listing.id))).to include(left: 0)
+    expect { delete my_show_ticket_comp_path(listing.show, mine.id) }.to change { Ticket.where(ticket_listing_id: listing.id, status: Ticket::SOLD_STATUSES).count }.by(-2)
+    expect(flash[:notice]).to eq("Removed 2 tickets for Abe Corrected. The seats are free again, and they have been notified by email.")
+    expect(TicketSalesAccess.comp_allowance(priya, TicketListing.find(listing.id))).to include(left: 2)
+    get my_show_tickets_path(listing.show)
+    expect(response.body).not_to include("edit-comp-#{mine.id}")
+
+    # Once the show has started, a comp stays as it is.
+    post my_show_ticket_comps_path(listing.show), params: { name: "Late Guest", quantity: "1", tier_id: tier.id }
+    late = listing.ticket_orders.find_by!(buyer_name: "Late Guest")
+    show.update_columns(date_and_time: 1.hour.ago)
+    delete my_show_ticket_comp_path(listing.show, late.id)
+    expect(flash[:alert]).to eq("This comp can't be removed any more.")
+    patch my_show_ticket_comp_path(listing.show, late.id), params: { name: "Too Late" }
+    expect(flash[:alert]).to eq("This comp can't be changed any more.")
+    expect(late.reload.buyer_name).to eq("Late Guest")
+  end
+
+  it "keeps a comp whose guest has already checked in" do
+    listing = open_box_office
+    TicketingProfile.for(org).update!(contract_comps_per_show: 3)
+    sign_in(priya)
+    post my_show_ticket_comps_path(listing.show), params: { name: "Early Bird", quantity: "1", tier_id: listing.ticket_tiers.first.id }
+    comp = listing.ticket_orders.find_by!(buyer_name: "Early Bird")
+    comp.tickets.first.update_columns(status: "checked_in", checked_in_at: Time.current)
+
+    delete my_show_ticket_comp_path(listing.show, comp.id)
+    expect(flash[:alert]).to eq("Early Bird has already checked in, so this comp can't be removed.")
+    expect(comp.tickets.first.reload.status).to eq("checked_in")
   end
 
   it "never puts them on the production team or in the organization" do

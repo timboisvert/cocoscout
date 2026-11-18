@@ -177,9 +177,34 @@
           </div>
         <% end %>
 
-        <% if !has_contract && current_user_can_manage?(@production) %>
+        <% if @show.follows_contract? && current_user_can_manage?(@production) %>
+          <%# A date that follows another organization's contract date
+              (LinkedDates): its time, its place and whether it's on are
+              theirs. Everything else about it is edited as usual. %>
+          <%
+            booked_at = @show.followed_organization&.name
+            booking = @show.linked_show&.space_rental
+            zone = Time.find_zone(@show.followed_organization&.time_zone.presence) || Time.zone
+            hours = ->(time) { time.in_time_zone(zone).strftime("%-l:%M %p") }
+            # The room's own hours, when it's booked for longer than the show runs.
+            booking_words = booking&.has_separate_event_time? ? " The room is booked from #{hours.call(booking.starts_at)} to #{hours.call(booking.ends_at)}, which leaves time to set up and clear out." : ""
+          %>
+          <div class="border border-pink-200 rounded-lg overflow-hidden bg-white" data-follows-contract>
+            <%= render "shared/section_heading", padding: "px-4 py-3", title: "Booked at #{booked_at}",
+                  intro: "This date follows your contract with #{booked_at}, so its time and place are set by them. If they move or cancel it, it will change here too, and you'll be asked to let your cast know.#{booking_words} If you need a different time, you can request a change from My Contracts." %>
+            <div class="p-4">
+              <%= render "shared/button", text: "Edit #{sanitize(@show.event_type.titleize)}", path: manage_edit_show_path(@production, @show), variant: "primary", size: "small" %>
+            </div>
+          </div>
+        <% elsif !has_contract && current_user_can_manage?(@production) %>
           <%# Standard manage show box — only for productions NOT governed by a
               contract, and only for its managers (viewers look). %>
+          <% if @show.released_from_contract? && (was = @show.released_connection&.organization) %>
+            <%# Kept from a contract connection that has ended: it's theirs now, and nothing keeps it in step. %>
+            <div class="border border-gray-200 rounded-lg bg-white px-4 py-3 text-sm text-gray-600" data-released-from-contract>
+              This date came from your contract with <%= was.name %>. That connection has ended, so the date is now your own and no longer follows <%= possessive(was.name) %> changes.
+            </div>
+          <% end %>
           <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
             <%= render "shared/section_heading", padding: "px-4 py-3", title: "Manage #{sanitize(@show.event_type.titleize)}" %>
             <div class="p-4">
@@ -704,7 +729,12 @@
       <% end %>
 
       <%# Tickets: the production's answer to the Tickets question, and this date's standing. %>
-      <%= render "manage/shows/tickets_card", show: @show, production: @production %>
+      <% if @show.follows_contract? %>
+        <%= render "manage/shows/followed_tickets_card", show: @show, production: @production %>
+        <%= render "manage/shows/followed_contract_box", show: @show %>
+      <% else %>
+        <%= render "manage/shows/tickets_card", show: @show, production: @production %>
+      <% end %>
 
       <%# Money — bridge to this show's financials, payouts, and advances (Pro). %>
       <%= render "manage/shows/money_section", show: @show, production: @production %>
@@ -729,12 +759,12 @@
             <% end %>
           </div>
         </div>
-      <% elsif @show.location.present? && !@show.canceled %>
-        <!-- In-Person Location Card -->
+      <% elsif @show.venue_location.present? && !@show.canceled %>
+        <!-- In-Person Location Card (a date that follows a contract date shows the other organization's venue) -->
         <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
-          <%= render "shared/section_heading", padding: "px-4 py-3", title: @show.location.name %>
+          <%= render "shared/section_heading", padding: "px-4 py-3", title: @show.venue_location.name %>
           <div class="p-4 flex flex-col lg:flex-row gap-4">
-            <% loc = @show.location %>
+            <% loc = @show.venue_location %>
             <% if loc.present? %>
               <% address = [loc.address1, loc.address2, loc.city, loc.state, loc.postal_code].compact.reject(&:blank?).join(', ') %>
 

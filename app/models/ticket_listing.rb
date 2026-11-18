@@ -102,8 +102,12 @@ class TicketListing < ApplicationRecord
     @production_ticketing = production&.production_ticketing
   end
 
+  # The date's own words, the production's ticketing setup, then the
+  # production's: the contractor's own production's first, when the show is
+  # theirs and sold here under a connected contract (LinkedArt).
   def effective_description
-    description.presence || production_ticketing&.description.presence || production&.description.presence
+    description.presence || production_ticketing&.description.presence ||
+      LinkedArt.source_for_show(show)&.description.presence || production&.description.presence
   end
 
   def effective_door_note
@@ -245,13 +249,18 @@ class TicketListing < ApplicationRecord
     comp_rules.team_comps_per_show || 2
   end
 
-  # How many comps this date can still give away, whoever gives them: nil
-  # when there's no limit. People cast counts each person once.
-  def comps_left
-    return nil if effective_comps_limit == "unlimited"
+  # How many comps the people on a contract may issue for this date, between
+  # all of them: 0 is none.
+  def effective_contract_comps
+    comp_rules.contract_comps_per_show.to_i
+  end
 
-    limit = effective_comps_limit == "fixed" ? effective_comps_per_show : show.show_person_role_assignments.visible_to_performers.distinct.count(:assignable_id)
-    [ limit - Ticketing::ListingStats.of(self).comps, 0 ].max
+  # How many comps this date can still give away, whoever gives them: nil
+  # when there's no limit.
+  def comps_left
+    return nil unless effective_comps_limit == "fixed"
+
+    [ effective_comps_per_show - Ticketing::ListingStats.of(self).comps, 0 ].max
   end
 
   # "Only 3 left" when a count is at or under the threshold, else nil.

@@ -23,6 +23,8 @@
     <%= render "manage/production_ticketings/sections/refunds", setup: @setup, production: @production %>
   <% when "codes" %>
     <%= render "manage/production_ticketings/sections/codes", setup: @setup, production: @production %>
+  <% when "boxes" %>
+    <%= render "manage/production_ticketings/sections/boxes", setup: @setup, production: @production %>
   <% when "comps" %>
     <%= render "manage/production_ticketings/sections/comps", setup: @setup, production: @production %>
   <% else %>
