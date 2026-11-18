@@ -358,7 +358,7 @@ export default class extends Controller {
                 n += 1
                 return `<option value="${r.id}">Act ${n} · ${r.name}</option>`
             }
-            return `<option value="${r.id}">${r.name}${r.category !== 'performing' ? ` (${r.category})` : ''}</option>`
+            return `<option value="${r.id}">${r.name}</option>`
         }).join("")
 
         return `
@@ -598,8 +598,6 @@ export default class extends Controller {
             : ""
         const kindTitle = this.kindLabel(this.kindOf(role))
 
-        const categoryBadge = `<span class="text-xs font-medium text-gray-500 capitalize">${role.category || 'performing'}</span>`
-
         const eligibleMembers = role.restricted && role.eligible_members.length > 0
             ? `<div class="flex items-center gap-1 mt-2">
                 <span class="text-gray-400 mr-1" title="Restricted role">
@@ -629,9 +627,6 @@ export default class extends Controller {
                             ${role.name}${quantity > 1 ? ` <span class="ml-1 text-sm font-normal text-gray-500">(${quantity} slots)</span>` : ''}
                             ${showRoleBadge}
                             ${restrictedBadge}
-                        </div>
-                        <div class="flex items-center gap-2 mt-1 ${this.actBased ? 'hidden' : ''}">
-                            ${categoryBadge}
                         </div>
                         ${eligibleMembers}
                     </div>

@@ -62,7 +62,7 @@ module Manage
     def parse_roles(roles_params)
       return [] if roles_params.blank?
 
-      allowed = act_based_wizard? ? Role::CATEGORIES : (Role::CATEGORIES - [ Role::BREAK_CATEGORY ])
+      allowed = [ "performing", Role::BREAK_CATEGORY ]
 
       roles_params.values.map do |role|
         next if role[:name].blank?
@@ -70,7 +70,10 @@ module Manage
         # A show role (MC, Stage Kitten ×2) sits alongside an act-based lineup:
         # not an act, so it may hold several people.
         standing = act_based_wizard? && category == "show_role"
-        category = "performing" unless allowed.include?(category)
+        # Only a lineup has kinds (an act, an intermission, a show role). A
+        # role is its name and how many: there is no Performing / Technical
+        # choice (Tim, 2026-11-18), so a role-based row is always a plain role.
+        category = "performing" unless act_based_wizard? && allowed.include?(category)
         # An act (or an intermission) is one thing in the running order.
         quantity = act_based_wizard? && !standing ? 1 : [ (role[:quantity] || 1).to_i, 1 ].max
         row = {

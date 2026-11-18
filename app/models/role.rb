@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
 class Role < ApplicationRecord
-  # Role categories (performing = on stage, technical = backstage/crew,
-  # break = a running-order marker such as an intermission in an act-based
-  # lineup — never cast, never counted)
+  # Role categories. performing is every ordinary role. break is a
+  # running-order marker such as an intermission in an act-based lineup:
+  # never cast, never counted. technical (backstage/crew) is no longer
+  # offered anywhere (Tim, 2026-11-18: crew is Staffing's now); roles marked
+  # with it before then keep the mark, which nothing shows.
   CATEGORIES = %w[performing technical break].freeze
   BREAK_CATEGORY = "break"
 
@@ -174,9 +176,12 @@ class Role < ApplicationRecord
   # What a role editor posted, made safe for the lineup it's editing. In an
   # act-based lineup the Type select posts `category` as performing (an act),
   # break (an intermission) or show_role — that becomes lineup_kind, acts and
-  # breaks are one slot, and breaks aren't restricted. In a role-based lineup
-  # there are no breaks or show roles: either quietly becomes a performing
-  # role and `standing` is left alone.
+  # breaks are one slot, and breaks aren't restricted. A role-based lineup
+  # has no kinds at all: a role is its name and how many (Tim, 2026-11-18;
+  # the Performing / Technical choice is gone, crew being Staffing's now).
+  # Whatever is posted there is dropped: a new role is a plain one, and a
+  # role marked technical before the choice went keeps that mark untouched
+  # (CastingModeConverter still reads it for those roles).
   def self.editor_params(permitted, act_based:)
     permitted = permitted.to_h.with_indifferent_access
     category = permitted.delete(:category).to_s
@@ -190,7 +195,9 @@ class Role < ApplicationRecord
       permitted[:quantity] = 1 unless kind == "show_role"
       permitted[:restricted] = false if kind == "break"
     else
-      permitted[:category] = %w[performing technical].include?(category) ? category : "performing"
+      # An intermission left in a lineup that's now cast by roles becomes a
+      # plain role when it's edited, as it always has.
+      permitted[:lineup_kind] = "role"
     end
     permitted
   end
@@ -203,6 +210,8 @@ class Role < ApplicationRecord
     when "show_role"
       self.category = "performing" unless category == "technical"
       self.standing = true
+    when "role"
+      self.category = "performing" if break?
     else
       self.category = "performing" if break?
       self.standing = false

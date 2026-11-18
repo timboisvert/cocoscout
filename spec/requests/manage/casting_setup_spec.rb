@@ -106,11 +106,14 @@ RSpec.describe "Casting set-up", type: :request do
       expect(response).to redirect_to(manage_casting_setup_roles_path(production))
       follow_redirect!
       expect(doc.at_css("[data-casting-setup-step='roles'] #roles-list")).to be_present
+      # A role is its name and how many: no Performing / Technical choice.
+      expect(doc.at_css("#roles-list select")).to be_nil
+      expect(response.body).not_to include("Crew / Technical", "Technical")
 
       post manage_casting_setup_save_roles_path(production),
-           params: { has_roles: "yes", roles: { "0" => { name: "Host", quantity: "1", category: "performing" },
-                                                 "1" => { name: "Performer", quantity: "4", category: "performing" },
-                                                 "2" => { name: "", quantity: "1", category: "performing" } } }
+           params: { has_roles: "yes", roles: { "0" => { name: "Host", quantity: "1" },
+                                                 "1" => { name: "Performer", quantity: "4", category: "technical" },
+                                                 "2" => { name: "", quantity: "1" } } }
       expect(response).to redirect_to(manage_casting_setup_dates_path(production))
       follow_redirect!
 
@@ -138,7 +141,8 @@ RSpec.describe "Casting set-up", type: :request do
       expect(response).to redirect_to(manage_casting_production_path(production))
 
       expect(production.reload).to have_attributes(casting_source: "manual", casting_mode: "role_based", casting_setup_completed: true, casting_state: :on)
-      expect(production.roles.order(:position).pluck(:name, :quantity)).to eq([ [ "Host", 1 ], [ "Performer", 4 ] ])
+      # Whatever a stale page posts, a role made here is a plain role.
+      expect(production.roles.order(:position).pluck(:name, :quantity, :category)).to eq([ [ "Host", 1, "performing" ], [ "Performer", 4, "performing" ] ])
       expect(show.reload.casting_enabled).to be(true)
       expect(rehearsal.reload.casting_enabled).to be(true)
       expect(booked.reload.casting_enabled).to be(false)
@@ -406,6 +410,46 @@ RSpec.describe "Casting set-up", type: :request do
 
       get manage_shows_path(filter: "upcoming", view_mode: "all")
       expect(doc.css("[data-tooltip-text*='(not assigned)']").size).to eq(1)
+    end
+  end
+
+  # Tim, 2026-11-18: "I'd rather just the role, the number of them, that's
+  # it." Crew is Staffing's now, so the Performing / Technical choice is gone
+  # from every place a role is made, edited, or listed.
+  describe "a role is its name and how many" do
+    let!(:host) { create(:role, production: production, name: "Host", position: 1) }
+    # Marked before the choice went: the mark stays stored and shows nowhere.
+    let!(:crew) { create(:role, production: production, name: "Board Op", category: "technical", position: 2) }
+    let!(:show) { create(:show, production: production, date_and_time: 1.week.from_now) }
+
+    it "offers no Performing / Technical choice in Casting Settings and labels no role with one" do
+      get manage_casting_settings_section_path(production_id: production, section: "roles")
+      expect(response).to have_http_status(:ok)
+
+      expect(doc.at_css("select[name='role[category]']")).to be_nil
+      expect(doc.at_css("[data-role-modal-target='categorySelect']")).to be_nil
+      expect(doc.css("label").map { |label| text_of(label) }).not_to include("Category")
+      visible = doc.css("span, h3, option").map { |node| text_of(node).downcase }
+      expect(visible).not_to include("performing", "technical")
+      expect(response.body).to include("Host", "Board Op")
+    end
+
+    it "lists a date's roles as one list, with no Performing or Technical headings, and no choice in the date's own roles" do
+      get manage_casting_show_cast_path(production, show)
+      expect(response).to have_http_status(:ok)
+
+      expect(doc.css("h3").map { |heading| text_of(heading).downcase }).not_to include("performing", "technical")
+      expect(doc.at_css("[data-show-roles-modal-target='categorySelect']")).to be_nil
+      expect(doc.css("label").map { |label| text_of(label) }).not_to include("Category")
+      expect(response.body).to include("Host", "Board Op")
+    end
+
+    it "makes every new role a plain role, whatever is posted, and leaves an old mark as it was" do
+      post manage_create_casting_role_path(production), params: { role: { name: "Usher", quantity: "2", category: "technical", restricted: "0" } }
+      expect(production.roles.find_by!(name: "Usher")).to have_attributes(quantity: 2, category: "performing")
+
+      patch manage_update_casting_role_path(production, crew), params: { role: { name: "Board Operator", quantity: "1", restricted: "0" } }
+      expect(crew.reload).to have_attributes(name: "Board Operator", category: "technical")
     end
   end
 

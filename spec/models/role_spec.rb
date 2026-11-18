@@ -252,12 +252,26 @@ RSpec.describe Role, type: :model do
           expect(brk[:restricted]).to be(false)
         end
 
-        it 'gives a role-based lineup a plain category and leaves standing alone' do
-          params = Role.editor_params({ 'category' => 'show_role', 'quantity' => '2' }, act_based: false)
-          expect(params[:category]).to eq('performing')
-          expect(params).not_to have_key(:lineup_kind)
+        # A role is its name and how many (Tim, 2026-11-18): the Performing /
+        # Technical choice is gone, so nothing posted can set a category.
+        it 'drops any category posted for a role-based lineup, and leaves standing alone' do
+          params = Role.editor_params({ 'category' => 'technical', 'quantity' => '2' }, act_based: false)
+          expect(params).not_to have_key(:category)
           expect(params).not_to have_key(:standing)
-          expect(Role.editor_params({ 'category' => 'technical' }, act_based: false)[:category]).to eq('technical')
+          expect(params[:quantity]).to eq('2')
+
+          made = role_production.roles.create!(params.merge(name: 'Stage Manager'))
+          expect(made.category).to eq('performing')
+        end
+
+        it 'leaves a role marked technical before the choice went as it was, and makes an edited intermission a plain role' do
+          crew = create(:role, production: role_production, name: 'Board Op', category: 'technical')
+          crew.update!(Role.editor_params({ 'name' => 'Board Operator', 'category' => 'performing' }, act_based: false))
+          expect(crew.reload).to have_attributes(name: 'Board Operator', category: 'technical')
+
+          role = build(:role, production: role_production, category: 'break')
+          role.assign_attributes(Role.editor_params({ 'name' => 'Interval' }, act_based: false))
+          expect(role.category).to eq('performing')
         end
       end
     end

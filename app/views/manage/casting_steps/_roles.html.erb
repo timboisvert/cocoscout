@@ -87,17 +87,17 @@
                    min="1"
                    class="w-16 text-center <%= input_classes %> role-quantity-input <%= 'hidden' if act_mode && !role_standing %>"
                    title="Number of slots">
-            <select name="roles[<%= index %>][category]"
-                    class="w-32 <%= input_classes %> role-category-select">
-              <% if act_mode %>
+            <%# A role is its name and how many (Tim, 2026-11-18: "just the
+                role, the number of them, that's it"; crew is Staffing's
+                now). Only a lineup has kinds to choose between. %>
+            <% if act_mode %>
+              <select name="roles[<%= index %>][category]"
+                      class="w-32 <%= input_classes %> role-category-select">
                 <option value="performing" <%= "selected" if role_kind == "performing" %>>Act</option>
                 <option value="break" <%= "selected" if role_kind == "break" %>>Intermission</option>
                 <option value="show_role" <%= "selected" if role_kind == "show_role" %>>Show role</option>
-              <% else %>
-                <option value="performing" <%= "selected" if role_category == "performing" %>>Performing</option>
-                <option value="technical" <%= "selected" if role_category == "technical" %>>Crew / Technical</option>
-              <% end %>
-            </select>
+              </select>
+            <% end %>
             <button type="button" class="remove-role-btn text-gray-400 hover:text-pink-500" aria-label="Remove">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -225,10 +225,6 @@
       row.innerHTML = `
         <input type="text" name="roles[${roleIndex}][name]" value="${escapeHtml(name)}" placeholder="Role name (e.g., Host)" class="flex-1 ${inputClasses} role-name-input">
         <input type="number" name="roles[${roleIndex}][quantity]" value="1" min="1" class="w-16 text-center ${inputClasses}" title="Number of slots">
-        <select name="roles[${roleIndex}][category]" class="w-32 ${inputClasses} role-category-select">
-          <option value="performing" selected>Performing</option>
-          <option value="technical">Crew / Technical</option>
-        </select>
         ${removeButtonHtml()}`;
     }
     roleIndex++;
