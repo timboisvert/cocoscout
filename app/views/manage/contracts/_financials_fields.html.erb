@@ -528,7 +528,7 @@
 
   <%# Add-a-payment modal: a bottom sheet on a phone, a pink-header card from
       sm up. Fields are read by the controller, not submitted. %>
-  <div data-contract-payments-target="paymentModal" class="hidden fixed inset-0 z-50" data-payment-sheet>
+  <div data-contract-payments-target="paymentModal" data-action="keydown.enter->contract-payments#enterPayment" class="hidden fixed inset-0 z-50" data-payment-sheet>
     <div class="fixed inset-0 bg-black/50" data-action="click->contract-payments#closePaymentModal"></div>
     <div class="fixed inset-0 flex items-end sm:items-center justify-center sm:p-4 pointer-events-none">
       <div class="pointer-events-auto bg-white rounded-t-2xl sm:rounded-xl shadow-xl sm:max-w-lg w-full overflow-hidden max-h-[90dvh] flex flex-col">

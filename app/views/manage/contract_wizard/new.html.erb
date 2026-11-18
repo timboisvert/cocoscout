@@ -12,17 +12,18 @@
     links: []
   } %>
 
-  <div class="max-w-2xl mx-auto">
-    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 sm:p-8">
-      <div class="text-center mb-6">
-        <div class="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <%= icon("file-text", class: "w-8 h-8 text-pink-600") %>
-        </div>
-        <h2 class="text-xl font-bold text-gray-900">Who is this contract with?</h2>
-        <p class="text-gray-600 mt-2">
-          Choose the contractor. Next you'll say what the contract is for and how it gets signed.
-        </p>
-      </div>
+  <%# The same frame as every later step: the step bar, then one full-width
+      card with the step's heading (Tim, 2026-11-18). The bar is the short
+      list; Ticketing and Documents join it once the contract calls for them. %>
+  <%= render "shared/wizard_steps", current_index: 0,
+        steps: %w[About People Schedule Financials Services Review].map { |name| { name: name } } %>
+
+  <div class="w-full">
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-8">
+      <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Who is this contract with?</h2>
+      <p class="text-gray-600 mb-6">
+        Choose the contractor. Next you'll say what the contract is for and how it gets signed.
+      </p>
 
       <%= form_with url: manage_create_draft_contract_wizard_path, method: :post, local: true,
                     data: { new_contract_contractor_target: "form" } do |form| %>

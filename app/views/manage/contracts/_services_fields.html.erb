@@ -264,7 +264,7 @@
           <%# Dates after this one that can still change: where "every date after it" reaches. %>
           <% later = frozen ? 0 : dates[(j + 1)..].count { |d| !locked.include?(d[:key]) } %>
           <div class="hidden fixed inset-0 z-[60] bg-black/50 flex items-stretch sm:items-center justify-center sm:p-4"
-               data-contract-services-target="dateModal" data-date="<%= j %>" data-action="click->contract-services#backdrop">
+               data-contract-services-target="dateModal" data-date="<%= j %>" data-action="click->contract-services#backdrop keydown.enter->contract-services#enterDate">
             <div class="bg-white w-full sm:max-w-xl sm:rounded-xl shadow-2xl overflow-hidden flex flex-col text-left">
               <div class="flex items-center justify-between gap-3 bg-gradient-to-r from-pink-500 to-pink-600 px-5 py-4">
                 <h3 class="text-lg font-semibold text-white"><%= date[:at].strftime("%a, %b %-d") %> · <%= date[:kind] %></h3>
@@ -339,7 +339,7 @@
 
         <%# Several ticked dates at once: these set every ticked date's services. Not submitted themselves. %>
         <div class="hidden fixed inset-0 z-[60] bg-black/50 flex items-stretch sm:items-center justify-center sm:p-4" data-contract-services-target="severalModal"
-             data-action="click->contract-services#backdrop">
+             data-action="click->contract-services#backdrop keydown.enter->contract-services#enterSeveral">
           <div class="bg-white w-full sm:max-w-xl sm:rounded-xl shadow-2xl overflow-hidden flex flex-col text-left">
             <div class="flex items-center justify-between gap-3 bg-gradient-to-r from-pink-500 to-pink-600 px-5 py-4">
               <h3 class="text-lg font-semibold text-white">Edit the ticked dates</h3>

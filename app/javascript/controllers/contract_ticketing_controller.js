@@ -43,6 +43,19 @@ export default class extends Controller {
 
     closeTierModal() { this.hideModal(this.tierModalTarget) }
 
+    // Enter inside a modal accepts the modal (Tim, 2026-11-18). The modals
+    // sit inside the page's own form, so without this Enter submitted that
+    // form: the wizard moved on and what was typed in the modal was lost.
+    enterTier(event) { this.acceptOnEnter(event, () => this.addTier()) }
+    enterDiscount(event) { this.acceptOnEnter(event, () => this.addDiscount()) }
+
+    acceptOnEnter(event, accept) {
+        // A focused button does its own thing on Enter (Cancel, the X, Add).
+        if (event.target.closest("button")) return
+        event.preventDefault()
+        accept()
+    }
+
     addTier() {
         const name = this.tierNameTarget.value.trim()
         const price = parseFloat(this.tierPriceTarget.value)

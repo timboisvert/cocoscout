@@ -420,7 +420,7 @@ RSpec.describe ContractConnections do
     it "lets the organization notify the contractor once that the contract can be connected" do
       expect(described_class.can_tell?(contract)).to be(true)
       expect { described_class.tell!(contract, user: owner) }.to change(user.notifications, :count).by(1)
-      expect(user.notifications.last.title).to include("Stars and Garters would like you to know")
+      expect(user.notifications.last.title).to eq("Stars and Garters invites you to link your production to their contract")
       expect(contract.reload).to have_attributes(connect_told_by_id: owner.id)
       expect(described_class.can_tell?(contract)).to be(false)
       expect { described_class.tell!(contract, user: owner) }.not_to change(user.notifications, :count)

@@ -268,6 +268,20 @@ export default class extends Controller {
         this.refresh()
     }
 
+    // Enter inside a modal is its Save (Tim, 2026-11-18). The modals sit
+    // inside the page's form, so Enter used to submit that form.
+    enterDate(event) {
+        if (event.target.closest("button")) return
+        event.preventDefault()
+        this.saveDate(event)
+    }
+
+    enterSeveral(event) {
+        if (event.target.closest("button")) return
+        event.preventDefault()
+        this.saveSeveral()
+    }
+
     // Escape, or a click on the dimmed backdrop, is Cancel.
     escape() {
         this.dateModalTargets.filter(m => !m.classList.contains("hidden")).forEach(m => this.cancelModal(m))

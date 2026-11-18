@@ -10,23 +10,26 @@
   mine = @organizations.one? ? @organizations.first.name : "your organization"
   none_yet = @organizations.empty?
 %>
-<div class="w-full mb-10 max-w-3xl">
+<div class="w-full mb-10">
   <%= render "my/contract_connections/steps", step: 1 %>
 
-  <h1 class="text-3xl coustard-regular text-gray-900"><%= none_yet ? "See your #{org} dates in an organization of your own" : "Connect your contract to #{mine}" %></h1>
+  <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-8">
+
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular"><%= none_yet ? "See your #{org} dates in an organization of your own" : "Connect your contract to #{mine}" %></h2>
   <%# Said by who the contract is with and what it's for: the show, the
       contractor and their organization often share one name, so "X is your
-      show, and you run it in X" told nobody anything (Tim, 2026-11-17). %>
+      show, and you run it in X" told nobody anything (Tim, 2026-11-17).
+      The words are Tim's (2026-11-18): what the contract presents, not how
+      many dates, and what connecting links. %>
   <p class="text-gray-600 mt-2">
-    <%= org %> has a contract with <%= contractor %> to present <%= pluralize(coming.size, "date") %><%= " of #{show_name}" if show_name.present? && !show_name.casecmp?(contractor) %>.
+    <%= org %> has a contract with <%= contractor %><%= " to present #{show_name}" if show_name.present? && !show_name.casecmp?(contractor) %>.
     <% if none_yet %>
-      If you run this show yourself on CocoScout, in an organization of your own, you can connect the contract to it. Those dates and
-      their ticket sales then appear in your own production there, so you and your team can see everything in one place without typing
-      any of it in again.
+      If you run this show yourself on CocoScout, in an organization of your own, you can connect it to <%= possessive(org) %> contract.
+      The dates, ticket sales and mailing lists are then linked, and your team is able to see much more information.
     <% else %>
-      You also run <%= @organizations.one? ? "an organization of your own on CocoScout, #{@organizations.first.name}" : "organizations of your own on CocoScout" %>. When you connect the
-      contract to <%= @organizations.one? ? "it" : "one of them" %>, those dates and their ticket sales appear in your own production there, so you and
-      your team can see everything in one place without typing any of it in again.
+      You also run <%= @organizations.one? ? "an organization of your own on CocoScout, #{@organizations.first.name}" : "organizations of your own on CocoScout" %>.
+      When you connect <%= @organizations.one? ? "your organization" : "one of them" %> to <%= possessive(org) %> contract, the dates, ticket sales and mailing lists
+      are linked, and your team is able to see much more information.
     <% end %>
   </p>
 
@@ -40,6 +43,8 @@
           Everyone who manages <%= mine %> can see the ticket sales, not only you.</li>
         <li><span class="block font-medium text-gray-900">Your team and cast can follow along too.</span>
           You decide whether they can see how many tickets have sold.</li>
+        <li><span class="block font-medium text-gray-900">The people who follow your shows come with it.</span>
+          If <%= org %> keeps a mailing list for your shows, the people on it appear in your own organization's Mailing lists.</li>
         <li><span class="block font-medium text-gray-900">The ticket page can show your own art.</span>
           <%= possessive(org) %> ticket page for these dates will use the poster, wide image and description from your production, unless <%= org %> chooses to keep its own.</li>
       </ul>
@@ -65,7 +70,7 @@
     <p class="text-sm text-gray-500 mt-4"><%= org %> needs to accept before anything happens. Until they do, nothing changes for either of you.</p>
   <% end %>
 
-  <div class="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
+  <div class="mt-8 flex items-center justify-between">
     <% if @contract.connect_offer_dismissed_at.nil? %>
       <%= form_with url: my_contract_connection_not_now_path(@contract), method: :patch, local: true do %>
         <%= render "shared/button", text: "Not now", variant: "secondary", size: "medium", type: :submit %>
@@ -79,5 +84,6 @@
       <%= render "shared/button", text: "Continue", variant: "primary", size: "medium",
             path: my_connect_contract_production_path(@contract) %>
     <% end %>
+  </div>
   </div>
 </div>

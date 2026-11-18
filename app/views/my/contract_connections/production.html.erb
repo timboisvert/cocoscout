@@ -12,11 +12,13 @@
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   first = @suggested || @productions.first
 %>
-<div class="w-full mb-10 max-w-3xl">
+<div class="w-full mb-10">
   <%= render "my/contract_connections/steps", step: 2 %>
 
+  <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-8">
+
   <% dates = LinkedDates.contract_shows(@contract).where(canceled: false).count %>
-  <h1 class="text-3xl coustard-regular text-gray-900">Where would you like these dates to go?</h1>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Where would you like these dates to go?</h2>
   <p class="text-gray-600 mt-2">
     Your contract with <%= org %> has <%= pluralize(dates, "date") %>. Choose the production in <%= @organization.name %> that they
     belong to, and we'll add them there <%= @standing ? "as soon as you finish these steps" : "once #{org} accepts" %>.
@@ -78,9 +80,10 @@
       </div>
     </fieldset>
 
-    <div class="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
+    <div class="mt-8 flex items-center justify-between">
       <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", path: my_connect_contract_path(@contract) %>
       <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit %>
     </div>
   <% end %>
+  </div>
 </div>
