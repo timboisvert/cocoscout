@@ -7,7 +7,7 @@
     sent there, so the email is required; one without has the Email them
     their tickets switch, off, with the email box behind it.
     Locals: orders (the comps, TicketOrder with tickets loaded),
-    comp_url (a lambda: order to its PATCH and DELETE address, by the
+    comp_address (a lambda: order to its PATCH and DELETE address, by the
     order's id: an order's own address is its buyer's token). %>
 <%
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
@@ -15,7 +15,7 @@
 %>
 <% orders.each do |order| %>
   <%
-    url = comp_url.call(order)
+    url = comp_address.call(order)
     name = order.buyer_name.presence || "this guest"
     count = order.tickets.count { |t| Ticket::SOLD_STATUSES.include?(t.status) }
     tickets = pluralize(count, "ticket")

@@ -57,7 +57,7 @@
       <%= render "shared/ticketing/guest_list", orders: @guest_orders, read_only: true, changeable_ids: @changeable_comp_ids %>
     </div>
     <%= render "shared/ticketing/own_comp_modals", orders: @guest_orders.select { |order| @changeable_comp_ids.include?(order.id) },
-          comp_url: ->(order) { my_show_ticket_comp_path(show, order.id) } %>
+          comp_address: ->(order) { my_show_ticket_comp_path(show, order.id) } %>
 
     <% if can_comp %>
       <%= render "manage/ticket_listings/comps_modal", id: "comps-modal", listing: @listing,
