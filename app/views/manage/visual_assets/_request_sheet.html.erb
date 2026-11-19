@@ -74,7 +74,7 @@
               <div class="flex items-center justify-between gap-3 py-2 text-sm">
                 <span class="text-gray-900"><%= item.spec.name %></span>
                 <% if item.present? %>
-                  <span class="text-gray-500">Already here</span>
+                  <span class="text-gray-500"><%= item.spec.image? ? "Already uploaded" : "Already written" %></span>
                 <% else %>
                   <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"><%= item.spec.required? ? "Required" : "Optional" %></span>
                 <% end %>

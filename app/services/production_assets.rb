@@ -97,8 +97,9 @@ class ProductionAssets
     @records ||= production.production_assets.where.not(asset_spec_id: nil).includes(:uploaded_by_user, file_attachment: :blob).index_by(&:asset_spec_id)
   end
 
+  # In the order the pages show them: the images, then the written items.
   def items
-    @items ||= specs.map { |spec| item(spec) }
+    @items ||= (image_specs + text_specs).map { |spec| item(spec) }
   end
 
   def item(spec)

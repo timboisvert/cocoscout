@@ -96,6 +96,16 @@ RSpec.describe "Visual asset requests", type: :request do
       # The request starts with plain, businesslike words (Tim, 2026-11-19).
       expect(response.body).to include("The Lantern Room requests the visual assets and written details listed below for Late Bloomers.")
       expect(response.body).not_to include("ready to announce")
+
+      # What they will be asked for: the images, then the written items,
+      # and what's uploaded says so (Tim, 2026-11-19).
+      production.update!(wide_image: fixture_file_upload("test_image.png", "image/png"))
+      org.asset_specs.find_by(builtin: "description").update_column(:position, -10)
+      get edit_manage_production_path(production, tab: 1)
+      sheet = response.body[response.body.index("What they will be asked for")..]
+      expect(sheet.index("Instagram square")).to be < sheet.index("Show description")
+      expect(sheet).to include("Already uploaded")
+      expect(sheet).not_to include("Already here")
     end
 
     it "uploads a file that meets the specification, and refuses one that doesn't" do

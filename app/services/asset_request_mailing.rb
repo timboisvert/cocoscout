@@ -53,7 +53,7 @@ class AssetRequestMailing
     missing = assets.items.reject(&:present?)
     return "<p>Everything #{ERB::Util.html_escape(@organization.name)} requires has been added. You can still change anything on the page.</p>" if missing.empty?
 
-    rows = missing.sort_by { |item| item.spec.required? ? 0 : 1 }.map do |item|
+    rows = missing.each_with_index.sort_by { |item, index| [ item.spec.required? ? 0 : 1, index ] }.map(&:first).map do |item|
       spec = item.spec
       words = spec.image? ? "#{spec.name}, #{spec.print? ? "#{spec.inches(spec.width)} × #{spec.inches(spec.height)} inches" : "#{spec.width} × #{spec.height}"}" : spec.name
       words += " (optional)" unless spec.required?
