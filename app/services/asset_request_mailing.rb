@@ -2,9 +2,10 @@
 
 # Sends a production's visual asset request (Tim, 2026-11-19): the email,
 # with the manager's own subject and message, what is still needed, and the
-# one button, to each address; and, the first time, a notification to the
-# people on the production's contract who have an account, which opens the
-# same page on My Contracts.
+# one button, to each address. Everyone asked who has an account is notified
+# too: the people on the production's contract (the first time; it opens the
+# page on My Contracts) and anyone else emailed (it opens the link's page).
+# A reminder is the email alone.
 class AssetRequestMailing
   def self.deliver!(request, emails, sender:, reminder: false)
     new(request, sender: sender, reminder: reminder).deliver!(emails)
@@ -23,7 +24,10 @@ class AssetRequestMailing
     emails.each do |email|
       AppMailer.with(template_key: "visual_assets_request", to: email, variables: variables).send_template.deliver_later
     end
-    notify_contract_people unless @reminder || @request.sent_at.present?
+    return if @reminder
+
+    notified = @request.sent_at.present? ? [] : notify_contract_people
+    notify_emailed_accounts(emails, except: notified)
   end
 
   private
@@ -64,13 +68,28 @@ class AssetRequestMailing
 
   def notify_contract_people
     contract = @production.contract
-    return unless contract
+    return [] unless contract
 
     users = contract.people_with_access.filter_map(&:user).uniq
-    users.each do |user|
-      Notifier.deliver(user: user, category: "visual_assets", kind: "visual_assets_requested", template_key: "visual_assets_requested",
-                       variables: { organization_name: @organization.name, production_name: @production.name },
-                       path: Rails.application.routes.url_helpers.my_contract_assets_path(contract), organization: @organization, subject: @request)
-    end
+    users.each { |user| notify(user, Rails.application.routes.url_helpers.my_contract_assets_path(contract)) }
+    users
+  end
+
+  # Anyone else emailed who has a CocoScout account (a designer, say; Tim,
+  # 2026-11-19): the same notification, opening the link's page, since they
+  # have no contract to open it from. Someone on the contract isn't told twice.
+  def notify_emailed_accounts(emails, except:)
+    return if emails.empty?
+
+    path = Rails.application.routes.url_helpers.asset_request_path(token: @request.token)
+    on_contract = @production.contract&.people_with_access&.filter_map(&:user_id) || []
+    User.where("LOWER(email_address) IN (?)", emails.map(&:downcase)).where.not(id: except.map(&:id) + on_contract)
+        .find_each { |user| notify(user, path) }
+  end
+
+  def notify(user, path)
+    Notifier.deliver(user: user, category: "visual_assets", kind: "visual_assets_requested", template_key: "visual_assets_requested",
+                     variables: { organization_name: @organization.name, production_name: @production.name },
+                     path: path, organization: @organization, subject: @request)
   end
 end

@@ -149,6 +149,21 @@ RSpec.describe "Visual asset requests", type: :request do
       request = AssetRequest.current_for(production)
       expect(request.recipient_emails).to eq(%w[dana@example.com designer@example.com])
       expect(contractor_user.notifications.last.title).to eq("The Lantern Room requested images and details for Late Bloomers")
+      expect(contractor_user.notifications.count).to eq(1)
+      expect(contractor_user.notifications.last.path).to eq(my_contract_assets_path(Contract.last))
+    end
+
+    it "notifies anyone else emailed who has an account, opening the link's page" do
+      designer = create(:user, email_address: "designer@example.com", password: password)
+      create(:person, user: designer, name: "Sam Designer")
+      post manage_request_production_visual_asset_path(production),
+           params: { other_emails: "Designer@example.com, nobody@example.com", subject: "Images", allow_replace: "1", commit_action: "send" }
+
+      request = AssetRequest.current_for(production)
+      expect(designer.notifications.last.title).to eq("The Lantern Room requested images and details for Late Bloomers")
+      expect(designer.notifications.last.path).to eq(asset_request_path(token: request.token))
+
+      expect { post manage_remind_production_visual_asset_path(production) }.not_to change(Notification, :count)
     end
 
     it "makes the link without emailing, makes a new one, and turns it off" do
