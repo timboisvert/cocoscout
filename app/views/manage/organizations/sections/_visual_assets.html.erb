@@ -1,0 +1,85 @@
+<%# Organization settings → Visual Assets (Tim, 2026-11-19): the images and
+    written items the organization expects every production to have. When a
+    production's images are requested, this is the list the other side sees,
+    in this order. The Poster, the Wide image, and the Show description are
+    built in and can't be removed; everything else is the organization's. %>
+<%
+  input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  check = "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+  groups = [
+    { kind: "image", title: "Images", intro: "The images you expect every production to have. When you request them, people see this list, in this order. Drag to reorder.", add: "Add an image" },
+    { kind: "text", title: "Written items", intro: "Words you need for every production, asked for on the same page as the images.", add: "Add a written item" }
+  ]
+%>
+<div class="space-y-6">
+  <% groups.each do |group| %>
+    <% specs = @asset_specs.select { |spec| spec.kind == group[:kind] } %>
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden" data-asset-spec-group="<%= group[:kind] %>">
+      <%= render "shared/section_heading", title: group[:title], intro: group[:intro] %>
+
+      <div class="border-t border-gray-100" data-controller="role-order" data-role-order-url-value="<%= manage_reorder_asset_specs_path %>">
+        <% specs.each do |spec| %>
+          <% remove_cid = "confirm-remove-asset-spec-#{spec.id}" %>
+          <div class="border-b border-gray-100 bg-white" data-controller="disclosure" draggable="true" data-role-order-target="item" data-id="<%= spec.id %>"
+               data-action="dragstart->role-order#startDrag dragend->role-order#endDrag dragover->role-order#dragOver drop->role-order#drop" data-asset-spec="<%= spec.id %>">
+            <div class="px-4 sm:px-6 py-3 flex items-center gap-4">
+              <span class="text-gray-400 cursor-move touch-none -m-2 p-2" title="Drag to reorder"
+                    data-action="touchstart->role-order#touchStart touchmove->role-order#touchMove touchend->role-order#touchEnd">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5" /></svg>
+              </span>
+              <% if spec.image? %>
+                <span class="w-11 flex justify-center"><%= render "manage/visual_assets/shape", spec: spec, box: 40 %></span>
+              <% end %>
+              <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="text-[15px] font-medium text-gray-900"><%= spec.name %></span>
+                  <% if spec.builtin? %><span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">Built in</span><% end %>
+                  <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"><%= spec.required? ? "Required" : "Optional" %></span>
+                </div>
+                <p class="text-sm text-gray-500"><%= [ spec.description_line, ("Used for #{spec.used_for.sub(/\A./, &:downcase)}." if spec.used_for.present?) ].compact.join(" ") %></p>
+              </div>
+              <%= render "shared/button", text: "Edit", variant: "secondary", size: "small", type: :button, data: { action: "click->disclosure#toggle" } %>
+            </div>
+
+            <div class="hidden px-4 sm:px-6 pb-4" data-disclosure-target="content">
+              <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-4">
+                <%= form_with url: manage_asset_spec_path(spec), method: :patch, class: "space-y-4", id: "asset-spec-#{spec.id}" do %>
+                  <%= render "manage/organizations/sections/asset_spec_fields", spec: spec, input: input, check: check %>
+                <% end %>
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <% if spec.removable? %>
+                    <%= render "shared/button", text: "Remove", variant: "secondary", size: "small", type: :button,
+                          data: { controller: "modal", action: "click->modal#open", modal_id: remove_cid } %>
+                  <% else %>
+                    <p class="text-xs text-gray-500">Built in, so it can't be removed.</p>
+                  <% end %>
+                  <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit, form_id: "asset-spec-#{spec.id}" %>
+                </div>
+              </div>
+            </div>
+          </div>
+          <% if spec.removable? %>
+            <%= render "shared/confirm_modal", id: remove_cid,
+                  title: "Remove #{spec.name}?",
+                  message: spec.image? ? "Productions stop being asked for it. Any #{spec.name} a production already has stays with it, under its additional files." : "Productions stop being asked for it. Words a production already has for it are kept.",
+                  confirm_text: "Remove",
+                  url: manage_asset_spec_path(spec), method: :delete %>
+          <% end %>
+        <% end %>
+      </div>
+
+      <div class="px-4 sm:px-6 py-4 bg-gray-50" data-controller="disclosure">
+        <%= render "shared/button", text: group[:add], variant: "secondary", size: "small", type: :button, data: { action: "click->disclosure#toggle" } %>
+        <div class="hidden mt-4" data-disclosure-target="content">
+          <% fresh = AssetSpec.new(kind: group[:kind], required: true, formats: group[:kind] == "image" ? %w[jpg png] : [], max_megabytes: 10, width: nil, height: nil) %>
+          <%= form_with url: manage_asset_specs_path, method: :post, class: "space-y-4" do %>
+            <%= render "manage/organizations/sections/asset_spec_fields", spec: fresh, input: input, check: check %>
+            <div class="flex justify-end">
+              <%= render "shared/button", text: group[:add], variant: "primary", size: "small", type: :submit %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

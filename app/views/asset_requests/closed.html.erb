@@ -1,0 +1,12 @@
+<% content_for :title, "This link has been turned off" %>
+<%# A request's link that no longer takes uploads: turned off by the
+    organization, or the production's last date has passed. %>
+<div class="py-12 text-center max-w-xl mx-auto">
+  <h1 class="text-3xl coustard-regular text-gray-900">This link has been turned off</h1>
+  <% if @request.turned_off? %>
+    <p class="mt-3 text-base text-gray-700"><%= @production.organization.name %> turned off this link for <%= @production.name %>, so it no longer takes uploads.</p>
+  <% else %>
+    <p class="mt-3 text-base text-gray-700">The last date of <%= @production.name %> has passed, so this link no longer takes uploads.</p>
+  <% end %>
+  <p class="mt-2 text-sm text-gray-500">If you need to add or change something, ask <%= @production.organization.name %> for a new link. If you are on the contract, you can also sign in to CocoScout and find the show on My Contracts.</p>
+</div>

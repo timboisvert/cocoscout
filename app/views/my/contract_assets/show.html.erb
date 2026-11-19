@@ -1,0 +1,26 @@
+<% content_for :title, "Images and details for #{@production.name}" %>
+<%# The uploader for someone on the contract, signed in, with no link
+    (My::ContractAssetsController; Tim, 2026-11-19). %>
+<div class="w-full">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "My Contracts", my_contracts_path ] ],
+    text: "Images and details for #{@production.name}",
+    links: []
+  } %>
+
+  <div class="mt-4 space-y-6">
+    <p class="text-base text-gray-700">
+      <%= @production.organization.name %> needs these to announce and sell <%= @production.name %>.
+      Everything is saved as you go, under your name, and you can change it until the last date of the show.
+    </p>
+
+    <div class="bg-white border border-gray-200 rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3" data-controller="copy-text" data-copy-text-text-value="<%= @request.url %>">
+      <p class="flex-1 text-sm text-gray-600">Is someone else making the artwork? Send them the link. They can upload without an account.</p>
+      <%= render "shared/button", text: "Copy the link", variant: "secondary", size: "small", type: :button, data: { action: "click->copy-text#copy" } %>
+    </div>
+
+    <%= render "asset_requests/page", assets: @assets, counts: @counts, **asset_page_locals.except(:request) %>
+  </div>
+</div>

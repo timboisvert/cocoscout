@@ -47,7 +47,7 @@ RSpec.describe "Wide images", type: :request do
 
   it "uploads and removes the production's wide image in Visual Assets" do
     get edit_manage_production_path(production, tab: 1)
-    expect(response.body).to include("Wide image (16:9)", "No wide image yet", "Save wide image")
+    expect(response.body).to include("Wide image", "Not here yet. 16:9, at least 1200 × 675. JPG, PNG, or WebP.")
 
     patch manage_wide_image_production_visual_asset_path(production), params: { production: { wide_image: picture } }
     expect(response).to redirect_to(edit_manage_production_path(production, tab: 1))
@@ -61,16 +61,16 @@ RSpec.describe "Wide images", type: :request do
     expect(flash[:notice]).to eq("Wide image removed.")
   end
 
-  # Tim (2026-10-02): the poster and the wide image are equals, side by side,
-  # with what each is for; no logo; shows with their own images are counted
-  # and pointed to, not shown.
-  it "explains the two images, side by side, and points to shows with their own" do
+  # Tim (2026-10-02): no logo; shows with their own images are counted and
+  # pointed to, not shown. Since 2026-11-19 the tab is drawn from the
+  # organization's list of visual assets, the Poster and the Wide image first.
+  it "lists the poster and wide image first, and points to shows with their own" do
     get edit_manage_production_path(production, tab: 1)
     page = response.body
-    expect(page).to include("How #{production.name} looks everywhere", "Poster · 3:4, tall", "Wide image · 16:9",
-                            "Poster (3:4)", "Wide image (16:9)", "No poster yet", "Add a poster")
+    expect(page).to include("Poster", "Not here yet. 3:4, at least 900 × 1200. JPG or PNG.", "Wide image")
+    expect(page.index("Not here yet. 3:4")).to be < page.index("Not here yet. 16:9")
     expect(page).not_to include("Logo", "Posters used by individual shows")
-    expect(page).to include("None. Every show and event uses the two images above.")
+    expect(page).to include("None. Every show and event uses the poster and wide image above.")
 
     show.update!(wide_image: picture)
     get edit_manage_production_path(production, tab: 1)

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_19_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_19_200100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -161,6 +161,49 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_19_180000) do
     t.datetime "updated_at", null: false
     t.index ["token_digest"], name: "index_app_sessions_on_token_digest", unique: true
     t.index ["user_id"], name: "index_app_sessions_on_user_id"
+  end
+
+  create_table "asset_requests", force: :cascade do |t|
+    t.bigint "production_id", null: false
+    t.string "token", null: false
+    t.bigint "created_by_id"
+    t.jsonb "recipients", default: [], null: false
+    t.string "subject"
+    t.text "message"
+    t.boolean "allow_replace", default: true, null: false
+    t.datetime "sent_at"
+    t.datetime "turned_off_at"
+    t.datetime "last_activity_at"
+    t.datetime "notified_through_at"
+    t.datetime "completed_notified_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_asset_requests_on_created_by_id"
+    t.index ["production_id"], name: "index_asset_requests_on_production_id"
+    t.index ["token"], name: "index_asset_requests_on_token", unique: true
+  end
+
+  create_table "asset_specs", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.string "name", null: false
+    t.string "kind", default: "image", null: false
+    t.string "builtin"
+    t.integer "position", default: 0, null: false
+    t.boolean "required", default: true, null: false
+    t.datetime "archived_at"
+    t.integer "width"
+    t.integer "height"
+    t.integer "dpi"
+    t.string "formats", default: [], null: false, array: true
+    t.integer "max_megabytes", default: 10, null: false
+    t.integer "max_length"
+    t.string "used_for"
+    t.text "guidance"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "builtin"], name: "index_asset_specs_on_organization_id_and_builtin", unique: true, where: "(builtin IS NOT NULL)"
+    t.index ["organization_id", "position"], name: "index_asset_specs_on_organization_id_and_position"
+    t.index ["organization_id"], name: "index_asset_specs_on_organization_id"
   end
 
   create_table "audition_cycles", force: :cascade do |t|
@@ -2641,6 +2684,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_19_180000) do
     t.index ["production_id"], name: "index_posters_on_production_id"
   end
 
+  create_table "production_assets", force: :cascade do |t|
+    t.bigint "production_id", null: false
+    t.bigint "asset_spec_id"
+    t.bigint "asset_request_id"
+    t.string "name"
+    t.text "text_value"
+    t.integer "width"
+    t.integer "height"
+    t.bigint "uploaded_by_user_id"
+    t.string "uploaded_by_name"
+    t.string "last_change"
+    t.datetime "changed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["asset_request_id"], name: "index_production_assets_on_asset_request_id"
+    t.index ["asset_spec_id"], name: "index_production_assets_on_asset_spec_id"
+    t.index ["production_id", "asset_spec_id"], name: "index_production_assets_one_per_spec", unique: true, where: "(asset_spec_id IS NOT NULL)"
+    t.index ["production_id"], name: "index_production_assets_on_production_id"
+    t.index ["uploaded_by_user_id"], name: "index_production_assets_on_uploaded_by_user_id"
+  end
+
   create_table "production_documents", force: :cascade do |t|
     t.bigint "production_id", null: false
     t.string "title", null: false
@@ -5065,6 +5129,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_19_180000) do
   add_foreign_key "answers", "sign_up_registrations"
   add_foreign_key "app_activity_days", "users", on_delete: :cascade
   add_foreign_key "app_sessions", "users"
+  add_foreign_key "asset_requests", "productions"
+  add_foreign_key "asset_requests", "users", column: "created_by_id"
+  add_foreign_key "asset_specs", "organizations"
   add_foreign_key "audition_cycles", "productions"
   add_foreign_key "audition_email_assignments", "audition_cycles"
   add_foreign_key "audition_request_votes", "audition_requests"
@@ -5329,6 +5396,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_19_180000) do
   add_foreign_key "person_invitations", "organizations"
   add_foreign_key "person_invitations", "talent_pools"
   add_foreign_key "posters", "productions"
+  add_foreign_key "production_assets", "asset_requests"
+  add_foreign_key "production_assets", "asset_specs"
+  add_foreign_key "production_assets", "productions"
+  add_foreign_key "production_assets", "users", column: "uploaded_by_user_id"
   add_foreign_key "production_documents", "productions"
   add_foreign_key "production_expense_allocations", "production_expenses"
   add_foreign_key "production_expense_allocations", "shows"

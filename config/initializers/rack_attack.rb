@@ -90,6 +90,17 @@ class Rack::Attack
     req.ip if req.post? && req.path.start_with?("/tickets/checkout/") && req.path.end_with?("/gift-certificate")
   end
 
+  # A visual asset request's no-login page (AssetRequest): files and words
+  # from anyone holding the link. A designer adding a dozen files and typing
+  # a description stays well under this; a script hammering a link doesn't.
+  throttle("asset_uploads/ip", limit: 120, period: 10.minutes) do |req|
+    req.ip if (req.post? || req.patch?) && req.path.start_with?("/upload/")
+  end
+  # Guessing at links: a few wrong addresses is a typo.
+  throttle("asset_links/ip", limit: 60, period: 10.minutes) do |req|
+    req.ip if req.get? && req.path.start_with?("/upload/")
+  end
+
   # Active Storage variants are expensive (image processing / S3 fetch) — the
   # exact resource the crawler used to tie up every worker thread. The ceiling
   # must clear a real page load on a cold cache: headshot-heavy manage pages
