@@ -93,6 +93,9 @@ RSpec.describe "Visual asset requests", type: :request do
 
       expect(response.body).to include("You have 0 of the 5 items The Lantern Room requires for every production.")
       expect(response.body).to include("Instagram square", "Not here yet. 1:1, at least 1080 × 1080. JPG or PNG.", "Request these", "Additional files")
+      # The request starts with plain, businesslike words (Tim, 2026-11-19).
+      expect(response.body).to include("The Lantern Room requests the visual assets and written details listed below for Late Bloomers.")
+      expect(response.body).not_to include("ready to announce")
     end
 
     it "uploads a file that meets the specification, and refuses one that doesn't" do

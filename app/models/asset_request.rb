@@ -21,6 +21,15 @@ class AssetRequest < ApplicationRecord
     production.asset_requests.live.order(created_at: :desc).first
   end
 
+  # The email's words when the manager writes none, and what the request
+  # sheet starts with: plain and businesslike, no greeting (Tim, 2026-11-19).
+  def self.default_message(production)
+    organization = production.organization.name
+    "#{organization} requests the visual assets and written details listed below for #{production.name}. " \
+      "Each image is listed with its required size and file types.\n\n" \
+      "Upload them at the link below. You can add them a few at a time, and the link works until the production's last date."
+  end
+
   def turned_off? = turned_off_at.present?
 
   # Open until it's turned off or the production's last date has passed. A

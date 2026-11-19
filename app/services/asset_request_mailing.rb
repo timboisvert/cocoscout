@@ -43,7 +43,7 @@ class AssetRequestMailing
 
   def message_html
     words = @request.message.to_s.strip
-    words = "We're getting #{@production.name} ready to announce. The link below lists every image and detail we need, with the exact sizes. You can upload them a few at a time and come back whenever you like." if words.blank?
+    words = AssetRequest.default_message(@production) if words.blank?
     words.split(/\n{2,}/).map { |para| "<p>#{ERB::Util.html_escape(para).gsub("\n", '<br>')}</p>" }.join
   end
 

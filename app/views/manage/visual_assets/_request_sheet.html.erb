@@ -18,8 +18,7 @@
     end
   end
   already = request&.recipient_emails || []
-  greeting = suggested.first ? "Hi #{suggested.first[:name].to_s.split.first}," : "Hi,"
-  default_message = request&.message.presence || "#{greeting}\n\nWe're getting #{production.name} ready to announce. The link below lists every image and detail we need, with the exact sizes. You can upload them a few at a time and come back whenever you like."
+  default_message = request&.message.presence || AssetRequest.default_message(production)
   input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   check = "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
 %>
