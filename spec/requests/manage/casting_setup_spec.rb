@@ -361,7 +361,7 @@ RSpec.describe "Casting set-up", type: :request do
       expect(doc.css("nav button[data-tabs-target=tab]").map { |b| text_of(b) }).to include("Casting")
 
       patch manage_casting_answer_path(production), params: { casts_people: "no", return_to: "production_edit" }
-      expect(response).to redirect_to(edit_manage_production_path(production, tab: 9))
+      expect(response).to redirect_to(edit_manage_production_path(production, tab: 4))
     end
 
     it "has no Casting tab for a production booked by a contract" do

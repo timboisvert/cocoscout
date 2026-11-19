@@ -25,7 +25,7 @@ RSpec.describe "Production and show Services tabs", type: :request do
   describe "on the production" do
     it "sits after Tickets, saves what every show needs, and lists the shows that differ" do
       get edit_manage_production_path(production)
-      expect(tab_labels(response.body)).to include([ 7, "Tickets" ], [ 8, "Services" ], [ 9, "Casting" ], [ 10, "Danger Zone" ])
+      expect(tab_labels(response.body)).to include([ 4, "Casting" ], [ 7, "Tickets" ], [ 8, "Services" ], [ 9, "Public Listing" ], [ 10, "Danger Zone" ])
       expect(response.body).to include("What every show needs", section_manage_organization_path(org, section: "services"))
 
       patch update_services_manage_production_path(production), params: { needs: {

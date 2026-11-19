@@ -1036,7 +1036,7 @@
               <div class="ml-3">
                 <p class="text-sm text-blue-800">
                   <strong>Note:</strong> Team members will only receive notifications if they have notifications enabled in their settings.
-                  <%= link_to "Manage Production Team", edit_manage_production_path(@production, anchor: "tab-4"), class: "underline text-blue-600 hover:text-blue-700" %>
+                  <%= link_to "Manage Production Team", edit_manage_production_path(@production, anchor: "tab-#{production_edit_tab(@production, :team)}"), class: "underline text-blue-600 hover:text-blue-700" %>
                 </p>
               </div>
             </div>

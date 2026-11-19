@@ -374,7 +374,7 @@ module Manage
       if pay_outcome == NEW_CALCULATION
         redirect_to manage_money_payout_calculation_wizard_start_path(
                       production_id: @production.id,
-                      return_to: edit_manage_production_path(@production, tab: 6)
+                      return_to: edit_manage_production_path(@production, tab: helpers.production_edit_tab(@production, :pay))
                     ),
                     notice: "#{@production.name} is ready — now set up how its performers are paid."
       elsif continue_to_show

@@ -45,7 +45,7 @@
   <% elsif !@production.type_third_party? %>
     <p class="text-sm text-gray-600">
       <%= possessive(@production.name) %> public listing is off.
-      <%= link_to "Turn it on in the production's settings", edit_manage_production_path(@production, tab: 5), class: "font-medium text-pink-600 hover:text-pink-700" %>
+      <%= link_to "Turn it on in the production's settings", edit_manage_production_path(@production, tab: production_edit_tab(@production, :public_listing)), class: "font-medium text-pink-600 hover:text-pink-700" %>
       to share its schedule.
     </p>
   <% end %>

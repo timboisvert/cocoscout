@@ -15,88 +15,41 @@
   <!-- Production Info Card -->
   <%= render "manage/productions/production_info_card", production: @production %>
 
-  <%# The sections, in panel order, for the phone's section picker (the row
-      and sheet every settings page has). Must match the panels below,
-      branch for branch. %>
+  <%# The tabs, in order (ProductionsHelper#production_edit_tabs): the strip,
+      the phone's section picker (the row and sheet every settings page has),
+      and the panels below all follow it, branch for branch. %>
   <%
-    edit_sections = [ "Basic Information", "Visual Assets", "Documents", "Production Team" ]
-    edit_sections += [ "Agreement", "Public Listing", "Pay" ] unless @production.type_third_party?
-    edit_sections << "Tickets"
-    edit_sections << "Services" if services_on
-    edit_sections << "Casting" if casting_tab
-    edit_sections << "Danger Zone" if org_manager
-    section_features = { "Agreement" => :agreements, "Pay" => :money, "Tickets" => :ticketing, "Services" => nil }
+    edit_tabs = production_edit_tabs(@production)
+    tab_features = { agreement: :agreements, pay: :money, tickets: :ticketing, services: nil }
   %>
   <!-- Tabs Section -->
   <div class="w-full" data-controller="tabs">
     <div data-production-edit-sections>
       <%= render "shared/section_picker", id: "production-edit-sections-sheet",
-            sections: edit_sections.each_with_index.map { |label, i|
-              feature = section_features[label]
-              { label: label, index: i, active: i.zero?, danger: label == "Danger Zone", pro: section_features.key?(label),
+            sections: edit_tabs.each_with_index.map { |key, i|
+              feature = tab_features[key]
+              { label: ProductionsHelper::PRODUCTION_TAB_LABELS.fetch(key), index: i, active: i.zero?, danger: key == :danger_zone, pro: tab_features.key?(key),
                 locked: feature.present? && !@production.organization.feature_available?(feature) }
             } %>
     </div>
     <nav class="hidden sm:flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto">
-      <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-white border-b-2 border-pink-500 text-pink-600 cursor-pointer whitespace-nowrap">Basic Information</button>
-      <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap">Visual Assets</button>
-      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap">Documents</button>
-      <% unless @production.type_third_party? %>
-        <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap">Production Team</button>
-        <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
-          Agreement
-          <%= render "shared/pro_marker" %>
-          <% unless @production.organization.feature_available?(:agreements) %>
-            <%= render "shared/pro_marker", kind: :lock %>
-          <% end %>
-        </button>
-        <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap">Public Listing</button>
-        <button type="button" data-tabs-target="tab" data-index="6" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
-          Pay
-          <%= render "shared/pro_marker" %>
-          <% unless @production.organization.feature_available?(:money) %>
-            <%= render "shared/pro_marker", kind: :lock %>
-          <% end %>
-        </button>
-        <button type="button" data-tabs-target="tab" data-index="7" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
-          Tickets
-          <%= render "shared/pro_marker" %>
-          <% unless @production.organization.feature_available?(:ticketing) %>
-            <%= render "shared/pro_marker", kind: :lock %>
-          <% end %>
-        </button>
-        <% if services_on %>
-          <button type="button" data-tabs-target="tab" data-index="8" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
-            Services
+      <% edit_tabs.each_with_index do |key, i| %>
+        <%
+          feature = tab_features[key]
+          tone = if i.zero? then "bg-white border-pink-500 text-pink-600"
+          elsif key == :danger_zone then "bg-gray-50 text-red-500"
+          else "bg-gray-50 border-transparent text-gray-500"
+          end
+        %>
+        <button type="button" data-tabs-target="tab" data-index="<%= i %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap <%= tone %> <%= 'inline-flex items-center gap-1' if tab_features.key?(key) %>">
+          <%= ProductionsHelper::PRODUCTION_TAB_LABELS.fetch(key) %>
+          <% if tab_features.key?(key) %>
             <%= render "shared/pro_marker" %>
-          </button>
-        <% end %>
-        <% if casting_tab %>
-          <button type="button" data-tabs-target="tab" data-index="<%= production_casting_tab(@production) %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap">Casting</button>
-        <% end %>
-        <% if org_manager %>
-          <button type="button" data-tabs-target="tab" data-index="<%= (services_on ? 9 : 8) + (casting_tab ? 1 : 0) %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
-        <% end %>
-      <% else %>
-        <%# A production booked by a contract still has a team (Tim, 2026-10-16):
-            the people who signed can be given access to it. %>
-        <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap">Production Team</button>
-        <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
-          Tickets
-          <%= render "shared/pro_marker" %>
-          <% unless @production.organization.feature_available?(:ticketing) %>
-            <%= render "shared/pro_marker", kind: :lock %>
+            <% if feature && !@production.organization.feature_available?(feature) %>
+              <%= render "shared/pro_marker", kind: :lock %>
+            <% end %>
           <% end %>
         </button>
-        <% if services_on %>
-          <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 border-transparent text-gray-500 cursor-pointer whitespace-nowrap inline-flex items-center gap-1">
-            Services
-            <%= render "shared/pro_marker" %>
-          </button>
-        <% end %>
-        <% if org_manager %>
-          <button type="button" data-tabs-target="tab" data-index="<%= services_on ? 6 : 5 %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium bg-gray-50 border-b-2 text-red-500 cursor-pointer whitespace-nowrap">Danger Zone</button>
-        <% end %>
       <% end %>
     </nav>
 
@@ -466,8 +419,27 @@
       <%= render "team_permissions" %>
     </div>
 
+    <% if casting_tab %>
+      <!-- Casting: the production's answer, and the way into the rest -->
+      <div data-tabs-target="panel" class="hidden space-y-6" data-production-casting-tab>
+        <%= render "manage/casting/answer_card", production: @production, return_to: "production_edit" %>
+        <div class="bg-white border border-gray-200 rounded-xl px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+          <% case @production.casting_state %>
+          <% when :not_set_up %>
+            <p class="text-sm text-gray-700">Casting isn't set up for <%= @production.name %> yet: who you cast, your roles, and which dates are cast.</p>
+            <%= render "shared/button", text: "Set up casting", variant: "primary", size: "small", path: manage_casting_setup_path(@production) %>
+          <% when :on %>
+            <p class="text-sm text-gray-700">Who you cast, which dates are cast, your <%= @production.act_based? ? "lineup" : "roles" %>, and the talent pool are in Casting Settings.</p>
+            <%= render "shared/button", text: "Casting Settings", variant: "secondary", size: "small", path: manage_casting_settings_path(@production) %>
+          <% else %>
+            <p class="text-sm text-gray-700">A single date can still be cast: turn casting on from that date's page.</p>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
     <% unless @production.type_third_party? %>
-      <!-- Tab 5: Agreement -->
+      <!-- Agreement -->
       <div data-tabs-target="panel" class="hidden">
         <% templates = @production.organization.agreement_templates.active.order(:name) %>
 
@@ -625,7 +597,41 @@
         <% end %>
       </div>
 
-      <!-- Tab 6: Public Profile -->
+    <!-- Pay -->
+    <div data-tabs-target="panel" class="hidden">
+      <% if org_manager %>
+        <%= render "manage/productions/pay_tab", production: @production %>
+      <% else %>
+        <%= render "manage/productions/managers_only_card", title: "Performer pay",
+              description: "How performers on #{@production.name} are paid is set by your organization's managers." %>
+      <% end %>
+    </div>
+    <% end %>
+
+    <!-- Tickets (Pro): the Tickets question (Round 9 §3). Dates inherit the answer; a date can answer for itself on its own Tickets tab. -->
+    <div data-tabs-target="panel" class="hidden">
+      <div class="bg-white border border-gray-200 rounded-lg p-6">
+        <% if !org_manager %>
+          <p class="text-sm text-gray-600">Tickets for <%= @production.name %> are set up by your organization's managers.</p>
+        <% elsif @production.organization.feature_available?(:ticketing) %>
+          <%= render "shared/ticketing/tickets_question", production: @production, cocoscout_fields: false,
+                return_to: edit_manage_production_path(@production, tab: production_tickets_tab(@production)) %>
+          <p class="mt-4 text-xs text-gray-500">Every date of <%= @production.name %> follows this. A date can answer for itself on its own Tickets tab.</p>
+        <% else %>
+          <%= render "manage/billing/upgrade", paywall: Manage::PaidFeatureGate::FEATURE_DETAILS[:ticketing], feature: :ticketing %>
+        <% end %>
+      </div>
+    </div>
+
+    <% if services_on %>
+      <!-- Services (Pro): what every show needs -->
+      <div data-tabs-target="panel" class="hidden">
+        <%= render "manage/productions/services_tab", production: @production %>
+      </div>
+    <% end %>
+
+    <% unless @production.type_third_party? %>
+      <%# Public Listing: right of the Pro tabs, the last before the managers' last tab (Tim, 2026-11-18). %>
       <div data-tabs-target="panel" class="hidden" data-controller="production-profile-modals profile-visibility">
       <!-- Public Profile Card -->
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
@@ -795,56 +801,6 @@
       <% end %>
     </div>
 
-    <!-- Tab 7: Pay -->
-    <div data-tabs-target="panel" class="hidden">
-      <% if org_manager %>
-        <%= render "manage/productions/pay_tab", production: @production %>
-      <% else %>
-        <%= render "manage/productions/managers_only_card", title: "Performer pay",
-              description: "How performers on #{@production.name} are paid is set by your organization's managers." %>
-      <% end %>
-    </div>
-    <% end %><%# end unless type_third_party %>
-
-    <!-- Tickets (Pro): the Tickets question (Round 9 §3). Dates inherit the answer; a date can answer for itself on its own Tickets tab. -->
-    <div data-tabs-target="panel" class="hidden">
-      <div class="bg-white border border-gray-200 rounded-lg p-6">
-        <% if !org_manager %>
-          <p class="text-sm text-gray-600">Tickets for <%= @production.name %> are set up by your organization's managers.</p>
-        <% elsif @production.organization.feature_available?(:ticketing) %>
-          <%= render "shared/ticketing/tickets_question", production: @production, cocoscout_fields: false,
-                return_to: edit_manage_production_path(@production, tab: production_tickets_tab(@production)) %>
-          <p class="mt-4 text-xs text-gray-500">Every date of <%= @production.name %> follows this. A date can answer for itself on its own Tickets tab.</p>
-        <% else %>
-          <%= render "manage/billing/upgrade", paywall: Manage::PaidFeatureGate::FEATURE_DETAILS[:ticketing], feature: :ticketing %>
-        <% end %>
-      </div>
-    </div>
-
-    <% if services_on %>
-      <!-- Services (Pro): what every show needs -->
-      <div data-tabs-target="panel" class="hidden">
-        <%= render "manage/productions/services_tab", production: @production %>
-      </div>
-    <% end %>
-
-    <% if casting_tab %>
-      <!-- Casting: the production's answer, and the way into the rest -->
-      <div data-tabs-target="panel" class="hidden space-y-6" data-production-casting-tab>
-        <%= render "manage/casting/answer_card", production: @production, return_to: "production_edit" %>
-        <div class="bg-white border border-gray-200 rounded-xl px-6 py-4 flex flex-wrap items-center justify-between gap-3">
-          <% case @production.casting_state %>
-          <% when :not_set_up %>
-            <p class="text-sm text-gray-700">Casting isn't set up for <%= @production.name %> yet: who you cast, your roles, and which dates are cast.</p>
-            <%= render "shared/button", text: "Set up casting", variant: "primary", size: "small", path: manage_casting_setup_path(@production) %>
-          <% when :on %>
-            <p class="text-sm text-gray-700">Who you cast, which dates are cast, your <%= @production.act_based? ? "lineup" : "roles" %>, and the talent pool are in Casting Settings.</p>
-            <%= render "shared/button", text: "Casting Settings", variant: "secondary", size: "small", path: manage_casting_settings_path(@production) %>
-          <% else %>
-            <p class="text-sm text-gray-700">A single date can still be cast: turn casting on from that date's page.</p>
-          <% end %>
-        </div>
-      </div>
     <% end %>
 
     <%# Danger Zone tab: the organization's managers' only (Tim, 2026-10-17); a

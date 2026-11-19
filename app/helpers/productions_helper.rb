@@ -1,23 +1,44 @@
 # frozen_string_literal: true
 
 module ProductionsHelper
-  # Where the Tickets tab sits on Production Settings (manage/productions/edit).
-  # A production booked by a contract has fewer tabs (no Agreement, Public
-  # Listing or Pay), so its Tickets tab comes earlier.
+  # Production Settings' tabs (manage/productions/edit), in order: the one
+  # list the tab strip, the phone's section picker, the panels, and every
+  # link to a tab go by. Casting sits left of the Pro tabs and Public Listing
+  # right of them, just left of Danger Zone (Tim, 2026-11-18). A production
+  # booked by a contract has no Casting, Agreement, Pay or Public Listing.
+  PRODUCTION_TAB_LABELS = {
+    basic: "Basic Information", visual_assets: "Visual Assets", documents: "Documents", team: "Production Team",
+    casting: "Casting", agreement: "Agreement", pay: "Pay", tickets: "Tickets", services: "Services",
+    public_listing: "Public Listing", danger_zone: "Danger Zone"
+  }.freeze
+
+  def production_edit_tabs(production, user = Current.user)
+    org = production.organization
+    tabs = %i[basic visual_assets documents team]
+    tabs << :casting if production.castable?
+    tabs += %i[agreement pay] unless production.type_third_party?
+    tabs << :tickets
+    tabs << :services if org.services_available_to?(user)
+    tabs << :public_listing unless production.type_third_party?
+    tabs << :danger_zone if user&.superadmin? || org.manageable_by?(user)
+    tabs
+  end
+
+  # A tab's index, for ?tab= and #tab- links.
+  def production_edit_tab(production, key)
+    production_edit_tabs(production).index(key) || 0
+  end
+
   def production_tickets_tab(production)
-    production.type_third_party? ? 4 : 7
+    production_edit_tab(production, :tickets)
   end
 
-  # Its Services tab (Pro, managers), right after Tickets.
   def production_services_tab(production)
-    production_tickets_tab(production) + 1
+    production_edit_tab(production, :services)
   end
 
-  # Its Casting tab ("We cast people in this production"): after Tickets and,
-  # for those who have it, Services. Only a production we run casting for
-  # has one (Production#castable?).
   def production_casting_tab(production)
-    production_tickets_tab(production) + (production.organization.services_available_to?(Current.user) ? 2 : 1)
+    production_edit_tab(production, :casting)
   end
 
   # A show's Settings page: its Services tab sits after Tickets (see the

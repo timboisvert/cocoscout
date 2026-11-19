@@ -212,10 +212,10 @@ module Manage
       new_key = params[:production][:public_key]&.strip&.downcase
 
       if @production.update_public_key(new_key)
-        redirect_to edit_manage_production_path(@production, tab: 5),
+        redirect_to edit_manage_production_path(@production, tab: helpers.production_edit_tab(@production, :public_listing)),
                     notice: "Public profile URL updated successfully"
       else
-        redirect_to edit_manage_production_path(@production, tab: 5),
+        redirect_to edit_manage_production_path(@production, tab: helpers.production_edit_tab(@production, :public_listing)),
                     alert: @production.errors[:public_key].first || "Failed to update URL"
       end
     end
@@ -341,7 +341,7 @@ module Manage
     # the plan the same way update_pay does for performer pay.
     def agreement_status
       unless Current.organization.feature_available?(:agreements)
-        redirect_to edit_manage_production_path(@production, tab: 4),
+        redirect_to edit_manage_production_path(@production, tab: helpers.production_edit_tab(@production, :agreement)),
                     alert: "Performer agreements are part of CocoScout Pro."
         return
       end
@@ -358,7 +358,7 @@ module Manage
     # tracking both go through AgreementRequestService.
     def send_agreement_reminders
       unless Current.organization.feature_available?(:agreements)
-        redirect_to edit_manage_production_path(@production, tab: 4),
+        redirect_to edit_manage_production_path(@production, tab: helpers.production_edit_tab(@production, :agreement)),
                     alert: "Performer agreements are part of CocoScout Pro."
         return
       end
@@ -390,7 +390,7 @@ module Manage
 
     # The Pay tab sits after Public Listing (index 6) on the edit page's tab strip.
     def pay_tab_index
-      6
+      helpers.production_edit_tab(@production, :pay)
     end
 
     # Where a pay change goes back to: the page that posted it (a /manage path

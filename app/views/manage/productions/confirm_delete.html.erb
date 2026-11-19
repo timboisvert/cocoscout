@@ -140,7 +140,7 @@
             text: "Cancel and go back",
             variant: "secondary",
             size: "medium",
-            path: edit_manage_production_path(@production, anchor: "tab-4") %>
+            path: edit_manage_production_path(@production, anchor: "tab-#{production_edit_tab(@production, :danger_zone)}") %>
       </div>
     </div>
   </div>
