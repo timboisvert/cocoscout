@@ -153,15 +153,36 @@ RSpec.describe "Visual asset requests", type: :request do
       expect(contractor_user.notifications.last.path).to eq(my_contract_assets_path(Contract.last))
     end
 
-    it "notifies anyone else emailed who has an account, opening the link's page" do
+    it "doesn't notify someone emailed who isn't on the contract" do
       designer = create(:user, email_address: "designer@example.com", password: password)
       create(:person, user: designer, name: "Sam Designer")
-      post manage_request_production_visual_asset_path(production),
-           params: { other_emails: "Designer@example.com, nobody@example.com", subject: "Images", allow_replace: "1", commit_action: "send" }
+      expect do
+        post manage_request_production_visual_asset_path(production),
+             params: { other_emails: "Designer@example.com", subject: "Images", allow_replace: "1", commit_action: "send" }
+      end.to have_enqueued_mail(AppMailer, :send_template).once
+      expect(designer.notifications.count).to eq(0)
+    end
 
+    it "doesn't notify someone on the contract who wasn't emailed" do
+      dana_user = create(:user, password: password)
+      dana = create(:person, user: dana_user, name: "Dana Whitfield", email: "dana@example.com")
+      contractor = create(:contractor, organization: org, person: dana, email: "dana@example.com", name: "Dana Whitfield")
+      create(:contract, :active, organization: org, production: production, contractor: contractor, contractor_name: "Dana Whitfield", contractor_email: "dana@example.com")
+
+      post manage_request_production_visual_asset_path(production), params: { other_emails: "designer@example.com", allow_replace: "1", commit_action: "send" }
+      expect(dana_user.notifications.count).to eq(0)
+    end
+
+    it "notifies someone emailed on an in-house production's team, opening the link's page" do
+      production.update!(production_type: "in_house")
+      teammate = create(:user, email_address: "sam@example.com", password: password)
+      create(:person, user: teammate, name: "Sam Teammate")
+      create(:production_permission, user: teammate, production: production, role: "viewer")
+
+      post manage_request_production_visual_asset_path(production), params: { other_emails: "sam@example.com", allow_replace: "1", commit_action: "send" }
       request = AssetRequest.current_for(production)
-      expect(designer.notifications.last.title).to eq("The Lantern Room requested images and details for Late Bloomers")
-      expect(designer.notifications.last.path).to eq(asset_request_path(token: request.token))
+      expect(teammate.notifications.last.path).to eq(asset_request_path(token: request.token))
+      expect(manager.notifications.count).to eq(0)
 
       expect { post manage_remind_production_visual_asset_path(production) }.not_to change(Notification, :count)
     end
