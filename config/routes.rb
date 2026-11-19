@@ -1365,6 +1365,8 @@ Rails.application.routes.draw do
         # Performer pay (Pay tab): paid or not, and which payout scheme is the default
         patch :update_pay
         patch :update_no_revenue
+        # The shared folder on Google Drive, Dropbox, or OneDrive (Documents tab)
+        patch :update_documents_link
         # What every show needs (Services tab; Pro)
         patch :update_services
       end

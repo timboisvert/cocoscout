@@ -2,9 +2,9 @@
 
 module Manage
   class ProductionsController < Manage::ManageController
-    before_action :set_production, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_no_revenue update_services]
-    before_action :check_production_access, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_no_revenue update_services]
-    before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders update_pay update_no_revenue update_services]
+    before_action :set_production, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_no_revenue update_services update_documents_link]
+    before_action :check_production_access, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_no_revenue update_services update_documents_link]
+    before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders update_pay update_no_revenue update_services update_documents_link]
     # Performer pay and agreements are Pro, and Pro is the organization's
     # managers' — a production's own manager (a producer) doesn't get them.
     # Archiving is the organization's call too: a production's own producer can't shelve it.
@@ -206,6 +206,28 @@ module Manage
       @production.update!(no_revenue: none)
       notice = none ? "#{@production.name} takes no money: its shows settle up as no revenue by themselves." : "#{@production.name} takes money again: its shows settle up as usual."
       redirect_to edit_manage_production_path(@production, tab: 0), notice: notice
+    end
+
+    # The production's shared folder (Documents tab): one link to Google Drive,
+    # Dropbox, or OneDrive, and its name. Blank removes it.
+    def update_documents_link
+      attrs = params.fetch(:production, {}).permit(:documents_link_url, :documents_link_name)
+      had_link = @production.documents_link?
+      tab = helpers.production_edit_tab(@production, :documents)
+      if @production.update(attrs)
+        notice = if @production.documents_link? then "The shared folder has been saved."
+        elsif had_link then "The shared folder link has been removed."
+        else "There's no shared folder to save."
+        end
+        redirect_to edit_manage_production_path(@production, tab: tab), notice: notice
+      else
+        alert = if @production.errors[:documents_link_url].any?
+          "That link isn't from Google Drive, Dropbox, or OneDrive. Copy the folder's share link from one of them and try again."
+        else
+          "The folder's name can be at most 100 characters."
+        end
+        redirect_to edit_manage_production_path(@production, tab: tab), alert: alert
+      end
     end
 
     def update_public_key

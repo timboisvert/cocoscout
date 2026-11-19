@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_19_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_19_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2827,6 +2827,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_19_010000) do
     t.string "payout_calculation_mode", default: "production", null: false
     t.string "tickets_mode", default: "unset", null: false
     t.string "tickets_url"
+    t.string "documents_link_url"
+    t.string "documents_link_name"
     t.index ["agreement_template_id"], name: "index_productions_on_agreement_template_id"
     t.index ["archived_at"], name: "index_productions_on_archived_at"
     t.index ["casting_mode"], name: "index_productions_on_casting_mode"

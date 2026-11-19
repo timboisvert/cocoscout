@@ -89,6 +89,38 @@ class Production < ApplicationRecord
   TICKETS_MODES = %w[unset cocoscout elsewhere none].freeze
   validates :tickets_mode, inclusion: { in: TICKETS_MODES }
   validates :tickets_url, format: { with: %r{\Ahttps?://\S+\z}, message: "must start with http:// or https://" }, allow_blank: true
+
+  # The folder where the production keeps its files on Google Drive, Dropbox,
+  # or OneDrive: one link, shown next to its documents to everyone in the
+  # production (Tim, 2026-11-19). The service's own sharing decides who can
+  # open it; we only show the link.
+  DOCUMENTS_LINK_PROVIDERS = {
+    google_drive: { name: "Google Drive", hosts: %w[drive.google.com docs.google.com] },
+    dropbox: { name: "Dropbox", hosts: %w[dropbox.com www.dropbox.com] },
+    onedrive: { name: "OneDrive", hosts: %w[onedrive.live.com onedrive.com 1drv.ms], host_suffixes: %w[.sharepoint.com] }
+  }.freeze
+  normalizes :documents_link_url, with: ->(v) { v.strip.presence }
+  normalizes :documents_link_name, with: ->(v) { v.strip.presence }
+  before_validation :tidy_documents_link
+  validate :documents_link_from_a_known_service
+  validates :documents_link_name, length: { maximum: 100 }
+
+  def documents_link? = documents_link_url.present? && documents_link_provider.present?
+
+  def documents_link_provider
+    host = begin
+      URI.parse(documents_link_url.to_s).host.to_s.downcase
+    rescue URI::InvalidURIError
+      ""
+    end
+    return nil if host.blank?
+    DOCUMENTS_LINK_PROVIDERS.find do |_key, p|
+      p[:hosts].include?(host) || Array(p[:host_suffixes]).any? { |s| host.end_with?(s) }
+    end&.first
+  end
+
+  def documents_link_provider_name = DOCUMENTS_LINK_PROVIDERS.dig(documents_link_provider, :name)
+
   has_many :ticket_listings
   # cocoscout.com/t/CODE: the production's one short code (kept while dates come
   # and go) and any named links a manager made for it.
@@ -648,6 +680,20 @@ class Production < ApplicationRecord
   end
 
   private
+
+  def tidy_documents_link
+    if documents_link_url.blank?
+      self.documents_link_name = nil
+    elsif documents_link_name.blank?
+      self.documents_link_name = documents_link_provider_name
+    end
+  end
+
+  def documents_link_from_a_known_service
+    return if documents_link_url.blank?
+    return if documents_link_url.start_with?("https://") && documents_link_provider.present?
+    errors.add(:documents_link_url, "has to be a link from Google Drive, Dropbox, or OneDrive")
+  end
 
   # Shows still carrying the name we suggested for them follow the production
   # when it's renamed. Without this, renaming "Improv Jam" to "Jam Night" would

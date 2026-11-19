@@ -4,7 +4,7 @@
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
   <%= render "shared/module_header", title: "My Documents" %>
 
-  <p class="text-sm text-gray-600 mb-4">Handbooks, documents, and agreements shared with you across your productions and talent pools.</p>
+  <p class="text-sm text-gray-600 mb-4">Handbooks, documents, shared folders, and agreements from your productions and talent pools.</p>
 
   <% if @signed_agreements.any? %>
     <div class="mb-8">
@@ -26,12 +26,15 @@
     </div>
   <% end %>
 
-  <% if @documents.any? %>
+  <% if @documents_by_production.any? %>
     <div class="space-y-6">
       <% @documents_by_production.each do |production, docs| %>
         <div>
           <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2"><%= production&.name %></h2>
           <div class="space-y-2">
+            <% if production && @linked_productions.include?(production) %>
+              <%= render "shared/documents_link", production: production %>
+            <% end %>
             <% docs.each do |doc| %>
               <%= link_to my_document_path(doc), class: "flex items-center gap-3 bg-white border border-gray-200 rounded-lg px-4 py-3 hover:border-pink-400 transition-colors" do %>
                 <div class="w-9 h-9 rounded-lg bg-pink-50 flex items-center justify-center text-pink-600 flex-shrink-0">
