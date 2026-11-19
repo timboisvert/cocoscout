@@ -20,7 +20,7 @@ module Manage
 
     # The organization page is a settings page: each topic is a routed section,
     # so only that section's data loads and links name the section they want.
-    SECTIONS = %w[basic team locations services visual_assets integrations agreements billing danger].freeze
+    SECTIONS = %w[basic team locations visual_assets integrations billing services agreements danger].freeze
     SECTION_LABELS = {
       "basic" => "Basic Information",
       "team" => "People",
