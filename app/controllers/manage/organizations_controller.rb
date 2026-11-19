@@ -20,12 +20,13 @@ module Manage
 
     # The organization page is a settings page: each topic is a routed section,
     # so only that section's data loads and links name the section they want.
-    SECTIONS = %w[basic team locations services integrations agreements billing danger].freeze
+    SECTIONS = %w[basic team locations services visual_assets integrations agreements billing danger].freeze
     SECTION_LABELS = {
       "basic" => "Basic Information",
       "team" => "People",
       "locations" => "Locations",
       "services" => "Services",
+      "visual_assets" => "Visual Assets",
       "integrations" => "Integrations",
       "agreements" => "Agreements",
       "billing" => "Billing & Plan",
@@ -192,6 +193,10 @@ module Manage
       when "services"
         @house_services = @organization.house_services.ordered.includes(:house_roles)
         @house_roles = @organization.house_roles.active.ordered
+      when "visual_assets"
+        # What every production is expected to have (AssetSpec; Tim,
+        # 2026-11-19), with the three built-ins made the first time.
+        @asset_specs = AssetSpec.for(@organization).to_a
       when "integrations"
         @square = @organization.integrations.square.first
         @last_pull = @square&.register_pulls&.recent&.first

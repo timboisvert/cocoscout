@@ -10,6 +10,11 @@ class Production < ApplicationRecord
   has_one :mic, dependent: :nullify
 
   has_many :posters, dependent: :destroy
+  # Visual asset specifications (Tim, 2026-11-19): what this production has
+  # for its organization's list, its own additional files, and the link that
+  # asks someone outside for them.
+  has_many :production_assets, dependent: :destroy
+  has_many :asset_requests, dependent: :destroy
   has_many :shows, dependent: :destroy
   has_many :ticket_discount_codes, dependent: :destroy
   has_many :scheduling_rules, dependent: :destroy

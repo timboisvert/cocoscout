@@ -1,0 +1,27 @@
+<%# The line at the top of the uploader: how many are done, and what is still
+    required. Redrawn after every upload. Locals: counts, organization. %>
+<% optional_left = counts.missing_optional.size %>
+<div id="asset-progress" data-asset-progress>
+  <% if counts.complete? %>
+    <div class="rounded-2xl bg-green-50 border border-green-200 px-5 py-4 text-green-900">
+      <p class="text-base font-semibold">Everything <%= organization.name %> requires has been added.</p>
+      <p class="text-sm mt-1">
+        Thank you. <%= organization.name %> will be notified.
+        You can still replace anything<%= optional_left.positive? ? ", or add the #{optional_left == 1 ? 'optional item' : "#{optional_left} optional items"} below" : "" %>.
+      </p>
+    </div>
+  <% else %>
+    <div class="rounded-2xl bg-white border border-gray-200 px-5 py-4">
+      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <p class="text-base font-semibold text-gray-900"><%= counts.done %> of <%= counts.total %> done</p>
+        <p class="text-sm text-gray-600">
+          Still required: <%= counts.missing_required.to_sentence(last_word_connector: ", and ", two_words_connector: ", and ") %>.
+          <% if optional_left.positive? %><%= optional_left == 1 ? "One more is optional." : "#{optional_left} more are optional." %><% end %>
+        </p>
+      </div>
+      <div class="mt-3 h-2 rounded-full bg-gray-100 overflow-hidden" role="img" aria-label="<%= counts.done %> of <%= counts.total %> done">
+        <div class="h-2 bg-pink-500" style="width: <%= counts.total.zero? ? 0 : (counts.done * 100.0 / counts.total).round(1) %>%"></div>
+      </div>
+    </div>
+  <% end %>
+</div>

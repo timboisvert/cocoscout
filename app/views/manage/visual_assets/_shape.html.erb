@@ -1,0 +1,10 @@
+<%# An empty outline at a specification's shape, fitted in a box of the
+    given size (pixels). Locals: spec, box (default 40), dashed (optional). %>
+<%
+  box = local_assigns[:box] || 40
+  ratio = spec.width.to_f / spec.height
+  w = ratio >= 1 ? box : (box * ratio).round
+  h = ratio >= 1 ? (box / ratio).round : box
+%>
+<span class="inline-block flex-shrink-0 rounded <%= local_assigns[:dashed] ? 'border-2 border-dashed border-gray-300 bg-gray-50' : 'border-2 border-gray-400 bg-gray-50' %>"
+      style="width: <%= w %>px; height: <%= h %>px" aria-hidden="true"></span>

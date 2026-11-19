@@ -66,6 +66,11 @@ Rails.application.routes.draw do
   get   "/welcome",       to: "welcome#show",         as: "welcome"
 
   # Authentication
+  # The no-login page where someone outside adds a production's images and
+  # words (AssetRequest; Tim, 2026-11-19).
+  get   "/upload/:token",                   to: "asset_requests#show",      as: "asset_request"
+  post  "/upload/:token/files",             to: "asset_requests#upload",    as: "asset_request_upload"
+  patch "/upload/:token/text/:spec_id",     to: "asset_requests#save_text", as: "asset_request_text"
   get   "/signup",        to: "auth#signup",          as: "signup"
   post  "/signup",        to: "auth#handle_signup",   as: "handle_signup"
   get   "/signin",        to: "auth#signin",          as: "signin"
@@ -543,6 +548,11 @@ Rails.application.routes.draw do
     get    "/contracts/:id/ask",                         to: "contract_date_requests#new",      as: "ask_contract_date"
     post   "/contracts/:id/ask",                         to: "contract_date_requests#create"
     delete "/contracts/:id/ask/:request_id",             to: "contract_date_requests#withdraw", as: "contract_date_request"
+    # Someone on the contract adds the images and words the organization
+    # asked for, signed in, with no link (Tim, 2026-11-19).
+    get    "/contracts/:id/assets",                      to: "contract_assets#show",      as: "contract_assets"
+    post   "/contracts/:id/assets/files",                to: "contract_assets#upload",    as: "contract_assets_upload"
+    patch  "/contracts/:id/assets/text/:spec_id",        to: "contract_assets#save_text", as: "contract_assets_text"
     patch  "/contracts/:id/ask/:request_id/dismiss",     to: "contract_date_requests#dismiss",  as: "dismiss_contract_date_request"
     # The contractor connects the contract to an organization of their own
     # (ContractConnections): what it does, which production, how the dates
@@ -859,6 +869,18 @@ Rails.application.routes.draw do
     patch "/shows/:production_id/visual_assets/:id/set_primary_poster", to: "visual_assets#set_primary_poster", as: "set_primary_poster_production_visual_asset"
     patch  "/shows/:production_id/visual_assets/wide_image", to: "visual_assets#update_wide_image", as: "wide_image_production_visual_asset"
     delete "/shows/:production_id/visual_assets/wide_image", to: "visual_assets#remove_wide_image"
+    # The organization's list on a production (Tim, 2026-11-19): one upload
+    # for any item, its written items, its own additional files, and the one
+    # link that asks someone outside for them.
+    post   "/shows/:production_id/visual_assets/upload",          to: "visual_assets#upload",           as: "upload_production_visual_asset"
+    patch  "/shows/:production_id/visual_assets/text/:spec_id",   to: "visual_assets#save_text",        as: "text_production_visual_asset"
+    delete "/shows/:production_id/visual_assets/item/:spec_id",   to: "visual_assets#remove_item",      as: "item_production_visual_asset"
+    post   "/shows/:production_id/visual_assets/files",           to: "visual_assets#add_file",         as: "files_production_visual_asset"
+    delete "/shows/:production_id/visual_assets/files/:id",       to: "visual_assets#remove_file",      as: "file_production_visual_asset"
+    post   "/shows/:production_id/visual_assets/request",         to: "visual_assets#send_request",     as: "request_production_visual_asset"
+    post   "/shows/:production_id/visual_assets/request/remind",  to: "visual_assets#remind_request",   as: "remind_production_visual_asset"
+    post   "/shows/:production_id/visual_assets/request/off",     to: "visual_assets#turn_off_request", as: "turn_off_production_visual_asset"
+    post   "/shows/:production_id/visual_assets/request/new_link", to: "visual_assets#new_link",        as: "new_link_production_visual_asset"
 
     # Sign-ups - org-level (aggregates all productions)
     get  "/signups",            to: "signups#org_index", as: "signups"
@@ -1246,6 +1268,12 @@ Rails.application.routes.draw do
     patch  "services/:id", to: "house_services#update",  as: "house_service"
     delete "services/:id", to: "house_services#destroy"
 
+    # The organization's visual asset specifications (Organization settings → Visual Assets).
+    post   "visual-assets/specs",         to: "asset_specs#create",  as: "asset_specs"
+    post   "visual-assets/specs/reorder", to: "asset_specs#reorder", as: "reorder_asset_specs"
+    patch  "visual-assets/specs/:id",     to: "asset_specs#update",  as: "asset_spec"
+    delete "visual-assets/specs/:id",     to: "asset_specs#destroy"
+
     # Reports (Pro tier)
     scope path: "reports" do
       get "/",                     to: "reports#index",                 as: "reports"
@@ -1381,22 +1409,6 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :visual_assets, only: [ :index ] do
-        collection do
-          get :new_poster
-          post :create_poster
-          get :new_logo
-          post :create_logo
-        end
-        member do
-          get :edit_poster
-          patch :update_poster
-          delete :destroy_poster
-          patch :set_primary_poster
-          get :edit_logo
-          patch :update_logo
-        end
-      end
 
       resources :shows, except: [ :new, :create ] do
         collection do
