@@ -306,7 +306,8 @@ class SuperadminController < ApplicationController
       if production_ids.any?
         PayoutSchemeDefault.where(production_id: production_ids).delete_all
         CastingTableProduction.where(production_id: production_ids).delete_all
-        CastAssignmentStage.where(production_id: production_ids).delete_all
+        # Cast assignment stages hang off audition cycles, and Production's
+        # before_destroy clears them.
       end
 
       # --- Org references not declared as dependent: on Organization ---
