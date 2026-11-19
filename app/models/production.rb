@@ -786,7 +786,9 @@ class Production < ApplicationRecord
     # Delete all auditions before deleting audition_requests or audition_sessions
     # Auditions reference both audition_requests and audition_sessions
     audition_session_ids = AuditionSession.joins(:audition_cycle).where(audition_cycles: { production_id: id }).pluck(:id)
-    Audition.where(audition_session_id: audition_session_ids).delete_all
+    auditions = Audition.where(audition_session_id: audition_session_ids)
+    AuditionVote.where(audition_id: auditions.select(:id)).delete_all
+    auditions.delete_all
   end
 
   # Producer plan is limited to Organization::FREE_PRODUCTION_LIMIT active,
