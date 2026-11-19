@@ -184,4 +184,49 @@ RSpec.describe "Contract date terms", type: :model do
     expect(contract.reload.billed_draft_payments).to eq([ { "description" => "2 events, paid upfront", "amount" => 200.0, "direction" => "incoming",
                                                             "source" => "Per event", "due_date" => "2026-10-01" } ])
   end
+  describe "on the document Prepare renders" do
+    let(:dates) { show_times.map { |t| t.strftime("%a %b %-d, %Y") } }
+
+    def rents(contract)
+      contract.reload.send(:license_schedule_rows).to_h { |row| [ row[:date], row[:rent] ] }.values_at(*dates)
+    end
+
+    it "prices a per-event date by its own fee, even when payments fall due before the date" do
+      contract = create(:contract, organization: org, draft_data: {
+        "bookings" => show_times.map { |t| booking(t, "show") },
+        "payment_structure" => "per_event",
+        "payment_config" => { "settlement_basis" => "flat", "per_event_amount" => 200, "per_event_terms" => "before" },
+        "payments" => show_times.map { |t| { "description" => "Event", "amount" => 200, "direction" => "incoming", "source" => "Per event",
+                                             "due_date" => (t.to_date - 7).to_s, "event_date" => t.iso8601 } }
+      })
+      contract.set_draft_date_terms!([ show_times.first.iso8601 ], value: "150", note: nil, field: :amount)
+      contract.set_draft_date_terms!([ show_times.last.iso8601 ], value: "250", note: nil, field: :amount)
+      expect(rents(contract)).to eq([ "$150.00", "$250.00" ])
+
+      contract.set_draft_date_terms!([ show_times.first.iso8601 ], value: "0", note: nil, field: :amount)
+      expect(rents(contract).first).to eq("$0.00")
+    end
+
+    it "prices a show's own fee on tickets minus our fee" do
+      contract = create(:contract, organization: org, draft_data: {
+        "bookings" => show_times.map { |t| booking(t, "show") },
+        "payment_structure" => "flat_fee",
+        "payment_config" => { "settlement_basis" => "revenue_minus_fee", "flat_fee_direction" => "ticket_revenue_minus_fee",
+                              "flat_fee_amount" => 300, "flat_fee_basis" => "per_show" }
+      })
+      contract.set_draft_date_terms!([ show_times.first.iso8601 ], value: "250", note: nil, field: :amount)
+      expect(rents(contract)).to eq([ "Ticket revenue less $250.00 fee", "Ticket revenue less $300.00 per show fee" ])
+      expect(contract.send(:deal_terms_html)).to include("Dates with their own terms", "$250 fee this show (usually $300)")
+    end
+
+    it "states a show's own share" do
+      contract = create(:contract, organization: org, draft_data: {
+        "bookings" => show_times.map { |t| booking(t, "show") },
+        "payment_structure" => "revenue_share",
+        "payment_config" => { "who_sells_tickets" => "org", "settlement_basis" => "revenue_share", "revenue_our_share" => 30, "revenue_settlement" => "monthly" }
+      })
+      contract.set_draft_date_terms!([ show_times.last.iso8601 ], value: "40", note: nil, field: :share)
+      expect(rents(contract)).to eq([ "30% of ticket sales", "40% of ticket sales" ])
+    end
+  end
 end

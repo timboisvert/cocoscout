@@ -2543,6 +2543,13 @@ class Contract < ApplicationRecord
       out << "</tbody></table>"
     end
 
+    own_terms = status_draft? ? deal_terms_own_date_lines : []
+    if own_terms.any?
+      out << "<h4>Dates with their own terms</h4><ul>"
+      own_terms.each { |date, words| out << %(<li><strong>#{esc.(date)}:</strong> #{esc.(words)}</li>) }
+      out << "</ul>"
+    end
+
     rates = draft_event_rates.select { |r| r["amount"].to_f.positive? }
     if rates.any?
       out << "<h4>Other events</h4><ul>"
@@ -2568,6 +2575,26 @@ class Contract < ApplicationRecord
     end
 
     out
+  end
+
+  # [date, words] for each booked date priced its own way on Review the
+  # dates ("$250 this date (usually $300 per event)"), so a template without
+  # the inline grid still carries them.
+  def deal_terms_own_date_lines
+    draft_bookings.sort_by { |b| b["starts_at"].to_s }.filter_map do |booking|
+      terms = date_terms_for_booking(booking["starts_at"])
+      next if terms.except("note").empty?
+
+      at = parse_booking_time(booking["starts_at"])
+      next unless at
+
+      line, usual, changed = date_terms_words(booking["event_type"].presence || "show", terms)
+      next unless changed
+
+      words = usual ? "#{line} (#{usual.sub(/\AUsually/, 'usually')})" : line
+      words = "#{words}. #{terms['note']}" if terms["note"].present?
+      [ at.strftime("%a %b %-d, %Y"), words ]
+    end
   end
 
   # The inline "License Period and Fees" grid — the dates/stage/rent table a
@@ -2698,8 +2725,32 @@ class Contract < ApplicationRecord
         start: starts_at.strftime("%-l:%M %p"),
         end: ends_at ? ends_at.strftime("%-l:%M %p") : "—",
         stage: space_id ? (space_names[space_id] || "Stage") : "Entire venue",
-        rent: license_rated_rent(b) || rent_by_date[starts_at.to_date] || rent_label
+        rent: license_date_rent(b) || rent_by_date[starts_at.to_date] || rent_label
       }
+    end
+  end
+
+  # A date priced its own way on Review the dates reads its own price on the
+  # document: a per-event date's own fee, a show's own fee on tickets minus
+  # our fee, a show's own share. The rent grid used to read only the deal, so
+  # dates marked $50 up or down showed the deal's price at Prepare (Tim,
+  # 2026-11-19). nil when the date takes the deal's terms.
+  def license_date_rent(booking)
+    event_type = booking["event_type"].presence || "show"
+    return license_rated_rent(booking) if event_rate_for_type(event_type)
+    return nil unless status_draft?
+
+    terms = date_terms_for_booking(booking["starts_at"])
+    case date_term_field(event_type)
+    when :amount
+      return nil unless terms.key?("amount")
+
+      per_event_deal? ? deal_money(terms["amount"]) : "Ticket revenue less #{deal_money(terms['amount'])} fee"
+    when :share
+      return nil unless terms.key?("share")
+
+      source = Contract.normalized_revenue_source(draft_payment_config["revenue_source"]) == "tickets_and_products" ? "ticket sales and products" : "ticket sales"
+      "#{number_for(terms['share'])}% of #{source}"
     end
   end
 
