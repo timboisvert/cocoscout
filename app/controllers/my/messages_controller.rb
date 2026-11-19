@@ -18,9 +18,9 @@ class My::MessagesController < ApplicationController
   # performer opens in the frame they're already in, production mode's or
   # My's, and switches nothing (Tim, 2026-10-21).
   def open
-    thread = Message.root_messages.find(params[:id]) # rubocop:disable CocoScout/UnscopedFind -- gated by the inbox check below
+    thread = Message.root_messages.find(params[:id]) # rubocop:disable CocoScout/UnscopedFind -- gated by readable_by? below
     user = Current.user
-    unless thread.subscribed?(user) || Message.manage_inbox_for(user, user.accessible_organizations).exists?(id: thread.id)
+    unless thread.readable_by?(user)
       redirect_to messages_path, alert: "You don't have access to this message" and return
     end
 
@@ -66,8 +66,8 @@ class My::MessagesController < ApplicationController
       redirect_to my_message_path(@root_message) and return
     end
 
-    # Ensure user has access (subscribed to thread)
-    unless @root_message.subscribed?(Current.user)
+    # Ensure the thread is in their inbox (readable_by?)
+    unless @root_message.readable_by?(Current.user)
       redirect_to messages_path, alert: "You don't have access to this message"
       return
     end
@@ -188,8 +188,8 @@ class My::MessagesController < ApplicationController
       return
     end
 
-    # Ensure user is subscribed to the thread
-    unless root_message.subscribed?(Current.user)
+    # Ensure the thread is in their inbox (readable_by?)
+    unless root_message.readable_by?(Current.user)
       redirect_to my_messages_path, alert: "You don't have access to this thread"
       return
     end
@@ -241,7 +241,7 @@ class My::MessagesController < ApplicationController
 
     # Only thread participants may react (as on the manage side): this also
     # renders the message's reactions, with who made them.
-    unless message.root_message.subscribed?(Current.user)
+    unless message.root_message.readable_by?(Current.user)
       head :forbidden
       return
     end
@@ -297,7 +297,7 @@ class My::MessagesController < ApplicationController
     message = Message.find(params[:id])
     root_message = message.root_message
 
-    unless root_message.subscribed?(Current.user)
+    unless root_message.readable_by?(Current.user)
       redirect_to messages_path, alert: "You don't have access to this message"
       return
     end

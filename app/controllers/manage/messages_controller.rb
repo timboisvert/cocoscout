@@ -150,13 +150,13 @@ module Manage
     end
 
     def show
-      @message = Message.find(params[:id]) # rubocop:disable CocoScout/UnscopedFind -- gated by subscribed? immediately below
+      @message = Message.find(params[:id]) # rubocop:disable CocoScout/UnscopedFind -- gated by readable_by? immediately below
       @root_message = @message.root_message
 
-      # Ensure user has access (subscribed to thread) — mirrors
+      # Ensure the thread is in their inbox (readable_by?) — mirrors
       # My::MessagesController#show; without it any manage user could read any
       # thread on the platform by iterating ids.
-      unless @root_message.subscribed?(Current.user)
+      unless @root_message.readable_by?(Current.user)
         redirect_to messages_path, alert: "You don't have access to this message"
         return
       end
@@ -417,8 +417,8 @@ module Manage
         return
       end
 
-      # Ensure user has access (subscribed to thread)
-      unless root_message.subscribed?(Current.user)
+      # Ensure the thread is in their inbox (readable_by?)
+      unless root_message.readable_by?(Current.user)
         redirect_to messages_path, alert: "You don't have access to this thread"
         return
       end
@@ -473,10 +473,10 @@ module Manage
 
     # POST /manage/messages/:id/react/:emoji
     def react
-      message = Message.find(params[:id]) # rubocop:disable CocoScout/UnscopedFind -- gated by subscribed? immediately below
+      message = Message.find(params[:id]) # rubocop:disable CocoScout/UnscopedFind -- gated by readable_by? immediately below
 
       # Only thread participants may react.
-      unless message.root_message.subscribed?(Current.user)
+      unless message.root_message.readable_by?(Current.user)
         head :forbidden
         return
       end
@@ -531,10 +531,10 @@ module Manage
 
     # POST /manage/messages/:id/vote_poll
     def vote_poll
-      message = Message.find(params[:id]) # rubocop:disable CocoScout/UnscopedFind -- gated by subscribed? immediately below
+      message = Message.find(params[:id]) # rubocop:disable CocoScout/UnscopedFind -- gated by readable_by? immediately below
 
       # Only thread participants may vote.
-      unless message.root_message.subscribed?(Current.user)
+      unless message.root_message.readable_by?(Current.user)
         redirect_to messages_path, alert: "You don't have access to this message"
         return
       end

@@ -139,6 +139,41 @@ RSpec.describe "The one Messages inbox", type: :request do
     expect(response).to redirect_to(messages_path)
   end
 
+  # A manager with a production's notifications off isn't subscribed to its
+  # threads but finds them in the inbox (manage_inbox_for). Open let them
+  # through and the thread page sent them back to the inbox, which looked
+  # like a reload (Tim, 2026-11-19): a thread in the inbox opens, and can be
+  # replied to, which subscribes them.
+  it "opens and replies to a production thread Sam sees as a manager without a subscription" do
+    lee = create(:user).tap { |u| u.update!(default_person: create(:person, name: "Lee Comanager", user: u)) }
+    create(:organization_role, :manager, user: lee, organization: moonlight)
+    team_thread = begin
+      Current.organization = moonlight
+      Current.session = create(:session, user: lee)
+      MessageService.create_message(sender: lee, recipients: [ moonlight_performer ], subject: "Question for the team", body: "Parking?",
+                                    message_type: :cast_contact, visibility: :production, production: moonlight_show)
+    ensure
+      Current.organization = nil
+      Current.session = nil
+    end
+    team_thread.unsubscribe!(sam)
+    expect(team_thread.subscribed?(sam)).to be(false)
+    expect(Message.inbox_for(sam).exists?(id: team_thread.id)).to be(true)
+
+    get open_my_message_path(team_thread)
+    expect(response).to redirect_to(manage_message_path(team_thread))
+    follow_redirect!
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Question for the team")
+
+    get my_message_path(team_thread)
+    expect(response).to have_http_status(:ok)
+
+    post reply_manage_message_path(team_thread), params: { body: "Behind the building" }
+    expect(Message.where(parent_message: team_thread).last.body.to_plain_text).to include("Behind the building")
+    expect(team_thread.subscribed?(sam)).to be(true)
+  end
+
   it "counts both hats on the mail icon in either mode" do
     expect(sam.unread_message_count).to eq(1) # the performer thread; Sam sent the other
     get my_dashboard_path
