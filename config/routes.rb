@@ -1460,6 +1460,7 @@ Rails.application.routes.draw do
     get   "ticketing/settings",                   to: "ticketing_settings#show",         as: "ticketing_settings"
     patch "ticketing/settings",                   to: "ticketing_settings#update"
     patch "ticketing/settings/page",              to: "ticketing_settings#update_page",  as: "ticketing_settings_page"
+    patch "ticketing/settings/page/colors",       to: "ticketing_settings#update_page_colors", as: "ticketing_settings_page_colors"
     patch "ticketing/settings/tax",               to: "ticketing_settings#update_tax",   as: "ticketing_settings_tax"
     patch "ticketing/settings/refunds",           to: "ticketing_settings#update_refunds", as: "ticketing_settings_refunds"
     post  "ticketing/settings/open",              to: "ticketing_settings#open_box_office", as: "ticketing_open_box_office"

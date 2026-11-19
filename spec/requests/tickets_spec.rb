@@ -242,7 +242,7 @@ RSpec.describe "Public ticketing", type: :request do
 
       get tickets_event_path(org: "starsandgarters", event: production.public_key, date: later_listing.slug)
       expect(response.body).to include(%(coustard-regular text-gray-900">Twilight: Breaking Dawn Part 2</h1>),
-                                       %(<p class="text-sm text-gray-600">Improvised Animorphs</p>),
+                                       %(<p class="page-text text-sm text-gray-600">Improvised Animorphs</p>),
                                        "<title>Twilight: Breaking Dawn Part 2 · Stars &amp; Garters</title>")
 
       get tickets_event_path(org: "starsandgarters", event: production.public_key)

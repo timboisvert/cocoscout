@@ -209,6 +209,7 @@ class TicketListing < ApplicationRecord
   # production's own, else the box office's (TicketingProfile). Each
   # effective_* reads the whole rule from that one place, never a mix.
   include CompRules
+  include HasPageColors
 
   def comp_rules_source
     return :listing if own_comps

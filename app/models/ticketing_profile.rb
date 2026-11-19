@@ -2,9 +2,17 @@
 
 # An organization's box office settings: whether it's switched on (a pilot
 # flag a superadmin sets), its public address (/tickets/<slug>), and its defaults.
-# No branding in v1 — every org gets the same standard pages.
+# Its pages' colors are its own (PageColors); the layout is the standard one.
 class TicketingProfile < ApplicationRecord
   include HasWideImage
+  include HasPageColors
+
+  # The box office's colors keep only what differs from the standard look,
+  # so a color left at the standard one follows it if the standard changes.
+  before_validation do
+    PageColors::FIELDS.each { |key, column| self[column] = nil if self[column] == PageColors::DEFAULTS[key] }
+  end
+
   FEE_MODES = %w[buyer org].freeze
   # Automatic withdrawal of the CocoScout balance to the theater's bank. Off
   # by default: money left here pays payout runs without a bank debit.

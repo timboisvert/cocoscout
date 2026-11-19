@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_18_233411) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_19_010000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2781,6 +2781,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_18_233411) do
     t.string "page_key"
     t.jsonb "old_page_keys", default: [], null: false
     t.integer "contract_comps_per_show"
+    t.string "page_background_color"
+    t.string "page_button_color"
+    t.string "page_heading_color"
+    t.string "page_text_color"
     t.index ["organization_id", "page_key"], name: "index_production_ticketings_on_org_and_page_key", unique: true, where: "(page_key IS NOT NULL)"
     t.index ["organization_id"], name: "index_production_ticketings_on_organization_id"
     t.index ["production_id"], name: "index_production_ticketings_on_production_id", unique: true
@@ -4367,6 +4371,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_18_233411) do
     t.integer "team_comps_per_show"
     t.boolean "own_codes", default: false, null: false
     t.integer "contract_comps_per_show"
+    t.string "page_background_color"
+    t.string "page_button_color"
+    t.string "page_heading_color"
+    t.string "page_text_color"
     t.index ["contract_id"], name: "index_ticket_listings_on_contract_id"
     t.index ["organization_id", "slug"], name: "index_ticket_listings_on_organization_id_and_slug", unique: true
     t.index ["organization_id", "status"], name: "index_ticket_listings_on_organization_id_and_status"
@@ -4844,6 +4852,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_18_233411) do
     t.boolean "attach_pdf_tickets", default: false, null: false
     t.string "price_display", default: "all_in", null: false
     t.integer "contract_comps_per_show", default: 0, null: false
+    t.string "page_background_color"
+    t.string "page_button_color"
+    t.string "page_heading_color"
+    t.string "page_text_color"
     t.index ["organization_id"], name: "index_ticketing_profiles_on_organization_id", unique: true
     t.index ["previous_slugs"], name: "index_ticketing_profiles_on_previous_slugs", using: :gin
     t.index ["slug"], name: "index_ticketing_profiles_on_slug", unique: true

@@ -176,6 +176,12 @@ module Manage
       # office's again, so what the box covers is cleared.
       permitted.merge!(fee_mode: nil, cash_tax: nil, price_display: nil) if raw[:own_fees] == "0"
       permitted[:max_per_order] = nil if raw[:own_orders] == "0"
+      # Page colors: its own, all four, or (switch off) the box office's.
+      if raw[:own_colors] == "0"
+        permitted.merge!(HasPageColors.attributes_from(nil))
+      elsif raw[:page_colors]
+        permitted.merge!(HasPageColors.attributes_from(raw[:page_colors]))
+      end
       # The fees box lives on Fees and taxes, the orders boxes on Basic info;
       # each comes back to its own tab.
       back = params[:from].to_s.presence_in(%w[fees dates]) || "sales"

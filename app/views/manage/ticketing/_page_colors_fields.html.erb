@@ -1,0 +1,61 @@
+<%#
+  The four page colors (PageColors) and a picture of how they look together,
+  for the box office's Pages tab and, inside the override box, a production's
+  or a date's Ticket page tab. A color well and its hex, side by side, kept
+  in step (page_colors_controller). Once any of them differs from what this
+  level inherits, one button puts all four back, saying whose they are.
+
+  Locals:
+    param       the fields' param prefix: "page_colors", or
+                "production_ticketing[page_colors]"
+    colors      the PageColors to show
+    id          a DOM id prefix
+    reset_to    the PageColors the reset puts back: CocoScout's on the box
+                office, the box office's on a production, and on a date its
+                production's (when it has its own) or the box office's
+    reset_text  the reset button's words
+%>
+<%
+  reset_to = local_assigns[:reset_to] || PageColors.new
+  input_class = "block w-28 px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 font-mono focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+%>
+<div class="grid grid-cols-1 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] gap-8 items-start" data-controller="page-colors" data-page-colors-fields>
+  <div class="space-y-3 min-w-0">
+    <% PageColors::FIELDS.each_key do |key| %>
+      <% value = colors.public_send(key) %>
+      <div class="flex items-center gap-3" data-page-colors-row="<%= key %>">
+        <label for="<%= id %>_<%= key %>" class="w-24 flex-shrink-0 text-sm font-medium text-gray-700"><%= PageColors::LABELS.fetch(key) %></label>
+        <input type="color" id="<%= id %>_<%= key %>" name="<%= param %>[<%= key %>]" value="<%= value %>"
+               class="h-10 w-12 flex-shrink-0 cursor-pointer rounded-lg border border-gray-300 bg-white p-1"
+               data-page-colors-target="well" data-key="<%= key %>" data-reset="<%= reset_to.public_send(key) %>"
+               data-action="input->page-colors#fromWell">
+        <input type="text" value="<%= value %>" maxlength="7" spellcheck="false" autocapitalize="none" aria-label="<%= PageColors::LABELS.fetch(key) %> as a hex color"
+               class="<%= input_class %>" data-page-colors-target="hex" data-key="<%= key %>" data-action="input->page-colors#fromHex">
+      </div>
+    <% end %>
+    <%# A plain wrapper carries hidden: the button's own inline-flex would beat it. %>
+    <div class="<%= 'hidden' if colors.to_h == reset_to.to_h %> pt-1" data-page-colors-target="reset">
+      <%= render "shared/button", text: local_assigns[:reset_text] || "Reset to CocoScout's colors", variant: "secondary", size: "small", type: :button,
+            data: { action: "click->page-colors#reset" } %>
+    </div>
+    <p class="text-xs text-gray-500 pt-1">The background and the words on it are the page's. The white boxes keep their dark words, so they stay easy to read. Buttons and links take the button color.</p>
+  </div>
+
+  <%# How the page looks with these colors, kept up to date as they change. %>
+  <div class="rounded-xl border border-gray-200 overflow-hidden" data-page-colors-target="preview" aria-hidden="true"
+       style="<%= colors.style %>">
+    <div class="px-5 py-6 space-y-3 transition-colors" style="background-color: var(--page-bg)">
+      <div class="text-center space-y-1">
+        <div class="text-2xl coustard-regular" style="color: var(--page-heading)">Your show</div>
+        <div class="text-sm" style="color: var(--page-text)">Saturday, December 5 · 8:00 PM · The Main Stage</div>
+      </div>
+      <div class="rounded-2xl border border-gray-200 bg-white px-4 py-3 flex items-center justify-between gap-3">
+        <div>
+          <div class="text-sm font-semibold text-gray-900">General admission</div>
+          <div class="text-xs text-gray-500">$25 · <span style="color: var(--page-accent)">Have a code?</span></div>
+        </div>
+        <span class="inline-flex items-center rounded px-3 py-1.5 text-sm font-medium" style="background-color: var(--page-button); color: var(--page-button-ink)">Get tickets</span>
+      </div>
+    </div>
+  </div>
+</div>

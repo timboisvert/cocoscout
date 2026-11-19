@@ -381,6 +381,11 @@ module Manage
       permitted.merge!(fee_mode: nil, cash_tax: nil, price_display: nil) if raw[:own_fees] == "0"
       permitted.merge!(max_per_order: nil, low_stock_threshold: nil) if raw[:own_orders] == "0"
       permitted.merge!(title: nil, description: nil, door_note: nil, accessibility_note: nil) if raw[:own_page] == "0"
+      if raw[:own_colors] == "0"
+        permitted.merge!(HasPageColors.attributes_from(nil))
+      elsif raw[:page_colors]
+        permitted.merge!(HasPageColors.attributes_from(raw[:page_colors]))
+      end
       if raw[:own_ages] == "0"
         permitted.merge!(minimum_age: nil, age_note: nil)
       elsif (choice = params.dig(:ticket_listing, :age_choice))

@@ -62,3 +62,20 @@
     </div>
   <% end %>
 </div>
+
+<%# The pages' colors (Tim, 2026-11-18): the landing page's and every ticket
+    page's, unless a production or a date overrides them on its Ticket page tab. %>
+<div class="mt-6 bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="page-colors">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900">Colors</h2>
+    <p class="text-sm text-gray-600 mt-1">The colors of your landing page and every ticket page. A production or a date can override them on its Ticket page tab.</p>
+  </div>
+  <%= form_with url: manage_ticketing_settings_page_colors_path, method: :patch do %>
+    <div class="px-6 py-5">
+      <%= render "manage/ticketing/page_colors_fields", param: "page_colors", colors: PageColors.for(profile), id: "page_colors" %>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
+  <% end %>
+</div>

@@ -319,12 +319,15 @@ RSpec.describe "Production ticketing", type: :request do
     it "gives a date its own page words by the box's switch, and clears them when it's switched off" do
       get manage_edit_ticket_listing_path(listing, section: "page")
       doc = Nokogiri::HTML(response.body)
-      expect(doc.css("[data-own-switch]").map { |n| n["data-own-switch"] }).to eq(%w[ticket_listing_own_page ticket_listing_own_ages])
+      expect(doc.css("[data-own-switch]").map { |n| n["data-own-switch"] }).to eq(%w[ticket_listing_own_page ticket_listing_own_ages ticket_listing_own_colors])
       # One line each: the switch, then the words, the settings a link to the production's.
       expect(doc.css("[data-own-switch] [data-override-line]").map { |n| n.text.squish }).to eq([
-        "Override Rising Stars' ticket page words for this date", "Override Rising Stars' ages settings for this date"
+        "Override Rising Stars' ticket page words for this date", "Override Rising Stars' ages settings for this date",
+        "Override your box office's page colors for this date"
       ])
-      expect(doc.css("[data-override-line] a").map { |a| a["href"] }.uniq).to eq([ manage_edit_production_ticketing_path(production, section: "sales") ])
+      expect(doc.css("[data-override-line] a").map { |a| a["href"] }.uniq).to eq([
+        manage_edit_production_ticketing_path(production, section: "sales"), manage_ticketing_settings_section_path(section: "page")
+      ])
 
       patch manage_ticket_listing_path(listing), params: { section: "page", ticket_listing: { own_page: "1", title: "Closing night", door_note: "Doors at 7" } }
       expect(listing.reload.attributes.slice("title", "door_note")).to eq("title" => "Closing night", "door_note" => "Doors at 7")

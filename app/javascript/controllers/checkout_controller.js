@@ -15,6 +15,8 @@ export default class extends Controller {
                       "gift", "giftClosed", "giftOpen", "giftCode", "giftApply", "giftError"]
     static values = {
         publishableKey: String,
+        // The page's accent (PageColors#accent) for the card form; pink by default.
+        accentColor: { type: String, default: "#ec4899" },
         amount: Number,
         free: Boolean,
         returnUrl: String,
@@ -43,7 +45,7 @@ export default class extends Controller {
             currency: "usd",
             appearance: {
                 theme: "stripe",
-                variables: { colorPrimary: "#ec4899", borderRadius: "8px", fontFamily: "Inter, system-ui, sans-serif" }
+                variables: { colorPrimary: this.accentColorValue, borderRadius: "8px", fontFamily: "Inter, system-ui, sans-serif" }
             }
         })
         this.elements.create("payment", { layout: "tabs" }).mount(this.paymentTarget)
