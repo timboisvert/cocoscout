@@ -62,8 +62,8 @@ class AssetRequestsController < ApplicationController
 
   def asset_page_locals
     { organization: @production.organization, request: @request,
-      upload_url: asset_request_upload_path(token: @request.token),
-      text_url: ->(spec) { asset_request_text_path(token: @request.token, spec_id: spec.id) },
+      upload_address: asset_request_upload_path(token: @request.token),
+      text_address: ->(spec) { asset_request_text_path(token: @request.token, spec_id: spec.id) },
       can_replace: ->(item) { asset_may_replace?(item) } }
   end
   helper_method :asset_page_locals

@@ -2,7 +2,7 @@
     file that's here or a place to drop one. A file is checked in the browser
     first, then on the server (AssetCheck), and the card is redrawn with it
     or with the sentence saying why it can't be used.
-    Locals: item, upload_url, can_replace (a lambda), organization. %>
+    Locals: item, upload_address, can_replace (a lambda), organization. %>
 <%
   spec = item.spec
   preview = item.present? ? item.preview : nil
@@ -11,7 +11,7 @@
 %>
 <div id="asset-card-<%= spec.id %>" class="bg-white border border-gray-200 rounded-2xl overflow-hidden flex flex-col"
      data-controller="asset-upload" data-asset-card="<%= spec.id %>"
-     data-asset-upload-url-value="<%= upload_url %>" data-asset-upload-spec-value="<%= spec.id %>"
+     data-asset-upload-url-value="<%= upload_address %>" data-asset-upload-spec-value="<%= spec.id %>"
      data-asset-upload-width-value="<%= spec.width %>" data-asset-upload-height-value="<%= spec.height %>"
      data-asset-upload-types-value="<%= spec.content_types.to_json %>" data-asset-upload-formats-value="<%= spec.formats_words %>"
      data-asset-upload-max-bytes-value="<%= spec.max_bytes %>" data-asset-upload-max-mb-value="<%= spec.max_megabytes %>"

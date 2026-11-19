@@ -1,12 +1,12 @@
 <%# One written item on the uploader, saved as it's typed.
-    Locals: item, text_url (a lambda), can_replace (a lambda), organization. %>
+    Locals: item, text_address (a lambda), can_replace (a lambda), organization. %>
 <%
   spec = item.spec
   editable = !item.present? || can_replace.call(item)
   field_id = "asset-text-#{spec.id}"
   rows = spec.max_length && spec.max_length <= 300 ? 2 : 5
 %>
-<div class="bg-white border border-gray-200 rounded-2xl px-4 py-4" data-controller="asset-text" data-asset-text-url-value="<%= text_url.call(spec) %>"
+<div class="bg-white border border-gray-200 rounded-2xl px-4 py-4" data-controller="asset-text" data-asset-text-url-value="<%= text_address.call(spec) %>"
      data-asset-text-max-value="<%= spec.max_length.to_i %>" data-asset-text-card="<%= spec.id %>">
   <div class="flex items-start justify-between gap-2">
     <label for="<%= field_id %>" class="text-base font-semibold text-gray-900"><%= spec.name %></label>

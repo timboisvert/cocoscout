@@ -51,8 +51,8 @@ module My
 
     def asset_page_locals
       { organization: @production.organization, request: @request,
-        upload_url: my_contract_assets_upload_path(@contract),
-        text_url: ->(spec) { my_contract_assets_text_path(@contract, spec_id: spec.id) },
+        upload_address: my_contract_assets_upload_path(@contract),
+        text_address: ->(spec) { my_contract_assets_text_path(@contract, spec_id: spec.id) },
         can_replace: ->(item) { asset_may_replace?(item) } }
     end
     helper_method :asset_page_locals

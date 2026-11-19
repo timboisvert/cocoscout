@@ -1,7 +1,7 @@
 <%# The uploader itself, the same on the request's no-login page and on My
     Contracts (Tim, 2026-11-19): the progress line, then a card per image in
     the organization's order, then the written items.
-    Locals: assets, counts, organization, upload_url, text_url, can_replace,
+    Locals: assets, counts, organization, upload_address, text_address, can_replace,
     ask_name (whether to ask a signed-out visitor for their name). %>
 <div class="space-y-8" data-asset-request-page>
   <%= render "asset_requests/progress", counts: counts, organization: organization %>
@@ -18,7 +18,7 @@
   <% if assets.image_specs.any? %>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
       <% assets.image_specs.each do |spec| %>
-        <%= render "asset_requests/card", item: assets.item(spec), upload_url: upload_url, can_replace: can_replace, organization: organization %>
+        <%= render "asset_requests/card", item: assets.item(spec), upload_address: upload_address, can_replace: can_replace, organization: organization %>
       <% end %>
     </div>
   <% end %>
@@ -26,7 +26,7 @@
   <% if assets.text_specs.any? %>
     <div class="space-y-5">
       <% assets.text_specs.each do |spec| %>
-        <%= render "asset_requests/text_card", item: assets.item(spec), text_url: text_url, can_replace: can_replace, organization: organization %>
+        <%= render "asset_requests/text_card", item: assets.item(spec), text_address: text_address, can_replace: can_replace, organization: organization %>
       <% end %>
     </div>
   <% end %>
