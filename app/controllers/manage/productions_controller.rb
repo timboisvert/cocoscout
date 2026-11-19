@@ -226,7 +226,11 @@ module Manage
         else
           "The folder's name can be at most 100 characters."
         end
-        redirect_to edit_manage_production_path(@production, tab: tab), alert: alert
+        # Said in the Shared folder card itself, with what was typed kept in
+        # the boxes: the settings page shows no alerts at its top.
+        flash[:documents_link_error] = alert
+        flash[:documents_link_attempt] = attrs.to_h
+        redirect_to edit_manage_production_path(@production, tab: tab)
       end
     end
 

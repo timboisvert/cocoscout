@@ -70,8 +70,12 @@ RSpec.describe "A production's shared folder", type: :request do
       production.update!(documents_link_url: drive_url)
       patch update_documents_link_manage_production_path(production),
             params: { production: { documents_link_url: "https://example.com/x" } }
-      expect(flash[:alert]).to include("Google Drive, Dropbox, or OneDrive")
       expect(production.reload.documents_link_url).to eq(drive_url)
+
+      # Said in the card, with what was typed still in the box.
+      follow_redirect!
+      expect(response.body).to include("Copy the folder&#39;s share link", "data-documents-link-error")
+      expect(response.body).to include('value="https://example.com/x"')
     end
 
     it "is managers' only" do

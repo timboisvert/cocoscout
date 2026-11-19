@@ -381,15 +381,24 @@
         <%= render "shared/section_heading", title: "Shared folder" %>
         <div class="p-6 pt-4">
           <p class="text-sm text-gray-600 mb-4">If your production keeps its files on Google Drive, Dropbox, or OneDrive, link the folder here. Everyone in the production will see it next to your documents, and the folder's own sharing settings decide who can open it.</p>
+          <% link_error = flash[:documents_link_error] %>
+          <% link_attempt = (flash[:documents_link_attempt] || {}).with_indifferent_access %>
           <%= form_with model: @production, url: update_documents_link_manage_production_path(@production), method: :patch, id: "documents-link-form", data: { turbo_action: "replace" } do |f| %>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <%= f.label :documents_link_url, "Folder link", class: "block text-sm font-medium text-gray-700 mb-2" %>
-                <%= f.url_field :documents_link_url, autocapitalize: "none", class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", placeholder: "https://drive.google.com/drive/folders/..." %>
+                <%= f.url_field :documents_link_url, value: link_error ? link_attempt[:documents_link_url] : @production.documents_link_url,
+                      autocapitalize: "none", placeholder: "https://drive.google.com/drive/folders/...",
+                      class: ["block w-full rounded-lg border px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", link_error ? "border-pink-500" : "border-gray-300"] %>
+                <% if link_error %>
+                  <p class="text-sm text-red-600 mt-2" data-documents-link-error><%= link_error %></p>
+                <% end %>
               </div>
               <div>
                 <%= f.label :documents_link_name, "Name", class: "block text-sm font-medium text-gray-700 mb-2" %>
-                <%= f.text_field :documents_link_name, maxlength: 100, class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500", placeholder: "Rehearsal files" %>
+                <%= f.text_field :documents_link_name, value: link_error ? link_attempt[:documents_link_name] : @production.documents_link_name,
+                      maxlength: 100, placeholder: "Rehearsal files",
+                      class: "block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500" %>
               </div>
             </div>
             <div class="flex flex-wrap items-center justify-end gap-3 mt-4">
