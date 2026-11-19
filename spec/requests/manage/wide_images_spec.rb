@@ -47,7 +47,7 @@ RSpec.describe "Wide images", type: :request do
 
   it "uploads and removes the production's wide image in Visual Assets" do
     get edit_manage_production_path(production, tab: 1)
-    expect(response.body).to include("Wide image", "Not here yet. 16:9, at least 1200 × 675. JPG, PNG, or WebP.")
+    expect(response.body).to include("Wide image", "Not here yet. 16:9, at least 1280 × 720. JPG, PNG, or WebP.")
 
     patch manage_wide_image_production_visual_asset_path(production), params: { production: { wide_image: picture } }
     expect(response).to redirect_to(edit_manage_production_path(production, tab: 1))
@@ -67,7 +67,7 @@ RSpec.describe "Wide images", type: :request do
   it "lists the poster and wide image first, and points to shows with their own" do
     get edit_manage_production_path(production, tab: 1)
     page = response.body
-    expect(page).to include("Poster", "Not here yet. 3:4, at least 900 × 1200. JPG or PNG.", "Wide image")
+    expect(page).to include("Poster", "Not here yet. 3:4, at least 1080 × 1440. JPG or PNG.", "Wide image")
     expect(page.index("Not here yet. 3:4")).to be < page.index("Not here yet. 16:9")
     expect(page).not_to include("Logo", "Posters used by individual shows")
     expect(page).to include("None. Every show and event uses the poster and wide image above.")

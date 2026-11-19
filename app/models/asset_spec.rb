@@ -20,9 +20,9 @@ class AssetSpec < ApplicationRecord
   # The built-ins' shapes are the app's, and the formats their records take
   # (Poster: JPG or PNG; HasWideImage: JPG, PNG, or WebP).
   BUILTIN_DEFAULTS = {
-    "poster" => { name: "Poster", kind: "image", width: 900, height: 1200, formats: %w[jpg png], max_megabytes: 10,
+    "poster" => { name: "Poster", kind: "image", width: 1080, height: 1440, formats: %w[jpg png], max_megabytes: 10,
                   used_for: "Lists and public pages across CocoScout" },
-    "wide" => { name: "Wide image", kind: "image", width: 1200, height: 675, formats: %w[jpg png webp], max_megabytes: 10,
+    "wide" => { name: "Wide image", kind: "image", width: 1280, height: 720, formats: %w[jpg png webp], max_megabytes: 10,
                 used_for: "Ticket pages and shared links" },
     "description" => { name: "Show description", kind: "text", max_length: 2000,
                        used_for: "The production's description, on its ticket pages and public page" }

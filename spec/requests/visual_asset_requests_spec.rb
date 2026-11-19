@@ -113,7 +113,7 @@ RSpec.describe "Visual asset requests", type: :request do
     it "makes an uploaded poster the primary one and keeps the one before it" do
       poster_spec = org.asset_specs.find_by(builtin: "poster")
       old = production.posters.create!(image: fixture_file_upload("test_image.png", "image/png"), is_primary: true)
-      post manage_upload_production_visual_asset_path(production), params: { spec_id: poster_spec.id, file: asset_image(900, 1200) }
+      post manage_upload_production_visual_asset_path(production), params: { spec_id: poster_spec.id, file: asset_image(1080, 1440) }
 
       expect(response.parsed_body["ok"]).to be(true)
       expect(production.reload.primary_poster).not_to eq(old)
@@ -209,7 +209,7 @@ RSpec.describe "Visual asset requests", type: :request do
     it "won't replace what was there before when told not to, but lets them change their own" do
       wide = org.asset_specs.find_by(builtin: "wide")
       production.update!(wide_image: fixture_file_upload("test_image.png", "image/png"))
-      post asset_request_upload_path(token: request_record.token), params: { spec_id: wide.id, file: asset_image(1200, 675) }
+      post asset_request_upload_path(token: request_record.token), params: { spec_id: wide.id, file: asset_image(1280, 720) }
       expect(response.parsed_body["message"]).to eq("Wide image has already been added. Ask The Lantern Room if you need to change it.")
 
       post asset_request_upload_path(token: request_record.token), params: { spec_id: instagram.id, file: asset_image(1080, 1080) }
@@ -303,8 +303,8 @@ RSpec.describe "Visual asset requests", type: :request do
       poster = org.asset_specs.find_by(builtin: "poster")
       wide = org.asset_specs.find_by(builtin: "wide")
       description = org.asset_specs.find_by(builtin: "description")
-      arrive(poster, asset_image(900, 1200), name: "Dana Whitfield")
-      arrive(wide, asset_image(1200, 675), name: "Dana Whitfield")
+      arrive(poster, asset_image(1080, 1440), name: "Dana Whitfield")
+      arrive(wide, asset_image(1280, 720), name: "Dana Whitfield")
       arrive(instagram, asset_image(1080, 1080), name: "Dana Whitfield")
       assets.store_text!(description, "An hour of stand-up.", name: "Dana Whitfield", request: request_record)
       assets.store_text!(blurb, "Six comics.", name: "Dana Whitfield", request: request_record)
