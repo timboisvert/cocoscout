@@ -2833,12 +2833,14 @@ class Contract < ApplicationRecord
   end
 
   # A flat fee shows the fee itself; the ticket-revenue-minus-fee variant says so.
+  # Each date has its own row, so it never says "per show": the default fee
+  # reads like a date's own fee, "Ticket revenue less $250.00 fee" (Tim,
+  # 2026-11-19).
   def license_flat_fee_rent(cfg)
     return "—" unless cfg["flat_fee_amount"].to_f.positive?
 
     if cfg["flat_fee_direction"] == "ticket_revenue_minus_fee"
-      per = flat_fee_basis == "per_show" ? " per show" : ""
-      "Ticket revenue less #{deal_money(cfg['flat_fee_amount'])}#{per} fee"
+      "Ticket revenue less #{deal_money(cfg['flat_fee_amount'])} fee"
     else
       deal_money(cfg["flat_fee_amount"])
     end

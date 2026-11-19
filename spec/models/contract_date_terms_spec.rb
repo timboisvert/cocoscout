@@ -215,7 +215,7 @@ RSpec.describe "Contract date terms", type: :model do
                               "flat_fee_amount" => 300, "flat_fee_basis" => "per_show" }
       })
       contract.set_draft_date_terms!([ show_times.first.iso8601 ], value: "250", note: nil, field: :amount)
-      expect(rents(contract)).to eq([ "Ticket revenue less $250.00 fee", "Ticket revenue less $300.00 per show fee" ])
+      expect(rents(contract)).to eq([ "Ticket revenue less $250.00 fee", "Ticket revenue less $300.00 fee" ])
       expect(contract.send(:deal_terms_html)).to include("Dates with their own terms", "$250 fee this show (usually $300)")
     end
 
