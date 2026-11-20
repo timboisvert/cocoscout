@@ -264,7 +264,9 @@
       <!-- Casting: the production's answer, and the way into the rest -->
       <div data-tabs-target="panel" class="hidden space-y-6" data-production-casting-tab>
         <%= render "manage/casting/answer_card", production: @production, return_to: "production_edit" %>
-        <div class="bg-white border border-gray-200 rounded-xl px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <%= render "shared/section_heading", title: "Casting Settings" %>
+          <div class="px-6 py-5 flex flex-wrap items-center justify-between gap-3">
           <% case @production.casting_state %>
           <% when :not_set_up %>
             <p class="text-sm text-gray-700">Casting isn't set up for <%= @production.name %> yet: who you cast, your roles, and which dates are cast.</p>
@@ -275,6 +277,7 @@
           <% else %>
             <p class="text-sm text-gray-700">A single date can still be cast: turn casting on from that date's page.</p>
           <% end %>
+          </div>
         </div>
       </div>
     <% end %>
@@ -451,16 +454,22 @@
 
     <!-- Tickets (Pro): the Tickets question (Round 9 §3). Dates inherit the answer; a date can answer for itself on its own Tickets tab. -->
     <div data-tabs-target="panel" class="hidden">
-      <div class="bg-white border border-gray-200 rounded-lg p-6">
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <%# The question is the heading only where the question is asked: not for a
+            producer, and not behind the Pro pitch. %>
+        <%= render "shared/section_heading",
+              title: (org_manager && @production.organization.feature_available?(:ticketing) ? "Where do people get tickets for #{@production.name}?" : "Tickets") %>
+        <div class="px-6 py-5">
         <% if !org_manager %>
           <p class="text-sm text-gray-600">Tickets for <%= @production.name %> are set up by your organization's managers.</p>
         <% elsif @production.organization.feature_available?(:ticketing) %>
-          <%= render "shared/ticketing/tickets_question", production: @production, cocoscout_fields: false,
+          <%= render "shared/ticketing/tickets_question", production: @production, cocoscout_fields: false, heading: false,
                 return_to: edit_manage_production_path(@production, tab: production_tickets_tab(@production)) %>
           <p class="mt-4 text-xs text-gray-500">Every date of <%= @production.name %> follows this. A date can answer for itself on its own Tickets tab.</p>
         <% else %>
           <%= render "manage/billing/upgrade", paywall: Manage::PaidFeatureGate::FEATURE_DETAILS[:ticketing], feature: :ticketing %>
         <% end %>
+        </div>
       </div>
     </div>
 
@@ -649,22 +658,23 @@
     <% if org_manager %>
     <div data-tabs-target="panel" class="hidden">
       <% if org_manager %>
-        <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+        <div class="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6">
+          <%= render "shared/section_heading", title: (@production.archived? ? "This production is archived" : "Archive this production") %>
+          <div class="px-6 py-5">
           <% if @production.archived? %>
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">This production is archived</h3>
             <p class="text-sm text-gray-600 mb-4">
               It's hidden from your production lists and pickers. Nothing was deleted: its dates, people, money, and documents are all still here.
             </p>
             <%= render "shared/button", text: "Unarchive", variant: "primary", size: "medium",
                   path: unarchive_manage_production_path(@production), method: :post %>
           <% else %>
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">Archive this production</h3>
             <p class="text-sm text-gray-600 mb-4">
               Done with this one? Archiving hides it from your production lists and pickers. Nothing is deleted, and you can unarchive it from the Productions page any time.
             </p>
             <%= render "shared/button", text: "Archive this production", variant: "primary", size: "medium", type: :button,
                   data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-archive-production" } %>
           <% end %>
+          </div>
         </div>
         <% unless @production.archived? %>
           <%= render "shared/confirm_modal", id: "confirm-archive-production",

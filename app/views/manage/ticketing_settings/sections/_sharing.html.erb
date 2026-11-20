@@ -29,6 +29,17 @@
   ]
 %>
 <%= form_with url: manage_ticketing_settings_sharing_path, method: :patch, class: "space-y-6" do %>
+  <%# The rule the choices below sit inside. %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="px-6 py-4">
+      <h2 class="text-lg font-semibold text-gray-900">Sales visibility</h2>
+      <p class="text-sm text-gray-600 mt-1">
+        Managers always see everything. Everyone else sees what you choose here, and only for productions they're part of. Buyers' emails never leave the box office.
+        Staff see how many people to expect on their shifts: <%= link_to "Staffing settings → Ticketing", manage_staffing_settings_section_path(section: "ticketing"), class: "text-pink-600 hover:text-pink-700 underline" %>.
+        To share one show with someone outside the production, use that show's Visibility page.
+      </p>
+    </div>
+  </div>
   <% groups.each do |group| %>
     <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="<%= group[:field] %>">
       <%= render "shared/section_heading", title: group[:title], intro: group[:intro] %>
@@ -52,10 +63,4 @@
     </div>
     </div>
   <% end %>
-
-  <p class="text-sm text-gray-600">
-    Managers always see everything. Everyone else sees what you choose here, and only for productions they're part of. Buyers' emails never leave the box office.
-    Staff see how many people to expect on their shifts: <%= link_to "Staffing settings → Ticketing", manage_staffing_settings_section_path(section: "ticketing"), class: "text-pink-600 hover:text-pink-700 underline" %>.
-    To share one show with someone outside the production, use that show's Visibility page.
-  </p>
 <% end %>

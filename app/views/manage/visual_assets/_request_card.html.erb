@@ -2,26 +2,15 @@
     the organization's list is here, and the one link that asks someone
     outside for the rest. Locals: production, assets, counts, request. %>
 <% organization = production.organization %>
-<div class="bg-white border border-gray-200 rounded-lg p-5 sm:p-6" data-asset-request-card>
+<%# A headed box like every settings section (Tim, 2026-11-20): what has
+    come in is the line under the heading, the buttons sit beside it. %>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-asset-request-card>
   <% if request&.open? %>
     <% last = request.last_date %>
-    <div class="flex flex-col lg:flex-row lg:items-center gap-4">
-      <div class="flex-1 min-w-0">
-        <p class="text-base font-semibold text-gray-900">
-          <%= counts.done %> of <%= counts.total %> received.
-          <%= counts.complete? ? "Everything required has been added." : "Still required: #{counts.missing_required.to_sentence(last_word_connector: ', and ', two_words_connector: ', and ')}." %>
-        </p>
-        <p class="text-sm text-gray-600 mt-1">
-          <% if request.sent_at && request.recipient_emails.any? %>
-            Requested on <%= request.sent_at.strftime("%B %-d") %> from <%= request.recipient_emails.to_sentence %>.
-          <% else %>
-            The link is ready, and nobody has been emailed it yet.
-          <% end %>
-          <%= last ? "The link stays open until the last date, #{last.strftime('%B %-d')}." : "The link stays open until the production's last date." %>
-          <%= request.allow_replace? ? "They can replace what was already here." : "They can't replace what was already here." %>
-        </p>
-      </div>
-      <div class="flex flex-wrap gap-2 lg:justify-end" data-controller="copy-text" data-copy-text-text-value="<%= request.url %>">
+    <% received = "#{counts.done} of #{counts.total} received. " +
+         (counts.complete? ? "Everything required has been added." : "Still required: #{counts.missing_required.to_sentence(last_word_connector: ', and ', two_words_connector: ', and ')}.") %>
+    <%= render "shared/section_heading", title: "Required items", intro: received do %>
+      <div class="flex flex-wrap gap-2" data-controller="copy-text" data-copy-text-text-value="<%= request.url %>">
         <%= render "shared/button", text: "Copy link", variant: "secondary", size: "small", type: :button, data: { action: "click->copy-text#copy" } %>
         <%= render "shared/button", text: request.recipient_emails.any? ? "Send a reminder" : "Email the link", variant: "secondary", size: "small", type: :button,
               data: request.recipient_emails.any? ? { controller: "modal", action: "click->modal#open", modal_id: "confirm-asset-reminder" } : { controller: "modal", action: "click->modal#open", modal_id: "asset-request-sheet" } %>
@@ -30,9 +19,20 @@
         <%= render "shared/button", text: "Turn off the link", variant: "secondary", size: "small", type: :button,
               data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-asset-turn-off" } %>
       </div>
-    </div>
-    <div class="mt-4 h-2 rounded-full bg-gray-100 overflow-hidden" role="img" aria-label="<%= counts.done %> of <%= counts.total %> received">
-      <div class="h-2 bg-pink-500" style="width: <%= counts.total.zero? ? 0 : (counts.done * 100.0 / counts.total).round(1) %>%"></div>
+    <% end %>
+    <div class="px-6 py-5">
+      <p class="text-sm text-gray-600">
+        <% if request.sent_at && request.recipient_emails.any? %>
+          Requested on <%= request.sent_at.strftime("%B %-d") %> from <%= request.recipient_emails.to_sentence %>.
+        <% else %>
+          The link is ready, and nobody has been emailed it yet.
+        <% end %>
+        <%= last ? "The link stays open until the last date, #{last.strftime('%B %-d')}." : "The link stays open until the production's last date." %>
+        <%= request.allow_replace? ? "They can replace what was already here." : "They can't replace what was already here." %>
+      </p>
+      <div class="mt-4 h-2 rounded-full bg-gray-100 overflow-hidden" role="img" aria-label="<%= counts.done %> of <%= counts.total %> received">
+        <div class="h-2 bg-pink-500" style="width: <%= counts.total.zero? ? 0 : (counts.done * 100.0 / counts.total).round(1) %>%"></div>
+      </div>
     </div>
 
     <% if request.recipient_emails.any? %>
@@ -47,19 +47,19 @@
           message: "Nobody can add anything with it from now on, and people on the contract no longer see it on My Contracts. Anything already added stays.",
           confirm_text: "Turn off the link", url: manage_turn_off_production_visual_asset_path(production), method: :post %>
   <% else %>
-    <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-      <div class="flex-1 min-w-0">
-        <p class="text-base font-semibold text-gray-900">You have <%= counts.done %> of the <%= counts.total %> items <%= organization.name %> requires for every production.</p>
-        <p class="text-sm text-gray-600 mt-1">
-          <% if request&.production_over? %>
-            The last link turned itself off after the last date. Send a new one if something still needs to change.
-          <% else %>
-            Send one link, and whoever makes the artwork can add the rest without signing in. Each file is checked against your sizes as it arrives.
-          <% end %>
-        </p>
-      </div>
-      <%= render "shared/button", text: "Request these", variant: "primary", size: "medium", type: :button,
+    <%= render "shared/section_heading", title: "Required items",
+          intro: "You have #{counts.done} of the #{counts.total} items #{organization.name} requires for every production." do %>
+      <%= render "shared/button", text: "Request these", variant: "primary", size: "small", type: :button,
             data: { controller: "modal", action: "click->modal#open", modal_id: "asset-request-sheet" } %>
+    <% end %>
+    <div class="px-6 py-5">
+      <p class="text-sm text-gray-600">
+        <% if request&.production_over? %>
+          The last link turned itself off after the last date. Send a new one if something still needs to change.
+        <% else %>
+          Send one link, and whoever makes the artwork can add the rest without signing in. Each file is checked against your sizes as it arrives.
+        <% end %>
+      </p>
     </div>
   <% end %>
 </div>

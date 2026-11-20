@@ -1,4 +1,10 @@
-<div class="mt-4 space-y-1">
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <%= render "shared/section_heading", title: "People" do %>
+    <% if @is_owner || @role == "manager" %>
+      <%= render "shared/button", text: "Invite Organization Team Member", variant: "secondary", size: "small", type: :button, data: { action: "click->org-team-modals#openInviteModal" } %>
+    <% end %>
+  <% end %>
+<div class="px-6 py-5 space-y-1">
   <% @team_members.each do |member| %>
     <% organization_role = member.organization_roles.find { |r| r.organization_id == @organization.id } %>
     <% next unless organization_role&.company_role.in?(%w[manager viewer]) %>
@@ -125,11 +131,9 @@
     <% end %>
   <% end %>
 </div>
+</div>
 
 <% if @is_owner || @role == "manager" %>
-  <div class="border-t border-gray-200 pt-5 mt-8">
-    <%= render "shared/button", text: "Invite Organization Team Member", variant: "secondary", size: "medium", type: :button, data: { action: "click->org-team-modals#openInviteModal" } %>
-  </div>
 
   <!-- Invite Organization Team Member Modal -->
   <div data-org-team-modals-target="inviteModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">

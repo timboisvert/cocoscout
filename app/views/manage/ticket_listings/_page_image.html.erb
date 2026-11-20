@@ -9,10 +9,11 @@
   media_path = manage_edit_show_path(listing.production, show, tab: 4)
   assets_path = edit_manage_production_path(listing.production, tab: 1)
 %>
-<div class="bg-white rounded-lg border border-gray-200 p-5">
-  <h3 class="font-semibold text-gray-900">Ticket page image</h3>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <%= render "shared/section_heading", title: "Ticket page image" %>
+  <div class="px-6 py-5">
   <% if image %>
-    <%= image_tag image, alt: "", class: "mt-3 #{page_image.wide? ? 'w-full' : 'max-h-56 w-auto mx-auto'} h-auto rounded-lg border border-gray-200 bg-gray-50" %>
+    <%= image_tag image, alt: "", class: "#{page_image.wide? ? 'w-full' : 'max-h-56 w-auto mx-auto'} h-auto rounded-lg border border-gray-200 bg-gray-50" %>
   <% end %>
   <p class="text-xs mt-2 <%= has_wide ? 'text-gray-600' : 'text-amber-700' %>">
     <% if has_wide %>
@@ -27,4 +28,5 @@
     Add a wide image (16:9) for <%= link_to "this show", media_path, class: "text-pink-600 hover:text-pink-700" %>
     or <%= link_to "every date", assets_path, class: "text-pink-600 hover:text-pink-700" %>.
   </p>
+</div>
 </div>

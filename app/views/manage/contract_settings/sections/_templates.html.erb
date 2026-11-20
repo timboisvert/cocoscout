@@ -1,17 +1,15 @@
-<div class="bg-white border border-gray-200 rounded-xl p-6">
-  <div class="flex items-start justify-between gap-4">
-    <div>
-      <h2 class="text-lg font-semibold text-gray-900 mb-1">Contract templates</h2>
-      <p class="text-sm text-gray-600">Reusable contract wording you can send for e-signature. Each contract fills in the <code class="bg-gray-100 px-1 rounded text-xs">{{merge fields}}</code> from its own data, and the dates, financials, and services are appended automatically.</p>
-    </div>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <%= render "shared/section_heading", title: "Contract templates",
+        intro: safe_join([ "Reusable contract wording you can send for e-signature. Each contract fills in the ",
+                           tag.code("{{merge fields}}", class: "bg-gray-100 px-1 rounded text-xs"),
+                           " from its own data, and the dates, financials, and services are appended automatically." ]) do %>
     <%= link_to new_manage_contract_template_path, class: "shrink-0" do %>
       <%= render "shared/button", text: "New Template", variant: "primary", size: "small", icon: "plus" %>
     <% end %>
-  </div>
-</div>
+  <% end %>
 
 <% if @contract_templates.any? %>
-  <div class="space-y-2">
+  <div class="px-6 py-5 space-y-2">
     <% @contract_templates.each do |template| %>
       <%= link_to edit_manage_contract_template_path(template), class: "block bg-white rounded-lg border border-gray-200 p-5 hover:bg-gray-50 transition-colors" do %>
         <div class="flex items-center justify-between">
@@ -42,6 +40,9 @@
     <% end %>
   </div>
 <% else %>
+  <div class="px-6 py-5">
   <%= render "shared/empty_state", icon: "document", title: "No contract templates yet", body: "Create a template so you can send contracts for signature without rewriting the wording each time.",
         actions: [ { text: "Create a template", path: new_manage_contract_template_path } ] %>
+  </div>
 <% end %>
+</div>

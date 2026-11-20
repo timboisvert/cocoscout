@@ -6,11 +6,9 @@
 <% person = member.person %>
 <% w9 = member.current_w9 %>
 <% pill = w9_pill(member) %>
-<div data-staff-edit-target="panel" data-panel="taxes" class="hidden space-y-5">
-  <div>
-    <h2 class="text-lg font-semibold text-gray-900">Taxes</h2>
-    <p class="text-sm text-gray-500 mt-0.5"><%= member.display_name %> is an independent contractor. Their W-9 is what you'll need for their 1099-NEC.</p>
-  </div>
+<div data-staff-edit-target="panel" data-panel="taxes" class="hidden bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <%= render "shared/section_heading", title: "Taxes", intro: "#{member.display_name} is an independent contractor. Their W-9 is what you'll need for their 1099-NEC." %>
+  <div class="px-6 py-5 space-y-5">
 
   <div class="rounded-lg border border-gray-200 p-4 space-y-3">
     <div class="flex items-start gap-3">
@@ -123,4 +121,5 @@
       </div>
     </div>
   </div>
+</div>
 </div>

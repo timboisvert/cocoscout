@@ -9,10 +9,12 @@
      data-talent-pool-inline-remove-group-url-value="<%= manage_casting_talent_pool_remove_group_path(@production) %>"
      data-talent-pool-inline-members-url-value="<%= manage_casting_talent_pool_path(@production) %>">
 
-  <p class="text-sm text-gray-500 mb-4">The talent pool contains the people and groups available for casting in this production.</p>
-
-  <div data-talent-pool-inline-target="membersList">
-    <%= render 'manage/casting_settings/talent_pool_members', talent_pool: @talent_pool %>
+  <%# The pool's people, in the box every settings section has. %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <%= render "shared/section_heading", title: "Talent Pool", intro: "The talent pool contains the people and groups available for casting in this production." %>
+    <div class="px-6 py-5" data-talent-pool-inline-target="membersList">
+      <%= render 'manage/casting_settings/talent_pool_members', talent_pool: @talent_pool %>
+    </div>
   </div>
 
   <%# ---- Sharing ---- %>

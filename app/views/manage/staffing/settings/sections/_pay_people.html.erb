@@ -1,22 +1,21 @@
 <%# Who's hidden from the Pay People grid. Salaried managers etc. are never
     paid there except the odd reimbursement — hide them by default; the pay
     grid keeps a reveal list at the bottom for the rare one-offs. %>
-<div class="bg-white border border-gray-200 rounded-xl p-6">
-  <div class="flex items-start justify-between gap-4">
-    <div>
-      <h2 class="text-lg font-semibold text-gray-900 mb-1">Pay People list</h2>
-      <% excluded_count = @active_staff_members.count(&:excluded_from_pay?) %>
-      <p class="text-sm text-gray-600">Hide staff who are never paid through Pay People (like salaried managers) so they don't clog the list. Hidden people — and inactive staff — can still be revealed there one at a time for a one-off payment or reimbursement.</p>
-      <p class="text-sm text-gray-500 mt-2">
-        <% if excluded_count.positive? %>
-          Currently hidden: <span class="font-medium text-gray-700"><%= @active_staff_members.select(&:excluded_from_pay?).map(&:display_name).join(", ") %></span>
-        <% else %>
-          No one is hidden right now.
-        <% end %>
-      </p>
-    </div>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <% excluded_count = @active_staff_members.count(&:excluded_from_pay?) %>
+  <%= render "shared/section_heading", title: "Pay People list",
+        intro: "Hide staff who are never paid through Pay People (like salaried managers) so they don't clog the list. Hidden people — and inactive staff — can still be revealed there one at a time for a one-off payment or reimbursement." do %>
     <%= render "shared/button", text: "Choose who's hidden", variant: "primary", size: "small", type: :button,
           data: { controller: "modal", action: "click->modal#open", modal_id: "pay-exclusions-modal" } %>
+  <% end %>
+  <div class="px-6 py-5">
+    <p class="text-sm text-gray-600">
+      <% if excluded_count.positive? %>
+        Currently hidden: <span class="font-medium text-gray-900"><%= @active_staff_members.select(&:excluded_from_pay?).map(&:display_name).join(", ") %></span>
+      <% else %>
+        No one is hidden right now.
+      <% end %>
+    </p>
   </div>
 
   <div id="pay-exclusions-modal"

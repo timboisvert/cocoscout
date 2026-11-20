@@ -347,7 +347,9 @@
 
     <%# ==================== TAB 3: RULES ==================== %>
     <div data-tabs-target="panel" class="hidden">
-      <div class="space-y-6">
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <%= render "shared/section_heading", title: "Rules" %>
+      <div class="px-6 py-5 space-y-6">
         <% unless is_waitlist %>
         <%# Registration Limits %>
         <div class="bg-gray-50 rounded-lg border border-gray-200 p-5">
@@ -697,6 +699,7 @@
           </div>
           <% end %>
         </div>
+      </div>
       </div>
     </div>
 

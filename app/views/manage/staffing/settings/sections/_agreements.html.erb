@@ -1,18 +1,16 @@
-<div class="bg-white border border-gray-200 rounded-xl p-6">
-  <div class="flex items-start justify-between gap-4">
-    <div>
-      <h2 class="text-lg font-semibold text-gray-900 mb-1">Staff agreements</h2>
-      <p class="text-sm text-gray-600">Reusable agreement wording your staff accept during onboarding — keep as many as you need (e.g. an employee agreement and a contractor agreement). Each staff member sees it with the <code class="bg-gray-100 px-1 rounded text-xs">{{merge fields}}</code> filled in from their own details.</p>
-    </div>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <%= render "shared/section_heading", title: "Staff agreements",
+        intro: safe_join([ "Reusable agreement wording your staff accept during onboarding — keep as many as you need (e.g. an employee agreement and a contractor agreement). Each staff member sees it with the ",
+                           tag.code("{{merge fields}}", class: "bg-gray-100 px-1 rounded text-xs"), " filled in from their own details." ]) do %>
     <%= link_to manage_new_staffing_agreement_template_path, class: "shrink-0" do %>
       <%= render "shared/button", text: "New Agreement", variant: "primary", size: "small", icon: "plus" %>
     <% end %>
-  </div>
+  <% end %>
 
   <%# Require signing: pick which agreement staff must sign (blank = optional). %>
   <% active_templates = @agreement_templates.select(&:active?) %>
   <% if active_templates.any? %>
-    <div class="mt-5 pt-5 border-t border-gray-200">
+    <div class="px-6 py-5 border-b border-gray-200">
       <%= form_with url: manage_staffing_settings_path, method: :patch, class: "flex flex-wrap items-end gap-3" do %>
         <div class="flex-1 min-w-[16rem]">
           <label for="required_staff_agreement_template_id" class="block text-sm font-medium text-gray-700 mb-1">Require staff to sign an agreement</label>
@@ -26,10 +24,10 @@
       <% end %>
     </div>
   <% end %>
-</div>
 
+<%# The agreements themselves, in the same box. %>
 <% if @agreement_templates.any? %>
-  <div class="space-y-2">
+  <div class="px-6 py-5 space-y-2">
     <% @agreement_templates.each do |template| %>
       <%= link_to manage_edit_staffing_agreement_template_path(template), class: "block bg-white rounded-lg border border-gray-200 p-5 hover:bg-gray-50 transition-colors" do %>
         <div class="flex items-center justify-between">
@@ -71,6 +69,9 @@
     <% end %>
   </div>
 <% else %>
+  <div class="px-6 py-5">
   <%= render "shared/empty_state", icon: "document", title: "No staff agreements yet", body: "Create one so new staff can review and accept it when they onboard.",
         actions: [ { text: "Create an agreement", path: manage_new_staffing_agreement_template_path } ] %>
+  </div>
 <% end %>
+</div>

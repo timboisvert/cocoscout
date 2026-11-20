@@ -1,3 +1,10 @@
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <%= render "shared/section_heading", title: "Locations" do %>
+    <% if @is_owner || @role == "manager" %>
+      <%= render "shared/button", text: "Add Location", variant: "secondary", size: "small", type: :button, data: { action: "click->org-locations-settings#openAddModal" } %>
+    <% end %>
+  <% end %>
+  <div class="px-6 py-5">
 <% if @archived_locations_count.to_i.positive? %>
   <%= render "shared/filters/filter_bar", bare: true, show_toggle: false, filter_groups: [
     { label: "Show", filters: [
@@ -8,7 +15,7 @@
 <% end %>
 
 <% if @locations.any? %>
-  <div class="grid grid-cols-1 gap-3 mt-4">
+  <div class="grid grid-cols-1 gap-3">
     <% @locations.each do |location| %>
       <%= link_to manage_location_path(location), class: "block p-4 bg-white border border-gray-200 rounded-lg hover:border-pink-300 hover:shadow-sm transition-all" do %>
         <div class="flex items-start justify-between">
@@ -54,13 +61,12 @@
     <% end %>
   </div>
 <% else %>
-  <p class="text-gray-500 text-sm mt-4"><%= @archived_locations_count.to_i.positive? ? "Every location is archived." : "No locations have been added yet." %></p>
+  <p class="text-gray-500 text-sm"><%= @archived_locations_count.to_i.positive? ? "Every location is archived." : "No locations have been added yet." %></p>
 <% end %>
+  </div>
+</div>
 
 <% if @is_owner || @role == "manager" %>
-  <div class="border-t border-gray-200 pt-5 mt-8">
-    <%= render "shared/button", text: "Add Location", variant: "secondary", size: "medium", type: :button, data: { action: "click->org-locations-settings#openAddModal" } %>
-  </div>
 
   <!-- Add Location Modal -->
   <div data-org-locations-settings-target="addModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">

@@ -90,8 +90,12 @@
 
   <%# ==================== TAB 2: QUESTIONS ==================== %>
   <div data-tabs-target="panel" class="hidden">
-    <p class="text-sm text-gray-600 mb-5">Add custom questions to collect additional information. Questions appear on the sign-up form.</p>
-    <%= render partial: "questions" %>
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <%= render "shared/section_heading", title: "Questions", intro: "Add custom questions to collect additional information. Questions appear on the sign-up form." %>
+      <div class="px-6 py-5">
+        <%= render partial: "questions" %>
+      </div>
+    </div>
   </div>
 
   </div>
