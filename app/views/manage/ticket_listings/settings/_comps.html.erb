@@ -8,8 +8,8 @@
   example = own ? comp_rules_sentence(listing, subject: "this date", single: true) : nil
 %>
 <%= form_with url: manage_ticket_listing_path(listing, section: "comps"), method: :patch do %>
-  <%= render "manage/ticketing_settings/comp_rules_fields", scope: "ticket_listing", rules: rules, save: true, own: own,
-        override: render("manage/ticketing/own_switch", title: "Comps", follows: (setup&.own_comps ? listing.production.name : "your box office"),
+  <%= render "manage/ticketing_settings/comp_rules_fields", scope: "ticket_listing", rules: rules, save: true, own: own, sides: comp_sides(listing.production, listing: listing),
+        override: render("manage/ticketing/own_switch", title: "Comps for this date", what: "comps settings", follows: (setup&.own_comps ? listing.production.name : "your box office"),
                          settings_path: (setup&.own_comps ? manage_edit_production_ticketing_path(listing.production, section: "comps") : manage_ticketing_settings_section_path(section: "comps")),
                          only: "this date", name: "ticket_listing[own_comps]", id: "ticket_listing_own_comps", checked: own),
         heading: "Issuing comps", off_words: "Turn them off and nobody issues comps on this date.", example: example %>

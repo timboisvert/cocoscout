@@ -8,8 +8,8 @@
   example = own ? "#{comp_rules_sentence(setup, subject: "a #{production.name} date")} A single date can still have its own rules." : nil
 %>
 <%= form_with url: manage_update_production_ticketing_path(production, section: "comps"), method: :patch do %>
-  <%= render "manage/ticketing_settings/comp_rules_fields", scope: "production_ticketing", rules: rules, save: true, own: own,
-        override: render("manage/ticketing/own_switch", title: "Comps", follows: "your box office", settings_path: manage_ticketing_settings_section_path(section: "comps"),
+  <%= render "manage/ticketing_settings/comp_rules_fields", scope: "production_ticketing", rules: rules, save: true, own: own, sides: comp_sides(production),
+        override: render("manage/ticketing/own_switch", title: "Comps for #{production.name}", what: "comps settings", follows: "your box office", settings_path: manage_ticketing_settings_section_path(section: "comps"),
                          only: production.name, name: "production_ticketing[own_comps]", id: "production_ticketing_own_comps", checked: own),
         heading: "Issuing comps", off_words: "Turn them off and nobody issues comps on #{production.name}.", example: example %>
 <% end %>

@@ -133,6 +133,20 @@ module TicketingHelper
     allowance[:left] ? "Issue comps · #{allowance[:left]} of #{allowance[:team_limit] || allowance[:date_left]} left" : "Issue comps"
   end
 
+  # Which sides' comp rules a production's or a date's own Comps settings
+  # show (Tim, 2026-11-20): by then it is known whether it is on a contract.
+  # A contracted one shows the contractor's; an in-house one the production
+  # team's; a contracted one with production team managers of its own (an
+  # in-house co-producer) shows both. The box office shows both always.
+  def comp_sides(production, listing: nil)
+    contracted = if listing then TicketSalesAccess.contracts_for(listing).any?
+    else production.third_party? || production.contracts.where.not(status: %w[draft cancelled]).exists?
+    end
+    return [ :team ] unless contracted
+
+    production.production_permissions.where(role: "manager").exists? ? %i[contract team] : [ :contract ]
+  end
+
   # Where a date's comp rules come from (CompRules), for "comps are off on …".
   def comp_rules_where(listing)
     case listing.comp_rules_source
