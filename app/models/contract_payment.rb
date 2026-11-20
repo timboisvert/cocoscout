@@ -269,7 +269,18 @@ class ContractPayment < ApplicationRecord
 
   # Check if payment is overdue
   def overdue?
-    status_pending? && due_date < Date.current && !nothing_to_hand_back?
+    status_pending? && due_date < Date.current && !nothing_to_hand_back? && !awaiting_their_share?
+  end
+
+  # A charge that comes out of their share is settled when a share comes due,
+  # not on its own date: the part of Nov 18's Booth Tech that Nov 18's share
+  # couldn't cover carries forward as "Booth Tech balance — Nov 18, 2026",
+  # dated Nov 18, and comes out of Nov 25's share. While a share is still to
+  # come it isn't late, and nobody should chase it (Tim, 2026-11-20). With no
+  # share left to take it from, deduct_from_payout? turns false and it is an
+  # ordinary charge again, late from its date.
+  def awaiting_their_share?
+    deduct_from_payout?
   end
 
   # Late in a way anyone can do something about. Money sitting in a payout run

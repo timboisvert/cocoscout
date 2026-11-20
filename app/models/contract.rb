@@ -1630,8 +1630,11 @@ class Contract < ApplicationRecord
     contract_payments.where(status: "pending")
   end
 
+  # Past due by ContractPayment#overdue?, which leaves out a charge still
+  # waiting on their next share. A relation, so callers can sum and count it.
   def overdue_payments
-    contract_payments.where(status: "pending").where("due_date < ?", Date.current)
+    late_ids = contract_payments.where(status: "pending").where("due_date < ?", Date.current).select(&:overdue?).map(&:id)
+    contract_payments.where(id: late_ids)
   end
 
   # Shows covered by THIS contract. When the production is shared by several
