@@ -335,7 +335,10 @@ class ProductionPage
   end
 
   def audition_items
-    count = audition_calls.sum { |call| call[:auditionee_count].to_i }
+    return [] unless cast?
+
+    # The ones this user hasn't voted on, as home and the Sign-ups page count them.
+    count = AuditionsToReview.new(user: user, productions: [ production ]).total
     return [] unless count.positive?
 
     [ NeedsDoing.new(key: "auditions", text: "#{count} audition #{'sign-up'.pluralize(count)} to review", detail: nil,
