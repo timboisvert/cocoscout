@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_19_210000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_20_200100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -743,6 +743,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_19_210000) do
     t.index ["source_type", "source_id"], name: "index_cocoscout_ledger_entries_on_source"
   end
 
+  create_table "comp_requests", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "ticket_listing_id", null: false
+    t.string "side", null: false
+    t.bigint "requested_by_id", null: false
+    t.integer "quantity", null: false
+    t.text "note"
+    t.string "status", default: "waiting", null: false
+    t.integer "approved_quantity"
+    t.bigint "decided_by_id"
+    t.datetime "decided_at"
+    t.text "comment"
+    t.string "closed_reason"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["decided_by_id"], name: "index_comp_requests_on_decided_by_id"
+    t.index ["organization_id"], name: "index_comp_requests_on_organization_id"
+    t.index ["requested_by_id"], name: "index_comp_requests_on_requested_by_id"
+    t.index ["ticket_listing_id", "side"], name: "index_comp_requests_one_waiting_per_side", unique: true, where: "((status)::text = 'waiting'::text)"
+    t.index ["ticket_listing_id"], name: "index_comp_requests_on_ticket_listing_id"
+  end
+
   create_table "company_expenses", force: :cascade do |t|
     t.string "vendor", null: false
     t.string "category", default: "other", null: false
@@ -863,7 +885,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_19_210000) do
     t.datetime "dismissed_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["contract_id", "show_id"], name: "index_contract_date_requests_one_open_per_date", unique: true, where: "(((status)::text = ANY ((ARRAY['open'::character varying, 'amending'::character varying])::text[])) AND (show_id IS NOT NULL) AND ((kind)::text <> 'question'::text))"
+    t.index ["contract_id", "show_id"], name: "index_contract_date_requests_one_open_per_date", unique: true, where: "(((status)::text = ANY (ARRAY[('open'::character varying)::text, ('amending'::character varying)::text])) AND (show_id IS NOT NULL) AND ((kind)::text <> 'question'::text))"
     t.index ["contract_id"], name: "index_contract_date_requests_on_contract_id"
     t.index ["organization_id", "status"], name: "index_contract_date_requests_on_organization_id_and_status"
     t.index ["show_id"], name: "index_contract_date_requests_on_show_id"
@@ -2849,6 +2871,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_19_210000) do
     t.string "page_button_color"
     t.string "page_heading_color"
     t.string "page_text_color"
+    t.boolean "team_comp_requests"
+    t.boolean "contract_comp_requests"
     t.index ["organization_id", "page_key"], name: "index_production_ticketings_on_org_and_page_key", unique: true, where: "(page_key IS NOT NULL)"
     t.index ["organization_id"], name: "index_production_ticketings_on_organization_id"
     t.index ["production_id"], name: "index_production_ticketings_on_production_id", unique: true
@@ -4441,6 +4465,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_19_210000) do
     t.string "page_button_color"
     t.string "page_heading_color"
     t.string "page_text_color"
+    t.boolean "team_comp_requests"
+    t.boolean "contract_comp_requests"
     t.index ["contract_id"], name: "index_ticket_listings_on_contract_id"
     t.index ["organization_id", "slug"], name: "index_ticket_listings_on_organization_id_and_slug", unique: true
     t.index ["organization_id", "status"], name: "index_ticket_listings_on_organization_id_and_status"
@@ -4922,6 +4948,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_19_210000) do
     t.string "page_button_color"
     t.string "page_heading_color"
     t.string "page_text_color"
+    t.boolean "team_comp_requests", default: false, null: false
+    t.boolean "contract_comp_requests", default: false, null: false
     t.index ["organization_id"], name: "index_ticketing_profiles_on_organization_id", unique: true
     t.index ["previous_slugs"], name: "index_ticketing_profiles_on_previous_slugs", using: :gin
     t.index ["slug"], name: "index_ticketing_profiles_on_slug", unique: true
@@ -5195,6 +5223,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_19_210000) do
   add_foreign_key "casting_tables", "users", column: "finalized_by_id"
   add_foreign_key "city_hub_memberships", "city_hubs"
   add_foreign_key "cocoscout_ledger_entries", "organizations"
+  add_foreign_key "comp_requests", "organizations"
+  add_foreign_key "comp_requests", "ticket_listings"
+  add_foreign_key "comp_requests", "users", column: "decided_by_id"
+  add_foreign_key "comp_requests", "users", column: "requested_by_id"
   add_foreign_key "contract_appendixes", "contracts"
   add_foreign_key "contract_connection_watchers", "contract_connections", on_delete: :cascade
   add_foreign_key "contract_connection_watchers", "users", column: "enabled_by_id", on_delete: :nullify

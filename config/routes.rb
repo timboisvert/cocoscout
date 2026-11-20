@@ -592,6 +592,8 @@ Rails.application.routes.draw do
     post  "/shows/:id/tickets/comps",       to: "ticket_sales#create_comp", as: "show_ticket_comps"
     post  "/shows/:id/tickets/comps/preview", to: "ticket_sales#preview_comps", as: "show_ticket_comps_preview"
     delete "/shows/:id/tickets/comps/:order_id", to: "ticket_sales#remove_comp", as: "remove_show_ticket_comp"
+    post "/shows/:id/tickets/comp-request", to: "ticket_sales#request_comps", as: "show_ticket_comp_request"
+    delete "/shows/:id/tickets/comp-request", to: "ticket_sales#withdraw_comp_request", as: "withdraw_show_ticket_comp_request"
     patch "/shows/:id/tickets/comps/:order_id", to: "ticket_sales#update_comp", as: "show_ticket_comp"
     post  "/shows/:show_id/reclaim_vacancy/:vacancy_id", to: "shows#reclaim_vacancy", as: "reclaim_vacancy"
 
@@ -730,6 +732,8 @@ Rails.application.routes.draw do
     post   "/productions/:production_id/sales/:id/comps/preview", to: "production_sales#preview_comps", as: "production_sale_comps_preview"
     patch  "/productions/:production_id/sales/:id/comps/:order_id", to: "production_sales#update_comp", as: "production_sale_comp"
     delete "/productions/:production_id/sales/:id/comps/:order_id", to: "production_sales#remove_comp", as: "remove_production_sale_comp"
+    post   "/productions/:production_id/sales/:id/comp-request", to: "production_sales#request_comps", as: "production_sale_comp_request"
+    delete "/productions/:production_id/sales/:id/comp-request", to: "production_sales#withdraw_comp_request", as: "withdraw_production_sale_comp_request"
     get "/",                              to: "manage#index"
 
     # Connections: other organizations' contracts connected to this one, as
@@ -1567,6 +1571,9 @@ Rails.application.routes.draw do
     delete "ticketing/productions/:production_id/visibility/:viewer_id", to: "ticket_sales_viewers#destroy", as: "production_ticketing_visibility_viewer"
     post   "ticketing/shows/:id/comps",           to: "ticket_comps#create",             as: "ticket_listing_comps"
     post   "ticketing/shows/:id/comps/preview",   to: "ticket_comps#preview",            as: "ticket_listing_comps_preview"
+    # Requests for more comps on a date, decided by the organization (CompRequest).
+    post   "ticketing/comp-requests/:id/approve", to: "comp_requests#approve",           as: "approve_comp_request"
+    post   "ticketing/comp-requests/:id/decline", to: "comp_requests#decline",           as: "decline_comp_request"
     get    "ticketing/shows/:id/edit(/:section)", to: "ticket_listings#edit",            as: "edit_ticket_listing"
     patch  "ticketing/shows/:id",                 to: "ticket_listings#update",          as: "ticket_listing"
     delete "ticketing/shows/:id",                 to: "ticket_listings#destroy"

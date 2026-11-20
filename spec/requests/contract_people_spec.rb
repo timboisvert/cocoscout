@@ -152,15 +152,15 @@ RSpec.describe "Contract people", type: :request do
     # People on a contract start with none (Tim, 2026-11-17): the page shows the sales and no comps.
     get my_show_tickets_path(listing.show)
     expect(response).to have_http_status(:ok)
-    expect(response.body).not_to include("Your comps for this date", "Issue comps")
+    expect(response.body).not_to include("data-comps-box", "Issue comps")
     expect { post my_show_ticket_comps_path(listing.show), params: { name: "Abe Comp", quantity: "1", tier_id: listing.ticket_tiers.first.id } }
       .not_to(change { Ticket.where(ticket_listing_id: listing.id).count })
 
     # The box office allows three per date, between everyone on the contract.
     TicketingProfile.for(org).update!(contract_comps_per_show: 3)
     get my_show_tickets_path(listing.show)
-    expect(CGI.unescapeHTML(response.body)).to include("Your comps for this date", "Issue comps · 3 of 3 left", my_show_ticket_comps_path(listing.show),
-                                                       "allows 3 comps for this date, shared between everyone on the contract. None have been issued so far.")
+    expect(response.body).to include(my_show_ticket_comps_path(listing.show))
+    expect(Nokogiri::HTML(response.body).at_css("[data-comps-box]")&.text.to_s.squish).to match(/Issue comps.*For this date\s*3\s*Shared by everyone on the contract.*Issued\s*0.*Left to issue\s*3/)
 
     expect { post my_show_ticket_comps_path(listing.show), params: { name: "Abe Comp", quantity: "2", tier_id: listing.ticket_tiers.first.id } }
       .to change { Ticket.where(ticket_listing_id: listing.id).count }.by(2)
@@ -170,7 +170,7 @@ RSpec.describe "Contract people", type: :request do
     # One number between them: the contractor has what Priya left, and no more.
     expect(TicketSalesAccess.comp_allowance(dan, TicketListing.find(listing.id))).to include(team_limit: 3, team_given: 2, left: 1, contract: true)
     get my_show_tickets_path(listing.show)
-    expect(response.body).to include("Issue comps · 1 of 3 left", "2 have been issued so far.")
+    expect(Nokogiri::HTML(response.body).at_css("[data-comps-box]")&.text.to_s.squish).to match(/Issued\s*2.*Left to issue\s*1/)
     expect { post my_show_ticket_comps_path(listing.show), params: { name: "Bea Comp", quantity: "2", tier_id: listing.ticket_tiers.first.id } }
       .not_to(change { Ticket.where(ticket_listing_id: listing.id).count })
     expect(flash[:alert]).to eq("You can issue 1 more comp for this date.")

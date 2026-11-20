@@ -234,6 +234,7 @@ module Manage
       raw = params.require(:production_ticketing).permit(:own_comps, *CompRules::PARAMS)
       own = raw[:own_comps] == "1"
       @setup.update!(CompRules.attributes_from(raw, own: own).merge(own_comps: own))
+      CompRequest.close_turned_off!(@production.organization)
       notice = own ? "Saved. #{@production.name} has its own comp rules: #{@setup.comp_rules_words}." : "Saved. #{@production.name} follows your box office's comp rules."
       redirect_to section_path("comps"), notice: notice
     end

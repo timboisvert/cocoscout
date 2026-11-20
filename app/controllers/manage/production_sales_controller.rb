@@ -11,11 +11,12 @@ module Manage
   # role, gated here on Pro and an open box office.
   class ProductionSalesController < Manage::ManageController
     include GivesComps
+    include RequestsComps
 
     before_action :set_production
     before_action :check_production_access
     before_action :require_sales_level!
-    before_action :set_listing, only: %i[show create_comp preview_comps update_comp remove_comp]
+    before_action :set_listing, only: %i[show create_comp preview_comps update_comp remove_comp request_comps withdraw_comp_request]
 
     def index
       @filter = params[:dates] == "past" ? "past" : "upcoming"
@@ -39,6 +40,7 @@ module Manage
       @guest_orders = @listing.ticket_orders.where(status: TicketOrder::WAS_PAID).includes(:ticket_order_items, tickets: %i[ticket_tier ticket_pass bundle_tier])
                               .order(:buyer_name, :id).to_a.select { |o| o.tickets.any? { |t| Ticket::SOLD_STATUSES.include?(t.status) } }
       @allowance = TicketSalesAccess.comp_allowance(Current.user, @listing)
+      @comp_request = comp_request_for(@listing) if @allowance
       @changeable_comp_ids = TicketComps.changeable_ids(@listing, Current.user)
     end
 
@@ -60,6 +62,20 @@ module Manage
       return redirect_to(sale_path, alert: "You can't change comps for this date.") unless @level == :full
 
       remove_comp_given(@listing, back: sale_path)
+    end
+
+    # More comps for this date, requested from the organization
+    # (RequestsComps). Only at the full view, where comps are issued.
+    def request_comps
+      return redirect_to(sale_path, alert: "You can't request comps for this date.") unless @level == :full
+
+      request_comps_for(@listing, back: manage_production_sale_path(@production, @listing, anchor: "comps"))
+    end
+
+    def withdraw_comp_request
+      return redirect_to(sale_path, alert: "You can't request comps for this date.") unless @level == :full
+
+      withdraw_comp_request_for(@listing, back: manage_production_sale_path(@production, @listing, anchor: "comps"))
     end
 
     # A pasted list's preview, within the same allowance.

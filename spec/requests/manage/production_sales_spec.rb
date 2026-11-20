@@ -53,7 +53,8 @@ RSpec.describe "Production sales for the production team", type: :request do
 
     get manage_production_sale_path(production, listing)
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Who's coming", "Dana Scully", "Sold here", "Your comps for this date", "0 of 2 issued", 'id="comps-modal"',
+    expect(Nokogiri::HTML(response.body).at_css("[data-comps-box]")&.text.to_s.squish).to match(/For this date\s*2.*Issued\s*0.*Left to issue\s*2/)
+    expect(response.body).to include("Who's coming", "Dana Scully", "Sold here", 'id="comps-modal"',
                                      manage_production_sale_comps_path(production, listing))
     expect(response.body).not_to include("dana@example.com", "/manage/ticketing", "You keep")
   end
@@ -66,7 +67,8 @@ RSpec.describe "Production sales for the production team", type: :request do
     expect(listing.ticket_orders.where(channel: "comp", issued_by: manager).count).to eq(1)
 
     get manage_production_sale_path(production, listing)
-    expect(response.body).to include("1 of 2 issued", "Issue comps · 1 of 2 left", "You can issue 1 more for this date.")
+    expect(Nokogiri::HTML(response.body).at_css("[data-comps-box]")&.text.to_s.squish).to match(/Issued\s*1.*Left to issue\s*1/)
+    expect(response.body).to include("You can issue 1 more for this date.")
 
     post manage_production_sale_comps_path(production, listing), params: { name: "Too Many", quantity: "2", tier_id: general.id, email_them: "0" }
     expect(flash[:alert]).to eq("You can issue 1 more comp for this date.")
@@ -78,7 +80,7 @@ RSpec.describe "Production sales for the production team", type: :request do
     expect(listing.ticket_orders.where(channel: "comp").count).to eq(2)
 
     get manage_production_sale_path(production, listing)
-    expect(response.body).to include("None left to issue")
+    expect(Nokogiri::HTML(response.body).at_css("[data-comps-box]")&.text.to_s.squish).to match(/Left to issue\s*0/)
     expect(response.body).not_to include('id="comps-modal"')
   end
 

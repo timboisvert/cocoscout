@@ -92,6 +92,8 @@ module Manage
     def update_comps
       raw = params.require(:ticketing_profile).permit(*CompRules::PARAMS)
       if ticketing_profile.update(CompRules.attributes_from(raw))
+        # Requests waiting from a side that may no longer request close (CompRequest).
+        CompRequest.close_turned_off!(ticketing_profile.organization)
         redirect_to section_path("comps"), notice: "Saved. #{ticketing_profile.comp_rules_words.upcase_first}."
       else
         @section = "comps"

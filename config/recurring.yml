@@ -27,6 +27,11 @@ development:
     class: ContractCompletionJob
     schedule: every hour
 
+  # Requests for more comps nobody decided before their date started.
+  comp_request_expiry:
+    class: CompRequestExpiryJob
+    schedule: every 15 minutes
+
   course_offering_completion:
     class: CourseOfferingCompletionJob
     schedule: every hour
@@ -147,6 +152,11 @@ production:
   contract_completion:
     class: ContractCompletionJob
     schedule: at 2am every day
+
+  # Requests for more comps nobody decided before their date started.
+  comp_request_expiry:
+    class: CompRequestExpiryJob
+    schedule: every 15 minutes
 
   course_offering_completion:
     class: CourseOfferingCompletionJob

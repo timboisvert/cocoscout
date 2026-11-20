@@ -409,7 +409,7 @@ RSpec.describe "Contract connections", type: :request do
       # It is one number for the whole contract's side: the contractor has one left too.
       expect(TicketSalesAccess.comp_allowance(user, TicketListing.find(listing.id))).to include(team_limit: 2, team_given: 1, left: 1)
       get manage_production_sale_path(their_production, listing)
-      expect(CGI.unescapeHTML(response.body)).to include("Issue comps · 1 of 2 left", "allows 2 comps for this date, shared between everyone on the contract. 1 has been issued so far.")
+      expect(Nokogiri::HTML(response.body).at_css("[data-comps-box]")&.text.to_s.squish).to match(/For this date\s*2\s*Shared by everyone on the contract.*Issued\s*1.*Left to issue\s*1/)
 
       # Edit and Remove are there in the organization, for any comp the contract's side issued: the colleague's and the contractor's.
       comp = listing.ticket_orders.find_by!(buyer_name: "A Friend")

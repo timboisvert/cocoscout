@@ -1,15 +1,16 @@
-<%# The comp rules card (CompRules), the same at every level: the box office
-    (Ticketing settings → Comps), a production's own and a date's own. Five
-    parts: comps on at all; how many a date can give away; whether production
-    team managers give some, and how many of them; and how many the people on
-    a contract may give (off is none).
+<%# The comp rules (CompRules), the same at every level: the box office
+    (Ticketing settings → Comps), a production's own and a date's own. Three
+    boxes in one form, each with its own Save (Tim, 2026-11-20): Comps (on at
+    all, and how many a date can issue), Your own productions (production team
+    managers: whether they issue comps, how many, and whether they may request
+    more) and Productions on a contract (the same for contractors).
     Locals: scope (the param prefix: ticketing_profile, production_ticketing
-    or ticket_listing), rules (anything with the six fields; nil means the
+    or ticket_listing), rules (anything with the fields; nil means the
     default), off_words (what "off" means here), intro_tail (optional, one
     more sentence for the intro), example (optional, the closing sentence),
-    heading (optional, default "Comps"), bare (optional: true inside a box
-    that already has its border, a production's or a date's own rules),
-    save (true: a Save in the box's foot). %>
+    heading (optional, default "Comps"), override (optional: the own_switch
+    html, at the top of the first box), own (with override: whether the
+    fields are on), save (true: a Save at the foot of each box). %>
 <%
   input_class = "block w-20 px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   radio_class = "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500 flex-shrink-0"
@@ -30,8 +31,22 @@
   ]
   contract_comps = rules.contract_comps_per_show.to_i.positive?
   contract_comps_per_show = contract_comps ? rules.contract_comps_per_show : CompRules::CONTRACT_COMPS_SUGGESTED
+  override = local_assigns[:override]
+  # With an override, each box's settings sit in a fieldset that is disabled
+  # while the override is off (fieldset-toggle on the wrapper).
+  fieldset_open = override ? %(<fieldset #{'disabled' unless local_assigns[:own]} data-fieldset-toggle-target="fields" class="disabled:opacity-50 min-w-0">).html_safe : "".html_safe
+  fieldset_close = override ? "</fieldset>".html_safe : "".html_safe
+  foot = capture do %>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
+  <% end
+  request_words = "For one date at a time. Your owners and managers get a notification, and approve the request, approve a different number, or decline it."
 %>
-<div class="<%= local_assigns[:bare] ? '' : 'bg-white border border-gray-200 rounded-xl overflow-hidden' %>" data-controller="dim-toggle">
+<div class="space-y-6" data-controller="dim-toggle<%= ' fieldset-toggle' if override %>">
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="comps">
+  <%= override %>
+  <%= fieldset_open %>
   <%= render "shared/section_heading", title: local_assigns[:heading] || "Comps",
         intro: "Free tickets for guests, with no fees. They take seats, and every one says who issued it. #{off_words}#{" #{local_assigns[:intro_tail]}" if local_assigns[:intro_tail].present?}" do %>
     <%= render "shared/toggle_switch", name: "#{scope}[comps_enabled]", checked: enabled, hidden_false: true,
@@ -39,7 +54,7 @@
           data: { dim_toggle_target: "switch", action: "change->dim-toggle#toggle" } %>
   <% end %>
 
-  <div class="divide-y divide-gray-100" data-dim-toggle-target="dimmed">
+  <div data-dim-toggle-target="dimmed">
     <%# The padding sits on a wrapper: a fieldset's own top padding opens a
         gap between its legend and the rest (Tim, 2026-11-07). %>
     <div class="px-6 py-4">
@@ -66,15 +81,28 @@
       </div>
     </fieldset>
     </div>
+    <% if local_assigns[:example].present? %>
+      <p class="px-6 py-3 text-sm text-gray-600 bg-gray-50 border-t border-gray-100"><%= local_assigns[:example] %></p>
+    <% end %>
+  </div>
+  <%= fieldset_close %>
+  <%= foot if local_assigns[:save] %>
+</div>
 
+<%# Your own productions: their production team managers. %>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="team-comps">
+  <%= render "shared/section_heading", title: "Your own productions",
+        intro: "Productions your organization runs. Their production team managers issue comps from their Production Dashboard." %>
+  <%= fieldset_open %>
+  <div data-dim-toggle-target="dimmed">
     <div data-controller="dim-toggle">
       <div class="px-6 py-4 flex items-center justify-between gap-6">
         <div>
-          <p class="text-sm font-medium text-gray-900">Production team managers can issue comps</p>
+          <p class="text-sm font-medium text-gray-900">Allow production team managers to issue comps</p>
           <p class="text-xs text-gray-600 mt-0.5">From their own Production Dashboard, on their own productions. Managers always can.</p>
         </div>
         <%= render "shared/toggle_switch", name: "#{scope}[team_comps]", checked: team_comps, hidden_false: true,
-              id: "#{scope}_team_comps", aria_label: "Production team managers can issue comps",
+              id: "#{scope}_team_comps", aria_label: "Allow production team managers to issue comps",
               data: { dim_toggle_target: "switch", action: "change->dim-toggle#toggle" } %>
       </div>
       <div class="px-6 pb-5" data-dim-toggle-target="dimmed">
@@ -100,17 +128,35 @@
           <% end %>
         </div>
       </fieldset>
+      <div class="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between gap-6">
+        <div>
+          <p class="text-sm font-medium text-gray-900">Allow production team managers to request more comps when they run out</p>
+          <p class="text-xs text-gray-600 mt-0.5"><%= request_words %></p>
+        </div>
+        <%= render "shared/toggle_switch", name: "#{scope}[team_comp_requests]", checked: rules.team_comp_requests == true, hidden_false: true,
+              id: "#{scope}_team_comp_requests", aria_label: "Allow production team managers to request more comps when they run out" %>
+      </div>
       </div>
     </div>
+  </div>
+  <%= fieldset_close %>
+  <%= foot if local_assigns[:save] %>
+</div>
 
+<%# Productions on a contract: the contractor's side. %>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="contract-comps">
+  <%= render "shared/section_heading", title: "Productions on a contract",
+        intro: "Productions a contractor brings to you. The contractor, and everyone on the contract, issue comps from their own page for each date." %>
+  <%= fieldset_open %>
+  <div data-dim-toggle-target="dimmed">
     <div data-controller="dim-toggle">
       <div class="px-6 py-4 flex items-center justify-between gap-6">
         <div>
-          <p class="text-sm font-medium text-gray-900">People on a contract can issue comps</p>
+          <p class="text-sm font-medium text-gray-900">Allow contractors to issue comps</p>
           <p class="text-xs text-gray-600 mt-0.5">For the dates their contract covers. That is the contractor, the people added to the contract and, when the contract is connected to their own organization on CocoScout, the people who run that organization.</p>
         </div>
         <%= render "shared/toggle_switch", name: "#{scope}[contract_comps]", checked: contract_comps, hidden_false: true,
-              id: "#{scope}_contract_comps", aria_label: "People on a contract can issue comps",
+              id: "#{scope}_contract_comps", aria_label: "Allow contractors to issue comps",
               data: { dim_toggle_target: "switch", action: "change->dim-toggle#toggle" } %>
       </div>
       <div class="px-6 pb-5" data-dim-toggle-target="dimmed">
@@ -121,16 +167,18 @@
                 class: input_class, "aria-label": "Comps the people on a contract may issue per date" %>
           <span class="text-xs text-gray-600">per date</span>
         </span>
+        <div class="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between gap-6">
+          <div>
+            <p class="text-sm font-medium text-gray-900">Allow contractors to request more comps when they run out</p>
+            <p class="text-xs text-gray-600 mt-0.5"><%= request_words %></p>
+          </div>
+          <%= render "shared/toggle_switch", name: "#{scope}[contract_comp_requests]", checked: rules.contract_comp_requests == true, hidden_false: true,
+                id: "#{scope}_contract_comp_requests", aria_label: "Allow contractors to request more comps when they run out" %>
+        </div>
       </div>
     </div>
-
-    <% if local_assigns[:example].present? %>
-      <p class="px-6 py-3 text-sm text-gray-600 bg-gray-50"><%= local_assigns[:example] %></p>
-    <% end %>
   </div>
-<% if local_assigns[:save] %>
-  <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
-    <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
-  </div>
-<% end %>
+  <%= fieldset_close %>
+  <%= foot if local_assigns[:save] %>
+</div>
 </div>

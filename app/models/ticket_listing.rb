@@ -31,6 +31,7 @@ class TicketListing < ApplicationRecord
   has_many :ticket_discount_codes, dependent: :destroy
   has_many :ticket_order_items
   has_many :ticket_outside_sales, dependent: :destroy
+  has_many :comp_requests, dependent: :destroy
 
   # Prices are edited in place on the listing page; an empty new row is skipped.
   accepts_nested_attributes_for :ticket_tiers, allow_destroy: true,
@@ -256,12 +257,27 @@ class TicketListing < ApplicationRecord
     comp_rules.contract_comps_per_show.to_i
   end
 
+  # Whether a side may request more comps for this date (CompRequest):
+  # :team (production team managers) or :contract (the contract's side).
+  def comp_requests_allowed?(side)
+    (side.to_s == "contract" ? comp_rules.contract_comp_requests : comp_rules.team_comp_requests) == true
+  end
+
+  # The comps approved on top of the rules for this date (Tim, 2026-11-20:
+  # an approved request sets the number for that date, whatever the caps
+  # said). One side's, or every side's.
+  def approved_comp_extra(side = nil)
+    scope = comp_requests.approved
+    scope = scope.where(side: side.to_s) if side
+    scope.sum(:approved_quantity)
+  end
+
   # How many comps this date can still give away, whoever gives them: nil
   # when there's no limit.
   def comps_left
     return nil unless effective_comps_limit == "fixed"
 
-    [ effective_comps_per_show - Ticketing::ListingStats.of(self).comps, 0 ].max
+    [ effective_comps_per_show + approved_comp_extra - Ticketing::ListingStats.of(self).comps, 0 ].max
   end
 
   # "Only 3 left" when a count is at or under the threshold, else nil.
