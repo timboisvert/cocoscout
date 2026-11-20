@@ -13,7 +13,7 @@
       <div class="flex flex-wrap gap-2" data-controller="copy-text" data-copy-text-text-value="<%= request.url %>">
         <%= render "shared/button", text: "Copy link", variant: "secondary", size: "small", type: :button, data: { action: "click->copy-text#copy" } %>
         <%= render "shared/button", text: request.recipient_emails.any? ? "Send a reminder" : "Email the link", variant: "secondary", size: "small", type: :button,
-              data: request.recipient_emails.any? ? { controller: "modal", action: "click->modal#open", modal_id: "confirm-asset-reminder" } : { controller: "modal", action: "click->modal#open", modal_id: "asset-request-sheet" } %>
+              data: { controller: "modal", action: "click->modal#open", modal_id: "asset-request-sheet" } %>
         <%= render "shared/button", text: "Make a new link", variant: "secondary", size: "small", type: :button,
               data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-asset-new-link" } %>
         <%= render "shared/button", text: "Turn off the link", variant: "secondary", size: "small", type: :button,
@@ -35,11 +35,6 @@
       </div>
     </div>
 
-    <% if request.recipient_emails.any? %>
-      <%= render "shared/confirm_modal", id: "confirm-asset-reminder", title: "Send a reminder?",
-            message: "#{ERB::Util.html_escape(request.recipient_emails.to_sentence)} will get the link again, with what is still needed.",
-            confirm_text: "Send the reminder", url: manage_remind_production_visual_asset_path(production), method: :post %>
-    <% end %>
     <%= render "shared/confirm_modal", id: "confirm-asset-new-link", title: "Make a new link?",
           message: "The link you sent stops working, and anything already added stays. Send the new one with a reminder.",
           confirm_text: "Make a new link", url: manage_new_link_production_visual_asset_path(production), method: :post %>

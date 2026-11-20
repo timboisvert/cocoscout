@@ -286,6 +286,7 @@
             message: "Ticket pages will use the poster instead. Shows with their own wide image keep it.",
             confirm_text: "Delete wide image", url: manage_wide_image_production_visual_asset_path(production), method: :delete %>
     <% end %>
-    <%= render "manage/visual_assets/request_sheet", production: production, assets: assets, request: request&.open? ? request : nil %>
+    <%= render "manage/visual_assets/request_sheet", production: production, assets: assets, request: request&.open? ? request : nil,
+          reminder: request&.open? && request.recipient_emails.any? %>
   <% end %>
 </div>

@@ -21,6 +21,10 @@ class AssetRequest < ApplicationRecord
     production.asset_requests.live.order(created_at: :desc).first
   end
 
+  # The email's subject when the manager writes none, and what the request
+  # sheet starts with (Tim, 2026-11-19: "needed for", not "we need for").
+  def self.default_subject(production) = "Images and details needed for #{production.name}"
+
   # The email's words when the manager writes none, and what the request
   # sheet starts with: plain and businesslike, no greeting (Tim, 2026-11-19).
   def self.default_message(production)

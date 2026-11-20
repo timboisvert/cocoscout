@@ -121,13 +121,8 @@ module Manage
       request = nil if request && !request.open?
       request ||= @production.asset_requests.new(created_by: Current.user)
 
-      emails = (Array(params[:recipients]) + params[:other_emails].to_s.split(/[,;\n]+/)).map { |email| email.to_s.strip.downcase }
-                 .compact_blank.uniq
-      bad = emails.reject { |email| email.match?(URI::MailTo::EMAIL_REGEXP) }
-      if bad.any?
-        words = bad.map { |email| %("#{email}") }.to_sentence
-        return redirect_to(tab_path, alert: "#{words} #{bad.one? ? "isn't an email address" : "aren't email addresses"}. Separate addresses with commas.")
-      end
+      emails = chosen_emails
+      return if performed?
 
       sending = params[:commit_action] != "copy"
       return redirect_to(tab_path, alert: "Choose someone to send the link to, or copy the link instead.") if sending && emails.empty?
@@ -151,8 +146,15 @@ module Manage
       return redirect_to(tab_path, alert: "There is no open request to send a reminder for.") unless request&.open?
       return redirect_to(tab_path, alert: "Nobody has been emailed this link yet.") if request.recipient_emails.empty?
 
-      AssetRequestMailing.deliver!(request, request.recipient_emails, sender: Current.user, reminder: true)
-      redirect_to tab_path, notice: "A reminder has been sent to #{request.recipient_emails.to_sentence}."
+      # The reminder goes to the people chosen on the sheet, in the words
+      # shown there: nothing is sent without being looked at (Tim, 2026-11-19).
+      emails = chosen_emails
+      return if performed?
+      return redirect_to(tab_path, alert: "Choose someone to send the reminder to.") if emails.empty?
+
+      request.update!(recipients: (request.recipient_emails + emails).uniq)
+      AssetRequestMailing.deliver!(request, emails, sender: Current.user, reminder: true, subject: params[:subject], message: params[:message])
+      redirect_to tab_path, notice: "A reminder has been sent to #{emails.to_sentence}."
     end
 
     def turn_off_request
@@ -181,7 +183,20 @@ module Manage
 
     def live_request = AssetRequest.current_for(@production)
 
-    def default_request_subject = "Images and details we need for #{@production.name}"
+    # The addresses ticked and typed on the sheet. Redirects with the reason
+    # when one of them isn't an address.
+    def chosen_emails
+      emails = (Array(params[:recipients]) + params[:other_emails].to_s.split(/[,;\n]+/)).map { |email| email.to_s.strip.downcase }
+                 .compact_blank.uniq
+      bad = emails.reject { |email| email.match?(URI::MailTo::EMAIL_REGEXP) }
+      return emails if bad.empty?
+
+      words = bad.map { |email| %("#{email}") }.to_sentence
+      redirect_to(tab_path, alert: "#{words} #{bad.one? ? "isn't an email address" : "aren't email addresses"}. Separate addresses with commas.")
+      []
+    end
+
+    def default_request_subject = AssetRequest.default_subject(@production)
 
     # AssetUploading: a manager adding on the tab is never notified about
     # their own changes, and may replace anything.

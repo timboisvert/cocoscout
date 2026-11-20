@@ -4,13 +4,16 @@
 # with the manager's own subject and message, what is still needed, and the
 # one button, to each address. Of those, the people with an account who are
 # on the production's contract, or on an in-house production's team, are
-# notified too. A reminder is the email alone.
+# notified too. A reminder is the email alone, with the subject and message
+# the manager saw and could change on the reminder sheet.
 class AssetRequestMailing
-  def self.deliver!(request, emails, sender:, reminder: false)
-    new(request, sender: sender, reminder: reminder).deliver!(emails)
+  def self.deliver!(request, emails, sender:, reminder: false, subject: nil, message: nil)
+    new(request, sender: sender, reminder: reminder, subject: subject, message: message).deliver!(emails)
   end
 
-  def initialize(request, sender:, reminder: false)
+  def initialize(request, sender:, reminder: false, subject: nil, message: nil)
+    @subject = subject.to_s.strip.presence
+    @message = message.to_s.strip.presence
     @request = request
     @production = request.production
     @organization = @production.organization
@@ -29,9 +32,9 @@ class AssetRequestMailing
   private
 
   def email_variables
-    subject = @request.subject.presence || "Images and details we need for #{@production.name}"
+    subject = @request.subject.presence || AssetRequest.default_subject(@production)
     {
-      "subject" => @reminder ? "A reminder: #{subject}" : subject,
+      "subject" => @subject || (@reminder ? "A reminder: #{subject}" : subject),
       "message_html" => message_html,
       "list_html" => list_html,
       "upload_url" => @request.url,
@@ -42,7 +45,7 @@ class AssetRequestMailing
   end
 
   def message_html
-    words = @request.message.to_s.strip
+    words = @message || @request.message.to_s.strip
     words = AssetRequest.default_message(@production) if words.blank?
     words.split(/\n{2,}/).map { |para| "<p>#{ERB::Util.html_escape(para).gsub("\n", '<br>')}</p>" }.join
   end

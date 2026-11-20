@@ -98,13 +98,14 @@ RSpec.describe "Visual asset requests", type: :request do
       expect(response.body).not_to include("ready to announce")
 
       # What they will be asked for: the images, then the written items,
-      # and what's uploaded says so (Tim, 2026-11-19).
+      # and what's here says "Received" (Tim, 2026-11-19).
       production.update!(wide_image: fixture_file_upload("test_image.png", "image/png"))
       org.asset_specs.find_by(builtin: "description").update_column(:position, -10)
       get edit_manage_production_path(production, tab: 1)
       sheet = response.body[response.body.index("What they will be asked for")..]
       expect(sheet.index("Instagram square")).to be < sheet.index("Show description")
-      expect(sheet).to include("Already uploaded")
+      expect(sheet).to include("Received")
+      expect(sheet).not_to include("Already uploaded")
       expect(sheet).not_to include("Already here")
     end
 
@@ -194,7 +195,32 @@ RSpec.describe "Visual asset requests", type: :request do
       expect(teammate.notifications.last.path).to eq(asset_request_path(token: request.token))
       expect(manager.notifications.count).to eq(0)
 
-      expect { post manage_remind_production_visual_asset_path(production) }.not_to change(Notification, :count)
+      expect { post manage_remind_production_visual_asset_path(production), params: { recipients: [ "sam@example.com" ] } }.not_to change(Notification, :count)
+    end
+
+    # Nothing is sent without being looked at first (Tim, 2026-11-19): the
+    # reminder opens the request sheet in reminder mode.
+    it "shows the reminder on the sheet first, and sends the words and people chosen there" do
+      post manage_request_production_visual_asset_path(production),
+           params: { other_emails: "designer@example.com, second@example.com", allow_replace: "1", commit_action: "send" }
+
+      get edit_manage_production_path(production, tab: 1)
+      expect(response.body).to include("Send a reminder for Late Bloomers", "Who gets the reminder", "What is still needed", "Send the reminder",
+                                       "A reminder: Images and details needed for Late Bloomers", "designer@example.com", "second@example.com")
+      expect(response.body).not_to include("Copy the link without emailing", "confirm-asset-reminder")
+
+      expect do
+        post manage_remind_production_visual_asset_path(production),
+             params: { recipients: [ "designer@example.com" ], subject: "Still waiting on the poster", message: "Two items are left." }
+      end.to have_enqueued_mail(AppMailer, :send_template).once.with(
+        a_hash_including(params: a_hash_including(to: "designer@example.com",
+                                                  variables: a_hash_including("subject" => "Still waiting on the poster", "message_html" => "<p>Two items are left.</p>")))
+      )
+      expect(flash[:notice]).to eq("A reminder has been sent to designer@example.com.")
+      expect(AssetRequest.current_for(production).subject).to eq("Images and details needed for Late Bloomers")
+
+      expect { post manage_remind_production_visual_asset_path(production) }.not_to have_enqueued_mail
+      expect(flash[:alert]).to eq("Choose someone to send the reminder to.")
     end
 
     it "makes the link without emailing, makes a new one, and turns it off" do
