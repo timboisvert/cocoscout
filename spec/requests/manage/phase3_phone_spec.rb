@@ -55,7 +55,7 @@ RSpec.describe "Phase 3 pages on a phone", type: :request do
     tabs = doc.at_css("[data-controller='tabs']")
     expect(tabs["data-tabs-drill-value"]).to be_nil
     picker = tabs.at_css("[data-production-edit-sections] [data-section-picker]")
-    expect(picker["class"]).to include("sm:hidden")
+    expect(picker["class"]).to include("md:hidden")
     expect(picker.at_css("button")["data-modal-id"]).to eq("production-edit-sections-sheet")
     expect(picker.at_css("[data-tabs-target='sectionLabel']").text.squish).to eq("Basic Information")
     items = tabs.css("#production-edit-sections-sheet [data-tabs-target='sectionItem']")
@@ -66,7 +66,7 @@ RSpec.describe "Phase 3 pages on a phone", type: :request do
     panels = tabs.css("[data-tabs-target='panel']")
     expect(panels.size).to eq(labels.size)
     expect(response.body).not_to include("tabs#showList")
-    expect(tabs.at_css("nav")["class"]).to include("hidden sm:flex")
+    expect(tabs.at_css("nav[data-section-list]")["class"]).to include("hidden md:block")
   end
 
   it "heads a production's settings with its poster shape and name, and no counts" do

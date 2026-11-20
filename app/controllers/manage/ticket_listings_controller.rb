@@ -19,6 +19,10 @@ module Manage
     # ticket page; the keys stay as they were so old links keep working.
     SETTINGS = { "sales" => "Basic info", "tickets" => "Tickets", "fees" => "Fees and taxes", "comps" => "Comps", "refunds" => "Refunds",
                  "codes" => "Discount codes", "products" => "Products", "page" => "Ticket page" }.freeze
+    # The headings the sections sit under in the side list and the phone's
+    # sheet (SectionNavHelper#section_groups).
+    SETTINGS_GROUPS = { "sales" => "What you sell", "tickets" => "What you sell", "products" => "What you sell", "codes" => "What you sell",
+                        "fees" => "Money", "comps" => "Money", "refunds" => "Money", "page" => "Buyers' pages" }.freeze
 
     before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code destroy_code export_codes import_codes cancel
                                            change_review tell_change mark_change_told outside_sales tier_availability]
@@ -354,7 +358,7 @@ module Manage
     end
 
     def settings_sections
-      SETTINGS.map { |key, label| { key: key, label: label, path: settings_path(key) } }
+      SETTINGS.map { |key, label| { key: key, label: label, path: settings_path(key), group: SETTINGS_GROUPS[key] } }
     end
     helper_method :settings_sections
 

@@ -30,27 +30,20 @@
 
   <%= form_with model: [:manage, @production, @sign_up_form], url: manage_update_settings_signups_form_path(@production, @sign_up_form), method: :patch, data: { turbo: true, "settings-form-target": "form", action: "submit->settings-form#handleSubmit" } do |form| %>
 
-    <%# Tab Navigation %>
-    <nav class="flex space-x-1 border-b border-gray-200 mb-6 overflow-x-auto">
-      <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2.5 text-sm font-medium border-b-2 border-transparent cursor-pointer whitespace-nowrap">
-        Scope
-      </button>
-      <button type="button" data-tabs-target="tab" data-settings-form-target="eventsTab" data-index="1" data-action="tabs#select" class="px-4 py-2.5 text-sm font-medium border-b-2 border-transparent cursor-pointer whitespace-nowrap <%= @sign_up_form.shared_pool? ? 'hidden' : '' %>">
-        Events
-      </button>
-      <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2.5 text-sm font-medium border-b-2 border-transparent cursor-pointer whitespace-nowrap">
-        Slots
-      </button>
-      <button type="button" data-tabs-target="tab" data-index="3" data-action="tabs#select" class="px-4 py-2.5 text-sm font-medium border-b-2 border-transparent cursor-pointer whitespace-nowrap">
-        Rules
-      </button>
-      <button type="button" data-tabs-target="tab" data-index="4" data-action="tabs#select" class="px-4 py-2.5 text-sm font-medium border-b-2 border-transparent cursor-pointer whitespace-nowrap">
-        Schedule
-      </button>
-      <button type="button" data-tabs-target="tab" data-index="5" data-action="tabs#select" class="px-4 py-2.5 text-sm font-medium border-b-2 border-transparent cursor-pointer whitespace-nowrap">
-        Notifications
-      </button>
-    </nav>
+    <%
+      edit_sections = %w[Scope Events Slots Rules Schedule Notifications].each_with_index.map { |label, i| { label: label, index: i, active: i.zero? } }
+      # Events has nothing to choose when the form is one shared pool; the
+      # settings-form controller shows and hides it as Scope changes.
+      edit_sections[1].merge!(hidden: @sign_up_form.shared_pool?, data: { "settings-form-target" => "eventsTab" })
+    %>
+    <%# The sections: a list down the left from md up, and on a phone a row
+        that opens them in a sheet, as on every settings page. %>
+    <div data-sign-up-settings-sections>
+      <%= render "shared/section_picker", id: "sign-up-settings-sections-sheet", list_from: "md", sections: edit_sections %>
+    </div>
+    <div class="md:flex md:items-start md:gap-8">
+    <%= render "shared/section_list", sections: edit_sections %>
+    <div class="flex-1 min-w-0">
 
     <%# ==================== TAB 0: SCOPE ==================== %>
     <div data-tabs-target="panel">
@@ -1043,6 +1036,9 @@
           </div>
         </div>
       </div>
+    </div>
+
+    </div>
     </div>
 
     <%# Floating Save Bar %>

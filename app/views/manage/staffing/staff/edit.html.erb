@@ -18,7 +18,22 @@
     links: []
   } %>
 
-  <div class="max-w-4xl mx-auto bg-white rounded-xl border border-gray-200 shadow-sm mt-4">
+  <%# The sections: a list down the left from md up, and on a phone a row that
+      opens them in a sheet, as on every settings page. The staff-edit
+      controller switches them. %>
+  <%
+    edit_sections = [ [ "details", "Details" ], [ "job", "Job" ], [ "roles", "Roles & pay" ], [ "onboarding", "Onboarding" ],
+                      [ "availability", "Availability" ], [ "taxes", "Taxes" ], [ "danger", "Danger Zone" ] ].each_with_index.map { |(key, label), i|
+      { label: label, index: i, active: i.zero?, danger: key == "danger", data: { tab: key } }
+    }
+  %>
+  <div class="mt-4" data-staff-edit-sections>
+    <%= render "shared/section_picker", id: "staff-edit-sections-sheet", list_from: "md", controller: "staff-edit", sections: edit_sections %>
+  </div>
+  <div class="md:flex md:items-start md:gap-8">
+  <%= render "shared/section_list", controller: "staff-edit", sections: edit_sections %>
+  <div class="flex-1 min-w-0">
+  <div class="max-w-4xl bg-white rounded-xl border border-gray-200 shadow-sm">
     <%# ---- Header ---- %>
     <div class="flex items-center gap-5 px-8 py-6 border-b border-gray-200">
       <% if headshot %>
@@ -45,16 +60,6 @@
       <% if header_w9_pill %>
         <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0 <%= header_w9_pill[:classes] %>"
               title="<%= header_w9_pill[:title] %>"><%= header_w9_pill[:text] %></span>
-      <% end %>
-    </div>
-
-    <%# ---- Tabs ---- %>
-    <div class="flex gap-1 px-8 border-b border-gray-200 overflow-x-auto">
-      <% [ [ "details", "Details" ], [ "job", "Job" ], [ "roles", "Roles &amp; pay" ], [ "onboarding", "Onboarding" ], [ "availability", "Availability" ], [ "taxes", "Taxes" ], [ "danger", "Danger Zone" ] ].each do |key, label| %>
-        <button type="button" data-staff-edit-target="tab" data-tab="<%= key %>" data-action="click->staff-edit#switch"
-                class="px-4 py-3.5 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 cursor-pointer whitespace-nowrap">
-          <%= label.html_safe %>
-        </button>
       <% end %>
     </div>
 
@@ -265,6 +270,8 @@
         <% end %>
       </div>
     </div>
+  </div>
+  </div>
   </div>
 
   <%# Manage-departments / manage-roles modals, deferred here so they sit

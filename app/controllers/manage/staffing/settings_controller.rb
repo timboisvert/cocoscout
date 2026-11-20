@@ -14,6 +14,11 @@ module Manage
                          "role_call" => "Role Call", "regulars" => "Regulars",
                          "work_times" => "Work times", "notifications" => "Notifications",
                          "taxes" => "Taxes", "ticketing" => "Ticketing" }.freeze
+      # The headings the sections sit under in the side list and the phone's
+      # sheet (SectionNavHelper#section_groups).
+      SECTION_GROUPS = { "agreements" => "Pay and paperwork", "pay_people" => "Pay and paperwork", "taxes" => "Pay and paperwork",
+                         "role_call" => "Scheduling", "regulars" => "Scheduling", "work_times" => "Scheduling",
+                         "notifications" => "Scheduling", "ticketing" => "Scheduling" }.freeze
       DEFAULT_SECTION = "agreements"
 
       before_action :set_section, only: %i[show]
@@ -73,11 +78,11 @@ module Manage
 
       private
 
-      # The tab strip — one real URL per section, keyed by name so adding a
+      # The sections — one real URL per section, keyed by name so adding a
       # section never moves anybody else's link.
       def sections
         SECTIONS.map do |key|
-          { key: key, label: SECTION_LABELS.fetch(key, key.titleize), path: section_path(key) }
+          { key: key, label: SECTION_LABELS.fetch(key, key.titleize), path: section_path(key), group: SECTION_GROUPS[key] }
         end
       end
       helper_method :sections

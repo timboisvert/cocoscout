@@ -11,6 +11,12 @@ module ProductionsHelper
     casting: "Casting", agreement: "Agreement", pay: "Pay", tickets: "Tickets", services: "Services",
     public_listing: "Public Listing", danger_zone: "Danger Zone"
   }.freeze
+  # The headings the sections sit under in the side list and the phone's
+  # sheet (SectionNavHelper#section_groups). The Danger Zone stands apart.
+  PRODUCTION_TAB_GROUPS = {
+    basic: "Details", visual_assets: "Details", documents: "Details", team: "People", casting: "People",
+    agreement: "Business", pay: "Business", tickets: "Business", services: "Business", public_listing: "Public"
+  }.freeze
 
   def production_edit_tabs(production, user = Current.user)
     org = production.organization

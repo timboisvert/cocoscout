@@ -19,7 +19,8 @@ RSpec.describe "Production and show Services tabs", type: :request do
   end
 
   def tab_labels(body)
-    body.scan(/data-index="(\d+)"[^>]*>\s*([A-Z][A-Za-z ]+)/).map { |index, label| [ index.to_i, label.strip ] }
+    # The side list's lines (shared/section_list), each with its panel's index.
+    Nokogiri::HTML(body).css("nav[data-section-list] button").map { |line| [ line["data-index"].to_i, line.text.squish.delete_suffix(" Pro") ] }
   end
 
   describe "on the production" do

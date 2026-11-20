@@ -156,7 +156,7 @@ RSpec.describe "Manage::CastingSettings", type: :request do
       get manage_casting_settings_section_path(production_id: production, section: "roles")
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to match(%r{>\s*Default Lineup\s*</a>})
+      expect(response.body).to match(%r{>\s*Default Lineup\s*</span>\s*</a>})
       expect(response.body).to include("Add intermission")
       expect(response.body).to include("Add Act")
       expect(response.body).not_to include("Add Role")
@@ -199,7 +199,7 @@ RSpec.describe "Manage::CastingSettings", type: :request do
     it "keeps the roles section labelled Roles for a role-based production" do
       get manage_casting_settings_section_path(production_id: production, section: "roles")
 
-      expect(response.body).to match(%r{>\s*Roles\s*</a>})
+      expect(response.body).to match(%r{>\s*Roles\s*</span>\s*</a>})
       expect(response.body).to include("Add Role")
       expect(response.body).not_to include("Add intermission")
     end

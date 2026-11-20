@@ -15,6 +15,11 @@ module Manage
     SECTIONS = { "dates" => "Basic info", "tickets" => "Tickets", "fees" => "Fees and taxes", "comps" => "Comps",
                  "refunds" => "Refunds", "codes" => "Discount codes", "products" => "Products", "sales" => "Ticket page",
                  "boxes" => "Checkout boxes" }.freeze
+    # The headings the sections sit under in the side list and the phone's
+    # sheet (SectionNavHelper#section_groups).
+    SECTION_GROUPS = { "dates" => "What you sell", "tickets" => "What you sell", "products" => "What you sell", "codes" => "What you sell",
+                       "fees" => "Money", "comps" => "Money", "refunds" => "Money",
+                       "sales" => "Buyers' pages", "boxes" => "Buyers' pages" }.freeze
     CLOSE_CHOICES = [ [ "At showtime", 0 ], [ "15 minutes before", 15 ], [ "30 minutes before", 30 ], [ "1 hour before", 60 ],
                       [ "2 hours before", 120 ], [ "The day before", 1440 ] ].freeze
 
@@ -340,7 +345,7 @@ module Manage
     end
 
     def sections
-      SECTIONS.map { |key, label| { key: key, label: label, path: section_path(key) } }
+      SECTIONS.map { |key, label| { key: key, label: label, path: section_path(key), group: SECTION_GROUPS[key] } }
     end
     helper_method :sections
   end

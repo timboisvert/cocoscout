@@ -263,12 +263,14 @@ RSpec.describe "Casting set-up", type: :request do
       expect(doc.css("[data-settings-card]").map { |card| card["data-settings-card"] }).to eq(%w[answer source dates attendance])
     end
 
-    it "keeps the tab strip from scrolling up and down" do
+    # The sections are a list down the side (Tim, 2026-11-20), so there is
+    # no strip left to scroll in either direction.
+    it "lists its sections down the side, with no strip to scroll" do
       get manage_casting_settings_path(production)
 
-      strip = doc.at_css("nav[aria-label='Settings sections']")
-      expect(strip["class"]).to include("overflow-x-auto", "overflow-y-hidden")
-      expect(strip.css("a").map { |a| a["class"] }).to all(satisfy { |classes| !classes.include?("-mb-px") })
+      list = doc.at_css("nav[aria-label='Settings sections']")
+      expect(list["class"]).to include("hidden md:block")
+      expect(list["class"]).not_to include("overflow-x-auto")
     end
 
     # Tim, 2026-11-18: "all events, just events of the following type, or

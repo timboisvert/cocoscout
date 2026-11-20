@@ -21,6 +21,10 @@ module Manage
     # The organization page is a settings page: each topic is a routed section,
     # so only that section's data loads and links name the section they want.
     SECTIONS = %w[basic team locations visual_assets integrations billing services agreements danger].freeze
+    # The headings the sections sit under in the side list and the phone's
+    # sheet (SectionNavHelper#section_groups).
+    SECTION_GROUPS = { "basic" => "Organization", "team" => "Organization", "locations" => "Organization", "visual_assets" => "Organization",
+                       "integrations" => "Account", "billing" => "Account", "services" => "Business", "agreements" => "Business" }.freeze
     SECTION_LABELS = {
       "basic" => "Basic Information",
       "team" => "People",
@@ -155,7 +159,7 @@ module Manage
 
     def sections
       available_sections.map do |key|
-        section = { key: key, label: SECTION_LABELS[key],
+        section = { key: key, label: SECTION_LABELS[key], group: SECTION_GROUPS[key], danger: key == "danger",
                     path: section_manage_organization_path(@organization, section: key) }
         # Performer agreements are Pro: the tab says so, and wears the padlock
         # when the plan doesn't include them.

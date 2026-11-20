@@ -24,34 +24,22 @@
   %>
   <!-- Tabs Section -->
   <div class="w-full" data-controller="tabs">
+    <%
+      edit_sections = edit_tabs.each_with_index.map { |key, i|
+        feature = tab_features[key]
+        { label: ProductionsHelper::PRODUCTION_TAB_LABELS.fetch(key), index: i, active: i.zero?, danger: key == :danger_zone, pro: tab_features.key?(key),
+          group: ProductionsHelper::PRODUCTION_TAB_GROUPS[key],
+          locked: feature.present? && !@production.organization.feature_available?(feature) }
+      }
+    %>
     <div data-production-edit-sections>
-      <%= render "shared/section_picker", id: "production-edit-sections-sheet",
-            sections: edit_tabs.each_with_index.map { |key, i|
-              feature = tab_features[key]
-              { label: ProductionsHelper::PRODUCTION_TAB_LABELS.fetch(key), index: i, active: i.zero?, danger: key == :danger_zone, pro: tab_features.key?(key),
-                locked: feature.present? && !@production.organization.feature_available?(feature) }
-            } %>
+      <%= render "shared/section_picker", id: "production-edit-sections-sheet", list_from: "md", sections: edit_sections %>
     </div>
-    <nav class="hidden sm:flex space-x-2 border-b border-gray-200 mb-4 overflow-x-auto">
-      <% edit_tabs.each_with_index do |key, i| %>
-        <%
-          feature = tab_features[key]
-          tone = if i.zero? then "bg-white border-pink-500 text-pink-600"
-          elsif key == :danger_zone then "bg-gray-50 text-red-500"
-          else "bg-gray-50 border-transparent text-gray-500"
-          end
-        %>
-        <button type="button" data-tabs-target="tab" data-index="<%= i %>" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 cursor-pointer whitespace-nowrap <%= tone %> <%= 'inline-flex items-center gap-1' if tab_features.key?(key) %>">
-          <%= ProductionsHelper::PRODUCTION_TAB_LABELS.fetch(key) %>
-          <% if tab_features.key?(key) %>
-            <%= render "shared/pro_marker" %>
-            <% if feature && !@production.organization.feature_available?(feature) %>
-              <%= render "shared/pro_marker", kind: :lock %>
-            <% end %>
-          <% end %>
-        </button>
-      <% end %>
-    </nav>
+    <%# From md up: the sections down the left (shared/section_list), the
+        section showing beside them. %>
+    <div class="md:flex md:items-start md:gap-8">
+    <%= render "shared/section_list", sections: edit_sections %>
+    <div class="flex-1 min-w-0">
 
     <!-- Tab 1: Basic Information -->
     <div data-tabs-target="panel">
@@ -714,6 +702,8 @@
       </div>
     </div>
     <% end %>
+    </div>
+    </div>
   </div>
 
 </div>

@@ -4,19 +4,20 @@
   location_spaces_map = Current.organization.locations.pickable(@show.location_id).includes(:location_spaces).each_with_object({}) { |l, h| h[l.id] = l.location_spaces.map { |s| { id: s.id, name: s.name } } }
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   when_words = @show.date_and_time.strftime("%a, %b %-d · %-l:%M %p")
-  # Each tab, and whether it has fields to save (Linked Events and the Danger
+  # Each section, the heading it sits under in the side list and the phone's
+  # sheet (SectionNavHelper#section_groups), and whether it has fields to save (Linked Events and the Danger
   # Zone act through their own buttons and modals).
   edit_tabs = [
-    { label: "Basic Information", partial: "tab_details" },
-    { label: "Schedule", partial: "tab_schedule" },
-    { label: "Location", partial: "tab_location" },
-    { label: "Casting & Visibility", partial: "tab_visibility" },
-    { label: "Visual Assets", partial: "tab_media" },
-    { label: "Tickets", partial: "tab_tickets", pro: true, locked: !@production.organization.feature_available?(:ticketing) },
+    { label: "Basic Information", group: "Details", partial: "tab_details" },
+    { label: "Schedule", group: "Details", partial: "tab_schedule" },
+    { label: "Location", group: "Details", partial: "tab_location" },
+    { label: "Casting & Visibility", group: "Public", partial: "tab_visibility" },
+    { label: "Visual Assets", group: "Public", partial: "tab_media" },
+    { label: "Tickets", group: "Business", partial: "tab_tickets", pro: true, locked: !@production.organization.feature_available?(:ticketing) },
     # What this show needs (after-V1 #6): Pro and the managers', and no tab at
     # all otherwise. Sits at ProductionsHelper::SHOW_SERVICES_TAB.
-    ({ label: "Services", partial: "tab_services", pro: true } if @production.organization.services_available_to?(Current.user)),
-    { label: "Linked Events", partial: "tab_linked", save: false },
+    ({ label: "Services", group: "Business", partial: "tab_services", pro: true } if @production.organization.services_available_to?(Current.user)),
+    { label: "Linked Events", group: "Details", partial: "tab_linked", save: false },
     { label: "Danger Zone", partial: "tab_danger", danger: true, save: false }
   ].compact
   # A date that follows another organization's contract date (LinkedDates):
@@ -63,26 +64,18 @@
 
     <%# Phone: the section row and its sheet, as on every settings page
         (shared/section_picker); Save pins to the bottom. %>
+    <% edit_sections = edit_tabs.each_with_index.map { |tab, i|
+         { label: tab[:label], index: i, active: i.zero?, danger: tab[:danger], pro: tab[:pro], locked: tab[:locked], group: tab[:group] }
+       } %>
     <div data-show-edit-sections>
-      <%= render "shared/section_picker", id: "show-edit-sections-sheet",
-            sections: edit_tabs.each_with_index.map { |tab, i|
-              { label: tab[:label], index: i, active: i.zero?, danger: tab[:danger], pro: tab[:pro], locked: tab[:locked] }
-            } %>
+      <%= render "shared/section_picker", id: "show-edit-sections-sheet", list_from: "md", sections: edit_sections %>
     </div>
 
-    <%# Desktop: the tab strip, drawn as the settings pages draw theirs. %>
-    <nav class="hidden sm:flex gap-1 border-b border-gray-200 mb-6 overflow-x-auto" aria-label="Settings sections">
-      <% edit_tabs.each_with_index do |tab, i| %>
-        <button type="button" data-tabs-target="tab" data-index="<%= i %>" data-action="tabs#select"
-                class="inline-flex items-center gap-1 px-4 py-2 -mb-px text-sm font-medium whitespace-nowrap border-b-2 transition-colors cursor-pointer hover:text-gray-700 <%= i.zero? ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500' %> <%= 'text-red-500' if tab[:danger] %>">
-          <%= tab[:label] %>
-          <% if tab[:pro] %>
-            <%= render "shared/pro_marker" %>
-            <%= render "shared/pro_marker", kind: :lock if tab[:locked] %>
-          <% end %>
-        </button>
-      <% end %>
-    </nav>
+    <%# From md up: the sections down the left (shared/section_list), the
+        section showing beside them. %>
+    <div class="md:flex md:items-start md:gap-8">
+    <%= render "shared/section_list", sections: edit_sections %>
+    <div class="flex-1 min-w-0">
 
     <% edit_tabs.each_with_index do |tab, i| %>
       <div data-tabs-target="panel" class="space-y-6 <%= 'hidden' unless i.zero? %>">
@@ -94,6 +87,8 @@
         <% end %>
       </div>
     <% end %>
+    </div>
+    </div>
   <% end %>
 
   <%= render "manage/shows/edit/move_modal" %>

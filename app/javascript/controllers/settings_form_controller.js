@@ -68,9 +68,9 @@ export default class extends Controller {
         // Show/hide Events tab
         if (this.hasEventsTabTarget) {
             if (scope === "shared_pool") {
-                this.eventsTabTarget.classList.add("hidden")
+                this.eventsTabTargets.forEach(tab => tab.classList.add("hidden"))
             } else {
-                this.eventsTabTarget.classList.remove("hidden")
+                this.eventsTabTargets.forEach(tab => tab.classList.remove("hidden"))
             }
         }
 

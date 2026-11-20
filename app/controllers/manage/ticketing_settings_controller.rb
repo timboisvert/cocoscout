@@ -15,6 +15,11 @@ module Manage
     SECTIONS = %w[box_office tax comps refunds notifications door page sharing].freeze
     SECTION_LABELS = { "box_office" => "Basic info", "page" => "Pages", "refunds" => "Refunds", "tax" => "Fees and taxes", "notifications" => "Notifications and emails",
                        "door" => "Door", "sharing" => "Sales visibility", "comps" => "Comps" }.freeze
+    # The headings the sections sit under in the side list and the phone's
+    # sheet (SectionNavHelper#section_groups).
+    SECTION_GROUPS = { "box_office" => "Box office", "page" => "Box office", "door" => "Box office",
+                       "tax" => "Money", "comps" => "Money", "refunds" => "Money",
+                       "notifications" => "Emails and sharing", "sharing" => "Emails and sharing" }.freeze
     DEFAULT_SECTION = "box_office"
 
     before_action :set_section, only: %i[show]
@@ -322,7 +327,7 @@ module Manage
     end
 
     def sections
-      SECTIONS.map { |key| { key: key, label: SECTION_LABELS.fetch(key), path: section_path(key) } }
+      SECTIONS.map { |key| { key: key, label: SECTION_LABELS.fetch(key), path: section_path(key), group: SECTION_GROUPS[key] } }
     end
     helper_method :sections
 

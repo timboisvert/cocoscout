@@ -118,7 +118,7 @@ RSpec.describe "Manage paid-feature gate", type: :request do
       get section_manage_organization_path(organization, section: "agreements")
       expect(response.body).to include("Agreement Templates")
       expect(response.body).to include(manage_billing_upgrade_path(feature: "agreements"))
-      expect(response.body).to match(/Agreements\s*<span[^>]*>Pro<\/span>/m)
+      expect(response.body).to match(/Agreements<\/span>\s*<span[^>]*>Pro<\/span>/m)
     end
 
     it "marks the course page's Financials link (Money) as Pro and locked" do
@@ -171,7 +171,7 @@ RSpec.describe "Manage paid-feature gate", type: :request do
       expect(body).to include("Agreement settings")
 
       get section_manage_organization_path(organization, section: "agreements")
-      expect(response.body).to match(/Agreements\s*<span[^>]*>Pro<\/span>/m)
+      expect(response.body).to match(/Agreements<\/span>\s*<span[^>]*>Pro<\/span>/m)
       expect(response.body).to include("New Template")
     end
   end
