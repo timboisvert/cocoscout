@@ -263,7 +263,8 @@ module ContractDateTerms
     shows.sum do |show|
       revenue = settled_revenue(show.show_financials)
       pct = they_sell ? our_share_for(show) : their_share_for(show)
-      revenue * pct / 100.0
+      # A per-show minimum guarantee floors each night (ContractRevenueGuarantee).
+      guaranteed_night_share(revenue, revenue * pct / 100.0, they_sell: they_sell)
     end.round(2)
   end
 

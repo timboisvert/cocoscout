@@ -3,6 +3,7 @@
 class Contract < ApplicationRecord
   # Each date's own terms: Review the dates (see the concern).
   include ContractDateTerms
+  include ContractRevenueGuarantee
 
   # An amendment tried to remove a night people hold tickets for.
   class TicketsSoldError < StandardError; end
@@ -1460,6 +1461,7 @@ class Contract < ApplicationRecord
   # shows that isn't a service charge or a deduction (the same rule
   # find_payment_for_show answers by). Everything else is charged on its own.
   def settlement_payment?(payment)
+    return false if run_guarantee_payment?(payment)
     return true if payment.amount_tbd? || payment.auto_shortfall?
     return true if payment.description.to_s.start_with?("Ticket revenue") || payment.description.to_s.match?(/revenue share/i)
     return false if payment.show_id.blank? || payment.settlement_method == "payout_deduction" || service_charge?(payment)
@@ -1556,9 +1558,16 @@ class Contract < ApplicationRecord
       elsif revenue.nil?
         nil
       elsif revenue_share?
-        ours = (revenue * our_share_for(show) / 100.0).round(2)
+        # The night's settled share, so a per-show minimum counts here too.
+        settled = settled_share_amount([ show ])
+        raw_theirs = (revenue * their_share_for(show) / 100.0).round(2)
+        ours = if sells then (revenue - settled).round(2)
+        elsif draft_payment_config["who_sells_tickets"] == "contractor" then settled
+        else (revenue * our_share_for(show) / 100.0).round(2)
+        end
         if sells
-          lines << [ "#{counterparty}'s #{number_for(their_share_for(show))}% share", -(revenue - ours).round(2) ]
+          words = guarantee_per_show? && settled > raw_theirs ? "#{counterparty}'s minimum guarantee" : "#{counterparty}'s #{number_for(their_share_for(show))}% share"
+          lines << [ words, -settled ]
         else
           lines << [ "Your #{number_for(our_share_for(show))}% share", ours ]
         end
@@ -1961,8 +1970,10 @@ class Contract < ApplicationRecord
       live.where("amount_tbd = ? OR auto_shortfall = ? OR description LIKE ?", true, true, "Ticket revenue%")
           .order(:due_date)
     else
+      # A whole-run minimum's top-up is never a night's settlement.
       live.where(amount_tbd: true)
           .or(live.where("description LIKE ?", "%Revenue Share%"))
+          .where.not(description: RUN_GUARANTEE)
           .order(:due_date)
     end
   end
@@ -2905,8 +2916,9 @@ class Contract < ApplicationRecord
     source = Contract.normalized_revenue_source(cfg["revenue_source"]) == "tickets_and_products" ? "ticket sales and products" : "ticket sales"
     lines << { label: "How the money works", value: "Revenue share on #{source} — we keep #{our}%, they keep #{their}%" }
 
-    if cfg["revenue_guarantee"].to_s == "true" && cfg["revenue_guarantee_amount"].to_f.positive?
-      lines << { label: "Minimum guarantee", value: "They take home at least #{deal_money(cfg['revenue_guarantee_amount'])}" }
+    if revenue_guarantee?
+      words = guarantee_for_run? ? "for the whole run" : "a show"
+      lines << { label: "Minimum guarantee", value: "They take home at least #{deal_money(revenue_guarantee_amount)} #{words}" }
     end
 
     settlement = {

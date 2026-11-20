@@ -45,6 +45,7 @@ class ContractPaymentSyncService
     else # monthly
       sync_period(:beginning_of_month)
     end
+    sync_run_guarantee
   end
 
   private
@@ -112,6 +113,32 @@ class ContractPaymentSyncService
         # All shows still pending — keep TBD
         reset_to_tbd(payment)
       end
+    end
+  end
+
+  # A whole-run minimum guarantee (ContractRevenueGuarantee): once every date
+  # has its sales in, the top-up is the minimum less what their shares came
+  # to. Nothing short: it closes, saying so. A date's sales withdrawn: it
+  # waits again. Never rewritten once paid or on a payout run.
+  def sync_run_guarantee
+    return unless @contract.guarantee_for_run?
+
+    payment = @contract.contract_payments.find_by(description: Contract::RUN_GUARANTEE)
+    return unless payment
+    return if payment.status_paid? || payment.in_payout_run?
+
+    result = @contract.run_guarantee_topup
+    money = ActionController::Base.helpers.method(:number_to_currency)
+    minimum = money.call(@contract.revenue_guarantee_amount)
+    if result.nil?
+      payment.update!(amount: 0, amount_tbd: true, status: (payment.status_cancelled? ? "pending" : payment.status),
+                      notes: "Worked out once every date's sales are in.")
+    elsif result[:topup].positive?
+      payment.update!(amount: result[:topup], amount_tbd: false, status: (payment.status_cancelled? ? "pending" : payment.status),
+                      notes: "Their shares came to #{money.call(result[:taken])}, #{money.call(result[:topup])} under the #{minimum} minimum.")
+    else
+      payment.update!(amount: 0, amount_tbd: false, status: "cancelled",
+                      notes: "Their shares came to #{money.call(result[:taken])}, at or over the #{minimum} minimum, so nothing is owed.")
     end
   end
 
