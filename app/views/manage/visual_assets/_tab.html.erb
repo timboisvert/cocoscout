@@ -24,7 +24,12 @@
 
   <%# Images %>
   <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-    <%= render "shared/section_heading", title: "Images" %>
+    <%= render "shared/section_heading", title: "Images" do %>
+      <% if assets.originals.any? %>
+        <%= render "shared/button", text: "Download all originals", variant: "secondary", size: "small",
+              path: manage_originals_production_visual_asset_path(production), data: { turbo: false } %>
+      <% end %>
+    <% end %>
     <div class="divide-y divide-gray-100">
       <% assets.image_specs.each do |spec| %>
         <% item = assets.item(spec) %>

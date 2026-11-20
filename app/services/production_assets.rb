@@ -106,6 +106,27 @@ class ProductionAssets
     Item.new(production, spec, records[spec.id])
   end
 
+  # Every image item that has a file, with its original, for Download all
+  # originals: [[spec, attachment], ...] in the tab's order.
+  def originals
+    image_specs.filter_map { |spec| (file = item(spec).attachment) && [ spec, file ] }
+  end
+
+  # One zip of those originals, each named for its item ("Poster.jpg",
+  # "Wide image.png"), a second of the same name numbered.
+  def originals_zip
+    names = Hash.new(0)
+    buffer = Zip::OutputStream.write_buffer do |zip|
+      originals.each do |spec, file|
+        stem = spec.name.to_s.gsub(%r{[/\\:*?"<>|]}, "-").strip.presence || "Image"
+        names[stem] += 1
+        zip.put_next_entry("#{stem}#{" (#{names[stem]})" if names[stem] > 1}#{file.filename.extension_with_delimiter}")
+        zip.write file.download
+      end
+    end
+    buffer.string
+  end
+
   def additional_files
     production.production_assets.additional.includes(:uploaded_by_user, file_attachment: :blob).order(:created_at)
   end

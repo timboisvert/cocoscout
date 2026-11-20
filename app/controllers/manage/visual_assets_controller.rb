@@ -7,7 +7,9 @@ module Manage
     before_action :set_production
     before_action :check_production_access
     before_action :set_poster, only: %i[edit_poster update_poster destroy_poster set_primary_poster]
-    before_action :ensure_user_is_manager
+    # Anyone who can see the tab can download what's on it, as with each
+    # row's Download original.
+    before_action :ensure_user_is_manager, except: :download_originals
 
     def new_poster
       redirect_to edit_manage_production_path(@production, tab: 1)
@@ -65,6 +67,16 @@ module Manage
       redirect_to edit_manage_production_path(@production, tab: 1), notice: "Wide image removed."
     end
 
+
+    # Download all originals (Tim, 2026-11-20): every image item's original
+    # file in one zip, named for the production.
+    def download_originals
+      assets = ProductionAssets.new(@production)
+      return redirect_to(tab_path, alert: "There are no images to download yet.") if assets.originals.empty?
+
+      name = "#{@production.name.to_s.gsub(%r{[/\\:*?\"<>|]}, '-')} originals.zip"
+      send_data assets.originals_zip, filename: name, type: "application/zip", disposition: "attachment"
+    end
 
     # Any item on the organization's list (AssetSpec), held to its
     # specification (AssetCheck). Answers JSON; the tab reloads itself.

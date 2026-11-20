@@ -872,6 +872,7 @@ Rails.application.routes.draw do
     # The organization's list on a production (Tim, 2026-11-19): one upload
     # for any item, its written items, its own additional files, and the one
     # link that asks someone outside for them.
+    get    "/shows/:production_id/visual_assets/originals",       to: "visual_assets#download_originals", as: "originals_production_visual_asset"
     post   "/shows/:production_id/visual_assets/upload",          to: "visual_assets#upload",           as: "upload_production_visual_asset"
     patch  "/shows/:production_id/visual_assets/text/:spec_id",   to: "visual_assets#save_text",        as: "text_production_visual_asset"
     delete "/shows/:production_id/visual_assets/item/:spec_id",   to: "visual_assets#remove_item",      as: "item_production_visual_asset"

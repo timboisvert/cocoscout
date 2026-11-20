@@ -124,6 +124,26 @@ RSpec.describe "Visual asset requests", type: :request do
       expect(response.body).to include("Download original", "Added by Tim Boisvert today")
     end
 
+    it "downloads every image's original in one zip, from a button that shows only when there is one" do
+      get edit_manage_production_path(production, tab: 1)
+      expect(response.body).not_to include("Download all originals")
+      get manage_originals_production_visual_asset_path(production)
+      expect(flash[:alert]).to eq("There are no images to download yet.")
+
+      production.update!(wide_image: fixture_file_upload("test_image.png", "image/png"))
+      ProductionAssets.new(production).store_file!(instagram, asset_image(1080, 1080, name: "ig.png"),
+                                                   check: AssetCheck.call(instagram, asset_image(1080, 1080)))
+      get edit_manage_production_path(production, tab: 1)
+      expect(response.body).to include("Download all originals")
+
+      get manage_originals_production_visual_asset_path(production)
+      expect(response.media_type).to eq("application/zip")
+      expect(response.headers["Content-Disposition"]).to include("Late Bloomers originals.zip")
+      names = []
+      Zip::InputStream.open(StringIO.new(response.body)) { |zip| while (entry = zip.get_next_entry) do names << entry.name end }
+      expect(names).to contain_exactly("Wide image.png", "Instagram square.png")
+    end
+
     it "makes an uploaded poster the primary one and keeps the one before it" do
       poster_spec = org.asset_specs.find_by(builtin: "poster")
       old = production.posters.create!(image: fixture_file_upload("test_image.png", "image/png"), is_primary: true)
