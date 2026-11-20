@@ -14,6 +14,9 @@
       element; the controller keeps the row's name and the sheet's check
       mark on the section showing (its sectionLabel and sectionItem targets).
 
+  In the app, the row opens the phone's own menu in place of the sheet
+  (bridge/sections_controller.js), on builds that have it.
+
   From md up a settings page shows shared/section_list instead: pass
   list_from: "md" and the row stays until then. Sections with a `group:` sit
   under the same headings in the sheet as in that list.
@@ -40,8 +43,8 @@
     ].compact)
   end
 %>
-<div class="<%= hide_from %> mb-5" data-section-picker>
-  <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= id %>"
+<div class="<%= hide_from %> mb-5" data-section-picker data-controller="bridge--sections">
+  <button type="button" data-controller="modal" data-action="click->bridge--sections#open click->modal#open" data-modal-id="<%= id %>" data-bridge--sections-target="row"
           class="w-full flex items-center justify-between gap-3 px-4 min-h-[48px] bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-900 cursor-pointer">
     <span class="flex items-center gap-2 min-w-0">
       <span class="text-xs text-gray-500 flex-shrink-0">Section</span>
@@ -60,6 +63,9 @@
         <% items.each do |section| %>
           <%
             active = section.equal?(current)
+            # For the app's own menu (bridge/sections_controller.js).
+            row_data = { "bridge--sections-target" => "item", section_group: (heading if heading.is_a?(String)),
+                         section_danger: (true if section[:danger]), section_locked: (true if section[:pro] && section[:locked]) }.compact
             row_classes = "flex items-center justify-between gap-3 w-full min-h-[52px] px-5 text-[15px] text-left hover:bg-gray-50 cursor-pointer #{active ? 'text-pink-600 font-medium' : 'text-gray-800'} #{'hidden' if section[:hidden]}"
           %>
           <% body = capture do %>
@@ -72,10 +78,10 @@
             <svg class="w-4 h-4 text-pink-500 flex-shrink-0 <%= 'hidden' unless active %>" data-section-check fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
           <% end %>
           <% if section[:path] %>
-            <%= link_to section[:path], aria: { current: active ? "page" : nil }, class: row_classes do %><%= body %><% end %>
+            <%= link_to section[:path], aria: { current: active ? "page" : nil }, class: row_classes, data: row_data do %><%= body %><% end %>
           <% else %>
             <%= content_tag :button, body, type: "button", class: row_classes, aria: { current: active ? "true" : nil },
-                  data: { "#{controller}-target" => "sectionItem", index: section[:index], action: "#{controller}#select modal#close" }.merge(section[:data] || {}) %>
+                  data: row_data.merge("#{controller}-target" => "sectionItem", index: section[:index], action: "#{controller}#select modal#close").merge(section[:data] || {}) %>
           <% end %>
         <% end %>
       <% end %>

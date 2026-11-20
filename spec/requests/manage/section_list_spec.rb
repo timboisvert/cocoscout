@@ -74,4 +74,19 @@ RSpec.describe "A settings page's sections down the side", type: :request do
     linked = list.css("button").find { |b| b.text.squish == "Linked Events" }
     expect(linked["data-index"].to_i).to eq(names.size - 2)
   end
+
+  # In the app the Section row opens the phone's own menu
+  # (bridge/sections_controller.js), on builds that register "sections".
+  it "tells the app's menu where the row is and what the sections are" do
+    get edit_manage_production_path(production)
+    picker = doc.at_css("[data-production-edit-sections] [data-section-picker]")
+    expect(picker["data-controller"]).to eq("bridge--sections")
+    row = picker.at_css("[data-bridge--sections-target='row']")
+    expect(row["data-action"]).to eq("click->bridge--sections#open click->modal#open")
+    items = picker.css("[data-bridge--sections-target='item']")
+    expect(items.size).to eq(doc.css("[data-tabs-target='panel']").size)
+    expect(items.first["data-section-group"]).to eq("Details")
+    expect(items.last["data-section-danger"]).to eq("true")
+    expect(items.last["data-section-group"]).to be_nil
+  end
 end
