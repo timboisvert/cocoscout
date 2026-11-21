@@ -17,7 +17,7 @@ module Manage
 
     def update
       setup = BooksCategorySetup.new(Current.organization, profile: params[:profile])
-      return redirect_to manage_money_books_setup_path, alert: "Say what kind of organization this is first." unless setup.answered?
+      return redirect_to manage_money_books_setup_path, alert: "First, choose what kind of organization this is." unless setup.answered?
 
       first_time = Current.organization.books_categories_set_up_at.nil?
       setup.save!(by: Current.user, offered: params[:offered], custom: custom_params)

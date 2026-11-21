@@ -252,8 +252,8 @@ class SettleUp
     def checks
       shows.map { |s| Check.new(key: "show-#{s.show.id}", name: s.show.display_name, short: SettleUp.short_name(s.show), state: s.state, hold_reason: s.hold_reason) } +
         (registers.any? ? [ Check.new(key: "register", name: register_label, short: (registers.size == 1 ? "Bar" : "Registers"), state: registers_state,
-                                      hold_reason: (if tips.unresolved.any? then "Say who gets the tips rung up with nobody on the bar first"
-                                                    elsif tips.undecided? then "Say who gets the tips first"
+                                      hold_reason: (if tips.unresolved.any? then "First, choose who gets the tips that came in while nobody was on the bar"
+                                                    elsif tips.undecided? then "First, choose who gets the tips"
                                                     end)) ] : [])
     end
     # Each piece and where it stands, for a row in a list. Not from checks:
@@ -557,7 +557,7 @@ class SettleUp
       show_payout&.payout_scheme || PayoutScheme.default_for_show(show)
     end
     hold = if scheme.nil?
-      production.asks_calculation_each_show? ? "Choose this show's calculation first" : "Say how #{production.name} pays its performers first"
+      production.asks_calculation_each_show? ? "Choose this show's calculation first" : "Choose how #{production.name} pays its performers first"
     end
     rules = (show_payout&.override_rules.presence || scheme&.rules || {}).deep_stringify_keys
     per_act = rules.dig("distribution", "method").to_s == "per_act"

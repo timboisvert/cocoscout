@@ -178,7 +178,7 @@
               <div class="font-semibold text-gray-900"><%= day.checked_count %> of <%= checks.size %> confirmed</div>
               <div class="text-xs text-gray-500 line-clamp-2 sm:line-clamp-none">
                 <% if held.any? %>
-                  <%= held.map { |c| "#{c.name}: #{c.hold_reason.downcase}" }.to_sentence %>.
+                  <%= held.map { |c| "#{c.name}: #{c.hold_reason.sub(/\A\p{Lu}/) { |l| l.downcase }}" }.to_sentence %>.
                 <% else %>
                   Still to confirm: <%= left.map(&:name).to_sentence %>.
                 <% end %>

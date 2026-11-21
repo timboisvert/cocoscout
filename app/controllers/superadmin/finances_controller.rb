@@ -149,7 +149,7 @@ module Superadmin
       row = StripeBalanceTransaction.find(params[:id])
       note = params[:note].to_s.strip
       if note.blank?
-        redirect_to finances_stripe_check_path, alert: "Say what it was, so the next person knows."
+        redirect_to finances_stripe_check_path, alert: "Add a note about what it was, so the next person knows."
         return
       end
 

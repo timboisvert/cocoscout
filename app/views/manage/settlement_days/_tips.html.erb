@@ -111,7 +111,7 @@
       <% if stretch.resolved? && choice_words.call(stretch) %>
         <p class="text-xs text-gray-500">Nobody on the bar <%= stretch.words %>: <%= money.call(stretch.cents) %><%= stretch.orders.positive? ? " from #{pluralize(stretch.orders, 'order')}" : "" %>, <%= choice_words.call(stretch) %>.</p>
       <% else %>
-        <p class="text-sm text-amber-700">Nobody on the bar <%= stretch.words %>: <%= money.call(stretch.cents) %><%= stretch.orders.positive? ? " from #{pluralize(stretch.orders, 'order')}" : "" %>. Say who gets it<%= editable ? " under Change the split" : "" %>.</p>
+        <p class="text-sm text-amber-700">Nobody on the bar <%= stretch.words %>: <%= money.call(stretch.cents) %><%= stretch.orders.positive? ? " from #{pluralize(stretch.orders, 'order')}" : "" %>. Choose who gets it<%= editable ? " under Change the split" : "" %>.</p>
       <% end %>
     <% end %>
     <%# What the house keeps, when the stretches above don't already say it all (Tim, 2026-11-04: no saying it twice). %>

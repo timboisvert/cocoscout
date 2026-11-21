@@ -39,7 +39,7 @@
       <p class="text-sm text-gray-600 mt-1">Each of Staffing's roles is in or out. A role that shares equally splits, by the clock, what rang up while its people were on. A role with a fixed cut takes its percent off the top first, then the rest splits among the equal shares. Door and box office stay out unless you say so.</p>
     </div>
     <% if roles.empty? %>
-      <p class="px-6 py-5 text-sm text-gray-600">No roles in Staffing yet. <%= link_to "Add roles in Staffing", manage_staffing_house_roles_path, class: "text-pink-600 hover:text-pink-700" %>, then say which share the tips.</p>
+      <p class="px-6 py-5 text-sm text-gray-600">No roles in Staffing yet. <%= link_to "Add roles in Staffing", manage_staffing_house_roles_path, class: "text-pink-600 hover:text-pink-700" %>, then choose which roles share the tips.</p>
     <% else %>
       <div class="divide-y divide-gray-100">
         <div class="hidden sm:grid grid-cols-[1fr_8rem_12rem_14rem] gap-3 px-6 py-2 bg-gray-50 text-[11px] font-medium uppercase tracking-wide text-gray-500"><span>Role</span><span>Out</span><span>Shares equally</span><span>A fixed cut off the top</span></div>

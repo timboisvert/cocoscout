@@ -18,14 +18,14 @@
       <h2 class="text-base font-semibold text-gray-900 leading-snug"><%= registers.size == 1 ? "Bar, #{registers.first.location_name}" : "Registers" %></h2>
       <div class="mt-0.5 text-xs font-medium <%= tone %>"><%= state_words %><% if day.record&.register_checked? == true && day.record.register_checked_at && can_change && !day.settled? %><span class="sm:hidden font-normal text-gray-500"> · <%= day.record.register_checked_at.strftime("%b %-d, %-l:%M %P") %></span><% end %></div>
       <% if can_change && !day.settled? && day.record&.register_checked? != true && day.tips.unresolved.any? %>
-        <div class="sm:hidden mt-0.5 text-xs text-amber-700">Say who gets the tips rung up with nobody on the bar first</div>
+        <div class="sm:hidden mt-0.5 text-xs text-amber-700">First, choose who gets the tips that came in while nobody was on the bar</div>
       <% end %>
     </div>
     <% if can_change && !day.settled? %>
       <div class="flex items-center justify-center border-l border-gray-200 w-16 sm:w-56 sm:justify-end sm:px-5 shrink-0">
         <%= render "manage/settlement_days/confirm_mark", url: manage_check_register_money_settle_up_day_path(day.param),
             checked: day.record&.register_checked? == true, at: day.record&.register_checked_at,
-            hold_reason: (day.tips.unresolved.any? ? "Say who gets the tips rung up with nobody on the bar first" : nil) %>
+            hold_reason: (day.tips.unresolved.any? ? "First, choose who gets the tips that came in while nobody was on the bar" : nil) %>
       </div>
     <% end %>
   </div>

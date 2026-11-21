@@ -58,7 +58,7 @@
       <%# A lot to sort (BankSort::THRESHOLD lines waiting): the way through it, before the tiles. %>
       <%= render "shared/alert_panel", eyebrow: "A lot to sort",
             headline: "#{number_with_delimiter(@summary.open_count)} lines waiting#{@payees.any? ? " · #{@payees.size} payees you see again and again" : ''}",
-            body: "Let's go through it together. First the payees that keep coming back, one at a time; say what each one is and a rule takes care of every line from them, now and every statement after. Then the rest, one line at a time, with the usual answers a tap away.#{" On this statement the first #{[ @payees.size, 10 ].min} payees alone cover #{@payees.first(10).sum(&:count)} lines." if @payees.size > 1}",
+            body: "Let's go through it together. First the payees that keep coming back, one at a time. Choose what each one is, and a rule will take care of every line from them, now and every statement after. Then the rest, one line at a time, with the usual answers a tap away.#{" On this statement the first #{[ @payees.size, 10 ].min} payees alone cover #{@payees.first(10).sum(&:count)} lines." if @payees.size > 1}",
             actions: [ { text: "Sort them with me", path: manage_money_bank_sort_path }, { text: "Rules", path: manage_money_bank_rules_path } ] %>
     <% end %>
     <%= render "manage/bank_statements/tiles", summary: @summary %>

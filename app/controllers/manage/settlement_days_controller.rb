@@ -112,7 +112,7 @@ module Manage
       # The way back from "nobody is paid" (Tim, 2026-11-04: it can be a slip): performer pay goes back on, and the question is asked again.
       if params[:choice] == "pay_after_all"
         production.update!(pays_performers: true)
-        return redirect_to manage_money_settle_up_day_path(@date, open: show.id), notice: "#{production.name} pays its performers again. Say how, on the show's card."
+        return redirect_to manage_money_settle_up_day_path(@date, open: show.id), notice: "#{production.name} pays its performers again. You can choose how they're paid on the show's card."
       end
 
       scheme = Current.organization.payout_schemes.active.find_by(id: params[:payout_scheme_id])
@@ -164,10 +164,10 @@ module Manage
       if checking
         tips = SettleUp.day(Current.organization, @date).tips
         if tips.unresolved.any?
-          return redirect_to manage_money_settle_up_day_path(@date), alert: "Say who gets the tips rung up with nobody on the bar first: Change the split on the register."
+          return redirect_to manage_money_settle_up_day_path(@date), alert: "Before you confirm the register, choose who gets the tips that came in while nobody was on the bar. You can do that under Change the split."
         end
         if tips.undecided?
-          return redirect_to manage_money_settle_up_day_path(@date), alert: "Say who gets the tips first: Change the split on the register."
+          return redirect_to manage_money_settle_up_day_path(@date), alert: "Before you confirm the register, choose who gets the tips. You can do that under Change the split."
         end
       end
       record.register_checked_at = checking ? Time.current : nil

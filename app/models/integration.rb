@@ -28,7 +28,7 @@ class Integration < ApplicationRecord
   CALENDAR_TITLE_PARTS = {
     "room" => "Room in the title",
     "call_time" => "Call and show times in the title",
-    "event_type" => "Say what kind of event it is (shows don't)",
+    "event_type" => "The kind of event in the title (except for shows)",
     "start_at_call" => "Start the block at call time",
     "rental_block" => "Block the whole rental time when a date is under contract"
   }.freeze

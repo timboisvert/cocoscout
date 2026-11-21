@@ -243,7 +243,7 @@
     else [ total_words, nil ]
     end
     sub = if pay.scheme.nil?
-      production.asks_calculation_each_show? ? "#{production.name} asks which calculation each show uses; choose one for #{show.display_name}, and the show can be confirmed." : "#{production.name} has no payout calculation yet, so nobody is paid from this show until you say how."
+      production.asks_calculation_each_show? ? "#{production.name} picks a calculation for each show. Choose one for #{show.display_name}, and then the show can be confirmed." : "#{production.name} has no payout calculation yet, so nobody is paid from this show until you choose how they're paid."
     elsif pay.held? && !pay.can_calculate? && pay.calc != :needs_numbers
       "#{pay.hold_reason}."
     else
@@ -294,7 +294,7 @@
           <% end %>
           <span class="contents" data-action="click->disclosure#keep:stop">
             <% if pay.scheme.nil? %>
-              <%= render "shared/button", text: "Say how it's paid", variant: "primary", size: "small", type: :button, classes: "w-full",
+              <%= render "shared/button", text: "Choose how it's paid", variant: "primary", size: "small", type: :button, classes: "w-full",
                     data: { controller: "modal", action: "click->modal#open", modal_id: chooser_id } %>
             <% elsif pay.hold_reason&.start_with?("Enter how many acts") %>
               <%= link_to manage_money_show_payout_path(show, enter_acts: 1, return_to: return_to) do %>

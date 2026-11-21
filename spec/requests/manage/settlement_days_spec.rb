@@ -467,7 +467,7 @@ RSpec.describe "Manage::SettlementDays with a register", type: :request do
     # bartender's tips to house staff and the booth tech (Tim, 2026-11-11).
     expect(SettleUp.day(org, date).tips.hand_rows.map { |row| row[:cents] }).to eq([ 0 ])
     patch manage_check_register_money_settle_up_day_path(date.iso8601), params: { checked: "1" }
-    expect(flash[:alert]).to include("Say who gets the tips first")
+    expect(flash[:alert]).to include("choose who gets the tips. You can do that under Change the split.")
     expect(SettlementDay.find_by(organization: org, date: date)&.tip_shares.to_a).to be_blank
 
     patch manage_tips_money_settle_up_day_path(date.iso8601), params: { split: "even", checked: "1", shares: { bartender.id => { amount: "15.00", method: "payout" } } }
@@ -599,7 +599,7 @@ RSpec.describe "Manage::SettlementDays tips by the clock", type: :request do
       key = SquareSync.quarter_key(night.change(hour: 18))
 
       get manage_money_settle_up_day_path(date.iso8601)
-      expect(response.body).to include("Nobody on the bar 6 pm to 7 pm: $40.00 from 8 orders. Say who gets it under Change the split.")
+      expect(response.body).to include("Nobody on the bar 6 pm to 7 pm: $40.00 from 8 orders. Choose who gets it under Change the split.")
       expect(response.body).to include(%(name="unstaffed[#{key}]"), "The house keeps it", "Split between everyone listed")
       expect(response.body).not_to include("from the pool")
       # The tips are in the Square card, with one Looks right for both.
@@ -607,7 +607,7 @@ RSpec.describe "Manage::SettlementDays tips by the clock", type: :request do
       expect(response.body).to include("Tips <span class=\"text-xs text-gray-500\">who gets them, below</span>")
 
       patch manage_check_register_money_settle_up_day_path(date.iso8601), params: { checked: "1" }
-      expect(flash[:alert]).to include("Say who gets the tips rung up with nobody on the bar first")
+      expect(flash[:alert]).to include("choose who gets the tips that came in while nobody was on the bar")
       expect(SettlementDay.find_by(organization: org, date: date)&.register_checked_at).to be_nil
 
       # The house keeps it: the rows add up to $200, and settling books $40 as the house's.
@@ -891,10 +891,10 @@ RSpec.describe "Manage::SettlementDays pays people", type: :request do
 
   it "asks how the production pays before the show can be confirmed, and remembers the answer for every show" do
     get manage_money_settle_up_day_path(date.iso8601)
-    expect(CGI.unescapeHTML(response.body)).to include("Pavlov has no payout calculation yet", "Say how it's paid", "Say how Pavlov pays its performers first")
+    expect(CGI.unescapeHTML(response.body)).to include("Pavlov has no payout calculation yet", "Choose how it's paid", "Choose how Pavlov pays its performers first")
 
     patch manage_check_show_money_settle_up_day_path(date.iso8601, show_id: show.id), params: { checked: "1" }
-    expect(flash[:alert]).to include("Say how Pavlov pays its performers first")
+    expect(flash[:alert]).to include("Choose how Pavlov pays its performers first")
     expect(show.reload.show_financials.data_confirmed).to be(false)
 
     patch manage_choose_calculation_money_settle_up_day_path(date.iso8601, show_id: show.id), params: { choice: "existing", payout_scheme_id: even_split.id, scope: "production" }
@@ -916,7 +916,7 @@ RSpec.describe "Manage::SettlementDays pays people", type: :request do
     other = create(:show, production: production, date_and_time: 1.day.ago.change(hour: 20))
     create(:show_financials, show: other, ticket_count: 10, ticket_revenue: 100.0, expenses: 0)
     get manage_money_settle_up_day_path(SettlementDay.day_for(org, other.date_and_time).iso8601)
-    expect(CGI.unescapeHTML(response.body)).to include("Pavlov asks which calculation each show uses", "Choose this show's calculation first")
+    expect(CGI.unescapeHTML(response.body)).to include("Pavlov picks a calculation for each show", "Choose this show's calculation first")
 
     patch manage_choose_calculation_money_settle_up_day_path(date.iso8601, show_id: show.id), params: { choice: "nobody" }
     expect(production.reload.pays_performers).to be(false)

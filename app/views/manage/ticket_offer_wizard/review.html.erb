@@ -13,7 +13,7 @@
 %>
 <%= render layout: "manage/ticket_offer_wizard/wizard_layout", locals: { step: :review } do %>
   <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Review</h2>
-  <p class="text-gray-600 mb-6">Here's the deal. Name it, say when it runs, and save.</p>
+  <p class="text-gray-600 mb-6">Here's the deal. Give it a name, choose when it runs, and save it.</p>
 
   <% if offer.errors.any? %>
     <div class="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><%= offer.errors.full_messages.to_sentence %></div>

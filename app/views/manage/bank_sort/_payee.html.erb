@@ -14,7 +14,7 @@
   explain = case group.kind
   when "provider" then "Looks like payouts from a payment provider: the bank names the sender by your own name, and the reference starts with ST-."
   when "transfer" then "Money moved between your own accounts. It isn't income or spending; the books already know both sides."
-  when "deposit" then "Cash and checks you took to the bank. Usually door or bar cash; say what it is and every deposit is recorded that way."
+  when "deposit" then "Cash and checks you took to the bank. Usually door or bar cash. Choose what it is, and every deposit will be recorded that way."
   when "withdrawal" then "Cash taken out at the bank or an ATM."
   when "fee" then "What the bank charges you."
   when "check" then "The bank doesn't say who a check went to, so no rule can tell one from another. They come up one by one in part 2, where each is recorded with its number."

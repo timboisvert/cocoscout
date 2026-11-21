@@ -40,7 +40,7 @@ module Manage
       SquareSync.refresh_catalog!(integration)
       yesterday = SettlementDay.day_for(organization, Time.current) - 1
       SquarePullJob.perform_later(integration.id, from: yesterday - 6, to: yesterday, trigger: "manual")
-      redirect_to manage_organization_square_path(organization), notice: "Connected to Square. Say which locations are yours, and the last week is on its way."
+      redirect_to manage_organization_square_path(organization), notice: "Connected to Square, and the last week of sales is on its way. Next, choose which locations are yours."
     rescue SquareApi::Error => e
       redirect_to section_manage_organization_path(organization, section: "integrations"), alert: "Square did not connect: #{e.message}"
     end

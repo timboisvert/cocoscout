@@ -42,7 +42,7 @@
       <div>
         <div class="text-sm font-medium text-gray-900">Set tickets for this date only</div>
         <div class="text-xs text-gray-600 mt-0.5">
-          Off, this date follows <%= possessive(production.name) %> answer. On, you say where this date's tickets are, or that it has none<% if production.tickets_mode == "cocoscout" %>; it leaves CocoScout's sales for <%= production.name %><%= listing && listing.ticket_orders.paid_like.exists? ? " (tickets already sold here stay valid)" : "" %><% end %>.
+          When this is turned off, this date follows <%= possessive(production.name) %> answer. When it's on, you choose where this date's tickets are sold, or that it has none<% if production.tickets_mode == "cocoscout" %>, and the date comes out of CocoScout's sales for <%= production.name %><%= listing && listing.ticket_orders.paid_like.exists? ? ". Tickets already sold here stay valid" : "" %><% end %>.
         </div>
       </div>
       <%= render "shared/toggle_switch", form: form, field: :tickets_override, checked: own, unchecked_value: "0",
