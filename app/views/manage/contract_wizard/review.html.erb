@@ -37,7 +37,8 @@
     <div class="border border-gray-200 rounded-lg p-4">
       <div class="flex items-center justify-between mb-3">
         <h3 class="font-medium text-gray-900">Contractor</h3>
-        <%= link_to manage_contractor_contract_wizard_path(@contract), class: "text-sm text-pink-600 hover:text-pink-700" do %>
+        <%# The contractor is chosen when the contract is started; what can change here is the production, on the About step. %>
+        <%= link_to manage_production_contract_wizard_path(@contract), class: "text-sm text-pink-600 hover:text-pink-700" do %>
           Edit
         <% end %>
       </div>
@@ -128,6 +129,10 @@
                   <%= starts_at.strftime("%b %d, %Y") %> at <%= starts_at.strftime("%l:%M %p").strip %>
                   <span class="text-gray-400">·</span>
                   <%= duration %> hrs
+                  <% if (show_time = @contract.booking_show_time_words(booking)) %>
+                    <span class="text-gray-400">·</span>
+                    <span class="font-medium text-pink-700"><%= show_time %></span>
+                  <% end %>
                 <% else %>
                   Date TBD
                 <% end %>
@@ -185,7 +190,7 @@
                 </span>
               </span>
               <span class="font-medium flex-shrink-0 <%= payment["amount_tbd"] ? 'text-gray-400' : (incoming ? 'text-green-600' : 'text-red-600') %>">
-                <% if payment["amount_tbd"] %>$TBD<% else %><%= incoming ? '+' : '-' %>$<%= '%.2f' % payment["amount"].to_f %><% end %>
+                <% if payment["amount_tbd"] %><%= @contract.guarantee_amount_label(payment) || "$TBD" %><% else %><%= incoming ? '+' : '-' %>$<%= '%.2f' % payment["amount"].to_f %><% end %>
               </span>
             </li>
           <% end %>

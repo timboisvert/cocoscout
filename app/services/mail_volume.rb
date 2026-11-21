@@ -70,7 +70,6 @@ class MailVolume
   # Email to followers this month, every organization, and its ceiling.
   def follower_sent = @follower_sent ||= FollowerEmailAllowance.platform_used(month: month)
   def follower_cap = FollowerEmailAllowance.platform_cap
-  def other_sent = [ sent - follower_sent, 0 ].max
 
   # Where the month is heading at the pace so far, from the day counting
   # began (the first month starts part way through). Nil in a month's first

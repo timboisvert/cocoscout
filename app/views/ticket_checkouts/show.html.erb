@@ -29,7 +29,7 @@
     (summary, countdown, details, payment) are shared/checkout partials, the
     same ones a course registration uses. %>
 <div class="mx-auto max-w-xl space-y-5">
-  <h1 class="text-center text-3xl sm:text-4xl coustard-regular text-gray-900"><%= at_door ? "Pay at the door" : "Checkout" %></h1>
+  <h1 class="page-heading text-center text-3xl sm:text-4xl coustard-regular text-gray-900"><%= at_door ? "Pay at the door" : "Checkout" %></h1>
 
   <% if @expired %>
     <%= render "shared/checkout/expired", held: "these seats", back_path: back_path, back_text: "Back to tickets" %>
@@ -40,6 +40,7 @@
             action: "submit->checkout#submit",
             checkout_target: "form",
             checkout_publishable_key_value: stripe_publishable_key.to_s,
+            checkout_accent_color_value: @page_colors&.accent || PageColors::DEFAULTS[:button],
             checkout_amount_value: card_cents,
             checkout_free_value: free,
             checkout_return_url_value: tickets_checkout_done_url(token: @order.token, **embed_params),
@@ -115,7 +116,7 @@
             data: { checkout_target: "submit", pay_prefix: (free ? "" : "Pay ") } %>
 
       <% if @ticketing_profile.support_email.present? %>
-        <p class="text-xs text-center text-gray-500">Questions? <%= mail_to @ticketing_profile.support_email, nil, class: "text-pink-700" %></p>
+        <p class="page-faint text-xs text-center text-gray-500">Questions? <%= mail_to @ticketing_profile.support_email, nil, class: "text-pink-700" %></p>
       <% end %>
     <% end %>
   <% end %>

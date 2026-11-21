@@ -1,0 +1,65 @@
+<%#
+  A page's sections as a list down its left side, from md up (Tim,
+  2026-11-20): every settings page's way between its sections, in place of a
+  tab strip that ran off the page once there were more tabs than fit. Below
+  md the list is hidden and shared/section_picker's row and sheet show.
+
+  Render it as the first child of a row, beside the section's content: a
+  div with "md:flex md:items-start md:gap-8" holding this partial and then a
+  "flex-1 min-w-0" div with the section in it (see shared/settings_layout).
+
+  Two kinds of page use it, as with the picker:
+    - sections that are real addresses (shared/settings_layout): give each a
+      `path:` and the lines are links.
+    - sections that are panels on one page: give each an `index:` and the
+      lines are the tabs controller's tabs. Render it inside that
+      controller's element.
+
+  Locals:
+    sections    array of { label:, path: or index:, active:, pro:, locked:,
+                badge:, danger:, group:, data:, hidden: }. `group:` puts a
+                section under a heading (SectionNavHelper#section_groups);
+                only pages with many sections give them. `data:` adds data
+                attributes to a panel's line; `hidden:` starts it hidden.
+    controller  the Stimulus controller that switches panels ("tabs")
+%>
+<%
+  sections = local_assigns.fetch(:sections)
+  controller = local_assigns[:controller].presence || "tabs"
+  current = sections.find { |section| section[:active] } || sections.first
+  first_heading = true
+%>
+<nav class="hidden md:block w-52 lg:w-56 flex-shrink-0 sticky top-20 lg:top-6 self-start mb-6" aria-label="Settings sections" data-section-list>
+  <% section_groups(sections).each do |heading, items| %>
+    <% if heading == :danger %>
+      <div class="my-3 mx-3 border-t border-gray-200" aria-hidden="true"></div>
+    <% elsif heading %>
+      <h3 class="px-3 mb-1.5 <%= 'mt-5' unless first_heading %> text-[11px] font-semibold uppercase tracking-wider text-gray-400"><%= heading %></h3>
+      <% first_heading = false %>
+    <% end %>
+    <% items.each do |section| %>
+      <%
+        active = section.equal?(current)
+        idle = section[:danger] ? "text-red-500 hover:bg-red-50" : "text-gray-600 hover:bg-gray-100"
+        classes = "flex items-center gap-1.5 w-full px-3 py-2 rounded-lg text-sm font-medium text-left cursor-pointer transition-colors #{active ? 'bg-pink-100 text-pink-600 font-semibold' : idle} #{'hidden' if section[:hidden]}"
+      %>
+      <% body = capture do %>
+        <span class="min-w-0 truncate"><%= section[:label] %></span>
+        <% if section[:pro] %>
+          <%= render "shared/pro_marker" %>
+          <%= render "shared/pro_marker", kind: :lock if section[:locked] %>
+        <% end %>
+        <% if section[:badge].to_i.positive? %>
+          <span class="ml-auto inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-gray-100 text-gray-600 text-[11px] font-semibold leading-none"><%= section[:badge] %></span>
+        <% end %>
+      <% end %>
+      <% if section[:path] %>
+        <%= link_to section[:path], aria: { current: active ? "page" : nil }, class: classes do %><%= body %><% end %>
+      <% else %>
+        <%= content_tag :button, body, type: "button", class: classes, aria: { current: active ? "true" : nil },
+              data: { "#{controller}-target" => "tab", index: section[:index], action: "#{controller}#select",
+                      section_list_item: "", idle_class: idle }.merge(section[:data] || {}) %>
+      <% end %>
+    <% end %>
+  <% end %>
+</nav>

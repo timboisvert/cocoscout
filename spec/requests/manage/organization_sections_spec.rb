@@ -25,6 +25,18 @@ RSpec.describe "Manage::Organizations settings sections", type: :request do
       end
     end
 
+    # Tim (2026-11-19): Visual Assets and Integrations after Locations, then
+    # Billing & Plan just left of the Pro tabs, and Danger Zone last.
+    it "orders the strip as Tim set it" do
+      get manage_organization_path(org)
+
+      keys = %w[basic team locations visual_assets integrations billing services agreements danger]
+      strip = response.body.index(section_manage_organization_path(org, section: "basic"))
+      positions = keys.map { |key| response.body.index(section_manage_organization_path(org, section: key), strip) }
+      expect(positions).to all(be_present)
+      expect(positions).to eq(positions.sort)
+    end
+
     it "renders each section on its own URL" do
       {
         "team" => "People",

@@ -222,10 +222,6 @@ class PayoutBatch < ApplicationRecord
     update!(total_cents: items.sum(:amount_cents))
   end
 
-  def paid_total_cents
-    items.where(status: "paid").sum(:amount_cents)
-  end
-
   def completed?
     status == "completed"
   end

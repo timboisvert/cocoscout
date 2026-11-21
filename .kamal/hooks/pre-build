@@ -14,6 +14,8 @@
 # KAMAL_DESTINATION (if set)
 # SKIP_TESTS - set to "1" to skip test suite (faster deploys for hotfixes)
 # SKIP_VALIDATION - set to "1" to skip all validation checks
+# FULL_TESTS - set to "1" to run the whole suite even when the last deploy
+#   left failures to rerun
 
 set -e
 set -o pipefail
@@ -95,24 +97,58 @@ if [ "$SKIP_TESTS" = "1" ]; then
   echo "   Only skip tests for critical hotfixes."
   echo ""
 else
-  echo "🧪 Running test suite across every core..."
-  echo ""
+  # A failed run leaves its failing specs here. The next deploy reruns only
+  # those, and the full suite again only once they pass (Tim, 2026-11-20:
+  # one failure shouldn't mean waiting on all of it again). FULL_TESTS=1
+  # runs everything anyway.
+  FAILED_LOG="tmp/deploy_failed_specs.txt"
+  FAILED_SPECS=()
+  if [ "$FULL_TESTS" != "1" ] && [ -s "$FAILED_LOG" ]; then
+    while IFS= read -r spec; do FAILED_SPECS+=("$spec"); done < <(
+      sed $'s/\x1b\\[[0-9;]*m//g' "$FAILED_LOG" | grep -E '^rspec ' | grep -oE '\./spec/[^ ]+_spec\.rb(:[0-9]+|\[[0-9:,]+\])' | sort -u
+    )
+  fi
 
-  # One test database per core (created once, schema kept current), then the
-  # suite split across them: about a minute instead of five.
+  # One test database per core (created once, schema kept current).
   bundle exec rake parallel:create parallel:load_schema > /dev/null 2>&1
-  if TZ=UTC bundle exec parallel_rspec spec/; then
+
+  if [ ${#FAILED_SPECS[@]} -gt 0 ]; then
+    echo "🧪 Rerunning only the ${#FAILED_SPECS[@]} spec(s) that failed last deploy..."
+    echo "   (FULL_TESTS=1 kamal deploy runs the whole suite)"
     echo ""
-    echo "✅ All tests passed"
+    if TZ=UTC bundle exec rspec "${FAILED_SPECS[@]}"; then
+      rm -f "$FAILED_LOG"
+      echo ""
+      echo "✅ Last deploy's failures pass now"
+    else
+      echo ""
+      echo "❌ Those specs still FAIL."
+      echo "   Fix them and deploy again; only they will run."
+      echo ""
+      echo "   To skip tests (not recommended for normal deploys):"
+      echo "   SKIP_TESTS=1 kamal deploy"
+      echo ""
+      exit 1
+    fi
   else
+    echo "🧪 Running test suite across every core..."
     echo ""
-    echo "❌ Tests FAILED!"
-    echo "   Fix failing tests before deploying."
-    echo ""
-    echo "   To skip tests (not recommended for normal deploys):"
-    echo "   SKIP_TESTS=1 kamal deploy"
-    echo ""
-    exit 1
+
+    # The suite split across the databases: about two minutes instead of nine.
+    if TZ=UTC bundle exec parallel_rspec -o "--format progress --format ParallelTests::RSpec::FailuresLogger --out $FAILED_LOG" spec/; then
+      rm -f "$FAILED_LOG"
+      echo ""
+      echo "✅ All tests passed"
+    else
+      echo ""
+      echo "❌ Tests FAILED!"
+      echo "   Fix failing tests and deploy again: only the failures will rerun."
+      echo ""
+      echo "   To skip tests (not recommended for normal deploys):"
+      echo "   SKIP_TESTS=1 kamal deploy"
+      echo ""
+      exit 1
+    fi
   fi
 fi
 

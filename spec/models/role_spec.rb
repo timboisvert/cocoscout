@@ -229,11 +229,9 @@ RSpec.describe Role, type: :model do
           expect(role.category).to eq('performing')
         end
 
-        it 'keeps a technical category behind the show-role flag' do
-          role = build(:role, production: act_production, name: 'Stage Manager', category: 'technical')
-          role.lineup_kind = 'show_role'
-          expect(role.category).to eq('technical')
-          expect(role.lineup_kind).to eq('show_role')
+        it 'has no technical category: a role is performing or a break' do
+          expect(Role::CATEGORIES).to eq(%w[performing break])
+          expect(build(:role, production: act_production, name: 'Stage Manager', category: 'technical')).not_to be_valid
         end
       end
 
@@ -252,12 +250,22 @@ RSpec.describe Role, type: :model do
           expect(brk[:restricted]).to be(false)
         end
 
-        it 'gives a role-based lineup a plain category and leaves standing alone' do
-          params = Role.editor_params({ 'category' => 'show_role', 'quantity' => '2' }, act_based: false)
-          expect(params[:category]).to eq('performing')
-          expect(params).not_to have_key(:lineup_kind)
+        # A role is its name and how many (Tim, 2026-11-18): the Performing /
+        # Technical choice is gone, so nothing posted can set a category.
+        it 'drops any category posted for a role-based lineup, and leaves standing alone' do
+          params = Role.editor_params({ 'category' => 'technical', 'quantity' => '2' }, act_based: false)
+          expect(params).not_to have_key(:category)
           expect(params).not_to have_key(:standing)
-          expect(Role.editor_params({ 'category' => 'technical' }, act_based: false)[:category]).to eq('technical')
+          expect(params[:quantity]).to eq('2')
+
+          made = role_production.roles.create!(params.merge(name: 'Stage Manager'))
+          expect(made.category).to eq('performing')
+        end
+
+        it 'makes an edited intermission a plain role in a role-based lineup' do
+          role = build(:role, production: role_production, category: 'break')
+          role.assign_attributes(Role.editor_params({ 'name' => 'Interval' }, act_based: false))
+          expect(role.category).to eq('performing')
         end
       end
     end

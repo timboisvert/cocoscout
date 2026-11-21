@@ -50,6 +50,11 @@ module My
       @moved_contract_ids = @connections.values.select { |connection| connection.connected? && managed.include?(connection.linked_organization_id) }
                                         .map(&:contract_id).to_set
       @moved_contract_ids.each { |id| @ticket_sales[id] = [] }
+      # Images and details the organization is asking for (AssetRequest;
+      # Tim, 2026-11-19): the same page as the link, signed in, while open.
+      production_ids = @contracts.filter_map(&:production_id)
+      @asset_requests = AssetRequest.live.where(production_id: production_ids).includes(:production).order(:created_at)
+                                    .index_by(&:production_id).select { |_id, request| request.open? }
       @connectable_contract_ids = @contracts.select do |contract|
         @payee_contract_ids.include?(contract.id) && contract.status_active? && !@connections[contract.id]&.live? &&
           (managed - [ contract.organization_id ]).any?

@@ -31,12 +31,11 @@
 %>
 <%# What these are for, said the way the production's tab says it, with
     the same two shapes. %>
-<div class="bg-white border border-gray-200 rounded-lg p-6">
-  <h2 class="text-lg font-semibold text-gray-900">How this <%= kind %> looks</h2>
-  <p class="text-sm text-gray-600 mt-1 max-w-3xl">
-    It uses <%= name %> poster and wide image unless you give it its own here, for a special guest night, say.
-  </p>
-  <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-5 text-sm">
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <%= render "shared/section_heading", title: "How this #{kind} looks",
+        intro: "It uses #{name} poster and wide image unless you give it its own here, for a special guest night, say." %>
+  <div class="px-6 py-5">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-5 text-sm">
     <div class="flex gap-3">
       <div class="w-9 h-12 flex-shrink-0 rounded border-2 border-pink-300 bg-pink-50"></div>
       <div>
@@ -55,6 +54,7 @@
   <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
     <p class="text-xs text-gray-500">Both are always shown whole, never cropped. Without a wide image, the ticket page uses the poster.</p>
     <%= link_to "Change #{name} images in its Visual Assets", edit_manage_production_path(production, tab: 1), class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
+  </div>
   </div>
 </div>
 

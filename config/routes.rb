@@ -66,6 +66,11 @@ Rails.application.routes.draw do
   get   "/welcome",       to: "welcome#show",         as: "welcome"
 
   # Authentication
+  # The no-login page where someone outside adds a production's images and
+  # words (AssetRequest; Tim, 2026-11-19).
+  get   "/upload/:token",                   to: "asset_requests#show",      as: "asset_request"
+  post  "/upload/:token/files",             to: "asset_requests#upload",    as: "asset_request_upload"
+  patch "/upload/:token/text/:spec_id",     to: "asset_requests#save_text", as: "asset_request_text"
   get   "/signup",        to: "auth#signup",          as: "signup"
   post  "/signup",        to: "auth#handle_signup",   as: "handle_signup"
   get   "/signin",        to: "auth#signin",          as: "signin"
@@ -566,6 +571,11 @@ Rails.application.routes.draw do
     get    "/contracts/:id/ask",                         to: "contract_date_requests#new",      as: "ask_contract_date"
     post   "/contracts/:id/ask",                         to: "contract_date_requests#create"
     delete "/contracts/:id/ask/:request_id",             to: "contract_date_requests#withdraw", as: "contract_date_request"
+    # Someone on the contract adds the images and words the organization
+    # asked for, signed in, with no link (Tim, 2026-11-19).
+    get    "/contracts/:id/assets",                      to: "contract_assets#show",      as: "contract_assets"
+    post   "/contracts/:id/assets/files",                to: "contract_assets#upload",    as: "contract_assets_upload"
+    patch  "/contracts/:id/assets/text/:spec_id",        to: "contract_assets#save_text", as: "contract_assets_text"
     patch  "/contracts/:id/ask/:request_id/dismiss",     to: "contract_date_requests#dismiss",  as: "dismiss_contract_date_request"
     # The contractor connects the contract to an organization of their own
     # (ContractConnections): what it does, which production, how the dates
@@ -605,6 +615,8 @@ Rails.application.routes.draw do
     post  "/shows/:id/tickets/comps",       to: "ticket_sales#create_comp", as: "show_ticket_comps"
     post  "/shows/:id/tickets/comps/preview", to: "ticket_sales#preview_comps", as: "show_ticket_comps_preview"
     delete "/shows/:id/tickets/comps/:order_id", to: "ticket_sales#remove_comp", as: "remove_show_ticket_comp"
+    post "/shows/:id/tickets/comp-request", to: "ticket_sales#request_comps", as: "show_ticket_comp_request"
+    delete "/shows/:id/tickets/comp-request", to: "ticket_sales#withdraw_comp_request", as: "withdraw_show_ticket_comp_request"
     patch "/shows/:id/tickets/comps/:order_id", to: "ticket_sales#update_comp", as: "show_ticket_comp"
     post  "/shows/:show_id/reclaim_vacancy/:vacancy_id", to: "shows#reclaim_vacancy", as: "reclaim_vacancy"
 
@@ -743,6 +755,8 @@ Rails.application.routes.draw do
     post   "/productions/:production_id/sales/:id/comps/preview", to: "production_sales#preview_comps", as: "production_sale_comps_preview"
     patch  "/productions/:production_id/sales/:id/comps/:order_id", to: "production_sales#update_comp", as: "production_sale_comp"
     delete "/productions/:production_id/sales/:id/comps/:order_id", to: "production_sales#remove_comp", as: "remove_production_sale_comp"
+    post   "/productions/:production_id/sales/:id/comp-request", to: "production_sales#request_comps", as: "production_sale_comp_request"
+    delete "/productions/:production_id/sales/:id/comp-request", to: "production_sales#withdraw_comp_request", as: "withdraw_production_sale_comp_request"
     get "/",                              to: "manage#index"
 
     # Connections: other organizations' contracts connected to this one, as
@@ -849,6 +863,7 @@ Rails.application.routes.draw do
     patch "/shows/:production_id/:id/add_to_series", to: "shows#add_to_series", as: "add_to_series_show"
     post "/shows/:production_id/:id/link_into_series", to: "shows#link_into_series", as: "link_into_series_show"
     post "/shows/:production_id/:id/toggle_attendance", to: "shows#toggle_attendance", as: "toggle_attendance_show"
+    post "/shows/:production_id/:id/turn_casting_on", to: "shows#turn_casting_on", as: "turn_casting_on_show"
     get  "/shows/:production_id/:id/attendance", to: "shows#attendance", as: "attendance_show"
     patch "/shows/:production_id/:id/update_attendance", to: "shows#update_attendance", as: "update_attendance_show"
     post "/shows/:production_id/:id/create_walkin", to: "shows#create_walkin", as: "create_walkin_show"
@@ -881,6 +896,19 @@ Rails.application.routes.draw do
     patch "/shows/:production_id/visual_assets/:id/set_primary_poster", to: "visual_assets#set_primary_poster", as: "set_primary_poster_production_visual_asset"
     patch  "/shows/:production_id/visual_assets/wide_image", to: "visual_assets#update_wide_image", as: "wide_image_production_visual_asset"
     delete "/shows/:production_id/visual_assets/wide_image", to: "visual_assets#remove_wide_image"
+    # The organization's list on a production (Tim, 2026-11-19): one upload
+    # for any item, its written items, its own additional files, and the one
+    # link that asks someone outside for them.
+    get    "/shows/:production_id/visual_assets/originals",       to: "visual_assets#download_originals", as: "originals_production_visual_asset"
+    post   "/shows/:production_id/visual_assets/upload",          to: "visual_assets#upload",           as: "upload_production_visual_asset"
+    patch  "/shows/:production_id/visual_assets/text/:spec_id",   to: "visual_assets#save_text",        as: "text_production_visual_asset"
+    delete "/shows/:production_id/visual_assets/item/:spec_id",   to: "visual_assets#remove_item",      as: "item_production_visual_asset"
+    post   "/shows/:production_id/visual_assets/files",           to: "visual_assets#add_file",         as: "files_production_visual_asset"
+    delete "/shows/:production_id/visual_assets/files/:id",       to: "visual_assets#remove_file",      as: "file_production_visual_asset"
+    post   "/shows/:production_id/visual_assets/request",         to: "visual_assets#send_request",     as: "request_production_visual_asset"
+    post   "/shows/:production_id/visual_assets/request/remind",  to: "visual_assets#remind_request",   as: "remind_production_visual_asset"
+    post   "/shows/:production_id/visual_assets/request/off",     to: "visual_assets#turn_off_request", as: "turn_off_production_visual_asset"
+    post   "/shows/:production_id/visual_assets/request/new_link", to: "visual_assets#new_link",        as: "new_link_production_visual_asset"
 
     # Sign-ups - org-level (aggregates all productions)
     get  "/signups",            to: "signups#org_index", as: "signups"
@@ -1132,6 +1160,25 @@ Rails.application.routes.draw do
     # The shared People Picker's search (V1.1 plan §5), for every picker sheet.
     get  "/people-picker/search", to: "people_picker#search", as: "people_picker_search"
 
+    # "We cast people in this production" / "We don't": the production's answer,
+    # and which of its coming dates are cast.
+    patch "/casting/:production_id/settings/answer", to: "casting_settings#update_answer", as: "casting_answer"
+    patch "/casting/:production_id/settings/dates", to: "casting_settings#update_dates", as: "casting_dates"
+
+    # Casting > Set up casting, step by step (the first time; later changes
+    # happen in Casting Settings)
+    get    "/casting/:production_id/setup",        to: "casting_setup#who",        as: "casting_setup"
+    post   "/casting/:production_id/setup/who",    to: "casting_setup#save_who",   as: "casting_setup_save_who"
+    get    "/casting/:production_id/setup/style",  to: "casting_setup#style",      as: "casting_setup_style"
+    post   "/casting/:production_id/setup/style",  to: "casting_setup#save_style", as: "casting_setup_save_style"
+    get    "/casting/:production_id/setup/roles",  to: "casting_setup#roles",      as: "casting_setup_roles"
+    post   "/casting/:production_id/setup/roles",  to: "casting_setup#save_roles", as: "casting_setup_save_roles"
+    get    "/casting/:production_id/setup/dates",  to: "casting_setup#dates",      as: "casting_setup_dates"
+    post   "/casting/:production_id/setup/dates",  to: "casting_setup#save_dates", as: "casting_setup_save_dates"
+    get    "/casting/:production_id/setup/review", to: "casting_setup#review",     as: "casting_setup_review"
+    post   "/casting/:production_id/setup/finish", to: "casting_setup#finish",     as: "casting_setup_finish"
+    delete "/casting/:production_id/setup/cancel", to: "casting_setup#cancel",     as: "casting_setup_cancel"
+
     # Casting > Availability (new URL pattern: /manage/casting/:production_id/availability)
     get  "/casting/:production_id/availability", to: "casting_availability#index", as: "casting_availability"
     get  "/casting/:production_id/availability/:id/show_modal", to: "casting_availability#show_modal", as: "show_modal_casting_availability"
@@ -1248,6 +1295,12 @@ Rails.application.routes.draw do
     post   "services",     to: "house_services#create",  as: "house_services"
     patch  "services/:id", to: "house_services#update",  as: "house_service"
     delete "services/:id", to: "house_services#destroy"
+
+    # The organization's visual asset specifications (Organization settings → Visual Assets).
+    post   "visual-assets/specs",         to: "asset_specs#create",  as: "asset_specs"
+    post   "visual-assets/specs/reorder", to: "asset_specs#reorder", as: "reorder_asset_specs"
+    patch  "visual-assets/specs/:id",     to: "asset_specs#update",  as: "asset_spec"
+    delete "visual-assets/specs/:id",     to: "asset_specs#destroy"
 
     # Reports (Pro tier)
     scope path: "reports" do
@@ -1368,6 +1421,8 @@ Rails.application.routes.draw do
         # Performer pay (Pay tab): paid or not, and which payout scheme is the default
         patch :update_pay
         patch :update_no_revenue
+        # The shared folder on Google Drive, Dropbox, or OneDrive (Documents tab)
+        patch :update_documents_link
         # What every show needs (Services tab; Pro)
         patch :update_services
       end
@@ -1382,22 +1437,6 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :visual_assets, only: [ :index ] do
-        collection do
-          get :new_poster
-          post :create_poster
-          get :new_logo
-          post :create_logo
-        end
-        member do
-          get :edit_poster
-          patch :update_poster
-          delete :destroy_poster
-          patch :set_primary_poster
-          get :edit_logo
-          patch :update_logo
-        end
-      end
 
       resources :shows, except: [ :new, :create ] do
         collection do
@@ -1463,6 +1502,7 @@ Rails.application.routes.draw do
     get   "ticketing/settings",                   to: "ticketing_settings#show",         as: "ticketing_settings"
     patch "ticketing/settings",                   to: "ticketing_settings#update"
     patch "ticketing/settings/page",              to: "ticketing_settings#update_page",  as: "ticketing_settings_page"
+    patch "ticketing/settings/page/colors",       to: "ticketing_settings#update_page_colors", as: "ticketing_settings_page_colors"
     patch "ticketing/settings/tax",               to: "ticketing_settings#update_tax",   as: "ticketing_settings_tax"
     patch "ticketing/settings/refunds",           to: "ticketing_settings#update_refunds", as: "ticketing_settings_refunds"
     post  "ticketing/settings/open",              to: "ticketing_settings#open_box_office", as: "ticketing_open_box_office"
@@ -1582,6 +1622,9 @@ Rails.application.routes.draw do
     delete "ticketing/productions/:production_id/visibility/:viewer_id", to: "ticket_sales_viewers#destroy", as: "production_ticketing_visibility_viewer"
     post   "ticketing/shows/:id/comps",           to: "ticket_comps#create",             as: "ticket_listing_comps"
     post   "ticketing/shows/:id/comps/preview",   to: "ticket_comps#preview",            as: "ticket_listing_comps_preview"
+    # Requests for more comps on a date, decided by the organization (CompRequest).
+    post   "ticketing/comp-requests/:id/approve", to: "comp_requests#approve",           as: "approve_comp_request"
+    post   "ticketing/comp-requests/:id/decline", to: "comp_requests#decline",           as: "decline_comp_request"
     get    "ticketing/shows/:id/edit(/:section)", to: "ticket_listings#edit",            as: "edit_ticket_listing"
     patch  "ticketing/shows/:id",                 to: "ticket_listings#update",          as: "ticket_listing"
     delete "ticketing/shows/:id",                 to: "ticket_listings#destroy"

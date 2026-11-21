@@ -10,53 +10,34 @@ module Manage
     def org_index
       # Get in-house productions the user has access to (exclude third-party)
       @productions = Current.user.accessible_productions.castable
-                            .includes(:audition_cycles, :sign_up_forms, posters: { image_attachment: :blob })
+                            .includes(posters: { image_attachment: :blob })
                             .order(:name)
 
-      # Aggregate sign-up forms and audition cycles across all productions
-      @all_sign_up_forms = SignUpForm.where(production: @productions).not_archived.includes(
-        :production,
-        { sign_up_form_instances: [ :show, { sign_up_slots: :sign_up_registrations } ] },
-        { sign_up_slots: :sign_up_registrations }
-      )
+      # What's waiting on this user first, then one row per sign-up form or
+      # audition (Tim, 2026-11-20). Filters: ?show=forms|auditions,
+      # ?production=<id>, ?closed=1.
+      @to_review = AuditionsToReview.for(user: Current.user, productions: @productions)
+      overview = SignupsOverview.new(productions: @productions, to_review: @to_review, path_for: lambda { |kind, production, record|
+        kind == :form ? manage_signups_form_path(production, record) : manage_signups_auditions_cycle_path(production, record)
+      })
 
-      # "Active" means: open now, scheduled to open, or has future events
-      @active_sign_up_forms = @all_sign_up_forms.select do |f|
-        status = f.current_status
-        status[:accepting_registrations] ||
-          status[:state] == :scheduled ||
-          status[:next_event].present?
+      @show = %w[forms auditions].include?(params[:show]) ? params[:show] : "all"
+      @include_closed = params[:closed] == "1"
+      @row_productions = overview.rows.map(&:production).uniq.sort_by { |p| p.name.downcase }
+      @production_id = params[:production].presence&.to_i
+      @production_id = nil unless @row_productions.any? { |p| p.id == @production_id }
+
+      in_view = lambda do |rows|
+        rows = rows.select(&:form?) if @show == "forms"
+        rows = rows.select(&:audition?) if @show == "auditions"
+        rows = rows.select { |r| r.production.id == @production_id } if @production_id
+        rows
       end
-
-      # Audition cycles across all productions
-      @all_active_audition_cycles = AuditionCycle.where(production: @productions, active: true).includes(:production, :audition_requests)
-      @all_past_audition_cycles = AuditionCycle.where(production: @productions, active: false).includes(:production)
-
-      # Build per-production summaries
-      @production_summaries = @productions.filter_map do |production|
-        sign_up_forms = @all_sign_up_forms.select { |f| f.production_id == production.id }
-        # Same "active" definition per production
-        active_forms = sign_up_forms.select do |f|
-          status = f.current_status
-          status[:accepting_registrations] ||
-            status[:state] == :scheduled ||
-            status[:next_event].present?
-        end
-        active_audition_cycle = @all_active_audition_cycles.find { |c| c.production_id == production.id }
-        past_audition_cycles = @all_past_audition_cycles.select { |c| c.production_id == production.id }
-
-        # Skip productions with no sign-up forms and no audition cycles
-        next if sign_up_forms.empty? && active_audition_cycle.nil? && past_audition_cycles.empty?
-
-        {
-          production: production,
-          sign_up_forms_count: sign_up_forms.count,
-          active_sign_up_forms_count: active_forms.count,
-          active_audition_cycle: active_audition_cycle,
-          audition_requests_count: active_audition_cycle&.active_audition_requests_count || 0,
-          past_audition_cycles_count: past_audition_cycles.count
-        }
-      end
+      by_production = @production_id ? overview.rows.select { |r| r.production.id == @production_id } : overview.rows
+      @kind_counts = { "all" => by_production.size, "forms" => by_production.count(&:form?), "auditions" => by_production.count(&:audition?) }
+      @current_rows = in_view.call(overview.current)
+      @closed_rows = in_view.call(overview.closed)
+      @any_rows = overview.rows.any?
     end
 
     # GET /signups/:production_id (production-level)

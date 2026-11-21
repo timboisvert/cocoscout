@@ -26,6 +26,8 @@ class Organization < ApplicationRecord
   # What the organization offers its productions (Organization settings →
   # Services): booth tech, ticket taking, a projector. Contracts pick from it.
   has_many :house_services, dependent: :destroy
+  # The images and words it expects every production to have (AssetSpec).
+  has_many :asset_specs, dependent: :destroy
   # Where this org sells tickets, named in Money settings and picked per line
   # when a show's ticket sales are entered.
   has_many :ticket_sources, dependent: :destroy

@@ -13,11 +13,17 @@
   mark = ->(letters, dark) { "<span class='inline-flex h-8 w-8 flex-none items-center justify-center rounded-lg text-xs font-bold #{dark ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}'>#{letters}</span>".html_safe }
 %>
 <div class="space-y-6">
-  <p class="max-w-3xl text-sm text-gray-600">Other systems your organization already uses, connected to CocoScout. Each one is optional, turned on here, and pulls on its own once it is connected. What comes in never goes on the books by itself; it lands on the day's worksheet in Settle up for someone to check.</p>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="px-6 py-4">
+      <h2 class="text-lg font-semibold text-gray-900">Integrations</h2>
+      <p class="text-sm text-gray-600 mt-1">Other systems your organization already uses, connected to CocoScout. Each one is optional, turned on here, and pulls on its own once it is connected. What comes in never goes on the books by itself; it lands on the day's worksheet in Settle up for someone to check.</p>
+    </div>
+  </div>
 
-  <section>
-    <h2 class="text-sm font-semibold text-gray-900 mb-2">Registers and bars</h2>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+  <section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <%= render "shared/section_heading", title: "Registers and bars" %>
+    <div class="px-6 py-5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div class="<%= card %> <%= square&.connected? ? 'border-green-200' : 'border-gray-200' %>">
         <div class="flex items-center justify-between gap-2">
           <span class="flex items-center gap-2"><%= mark.call("Sq", true) %><span class="font-semibold text-gray-900">Square</span></span>
@@ -41,6 +47,7 @@
         </div>
       </div>
     </div>
+    </div>
   </section>
 
   <%# Calendars (Tim, 2026-11-11): Google Calendar kept by CocoScout. %>
@@ -49,9 +56,10 @@
                   elsif gcal.status == "error" then [ "Needs a look", "bg-amber-50 text-amber-800" ]
                   else [ "Connected", "bg-green-50 text-green-700" ]
                   end %>
-  <section>
-    <h2 class="text-sm font-semibold text-gray-900 mb-2">Calendars</h2>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+  <section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <%= render "shared/section_heading", title: "Calendars" %>
+    <div class="px-6 py-5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div class="<%= card %> <%= gcal&.connected? ? 'border-green-200' : 'border-gray-200' %>">
         <div class="flex items-center justify-between gap-2">
           <span class="flex items-center gap-2"><%= mark.call("Gc", true) %><span class="font-semibold text-gray-900">Google Calendar</span></span>
@@ -69,10 +77,12 @@
         </div>
       </div>
     </div>
+    </div>
   </section>
 
-  <section>
-    <h2 class="text-sm font-semibold text-gray-900 mb-2">Your bank</h2>
+  <section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <%= render "shared/section_heading", title: "Your bank" %>
+    <div class="px-6 py-5">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
       <div class="<%= card %> border-gray-200">
         <div class="flex items-center justify-between gap-2">
@@ -87,6 +97,7 @@
         <span class="flex items-center gap-2"><%= mark.call("Bk", false) %><span class="font-semibold text-gray-900">A live connection <span class="font-normal text-gray-500">· coming in 1.5</span></span></span>
         <p class="text-sm text-gray-600">Statement lines arriving on their own every morning instead of a file, through the same matching page.</p>
       </div>
+    </div>
     </div>
   </section>
 </div>

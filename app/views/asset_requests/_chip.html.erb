@@ -1,0 +1,6 @@
+<%# Done, Required, or Optional, beside an item's name. Locals: item. %>
+<% if item.present? %>
+  <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Done</span>
+<% else %>
+  <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"><%= item.spec.required? ? "Required" : "Optional" %></span>
+<% end %>

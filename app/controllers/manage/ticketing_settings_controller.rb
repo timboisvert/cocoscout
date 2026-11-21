@@ -4,18 +4,23 @@ module Manage
   # Ticketing settings, a routed-section page like Money and Contract settings:
   # the box office itself (its address, who pays fees, the pilot switch), tax
   # on tickets, who can work the door (and Tap to Pay on iPhone there).
-  # No branding in v1 — every org gets the same pages.
+  # The Pages tab: the landing page, and the colors of it and the ticket pages.
   #
   # The "Your website" tab (sections/_embed, the code for selling from an
   # organization's own site) is off the list until embeds are ready to offer
   # (Tim, 2026-10-19); the embed pages themselves still work.
   class TicketingSettingsController < Manage::TicketingBaseController
     # The tabs' order (Tim, 2026-11-13): fees and taxes beside the box office,
-    # comps left of refunds, the landing page just left of sales visibility.
+    # comps left of refunds, the pages just left of sales visibility.
     # 1.4's Rooms and seating follows them, at the end.
     SECTIONS = %w[box_office tax comps refunds notifications door page sharing rooms].freeze
-    SECTION_LABELS = { "box_office" => "Basic info", "page" => "Landing page", "refunds" => "Refunds", "tax" => "Fees and taxes", "notifications" => "Notifications and emails",
+    SECTION_LABELS = { "box_office" => "Basic info", "page" => "Pages", "refunds" => "Refunds", "tax" => "Fees and taxes", "notifications" => "Notifications and emails",
                        "door" => "Door", "sharing" => "Sales visibility", "comps" => "Comps", "rooms" => "Rooms and seating" }.freeze
+    # The headings the sections sit under in the side list and the phone's
+    # sheet (SectionNavHelper#section_groups).
+    SECTION_GROUPS = { "box_office" => "Box office", "page" => "Box office", "door" => "Box office", "rooms" => "Box office",
+                       "tax" => "Money", "comps" => "Money", "refunds" => "Money",
+                       "notifications" => "Emails and sharing", "sharing" => "Emails and sharing" }.freeze
     DEFAULT_SECTION = "box_office"
 
     before_action :set_section, only: %i[show]
@@ -105,6 +110,8 @@ module Manage
     def update_comps
       raw = params.require(:ticketing_profile).permit(*CompRules::PARAMS)
       if ticketing_profile.update(CompRules.attributes_from(raw))
+        # Requests waiting from a side that may no longer request close (CompRequest).
+        CompRequest.close_turned_off!(ticketing_profile.organization)
         redirect_to section_path("comps"), notice: "Saved. #{ticketing_profile.comp_rules_words.upcase_first}."
       else
         @section = "comps"
@@ -125,6 +132,16 @@ module Manage
         @section = "page"
         flash.now[:alert] = ticketing_profile.errors.full_messages.to_sentence
         render :show, status: :unprocessable_content
+      end
+    end
+
+    # The Pages tab's colors (PageColors): the landing page's and every
+    # ticket page's, unless a production or a date has its own.
+    def update_page_colors
+      if ticketing_profile.update(HasPageColors.attributes_from(params[:page_colors]))
+        redirect_to section_path("page"), notice: "Page colors saved."
+      else
+        redirect_to section_path("page"), alert: ticketing_profile.errors.full_messages.to_sentence
       end
     end
 
@@ -339,7 +356,7 @@ module Manage
     end
 
     def sections
-      SECTIONS.map { |key| { key: key, label: SECTION_LABELS.fetch(key), path: section_path(key) } }
+      SECTIONS.map { |key| { key: key, label: SECTION_LABELS.fetch(key), path: section_path(key), group: SECTION_GROUPS[key] } }
     end
     helper_method :sections
 

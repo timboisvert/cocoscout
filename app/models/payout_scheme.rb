@@ -156,16 +156,6 @@ class PayoutScheme < ApplicationRecord
     end
   end
 
-  # Drop every calculation the production has, any date — its shows have none
-  # until another is chosen. Reserved for deliberate wipes; the performer-pay
-  # switch keeps the rows and only flips Production#pays_performers.
-  def self.clear_production_scheme!(production)
-    transaction do
-      PayoutSchemeDefault.for_production(production).destroy_all
-      ShowPayout.restamp_pending_for_production!(production, nil)
-    end
-  end
-
   # The date a production-wide scheme takes effect: its first show, or today
   # if it has none / they're all ahead.
   def self.production_scheme_start(production)

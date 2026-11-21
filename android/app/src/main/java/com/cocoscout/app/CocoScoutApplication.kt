@@ -5,6 +5,7 @@ import com.cocoscout.app.bridge.DoorScannerComponent
 import com.cocoscout.app.bridge.FormComponent
 import com.cocoscout.app.bridge.MenuComponent
 import com.cocoscout.app.bridge.PushComponent
+import com.cocoscout.app.bridge.SectionsComponent
 import com.cocoscout.app.bridge.TapToPayComponent
 import com.cocoscout.app.door.TapToPaySetup
 import com.cocoscout.app.push.Notifications
@@ -45,7 +46,9 @@ class CocoScoutApplication : Application() {
             BridgeComponentFactory("menu", ::MenuComponent),
             BridgeComponentFactory("door-scanner", ::DoorScannerComponent),
             BridgeComponentFactory("push", ::PushComponent),
-            BridgeComponentFactory("tap-to-pay", ::TapToPayComponent)
+            BridgeComponentFactory("tap-to-pay", ::TapToPayComponent),
+            // The Section row's menu (1.3). Older installs keep the page's sheet.
+            BridgeComponentFactory("sections", ::SectionsComponent)
         )
         Notifications.createChannels(this)
 

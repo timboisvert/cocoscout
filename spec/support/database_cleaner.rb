@@ -244,4 +244,5 @@ def seed_content_templates
   SuperadminTemplates.ensure!(overwrite: true)
   ContractDateRequestTemplates.ensure!(overwrite: true)
   ContractConnectionTemplates.ensure!(overwrite: true)
+  CompRequestTemplates.ensure!(overwrite: true)
 end

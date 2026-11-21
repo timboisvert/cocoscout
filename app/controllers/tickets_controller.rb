@@ -28,6 +28,7 @@ class TicketsController < ApplicationController
     @listings = selling_listings.select { |l| @production_filter.nil? || l.production_id == @production_filter.id }
     @passes = @production_filter ? [] : selling_passes
     @layout = @ticketing_profile.box_office_layout
+    @page_colors = PageColors.for(@ticketing_profile)
     @storefront_no_header = true
     @venue = selling_listings.map { |l| l.show.location }.compact.tally.max_by { |_, n| n }&.first if @ticketing_profile.show_address?
     # The rail at the top: the next seven days (Tim, 2026-10-18: "this
@@ -124,6 +125,8 @@ class TicketsController < ApplicationController
     # The date it opens on lists only what's still selling online, so a
     # show whose online sales are over (the night's, after curtain) is found
     # by its own door.
+    # The chosen date's colors, else its production's, else the box office's.
+    @page_colors = PageColors.for(@ticketing_profile, @production.production_ticketing, @listing)
     @door_banner_listing = door_banner_for(@listing) || (door_banner_for(door_open_listing(production)) if authenticated? && !embed?)
     if @listing
       @tiers = @listing.ticket_tiers.active.select(&:listed?).reject { |t| t.hidden? && t.unlock_code != @code }

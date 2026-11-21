@@ -1,0 +1,39 @@
+<%# The production's shared folder on Google Drive, Dropbox, or OneDrive
+    (Production#documents_link_url), as a row that sits with its documents.
+    Opens the folder in a new tab; the service decides who can open it.
+    Locals: production %>
+<% if production.documents_link? %>
+  <% provider = production.documents_link_provider %>
+  <%= link_to production.documents_link_url, target: "_blank", rel: "noopener",
+        class: "group flex items-center gap-3 bg-white border border-gray-200 rounded-lg px-4 py-3 hover:border-pink-400 transition-colors" do %>
+    <div class="w-9 h-9 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center flex-shrink-0">
+      <% case provider %>
+      <% when :google_drive %>
+        <svg class="w-5 h-5" viewBox="0 0 87.3 78" aria-hidden="true">
+          <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+          <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
+          <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+          <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+          <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+          <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+        </svg>
+      <% when :dropbox %>
+        <svg class="w-5 h-5" viewBox="0 0 43 40" aria-hidden="true">
+          <path fill="#0061FF" d="M12.5 0 0 8.1l8.6 6.9 12.6-7.8L12.5 0zM0 21.9l12.5 8.1 8.7-7.2-12.6-7.8L0 21.9zm21.2.9 8.7 7.2 12.5-8.1-8.6-6.9-12.6 7.8zm21.2-14.7L29.9 0l-8.7 7.2 12.6 7.8 8.6-6.9zM21.3 24.4l-8.8 7.3-3.7-2.5v2.8l12.5 7.5 12.5-7.5v-2.8l-3.8 2.5-8.7-7.3z"/>
+        </svg>
+      <% when :onedrive %>
+        <svg class="w-6 h-6" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="#0364B8" d="M14.5 15.2 9.7 10.6l5-4.3a6 6 0 0 1 9.1 4.1z"/>
+          <path fill="#0078D4" d="M9.7 10.6 4 9.4a6 6 0 0 1 10.7-3.1z"/>
+          <path fill="#1490DF" d="M5.2 19H19a4.5 4.5 0 0 0 4.3-6.3 4.6 4.6 0 0 0-3.6-2.7h-1.2a6.2 6.2 0 0 0-4.3 1.7L9.7 10.6z"/>
+          <path fill="#28A8EA" d="M5.2 19H4a4 4 0 0 1-.1-8 4 4 0 0 1 5.8-.4l4.8 4.6z"/>
+        </svg>
+      <% end %>
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="font-medium text-gray-900 group-hover:text-pink-600 truncate"><%= production.documents_link_name %></div>
+      <div class="text-xs text-gray-500 mt-0.5">Shared folder on <%= production.documents_link_provider_name %></div>
+    </div>
+    <svg class="w-4 h-4 text-gray-300 group-hover:text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+  <% end %>
+<% end %>

@@ -7,8 +7,9 @@
   <%# Marker param so an unchecked W-9 box still routes to this setting. %>
   <%= hidden_field_tag :updating_taxes, "1" %>
 
-  <div class="bg-white border border-gray-200 rounded-xl p-6">
-    <h2 class="text-lg font-semibold text-gray-900 mb-1">W-9s</h2>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <%= render "shared/section_heading", title: "W-9s" %>
+    <div class="px-6 py-5">
     <p class="text-sm text-gray-600">Your staff are independent contractors. A signed W-9 from each one gives you what you need to send them a 1099-NEC after the year ends.</p>
     <label class="flex items-start gap-3 cursor-pointer mt-4">
       <%= check_box_tag :w9_required, "1", @tax_setting.w9_required?,
@@ -18,11 +19,12 @@
         <span class="block text-xs text-gray-500 mt-0.5">New staff fill it in during onboarding, and anyone already on staff is prompted on their My Shifts page. You can excuse individuals from their staff page.</span>
       </span>
     </label>
+    </div>
   </div>
 
-  <div class="bg-white border border-gray-200 rounded-xl p-6">
-    <h2 class="text-lg font-semibold text-gray-900 mb-1">Payer details</h2>
-    <p class="text-sm text-gray-600 mb-5">The legal name, EIN, and address your 1099s are issued under. Use exactly what the IRS has on file for your business.</p>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <%= render "shared/section_heading", title: "Payer details", intro: "The legal name, EIN, and address your 1099s are issued under. Use exactly what the IRS has on file for your business." %>
+    <div class="px-6 py-5">
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div class="sm:col-span-2">
@@ -64,9 +66,9 @@
         </div>
       </div>
     </div>
-  </div>
-
-  <div class="flex justify-end">
-    <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
   </div>
 <% end %>

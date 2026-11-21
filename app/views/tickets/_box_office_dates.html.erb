@@ -3,8 +3,8 @@
 <% unless @production_filter %>
   <section class="mt-8">
     <div class="flex items-baseline justify-between gap-4 mb-3">
-      <h2 class="text-2xl coustard-regular text-gray-900"><%= @coming_up_heading %></h2>
-      <span class="text-sm text-gray-500"><%= pluralize(@coming_up.size, "show") %></span>
+      <h2 class="page-heading text-2xl coustard-regular text-gray-900"><%= @coming_up_heading %></h2>
+      <span class="page-faint text-sm text-gray-500"><%= pluralize(@coming_up.size, "show") %></span>
     </div>
     <div class="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible">
       <% @coming_up.each do |listing| %>
@@ -34,11 +34,11 @@
 
 <section class="mt-8">
   <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
-    <h2 class="text-2xl coustard-regular text-gray-900">All upcoming shows</h2>
+    <h2 class="page-heading text-2xl coustard-regular text-gray-900">All upcoming shows</h2>
     <% if @productions.size > 1 %>
       <%= form_with url: tickets_box_office_path(org: @ticketing_profile.slug), method: :get, data: { controller: "auto-submit" }, class: "flex items-center gap-2 text-sm text-gray-500" do |f| %>
         <% embed_params.each { |key, value| concat hidden_field_tag(key, value, id: nil) } %>
-        <%= label_tag :production, "Show", class: "text-sm text-gray-500" %>
+        <%= label_tag :production, "Show", class: "page-faint text-sm text-gray-500" %>
         <%= select_tag :production, options_for_select([ [ "All shows (#{@productions.size})", "" ] ] + @productions.map { |p| [ p.name, p.public_key ] }, @production_filter&.public_key),
               data: { action: "change->auto-submit#submit" }, class: "rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 max-w-[16rem] focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
       <% end %>

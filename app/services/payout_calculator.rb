@@ -419,26 +419,6 @@ class PayoutCalculator
     { performer_pool: [ remaining, 0 ].max, individual_allocation_items: individual_allocation_items }
   end
 
-  def calculate_performer_pool(inputs, allocation)
-    remaining = inputs[:net_revenue]
-
-    allocation.each do |step|
-      case step["type"]
-      when "flat"
-        remaining -= step["amount"].to_f
-      when "percentage"
-        house_take = inputs[:total_revenue] * (step["value"].to_f / 100)
-        remaining = inputs[:total_revenue] - house_take - inputs[:expenses]
-      when "expenses_first"
-        # Already handled in net_revenue
-      when "remainder"
-        # Pool is the remainder - already calculated
-      end
-    end
-
-    [ remaining, 0 ].max
-  end
-
   def distribute_equal(pool, performers, overrides, breakdown)
     return [] if performers.empty?
 

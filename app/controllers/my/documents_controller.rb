@@ -13,6 +13,12 @@ module My
       @documents = accessible_documents.includes(:production, :rich_text_body).order(updated_at: :desc)
       @documents_by_production = @documents.group_by(&:production)
 
+      # Shared folders (Google Drive, Dropbox, or OneDrive) of every production
+      # the user is in: its talent pool, which takes in the cast, or its team.
+      # Each heads its production's group, even one with no documents.
+      @linked_productions = linked_folder_productions
+      @linked_productions.each { |production| @documents_by_production[production] ||= [] }
+
       # Agreements the user has signed — surfaced here so performers can always
       # find what they agreed to (links to the signed copy on the production).
       person_ids = Current.user.people.pluck(:id)
@@ -45,6 +51,22 @@ module My
       managed_prod_ids = Current.user.production_permissions.where(role: "manager").pluck(:production_id).to_set
       managed_org_ids  = Current.user.organization_roles.where(company_role: "manager").pluck(:organization_id).to_set
       prods.find { |p| managed_prod_ids.include?(p.id) || managed_org_ids.include?(p.organization_id) }
+    end
+
+    # Productions with a shared folder that the user is in: one whose effective
+    # talent pool holds any of their profiles (or their groups), or whose team
+    # they're on. Same rule as reaching the production on My.
+    def linked_folder_productions
+      contexts = Current.user.people.active.map(&:document_audience_context)
+      pool_ids = contexts.flat_map { |c| c[:pool_ids] }.uniq
+      team_ids = contexts.flat_map { |c| c[:team_production_ids] }.uniq
+      org_ids = Production.where(id: TalentPool.where(id: pool_ids).select(:production_id)).pluck(:organization_id) +
+                Production.where(id: team_ids).pluck(:organization_id)
+      return [] if org_ids.empty?
+
+      Production.active.where(organization_id: org_ids.uniq).where.not(documents_link_url: [ nil, "" ])
+                .includes(:organization, :talent_pools, talent_pool_shares: :talent_pool).order(:name)
+                .select { |p| p.documents_link? && (team_ids.include?(p.id) || pool_ids.include?(p.effective_talent_pool&.id)) }
     end
 
     # Union of documents visible to any of the user's active profiles.

@@ -12,6 +12,19 @@
     ] : []
   } %>
 
+  <%# The production's shared folder on Google Drive, Dropbox, or OneDrive. %>
+  <% if @production.documents_link? %>
+    <div class="mb-4">
+      <%= render "shared/documents_link", production: @production %>
+    </div>
+  <% elsif current_user_can_manage?(@production) %>
+    <p class="text-sm text-gray-500 mb-4">
+      Does this production keep files on Google Drive, Dropbox, or OneDrive?
+      <%= link_to "Link the folder in the production's settings", edit_manage_production_path(@production, tab: production_edit_tab(@production, :documents)), class: "text-pink-600 hover:text-pink-700 font-medium" %>
+      so everyone in the production can find it here.
+    </p>
+  <% end %>
+
   <% if @documents.any? %>
     <div class="space-y-2">
       <% @documents.each do |doc| %>

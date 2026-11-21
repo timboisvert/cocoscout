@@ -1,0 +1,94 @@
+<%# One visual asset specification's fields, for adding one and editing one
+    on Organization settings → Visual Assets. The built-in Poster and Wide
+    image keep their shape, so they ask only for the smallest width.
+    Locals: spec, input, check (classes). %>
+<%
+  field_id = spec.persisted? ? "asset_spec_#{spec.id}" : "asset_spec_new_#{spec.kind}"
+  fixed_shape = spec.builtin.in?(%w[poster wide])
+  inches = spec.print?
+  allowed_formats = fixed_shape ? AssetSpec::BUILTIN_FORMATS.fetch(spec.builtin) : AssetSpec::FORMATS.keys
+%>
+<%= hidden_field_tag "asset_spec[kind]", spec.kind, id: nil if spec.new_record? %>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+  <div>
+    <label for="<%= field_id %>_name" class="block text-xs font-medium text-gray-700 mb-1">Name</label>
+    <%= text_field_tag "asset_spec[name]", spec.name, id: "#{field_id}_name", required: true, maxlength: 80,
+          placeholder: spec.image? ? "e.g. Instagram square" : "e.g. Short blurb", class: input %>
+  </div>
+  <div>
+    <label for="<%= field_id %>_used_for" class="block text-xs font-medium text-gray-700 mb-1">What you use it for</label>
+    <%= text_field_tag "asset_spec[used_for]", spec.used_for, id: "#{field_id}_used_for", maxlength: 120,
+          placeholder: spec.image? ? "e.g. Our Instagram posts" : "e.g. Social posts and the lobby screens", class: input %>
+  </div>
+</div>
+
+<% if spec.image? %>
+  <% if fixed_shape %>
+    <div class="grid grid-cols-1 sm:grid-cols-[10rem_minmax(0,1fr)] gap-3 items-end">
+      <div>
+        <label for="<%= field_id %>_width" class="block text-xs font-medium text-gray-700 mb-1">Smallest width (pixels)</label>
+        <%= number_field_tag "asset_spec[width]", spec.width, id: "#{field_id}_width", min: 1, step: 1, class: input %>
+      </div>
+      <p class="text-sm text-gray-500 pb-2">The <%= spec.builtin == "poster" ? "poster stays 3:4" : "wide image stays 16:9" %>, because that is how CocoScout shows it, so the height follows. It is <%= spec.height %> pixels now.</p>
+    </div>
+  <% else %>
+    <div data-controller="asset-spec-size" class="grid grid-cols-2 sm:grid-cols-[9rem_8rem_8rem_8rem] gap-3 items-end">
+      <div class="col-span-2 sm:col-span-1">
+        <label for="<%= field_id %>_unit" class="block text-xs font-medium text-gray-700 mb-1">Size in</label>
+        <%= select_tag "asset_spec[unit]", options_for_select([ [ "Pixels", "pixels" ], [ "Inches, for print", "inches" ] ], inches ? "inches" : "pixels"),
+              id: "#{field_id}_unit", class: input, data: { asset_spec_size_target: "unit", action: "change->asset-spec-size#change" } %>
+      </div>
+      <div>
+        <label for="<%= field_id %>_width" class="block text-xs font-medium text-gray-700 mb-1">Width</label>
+        <%= number_field_tag "asset_spec[width]", (inches ? spec.inches(spec.width) : spec.width), id: "#{field_id}_width", min: 0, step: "any", required: true, class: input %>
+      </div>
+      <div>
+        <label for="<%= field_id %>_height" class="block text-xs font-medium text-gray-700 mb-1">Height</label>
+        <%= number_field_tag "asset_spec[height]", (inches ? spec.inches(spec.height) : spec.height), id: "#{field_id}_height", min: 0, step: "any", required: true, class: input %>
+      </div>
+      <div class="<%= 'hidden' unless inches %>" data-asset-spec-size-target="dpi">
+        <label for="<%= field_id %>_dpi" class="block text-xs font-medium text-gray-700 mb-1">DPI</label>
+        <%= number_field_tag "asset_spec[dpi]", spec.dpi || 300, id: "#{field_id}_dpi", min: 1, step: 1, class: input %>
+      </div>
+    </div>
+    <p class="text-xs text-gray-500 -mt-1">A file must be this shape, and at least this size. A bigger file of the same shape is fine.</p>
+  <% end %>
+
+  <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_10rem] gap-3 items-end">
+    <div>
+      <p class="block text-xs font-medium text-gray-700 mb-1.5">File types</p>
+      <%= hidden_field_tag "asset_spec[formats][]", "", id: nil %>
+      <div class="flex flex-wrap gap-2">
+        <% allowed_formats.each do |key| %>
+          <label class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 cursor-pointer has-[:checked]:border-pink-300 has-[:checked]:bg-pink-50">
+            <%= check_box_tag "asset_spec[formats][]", key, spec.formats.include?(key), id: "#{field_id}_format_#{key}", class: check %>
+            <%= AssetSpec::FORMAT_LABELS[key] %>
+          </label>
+        <% end %>
+      </div>
+    </div>
+    <div>
+      <label for="<%= field_id %>_mb" class="block text-xs font-medium text-gray-700 mb-1">Largest file (MB)</label>
+      <%= number_field_tag "asset_spec[max_megabytes]", spec.max_megabytes, id: "#{field_id}_mb", min: 1, max: AssetSpec::MAX_MEGABYTES, step: 1, class: input %>
+    </div>
+  </div>
+<% else %>
+  <div class="grid grid-cols-1 sm:grid-cols-[12rem_minmax(0,1fr)] gap-3 items-end">
+    <div>
+      <label for="<%= field_id %>_max_length" class="block text-xs font-medium text-gray-700 mb-1">Longest (characters)</label>
+      <%= number_field_tag "asset_spec[max_length]", spec.max_length, id: "#{field_id}_max_length", min: 1, max: 10_000, step: 1, placeholder: "No limit", class: input %>
+    </div>
+  </div>
+<% end %>
+
+<div>
+  <label for="<%= field_id %>_guidance" class="block text-xs font-medium text-gray-700 mb-1">A note for whoever makes it <span class="font-normal text-gray-500">(optional)</span></label>
+  <%= text_field_tag "asset_spec[guidance]", spec.guidance, id: "#{field_id}_guidance", maxlength: 500,
+        placeholder: spec.image? ? "e.g. Keep the title away from the edges. Eventbrite crops the sides on phones." : "e.g. One sentence, in the present tense.", class: input %>
+</div>
+
+<label class="inline-flex items-center gap-2 text-sm text-gray-900">
+  <%= hidden_field_tag "asset_spec[required]", "0", id: nil %>
+  <%= check_box_tag "asset_spec[required]", "1", spec.required?, id: "#{field_id}_required", class: check %>
+  Required
+</label>

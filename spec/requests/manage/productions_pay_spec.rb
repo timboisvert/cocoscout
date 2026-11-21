@@ -52,17 +52,13 @@ RSpec.describe "Manage::Productions Pay tab", type: :request do
     it "keeps Danger Zone as the last tab" do
       get edit_manage_production_path(production)
 
-      # Pay, Tickets, then Services (Pro, after-V1 #6), then Danger Zone. The
-      # tab strip's buttons; the phone's section list (V1.1) carries the same
-      # indexes ahead of it.
-      pay_at = response.body.index('data-tabs-target="tab" data-index="6"')
-      tickets_at = response.body.index('data-tabs-target="tab" data-index="7"')
-      services_at = response.body.index('data-tabs-target="tab" data-index="8"')
-      danger_at = response.body.index('data-tabs-target="tab" data-index="9"')
-      expect([ pay_at, tickets_at, services_at, danger_at ]).to eq([ pay_at, tickets_at, services_at, danger_at ].sort)
-      expect(response.body[tickets_at, 320]).to include("Tickets")
-      expect(response.body[services_at, 320]).to include("Services")
-      expect(response.body[danger_at, 320]).to include("Danger Zone")
+      # Casting left of the Pro tabs (Agreement, Pay, Tickets, Services),
+      # then Public Listing, then Danger Zone last (Tim, 2026-11-18). The tab
+      # strip's buttons, by index.
+      labels = Nokogiri::HTML(response.body).css("nav [data-tabs-target=tab]").map { |tab| [ tab["data-index"].to_i, tab.text.squish.delete_suffix(" Pro") ] }
+      expect(labels.map(&:last)).to eq([ "Basic Information", "Visual Assets", "Documents", "Production Team", "Casting", "Agreement", "Pay", "Tickets", "Services",
+                                         "Public Listing", "Danger Zone" ])
+      expect(labels.map(&:first)).to eq((0..10).to_a)
     end
 
     it "shows the current calculation as a card, tags it in the picker and keeps it on Save" do

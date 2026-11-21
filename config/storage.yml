@@ -1,6 +1,8 @@
 test:
   service: Disk
-  root: <%= Rails.root.join("tmp/storage") %>
+  # One folder per parallel test process, emptied when its run ends
+  # (spec/support/test_storage.rb), so uploads never pile up.
+  root: <%= Rails.root.join("tmp/storage#{ENV['TEST_ENV_NUMBER']}") %>
 
 local:
   service: Disk

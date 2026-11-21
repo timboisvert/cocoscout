@@ -1,0 +1,65 @@
+<%# One image on the uploader: what it's for, its exact size, and either the
+    file that's here or a place to drop one. A file is checked in the browser
+    first, then on the server (AssetCheck), and the card is redrawn with it
+    or with the sentence saying why it can't be used.
+    Locals: item, upload_address, can_replace (a lambda), organization. %>
+<%
+  spec = item.spec
+  preview = item.present? ? item.preview : nil
+  replaceable = !item.present? || can_replace.call(item)
+  accept = (spec.content_types + spec.formats.map { |key| ".#{key == 'jpg' ? 'jpg,.jpeg' : key}" }).join(",")
+%>
+<div id="asset-card-<%= spec.id %>" class="bg-white border border-gray-200 rounded-2xl overflow-hidden flex flex-col"
+     data-controller="asset-upload" data-asset-card="<%= spec.id %>"
+     data-asset-upload-url-value="<%= upload_address %>" data-asset-upload-spec-value="<%= spec.id %>"
+     data-asset-upload-width-value="<%= spec.width %>" data-asset-upload-height-value="<%= spec.height %>"
+     data-asset-upload-types-value="<%= spec.content_types.to_json %>" data-asset-upload-formats-value="<%= spec.formats_words %>"
+     data-asset-upload-max-bytes-value="<%= spec.max_bytes %>" data-asset-upload-max-mb-value="<%= spec.max_megabytes %>"
+     data-asset-upload-ratio-value="<%= spec.ratio_label %>" data-asset-upload-shape-value="<%= spec.square? ? 'square' : (spec.width > spec.height ? 'wide' : 'tall') %>"
+     data-action="dragover->asset-upload#dragOver dragleave->asset-upload#dragLeave drop->asset-upload#drop">
+  <input type="file" class="hidden" accept="<%= accept %>" data-asset-upload-target="input" data-action="change->asset-upload#choose"
+         id="asset-file-<%= spec.id %>" aria-label="Choose a file for <%= spec.name %>">
+
+  <div class="h-48 bg-gray-100 flex items-center justify-center p-4" data-asset-upload-target="zone">
+    <div class="hidden w-full text-center" data-asset-upload-target="progress">
+      <p class="text-sm font-medium text-gray-900 truncate" data-asset-upload-target="filename"></p>
+      <div class="mx-auto mt-2 h-2 w-3/4 rounded-full bg-gray-200 overflow-hidden"><div class="h-2 bg-pink-500 transition-all" style="width: 0%" data-asset-upload-target="bar"></div></div>
+      <p class="text-xs text-gray-500 mt-2" data-asset-upload-target="percent">Uploading</p>
+    </div>
+    <div class="w-full h-full flex items-center justify-center" data-asset-upload-target="idle">
+      <% if preview %>
+        <%= image_tag preview, alt: "#{spec.name} for this production", class: "max-h-40 max-w-full w-auto h-auto rounded shadow-sm" %>
+      <% elsif item.present? %>
+        <p class="text-sm text-gray-600">Your file is here.</p>
+      <% else %>
+        <div class="w-full h-full rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-2 text-center px-3">
+          <span class="text-sm text-gray-500">Drop <%= spec.square? ? "a square image" : "a file" %> here</span>
+          <%= render "shared/button", text: "Choose a file", variant: "secondary", size: "small", type: :button, data: { action: "click->asset-upload#pick" } %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="px-4 py-4 flex-1 flex flex-col">
+    <div class="flex items-start justify-between gap-2">
+      <h3 class="text-base font-semibold text-gray-900"><%= spec.name %></h3>
+      <%= render "asset_requests/chip", item: item %>
+    </div>
+    <p class="text-sm text-gray-600 mt-1"><%= spec.description_line %></p>
+    <% if item.present? && item.width && item.height %>
+      <p class="text-sm text-gray-600">Yours is <%= item.width %> × <%= item.height %>.</p>
+    <% end %>
+    <% if spec.used_for.present? %><p class="text-sm text-gray-500 mt-1">For <%= spec.used_for.sub(/\A./, &:downcase) %>.</p><% end %>
+    <% if spec.guidance.present? %><p class="text-sm text-gray-500 mt-1"><%= spec.guidance %></p><% end %>
+    <p class="hidden text-sm font-medium text-red-700 mt-2" role="alert" data-asset-upload-target="error"></p>
+    <% if item.present? %>
+      <div class="mt-auto pt-3">
+        <% if replaceable %>
+          <%= render "shared/button", text: "Replace", variant: "secondary", size: "small", type: :button, data: { action: "click->asset-upload#pick" } %>
+        <% else %>
+          <p class="text-xs text-gray-500">Ask <%= organization.name %> if this needs to change.</p>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,24 @@
+<%# One written item on the uploader, saved as it's typed.
+    Locals: item, text_address (a lambda), can_replace (a lambda), organization. %>
+<%
+  spec = item.spec
+  editable = !item.present? || can_replace.call(item)
+  field_id = "asset-text-#{spec.id}"
+  rows = spec.max_length && spec.max_length <= 300 ? 2 : 5
+%>
+<div class="bg-white border border-gray-200 rounded-2xl px-4 py-4" data-controller="asset-text" data-asset-text-url-value="<%= text_address.call(spec) %>"
+     data-asset-text-max-value="<%= spec.max_length.to_i %>" data-asset-text-card="<%= spec.id %>">
+  <div class="flex items-start justify-between gap-2">
+    <label for="<%= field_id %>" class="text-base font-semibold text-gray-900"><%= spec.name %></label>
+    <%= render "asset_requests/text_status", item: item %>
+  </div>
+  <% hint = [ spec.used_for.present? ? "For #{spec.used_for.sub(/\A./, &:downcase)}." : nil, spec.guidance ].compact_blank.join(" ") %>
+  <% if hint.present? %><p class="text-sm text-gray-500 mt-1"><%= hint %></p><% end %>
+  <textarea id="<%= field_id %>" rows="<%= rows %>" <%= "maxlength=#{spec.max_length}" if spec.max_length %> <%= "disabled" unless editable %>
+            class="mt-3 block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition disabled:bg-gray-50 disabled:text-gray-600"
+            data-asset-text-target="field" data-action="input->asset-text#changed blur->asset-text#saveNow"><%= item.text %></textarea>
+  <div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
+    <span data-asset-text-target="status" role="status"><%= editable ? "" : "Ask #{organization.name} if this needs to change." %></span>
+    <% if spec.max_length %><span data-asset-text-target="count"><%= item.text.to_s.length %> of <%= spec.max_length %> characters</span><% end %>
+  </div>
+</div>

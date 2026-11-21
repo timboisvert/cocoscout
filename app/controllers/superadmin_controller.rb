@@ -267,6 +267,13 @@ class SuperadminController < ApplicationController
     organization = Organization.find(params[:id])
     name = organization.name
 
+    # Money held for it would go with it: pay it out or move it first.
+    balance_cents = OrgCashEntry.balance_cents(organization)
+    unless balance_cents.zero?
+      return redirect_to organization_detail_path(organization),
+                         alert: "#{name} wasn't deleted: it has #{helpers.number_to_currency(balance_cents / 100.0)} in its balance. Pay it out first."
+    end
+
     ActiveRecord::Base.transaction do
       org_id = organization.id
       production_ids = organization.productions.pluck(:id)
@@ -306,12 +313,18 @@ class SuperadminController < ApplicationController
       if production_ids.any?
         PayoutSchemeDefault.where(production_id: production_ids).delete_all
         CastingTableProduction.where(production_id: production_ids).delete_all
-        CastAssignmentStage.where(production_id: production_ids).delete_all
+        # Cast assignment stages hang off audition cycles, and Production's
+        # before_destroy clears them.
       end
 
       # --- Org references not declared as dependent: on Organization ---
       PersonInvitation.where(organization_id: org_id).delete_all
       EmailLog.where(organization_id: org_id).delete_all
+      Notification.where(organization_id: org_id).delete_all
+      OrgCashEntry.where(organization_id: org_id).delete_all
+      redemption_ids = FeatureCreditRedemption.where(organization_id: org_id).pluck(:id)
+      CourseOffering.where(feature_credit_redemption_id: redemption_ids).update_all(feature_credit_redemption_id: nil) if redemption_ids.any?
+      FeatureCreditRedemption.where(id: redemption_ids).delete_all
       Message.where(organization_id: org_id).destroy_all
 
       # --- Talent pool self-reference ---
@@ -326,6 +339,12 @@ class SuperadminController < ApplicationController
     end
 
     redirect_to organizations_list_path, notice: "Organization '#{name}' has been deleted."
+  rescue ActiveRecord::RecordNotDestroyed => e
+    # A record that guards itself (a date people hold tickets for, say)
+    # stops the delete; nothing was deleted, and its reason says why.
+    reasons = e.record.errors.full_messages.presence || [ "A #{e.record.class.model_name.human.downcase} couldn't be deleted." ]
+    redirect_to organization_detail_path(organization),
+                alert: "#{name} wasn't deleted: #{reasons.to_sentence}"
   end
 
   def organization_consolidation

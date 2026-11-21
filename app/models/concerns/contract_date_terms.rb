@@ -263,7 +263,8 @@ module ContractDateTerms
     shows.sum do |show|
       revenue = settled_revenue(show.show_financials)
       pct = they_sell ? our_share_for(show) : their_share_for(show)
-      revenue * pct / 100.0
+      # A per-show minimum guarantee floors each night (ContractRevenueGuarantee).
+      guaranteed_night_share(revenue, revenue * pct / 100.0, they_sell: they_sell)
     end.round(2)
   end
 
@@ -322,9 +323,11 @@ module ContractDateTerms
 
       [ "#{money.(usual)} per event", nil, false ]
     elsif field == :share
-      return [ "#{number_for(terms['share'])}% this show", "Usually #{number_for(usual)}% to us", true ] if terms.key?("share")
+      # A per-show minimum guarantee holds on every show (ContractRevenueGuarantee).
+      floor = guarantee_per_show? ? "; they take home at least #{guarantee_money}" : ""
+      return [ "#{number_for(terms['share'])}% this show", "Usually #{number_for(usual)}% to us#{floor}", true ] if terms.key?("share")
 
-      [ "Revenue share", "#{number_for(usual)}% of ticket sales to us", false ]
+      [ "Revenue share", "#{number_for(usual)}% of ticket sales to us#{floor}", false ]
     elsif field == :amount
       return [ "#{money.(terms['amount'])} fee this show", "Usually #{money.(usual)}", true ] if terms.key?("amount")
 

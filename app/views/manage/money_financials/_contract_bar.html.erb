@@ -11,6 +11,7 @@
 
   if contract.respond_to?(:revenue_share?) && contract.revenue_share?
     type_label = "Revenue share (you keep #{contract.revenue_share_percentage.to_i}%)"
+    type_label += ", they take home #{contract.guarantee_short_words}" if contract.revenue_guarantee?
     value = "TBD"
   else
     type_label = "Flat fee"

@@ -1,0 +1,28 @@
+<%#
+  The number in a comp request's window (CompRequest), with what it makes:
+  a stepper, then "3 now + 4 requested = 7 if approved", kept in step by
+  comp_count. Locals: id (the field's id), label, now (the side's comps for
+  the date now), value (the starting number), added_words ("requested" /
+  "approved"), total_words ("if approved" / "for this date").
+%>
+<div class="space-y-4" data-controller="comp-count" data-comp-count-now-value="<%= now %>">
+  <div>
+    <label for="<%= id %>" class="block text-sm font-medium text-gray-700 mb-1.5"><%= label %></label>
+    <div class="inline-flex items-stretch rounded-lg border border-gray-300 shadow-sm overflow-hidden" data-controller="number-stepper" data-number-stepper-min-value="1">
+      <button type="button" data-action="number-stepper#down" aria-label="One fewer"
+              class="w-11 h-11 inline-flex items-center justify-center text-lg text-gray-600 bg-gray-50 border-r border-gray-300 hover:bg-gray-100 cursor-pointer">&minus;</button>
+      <input type="number" name="quantity" id="<%= id %>" value="<%= value %>" min="1" max="<%= CompRequest::MAX %>" step="1" inputmode="numeric" required
+             data-number-stepper-target="input" data-comp-count-target="input" data-action="input->comp-count#update"
+             class="w-16 h-11 text-center text-lg font-semibold tabular-nums text-gray-900 border-0 focus:outline-none focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none">
+      <button type="button" data-action="number-stepper#up" aria-label="One more"
+              class="w-11 h-11 inline-flex items-center justify-center text-lg text-gray-600 bg-gray-50 border-l border-gray-300 hover:bg-gray-100 cursor-pointer">+</button>
+    </div>
+  </div>
+  <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm text-gray-600">
+    <span><span class="font-semibold text-gray-900 tabular-nums"><%= now %></span> now</span>
+    <span class="text-gray-400" aria-hidden="true">+</span>
+    <span><span class="font-semibold text-gray-900 tabular-nums" data-comp-count-target="added"><%= value %></span> <%= added_words %></span>
+    <span class="text-gray-400" aria-hidden="true">=</span>
+    <span><span class="font-semibold text-pink-600 tabular-nums" data-comp-count-target="total"><%= now + value %></span> <%= total_words %></span>
+  </div>
+</div>

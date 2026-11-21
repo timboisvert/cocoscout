@@ -282,11 +282,11 @@ RSpec.describe "Production ticketing", type: :request do
       # A date's tabs run as its production's do, and open on Basic info.
       get manage_edit_ticket_listing_path(listing)
       tabs = Nokogiri::HTML(response.body).css("nav[aria-label='Settings sections'] a").map { |a| a.text.squish }
-      # 1.4's Seating follows them.
-      expect(tabs).to eq([ "Basic info", "Tickets", "Fees and taxes", "Comps", "Refunds", "Discount codes", "Products", "Ticket page", "Seating" ])
+      # Under their headings: What you sell (1.4's Seating last), Money, Buyers' pages.
+      expect(tabs).to eq([ "Basic info", "Tickets", "Discount codes", "Products", "Seating", "Fees and taxes", "Comps", "Refunds", "Ticket page" ])
       # ...all but Checkout boxes (the mailing lists a checkout offers are the production's, never one date's)
       # and Pricing rules (a production's, for all its dates).
-      expect(tabs).to eq(Manage::ProductionTicketingsController::SECTIONS.values - [ "Checkout boxes", "Pricing rules" ])
+      expect(tabs).to match_array(Manage::ProductionTicketingsController::SECTIONS.values - [ "Checkout boxes", "Pricing rules" ])
       expect(response.body).to include("When sales open and close")
 
       get manage_edit_ticket_listing_path(listing, section: "tickets")
@@ -321,12 +321,15 @@ RSpec.describe "Production ticketing", type: :request do
     it "gives a date its own page words by the box's switch, and clears them when it's switched off" do
       get manage_edit_ticket_listing_path(listing, section: "page")
       doc = Nokogiri::HTML(response.body)
-      expect(doc.css("[data-own-switch]").map { |n| n["data-own-switch"] }).to eq(%w[ticket_listing_own_page ticket_listing_own_ages])
+      expect(doc.css("[data-own-switch]").map { |n| n["data-own-switch"] }).to eq(%w[ticket_listing_own_page ticket_listing_own_ages ticket_listing_own_colors])
       # One line each: the switch, then the words, the settings a link to the production's.
       expect(doc.css("[data-own-switch] [data-override-line]").map { |n| n.text.squish }).to eq([
-        "Override Rising Stars' ticket page words for this date", "Override Rising Stars' ages settings for this date"
+        "Override Rising Stars' ticket page words for this date", "Override Rising Stars' ages settings for this date",
+        "Override your box office's page colors for this date"
       ])
-      expect(doc.css("[data-override-line] a").map { |a| a["href"] }.uniq).to eq([ manage_edit_production_ticketing_path(production, section: "sales") ])
+      expect(doc.css("[data-override-line] a").map { |a| a["href"] }.uniq).to eq([
+        manage_edit_production_ticketing_path(production, section: "sales"), manage_ticketing_settings_section_path(section: "page")
+      ])
 
       patch manage_ticket_listing_path(listing), params: { section: "page", ticket_listing: { own_page: "1", title: "Closing night", door_note: "Doors at 7" } }
       expect(listing.reload.attributes.slice("title", "door_note")).to eq("title" => "Closing night", "door_note" => "Doors at 7")

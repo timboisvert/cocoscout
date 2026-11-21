@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { markListItem, markSheetItem } from "controllers/lib/section_nav"
 
 export default class extends Controller {
     static targets = ["tab", "panel", "hiddenField", "reviewCheckbox", "sendSection", "menu", "sectionLabel", "sectionItem"]
@@ -46,7 +47,6 @@ export default class extends Controller {
                     const tabIndex = parseInt(hash.replace('#tab-', ''), 10);
                     if (!isNaN(tabIndex) && tabIndex >= 0 && tabIndex < this.tabTargets.length) {
                         initialTab = tabIndex;
-                        requested = true;
                     }
                 }
             }
@@ -115,6 +115,8 @@ export default class extends Controller {
         const fill = this.plainValue ? [] : ["bg-white"]
         const unfilled = this.plainValue ? [] : ["bg-gray-50"]
         this.tabTargets.forEach((tab, i) => {
+            // A line of a settings page's side list (shared/section_list).
+            if ("sectionListItem" in tab.dataset) return markListItem(tab, i === idx);
             if (i === idx) {
                 tab.classList.add("border-pink-500", "text-pink-600", ...fill);
                 tab.classList.remove("border-transparent", "text-gray-500", ...unfilled);
@@ -128,14 +130,7 @@ export default class extends Controller {
         });
         // The phone's picker: check the section showing, and name it on the row.
         this.sectionItemTargets.forEach(item => {
-            const active = parseInt(item.dataset.index, 10) === idx;
-            item.classList.toggle("text-pink-600", active);
-            item.classList.toggle("font-medium", active);
-            item.classList.toggle("text-gray-800", !active);
-            item.querySelector("[data-section-check]")?.classList.toggle("hidden", !active);
-            if (active) item.setAttribute("aria-current", "true"); else item.removeAttribute("aria-current");
-            const name = item.querySelector("[data-section-name]");
-            if (active && name && this.hasSectionLabelTarget) this.sectionLabelTarget.innerHTML = name.innerHTML;
+            markSheetItem(item, parseInt(item.dataset.index, 10) === idx, this.hasSectionLabelTarget ? this.sectionLabelTarget : null);
         });
         this.dispatch("change", { detail: { index: idx } });
     }

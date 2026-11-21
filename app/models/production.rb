@@ -11,6 +11,11 @@ class Production < ApplicationRecord
 
   has_many :posters, dependent: :destroy
   include ContentNotes::Owner
+  # Visual asset specifications (Tim, 2026-11-19): what this production has
+  # for its organization's list, its own additional files, and the link that
+  # asks someone outside for them.
+  has_many :production_assets, dependent: :destroy
+  has_many :asset_requests, dependent: :destroy
   has_many :shows, dependent: :destroy
   has_many :ticket_discount_codes, dependent: :destroy
   has_many :scheduling_rules, dependent: :destroy
@@ -90,6 +95,38 @@ class Production < ApplicationRecord
   TICKETS_MODES = %w[unset cocoscout elsewhere none].freeze
   validates :tickets_mode, inclusion: { in: TICKETS_MODES }
   validates :tickets_url, format: { with: %r{\Ahttps?://\S+\z}, message: "must start with http:// or https://" }, allow_blank: true
+
+  # The folder where the production keeps its files on Google Drive, Dropbox,
+  # or OneDrive: one link, shown next to its documents to everyone in the
+  # production (Tim, 2026-11-19). The service's own sharing decides who can
+  # open it; we only show the link.
+  DOCUMENTS_LINK_PROVIDERS = {
+    google_drive: { name: "Google Drive", hosts: %w[drive.google.com docs.google.com] },
+    dropbox: { name: "Dropbox", hosts: %w[dropbox.com www.dropbox.com] },
+    onedrive: { name: "OneDrive", hosts: %w[onedrive.live.com onedrive.com 1drv.ms], host_suffixes: %w[.sharepoint.com] }
+  }.freeze
+  normalizes :documents_link_url, with: ->(v) { v.strip.presence }
+  normalizes :documents_link_name, with: ->(v) { v.strip.presence }
+  before_validation :tidy_documents_link
+  validate :documents_link_from_a_known_service
+  validates :documents_link_name, length: { maximum: 100 }
+
+  def documents_link? = documents_link_url.present? && documents_link_provider.present?
+
+  def documents_link_provider
+    host = begin
+      URI.parse(documents_link_url.to_s).host.to_s.downcase
+    rescue URI::InvalidURIError
+      ""
+    end
+    return nil if host.blank?
+    DOCUMENTS_LINK_PROVIDERS.find do |_key, p|
+      p[:hosts].include?(host) || Array(p[:host_suffixes]).any? { |s| host.end_with?(s) }
+    end&.first
+  end
+
+  def documents_link_provider_name = DOCUMENTS_LINK_PROVIDERS.dig(documents_link_provider, :name)
+
   has_many :ticket_listings
   # cocoscout.com/t/CODE: the production's one short code (kept while dates come
   # and go) and any named links a manager made for it.
@@ -127,6 +164,69 @@ class Production < ApplicationRecord
     role_based: "role_based",
     act_based: "act_based"
   }, default: :role_based
+
+  # Whether people are cast in this production (Tim, 2026-11-18): the stored
+  # answer, casts_people, "We cast people in this production" or "We don't
+  # cast people in this production". A new date follows it
+  # (Show.casting_default_for), and the casting board and the production's
+  # page say which it is. casting_setup_completed says the set-up questions
+  # (who is cast, roles or acts, the roles, which dates) have been answered:
+  # by the new-production wizard, by Set up casting, or by adding a role.
+  #
+  #   :off         we don't cast people in it
+  #   :not_set_up  we do, and nothing has been set up yet
+  #   :on          we do, and it's set up
+  def casting_state
+    return :off unless casts_people?
+
+    casting_setup_completed? ? :on : :not_set_up
+  end
+
+  def casting_not_set_up? = casting_state == :not_set_up
+
+  # Which dates are cast, chosen the way Ticketing chooses which dates it
+  # sells (Tim, 2026-11-18): all performances, only some kinds of events, or
+  # only the dates picked. A date's own switch (shows.casting_enabled) is
+  # still what every screen reads; this is what a new date starts from and
+  # what saving the choice brings the coming dates into line with
+  # (Show.casting_default_for, CastingAnswer.choose_rule!).
+  CASTING_EVENT_MATCHING = %w[all event_types manual].freeze
+  validates :casting_event_matching, inclusion: { in: CASTING_EVENT_MATCHING }
+  before_validation { self.casting_event_type_filter = Array(casting_event_type_filter).compact_blank.map(&:to_s).uniq & EventTypes.all }
+
+  # The kinds of event a new date is cast for. "All performances" is every
+  # kind that takes a cast (a show, a class, a workshop, an open mic), never
+  # a rehearsal or a meeting; picked dates have no kinds.
+  def casting_event_types
+    case casting_event_matching
+    when "event_types" then casting_event_type_filter.presence || EventTypes.casting_enabled_defaults
+    when "manual" then []
+    else EventTypes.casting_enabled_defaults
+    end
+  end
+
+  # Whether a new date of this kind starts with casting on.
+  def casts_event_type?(event_type)
+    casts_people? && casting_event_types.include?(event_type.presence&.to_s || "show")
+  end
+
+  # What a new date starts with, as a sentence that's true for this
+  # production's choice. cast: false reads it for a production people
+  # aren't cast in.
+  def casting_dates_words(cast: casts_people?)
+    return "Every new date starts with casting off." unless cast
+
+    kinds = casting_event_types
+    if casting_event_matching == "manual"
+      "A new date starts with casting off until you pick it."
+    elsif (EventTypes.all - kinds).empty?
+      "Every new date starts with casting on."
+    else
+      on = kinds.map { |kind| EventTypes.labels[kind].to_s.downcase.pluralize }
+      off = (EventTypes.all - kinds).map { |kind| EventTypes.labels[kind].to_s.downcase.pluralize }
+      "New #{on.to_sentence} start with casting on. #{off.to_sentence.upcase_first} start with it off."
+    end
+  end
 
   # How a show's payout calculation is chosen (Settle up, Tim, 2026-11-04):
   # once for the production (every show starts from its calculation), or
@@ -485,10 +585,6 @@ class Production < ApplicationRecord
     type_in_house?
   end
 
-  def governed_by_contract?
-    contract.present? && contract.status_active?
-  end
-
   # Agreement methods
 
   # Returns true if this production requires performers to sign an agreement
@@ -586,6 +682,20 @@ class Production < ApplicationRecord
 
   private
 
+  def tidy_documents_link
+    if documents_link_url.blank?
+      self.documents_link_name = nil
+    elsif documents_link_name.blank?
+      self.documents_link_name = documents_link_provider_name
+    end
+  end
+
+  def documents_link_from_a_known_service
+    return if documents_link_url.blank?
+    return if documents_link_url.start_with?("https://") && documents_link_provider.present?
+    errors.add(:documents_link_url, "has to be a link from Google Drive, Dropbox, or OneDrive")
+  end
+
   # Shows still carrying the name we suggested for them follow the production
   # when it's renamed. Without this, renaming "Improv Jam" to "Jam Night" would
   # leave every show holding "Improv Jam Show" as though somebody had typed it,
@@ -677,7 +787,9 @@ class Production < ApplicationRecord
     # Delete all auditions before deleting audition_requests or audition_sessions
     # Auditions reference both audition_requests and audition_sessions
     audition_session_ids = AuditionSession.joins(:audition_cycle).where(audition_cycles: { production_id: id }).pluck(:id)
-    Audition.where(audition_session_id: audition_session_ids).delete_all
+    auditions = Audition.where(audition_session_id: audition_session_ids)
+    AuditionVote.where(audition_id: auditions.select(:id)).delete_all
+    auditions.delete_all
   end
 
   # Producer plan is limited to Organization::FREE_PRODUCTION_LIMIT active,

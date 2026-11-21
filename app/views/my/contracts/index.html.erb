@@ -69,6 +69,9 @@
           connection = @connections[contract.id]
           connectable = @connectable_contract_ids.include?(contract.id)
           connection_row = connectable || connection&.live? || (payee && connection && connection.dismissed_at.nil? && connection.status.in?(%w[declined unlinked]))
+          # Images and details the organization is asking for (AssetRequest).
+          asset_request = contract.production_id && @asset_requests[contract.production_id]
+          asset_counts = asset_request && ProductionAssets.new(contract.production).counts
           border = needs_signature ? "border-amber-300" : (has_overdue ? "border-amber-300" : "border-gray-200")
           status_class = { "active" => "bg-green-100 text-green-700", "completed" => "bg-blue-100 text-blue-700",
                            "cancelled" => "bg-red-100 text-red-700" }[contract.status] || "bg-gray-100 text-gray-600"
@@ -134,7 +137,7 @@
           </div>
 
           <%# Everything you need to DO on this contract, contained in one strip. %>
-          <% if has_action || asks_dates || date_requests.any? || connection_row %>
+          <% if has_action || asks_dates || date_requests.any? || connection_row || asset_request %>
             <div class="border-t border-gray-100 divide-y divide-gray-100">
               <% if needs_signature %>
                 <div class="flex items-center justify-between gap-3 px-5 py-3 bg-amber-50/60">
@@ -214,6 +217,20 @@
                     <% end %>
                   </div>
                 </details>
+              <% end %>
+
+              <% if asset_request %>
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3" data-contract-assets="<%= contract.id %>">
+                  <span class="min-w-0 text-sm text-gray-700">
+                    <span class="font-medium text-gray-900">Images and details for <%= contract.organization.name %></span>
+                    <span class="block text-gray-500">
+                      <%= asset_counts.done %> of <%= asset_counts.total %> have been added.
+                      <%= asset_counts.complete? ? "Everything #{contract.organization.name} requires has been added." : "Still required: #{asset_counts.missing_required.to_sentence(last_word_connector: ', and ', two_words_connector: ', and ')}." %>
+                    </span>
+                  </span>
+                  <%= render "shared/button", text: asset_counts.complete? ? "Open images and details" : "Add images and details", variant: asset_counts.complete? ? "secondary" : "primary", size: "small",
+                        classes: "flex-shrink-0", path: my_contract_assets_path(contract) %>
+                </div>
               <% end %>
 
               <% if asks_dates || date_requests.any? %>

@@ -76,8 +76,7 @@ module Manage
         @production = @organization.productions.new(
           name: @setup_state[:name],
           genre: @setup_state[:genre],
-          casting_source: "talent_pool",
-          casting_setup_completed: true
+          casting_source: "talent_pool"
         )
         @production.save!
       end

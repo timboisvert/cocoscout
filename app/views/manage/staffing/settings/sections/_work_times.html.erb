@@ -5,13 +5,9 @@
   5:00 PM to midnight; staff can always type their own hours instead.
   Local from the controller: @day_part_keys — the keys currently on.
 %>
-<div class="bg-white border border-gray-200 rounded-xl p-6">
-  <div class="flex items-center gap-2.5 mb-1">
-    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex-shrink-0">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-    </span>
-    <h2 class="text-xl text-gray-900 coustard-regular">Work times</h2>
-  </div>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <%= render "shared/section_heading", title: "Work times" %>
+  <div class="px-6 py-5">
   <p class="text-sm text-gray-600">
     The times of day your staff get as shortcuts when they set the hours they
     can work. Tapping one fills in its hours, and anyone can type their own
@@ -49,4 +45,5 @@
       <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
     </div>
   <% end %>
+  </div>
 </div>

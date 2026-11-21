@@ -284,25 +284,6 @@ class ContractConnections
     connection
   end
 
-  # The connections that have moved a contract's show into an organization
-  # the user runs (Tim, 2026-11-17: once it's linked, show it in the
-  # organization and not on My). For those, My keeps the contract itself
-  # and points to the organization for the dates, the ticket sales and the
-  # followers. Someone on the contract who doesn't run that organization
-  # has none, and keeps the My views.
-  def self.moved_for(user)
-    managed = managed_organization_ids(user)
-    return ContractConnection.none if managed.empty?
-
-    ContractConnection.connected.where(linked_organization_id: managed, contract_id: Contract.visible_to(user).select(:id))
-                      .includes(:organization, :linked_organization, :linked_production, contract: :production)
-  end
-
-  # The other organization's dates behind those connections.
-  def self.moved_show_ids(user)
-    moved_for(user).flat_map { |connection| LinkedDates.contract_shows(connection.contract).pluck(:id) }
-  end
-
   # The contractor's side of a connection: whoever requested it, the
   # contractor themself, or anyone who runs the linked organization.
   def self.theirs?(connection, user)

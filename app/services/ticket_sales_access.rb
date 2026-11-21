@@ -102,23 +102,28 @@ class TicketSalesAccess
     return nil unless listing.effective_comps_enabled
 
     if on_contract_for?(user, listing) || LinkedTicketSales.manages_for?(user, listing)
-      limit = listing.effective_contract_comps
-      return nil unless limit.positive?
+      base = listing.effective_contract_comps
+      return nil unless base.positive?
 
+      # Comps approved on a request count on top (CompRequest).
+      extra = listing.approved_comp_extra(:contract)
+      limit = base + extra
       date_left = listing.comps_left
       given = contract_comps_given(listing)
       left = [ date_left, [ limit - given, 0 ].max ].compact.min
-      return { date_left: date_left, team_limit: limit, team_given: given, left: left, contract: true }
+      return { date_left: date_left, team_limit: limit, team_given: given, left: left, contract: true, side: :contract, base: base, extra: extra }
     end
 
     return nil unless team_role(user, listing.production) == "manager" && team_level(user, listing.production) == :full
     return nil unless listing.effective_team_comps
 
     date_left = listing.comps_left
-    team_limit = (listing.effective_team_comps_per_show if listing.effective_team_comps_limit == "fixed")
+    extra = listing.approved_comp_extra(:team)
+    base = (listing.effective_team_comps_per_show if listing.effective_team_comps_limit == "fixed")
+    team_limit = base && (base + extra)
     team_given = team_comps_given(listing)
     left = [ date_left, (team_limit && [ team_limit - team_given, 0 ].max) ].compact.min
-    { date_left: date_left, team_limit: team_limit, team_given: team_given, left: left }
+    { date_left: date_left, team_limit: team_limit, team_given: team_given, left: left, side: :team, base: base, extra: extra }
   end
 
   # Which comps someone issues from on this date: :contract (the people on

@@ -162,3 +162,76 @@ turbo-frame#page[busy] > * {
   opacity: 0.6;
   transition: opacity 150ms ease 250ms;
 }
+
+/* The box office's page colors (PageColors), on the public landing page and
+   ticket pages. The layout puts data-page-colors and the custom properties on
+   the body only when they differ from the standard look, so a standard page
+   is untouched. The background and the words marked page-heading, page-text,
+   and page-faint are the page's; the white boxes keep their own dark words.
+   Every pink (buttons, links, the selected date) becomes the button color. */
+body[data-page-colors] { background-color: var(--page-bg); }
+body[data-page-colors] .page-heading { color: var(--page-heading); }
+body[data-page-colors] .page-text { color: var(--page-text); }
+body[data-page-colors] .page-faint { color: var(--page-text); opacity: 0.75; }
+body[data-page-colors] header,
+body[data-page-colors] footer { border-color: color-mix(in srgb, var(--page-text) 20%, transparent); }
+body[data-page-colors] main .bg-pink-500,
+body[data-page-colors] main .bg-pink-600 { background-color: var(--page-button); color: var(--page-button-ink); }
+body[data-page-colors] main .hover\:bg-pink-600:hover,
+body[data-page-colors] main .hover\:bg-pink-700:hover { background-color: var(--page-button); filter: brightness(0.92); }
+body[data-page-colors] main .bg-pink-50,
+body[data-page-colors] main .hover\:bg-pink-50:hover { background-color: color-mix(in srgb, var(--page-button) 8%, white); }
+body[data-page-colors] main .bg-pink-100 { background-color: color-mix(in srgb, var(--page-button) 15%, white); }
+body[data-page-colors] .text-pink-500,
+body[data-page-colors] .text-pink-600,
+body[data-page-colors] .text-pink-700,
+body[data-page-colors] .text-pink-800,
+body[data-page-colors] .hover\:text-pink-600:hover,
+body[data-page-colors] .hover\:text-pink-700:hover,
+body[data-page-colors] .hover\:text-pink-800:hover,
+body[data-page-colors] .group:hover .group-hover\:text-pink-600 { color: var(--page-button); }
+body[data-page-colors] main .border-pink-200,
+body[data-page-colors] main .border-pink-300,
+body[data-page-colors] main .border-pink-500,
+body[data-page-colors] main .hover\:border-pink-300:hover,
+body[data-page-colors] main .hover\:border-pink-400:hover,
+body[data-page-colors] main .hover\:border-pink-500:hover { border-color: var(--page-button); }
+body[data-page-colors] main .accent-pink-500 { accent-color: var(--page-button); }
+/* Inside the white and light boxes, links and outlines take --page-accent,
+   the button color darkened when it's too light to read on white. */
+body[data-page-colors] main .bg-white .text-pink-500,
+body[data-page-colors] main .bg-gray-50 .text-pink-500,
+body[data-page-colors] main .bg-pink-50 .text-pink-500,
+body[data-page-colors] main .bg-white .text-pink-600,
+body[data-page-colors] main .bg-gray-50 .text-pink-600,
+body[data-page-colors] main .bg-pink-50 .text-pink-600,
+body[data-page-colors] main .bg-white .text-pink-700,
+body[data-page-colors] main .bg-gray-50 .text-pink-700,
+body[data-page-colors] main .bg-pink-50 .text-pink-700,
+body[data-page-colors] main .bg-white .text-pink-800,
+body[data-page-colors] main .bg-gray-50 .text-pink-800,
+body[data-page-colors] main .bg-pink-50 .text-pink-800,
+body[data-page-colors] main .bg-white.text-pink-600,
+body[data-page-colors] main .bg-gray-50.text-pink-600,
+body[data-page-colors] main .bg-pink-50.text-pink-600,
+body[data-page-colors] main .bg-white .hover\:text-pink-600:hover,
+body[data-page-colors] main .bg-gray-50 .hover\:text-pink-600:hover,
+body[data-page-colors] main .bg-pink-50 .hover\:text-pink-600:hover,
+body[data-page-colors] main .bg-white .hover\:text-pink-700:hover,
+body[data-page-colors] main .bg-gray-50 .hover\:text-pink-700:hover,
+body[data-page-colors] main .bg-pink-50 .hover\:text-pink-700:hover,
+body[data-page-colors] main .bg-white .hover\:text-pink-800:hover,
+body[data-page-colors] main .bg-gray-50 .hover\:text-pink-800:hover,
+body[data-page-colors] main .bg-pink-50 .hover\:text-pink-800:hover { color: var(--page-accent); }
+body[data-page-colors] main .bg-white .border-pink-200,
+body[data-page-colors] main .bg-gray-50 .border-pink-200,
+body[data-page-colors] main .bg-pink-50 .border-pink-200,
+body[data-page-colors] main .bg-white.border-pink-200,
+body[data-page-colors] main .bg-gray-50.border-pink-200,
+body[data-page-colors] main .bg-pink-50.border-pink-200,
+body[data-page-colors] main .bg-white .hover\:border-pink-300:hover,
+body[data-page-colors] main .bg-gray-50 .hover\:border-pink-300:hover,
+body[data-page-colors] main .bg-pink-50 .hover\:border-pink-300:hover,
+body[data-page-colors] main .bg-white .hover\:border-pink-400:hover,
+body[data-page-colors] main .bg-gray-50 .hover\:border-pink-400:hover,
+body[data-page-colors] main .bg-pink-50 .hover\:border-pink-400:hover { border-color: var(--page-accent); }

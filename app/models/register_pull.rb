@@ -21,8 +21,4 @@ class RegisterPull < ApplicationRecord
     detail = failed? ? error.to_s.truncate(80) : (orders_count.zero? ? "nothing sold" : "#{orders_count} #{'order'.pluralize(orders_count)}")
     "#{days}: #{detail}"
   end
-
-  def trigger_label
-    { "morning" => "The morning pull", "webhook" => "Orders closing during the night", "manual" => "Pull now" }.fetch(trigger)
-  end
 end

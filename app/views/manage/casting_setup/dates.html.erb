@@ -1,0 +1,8 @@
+<%= render layout: "manage/casting_setup/wizard_layout", locals: { step: :dates, step_name: "Dates" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">Which dates are cast?</h2>
+  <p class="text-gray-600 mb-6">The dates of <%= @production.name %> you cast people in. You can change this later in Casting Settings.</p>
+
+  <%= render "manage/casting_steps/dates", production: @production, dates: @dates, matching: wizard_date_matching,
+        event_types: @wizard_state[:date_event_types], chosen: @picked, cast_ids: @cast_ids,
+        url: manage_casting_setup_save_dates_path(@production), back_path: manage_casting_setup_roles_path(@production), submit_text: "Next" %>
+<% end %>

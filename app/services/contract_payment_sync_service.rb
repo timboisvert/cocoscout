@@ -45,6 +45,7 @@ class ContractPaymentSyncService
     else # monthly
       sync_period(:beginning_of_month)
     end
+    sync_run_guarantee
   end
 
   private
@@ -113,6 +114,11 @@ class ContractPaymentSyncService
         reset_to_tbd(payment)
       end
     end
+  end
+
+  # A whole-run minimum guarantee's top-up (ContractRevenueGuarantee).
+  def sync_run_guarantee
+    @contract.settle_run_guarantee!
   end
 
   # Bring one settlement in line with the shows it covers: its amount, and on

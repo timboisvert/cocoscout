@@ -107,23 +107,23 @@
       the ages last (Tim, 2026-10-18). With many dates the chosen one is the
       card below, said once. %>
   <div class="text-center space-y-1.5">
-    <h1 class="text-3xl sm:text-4xl coustard-regular text-gray-900"><%= heading %></h1>
+    <h1 class="page-heading text-3xl sm:text-4xl coustard-regular text-gray-900"><%= heading %></h1>
     <% if show && @listings.one? %>
-      <p class="text-base text-gray-800"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %></p>
+      <p class="page-text text-base text-gray-800"><%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %></p>
     <% end %>
     <% if show && !picking %>
       <% if show.is_online %>
-        <p class="text-sm text-gray-600">Online</p>
+        <p class="page-text text-sm text-gray-600">Online</p>
       <% elsif venue.present? %>
-        <p class="text-sm text-gray-600">
+        <p class="page-text text-sm text-gray-600">
           <%= venue %><% if address.present? %> · <%= address %><% end %>
           <% if map_url %> · <%= link_to "Directions", map_url, target: "_blank", rel: "noopener", class: "text-pink-700 hover:text-pink-800" %><% end %>
         </p>
       <% end %>
-      <% if own_title %><p class="text-sm text-gray-600"><%= title %></p><% end %>
+      <% if own_title %><p class="page-text text-sm text-gray-600"><%= title %></p><% end %>
     <% end %>
-    <% if notes.any? %><p class="text-sm text-gray-600"><%= notes.join(" · ") %></p><% end %>
-    <% if ages %><p class="text-sm font-semibold text-gray-900"><%= ages %></p><% end %>
+    <% if notes.any? %><p class="page-text text-sm text-gray-600"><%= notes.join(" · ") %></p><% end %>
+    <% if ages %><p class="page-heading text-sm font-semibold text-gray-900"><%= ages %></p><% end %>
     <% if show %><%= render "tickets/access_modal", show: show, listings: @listings, org_slug: @ticketing_profile.slug %><% end %>
   </div>
 

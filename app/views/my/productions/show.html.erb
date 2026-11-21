@@ -373,6 +373,11 @@
           <%# Everything that applies to this production (incl. handbooks shared
               from another production) that this person is allowed to see. %>
           <% shared_documents = @person ? ProductionDocument.where(id: @production.applied_documents.select(:id)).visible_to_person(@person, @person.document_audience_context).ordered : ProductionDocument.none %>
+          <% if @production.documents_link? %>
+            <div class="<%= shared_documents.any? ? "mb-3" : "" %>">
+              <%= render "shared/documents_link", production: @production %>
+            </div>
+          <% end %>
           <% if shared_documents.any? %>
             <div class="space-y-3">
               <% shared_documents.each do |doc| %>
@@ -389,7 +394,7 @@
                 </details>
               <% end %>
             </div>
-          <% else %>
+          <% elsif !@production.documents_link? %>
             <p class="text-gray-500 text-sm text-center py-8">No documents have been shared with the cast yet.</p>
           <% end %>
         </div>

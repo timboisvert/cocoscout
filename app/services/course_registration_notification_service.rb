@@ -50,22 +50,6 @@ class CourseRegistrationNotificationService
 
     private
 
-    def build_registrant_variables(registration, offering, production, person)
-      sessions = offering.sessions
-      session_lines = sessions.map do |show|
-        show.date_and_time.strftime("%A, %B %-d, %Y at %-I:%M %p")
-      end
-
-      {
-        recipient_name: person.first_name || person.name&.split&.first || "there",
-        course_title: offering.title,
-        amount_paid: registration.formatted_amount,
-        instructor_name: offering.instructor_name.presence,
-        class_schedule: session_lines.any? ? session_lines.join("\n") : nil,
-        dashboard_url: Rails.application.routes.url_helpers.root_url(**default_url_options)
-      }
-    end
-
     def build_producer_variables(registration, offering, production)
       registrant = registration.person
 

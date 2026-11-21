@@ -1,0 +1,41 @@
+<%# Set up casting's frame: the contract wizard's (manage/contract_wizard/
+    _wizard_layout): the shared step bar at the page's full width, then one
+    full-width card for the step. Locals: step (one of
+    Manage::CastingSetupController::STEPS), step_name. %>
+<% content_for :title, "Set up casting - #{local_assigns[:step_name] || @production.name}" %>
+
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [
+      ["Casting", manage_casting_path],
+      [@production.name, manage_casting_production_path(@production)]
+    ],
+    text: "Set up casting",
+    links: []
+  } %>
+
+  <% steps = setup_steps %>
+  <%= render "shared/wizard_steps", steps: steps, current_index: steps.index { |s| s[:key] == step } || 0 %>
+
+  <div class="w-full">
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-8" data-casting-setup-step="<%= step %>">
+      <%= yield %>
+    </div>
+
+    <div class="mt-4 text-center">
+      <button type="button"
+              data-controller="modal" data-action="click->modal#open" data-modal-id="confirm-cancel-casting-setup"
+              class="text-sm text-gray-500 hover:text-gray-700 bg-transparent border-0 cursor-pointer p-0">Cancel</button>
+      <%= render "shared/confirm_modal",
+            id: "confirm-cancel-casting-setup",
+            title: "Stop setting up casting?",
+            message: "Nothing has been changed on #{@production.name} yet. The answers you've given so far go away.",
+            confirm_text: "Stop",
+            cancel_text: "Keep going",
+            url: manage_casting_setup_cancel_path(@production),
+            method: :delete %>
+    </div>
+  </div>
+</div>

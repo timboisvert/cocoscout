@@ -1,21 +1,57 @@
 <% content_for :title, "Sign-ups" %>
 
+<%#
+  The organization's Sign-ups page (Tim, 2026-11-20): what's waiting on you
+  first (To review), then one compact row per sign-up form or audition.
+  Productions with nothing are left out; closed ones are behind the Closed
+  filter. Rows come from SignupsOverview, To review from AuditionsToReview.
+%>
 <%
-  signup_actions = [
-    { icon: "calendar", text: "Event Registrations", description: "Sign up for specific events", path: manage_signups_all_forms_path(filter: "registrations") },
-    { icon: "queue-list", text: "Waitlists", description: "Not tied to specific lists", path: manage_signups_all_forms_path(filter: "waitlists") },
-    { icon: "users", text: "In-person Auditions", description: "Apply for live audition sessions", path: manage_signups_all_auditions_path(filter: "in_person") },
-    { icon: "video-camera", text: "Video Auditions", description: "Submit video auditions", path: manage_signups_all_auditions_path(filter: "video") }
-  ]
+  page_path = lambda do |overrides = {}|
+    p = { show: (@show unless @show == "all"), production: @production_id, closed: ("1" if @include_closed) }.merge(overrides)
+    manage_signups_path(p.compact_blank)
+  end
+  tone_dot = { green: "bg-green-500", amber: "bg-amber-500", gray: "bg-gray-400" }
+  header_actions = manages_any_production? ? [
+    { icon: "queue-list", text: "New sign-up form", path: manage_signups_forms_new_wizard_path, variant: "secondary" },
+    { icon: "user-group", text: "New audition", path: manage_signups_auditions_new_wizard_path, variant: "primary" }
+  ] : []
 %>
 
 <div class="w-full mb-10">
   <%= render partial: "shared/notice", locals: { notice: notice } %>
 
-  <%= render "shared/module_header",
-    title: "Sign-ups",
-    actions: signup_actions
-  %>
+  <%= render "shared/module_header", title: "Sign-ups", actions: header_actions %>
+
+  <% if @to_review.any? %>
+    <% review_total = @to_review.sum(&:count) %>
+    <section class="bg-white border border-gray-200 rounded-xl mb-6" id="to-review">
+      <%= render "shared/section_heading", title: "To review (#{review_total})",
+            intro: "Audition sign-ups you haven't given a yes, no, or maybe yet." %>
+      <div class="divide-y divide-gray-100">
+        <% @to_review.each do |item| %>
+          <% cycle = item.cycle %>
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-6 py-3">
+            <div class="flex items-center gap-3 min-w-0 flex-1 basis-72">
+              <%= render "shared/production_image", production: item.production, width: "w-8", classes: "flex-shrink-0", initials_class: "text-xs", fallback_aspect: "poster" %>
+              <div class="min-w-0">
+                <div class="text-xs text-gray-500 truncate"><%= item.production.name %></div>
+                <div class="text-sm font-medium text-gray-900">Auditions</div>
+              </div>
+            </div>
+            <div class="flex-1 basis-60 text-sm">
+              <span class="font-semibold text-pink-600"><%= pluralize(item.count, "sign-up") %> to review</span>
+              <span class="block text-xs text-gray-500">
+                <%= cycle.paused? ? "Paused, not taking sign-ups" : (cycle.closes_at ? "Taking sign-ups until #{cycle.closes_at.strftime('%b %-d')}" : "Taking sign-ups") %>
+              </span>
+            </div>
+            <%= render "shared/button", text: "Review", variant: "primary", size: "small",
+                  path: manage_signups_auditions_cycle_requests_path(item.production, cycle), classes: "flex-shrink-0" %>
+          </div>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
 
   <%
     signups_guide_body = <<~HTML.html_safe
@@ -38,19 +74,90 @@
               { text: "Create an audition cycle", path: manage_signups_auditions_new_wizard_path } ] if manages_any_production?)
         ] %>
 
-  <div class="border-t border-gray-200 pt-6 mt-2">
-    <%# Productions List %>
-    <% if @production_summaries.any? %>
-      <div class="space-y-2">
-        <% @production_summaries.each do |summary| %>
-          <%= render "manage/signups/org_partials/production_row", summary: summary %>
+  <% if @any_rows %>
+    <%
+      filter_groups = [
+        { label: "Show", filters: [
+          { text: "All", path: page_path.call(show: nil), active: @show == "all" },
+          { text: "Sign-up forms", path: page_path.call(show: "forms"), active: @show == "forms" },
+          { text: "Auditions", path: page_path.call(show: "auditions"), active: @show == "auditions" }
+        ] },
+        { label: "Include", filters: [
+          { text: "Closed (#{@closed_rows.size})", path: page_path.call(closed: (@include_closed ? nil : "1")), active: @include_closed }
+        ] }
+      ]
+      if @row_productions.size > 1
+        filter_groups << { separator: true }
+        filter_groups << { partial: "shared/filters/production_dropdown_filter", locals: {
+          label: "Production", name: "production", selected: @production_id.to_s,
+          options: [ { value: "", text: "All productions" } ] + @row_productions.map { |pr| { value: pr.id, text: pr.name, type: pr.production_type } },
+          extra_url_params: { show: (@show unless @show == "all"), closed: ("1" if @include_closed) }.compact } }
+      end
+    %>
+    <%= render "shared/filters/filter_bar", filter_groups: filter_groups %>
+
+    <% lists = [ [ "Open, paused, or coming up", @current_rows ] ] %>
+    <% lists << [ "Closed", @closed_rows ] if @include_closed %>
+    <% lists.each do |heading, rows| %>
+      <section class="bg-white border border-gray-200 rounded-xl mb-6">
+        <%= render "shared/section_heading", title: heading %>
+        <% if rows.empty? %>
+          <p class="px-6 py-4 text-sm text-gray-500">
+            <%= heading == "Closed" ? "Nothing here has closed." : "Nothing here is open, paused, or coming up." %>
+          </p>
+        <% else %>
+          <div class="hidden lg:flex items-center gap-4 px-6 py-2 border-b border-gray-100 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+            <span class="flex-1 min-w-0">Sign-up</span>
+            <span class="w-40 flex-shrink-0">Kind</span>
+            <span class="w-52 flex-shrink-0">Status</span>
+            <span class="w-40 flex-shrink-0">People</span>
+            <span class="w-4 flex-shrink-0" aria-hidden="true"></span>
+          </div>
+          <div class="divide-y divide-gray-100">
+            <% rows.each do |row| %>
+              <%= link_to row.path, class: "group flex items-center gap-4 px-6 py-2.5 hover:bg-gray-50" do %>
+                <div class="flex items-center gap-3 min-w-0 flex-1">
+                  <%= render "shared/production_image", production: row.production, width: "w-8", classes: "flex-shrink-0", initials_class: "text-xs", fallback_aspect: "poster" %>
+                  <div class="min-w-0">
+                    <div class="text-xs text-gray-500 truncate"><%= row.production.name %></div>
+                    <div class="text-sm font-medium text-gray-900 truncate group-hover:text-pink-600"><%= row.title %></div>
+                    <%# Phones and narrow windows: the kind, status, and people on one line under the name. %>
+                    <div class="lg:hidden flex items-center gap-1.5 text-xs text-gray-700 mt-0.5">
+                      <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= tone_dot[row.status_tone] %>"></span>
+                      <span><%= [ row.kind_words, row.status, row.people ].compact.join(" · ") %></span>
+                    </div>
+                    <% if row.review_count.positive? %>
+                      <div class="lg:hidden text-xs font-semibold text-pink-600"><%= row.review_count %> to review</div>
+                    <% end %>
+                  </div>
+                </div>
+                <div class="hidden lg:block w-40 flex-shrink-0 text-sm text-gray-900">
+                  <%= row.kind_words %>
+                  <div class="text-xs text-gray-500"><%= row.kind_detail %></div>
+                </div>
+                <div class="hidden lg:block w-52 flex-shrink-0 text-sm text-gray-900">
+                  <span class="inline-flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full <%= tone_dot[row.status_tone] %>"></span><%= row.status %>
+                  </span>
+                  <% if row.status_detail %><div class="text-xs text-gray-500"><%= row.status_detail %></div><% end %>
+                </div>
+                <div class="hidden lg:block w-40 flex-shrink-0 text-sm text-gray-900">
+                  <%= row.people %>
+                  <% if row.review_count.positive? %><div class="text-xs font-semibold text-pink-600"><%= row.review_count %> to review</div><% end %>
+                </div>
+                <svg class="w-4 h-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              <% end %>
+            <% end %>
+          </div>
         <% end %>
-      </div>
-    <% elsif @productions.any? %>
-      <%= render "shared/empty_state", icon: "clipboard", title: "No sign-ups yet", body: "Create a sign-up form or an audition cycle to get started.",
-            actions: [ { text: "Create a sign-up form", path: manage_signups_forms_new_wizard_path }, { text: "Create an audition cycle", path: manage_signups_auditions_new_wizard_path } ] %>
-    <% else %>
-      <%= render "shared/empty_state", icon: "clipboard", title: "No productions yet", body: "Create a production to start managing sign-ups." %>
+      </section>
     <% end %>
-  </div>
+  <% elsif @productions.any? %>
+    <%= render "shared/empty_state", icon: "clipboard", title: "No sign-ups yet", body: "Create a sign-up form or an audition cycle to get started.",
+          actions: [ { text: "Create a sign-up form", path: manage_signups_forms_new_wizard_path }, { text: "Create an audition cycle", path: manage_signups_auditions_new_wizard_path } ] %>
+  <% else %>
+    <%= render "shared/empty_state", icon: "clipboard", title: "No productions yet", body: "Create a production to start managing sign-ups." %>
+  <% end %>
 </div>

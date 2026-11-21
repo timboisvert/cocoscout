@@ -63,7 +63,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // tap (NativeAppHelper#native_tap_to_pay), so 1.1.x installs are
         // never offered it.
         let components: [BridgeComponent.Type] = [FormComponent.self, MenuComponent.self, DoorScannerComponent.self, PushComponent.self,
-                                                  TapToPayComponent.self]
+                                                  TapToPayComponent.self,
+                                                  // The Section row's menu (1.3). Older installs keep the page's sheet.
+                                                  SectionsComponent.self]
         Hotwire.registerBridgeComponents(components)
         Hotwire.registerRouteDecisionHandlers([
             OpenInSafariRouteDecisionHandler(),

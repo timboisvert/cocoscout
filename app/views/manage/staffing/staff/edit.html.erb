@@ -18,9 +18,24 @@
     links: []
   } %>
 
-  <div class="max-w-4xl mx-auto bg-white rounded-xl border border-gray-200 shadow-sm mt-4">
+  <%# The sections: a list down the left from md up, and on a phone a row that
+      opens them in a sheet, as on every settings page. The staff-edit
+      controller switches them. %>
+  <%
+    edit_sections = [ [ "details", "Details" ], [ "job", "Job" ], [ "roles", "Roles & pay" ], [ "onboarding", "Onboarding" ],
+                      [ "availability", "Availability" ], [ "taxes", "Taxes" ], [ "danger", "Danger Zone" ] ].each_with_index.map { |(key, label), i|
+      { label: label, index: i, active: i.zero?, danger: key == "danger", data: { tab: key } }
+    }
+  %>
+  <div class="mt-4" data-staff-edit-sections>
+    <%= render "shared/section_picker", id: "staff-edit-sections-sheet", list_from: "md", controller: "staff-edit", sections: edit_sections %>
+  </div>
+  <div class="md:flex md:items-start md:gap-8">
+  <%= render "shared/section_list", controller: "staff-edit", sections: edit_sections %>
+  <div class="flex-1 min-w-0">
+  <div class="max-w-4xl space-y-6">
     <%# ---- Header ---- %>
-    <div class="flex items-center gap-5 px-8 py-6 border-b border-gray-200">
+    <div class="flex items-center gap-5 px-6 py-5 bg-white border border-gray-200 rounded-xl">
       <% if headshot %>
         <%= image_tag headshot, alt: person.name, class: "w-16 h-16 rounded-lg object-cover flex-shrink-0" %>
       <% else %>
@@ -48,24 +63,12 @@
       <% end %>
     </div>
 
-    <%# ---- Tabs ---- %>
-    <div class="flex gap-1 px-8 border-b border-gray-200 overflow-x-auto">
-      <% [ [ "details", "Details" ], [ "job", "Job" ], [ "roles", "Roles &amp; pay" ], [ "onboarding", "Onboarding" ], [ "availability", "Availability" ], [ "taxes", "Taxes" ], [ "danger", "Danger Zone" ] ].each do |key, label| %>
-        <button type="button" data-staff-edit-target="tab" data-tab="<%= key %>" data-action="click->staff-edit#switch"
-                class="px-4 py-3.5 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 cursor-pointer whitespace-nowrap">
-          <%= label.html_safe %>
-        </button>
-      <% end %>
-    </div>
-
-    <div class="px-8 py-8">
+    <div>
       <%= form_with url: manage_update_staffing_staff_path(@staff_member), method: :patch do %>
         <%# --- Details --- %>
-        <div data-staff-edit-target="panel" data-panel="details" class="space-y-5">
-          <div>
-            <h2 class="text-lg font-semibold text-gray-900">Name</h2>
-            <p class="text-sm text-gray-500 mt-0.5">Their legal name, and the preferred name we show everywhere.</p>
-          </div>
+        <div data-staff-edit-target="panel" data-panel="details" class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <%= render "shared/section_heading", title: "Name", intro: "Their legal name, and the preferred name we show everywhere." %>
+          <div class="px-6 py-5 space-y-5">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Legal name</label>
             <div class="grid grid-cols-1 sm:grid-cols-6 gap-5">
@@ -102,13 +105,12 @@
             </div>
           <% end %>
         </div>
+        </div>
 
         <%# --- Job --- %>
-        <div data-staff-edit-target="panel" data-panel="job" class="hidden space-y-5">
-          <div>
-            <h2 class="text-lg font-semibold text-gray-900">Their job</h2>
-            <p class="text-sm text-gray-500 mt-0.5">Title, department, who they report to, and when they started.</p>
-          </div>
+        <div data-staff-edit-target="panel" data-panel="job" class="hidden bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <%= render "shared/section_heading", title: "Their job", intro: "Title, department, who they report to, and when they started." %>
+          <div class="px-6 py-5 space-y-5">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
@@ -128,13 +130,12 @@
             <%= date_field_tag :start_date, @staff_member.start_date, class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
           </div>
         </div>
+        </div>
 
         <%# --- Roles & pay --- %>
-        <div data-staff-edit-target="panel" data-panel="roles" class="hidden space-y-5">
-          <div>
-            <h2 class="text-lg font-semibold text-gray-900">Roles &amp; pay</h2>
-            <p class="text-sm text-gray-500 mt-0.5">The roles they can work and the rate for each — per hour, or per shift for a flat-pay role.</p>
-          </div>
+        <div data-staff-edit-target="panel" data-panel="roles" class="hidden bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <%= render "shared/section_heading", title: "Roles & pay", intro: "The roles they can work and the rate for each — per hour, or per shift for a flat-pay role." %>
+          <div class="px-6 py-5 space-y-5">
           <%# A flat role's rate is its per-shift amount; an hourly role's is its hourly rate. %>
           <% role_rates = @staff_member.staff_role_qualifications.includes(:house_role).each_with_object({}) do |q, h|
                h[q.house_role_id] = q.house_role&.flat? ? q.flat_rate_dollars : q.hourly_rate_dollars
@@ -146,19 +147,18 @@
                 assigned_ids: @staff_member.house_role_ids,
                 role_rates: role_rates %>
         </div>
+        </div>
 
-        <div data-staff-edit-target="saveFooter" class="flex items-center justify-end gap-3 pt-5 mt-5 border-t border-gray-200">
+        <div data-staff-edit-target="saveFooter" class="flex items-center justify-end gap-3 mt-4">
           <%= link_to "Cancel", manage_staffing_index_path, class: "text-sm text-gray-600 hover:text-gray-900" %>
           <%= render "shared/button", text: "Save changes", variant: "primary", size: "medium", type: :submit %>
         </div>
       <% end %>
 
       <%# --- Onboarding (own actions, outside the edit form) --- %>
-      <div data-staff-edit-target="panel" data-panel="onboarding" class="hidden space-y-5">
-        <div>
-          <h2 class="text-lg font-semibold text-gray-900">Onboarding</h2>
-          <p class="text-sm text-gray-500 mt-0.5">Where <%= @staff_member.display_name %> is in getting set up.</p>
-        </div>
+      <div data-staff-edit-target="panel" data-panel="onboarding" class="hidden bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <%= render "shared/section_heading", title: "Onboarding", intro: "Where #{@staff_member.display_name} is in getting set up." %>
+        <div class="px-6 py-5 space-y-5">
         <div class="rounded-lg bg-gray-50 border border-gray-200 p-4 space-y-3">
           <% if onboarding == "completed" %>
             <p class="text-sm text-gray-700">✅ <span class="font-medium">Onboarded.</span> <%= @staff_member.display_name %> has created their account and set up how they get paid.</p>
@@ -228,6 +228,7 @@
           </div>
         <% end %>
       </div>
+      </div>
 
       <%# --- Status (mark inactive / reactivate — reversible, not a delete) --- %>
       <%# --- Availability (read-only, own actions) --- %>
@@ -236,7 +237,9 @@
       <%# --- Taxes (own actions, outside the edit form) --- %>
       <%= render "manage/staffing/staff/taxes_panel", staff_member: @staff_member %>
 
-      <div data-staff-edit-target="panel" data-panel="danger" class="hidden">
+      <div data-staff-edit-target="panel" data-panel="danger" class="hidden bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <%= render "shared/section_heading", title: "Danger Zone" %>
+        <div class="px-6 py-5">
         <% if @staff_member.inactive? %>
           <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
             <h3 class="text-sm font-semibold text-gray-800 mb-1">Inactive</h3>
@@ -263,8 +266,11 @@
                   url: manage_destroy_staffing_staff_path(@staff_member), method: :delete %>
           </div>
         <% end %>
+        </div>
       </div>
     </div>
+  </div>
+  </div>
   </div>
 
   <%# Manage-departments / manage-roles modals, deferred here so they sit

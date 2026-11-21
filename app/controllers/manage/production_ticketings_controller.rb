@@ -16,6 +16,12 @@ module Manage
     SECTIONS = { "dates" => "Basic info", "tickets" => "Tickets", "fees" => "Fees and taxes", "comps" => "Comps",
                  "refunds" => "Refunds", "codes" => "Discount codes", "products" => "Products", "sales" => "Ticket page",
                  "boxes" => "Checkout boxes", "seating" => "Seating", "pricing" => "Pricing rules" }.freeze
+    # The headings the sections sit under in the side list and the phone's
+    # sheet (SectionNavHelper#section_groups).
+    SECTION_GROUPS = { "dates" => "What you sell", "tickets" => "What you sell", "products" => "What you sell", "codes" => "What you sell",
+                       "seating" => "What you sell", "pricing" => "Money",
+                       "fees" => "Money", "comps" => "Money", "refunds" => "Money",
+                       "sales" => "Buyers' pages", "boxes" => "Buyers' pages" }.freeze
     CLOSE_CHOICES = [ [ "At showtime", 0 ], [ "15 minutes before", 15 ], [ "30 minutes before", 30 ], [ "1 hour before", 60 ],
                       [ "2 hours before", 120 ], [ "The day before", 1440 ] ].freeze
 
@@ -248,6 +254,12 @@ module Manage
       # office's again, so what the box covers is cleared.
       permitted.merge!(fee_mode: nil, cash_tax: nil, price_display: nil) if raw[:own_fees] == "0"
       permitted[:max_per_order] = nil if raw[:own_orders] == "0"
+      # Page colors: its own, all four, or (switch off) the box office's.
+      if raw[:own_colors] == "0"
+        permitted.merge!(HasPageColors.attributes_from(nil))
+      elsif raw[:page_colors]
+        permitted.merge!(HasPageColors.attributes_from(raw[:page_colors]))
+      end
       # The fees box lives on Fees and taxes, the orders boxes on Basic info;
       # each comes back to its own tab.
       back = params[:from].to_s.presence_in(%w[fees dates]) || "sales"
@@ -295,6 +307,7 @@ module Manage
       raw = params.require(:production_ticketing).permit(:own_comps, *CompRules::PARAMS)
       own = raw[:own_comps] == "1"
       @setup.update!(CompRules.attributes_from(raw, own: own).merge(own_comps: own))
+      CompRequest.close_turned_off!(@production.organization)
       notice = own ? "Saved. #{@production.name} has its own comp rules: #{@setup.comp_rules_words}." : "Saved. #{@production.name} follows your box office's comp rules."
       redirect_to section_path("comps"), notice: notice
     end
@@ -406,7 +419,7 @@ module Manage
     end
 
     def sections
-      SECTIONS.map { |key, label| { key: key, label: label, path: section_path(key) } }
+      SECTIONS.map { |key, label| { key: key, label: label, path: section_path(key), group: SECTION_GROUPS[key] } }
     end
     helper_method :sections
   end

@@ -3,8 +3,8 @@
 
   The shell for a module's settings page — Contract Settings, Course Settings,
   and anything else that grows a second topic. Sections are real URLs rendered
-  as a tab strip, so a link can point at one section, only that section's data
-  loads, and reordering the strip never breaks a saved link.
+  as a list down the side, so a link can point at one section, only that section's data
+  loads, and reordering the list never breaks a saved link.
 
   Render it with `render layout: "shared/settings_layout", locals: {...} do`
   and put the section body in the block. See
@@ -13,19 +13,21 @@
   Locals:
     title       — page title (also the top_menu's current-page text)
     breadcrumbs — array of [name, path] pairs, as shared/top_menu expects
-    sections    — array of { key:, label:, path:, badge: }; the strip is hidden
+    sections    — array of { key:, label:, path:, badge:, feature:, locked:, group: };
+                  `group:` puts a section under a heading, for pages with many
+                  (SectionNavHelper#section_groups). The list is hidden
                   when there's only one, so a single-topic page looks plain
     current     — key of the section being shown
     intro       — optional sentence under the title, for the whole page
-    banner      — optional html_safe content for a bar above the tabs, for a
+    banner      — optional html_safe content for a bar above the sections, for a
                   page that changes one thing within something bigger (one
                   date's ticket settings within its production's)
     width       — optional max-width class for the body. The default,
                   max-w-5xl, is every settings page's width: they all use
                   the content space (Tim, 2026-10-20). Pass one only for a
                   page that truly needs another.
-    show_single_tab — pass true to show the strip even with one section, for a
-                  page that should look tabbed like its sibling settings pages
+    show_single_tab — pass true to show the list even with one section, for a
+                  page that should look like its sibling settings pages
 %>
 <%
   sections ||= []
@@ -52,38 +54,32 @@
     <div class="mb-5 rounded-lg border border-pink-200 bg-pink-50 px-4 py-3 text-sm text-pink-900"><%= local_assigns[:banner] %></div>
   <% end %>
 
-  <% if sections.size > 1 || (show_single_tab && sections.any?) %>
-    <%# On a phone the current section is a row; tapping it opens the
-        sections in a sheet (V1.1 plan §5, Section list), so none hides off
-        the edge and each is a real link. %>
+  <%# The sections: a list down the left from md up (shared/section_list),
+      and on a phone a row that opens them in a sheet (shared/section_picker),
+      so none hides off the edge and each is a real link. It was a tab strip
+      until 2026-11-20, which ran off the page once a page had more tabs
+      than fit. %>
+  <% show_sections = sections.size > 1 || (show_single_tab && sections.any?) %>
+  <%
+    nav_sections = sections.map { |section|
+      { label: section[:label], path: section[:path], badge: section[:badge], pro: section[:feature].present?, locked: section[:locked],
+        group: section[:group], danger: section[:danger], active: section[:key].to_s == current.to_s }
+    }
+  %>
+  <% if show_sections %>
     <div data-settings-sections>
-      <%= render "shared/section_picker", id: "settings-sections-sheet",
-            sections: sections.map { |section|
-              { label: section[:label], path: section[:path], badge: section[:badge], pro: section[:feature].present?, locked: section[:locked],
-                active: section[:key].to_s == current.to_s }
-            } %>
+      <%= render "shared/section_picker", id: "settings-sections-sheet", list_from: "md", sections: nav_sections %>
     </div>
-    <nav class="hidden sm:flex gap-1 border-b border-gray-200 mb-6 overflow-x-auto" aria-label="Settings sections">
-      <% sections.each do |section| %>
-        <% active = section[:key].to_s == current.to_s %>
-        <%= link_to section[:path],
-              aria: { current: active ? "page" : nil },
-              class: "px-4 py-2 -mb-px text-sm font-medium whitespace-nowrap border-b-2 transition-colors #{active ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}" do %>
-          <%= section[:label] %>
-          <%# A Pro section: `feature:` marks it; `locked: true` adds the padlock (the page shows the locked card). %>
-          <% if section[:feature].present? %>
-            <%= render "shared/pro_marker", classes: "ml-1.5" %>
-            <% if section[:locked] %><%= render "shared/pro_marker", kind: :lock, classes: "ml-1 inline-block align-middle" %><% end %>
-          <% end %>
-          <% if section[:badge].to_i.positive? %>
-            <span class="ml-1.5 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-gray-100 text-gray-600 text-[11px] font-semibold leading-none"><%= section[:badge] %></span>
-          <% end %>
-        <% end %>
-      <% end %>
-    </nav>
   <% end %>
 
-  <div class="<%= width %> space-y-6">
-    <%= yield %>
+  <div class="md:flex md:items-start md:gap-8">
+    <% if show_sections %>
+      <div class="contents" data-settings-tabs><%= render "shared/section_list", sections: nav_sections %></div>
+    <% end %>
+    <div class="flex-1 min-w-0">
+      <div class="<%= width %> space-y-6">
+        <%= yield %>
+      </div>
+    </div>
   </div>
 </div>

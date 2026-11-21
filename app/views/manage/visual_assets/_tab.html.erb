@@ -1,0 +1,297 @@
+<%# A production's Visual Assets tab (Tim, 2026-11-19), drawn from its
+    organization's list (AssetSpec): the request, a row per image, the
+    written items, and the production's own additional files. The Poster and
+    the Wide image are the two pictures CocoScout shows everywhere; shows
+    and events can still have their own.
+    Locals: production, can_manage. %>
+<%
+  assets = ProductionAssets.new(production)
+  counts = assets.counts
+  request = AssetRequest.current_for(production) || production.asset_requests.order(created_at: :desc).first
+  request = nil if request&.turned_off?
+  primary = production.primary_poster
+  other_posters = production.posters.reject(&:is_primary)
+  own_images = production.shows.includes(poster_attachment: :blob, wide_image_attachment: :blob)
+                         .select { |show| show.poster.attached? || show.wide_image.attached? }.sort_by(&:date_and_time)
+  upcoming_own = own_images.select { |show| show.date_and_time >= Time.current.beginning_of_day }
+  basic_tab = production_edit_tab(production, :basic)
+  input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+%>
+<div class="space-y-6" data-visual-assets-tab>
+  <% if can_manage %>
+    <%= render "manage/visual_assets/request_card", production: production, assets: assets, counts: counts, request: request %>
+  <% end %>
+
+  <%# Images %>
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <%= render "shared/section_heading", title: "Images" do %>
+      <% if assets.originals.any? %>
+        <%= render "shared/button", text: "Download all originals", variant: "secondary", size: "small",
+              path: manage_originals_production_visual_asset_path(production), data: { turbo: false } %>
+      <% end %>
+    <% end %>
+    <div class="divide-y divide-gray-100">
+      <% assets.image_specs.each do |spec| %>
+        <% item = assets.item(spec) %>
+        <% preview = item.present? ? item.preview : nil %>
+        <div class="px-4 sm:px-6 py-4" data-asset-row="<%= spec.id %>"
+             <% if can_manage %>
+               data-controller="asset-upload" data-asset-upload-reload-value="true"
+               data-asset-upload-url-value="<%= manage_upload_production_visual_asset_path(production) %>" data-asset-upload-spec-value="<%= spec.id %>"
+               data-asset-upload-width-value="<%= spec.width %>" data-asset-upload-height-value="<%= spec.height %>"
+               data-asset-upload-types-value="<%= spec.content_types.to_json %>" data-asset-upload-formats-value="<%= spec.formats_words %>"
+               data-asset-upload-max-bytes-value="<%= spec.max_bytes %>" data-asset-upload-max-mb-value="<%= spec.max_megabytes %>"
+               data-asset-upload-ratio-value="<%= spec.ratio_label %>" data-asset-upload-shape-value="<%= spec.square? ? 'square' : (spec.width > spec.height ? 'wide' : 'tall') %>"
+               data-action="dragover->asset-upload#dragOver dragleave->asset-upload#dragLeave drop->asset-upload#drop"
+             <% end %>>
+          <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div class="w-28 h-20 flex-shrink-0 flex items-center justify-center rounded-lg bg-gray-50">
+              <% if can_manage %>
+                <input type="file" class="hidden" accept="<%= spec.content_types.join(',') %>" data-asset-upload-target="input" data-action="change->asset-upload#choose" aria-label="Choose a file for <%= spec.name %>">
+                <div class="hidden w-full px-2 text-center" data-asset-upload-target="progress">
+                  <p class="text-[11px] text-gray-700 truncate" data-asset-upload-target="filename"></p>
+                  <div class="mt-1 h-1.5 rounded-full bg-gray-200 overflow-hidden"><div class="h-1.5 bg-pink-500" style="width: 0%" data-asset-upload-target="bar"></div></div>
+                  <p class="text-[11px] text-gray-500 mt-1" data-asset-upload-target="percent"></p>
+                </div>
+              <% end %>
+              <div class="flex items-center justify-center w-full h-full" <%= 'data-asset-upload-target=idle' if can_manage %>>
+                <% if preview %>
+                  <%= image_tag preview, alt: "#{production.name}: #{spec.name}", class: "max-h-20 max-w-28 w-auto h-auto rounded shadow-sm" %>
+                <% else %>
+                  <%= render "manage/visual_assets/shape", spec: spec, box: 64, dashed: true %>
+                <% end %>
+              </div>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-[15px] font-medium text-gray-900"><%= spec.name %></span>
+                <% unless item.present? %>
+                  <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"><%= spec.required? ? "Required" : "Optional" %></span>
+                <% end %>
+              </div>
+              <p class="text-sm text-gray-500">
+                <% if item.present? %>
+                  <%= [ item.file_words.presence, item.uploaded_words ].compact.join(". ") %>.
+                <% else %>
+                  Not here yet. <%= spec.description_line %>
+                <% end %>
+                <% if spec.used_for.present? %><span class="block">For <%= spec.used_for.sub(/\A./, &:downcase) %>.</span><% end %>
+              </p>
+              <p class="hidden text-sm font-medium text-red-700 mt-1" role="alert" data-asset-upload-target="error"></p>
+            </div>
+            <div class="flex flex-wrap gap-2 sm:justify-end">
+              <% if (file = item.attachment) %>
+                <%= render "shared/button", text: "Download original", variant: "secondary", size: "small", path: rails_blob_path(file, disposition: "attachment") %>
+              <% end %>
+              <% if can_manage %>
+                <%= render "shared/button", text: item.present? ? "Replace" : "Upload", variant: "secondary", size: "small", type: :button,
+                      data: { action: "click->asset-upload#pick" } %>
+                <% if item.present? %>
+                  <% remove_id = case spec.builtin
+                                 when "poster" then "confirm-delete-poster-#{primary&.id}"
+                                 when "wide" then "confirm-remove-wide-image"
+                                 else "confirm-remove-asset-#{spec.id}"
+                                 end %>
+                  <%= render "shared/button", text: "Remove", variant: "secondary", size: "small", type: :button,
+                        data: { controller: "modal", action: "click->modal#open", modal_id: remove_id } %>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+
+          <% if spec.builtin == "poster" && other_posters.any? %>
+            <div class="mt-4 sm:ml-32 pt-3 border-t border-gray-100">
+              <p class="text-sm font-medium text-gray-700">Other posters</p>
+              <p class="text-xs text-gray-500">Kept here to switch to, like a holiday version. A replaced poster lands here too.</p>
+              <div class="mt-2 flex flex-wrap gap-4">
+                <% other_posters.each do |poster| %>
+                  <% thumb = poster.safe_image_variant(:small) %>
+                  <div class="w-20">
+                    <div class="w-20 aspect-[3/4] rounded overflow-hidden border border-gray-200 bg-gray-50">
+                      <% if thumb %><%= image_tag thumb, alt: poster.name.to_s, class: "w-full h-full object-cover" %><% end %>
+                    </div>
+                    <div class="mt-1 flex flex-col text-xs">
+                      <%= link_to "Download", rails_blob_path(poster.image, disposition: "attachment"), class: "text-pink-600 hover:text-pink-700" if poster.image.attached? %>
+                      <% if can_manage %>
+                        <%= link_to "Use this one", manage_set_primary_poster_production_visual_asset_path(production, poster), data: { turbo_method: :patch }, class: "text-pink-600 hover:text-pink-700" %>
+                        <%= link_to "Delete", "#", data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-delete-poster-#{poster.id}" }, class: "text-gray-500 hover:text-gray-700" %>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+        <% if can_manage && item.present? && !spec.builtin? %>
+          <%= render "shared/confirm_modal", id: "confirm-remove-asset-#{spec.id}", title: "Remove the #{spec.name}?",
+                message: "This production will no longer have it. You'd have to upload it again to get it back.",
+                confirm_text: "Remove", url: manage_item_production_visual_asset_path(production, spec_id: spec.id), method: :delete %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Written items %>
+  <% if assets.text_specs.any? %>
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/section_heading", title: "Written items" %>
+      <div class="divide-y divide-gray-100">
+        <% assets.text_specs.each do |spec| %>
+          <% item = assets.item(spec) %>
+          <div class="px-4 sm:px-6 py-4" data-controller="disclosure" data-asset-text-row="<%= spec.id %>">
+            <div class="flex flex-col sm:flex-row sm:items-start gap-3">
+              <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="text-[15px] font-medium text-gray-900"><%= spec.name %></span>
+                  <% unless item.present? %>
+                    <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"><%= spec.required? ? "Required" : "Optional" %></span>
+                  <% end %>
+                </div>
+                <% if item.present? %>
+                  <p class="text-sm text-gray-900 mt-1 whitespace-pre-line"><%= item.text.truncate(600) %></p>
+                  <p class="text-xs text-gray-500 mt-1">
+                    <%= item.uploaded_words.presence&.then { |words| "#{words}." } %>
+                    <%= "This is the production's description." if spec.builtin == "description" %>
+                  </p>
+                <% else %>
+                  <p class="text-sm text-gray-500">Not written yet. <%= spec.description_line %></p>
+                <% end %>
+              </div>
+              <% if can_manage %>
+                <div class="flex flex-wrap gap-2">
+                  <% if item.present? %>
+                    <span data-controller="copy-text" data-copy-text-text-value="<%= item.text %>">
+                      <%= render "shared/button", text: "Copy", variant: "secondary", size: "small", type: :button, data: { action: "click->copy-text#copy" } %>
+                    </span>
+                  <% end %>
+                  <% if spec.builtin == "description" %>
+                    <%= render "shared/button", text: item.present? ? "Edit" : "Write it", variant: "secondary", size: "small",
+                          path: edit_manage_production_path(production, tab: basic_tab) %>
+                  <% else %>
+                    <%= render "shared/button", text: item.present? ? "Edit" : "Write it", variant: "secondary", size: "small", type: :button,
+                          data: { action: "click->disclosure#toggle" } %>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+            <% if can_manage && spec.builtin != "description" %>
+              <div class="hidden mt-3" data-disclosure-target="content">
+                <%= form_with url: manage_text_production_visual_asset_path(production, spec_id: spec.id), method: :patch, class: "space-y-3", data: { turbo_action: "replace" } do %>
+                  <label for="asset-text-<%= spec.id %>" class="sr-only"><%= spec.name %></label>
+                  <%= text_area_tag :text, item.text, id: "asset-text-#{spec.id}", rows: spec.max_length && spec.max_length <= 300 ? 2 : 5,
+                        maxlength: spec.max_length, class: input %>
+                  <div class="flex justify-end gap-2">
+                    <%= render "shared/button", text: "Cancel", variant: "secondary", size: "small", type: :button, data: { action: "click->disclosure#toggle" } %>
+                    <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Additional files: the production's own, never part of a request. %>
+  <% extras = assets.additional_files.to_a %>
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden" data-controller="disclosure">
+    <%= render "shared/section_heading", title: "Additional files",
+          intro: "Anything else you want to keep with this production, in any size. These are yours: they are never part of a request." do %>
+      <% if can_manage %>
+        <%= render "shared/button", text: "Add a file", variant: "secondary", size: "small", type: :button, data: { action: "click->disclosure#toggle" } %>
+      <% end %>
+    <% end %>
+    <% if can_manage %>
+      <div class="hidden px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-100" data-disclosure-target="content">
+        <%= form_with url: manage_files_production_visual_asset_path(production), method: :post, multipart: true, class: "grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 items-end" do %>
+          <div>
+            <label for="asset-extra-name" class="block text-xs font-medium text-gray-700 mb-1">Name</label>
+            <%= text_field_tag :name, nil, id: "asset-extra-name", maxlength: 120, placeholder: "e.g. Step-and-repeat banner", class: input %>
+          </div>
+          <div>
+            <label for="asset-extra-file" class="block text-xs font-medium text-gray-700 mb-1">File, up to 100 MB</label>
+            <%= file_field_tag :file, id: "asset-extra-file", required: true,
+                  class: "block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-pink-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-pink-700 hover:file:bg-pink-100" %>
+          </div>
+          <%= render "shared/button", text: "Add the file", variant: "primary", size: "small", type: :submit %>
+        <% end %>
+      </div>
+    <% end %>
+    <% if extras.any? %>
+      <div class="divide-y divide-gray-100 border-t border-gray-100">
+        <% extras.each do |asset| %>
+          <% thumb = asset.preview %>
+          <div class="px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center gap-3" data-additional-file="<%= asset.id %>">
+            <div class="w-16 h-12 flex-shrink-0 rounded bg-gray-50 flex items-center justify-center overflow-hidden">
+              <% if thumb %><%= image_tag thumb, alt: asset.name, class: "max-h-12 max-w-16 w-auto h-auto" %><% end %>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-[15px] font-medium text-gray-900 truncate"><%= asset.name %></p>
+              <p class="text-sm text-gray-500"><%= [ asset.file_words.presence, asset.uploaded_words ].compact.join(". ") %>.</p>
+            </div>
+            <div class="flex gap-2">
+              <% if asset.file.attached? %>
+                <%= render "shared/button", text: "Download", variant: "secondary", size: "small", path: rails_blob_path(asset.file, disposition: "attachment") %>
+              <% end %>
+              <% if can_manage %>
+                <%= render "shared/button", text: "Remove", variant: "secondary", size: "small", type: :button,
+                      data: { controller: "modal", action: "click->modal#open", modal_id: "confirm-remove-extra-#{asset.id}" } %>
+              <% end %>
+            </div>
+          </div>
+          <% if can_manage %>
+            <%= render "shared/confirm_modal", id: "confirm-remove-extra-#{asset.id}", title: "Remove #{asset.name}?",
+                  message: "You'd have to upload it again to get it back.",
+                  confirm_text: "Remove", url: manage_file_production_visual_asset_path(production, asset), method: :delete %>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <%# Shows that use their own images: counted and pointed to, not shown. %>
+  <%
+    own_images_line = if own_images.empty?
+      "None. Every show and event uses the poster and wide image above. To give one its own (a special guest night, say), open it and use its Visual Assets tab."
+    else
+      "#{own_images.one? ? '1 show or event uses its own poster or wide image' : "#{own_images.size} shows and events use their own posters or wide images"} instead of these" \
+        "#{" (#{upcoming_own.size} still to come)" if upcoming_own.size != own_images.size}. You change them on each one's Visual Assets tab."
+    end
+  %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden [&>div:last-child]:border-b-0">
+    <%= render "shared/section_heading", title: "Shows and events with their own images", intro: own_images_line %>
+    <% unless own_images.empty? %>
+      <div class="px-6 py-5">
+      <details>
+        <summary class="cursor-pointer text-sm font-medium text-pink-600 hover:text-pink-700">See which ones</summary>
+        <ul class="mt-2 divide-y divide-gray-100 text-sm">
+          <% own_images.each do |show| %>
+            <li class="py-2 flex flex-wrap items-baseline justify-between gap-2">
+              <%= link_to "#{show.date_and_time.strftime('%a %b %-d, %Y · %-l:%M %p')}#{" · #{show.secondary_name}" if show.secondary_name.present?}",
+                    manage_edit_show_path(production, show, tab: 4), class: "text-gray-900 hover:text-pink-600" %>
+              <span class="text-xs text-gray-500"><%= [ ("own poster" if show.poster.attached?), ("own wide image" if show.wide_image.attached?) ].compact.join(" and ").capitalize %></span>
+            </li>
+          <% end %>
+        </ul>
+      </details>
+      </div>
+    <% end %>
+  </div>
+
+  <% if can_manage %>
+    <% production.posters.each do |poster| %>
+      <%= render "shared/confirm_modal", id: "confirm-delete-poster-#{poster.id}", title: "Delete this poster?",
+            message: poster.is_primary && other_posters.any? ? "Delete this poster? Choose another as the main poster afterwards." : "Delete this poster? You'd have to upload it again to get it back.",
+            confirm_text: "Delete poster", url: manage_destroy_poster_production_visual_asset_path(production, poster), method: :delete %>
+    <% end %>
+    <% if production.wide_image.attached? %>
+      <%= render "shared/confirm_modal", id: "confirm-remove-wide-image", title: "Delete the wide image?",
+            message: "Ticket pages will use the poster instead. Shows with their own wide image keep it.",
+            confirm_text: "Delete wide image", url: manage_wide_image_production_visual_asset_path(production), method: :delete %>
+    <% end %>
+    <%= render "manage/visual_assets/request_sheet", production: production, assets: assets, request: request&.open? ? request : nil,
+          reminder: request&.open? && request.recipient_emails.any? %>
+  <% end %>
+</div>

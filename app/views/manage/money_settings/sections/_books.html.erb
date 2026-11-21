@@ -2,13 +2,15 @@
   input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
 %>
 
-<div class="bg-white border border-gray-200 rounded-xl p-6">
-  <h2 class="text-lg font-semibold text-gray-900 mb-1">Books</h2>
-  <p class="text-sm text-gray-600">
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <div class="px-6 py-4">
+  <h2 class="text-lg font-semibold text-gray-900">Books</h2>
+  <p class="text-sm text-gray-600 mt-1">
     Books is the record of every dollar: tickets, classes, contracts, payout runs, bills, and whatever you record by hand.
     It counts money when it was earned, or when it moved if you switch on the Books page. It starts with its categories,
     the ones money is sorted into; they are below, and the setup page changes them.
   </p>
+  </div>
 </div>
 
 <%= form_with url: manage_money_settings_books_path, method: :patch do %>

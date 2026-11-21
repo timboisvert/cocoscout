@@ -54,8 +54,9 @@
     </div>
   <% end %>
 
-  <section class="lg:col-span-2 space-y-2">
-    <span class="text-[11px] font-semibold uppercase tracking-wider text-gray-500">How it looks</span>
+  <section class="lg:col-span-2 bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <%= render "shared/section_heading", title: "How it looks" %>
+    <div class="p-6">
     <div class="rounded-xl bg-gray-100 p-4 flex justify-center">
       <div class="w-full max-w-[300px] bg-white rounded-lg overflow-hidden shadow-sm">
         <div class="pt-5 pb-3 flex justify-center"><span class="w-12 h-12 rounded-lg flex items-center justify-center text-white font-extrabold" style="background-color: <%= accent %>"><%= @organization.initials %></span></div>
@@ -71,6 +72,7 @@
           <span class="underline">Unsubscribe</span> · Sent with CocoScout
         </div>
       </div>
+    </div>
     </div>
   </section>
 </div>

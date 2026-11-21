@@ -74,7 +74,9 @@ module Manage
         dashboard[:sign_up_forms].each { |f| @all_sign_up_forms << f.merge(production: production) }
         dashboard[:open_vacancies].each { |v| @all_open_vacancies << v.merge(production: production) }
       end
-      @total_audition_signups = @all_open_calls.sum { |c| c[:auditionee_count] }
+      # Sign-ups this user hasn't voted on, the number the Sign-ups page's
+      # To review box shows (AuditionsToReview, Tim 2026-11-20).
+      @total_audition_signups = AuditionsToReview.new(user: Current.user, productions: @productions).total
       @all_sign_up_forms.sort_by! { |f| f[:instance]&.show&.date_and_time || 100.years.from_now }
 
       # The week, show by show (Design B, Tim 2026-10-27): seven days from

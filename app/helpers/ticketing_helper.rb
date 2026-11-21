@@ -114,23 +114,23 @@ module TicketingHelper
     "With these rules, #{per_date}, #{team}, and #{contract}."
   end
 
-  # What someone's comps for a date come to, said to them
-  # (TicketSalesAccess.comp_allowance). For the people on a contract it is
-  # the seller's number, shared between everyone on the contract.
-  def comp_allowance_words(allowance, listing)
-    if allowance[:contract]
-      given = allowance[:team_given]
-      "#{listing.organization.name} allows #{pluralize(allowance[:team_limit], 'comp')} for this date, shared between everyone on the contract. " \
-        "#{given.zero? ? 'None have' : "#{given} #{given == 1 ? 'has' : 'have'}"} been issued so far."
-    elsif allowance[:team_limit] then "#{allowance[:team_given]} of #{allowance[:team_limit]} issued."
-    elsif allowance[:date_left] then "#{pluralize(allowance[:date_left], 'comp')} left on this date."
-    else "No limit, up to the seats left."
-    end
-  end
-
   # "Issue comps · 2 of 4 left", or "Give comps" with no limit.
   def comp_allowance_button(allowance)
     allowance[:left] ? "Issue comps · #{allowance[:left]} of #{allowance[:team_limit] || allowance[:date_left]} left" : "Issue comps"
+  end
+
+  # Which sides' comp rules a production's or a date's own Comps settings
+  # show (Tim, 2026-11-20): by then it is known whether it is on a contract.
+  # A contracted one shows the contractor's; an in-house one the production
+  # team's; a contracted one with production team managers of its own (an
+  # in-house co-producer) shows both. The box office shows both always.
+  def comp_sides(production, listing: nil)
+    contracted = if listing then TicketSalesAccess.contracts_for(listing).any?
+    else production.third_party? || production.contracts.where.not(status: %w[draft cancelled]).exists?
+    end
+    return [ :team ] unless contracted
+
+    production.production_permissions.where(role: "manager").exists? ? %i[contract team] : [ :contract ]
   end
 
   # Where a date's comp rules come from (CompRules), for "comps are off on …".

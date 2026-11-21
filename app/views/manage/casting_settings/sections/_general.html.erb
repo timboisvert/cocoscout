@@ -1,0 +1,69 @@
+<%# Casting: whether people are cast in this production, where they come
+    from, which of its dates are cast, and attendance on new dates.
+    One card a question, each with its own Save, the way Ticketing and
+    Money settings are laid out. %>
+<%= render "manage/casting/answer_card", production: @production %>
+
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="source">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900">Who you cast</h2>
+    <p class="text-sm text-gray-600 mt-1">Where the people you assign to a date come from. A single date can do it the other way.</p>
+  </div>
+  <%= form_with url: manage_update_casting_settings_path(@production), method: :patch, local: true, data: { turbo_action: "replace" } do %>
+    <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <%= render "manage/casting_settings/choice", name: "production[casting_source]", value: "talent_pool", checked: !@production.casting_manual?,
+            title: "Talent Pool",
+            help: "Cast the people and groups in this production's talent pool." %>
+      <%= render "manage/casting_settings/choice", name: "production[casting_source]", value: "manual", checked: @production.casting_manual?,
+            title: "Manual Entry",
+            help: "Add anyone by name or email as you need them. Good for guests and one-off events." %>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
+  <% end %>
+</div>
+
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden" id="dates" data-settings-card="dates">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900">Which dates?</h2>
+    <p class="text-sm text-gray-600 mt-1">The dates of <%= @production.name %> you cast people in. You can still turn casting on or off for any one date from its own page.</p>
+  </div>
+  <% if @production.casts_people? %>
+    <%= form_with url: manage_casting_dates_path(@production), method: :patch, local: true, data: { turbo_action: "replace" } do %>
+      <div class="px-6 py-5">
+        <%= render "manage/casting_steps/which_dates", production: @production, dates: @dates, matching: @production.casting_event_matching,
+              event_types: @production.casting_event_types, chosen: @dates.select(&:casting_enabled?).map(&:id), cast_ids: @cast_ids %>
+        <p class="text-sm text-gray-600 mt-4">Saving switches casting on for the dates coming up that this covers, and off for the rest. Anyone already cast stays on their date.</p>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+      </div>
+    <% end %>
+  <% else %>
+    <p class="px-6 py-5 text-sm text-gray-600" data-casting-dates-off>We don't cast people in <%= @production.name %>, so none of its dates are cast. A single date can still be cast: turn casting on from that date's own page.</p>
+  <% end %>
+</div>
+
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="attendance">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900">Attendance</h2>
+    <p class="text-sm text-gray-600 mt-1">Whether you mark who showed up.</p>
+  </div>
+  <%= form_with url: manage_update_casting_settings_path(@production), method: :patch, local: true, data: { turbo_action: "replace" } do %>
+    <%# A saved setting that is on or off is a switch, as Ticketing's
+        "Selling tickets" is (Tim, 2026-11-18: "that should be a toggle,
+        not a checkbox"). %>
+    <div class="px-6 py-4 flex items-start gap-3">
+      <%= render "shared/toggle_switch", name: "production[default_attendance_enabled]", checked: @production.default_attendance_enabled?,
+            hidden_false: true, aria_label: "Take attendance at every new date" %>
+      <div class="text-sm min-w-0">
+        <p class="font-semibold text-gray-900">Take attendance at every new date</p>
+        <p class="text-gray-600 mt-0.5">When this is off, attendance is taken only at classes, workshops, and open mics. Either way, you can change it for any single date.</p>
+      </div>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
+  <% end %>
+</div>

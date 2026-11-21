@@ -26,7 +26,6 @@ class MoneyCategories
       @spending ||= config.fetch("spending")
     end
 
-    def income_keys = income.keys
     def spending_keys = spending.keys
 
     # Old keys (an ExpenseItem typed as "talent", a ProductionExpense as

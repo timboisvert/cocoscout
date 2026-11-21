@@ -46,11 +46,6 @@ class ShiftVacancy < ApplicationRecord
     shift.ends_at < Time.current
   end
 
-  # The dropped row, from the shift's loaded rows when they are loaded.
-  def declined_assignment
-    shift.shift_assignments.find { |a| a.person_id == vacated_by_id && a.declined? }
-  end
-
   # Someone covers it: the dropped row goes and the replacement is on the
   # shift. Accepted and told when they claimed it themselves (so Notify
   # updates leaves them alone); neither when a manager put them on by hand,

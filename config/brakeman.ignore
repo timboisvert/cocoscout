@@ -24,6 +24,74 @@
       "note": ""
     },
     {
+      "warning_type": "Dynamic Render Path",
+      "warning_code": 15,
+      "fingerprint": "15f6367ac1c3ccb688853586e1e5d97dcac19dc7344bd4fedd9cab368ea62294",
+      "check_name": "Render",
+      "message": "Render path contains parameter value",
+      "file": "app/views/manage/contract_settings/show.html.erb",
+      "line": 11,
+      "link": "https://brakemanscanner.org/docs/warning_types/dynamic_render_path/",
+      "code": "render(action => \"manage/contract_settings/sections/#{(params[:section] or \"general\")}\", {})",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::ContractSettingsController",
+          "method": "show",
+          "line": 15,
+          "file": "app/controllers/manage/contract_settings_controller.rb",
+          "rendered": {
+            "name": "manage/contract_settings/show",
+            "file": "app/views/manage/contract_settings/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/contract_settings/show"
+      },
+      "user_input": "params[:section]",
+      "confidence": "Medium",
+      "cwe_id": [
+        22
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Dynamic Render Path",
+      "warning_code": 15,
+      "fingerprint": "20cd2eef653d276b4b2be3a79f5fa38972874dab649687477ee0a6009685fe97",
+      "check_name": "Render",
+      "message": "Render path contains parameter value",
+      "file": "app/views/manage/money_settings/show.html.erb",
+      "line": 12,
+      "link": "https://brakemanscanner.org/docs/warning_types/dynamic_render_path/",
+      "code": "render(action => \"manage/money_settings/sections/#{(params[:section] or \"general\")}\", {})",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::MoneySettingsController",
+          "method": "show",
+          "line": 25,
+          "file": "app/controllers/manage/money_settings_controller.rb",
+          "rendered": {
+            "name": "manage/money_settings/show",
+            "file": "app/views/manage/money_settings/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/money_settings/show"
+      },
+      "user_input": "params[:section]",
+      "confidence": "Medium",
+      "cwe_id": [
+        22
+      ],
+      "note": ""
+    },
+    {
       "warning_type": "Cross-Site Scripting",
       "warning_code": 2,
       "fingerprint": "3bd5a4b359e7801db4fc45e599847cb0d1fd2055a4738c30b01069a66e6b415f",
@@ -188,19 +256,19 @@
     {
       "warning_type": "Dynamic Render Path",
       "warning_code": 15,
-      "fingerprint": "45a32409337003741b36a3390e2ee98504a59548937d0cbcc8f3d47b7674a97b",
+      "fingerprint": "4521e36a27cd83649d0889a8f14292de72006ccf54a2926830d65640265c87b2",
       "check_name": "Render",
       "message": "Render path contains parameter value",
       "file": "app/views/manage/casting_settings/show.html.erb",
-      "line": 13,
+      "line": 12,
       "link": "https://brakemanscanner.org/docs/warning_types/dynamic_render_path/",
-      "code": "render(action => \"manage/casting_settings/sections/#{(params[:section] or \"source\")}\", {})",
+      "code": "render(action => \"manage/casting_settings/sections/#{(params[:section] or \"general\")}\", {})",
       "render_path": [
         {
           "type": "controller",
           "class": "Manage::CastingSettingsController",
           "method": "show",
-          "line": 24,
+          "line": 34,
           "file": "app/controllers/manage/casting_settings_controller.rb",
           "rendered": {
             "name": "manage/casting_settings/show",
@@ -211,6 +279,40 @@
       "location": {
         "type": "template",
         "template": "manage/casting_settings/show"
+      },
+      "user_input": "params[:section]",
+      "confidence": "Medium",
+      "cwe_id": [
+        22
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Dynamic Render Path",
+      "warning_code": 15,
+      "fingerprint": "4d5bdbc36f68daa13656d5afcf82ee74bc8fd1f90ae6fbec9718f9d212750a35",
+      "check_name": "Render",
+      "message": "Render path contains parameter value",
+      "file": "app/views/manage/staffing/settings/show.html.erb",
+      "line": 11,
+      "link": "https://brakemanscanner.org/docs/warning_types/dynamic_render_path/",
+      "code": "render(action => \"manage/staffing/settings/sections/#{(params[:section] or \"general\")}\", {})",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::Staffing::SettingsController",
+          "method": "show",
+          "line": 25,
+          "file": "app/controllers/manage/staffing/settings_controller.rb",
+          "rendered": {
+            "name": "manage/staffing/settings/show",
+            "file": "app/views/manage/staffing/settings/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/staffing/settings/show"
       },
       "user_input": "params[:section]",
       "confidence": "Medium",
@@ -249,7 +351,7 @@
       "check_name": "MassAssignment",
       "message": "Specify exact keys allowed for mass assignment instead of using `permit!` which allows any keys",
       "file": "app/controllers/my/contracts_controller.rb",
-      "line": 129,
+      "line": 160,
       "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
       "code": "params.fetch(:financials, {}).permit!",
       "render_path": null,
@@ -272,7 +374,7 @@
       "check_name": "CrossSiteScripting",
       "message": "Unescaped model attribute",
       "file": "app/views/my/productions/show.html.erb",
-      "line": 424,
+      "line": 429,
       "link": "https://brakemanscanner.org/docs/warning_types/cross_site_scripting",
       "code": "Production.find(params[:id]).agreement_signature_for(Current.user.person).content_snapshot",
       "render_path": [
@@ -329,7 +431,7 @@
       "check_name": "CrossSiteScripting",
       "message": "Unescaped model attribute",
       "file": "app/views/manage/contractors/show.html.erb",
-      "line": 209,
+      "line": 218,
       "link": "https://brakemanscanner.org/docs/warning_types/cross_site_scripting",
       "code": "(invitation_preview(Current.organization.contractors.find(params[:id]).person) or nil)[:body]",
       "render_path": [
@@ -337,7 +439,7 @@
           "type": "controller",
           "class": "Manage::ContractorsController",
           "method": "show",
-          "line": 52,
+          "line": 56,
           "file": "app/controllers/manage/contractors_controller.rb",
           "rendered": {
             "name": "manage/contractors/show",
@@ -353,40 +455,6 @@
       "confidence": "Weak",
       "cwe_id": [
         79
-      ],
-      "note": ""
-    },
-    {
-      "warning_type": "Dynamic Render Path",
-      "warning_code": 15,
-      "fingerprint": "8c45edcd1e312a60b3bb376460129fe0f1f50def554446559df4f87eb35e2294",
-      "check_name": "Render",
-      "message": "Render path contains parameter value",
-      "file": "app/views/manage/course_settings/show.html.erb",
-      "line": 11,
-      "link": "https://brakemanscanner.org/docs/warning_types/dynamic_render_path/",
-      "code": "render(action => \"manage/course_settings/sections/#{(params[:section] or \"source\")}\", {})",
-      "render_path": [
-        {
-          "type": "controller",
-          "class": "Manage::CourseSettingsController",
-          "method": "show",
-          "line": 23,
-          "file": "app/controllers/manage/course_settings_controller.rb",
-          "rendered": {
-            "name": "manage/course_settings/show",
-            "file": "app/views/manage/course_settings/show.html.erb"
-          }
-        }
-      ],
-      "location": {
-        "type": "template",
-        "template": "manage/course_settings/show"
-      },
-      "user_input": "params[:section]",
-      "confidence": "Medium",
-      "cwe_id": [
-        22
       ],
       "note": ""
     },
@@ -494,108 +562,6 @@
       "note": ""
     },
     {
-      "warning_type": "Dynamic Render Path",
-      "warning_code": 15,
-      "fingerprint": "c26a61f7c1ba020511eddd8b71dc1e3c95ed72044b24cf313a6519da63221bc1",
-      "check_name": "Render",
-      "message": "Render path contains parameter value",
-      "file": "app/views/manage/money_settings/show.html.erb",
-      "line": 12,
-      "link": "https://brakemanscanner.org/docs/warning_types/dynamic_render_path/",
-      "code": "render(action => \"manage/money_settings/sections/#{(params[:section] or \"source\")}\", {})",
-      "render_path": [
-        {
-          "type": "controller",
-          "class": "Manage::MoneySettingsController",
-          "method": "show",
-          "line": 25,
-          "file": "app/controllers/manage/money_settings_controller.rb",
-          "rendered": {
-            "name": "manage/money_settings/show",
-            "file": "app/views/manage/money_settings/show.html.erb"
-          }
-        }
-      ],
-      "location": {
-        "type": "template",
-        "template": "manage/money_settings/show"
-      },
-      "user_input": "params[:section]",
-      "confidence": "Medium",
-      "cwe_id": [
-        22
-      ],
-      "note": ""
-    },
-    {
-      "warning_type": "Dynamic Render Path",
-      "warning_code": 15,
-      "fingerprint": "c78e37c106e08c42f7dac32269e60f88c10999efae26aa2845d64db6cca97a47",
-      "check_name": "Render",
-      "message": "Render path contains parameter value",
-      "file": "app/views/manage/staffing/settings/show.html.erb",
-      "line": 11,
-      "link": "https://brakemanscanner.org/docs/warning_types/dynamic_render_path/",
-      "code": "render(action => \"manage/staffing/settings/sections/#{(params[:section] or \"source\")}\", {})",
-      "render_path": [
-        {
-          "type": "controller",
-          "class": "Manage::Staffing::SettingsController",
-          "method": "show",
-          "line": 25,
-          "file": "app/controllers/manage/staffing/settings_controller.rb",
-          "rendered": {
-            "name": "manage/staffing/settings/show",
-            "file": "app/views/manage/staffing/settings/show.html.erb"
-          }
-        }
-      ],
-      "location": {
-        "type": "template",
-        "template": "manage/staffing/settings/show"
-      },
-      "user_input": "params[:section]",
-      "confidence": "Medium",
-      "cwe_id": [
-        22
-      ],
-      "note": ""
-    },
-    {
-      "warning_type": "Dynamic Render Path",
-      "warning_code": 15,
-      "fingerprint": "c79aab991239934bc65c125ab4929e02121540c7abfc2406f57c3bd7297dd0c9",
-      "check_name": "Render",
-      "message": "Render path contains parameter value",
-      "file": "app/views/manage/contract_settings/show.html.erb",
-      "line": 11,
-      "link": "https://brakemanscanner.org/docs/warning_types/dynamic_render_path/",
-      "code": "render(action => \"manage/contract_settings/sections/#{(params[:section] or \"source\")}\", {})",
-      "render_path": [
-        {
-          "type": "controller",
-          "class": "Manage::ContractSettingsController",
-          "method": "show",
-          "line": 15,
-          "file": "app/controllers/manage/contract_settings_controller.rb",
-          "rendered": {
-            "name": "manage/contract_settings/show",
-            "file": "app/views/manage/contract_settings/show.html.erb"
-          }
-        }
-      ],
-      "location": {
-        "type": "template",
-        "template": "manage/contract_settings/show"
-      },
-      "user_input": "params[:section]",
-      "confidence": "Medium",
-      "cwe_id": [
-        22
-      ],
-      "note": ""
-    },
-    {
       "warning_type": "Cross-Site Scripting",
       "warning_code": 2,
       "fingerprint": "d3354e52b793d818fd7630d8c000cdbe13e26d3a7f25fa37ff726891edd52178",
@@ -649,6 +615,40 @@
       "confidence": "Medium",
       "cwe_id": [
         915
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Dynamic Render Path",
+      "warning_code": 15,
+      "fingerprint": "ed105cd6ec8e2600928329f42c781e7d59a431bdcc8d4c6118918c7cc9897ddb",
+      "check_name": "Render",
+      "message": "Render path contains parameter value",
+      "file": "app/views/manage/course_settings/show.html.erb",
+      "line": 11,
+      "link": "https://brakemanscanner.org/docs/warning_types/dynamic_render_path/",
+      "code": "render(action => \"manage/course_settings/sections/#{(params[:section] or \"general\")}\", {})",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Manage::CourseSettingsController",
+          "method": "show",
+          "line": 23,
+          "file": "app/controllers/manage/course_settings_controller.rb",
+          "rendered": {
+            "name": "manage/course_settings/show",
+            "file": "app/views/manage/course_settings/show.html.erb"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "manage/course_settings/show"
+      },
+      "user_input": "params[:section]",
+      "confidence": "Medium",
+      "cwe_id": [
+        22
       ],
       "note": ""
     }

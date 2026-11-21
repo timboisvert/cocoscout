@@ -269,7 +269,18 @@ class ContractPayment < ApplicationRecord
 
   # Check if payment is overdue
   def overdue?
-    status_pending? && due_date < Date.current && !nothing_to_hand_back?
+    status_pending? && due_date < Date.current && !nothing_to_hand_back? && !awaiting_their_share?
+  end
+
+  # A charge that comes out of their share is settled when a share comes due,
+  # not on its own date: the part of Nov 18's Booth Tech that Nov 18's share
+  # couldn't cover carries forward as "Booth Tech balance — Nov 18, 2026",
+  # dated Nov 18, and comes out of Nov 25's share. While a share is still to
+  # come it isn't late, and nobody should chase it (Tim, 2026-11-20). With no
+  # share left to take it from, deduct_from_payout? turns false and it is an
+  # ordinary charge again, late from its date.
+  def awaiting_their_share?
+    deduct_from_payout?
   end
 
   # Late in a way anyone can do something about. Money sitting in a payout run
@@ -608,6 +619,8 @@ class ContractPayment < ApplicationRecord
   # Returns { amount: Float, explanation: String, shows: [...] } or nil.
   def suggested_amount_from_financials
     return nil unless amount_tbd? && contract
+    # A whole-run minimum's top-up is worked out once every date is in.
+    return nil if contract.run_guarantee_payment?(self)
 
     linked_shows = contract.shows_for_payment(self)
     shows_with_data = linked_shows.select { |s| s.show_financials&.has_data? }
@@ -621,10 +634,14 @@ class ContractPayment < ApplicationRecord
     when "revenue_share"
       pct = direction_incoming? ? config["revenue_our_share"].to_f : config["revenue_their_share"].to_f
       # Show by show: a date can have its own share (Review the dates).
-      calculated = shows_with_data.sum do |show|
-        show_pct = direction_incoming? ? contract.our_share_for(show) : contract.their_share_for(show)
-        contract.settled_revenue(show.show_financials) * show_pct / 100.0
-      end.round(2)
+      calculated = if contract.guarantee_per_show?
+        contract.settled_share_amount(shows_with_data)
+      else
+        shows_with_data.sum do |show|
+          show_pct = direction_incoming? ? contract.our_share_for(show) : contract.their_share_for(show)
+          contract.settled_revenue(show.show_financials) * show_pct / 100.0
+        end.round(2)
+      end
       { amount: calculated, explanation: "#{pct.round(0)}% of revenue" }
     when "per_event"
       per_event_amt = config["per_event_amount"].to_f

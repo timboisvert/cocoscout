@@ -19,13 +19,14 @@ RSpec.describe "Production and show Services tabs", type: :request do
   end
 
   def tab_labels(body)
-    body.scan(/data-index="(\d+)"[^>]*>\s*([A-Z][A-Za-z ]+)/).map { |index, label| [ index.to_i, label.strip ] }
+    # The side list's lines (shared/section_list), each with its panel's index.
+    Nokogiri::HTML(body).css("nav[data-section-list] button").map { |line| [ line["data-index"].to_i, line.text.squish.delete_suffix(" Pro") ] }
   end
 
   describe "on the production" do
     it "sits after Tickets, saves what every show needs, and lists the shows that differ" do
       get edit_manage_production_path(production)
-      expect(tab_labels(response.body)).to include([ 7, "Tickets" ], [ 8, "Services" ], [ 9, "Danger Zone" ])
+      expect(tab_labels(response.body)).to include([ 4, "Casting" ], [ 7, "Tickets" ], [ 8, "Services" ], [ 9, "Public Listing" ], [ 10, "Danger Zone" ])
       expect(response.body).to include("What every show needs", section_manage_organization_path(org, section: "services"))
 
       patch update_services_manage_production_path(production), params: { needs: {

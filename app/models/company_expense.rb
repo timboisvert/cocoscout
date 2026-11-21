@@ -88,9 +88,6 @@ class CompanyExpense < ApplicationRecord
   def paid_by_label = PAID_BY.fetch(paid_by, paid_by.to_s.humanize)
   def partial_share? = share_percent.to_d < 100
 
-  # The part of the bill that isn't CocoScout's.
-  def not_ours_cents = bill_total_cents.to_i - amount_cents.to_i
-
   private
 
   def normalize

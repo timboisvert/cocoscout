@@ -2,9 +2,9 @@
 
 module Manage
   class ProductionsController < Manage::ManageController
-    before_action :set_production, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_no_revenue update_services]
-    before_action :check_production_access, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_no_revenue update_services]
-    before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders update_pay update_no_revenue update_services]
+    before_action :set_production, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_no_revenue update_services update_documents_link]
+    before_action :check_production_access, only: %i[show edit update destroy confirm_delete archive unarchive check_url_availability update_public_key add_team_member update_team_permission remove_team_member revoke_production_invite agreement_status send_agreement_reminders update_pay update_no_revenue update_services update_documents_link]
+    before_action :ensure_user_is_manager, only: %i[edit update destroy confirm_delete update_public_key add_team_member update_team_permission remove_team_member agreement_status send_agreement_reminders update_pay update_no_revenue update_services update_documents_link]
     # Performer pay and agreements are Pro, and Pro is the organization's
     # managers' — a production's own manager (a producer) doesn't get them.
     # Archiving is the organization's call too: a production's own producer can't shelve it.
@@ -208,14 +208,40 @@ module Manage
       redirect_to edit_manage_production_path(@production, tab: 0), notice: notice
     end
 
+    # The production's shared folder (Documents tab): one link to Google Drive,
+    # Dropbox, or OneDrive, and its name. Blank removes it.
+    def update_documents_link
+      attrs = params.fetch(:production, {}).permit(:documents_link_url, :documents_link_name)
+      had_link = @production.documents_link?
+      tab = helpers.production_edit_tab(@production, :documents)
+      if @production.update(attrs)
+        notice = if @production.documents_link? then "The shared folder has been saved."
+        elsif had_link then "The shared folder link has been removed."
+        else "There's no shared folder to save."
+        end
+        redirect_to edit_manage_production_path(@production, tab: tab), notice: notice
+      else
+        alert = if @production.errors[:documents_link_url].any?
+          "That link isn't from Google Drive, Dropbox, or OneDrive. Copy the folder's share link from one of them and try again."
+        else
+          "The folder's name can be at most 100 characters."
+        end
+        # Said in the Shared folder card itself, with what was typed kept in
+        # the boxes: the settings page shows no alerts at its top.
+        flash[:documents_link_error] = alert
+        flash[:documents_link_attempt] = attrs.to_h
+        redirect_to edit_manage_production_path(@production, tab: tab)
+      end
+    end
+
     def update_public_key
       new_key = params[:production][:public_key]&.strip&.downcase
 
       if @production.update_public_key(new_key)
-        redirect_to edit_manage_production_path(@production, tab: 5),
+        redirect_to edit_manage_production_path(@production, tab: helpers.production_edit_tab(@production, :public_listing)),
                     notice: "Public profile URL updated successfully"
       else
-        redirect_to edit_manage_production_path(@production, tab: 5),
+        redirect_to edit_manage_production_path(@production, tab: helpers.production_edit_tab(@production, :public_listing)),
                     alert: @production.errors[:public_key].first || "Failed to update URL"
       end
     end
@@ -341,7 +367,7 @@ module Manage
     # the plan the same way update_pay does for performer pay.
     def agreement_status
       unless Current.organization.feature_available?(:agreements)
-        redirect_to edit_manage_production_path(@production, tab: 4),
+        redirect_to edit_manage_production_path(@production, tab: helpers.production_edit_tab(@production, :agreement)),
                     alert: "Performer agreements are part of CocoScout Pro."
         return
       end
@@ -358,7 +384,7 @@ module Manage
     # tracking both go through AgreementRequestService.
     def send_agreement_reminders
       unless Current.organization.feature_available?(:agreements)
-        redirect_to edit_manage_production_path(@production, tab: 4),
+        redirect_to edit_manage_production_path(@production, tab: helpers.production_edit_tab(@production, :agreement)),
                     alert: "Performer agreements are part of CocoScout Pro."
         return
       end
@@ -390,7 +416,7 @@ module Manage
 
     # The Pay tab sits after Public Listing (index 6) on the edit page's tab strip.
     def pay_tab_index
-      6
+      helpers.production_edit_tab(@production, :pay)
     end
 
     # Where a pay change goes back to: the page that posted it (a /manage path

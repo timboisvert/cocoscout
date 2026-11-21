@@ -78,6 +78,8 @@ class TicketOrdersController < ApplicationController
                         .find_by!(token: params[:token])
     @listing = @order.ticket_listing
     @ticketing_profile = TicketingProfile.for(@listing.organization)
+    # The order wears the date's page colors, as its ticket page and checkout do.
+    @page_colors = PageColors.for(@ticketing_profile, @listing.production_ticketing, @listing)
     use_time_zone_of(@listing.organization)
   end
 end

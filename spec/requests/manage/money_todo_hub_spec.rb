@@ -23,7 +23,7 @@ RSpec.describe "Money hub parity", type: :request do
     let!(:overdue_a) { create(:show, production: production, event_type: :show, date_and_time: 2.days.ago) }
     let!(:overdue_b) { create(:show, production: production, event_type: :show, date_and_time: 4.days.ago) }
     # Neither of these is work: one hasn't happened, one never will.
-    let!(:starts_soon) { create(:show, production: production, event_type: :show, date_and_time: 6.hours.from_now) }
+    let!(:starts_soon) { create(:show, production: production, event_type: :show, date_and_time: 3.days.from_now) }
     let!(:canceled) { create(:show, production: production, event_type: :show, date_and_time: 3.days.ago, canceled: true) }
 
     def day_path(show) = manage_money_settle_up_day_path(SettlementDay.day_for(org, show.date_and_time).iso8601)
@@ -48,7 +48,6 @@ RSpec.describe "Money hub parity", type: :request do
       settle!(overdue_a)
       settle!(overdue_b)
 
-      # (The show later today hasn't started, so today isn't on the list yet.)
       get manage_money_index_path
       expect(response.body).to include("Every day is settled.")
       expect(links_to(day_path(overdue_a))).to be(false)
@@ -57,6 +56,26 @@ RSpec.describe "Money hub parity", type: :request do
       expect(response.body).to include("Every day is settled", "The next show that happens will put its day here.")
       expect(response.body).not_to include("data-settle-today")
       expect(links_to(day_path(overdue_a))).to be(false)
+    end
+
+    # Today is there from the start of the day, before any show of its has
+    # begun (Tim, 2026-11-20: "I can settle today up if I want before it
+    # happens ... I like to progressively do it throughout the day").
+    it "lists today on the hub and on Settle up before its show has started" do
+      settle!(overdue_a)
+      settle!(overdue_b)
+      travel_to(Time.current.change(hour: 10)) do
+        later = create(:show, production: production, event_type: :show, date_and_time: Time.current.change(hour: 21))
+
+        get manage_money_index_path
+        expect(links_to(day_path(later))).to be(true)
+        expect(response.body).to include("today, still going")
+        expect(response.body).not_to include("Every day is settled.")
+
+        get manage_money_settle_up_path
+        expect(response.body).to include("data-settle-today", "Every earlier day is settled.")
+        expect(links_to(day_path(later))).to be(true)
+      end
     end
 
     # Once a show of today's has started, Settle up has its Today box and the

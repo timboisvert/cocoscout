@@ -1,0 +1,136 @@
+<%# Request these (Tim, 2026-11-19): who gets the link (the contract's people
+    are offered first), the email's words, and what they will be asked for.
+    "Copy the link without emailing" makes the link and sends nothing.
+    In reminder mode (the request has already been emailed) the same sheet
+    shows who gets the reminder, its words, and what is still needed, so
+    nothing is sent without being looked at first (Tim, 2026-11-19).
+    Locals: production, assets, request, reminder. %>
+<%
+  organization = production.organization
+  contract = production.contract
+  suggested = []
+  if contract
+    signer = contract.contractor&.person
+    if contract.contractor_email.present?
+      suggested << { name: contract.contractor_name, email: contract.contractor_email.downcase, label: "Signs the contract" }
+    end
+    contract.people_with_access.each do |person|
+      next if person.email.blank? || suggested.any? { |row| row[:email] == person.email.downcase }
+
+      suggested << { name: person.name, email: person.email.downcase, label: person == signer ? "Signs the contract" : "On the contract" }
+    end
+  end
+  reminder = local_assigns[:reminder] ? true : false
+  already = request&.recipient_emails || []
+  if reminder
+    # The people already emailed, each ticked; a name where we know it.
+    rows = already.map { |email| suggested.find { |row| row[:email] == email } || { name: nil, email: email, label: nil } }
+  else
+    rows = suggested
+  end
+  subject = request&.subject.presence || AssetRequest.default_subject(production)
+  subject = "A reminder: #{subject}" if reminder
+  shown = reminder ? assets.items.reject(&:present?) : assets.items
+  default_message = request&.message.presence || AssetRequest.default_message(production)
+  input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-base sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  check = "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+%>
+<div id="asset-request-sheet" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+     data-controller="modal asset-request-recipients" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-4xl sm:mx-4 overflow-hidden max-h-[92vh] flex flex-col"
+       data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white"><%= reminder ? "Send a reminder for #{production.name}" : "Request visual assets for #{production.name}" %></h3>
+      <button type="button" data-action="click->modal#close" aria-label="Close"
+              class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+    </div>
+
+    <%= form_with url: reminder ? manage_remind_production_visual_asset_path(production) : manage_request_production_visual_asset_path(production), method: :post, id: "asset-request-form", class: "flex-1 overflow-y-auto" do %>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 p-6">
+        <div class="space-y-5">
+          <div>
+            <p class="text-sm font-semibold text-gray-900 mb-2"><%= reminder ? "Who gets the reminder" : "Who gets the link" %></p>
+            <% if rows.any? %>
+              <div class="space-y-2">
+                <% rows.each_with_index do |row, index| %>
+                  <label class="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-pink-300 has-[:checked]:bg-pink-50">
+                    <%= check_box_tag "recipients[]", row[:email], reminder || already.empty? || already.include?(row[:email]), id: "asset-recipient-#{index}", class: check,
+                          data: { asset_request_recipients_target: "choice", action: "change->asset-request-recipients#refresh" } %>
+                    <% if row[:name].present? %>
+                      <span class="flex-1 min-w-0"><span class="font-medium text-gray-900"><%= row[:name] %></span> <span class="text-gray-500"><%= row[:email] %></span></span>
+                    <% else %>
+                      <span class="flex-1 min-w-0 font-medium text-gray-900"><%= row[:email] %></span>
+                    <% end %>
+                    <% if row[:label] %>
+                      <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"><%= row[:label] %></span>
+                    <% end %>
+                  </label>
+                <% end %>
+              </div>
+            <% end %>
+            <label for="asset-other-emails" class="sr-only">Other email addresses</label>
+            <%= text_field_tag :other_emails, (already - rows.map { |row| row[:email] }).join(", "), id: "asset-other-emails",
+                  placeholder: rows.any? ? "Add other email addresses" : "Email addresses, separated by commas", class: "#{input} #{'mt-2' if rows.any?}",
+                  data: { asset_request_recipients_target: "others", action: "input->asset-request-recipients#refresh" } %>
+            <p class="text-xs text-gray-500 mt-2">Anyone with the link can upload, so they can pass it to their designer. It works until the production's last date.</p>
+          </div>
+
+          <div>
+            <label for="asset-request-subject" class="block text-sm font-semibold text-gray-900 mb-1">Subject</label>
+            <%= text_field_tag :subject, subject, id: "asset-request-subject", maxlength: 150, class: input %>
+          </div>
+          <div>
+            <label for="asset-request-message" class="block text-sm font-semibold text-gray-900 mb-1">Your message</label>
+            <%= text_area_tag :message, default_message, id: "asset-request-message", rows: 7, maxlength: 3000, class: input %>
+            <p class="text-xs text-gray-500 mt-2">The email ends with the list of what is still needed, one button, "Upload your images", and your organization's name.</p>
+          </div>
+        </div>
+
+        <div>
+          <p class="text-sm font-semibold text-gray-900 mb-2"><%= reminder ? "What is still needed" : "What they will be asked for" %></p>
+          <% if shown.empty? %>
+            <p class="rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-600">Everything on your organization's list has been received. The reminder will say so.</p>
+          <% end %>
+          <div class="rounded-lg border border-gray-200 divide-y divide-gray-100 px-4 <%= 'hidden' if shown.empty? %>">
+            <% shown.each do |item| %>
+              <div class="flex items-center justify-between gap-3 py-2 text-sm">
+                <span class="text-gray-900"><%= item.spec.name %></span>
+                <% if item.present? %>
+                  <span class="text-gray-500">Received</span>
+                <% else %>
+                  <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"><%= item.spec.required? ? "Required" : "Optional" %></span>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+          <p class="text-xs text-gray-500 mt-2">This is your organization's list. Change it in <%= link_to "Organization settings", section_manage_organization_path(organization, section: "visual_assets"), class: "font-medium text-pink-600 hover:text-pink-700" %>.</p>
+          <% unless reminder %>
+          <label class="mt-4 flex items-start gap-3 text-sm">
+            <%= hidden_field_tag :allow_replace, "0", id: nil %>
+            <%= check_box_tag :allow_replace, "1", request ? request.allow_replace? : true, id: "asset-allow-replace", class: "#{check} mt-0.5" %>
+            <span>
+              <span class="font-medium text-gray-900">Let them replace what is already here</span><br>
+              <span class="text-gray-500">They can swap the poster and the wide image for new ones. The poster before it is kept, and you will be notified.</span>
+            </span>
+          </label>
+          <% end %>
+        </div>
+      </div>
+      <%= hidden_field_tag :commit_action, "send", id: "asset-request-action" %>
+    <% end %>
+
+    <div class="px-4 sm:px-6 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] sm:py-4 bg-gray-50 border-t border-gray-200 flex flex-col-reverse sm:flex-row sm:items-center gap-2 [&_button]:w-full sm:[&_button]:w-auto">
+      <% unless reminder %>
+        <%= render "shared/button", text: "Copy the link without emailing", variant: "secondary", size: "medium", type: :submit, form_id: "asset-request-form",
+              onclick: "document.getElementById('asset-request-action').value='copy'" %>
+      <% end %>
+      <span class="hidden sm:block sm:flex-1"></span>
+      <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+      <%= render "shared/button", text: reminder ? "Send the reminder" : "Send the request", variant: "primary", size: "medium", type: :submit, form_id: "asset-request-form",
+            data: { asset_request_recipients_target: "send" },
+            onclick: "document.getElementById('asset-request-action').value='send'" %>
+    </div>
+  </div>
+</div>

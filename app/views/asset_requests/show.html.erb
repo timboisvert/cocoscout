@@ -1,0 +1,29 @@
+<% content_for :title, "Images and details for #{@production.name}" %>
+<%# The no-login page for a visual asset request (AssetRequestsController). %>
+<div class="space-y-8">
+  <div>
+    <h1 class="text-3xl coustard-regular text-gray-900">Images and details for <%= @production.name %></h1>
+    <p class="mt-2 text-base text-gray-700">
+      <%= @production.organization.name %> needs these to announce and sell your show. Add them in any order.
+      Everything is saved as you go, and you can come back to this page with the same link until the last date of the show.
+    </p>
+  </div>
+
+  <%= render "asset_requests/page", assets: @assets, counts: @counts, ask_name: !authenticated?, **asset_page_locals.except(:request) %>
+
+  <% unless authenticated? %>
+    <div class="bg-white border border-gray-200 rounded-2xl px-5 py-5 flex flex-col sm:flex-row sm:items-center gap-4" data-asset-account-box>
+      <div class="flex items-center gap-4 flex-1 min-w-0">
+        <%= image_tag "cocoscoutsmall.png", alt: "CocoScout", class: "w-16 h-16 rounded-xl flex-shrink-0" %>
+        <div class="min-w-0">
+          <p class="text-base font-semibold text-gray-900">Manage your production with CocoScout</p>
+          <p class="text-sm text-gray-600 mt-0.5">Casting, scheduling, sign-ups, and ticket sales for your own shows, all in one place. It is free to start, and it stays free for up to six events a month.</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-4 flex-shrink-0">
+        <%= render "shared/button", text: "Start for free", variant: "primary", size: "medium", path: signup_path %>
+        <%= link_to "Sign in", signin_path, class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
+      </div>
+    </div>
+  <% end %>
+</div>

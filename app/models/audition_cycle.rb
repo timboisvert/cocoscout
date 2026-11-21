@@ -199,10 +199,6 @@ class AuditionCycle < ApplicationRecord
     errors.add(:active, "can only have one active audition cycle per production")
   end
 
-  def opening_soon?
-    opens_at.present? && opens_at <= 7.days.from_now && opens_at > Time.current
-  end
-
   def reviewer_count
     access_type = reviewer_access_type.presence || "managers"
     case access_type

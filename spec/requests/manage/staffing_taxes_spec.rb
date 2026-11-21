@@ -35,7 +35,7 @@ RSpec.describe "Manage::Staffing::Taxes", type: :request do
   it "shows where everyone stands" do
     get manage_staffing_taxes_path
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("What needs doing").and include("Sam Staffer").and include("W-9 needed")
+    expect(response.body).to include("To do").and include("Sam Staffer").and include("W-9 needed")
     expect(response.body).to include("Ask everyone missing one")
   end
 

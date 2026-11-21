@@ -1,0 +1,92 @@
+<%#
+  Requests for more comps on this date, waiting for the organization's owners
+  and managers (CompRequest; Tim, 2026-11-20), at the top of the date's page,
+  where a request's notification opens. One box per request: what the side
+  has now, what it requested and what that makes, in one line, beside the
+  date's available seats; then Approve, Approve a different number (a
+  window), or Decline (a window). Both windows take a comment that goes back
+  to whoever requested it in a notification. Locals: listing, stats.
+%>
+<% requests = listing.comp_requests.waiting.includes(requested_by: :default_person).order(:created_at).to_a %>
+<% if requests.any? %>
+  <div class="space-y-4 mb-6" data-comp-requests>
+    <% requests.each do |request| %>
+      <%
+        name = request.requested_by.person&.name.presence || request.requested_by.email_address
+        first_name = name.split.first
+        now = if request.contract? then listing.effective_contract_comps + listing.approved_comp_extra(:contract)
+              elsif listing.effective_team_comps_limit == "fixed" then listing.effective_team_comps_per_show + listing.approved_comp_extra(:team)
+              elsif (left = listing.comps_left) then TicketSalesAccess.team_comps_given(listing) + left
+              else 0
+              end
+        seats = stats.remaining
+        zone = listing.organization.time_zone.presence || Time.zone.name
+        cell = "text-xs text-gray-500"
+        number = "text-xl font-bold tabular-nums"
+      %>
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-comp-request="<%= request.id %>">
+        <%= render "shared/section_heading", title: "Comp request",
+              intro: "#{name} requested #{CompRequestNotices.more_comps(request.quantity)} for this date on #{request.created_at.in_time_zone(zone).strftime('%B %-d')}, for #{request.side_words}." %>
+        <div class="px-6 py-5 space-y-4">
+          <div class="flex flex-wrap items-stretch gap-3">
+            <div class="rounded-lg border border-gray-200 px-5 py-3 flex items-center gap-5">
+              <div><div class="<%= cell %>">Now</div><div class="<%= number %> text-gray-900"><%= now %></div></div>
+              <span class="text-xl text-gray-300" aria-hidden="true">+</span>
+              <div><div class="<%= cell %>">Requested</div><div class="<%= number %> text-gray-900"><%= request.quantity %></div></div>
+              <span class="text-xl text-gray-300" aria-hidden="true">=</span>
+              <div><div class="<%= cell %>">If approved</div><div class="<%= number %> text-pink-600"><%= now + request.quantity %></div></div>
+            </div>
+            <div class="rounded-lg border border-gray-200 px-5 py-3 min-w-[10rem]">
+              <div class="<%= cell %>">Available seats</div>
+              <div class="<%= number %> text-gray-900"><%= seats.nil? ? "No limit" : seats %></div>
+            </div>
+          </div>
+          <% if request.note.present? %>
+            <p class="text-sm text-gray-700"><span class="font-medium text-gray-900"><%= first_name %>'s note:</span> <%= request.note %></p>
+          <% end %>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex flex-wrap gap-2">
+          <%= render "shared/button", text: "Approve #{request.quantity} more", variant: "primary", size: "small",
+                path: manage_approve_comp_request_path(request), method: :post %>
+          <%= render "shared/button", text: "Approve a different number", variant: "secondary", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: "comp-request-#{request.id}-approve" } %>
+          <%= render "shared/button", text: "Decline", variant: "secondary", size: "small", type: :button,
+                data: { controller: "modal", action: "click->modal#open", modal_id: "comp-request-#{request.id}-decline" } %>
+        </div>
+      </div>
+
+      <% input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+      <%= render layout: "shared/sheet", locals: { id: "comp-request-#{request.id}-approve", title: "Approve a different number",
+            footer: capture {
+              concat render("shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" })
+              concat render("shared/button", text: "Approve", variant: "primary", size: "medium", type: :submit, form_id: "comp-request-#{request.id}-approve-form")
+            } } do %>
+        <%= form_with url: manage_approve_comp_request_path(request), method: :post, id: "comp-request-#{request.id}-approve-form", class: "space-y-5" do %>
+          <p class="text-sm text-gray-700"><%= name %> requested <%= CompRequestNotices.more_comps(request.quantity) %> for <%= listing.show.date_and_time.in_time_zone(zone).strftime("%A, %B %-d at %-l:%M %p") %>.</p>
+          <%= render "shared/ticketing/comp_count_fields", id: "comp_request_#{request.id}_quantity", label: "How many to approve?", now: now,
+                value: [ request.quantity - 1, 1 ].max, added_words: "approved", total_words: "for this date" %>
+          <div>
+            <label for="comp_request_<%= request.id %>_approve_comment" class="block text-sm font-medium text-gray-700 mb-1.5">Comment for <%= first_name %> <span class="font-normal text-gray-500">(optional)</span></label>
+            <%= text_area_tag :comment, nil, id: "comp_request_#{request.id}_approve_comment", rows: 3, maxlength: 2000, class: input %>
+            <p class="text-xs text-gray-500 mt-1.5"><%= first_name %> gets it in a notification.</p>
+          </div>
+        <% end %>
+      <% end %>
+
+      <%= render layout: "shared/sheet", locals: { id: "comp-request-#{request.id}-decline", title: "Decline this request?",
+            footer: capture {
+              concat render("shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" })
+              concat render("shared/button", text: "Decline", variant: "primary", size: "medium", type: :submit, form_id: "comp-request-#{request.id}-decline-form")
+            } } do %>
+        <%= form_with url: manage_decline_comp_request_path(request), method: :post, id: "comp-request-#{request.id}-decline-form", class: "space-y-5" do %>
+          <p class="text-sm text-gray-700"><%= name %> requested <%= CompRequestNotices.more_comps(request.quantity) %> for <%= listing.show.date_and_time.in_time_zone(zone).strftime("%A, %B %-d at %-l:%M %p") %>. They keep the <%= now %> they have, and can request again.</p>
+          <div>
+            <label for="comp_request_<%= request.id %>_decline_comment" class="block text-sm font-medium text-gray-700 mb-1.5">Comment for <%= first_name %> <span class="font-normal text-gray-500">(optional)</span></label>
+            <%= text_area_tag :comment, nil, id: "comp_request_#{request.id}_decline_comment", rows: 3, maxlength: 2000, class: input %>
+            <p class="text-xs text-gray-500 mt-1.5"><%= first_name %> gets it with the decline, in a notification.</p>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>

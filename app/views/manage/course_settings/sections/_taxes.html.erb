@@ -1,1 +1,7 @@
-<%= render "shared/one_tax_setting", tax: @tax, url: manage_course_settings_tax_path, what: "courses", example_cents: 15_000 %>
+<%# Tax on courses, in the box every settings section has. %>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <%= render "shared/section_heading", title: "Tax on courses", intro: "What you charge, and whether it sits on top of a price or inside it." %>
+  <div class="px-6 py-5">
+    <%= render "shared/one_tax_setting", tax: @tax, url: manage_course_settings_tax_path, what: "courses", example_cents: 15_000 %>
+  </div>
+</div>

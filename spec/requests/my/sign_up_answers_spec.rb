@@ -121,7 +121,8 @@ RSpec.describe "Sign-up question answers", type: :request do
 
     it "brings back the Questions tab" do
       get manage_edit_signups_form_path(production, form)
-      expect(response.body).to include(">Questions</button>", "What will you perform?")
+      expect(response.body).to include("What will you perform?")
+      expect(Nokogiri::HTML(response.body).css("nav[data-section-list] button").map { |line| line.text.squish }).to include("Questions")
     end
 
     it "folds each person's answers under their name on the roster" do

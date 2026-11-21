@@ -84,10 +84,6 @@ class MailingList < ApplicationRecord
     [ main_for!(organization) ] + from_contract + chosen
   end
 
-  def subscribed_count
-    followers.subscribed.count
-  end
-
   private
 
   def contractor_is_this_organizations

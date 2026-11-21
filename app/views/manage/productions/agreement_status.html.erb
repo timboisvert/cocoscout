@@ -1,6 +1,6 @@
 <% content_for :title, "Agreement · #{@production.name}" %>
 
-<%= render "shared/back_button", path: edit_manage_production_path(@production, anchor: "tab-4"), title: "Back to Production Settings" %>
+<%= render "shared/back_button", path: edit_manage_production_path(@production, anchor: "tab-#{production_edit_tab(@production, :agreement)}"), title: "Back to Production Settings" %>
 
 <div class="max-w-4xl mx-auto">
   <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
@@ -35,7 +35,7 @@
       <% else %>
         This agreement is <span class="font-medium text-gray-900">sent manually</span> — use the buttons below to send it.
       <% end %>
-      <%= link_to "Change", edit_manage_production_path(@production, anchor: "tab-4"), class: "text-pink-600 hover:text-pink-700 ml-1" %>
+      <%= link_to "Change", edit_manage_production_path(@production, anchor: "tab-#{production_edit_tab(@production, :agreement)}"), class: "text-pink-600 hover:text-pink-700 ml-1" %>
     </div>
   </div>
 

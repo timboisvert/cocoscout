@@ -1422,11 +1422,13 @@ module Manage
       remaining = @contract.space_rentals.where.not(id: removed).includes(:shows).order(:starts_at)
       remaining.map do |r|
         { "starts_at" => r.starts_at.iso8601, "duration" => ((r.ends_at - r.starts_at) / 1.hour).round(1),
-          "event_type" => r.shows.first&.event_type || "show", "location_id" => r.location_id, "space_id" => r.location_space_id }
+          "event_type" => r.shows.first&.event_type || "show", "location_id" => r.location_id, "space_id" => r.location_space_id,
+          "event_starts_at" => r.event_starts_at&.iso8601, "event_ends_at" => r.event_ends_at&.iso8601 }
       end +
         (amend["new_bookings"] || []).map do |b|
           { "starts_at" => b["starts_at"], "duration" => b["duration"], "event_type" => b["event_type"].presence || "show",
-            "location_id" => b["location_id"], "space_id" => b["space_id"] }
+            "location_id" => b["location_id"], "space_id" => b["space_id"],
+            "event_starts_at" => b["event_starts_at"].presence, "event_ends_at" => b["event_ends_at"].presence }
         end
     end
 

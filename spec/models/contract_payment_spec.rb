@@ -145,6 +145,29 @@ RSpec.describe ContractPayment, type: :model do
       payment = build(:contract_payment, :paid, due_date: 1.week.ago)
       expect(payment.overdue?).to be false
     end
+
+    context "a charge that comes out of their share" do
+      let(:contract) { create(:contract, :active) }
+      let!(:charge) do
+        create(:contract_payment, contract: contract, amount: 20.0, due_date: 2.days.ago,
+                                  settlement_method: "payout_deduction",
+                                  description: "Booth Tech balance — Nov 18, 2026")
+      end
+
+      it "isn't overdue while a share is still to come" do
+        create(:contract_payment, :outgoing, contract: contract, amount: 80.0, due_date: 5.days.from_now)
+
+        expect(charge.reload.overdue?).to be false
+        expect(contract.overdue_payments).to be_empty
+      end
+
+      it "is overdue once there is no share left to take it from" do
+        create(:contract_payment, :outgoing, :paid, contract: contract, amount: 80.0, due_date: 5.days.ago)
+
+        expect(charge.reload.overdue?).to be true
+        expect(contract.overdue_payments).to contain_exactly(charge)
+      end
+    end
   end
 
   describe "#mark_paid!" do

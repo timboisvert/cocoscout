@@ -21,7 +21,7 @@ export default class extends Controller {
         "flatFeeBtn", "perEventBtn", "revenueShareBtn",
         // Revenue share targets
         "revenueShareConfig", "revenueSource", "revenueOurShare", "revenueTheirShare",
-        "revenueGuarantee", "revenueGuaranteeConfig", "revenueGuaranteeAmount", "revenueSettlement",
+        "revenueGuarantee", "revenueGuaranteeConfig", "revenueGuaranteeAmount", "revenueGuaranteeScope", "revenueGuaranteeLabel", "revenueGuaranteeHelp", "revenueSettlement",
         // Custom targets
         "customConfig",
         // Ticketing (folded into the deal, shown only when we sell)
@@ -342,6 +342,10 @@ export default class extends Controller {
         if (this.hasRevenueGuaranteeAmountTarget && config.revenue_guarantee_amount) {
             this.revenueGuaranteeAmountTarget.value = config.revenue_guarantee_amount
         }
+        if (this.hasRevenueGuaranteeScopeTarget && config.revenue_guarantee_scope) {
+            this.revenueGuaranteeScopeTarget.value = config.revenue_guarantee_scope
+        }
+        this.updateGuaranteeWords()
         if (this.hasRevenueSettlementTarget && config.revenue_settlement) {
             this.revenueSettlementTarget.value = config.revenue_settlement
         }
@@ -379,6 +383,7 @@ export default class extends Controller {
             revenue_their_share: this.hasRevenueTheirShareTarget ? this.revenueTheirShareTarget.value : "50",
             revenue_has_guarantee: this.guaranteeOn,
             revenue_guarantee_amount: this.hasRevenueGuaranteeAmountTarget ? this.revenueGuaranteeAmountTarget.value : "",
+            revenue_guarantee_scope: this.guaranteeScope,
             revenue_settlement: this.hasRevenueSettlementTarget ? this.revenueSettlementTarget.value : "after_event"
         }
     }
@@ -567,6 +572,44 @@ export default class extends Controller {
     // Both are yes/no card groups mirroring into a hidden input.
     get volumeDiscountOn() {
         return this.hasPerEventDiscountTarget && this.perEventDiscountTarget.value === "yes"
+    }
+
+    // Per show or for the whole run (ContractRevenueGuarantee).
+    get guaranteeScope() {
+        return this.hasRevenueGuaranteeScopeTarget && this.revenueGuaranteeScopeTarget.value === "run" ? "run" : "per_show"
+    }
+
+    get guaranteeAmount() {
+        return parseFloat(this.hasRevenueGuaranteeAmountTarget ? this.revenueGuaranteeAmountTarget.value : 0) || 0
+    }
+
+    money(amount) {
+        const cents = Number(amount) % 1 === 0 ? 0 : 2
+        return "$" + Number(amount).toLocaleString("en-US", { minimumFractionDigits: cents, maximumFractionDigits: 2 })
+    }
+
+    // The minimum's label and the line under it say what it comes to.
+    updateGuaranteeWords() {
+        if (!this.hasRevenueGuaranteeLabelTarget) return
+
+        const run = this.guaranteeScope === "run"
+        const amount = this.guaranteeAmount
+        const dates = this.bookingDates.length
+        this.revenueGuaranteeLabelTarget.textContent = run ? "Guaranteed minimum for the run" : "Guaranteed minimum per show"
+        if (!this.hasRevenueGuaranteeHelpTarget) return
+
+        let words
+        if (run) {
+            const across = dates > 1 ? " from all " + dates + " dates" : ""
+            words = amount > 0
+                ? "After the last date, their shares" + across + " are added up. If they come to less than " + this.money(amount) + ", we pay the difference."
+                : "After the last date, their shares are added up. If they come to less than the minimum, we pay the difference."
+        } else {
+            words = amount > 0 && dates > 1
+                ? "Each of the " + dates + " dates pays them at least " + this.money(amount) + ", so at least " + this.money(amount * dates) + " across the run."
+                : "Every date pays them at least this, even if their share that night is less."
+        }
+        this.revenueGuaranteeHelpTarget.textContent = words
     }
 
     get guaranteeOn() {
@@ -890,9 +933,13 @@ export default class extends Controller {
         const incoming = payment.direction === "incoming"
         // Keep TBD prefixed with a dollar sign so it reads as "an amount we
         // don't know yet", not a status.
-        const amountText = payment.amount_tbd
-            ? "$TBD"
-            : `${incoming ? "+" : "-"}$${Number(payment.amount || 0).toFixed(2)}`
+        // A night under a per-show minimum is at least the minimum; the whole
+        // run's top-up is up to it.
+        const perShowFloor = payment.amount_tbd && payment.source === "Revenue share" && !incoming &&
+            this.currentStructure === "revenue_share" && this.guaranteeOn && this.guaranteeScope === "per_show" && this.guaranteeAmount > 0
+        let amountText = payment.amount_tbd ? "$TBD" : (incoming ? "+" : "-") + "$" + Number(payment.amount || 0).toFixed(2)
+        if (payment.guarantee_up_to) amountText = "Up to " + this.money(payment.guarantee_up_to)
+        else if (perShowFloor) amountText = "At least " + this.money(this.guaranteeAmount)
         const directionLabel = incoming ? "They pay us" : "We pay them"
 
         const removeButton = removeIndex === null ? "" : `
@@ -1154,15 +1201,21 @@ export default class extends Controller {
                         })
                     }
                 }
-                if (hasGuarantee && guaranteeAmount > 0) {
-                    // A minimum guarantee protects the producer's floor, so it flows the
-                    // same way as the share settlement (to them when we hold the money).
+                // A per-show minimum floors each night's settlement, so it adds no
+                // payment of its own. A whole-run minimum is one payment after the
+                // last date, worked out once every date's sales are in: whatever
+                // their shares fell short of it (ContractRevenueGuarantee).
+                if (hasGuarantee && guaranteeAmount > 0 && this.guaranteeScope === "run" && this.bookingDates.length > 0) {
+                    const last = this.bookingCalendarDate(this.bookingDates[this.bookingDates.length - 1])
+                    last.setDate(last.getDate() + 1)
                     payments.push({
-                        description: "Minimum guarantee",
+                        description: "Minimum guarantee for the run",
                         source: "Minimum guarantee",
-                        amount: guaranteeAmount,
-                        direction: settle.direction,
-                        due_date: this.getDateDaysFromNow(7)
+                        amount: 0,
+                        amount_tbd: true,
+                        guarantee_up_to: guaranteeAmount,
+                        direction: "outgoing",
+                        due_date: this.formatDateForInput(last)
                     })
                 }
                 break

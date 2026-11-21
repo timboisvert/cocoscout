@@ -12,9 +12,10 @@ module My
   # ones their side issued (TicketComps.changeable_by?).
   class TicketSalesController < ApplicationController
     include GivesComps
+    include RequestsComps
 
     before_action :require_authentication
-    before_action :set_listing, only: %i[show create_comp preview_comps update_comp remove_comp daily_email]
+    before_action :set_listing, only: %i[show create_comp preview_comps update_comp remove_comp daily_email request_comps withdraw_comp_request]
 
     # A link to the old page for one listing (/my/ticket-sales/:id): on to
     # the show's own.
@@ -27,6 +28,7 @@ module My
       @show_my_sidebar = true
       @stats = Ticketing::ListingStats.of(@listing)
       @allowance = TicketSalesAccess.comp_allowance(Current.user, @listing)
+      @comp_request = comp_request_for(@listing) if @allowance
       @changeable_comp_ids = TicketComps.changeable_ids(@listing, Current.user)
       # Whether the show's own page is theirs to open (it is by contract or
       # by being in the show; a share alone gives only this page).
@@ -46,6 +48,15 @@ module My
     # A pasted list's preview, within the same allowance.
     def preview_comps
       preview_comps_within_allowance(@listing, TicketSalesAccess.comp_allowance(Current.user, @listing))
+    end
+
+    # More comps for this date, requested from the organization (RequestsComps).
+    def request_comps
+      request_comps_for(@listing, back: my_show_tickets_path(@listing.show_id, anchor: "comps"))
+    end
+
+    def withdraw_comp_request
+      withdraw_comp_request_for(@listing, back: my_show_tickets_path(@listing.show_id, anchor: "comps"))
     end
 
     # A comp their side issued, corrected or taken back (GivesComps).

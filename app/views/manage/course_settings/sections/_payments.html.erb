@@ -4,9 +4,10 @@
 %>
 
 <!-- What this is -->
-<div class="bg-white border border-gray-200 rounded-xl p-6">
-  <h2 class="text-lg font-semibold text-gray-900 mb-2">Getting paid for your courses</h2>
-  <p class="text-sm text-gray-600 leading-relaxed">
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <div class="px-6 py-4">
+  <h2 class="text-lg font-semibold text-gray-900">Getting paid for your courses</h2>
+  <p class="text-sm text-gray-600 leading-relaxed mt-1">
     When students register for your courses, CocoScout collects the money and holds it for you.
     <% if CocoScoutBalance.pooled?(@organization) && !@organization.feature_available?(:ticketing) %>
       <%# Pooled once, no longer Pro: LapsedBalanceSweepJob sends it on daily. %>
@@ -22,6 +23,7 @@
       each course — and pay your instructors directly, too.
     <% end %>
   </p>
+  </div>
 </div>
 
 <!-- Connection status + action -->
@@ -101,7 +103,6 @@
           path: manage_course_settings_connect_path, method: :post, form: { data: { turbo: false } } %>
       <% end %>
     <% end %>
+    <p class="text-xs text-gray-400 mt-4">Bank onboarding and payouts are handled securely.</p>
   </div>
 </div>
-
-<p class="text-xs text-gray-400 text-center">Bank onboarding and payouts are handled securely.</p>

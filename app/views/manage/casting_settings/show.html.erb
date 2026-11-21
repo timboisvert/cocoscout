@@ -7,8 +7,7 @@
     [@production.name, manage_casting_production_path(@production)]
   ],
   sections: sections,
-  current: @section,
-  intro: "#{@production.name} casts by #{@production.act_based? ? 'acts' : 'roles'}."
+  current: @section
 } do %>
   <%= render "manage/casting_settings/sections/#{@section}" %>
 <% end %>

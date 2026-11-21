@@ -24,8 +24,8 @@ RSpec.describe "Ticketing settings: Comps", type: :request do
   it "shows the five parts with the defaults: on, no limit, the team may issue all of them, people on a contract none" do
     get manage_ticketing_settings_section_path(section: "comps")
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Comps per date", "Production team managers can issue comps", "How many of them a production team may issue",
-                                     "People on a contract can issue comps", "shared between everyone on the contract",
+    expect(response.body).to include("Comps per date", "Allow production team managers to issue comps", "How many of them a production team may issue",
+                                     "Allow contractors to issue comps", "shared between everyone on the contract",
                                      "With these rules, a date can issue as many comps as it has seats, its production team managers may issue any of them, and people on a contract issue none of them.")
     # Comps are none or a number: "one per performer" is not offered (Tim, 2026-11-17).
     expect(response.body).not_to include("per_performer", "One per performer")

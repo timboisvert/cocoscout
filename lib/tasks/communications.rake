@@ -396,6 +396,25 @@ namespace :communications do
   #   shoutout feature was removed entirely (2026-08); the drop migration
   #   deletes these rows, this list keeps `orphans` from flagging stragglers.
   #
+  # Every template key this branch's code knows (Tim, 2026-11-20: the deploy
+  # listed 161 "orphans" that were nearly all live). Templates are defined in
+  # three places, and only the first was ever read: the COMMUNICATIONS hash
+  # above, the seeded *Templates services' TEMPLATES lists, and keys a job or
+  # service delivers by name after a migration seeded them. So a key counts
+  # as known when it's in either list or named anywhere under app/.
+  KNOWN_TEMPLATE_KEYS = lambda do |db_keys|
+    keys = COMMUNICATIONS.filter_map { |_k, v| v[:template_key] }.to_set
+    Dir[Rails.root.join("app/services/*_templates.rb")].each do |file|
+      klass = File.basename(file, ".rb").camelize.safe_constantize
+      next unless klass&.const_defined?(:TEMPLATES, false)
+
+      klass::TEMPLATES.each { |spec| keys << (spec[:key] || spec["key"]).to_s }
+    end
+    source = Dir[Rails.root.join("app/**/*.{rb,erb}")].map { |f| File.read(f) }.join("\n")
+    db_keys.each { |key| keys << key if source.match?(/["':]#{Regexp.escape(key)}\b/) }
+    keys
+  end
+
   LEGACY_TEMPLATES = %w[
     auth_signup
     team_invitation
@@ -1281,12 +1300,16 @@ namespace :communications do
         pass("All #{registered_keys.count} registered templates exist in database")
       end
 
-      # Find orphans (in DB but not in registry) - just informational
-      orphans = db_keys - registered_keys
+      # Unused (in the database, but nothing on this branch knows it) - just
+      # informational. A release branch's templates show here while the dev
+      # database is ahead of main, and go once that release merges.
+      orphans = (db_keys - KNOWN_TEMPLATE_KEYS.call(db_keys).to_a - LEGACY_TEMPLATES).sort
 
       if orphans.any?
-        puts "  ℹ️  #{orphans.count} orphan template(s) in DB not in registry: #{orphans.join(', ')}"
-        puts "     (These won't block deploy but consider cleanup)"
+        puts "  ℹ️  #{orphans.count} template(s) in the database that no code on this branch uses: #{orphans.join(', ')}"
+        puts "     (These won't block deploy. A release branch's templates show here until it merges.)"
+      else
+        pass("Every template in the database is used by code on this branch")
       end
       puts ""
     end
@@ -1400,8 +1423,9 @@ namespace :communications do
     puts "ORPHANED TEMPLATE CHECK"
     puts "=" * 80
     puts ""
-    puts "Orphaned templates are ContentTemplate records in the database that are NOT"
-    puts "registered in the COMMUNICATIONS registry. This can happen when:"
+    puts "Orphaned templates are ContentTemplate records in the database that no code"
+    puts "on this branch uses: not in the COMMUNICATIONS registry, not in a *Templates"
+    puts "service's TEMPLATES, and not named anywhere under app/. This can happen when:"
     puts "  • A template was created manually but never added to the registry"
     puts "  • A template was renamed but the old version wasn't cleaned up"
     puts "  • A feature was removed but its template wasn't deleted"
@@ -1412,7 +1436,7 @@ namespace :communications do
     registered_keys = COMMUNICATIONS.map { |_k, v| v[:template_key] }.compact
     db_keys = ContentTemplate.pluck(:key)
 
-    orphans = db_keys - registered_keys - LEGACY_TEMPLATES
+    orphans = (db_keys - KNOWN_TEMPLATE_KEYS.call(db_keys).to_a - LEGACY_TEMPLATES).sort
     legacy_found = db_keys & LEGACY_TEMPLATES
     missing = registered_keys - db_keys
 
@@ -1436,7 +1460,7 @@ namespace :communications do
         puts "  - #{key} (category: #{template&.category}, channel: #{template&.channel})"
       end
       puts "\n  Action needed:"
-      puts "    - If actively used: Add to COMMUNICATIONS registry"
+      puts "    - If a release branch uses it: nothing, it goes once that release merges"
       puts "    - If deprecated: Add to LEGACY_TEMPLATES for tracking"
       puts "    - If unused: Delete from database"
       puts ""

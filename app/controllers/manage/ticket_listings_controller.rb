@@ -20,6 +20,10 @@ module Manage
     # 1.4's Seating tab follows, where it was: at the end.
     SETTINGS = { "sales" => "Basic info", "tickets" => "Tickets", "fees" => "Fees and taxes", "comps" => "Comps", "refunds" => "Refunds",
                  "codes" => "Discount codes", "products" => "Products", "page" => "Ticket page", "seating" => "Seating" }.freeze
+    # The headings the sections sit under in the side list and the phone's
+    # sheet (SectionNavHelper#section_groups).
+    SETTINGS_GROUPS = { "sales" => "What you sell", "tickets" => "What you sell", "products" => "What you sell", "codes" => "What you sell", "seating" => "What you sell",
+                        "fees" => "Money", "comps" => "Money", "refunds" => "Money", "page" => "Buyers' pages" }.freeze
 
     before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code destroy_code export_codes import_codes cancel
                                            change_review tell_change mark_change_told outside_sales tier_availability]
@@ -352,6 +356,7 @@ module Manage
       raw = params.require(:ticket_listing).permit(:own_comps, *CompRules::PARAMS)
       own = raw[:own_comps] == "1"
       @listing.update!(CompRules.attributes_from(raw, own: own).merge(own_comps: own))
+      CompRequest.close_turned_off!(@listing.organization)
       notice = own ? "Saved. This date has its own comp rules: #{@listing.comp_rules_words}." : "Saved. This date follows #{@listing.comp_rules_source == :production ? "#{helpers.possessive(@listing.production.name)} comp rules" : "your box office's comp rules"}."
       redirect_to settings_path("comps"), notice: notice
     end
@@ -366,7 +371,7 @@ module Manage
     end
 
     def settings_sections
-      SETTINGS.map { |key, label| { key: key, label: label, path: settings_path(key) } }
+      SETTINGS.map { |key, label| { key: key, label: label, path: settings_path(key), group: SETTINGS_GROUPS[key] } }
     end
     helper_method :settings_sections
 
@@ -396,6 +401,11 @@ module Manage
       permitted.merge!(max_per_order: nil, low_stock_threshold: nil) if raw[:own_orders] == "0"
       permitted.merge!(seating_mode: nil, seat_chart_id: nil) if raw[:own_seating] == "0"
       permitted.merge!(title: nil, description: nil, door_note: nil, accessibility_note: nil) if raw[:own_page] == "0"
+      if raw[:own_colors] == "0"
+        permitted.merge!(HasPageColors.attributes_from(nil))
+      elsif raw[:page_colors]
+        permitted.merge!(HasPageColors.attributes_from(raw[:page_colors]))
+      end
       if raw[:own_ages] == "0"
         permitted.merge!(minimum_age: nil, age_note: nil)
       elsif (choice = params.dig(:ticket_listing, :age_choice))

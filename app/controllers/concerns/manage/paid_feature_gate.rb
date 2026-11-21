@@ -51,6 +51,7 @@ module Manage
       "manage/production_ticketings" => :ticketing,
       "manage/ticket_orders" => :ticketing,
       "manage/ticket_comps" => :ticketing,
+      "manage/comp_requests" => :ticketing,
       "manage/ticket_balance" => :ticketing,
       "manage/ticket_taxes" => :ticketing,
       "manage/ticket_offers" => :ticketing,

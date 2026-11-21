@@ -526,6 +526,19 @@ class Message < ApplicationRecord
     MessageSubscription.exists?(user: user, message: root)
   end
 
+  # Whether this person may open the thread (and reply, react, or vote in
+  # it): it's in their inbox. That's a thread they're subscribed to, or one
+  # in their manage inbox — a production-side thread of a production they run,
+  # which a manager with that production's notifications off sees without a
+  # subscription. The inbox, Open, and every thread page ask this one question,
+  # so a thread in the inbox always opens (Tim, 2026-11-19).
+  def readable_by?(user)
+    return false unless user
+
+    subscribed?(user) ||
+      Message.manage_inbox_for(user, user.accessible_organizations).exists?(id: root_message.id)
+  end
+
   # Subscribe the production's team: the people with its notifications on
   # (the whole team when nobody has). Managers with them off still find the
   # thread in their inbox (manage_inbox_for); it just never counts as unread
@@ -607,16 +620,5 @@ class Message < ApplicationRecord
                                  .joins("INNER JOIN people ON people.id = message_recipients.recipient_id")
                                  .pluck("people.user_id")
     (writers + recipients).compact.uniq
-  end
-
-  # Calculate depth for nested reply rendering
-  def calculate_depth
-    depth = 0
-    current = parent_message
-    while current && current != root_message
-      depth += 1
-      current = current.parent_message
-    end
-    depth
   end
 end

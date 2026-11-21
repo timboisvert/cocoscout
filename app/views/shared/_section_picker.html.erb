@@ -14,14 +14,26 @@
       element; the controller keeps the row's name and the sheet's check
       mark on the section showing (its sectionLabel and sectionItem targets).
 
+  In the app, the row opens the phone's own menu in place of the sheet
+  (bridge/sections_controller.js), on builds that have it.
+
+  From md up a settings page shows shared/section_list instead: pass
+  list_from: "md" and the row stays until then. Sections with a `group:` sit
+  under the same headings in the sheet as in that list.
+
   Locals:
-    id        the sheet's DOM id
-    sections  array of { label:, path: or index:, active:, pro:, locked:,
-              badge:, danger: }
+    id          the sheet's DOM id
+    sections    array of { label:, path: or index:, active:, pro:, locked:,
+                badge:, danger:, group:, data: }
+    list_from   "md" when the page has the side list; otherwise the row
+                hides from sm up
+    controller  the Stimulus controller that switches panels ("tabs")
 %>
 <%
   id = local_assigns.fetch(:id)
   sections = local_assigns.fetch(:sections)
+  controller = local_assigns[:controller].presence || "tabs"
+  hide_from = local_assigns[:list_from].to_s == "md" ? "md:hidden" : "sm:hidden"
   current = sections.find { |section| section[:active] } || sections.first
   name = lambda do |section|
     safe_join([
@@ -31,36 +43,46 @@
     ].compact)
   end
 %>
-<div class="sm:hidden mb-5" data-section-picker>
-  <button type="button" data-controller="modal" data-action="click->modal#open" data-modal-id="<%= id %>"
+<div class="<%= hide_from %> mb-5" data-section-picker data-controller="bridge--sections">
+  <button type="button" data-controller="modal" data-action="click->bridge--sections#open click->modal#open" data-modal-id="<%= id %>" data-bridge--sections-target="row"
           class="w-full flex items-center justify-between gap-3 px-4 min-h-[48px] bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-900 cursor-pointer">
     <span class="flex items-center gap-2 min-w-0">
       <span class="text-xs text-gray-500 flex-shrink-0">Section</span>
-      <span class="flex items-center gap-2 min-w-0" data-tabs-target="sectionLabel"><%= name.call(current) %></span>
+      <span class="flex items-center gap-2 min-w-0" data-<%= controller %>-target="sectionLabel"><%= name.call(current) %></span>
     </span>
     <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
   </button>
   <%= render layout: "shared/sheet", locals: { id: id, title: "Sections" } do %>
     <div class="-mx-4 -my-5 divide-y divide-gray-100">
-      <% sections.each do |section| %>
-        <%
-          active = section == current
-          row_classes = "flex items-center justify-between gap-3 w-full min-h-[52px] px-5 text-[15px] text-left hover:bg-gray-50 cursor-pointer #{active ? 'text-pink-600 font-medium' : 'text-gray-800'}"
-        %>
-        <% body = capture do %>
-          <span class="flex items-center gap-2 min-w-0">
-            <span class="flex items-center gap-2 min-w-0" data-section-name><%= name.call(section) %></span>
-            <% if section[:badge].to_i.positive? %>
-              <span class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-gray-100 text-gray-600 text-[11px] font-semibold leading-none"><%= section[:badge] %></span>
-            <% end %>
-          </span>
-          <svg class="w-4 h-4 text-pink-500 flex-shrink-0 <%= 'hidden' unless active %>" data-section-check fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+      <% section_groups(sections).each do |heading, items| %>
+        <% if heading == :danger %>
+          <div class="h-2 bg-gray-50" aria-hidden="true"></div>
+        <% elsif heading %>
+          <div class="px-5 pt-3.5 pb-1.5 bg-gray-50 text-[11px] font-semibold uppercase tracking-wider text-gray-400"><%= heading %></div>
         <% end %>
-        <% if section[:path] %>
-          <%= link_to section[:path], aria: { current: active ? "page" : nil }, class: row_classes do %><%= body %><% end %>
-        <% else %>
-          <button type="button" data-tabs-target="sectionItem" data-index="<%= section[:index] %>" data-action="tabs#select modal#close"
-                  <%= 'aria-current="true"'.html_safe if active %> class="<%= row_classes %>"><%= body %></button>
+        <% items.each do |section| %>
+          <%
+            active = section.equal?(current)
+            # For the app's own menu (bridge/sections_controller.js).
+            row_data = { "bridge--sections-target" => "item", section_group: (heading if heading.is_a?(String)),
+                         section_danger: (true if section[:danger]), section_locked: (true if section[:pro] && section[:locked]) }.compact
+            row_classes = "flex items-center justify-between gap-3 w-full min-h-[52px] px-5 text-[15px] text-left hover:bg-gray-50 cursor-pointer #{active ? 'text-pink-600 font-medium' : 'text-gray-800'} #{'hidden' if section[:hidden]}"
+          %>
+          <% body = capture do %>
+            <span class="flex items-center gap-2 min-w-0">
+              <span class="flex items-center gap-2 min-w-0" data-section-name><%= name.call(section) %></span>
+              <% if section[:badge].to_i.positive? %>
+                <span class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-gray-100 text-gray-600 text-[11px] font-semibold leading-none"><%= section[:badge] %></span>
+              <% end %>
+            </span>
+            <svg class="w-4 h-4 text-pink-500 flex-shrink-0 <%= 'hidden' unless active %>" data-section-check fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+          <% end %>
+          <% if section[:path] %>
+            <%= link_to section[:path], aria: { current: active ? "page" : nil }, class: row_classes, data: row_data do %><%= body %><% end %>
+          <% else %>
+            <%= content_tag :button, body, type: "button", class: row_classes, aria: { current: active ? "true" : nil },
+                  data: row_data.merge("#{controller}-target" => "sectionItem", index: section[:index], action: "#{controller}#select modal#close").merge(section[:data] || {}) %>
+          <% end %>
         <% end %>
       <% end %>
     </div>

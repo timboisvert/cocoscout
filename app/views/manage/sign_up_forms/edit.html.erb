@@ -20,12 +20,15 @@
     ]
   } %>
 
-  <%# Tab Navigation %>
-  <nav class="flex space-x-2 border-b border-gray-200 mb-6 overflow-x-auto">
-    <button type="button" data-tabs-target="tab" data-index="0" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 border-transparent cursor-pointer whitespace-nowrap">Basic Info</button>
-    <button type="button" data-tabs-target="tab" data-index="1" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 border-transparent cursor-pointer whitespace-nowrap">Instructions</button>
-    <button type="button" data-tabs-target="tab" data-index="2" data-action="tabs#select" class="px-4 py-2 text-sm font-medium border-b-2 border-transparent cursor-pointer whitespace-nowrap">Questions</button>
-  </nav>
+  <% edit_sections = [ "Basic Info", "Instructions", "Questions" ].each_with_index.map { |label, i| { label: label, index: i, active: i.zero? } } %>
+    <%# The sections: a list down the left from md up, and on a phone a row
+        that opens them in a sheet, as on every settings page. %>
+    <div data-sign-up-edit-sections>
+      <%= render "shared/section_picker", id: "sign-up-edit-sections-sheet", list_from: "md", sections: edit_sections %>
+    </div>
+    <div class="md:flex md:items-start md:gap-8">
+    <%= render "shared/section_list", sections: edit_sections %>
+    <div class="flex-1 min-w-0">
 
   <%# ==================== TAB 0: BASIC INFO ==================== %>
   <div data-tabs-target="panel">
@@ -87,8 +90,15 @@
 
   <%# ==================== TAB 2: QUESTIONS ==================== %>
   <div data-tabs-target="panel" class="hidden">
-    <p class="text-sm text-gray-600 mb-5">Add custom questions to collect additional information. Questions appear on the sign-up form.</p>
-    <%= render partial: "questions" %>
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <%= render "shared/section_heading", title: "Questions", intro: "Add custom questions to collect additional information. Questions appear on the sign-up form." %>
+      <div class="px-6 py-5">
+        <%= render partial: "questions" %>
+      </div>
+    </div>
+  </div>
+
+  </div>
   </div>
 
   <!-- Question Modal -->

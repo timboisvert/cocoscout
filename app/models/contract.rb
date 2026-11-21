@@ -3,6 +3,7 @@
 class Contract < ApplicationRecord
   # Each date's own terms: Review the dates (see the concern).
   include ContractDateTerms
+  include ContractRevenueGuarantee
 
   # An amendment tried to remove a night people hold tickets for.
   class TicketsSoldError < StandardError; end
@@ -492,9 +493,37 @@ class Contract < ApplicationRecord
         "ends_at" => rental.ends_at&.iso8601,
         "location_id" => rental.location_id,
         "location_space_id" => rental.location_space_id,
+        "event_starts_at" => rental.event_starts_at&.iso8601,
+        "event_ends_at" => rental.event_ends_at&.iso8601,
         "event_type" => event_type
       }
     end
+  end
+
+  # The show's own times inside a booking, when it runs at its own time (the
+  # rental 12:00 to 3:00 PM, the show 12:30 to 2:00 PM): { starts_at:, ends_at: },
+  # or nil when the show fills the booking. Every list of a contract's dates
+  # says it, so it's confirmed along the way and lands on the document (Tim,
+  # 2026-11-20).
+  def booking_show_times(booking)
+    starts = parse_booking_time(booking["starts_at"])
+    return nil unless starts
+
+    ends = booking_end(booking, starts)
+    show_start = parse_booking_time(booking["event_starts_at"]) || starts
+    show_end = parse_booking_time(booking["event_ends_at"]) || ends
+    return nil if show_start == starts && show_end == ends
+
+    { starts_at: show_start, ends_at: show_end }
+  end
+
+  # "Show starts 12:30 PM and ends 2:00 PM", or nil when the show fills the booking.
+  def booking_show_time_words(booking)
+    times = booking_show_times(booking)
+    return nil unless times
+
+    start = times[:starts_at].strftime("%-l:%M %p")
+    times[:ends_at] ? "Show starts #{start} and ends #{times[:ends_at].strftime('%-l:%M %p')}" : "Show starts #{start}"
   end
 
   # Same idea for the money: the live payment rows (cancelled ones are
@@ -1203,6 +1232,9 @@ class Contract < ApplicationRecord
     # After shows exist, so per-event payments can link to them; each date at
     # its own fee on a per-event deal.
     reconcile_amended_payments!(apply_show_terms_to_payments(amend["payments"])) if amend.key?("payments")
+    # A whole-run minimum's top-up follows the amended dates and deal.
+    @preloaded_money_shows = nil
+    settle_run_guarantee!
 
     # Rates for non-ticketed nights bill from the shows as they now stand.
     if previous_rated_types.any? || separately_rated_event_types.any?
@@ -1460,6 +1492,7 @@ class Contract < ApplicationRecord
   # shows that isn't a service charge or a deduction (the same rule
   # find_payment_for_show answers by). Everything else is charged on its own.
   def settlement_payment?(payment)
+    return false if run_guarantee_payment?(payment)
     return true if payment.amount_tbd? || payment.auto_shortfall?
     return true if payment.description.to_s.start_with?("Ticket revenue") || payment.description.to_s.match?(/revenue share/i)
     return false if payment.show_id.blank? || payment.settlement_method == "payout_deduction" || service_charge?(payment)
@@ -1556,9 +1589,16 @@ class Contract < ApplicationRecord
       elsif revenue.nil?
         nil
       elsif revenue_share?
-        ours = (revenue * our_share_for(show) / 100.0).round(2)
+        # The night's settled share, so a per-show minimum counts here too.
+        settled = settled_share_amount([ show ])
+        raw_theirs = (revenue * their_share_for(show) / 100.0).round(2)
+        ours = if sells then (revenue - settled).round(2)
+        elsif draft_payment_config["who_sells_tickets"] == "contractor" then settled
+        else (revenue * our_share_for(show) / 100.0).round(2)
+        end
         if sells
-          lines << [ "#{counterparty}'s #{number_for(their_share_for(show))}% share", -(revenue - ours).round(2) ]
+          words = guarantee_per_show? && settled > raw_theirs ? "#{counterparty}'s minimum guarantee" : "#{counterparty}'s #{number_for(their_share_for(show))}% share"
+          lines << [ words, -settled ]
         else
           lines << [ "Your #{number_for(our_share_for(show))}% share", ours ]
         end
@@ -1630,8 +1670,11 @@ class Contract < ApplicationRecord
     contract_payments.where(status: "pending")
   end
 
+  # Past due by ContractPayment#overdue?, which leaves out a charge still
+  # waiting on their next share. A relation, so callers can sum and count it.
   def overdue_payments
-    contract_payments.where(status: "pending").where("due_date < ?", Date.current)
+    late_ids = contract_payments.where(status: "pending").where("due_date < ?", Date.current).select(&:overdue?).map(&:id)
+    contract_payments.where(id: late_ids)
   end
 
   # Shows covered by THIS contract. When the production is shared by several
@@ -1754,6 +1797,13 @@ class Contract < ApplicationRecord
       contractor_share_amount = settled
       our_share_amount = (confirmed_revenue - settled).round(2)
     end
+    # A whole-run minimum's top-up, once worked out, is theirs and out of ours
+    # (ContractRevenueGuarantee); a per-show one is already in each night.
+    topup = run_guarantee_topup&.dig(:topup).to_f
+    if topup.positive?
+      contractor_share_amount = (contractor_share_amount + topup).round(2)
+      our_share_amount = (our_share_amount - topup).round(2)
+    end
 
     {
       confirmed_revenue: confirmed_revenue,
@@ -1761,7 +1811,8 @@ class Contract < ApplicationRecord
       pending_count: pending_shows.count,
       our_share: our_share_amount,
       contractor_share: contractor_share_amount,
-      total_shows: all_shows.count
+      total_shows: all_shows.count,
+      guarantee_extra: (guarantee_extra_for(confirmed_shows) + topup).round(2)
     }
   end
 
@@ -1958,8 +2009,10 @@ class Contract < ApplicationRecord
       live.where("amount_tbd = ? OR auto_shortfall = ? OR description LIKE ?", true, true, "Ticket revenue%")
           .order(:due_date)
     else
+      # A whole-run minimum's top-up is never a night's settlement.
       live.where(amount_tbd: true)
           .or(live.where("description LIKE ?", "%Revenue Share%"))
+          .where.not(description: RUN_GUARANTEE)
           .order(:due_date)
     end
   end
@@ -1978,7 +2031,7 @@ class Contract < ApplicationRecord
     direct = contract_payments.where(show_id: show.id)
                               .where.not(settlement_method: "payout_deduction")
                               .order(:id).to_a
-                              .reject { |p| service_charge?(p) || period_settlement?(p) }
+                              .reject { |p| service_charge?(p) || period_settlement?(p) || run_guarantee_payment?(p) }
                               .first
     return direct if direct
 
@@ -2024,21 +2077,6 @@ class Contract < ApplicationRecord
     end
 
     payment
-  end
-
-  # Every payment that settles a given show, however it happens to be linked.
-  # The explicit show link is the truth when there is one; otherwise a payment
-  # falling due on the show's own date is that show's, which is how per-event
-  # deals are written. Unlike #find_payment_for_show this asks nothing of the
-  # deal's basis — a plain per-event rental fee is still that show's money.
-  def payments_covering_show(show)
-    return [] if show.nil?
-
-    linked = contract_payments.where(show_id: show.id).by_due_date.to_a
-    return linked if linked.any?
-    return [] if show.date_and_time.blank?
-
-    contract_payments.where(show_id: nil, due_date: show.date_and_time.to_date).by_due_date.to_a
   end
 
   # Get all shows that map to a given ContractPayment
@@ -2471,14 +2509,6 @@ class Contract < ApplicationRecord
     end
   end
 
-  def total_received_payments
-    contract_payments.where(direction: "incoming", status: "paid").sum(:amount)
-  end
-
-  def total_pending_payments
-    contract_payments.where(direction: "incoming", status: "pending").sum(:amount)
-  end
-
   # Course runs already paid settle the contract's share for them (heals
   # runs paid before CourseOfferingPayout#settle_contract_payments! ran on
   # payment). Only pending payments are touched, so it's safe on every view.
@@ -2543,6 +2573,30 @@ class Contract < ApplicationRecord
       out << "</tbody></table>"
     end
 
+    # A template without the inline grid has no list of dates, so a show
+    # running at its own time inside its booking is said here (Tim, 2026-11-20).
+    show_times = document_bookings.sort_by { |b| b["starts_at"].to_s }.filter_map do |b|
+      words = booking_show_time_words(b)
+      at = parse_booking_time(b["starts_at"])
+      next unless words && at
+
+      ends = booking_end(b, at)
+      booked = ends ? "booked #{at.strftime('%-l:%M %p')} to #{ends.strftime('%-l:%M %p')}" : "booked from #{at.strftime('%-l:%M %p')}"
+      [ at.strftime("%a %b %-d, %Y"), "#{words}; #{booked}." ]
+    end
+    if show_times.any?
+      out << "<h4>Show times inside the booking</h4><ul>"
+      show_times.each { |date, words| out << %(<li><strong>#{esc.(date)}:</strong> #{esc.(words)}</li>) }
+      out << "</ul>"
+    end
+
+    own_terms = status_draft? ? deal_terms_own_date_lines : []
+    if own_terms.any?
+      out << "<h4>Dates with their own terms</h4><ul>"
+      own_terms.each { |date, words| out << %(<li><strong>#{esc.(date)}:</strong> #{esc.(words)}</li>) }
+      out << "</ul>"
+    end
+
     rates = draft_event_rates.select { |r| r["amount"].to_f.positive? }
     if rates.any?
       out << "<h4>Other events</h4><ul>"
@@ -2570,6 +2624,26 @@ class Contract < ApplicationRecord
     out
   end
 
+  # [date, words] for each booked date priced its own way on Review the
+  # dates ("$250 this date (usually $300 per event)"), so a template without
+  # the inline grid still carries them.
+  def deal_terms_own_date_lines
+    draft_bookings.sort_by { |b| b["starts_at"].to_s }.filter_map do |booking|
+      terms = date_terms_for_booking(booking["starts_at"])
+      next if terms.except("note").empty?
+
+      at = parse_booking_time(booking["starts_at"])
+      next unless at
+
+      line, usual, changed = date_terms_words(booking["event_type"].presence || "show", terms)
+      next unless changed
+
+      words = usual ? "#{line} (#{usual.sub(/\AUsually/, 'usually')})" : line
+      words = "#{words}. #{terms['note']}" if terms["note"].present?
+      [ at.strftime("%a %b %-d, %Y"), words ]
+    end
+  end
+
   # The inline "License Period and Fees" grid — the dates/stage/rent table a
   # template places itself via {{license_schedule}}. Built entirely from the
   # contract's own bookings + rent so it can't drift, and emitted as a plain
@@ -2577,18 +2651,25 @@ class Contract < ApplicationRecord
   def license_schedule_html
     esc = ->(s) { ERB::Util.html_escape(s.to_s) }
     rows = license_schedule_rows
-    out = +%(<table><thead><tr><th>Dates</th><th>Event</th><th>Start</th><th>End</th><th>Stage</th><th>Rent</th></tr></thead><tbody>)
+    # A show running at its own time inside the booking gets its own column,
+    # and the booking's columns say they're the booking's (Tim, 2026-11-20).
+    show_times = rows.any? { |r| r[:show_time] }
+    heads = show_times ? %w[Dates Event Booking\ starts Booking\ ends Show\ time Stage Rent] : %w[Dates Event Start End Stage Rent]
+    out = +%(<table><thead><tr>#{heads.map { |h| "<th>#{h}</th>" }.join}</tr></thead><tbody>)
     if rows.empty?
-      out << %(<tr><td colspan="6">Dates to be confirmed.</td></tr>)
+      out << %(<tr><td colspan="#{heads.size}">Dates to be confirmed.</td></tr>)
     else
       rows.each do |r|
         out << "<tr>"
-        out << %(<td>#{esc.(r[:date])}</td><td>#{esc.(r[:event])}</td><td>#{esc.(r[:start])}</td>)
-        out << %(<td>#{esc.(r[:end])}</td><td>#{esc.(r[:stage])}</td><td>#{esc.(r[:rent])}</td>)
+        out << %(<td>#{esc.(r[:date])}</td><td>#{esc.(r[:event])}</td><td>#{esc.(r[:start])}</td><td>#{esc.(r[:end])}</td>)
+        out << %(<td>#{esc.(r[:show_time] || "Same as the booking")}</td>) if show_times
+        out << %(<td>#{esc.(r[:stage])}</td><td>#{esc.(r[:rent])}</td>)
         out << "</tr>"
       end
     end
     out << "</tbody></table>"
+    # The minimum guarantee, per show or for the run, in words under the grid.
+    out << %(<p><strong>Minimum guarantee.</strong> #{esc.(guarantee_sentences)}</p>) if guarantee_sentences
     out << license_payment_schedule_html
     out
   end
@@ -2683,9 +2764,9 @@ class Contract < ApplicationRecord
     rent_label = license_rent_label
 
     document_bookings.filter_map do |b|
-      # The contract covers the whole booked slot (e.g. 8–11 PM), not the show's own
-      # time within it (e.g. 9–10:30) — the rental time is what's being licensed, so
-      # the grid shows the booking's start/end, not the event's.
+      # The contract licenses the whole booked slot (e.g. 8–11 PM), so Start and
+      # End are the booking's; the show's own time within it (e.g. 9–10:30) is
+      # its own column, so nobody signs without knowing when the show is.
       starts_at = parse_booking_time(b["starts_at"])
       next unless starts_at
 
@@ -2697,9 +2778,34 @@ class Contract < ApplicationRecord
         event: license_event_label(b),
         start: starts_at.strftime("%-l:%M %p"),
         end: ends_at ? ends_at.strftime("%-l:%M %p") : "—",
+        show_time: booking_show_times(b)&.then { |t| [ t[:starts_at], t[:ends_at] ].compact.map { |x| x.strftime("%-l:%M %p") }.join("–") },
         stage: space_id ? (space_names[space_id] || "Stage") : "Entire venue",
-        rent: license_rated_rent(b) || rent_by_date[starts_at.to_date] || rent_label
+        rent: license_date_rent(b) || rent_by_date[starts_at.to_date] || rent_label
       }
+    end
+  end
+
+  # A date priced its own way on Review the dates reads its own price on the
+  # document: a per-event date's own fee, a show's own fee on tickets minus
+  # our fee, a show's own share. The rent grid used to read only the deal, so
+  # dates marked $50 up or down showed the deal's price at Prepare (Tim,
+  # 2026-11-19). nil when the date takes the deal's terms.
+  def license_date_rent(booking)
+    event_type = booking["event_type"].presence || "show"
+    return license_rated_rent(booking) if event_rate_for_type(event_type)
+    return nil unless status_draft?
+
+    terms = date_terms_for_booking(booking["starts_at"])
+    case date_term_field(event_type)
+    when :amount
+      return nil unless terms.key?("amount")
+
+      per_event_deal? ? deal_money(terms["amount"]) : "Ticket revenue less #{deal_money(terms['amount'])} fee"
+    when :share
+      return nil unless terms.key?("share")
+
+      source = Contract.normalized_revenue_source(draft_payment_config["revenue_source"]) == "tickets_and_products" ? "ticket sales and products" : "ticket sales"
+      "#{number_for(terms['share'])}% of #{source}"
     end
   end
 
@@ -2782,12 +2888,14 @@ class Contract < ApplicationRecord
   end
 
   # A flat fee shows the fee itself; the ticket-revenue-minus-fee variant says so.
+  # Each date has its own row, so it never says "per show": the default fee
+  # reads like a date's own fee, "Ticket revenue less $250.00 fee" (Tim,
+  # 2026-11-19).
   def license_flat_fee_rent(cfg)
     return "—" unless cfg["flat_fee_amount"].to_f.positive?
 
     if cfg["flat_fee_direction"] == "ticket_revenue_minus_fee"
-      per = flat_fee_basis == "per_show" ? " per show" : ""
-      "Ticket revenue less #{deal_money(cfg['flat_fee_amount'])}#{per} fee"
+      "Ticket revenue less #{deal_money(cfg['flat_fee_amount'])} fee"
     else
       deal_money(cfg["flat_fee_amount"])
     end
@@ -2849,9 +2957,7 @@ class Contract < ApplicationRecord
     source = Contract.normalized_revenue_source(cfg["revenue_source"]) == "tickets_and_products" ? "ticket sales and products" : "ticket sales"
     lines << { label: "How the money works", value: "Revenue share on #{source} — we keep #{our}%, they keep #{their}%" }
 
-    if cfg["revenue_guarantee"].to_s == "true" && cfg["revenue_guarantee_amount"].to_f.positive?
-      lines << { label: "Minimum guarantee", value: "They take home at least #{deal_money(cfg['revenue_guarantee_amount'])}" }
-    end
+    lines << { label: "Minimum guarantee", value: guarantee_sentences } if revenue_guarantee?
 
     settlement = {
       "same_day" => "Settled same day", "next_day" => "Settled next business day",
@@ -2985,6 +3091,9 @@ class Contract < ApplicationRecord
 
     # Link per-event payments to their corresponding shows
     link_payments_to_shows(created_payments, created_shows)
+    # A whole-run minimum's top-up sits on the last show (ContractRevenueGuarantee).
+    @preloaded_money_shows = nil
+    link_run_guarantee!
 
     # The production's ticketing, when it asked to sell on CocoScout.
     TicketListingSync.for_contract(self)

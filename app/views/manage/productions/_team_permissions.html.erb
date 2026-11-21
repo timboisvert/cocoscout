@@ -52,10 +52,11 @@
     <% [ [ "Production team", team_tiles ], [ "From #{organization.name}", org_tiles ] ].each do |heading, tiles| %>
       <% next if tiles.empty? && heading != "Production team" %>
       <% add_tile = heading == "Production team" && can_edit_team %>
-      <h3 class="text-sm font-semibold text-gray-900 mb-2 <%= 'mt-8' unless heading == 'Production team' %>"><%= heading %></h3>
-      <% unless heading == "Production team" %>
-        <p class="text-sm text-gray-500 mb-3">They manage every production in the organization. Choose here whether this one notifies them.</p>
-      <% end %>
+      <%# Each group in its own box, as every settings section is. %>
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden <%= 'mt-6' unless heading == 'Production team' %>">
+      <%= render "shared/section_heading", title: heading,
+            intro: (heading == "Production team" ? nil : "They manage every production in the organization. Choose here whether this one notifies them.") %>
+      <div class="px-6 py-5">
 
       <% if tiles.empty? %>
         <p class="text-sm text-gray-400 mb-3"><%= live_contracts.any? ? "Nobody from #{Current.organization.name} on this team. The contract's people see the production on My." : "Nobody on this production's own team yet." %></p>
@@ -143,6 +144,8 @@
           </div>
         <% end %>
       <% end %>
+      </div>
+      </div>
     <% end %>
   </div>
 

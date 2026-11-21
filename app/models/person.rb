@@ -398,21 +398,6 @@ class Person < ApplicationRecord
     errors.add(:public_key, "is reserved for CocoScout system pages")
   end
 
-  def email_change_frequency
-    return if email_was.nil? || email == email_was # No change or new record
-    return if last_email_changed_at.nil? # First time changing
-
-    cooldown_days = YAML.load_file(Rails.root.join("config", "profile_settings.yml"))["email_change_cooldown_days"]
-    days_since_last_change = (Time.current - last_email_changed_at) / 1.day
-    return unless days_since_last_change < cooldown_days
-
-    days_remaining = (cooldown_days - days_since_last_change).ceil
-    errors.add(:email,
-               "was changed too recently. Please wait #{days_remaining} more day#{if days_remaining != 1
-                                                                                    's'
-                                                                                  end} before changing it again.")
-  end
-
   def public_key_change_frequency
     return if public_key_was.nil? || public_key == public_key_was # No change or new record
     return if public_key_changed_at.nil? # First time changing
@@ -449,11 +434,6 @@ class Person < ApplicationRecord
 
   # Agreement methods
 
-  # Check if person has signed the agreement for a production
-  def agreement_signed_for?(production)
-    agreement_signatures.exists?(production: production)
-  end
-
   # Get productions where this person needs to sign an agreement
   # (in talent pool, agreement required, not yet signed)
   def pending_agreements
@@ -466,13 +446,6 @@ class Person < ApplicationRecord
               .where.not(agreement_template_id: nil)
               .where.not(id: signed_production_ids)
               .distinct
-  end
-
-  # Check if person can be cast in a production (agreement signed if required)
-  def can_be_cast_in?(production)
-    return true unless production.agreement_required?
-
-    production.agreement_signed_by?(self)
   end
 
   public

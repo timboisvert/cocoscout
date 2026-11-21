@@ -74,61 +74,6 @@ module MyHelper
     end
   end
 
-  def in_person_signup_status_text(audition_request)
-    cycle = audition_request.audition_cycle
-    requestable = audition_request.requestable
-
-    # If casting has been finalized, check for explicit casting decision
-    if cycle.casting_finalized_at.present? && audition_request.created_at <= cycle.casting_finalized_at
-      # Check if they were cast or rejected via CastAssignmentStage
-      cast_stage = CastAssignmentStage.find_by(
-        audition_cycle_id: cycle.id,
-        assignable_type: requestable.class.name,
-        assignable_id: requestable.id
-      )
-
-      if cast_stage&.decision_type == "cast"
-        return CAST_SPOT_OFFERED_TEXT
-      elsif cast_stage&.decision_type == "rejected"
-        return NO_CAST_SPOT_OFFERED_TEXT
-      end
-
-      # No cast stage record - fall through to check audition invitation status
-    end
-
-    # If cycle is archived (not active)
-    unless cycle.active
-      # If invitations were finalized before archiving, show the actual status
-      unless cycle.finalize_audition_invitations == true
-        return NO_AUDITION_OFFERED_TEXT
-      end
-
-      # Check if they were actually scheduled for an audition
-      if audition_request.auditions.exists?
-        return AUDITION_OFFERED_TEXT
-      else
-        return NO_AUDITION_OFFERED_TEXT
-      end
-    end
-
-    # If audition invitations haven't been finalized, OR request was submitted after finalization, show review status
-    if cycle.finalize_audition_invitations != true || audition_request.created_at > cycle.updated_at
-      # Check if anyone has voted on this request
-      if audition_request.audition_request_votes.exists?
-        return AUDITION_IN_REVIEW_TEXT
-      else
-        return SIGNUP_RECEIVED_TEXT
-      end
-    end
-
-    # Check if they were actually scheduled for an audition
-    if audition_request.auditions.exists?
-      AUDITION_OFFERED_TEXT
-    else
-      NO_AUDITION_OFFERED_TEXT
-    end
-  end
-
   def video_audition_status_name(audition_request)
     cycle = audition_request.audition_cycle
     requestable = audition_request.requestable
@@ -167,46 +112,6 @@ module MyHelper
     end
 
     NO_CAST_SPOT_OFFERED_BADGE.html_safe
-  end
-
-  def video_audition_status_text(audition_request)
-    cycle = audition_request.audition_cycle
-    requestable = audition_request.requestable
-
-    # Check if they were cast or rejected via CastAssignmentStage
-    cast_stage = CastAssignmentStage.find_by(
-      audition_cycle_id: cycle.id,
-      assignable_type: requestable.class.name,
-      assignable_id: requestable.id
-    )
-
-    if cast_stage&.decision_type == "cast"
-      return CAST_SPOT_OFFERED_TEXT
-    elsif cast_stage&.decision_type == "rejected"
-      return NO_CAST_SPOT_OFFERED_TEXT
-    end
-
-    # If cycle is archived (not active)
-    unless cycle.active
-      # If casting was finalized before archiving, show the actual status
-      unless cycle.casting_finalized_at.present?
-        return NO_CAST_SPOT_OFFERED_TEXT
-      end
-
-      return NO_CAST_SPOT_OFFERED_TEXT
-    end
-
-    # If casting hasn't been finalized, OR if request was submitted after finalization, show review status
-    if cycle.casting_finalized_at.blank? || audition_request.created_at > cycle.casting_finalized_at
-      # Check if anyone has voted on this request
-      if audition_request.audition_request_votes.exists?
-        return CAST_IN_REVIEW_TEXT
-      else
-        return VIDEO_RECEIVED_TEXT
-      end
-    end
-
-    NO_CAST_SPOT_OFFERED_TEXT
   end
 
   # Payee-facing "Paid May 15, 2026 with Zelle" phrasing. Only the hand-payment

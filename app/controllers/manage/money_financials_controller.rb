@@ -301,7 +301,9 @@ module Manage
       # Calculate gross_revenue and net_income based on contract type
       if is_revenue_share
         gross_revenue = show_revenue
-        net_income = (show_revenue * (our_share || 0) / 100.0).round(2)
+        # What we keep after their share, a per-show minimum, and a whole-run
+        # minimum's top-up (Contract#build_revenue_share_summary).
+        net_income = rev_summary ? rev_summary[:our_share].to_f : 0.0
       elsif is_ticket_revenue_minus_fee
         gross_revenue = show_revenue
         net_income = contract.flat_fee_amount

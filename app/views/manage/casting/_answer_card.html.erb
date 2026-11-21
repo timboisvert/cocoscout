@@ -1,0 +1,29 @@
+<%# The production's answer, in Tim's words (2026-11-18): "We cast people in
+    this production" or "We don't cast people in this production". The
+    first card of Casting Settings, and the Casting tab of the production's
+    own settings. Its own form with its own Save, because saving brings the
+    coming dates into line with the answer (CastingAnswer).
+
+    Locals: production; return_to (optional: "production_edit" lands back
+    on the production's settings instead of Casting Settings). %>
+<% yes = production.casts_people? %>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="answer" data-casting-answer="<%= yes ? 'yes' : 'no' %>">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h2 class="text-lg font-semibold text-gray-900">Casting in this production</h2>
+    <p class="text-sm text-gray-600 mt-1">Every new date follows this, however the date is made.</p>
+  </div>
+  <%= form_with url: manage_casting_answer_path(production), method: :patch, local: true, data: { turbo_action: "replace" } do %>
+    <% if local_assigns[:return_to].present? %><input type="hidden" name="return_to" value="<%= return_to %>"><% end %>
+    <div class="px-6 py-5 grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <%= render "manage/casting_settings/choice", name: "casts_people", value: "yes", checked: yes,
+            title: "We cast people in this production",
+            help: production.casting_dates_words(cast: true) %>
+      <%= render "manage/casting_settings/choice", name: "casts_people", value: "no", checked: !yes,
+            title: "We don't cast people in this production",
+            help: "Every new date starts with casting off, and casting is switched off on the coming dates nobody is cast in. Anyone already cast stays." %>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
+  <% end %>
+</div>

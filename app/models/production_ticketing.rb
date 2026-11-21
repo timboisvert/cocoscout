@@ -59,6 +59,7 @@ class ProductionTicketing < ApplicationRecord
   validates :max_per_order, numericality: { only_integer: true, in: 1..100 }, allow_nil: true
   # Its own comp rules (own_comps on), or the box office's (CompRules).
   include CompRules
+  include HasPageColors
   validates :comps_limit, inclusion: { in: TicketingProfile::COMPS_LIMITS }, allow_nil: true
   validates :team_comps_limit, inclusion: { in: TicketingProfile::TEAM_COMPS_LIMITS }, allow_nil: true
   validates :comps_per_show, :team_comps_per_show, :contract_comps_per_show, numericality: { only_integer: true, in: 0..10_000 }, allow_nil: true
@@ -126,10 +127,6 @@ class ProductionTicketing < ApplicationRecord
     when "manual" then base.where(id: production_ticketing_shows.select(:show_id))
     else base.where(event_type: EventTypes.revenue_event_types)
     end
-  end
-
-  def matches_show?(show)
-    matching_shows.exists?(id: show.id)
   end
 
   # When online sales open for a show: right away, or N days before it.

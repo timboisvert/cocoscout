@@ -794,8 +794,8 @@ RSpec.describe PayoutCalculator do
   # It was configured once in production and never actually kept anyone out, so
   # it was removed — every assigned role is paid.
   describe "everyone assigned to the show" do
-    let(:tech_role) { create(:role, production: production, name: "Tech", category: "technical") }
-    let(:performer_role) { create(:role, production: production, name: "Performer", category: "performing") }
+    let(:tech_role) { create(:role, production: production, name: "Tech") }
+    let(:performer_role) { create(:role, production: production, name: "Performer") }
     let(:tech_person) { create(:person, user: create(:user)) }
 
     before do
@@ -816,7 +816,7 @@ RSpec.describe PayoutCalculator do
       expect(result[:line_items].map { |li| li.amount.to_f }).to all(eq(333.33))
     end
 
-    it "pays a technical role the flat fee too" do
+    it "pays every role the flat fee too" do
       result = described_class.calculate(
         show: show, rules: { "distribution" => { "method" => "flat_fee", "flat_amount" => 75.0 } }
       )

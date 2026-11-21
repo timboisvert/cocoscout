@@ -76,11 +76,6 @@ class ShiftCandidates
       empty: empty_text }
   end
 
-  # Everyone qualified who isn't on the shift, kept out, asked or dropped.
-  def askable
-    rows.select(&:pickable?)
-  end
-
   private
 
   def empty_text

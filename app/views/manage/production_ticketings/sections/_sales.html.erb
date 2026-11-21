@@ -1,5 +1,5 @@
-<%# The ticket page: what it says and its ages, for every date that doesn't
-    have its own. (Fees are on Fees and taxes; the order limit is on Basic info.)
+<%# The ticket page: what it says, its ages, and its colors, for every date
+    that doesn't have its own. (Fees are on Fees and taxes; the order limit is on Basic info.)
     Locals: setup, production. %>
 <%
   input_class = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
@@ -56,4 +56,19 @@
   </div>
 
   <%= render "manage/production_ticketings/age_limit_fields", scope: "production_ticketing", age: setup.minimum_age, note: setup.age_note, input_class: input_class, save: true %>
+
+  <%# Its own page colors, all four, or the box office's (PageColors). %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="fieldset-toggle" data-settings-card="colors">
+    <%= render "manage/ticketing/own_switch", title: "Colors", what: "page colors", follows: "your box office",
+          settings_path: manage_ticketing_settings_section_path(section: "page"),
+          intro: "The background, buttons, headings, and text of the ticket page, for every date of #{production.name} that doesn't have its own.",
+          only: production.name, name: "production_ticketing[own_colors]", id: "production_ticketing_own_colors", checked: setup.own_page_colors? %>
+    <fieldset <%= "disabled" unless setup.own_page_colors? %> data-fieldset-toggle-target="fields" class="px-6 py-5 disabled:opacity-50">
+      <%= render "manage/ticketing/page_colors_fields", param: "production_ticketing[page_colors]", colors: PageColors.for(ticketing_profile, setup), id: "production_ticketing_page_colors",
+            reset_to: PageColors.for(ticketing_profile), reset_text: "Reset to your box office's colors" %>
+    </fieldset>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
+  </div>
 <% end %>

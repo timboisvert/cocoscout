@@ -17,7 +17,11 @@ class ProductionPage
   STAFFING_REACH = 45 # days of shifts loaded from the first listed date
   FACES = 8
 
-  NeedsDoing = Data.define(:key, :text, :detail, :action, :path, :method)
+  # also: a second, quieter way to answer the line, as { action:, path:,
+  # method: } (the casting line's "We don't cast people in it").
+  NeedsDoing = Data.define(:key, :text, :detail, :action, :path, :method, :also) do
+    def initialize(also: nil, **rest) = super(also: also, **rest)
+  end
 
   attr_reader :production, :user, :organization, :dashboard, :home, :rows, :upcoming_count
 
@@ -67,10 +71,10 @@ class ProductionPage
     end
   end
 
-  # --- Needs doing --------------------------------------------------------
+  # --- To do (the heading never says "Needs doing") -----------------------
 
   def needs_doing
-    @needs_doing ||= vacancy_items + audition_items + told_items
+    @needs_doing ||= casting_items + vacancy_items + audition_items + told_items
   end
 
   # --- People -------------------------------------------------------------
@@ -112,6 +116,12 @@ class ProductionPage
 
   def roles_count
     @roles_count ||= production.roles.where(show_id: nil).count
+  end
+
+  # Not set up, Casting on, or Off, with its counts (CastingStatus), for a
+  # production we run casting for.
+  def casting_status
+    @casting_status ||= CastingStatus.new(production, pool_count: pool_count) if cast?
   end
 
   # The next date's answers: { show:, answered:, of: }, nil with nobody in
@@ -284,6 +294,30 @@ class ProductionPage
 
   def day(time) = time.strftime("%a, %b %-d")
 
+  # Dates booked at another organization (they follow its contract) in a
+  # production where casting isn't set up: one line, with the two ways to
+  # answer it (Tim, 2026-11-18). For the people who can answer it: the
+  # production's managers. It goes once casting is set up, or once the
+  # production is marked "We don't cast people in this production".
+  #
+  # It says "booked at", not "arrived from": a date the contractor already
+  # had, matched to the contract when they connected, never arrived. Counted
+  # are the dates still to come that are on; an organization that can't be
+  # read is left out rather than guessed at.
+  def casting_items
+    return [] unless cast? && manager? && production.casting_not_set_up?
+
+    booked = production.shows.where.not(linked_show_id: nil).where(canceled: [ false, nil ]).where("date_and_time >= ?", Time.current)
+                       .includes(linked_show: { production: :organization }).to_a
+    names = booked.filter_map { |show| show.followed_organization&.name }.uniq
+    count = booked.count { |show| show.followed_organization }
+    return [] if count.zero?
+
+    [ NeedsDoing.new(key: "casting", text: "#{count} #{count == 1 ? 'date is' : 'dates are'} booked at #{names.to_sentence}, and casting isn't set up yet.",
+                     detail: nil, action: "Set up casting", path: [ :casting_setup ], method: nil,
+                     also: { action: "We don't cast people in it", path: [ :casting_off ], method: :patch }) ]
+  end
+
   # "Sat, Nov 28 needs a Host", one line per open role.
   def vacancy_items
     return [] unless cast?
@@ -301,7 +335,10 @@ class ProductionPage
   end
 
   def audition_items
-    count = audition_calls.sum { |call| call[:auditionee_count].to_i }
+    return [] unless cast?
+
+    # The ones this user hasn't voted on, as home and the Sign-ups page count them.
+    count = AuditionsToReview.new(user: user, productions: [ production ]).total
     return [] unless count.positive?
 
     [ NeedsDoing.new(key: "auditions", text: "#{count} audition #{'sign-up'.pluralize(count)} to review", detail: nil,

@@ -1,0 +1,7 @@
+<%= render layout: "manage/casting_setup/wizard_layout", locals: { step: :style, step_name: "Roles or acts" } do %>
+  <h2 class="text-xl font-bold text-gray-900 mb-2 coustard-regular">How is a show put together?</h2>
+  <p class="text-gray-600 mb-6">This sets how casting is laid out for <%= @production.name %>: named positions to fill, or a running order of acts. You can change it later in Casting Settings.</p>
+
+  <%= render "manage/casting_steps/style", url: manage_casting_setup_save_style_path(@production), mode: @wizard_state[:casting_mode],
+        back_path: manage_casting_setup_path(@production) %>
+<% end %>

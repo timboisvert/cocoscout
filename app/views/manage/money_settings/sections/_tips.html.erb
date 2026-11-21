@@ -6,11 +6,13 @@
   input = "px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
   radio = "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500"
 %>
-<div class="bg-white border border-gray-200 rounded-xl p-6">
-  <h2 class="text-lg font-semibold text-gray-900 mb-1">Tips</h2>
-  <p class="text-sm text-gray-600">
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <div class="px-6 py-4">
+  <h2 class="text-lg font-semibold text-gray-900">Tips</h2>
+  <p class="text-sm text-gray-600 mt-1">
     Who gets the bar's tips on a day's Settle up worksheet. By hand, or worked out from who was on the clock when each sale rang up.
   </p>
+  </div>
 </div>
 
 <%= form_with url: manage_money_settings_tips_path, method: :patch, class: "space-y-6" do %>

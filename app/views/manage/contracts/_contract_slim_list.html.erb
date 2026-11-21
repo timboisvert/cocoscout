@@ -74,6 +74,7 @@
       elsif is_revenue_share
         value_label = "#{our_share}% of sales"
         value_class = "text-gray-900"
+        value_sub = "they take home #{contract.guarantee_short_words}" if contract.revenue_guarantee?
       elsif total_value > 0
         value_label = number_to_currency(total_value)
         value_class = "text-gray-900"

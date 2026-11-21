@@ -1,4 +1,4 @@
-<%# What buyers read about this date, and its ages: the production's, or
+<%# What buyers read about this date, its ages, and its colors: the production's, or
     (each box's switch on) this date's own, by the one override control
     (manage/ticketing/own_switch). Locals: listing, setup. %>
 <%
@@ -50,6 +50,24 @@
     <fieldset <%= "disabled" unless own_ages %> data-fieldset-toggle-target="fields" class="disabled:opacity-50">
       <%= render "manage/production_ticketings/age_limit_fields", scope: "ticket_listing", age: (shown_age.to_i.zero? ? nil : shown_age), note: listing.age_note, input_class: input_class,
             bare: true, note_placeholder: setup&.age_note.presence %>
+    </fieldset>
+    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
+    </div>
+  </div>
+
+  <%# Its own page colors, all four, or what it follows: its production's
+      when the production has its own, else the box office's. %>
+  <% colors_follow_production = setup&.own_page_colors? %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="fieldset-toggle" data-settings-card="colors">
+    <%= render "manage/ticketing/own_switch", title: "Colors", what: "page colors",
+          follows: colors_follow_production ? production.name : "your box office",
+          settings_path: colors_follow_production ? manage_edit_production_ticketing_path(production, section: "sales") : manage_ticketing_settings_section_path(section: "page"),
+          intro: "The background, buttons, headings, and text of this date's ticket page.",
+          only: "this date", name: "ticket_listing[own_colors]", id: "ticket_listing_own_colors", checked: listing.own_page_colors? %>
+    <fieldset <%= "disabled" unless listing.own_page_colors? %> data-fieldset-toggle-target="fields" class="px-6 py-5 disabled:opacity-50">
+      <%= render "manage/ticketing/page_colors_fields", param: "ticket_listing[page_colors]", colors: PageColors.for(ticketing_profile, setup, listing), id: "ticket_listing_page_colors",
+            reset_to: PageColors.for(ticketing_profile, setup), reset_text: "Reset to #{colors_follow_production ? possessive(production.name) : "your box office's"} colors" %>
     </fieldset>
     <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
       <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>

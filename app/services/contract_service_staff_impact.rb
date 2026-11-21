@@ -25,7 +25,6 @@ class ContractServiceStaffImpact
   Line = Struct.new(:shift, :services, :people, :reason, keyword_init: true) do
     def day = shift.starts_at.to_date
     def role = shift.role_label
-    def service_names = services.map(&:name).uniq.to_sentence
   end
 
   attr_reader :contract, :removals, :kept

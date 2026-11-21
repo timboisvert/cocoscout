@@ -129,11 +129,6 @@ class TicketTier < ApplicationRecord
     bundle? ? bundle_of : self
   end
 
-  # "4 × General"
-  def bundle_label
-    "#{admits} × #{bundle_of&.name}" if bundle?
-  end
-
   # One purchase's price split into one ticket per person: $70 for 4 is
   # [1750, 1750, 1750, 1750]; any odd cents go to the first tickets, so they
   # always add up to the price.

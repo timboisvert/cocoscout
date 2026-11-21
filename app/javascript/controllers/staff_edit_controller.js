@@ -1,10 +1,12 @@
 import { Controller } from "@hotwired/stimulus"
+import { markListItem, markSheetItem } from "controllers/lib/section_nav"
 
-// Tabs for the staff edit modal. Details/Job/Roles share one save form; the
+// The sections of a staff member's page: the side list's lines (tab) and the
+// phone sheet's rows (sectionItem), each naming its panel in data-tab. Details/Job/Roles share one save form; the
 // Onboarding, Availability, Taxes and Danger Zone tabs have their own actions, so the Save
 // footer is hidden on those.
 export default class extends Controller {
-    static targets = ["tab", "panel", "saveFooter"]
+    static targets = ["tab", "panel", "saveFooter", "sectionItem", "sectionLabel"]
     static FOOTERLESS = ["onboarding", "availability", "taxes", "danger"]
 
     connect() {
@@ -19,13 +21,13 @@ export default class extends Controller {
         this.switchTo(event.currentTarget.dataset.tab)
     }
 
+    // The name the shared section list and sheet call.
+    select(event) { this.switch(event) }
+
     switchTo(key) {
-        this.tabTargets.forEach(t => {
-            const active = t.dataset.tab === key
-            t.classList.toggle("border-pink-500", active)
-            t.classList.toggle("text-pink-600", active)
-            t.classList.toggle("border-transparent", !active)
-            t.classList.toggle("text-gray-500", !active)
+        this.tabTargets.forEach(t => markListItem(t, t.dataset.tab === key))
+        this.sectionItemTargets.forEach(item => {
+            markSheetItem(item, item.dataset.tab === key, this.hasSectionLabelTarget ? this.sectionLabelTarget : null)
         })
         this.panelTargets.forEach(p => p.classList.toggle("hidden", p.dataset.panel !== key))
         if (this.hasSaveFooterTarget) {

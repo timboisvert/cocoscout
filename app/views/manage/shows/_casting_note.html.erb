@@ -1,0 +1,59 @@
+<%# The Casting box of a date that has nothing to draw in it, as one quiet
+    line with the one thing to press (Tim, 2026-11-18). Two cases:
+
+      :off       casting is off for this date. It used to show no Casting
+                 box at all, and the only way to turn it on was Edit,
+                 Casting & Visibility.
+      :no_roles  casting is on and there are no roles to cast. It used to
+                 say "0/0 roles have been cast" and "No roles defined yet".
+
+    Each sentence is checked against what's true of this date: whether
+    anybody is still assigned to it, whether its roles are its own or the
+    production's, and whether casting has been set up at all.
+
+    A date with casting on keeps its way to its own casting page ("Manage
+    Cast", or "View Cast" for someone who can't change it), where roles of
+    its own can be added: the line adds to that, it doesn't replace it.
+
+    Locals: show, production, kind (:off or :no_roles). %>
+<%
+  manager = current_user_can_manage?(production)
+  what = event_type_label(show.event_type).downcase
+  button = nil
+  cast_page = { text: (manager ? "Manage Cast" : "View Cast"), path: manage_casting_show_cast_path(production, show), variant: "secondary" }
+  if kind == :off
+    cast_page = nil
+    assigned = show.show_person_role_assignments.size
+    text = production.casts_people? ? "Casting is off for this #{what}" : "We don't cast people in #{production.name}, so casting is off for this #{what}"
+    text += if assigned.zero?
+      production.casts_people? ? ", so nobody is assigned to it." : ", and nobody is assigned to it."
+    else
+      ". #{pluralize(assigned, 'person')} cast in it earlier #{assigned == 1 ? 'is' : 'are'} still on it."
+    end
+    button = { text: "Turn casting on", path: manage_turn_casting_on_show_path(production, show), method: :post, variant: "secondary" } if manager
+  elsif production.casting_not_set_up?
+    text = "Casting isn't set up for #{production.name} yet, so there is nothing to cast on this date."
+    button = { text: "Set up casting", path: manage_casting_setup_path(production), variant: "primary" } if manager
+  elsif show.use_custom_roles? || show.act_based?
+    # Its roles (or its running order) are its own, and they are added on
+    # the date's own casting page.
+    text = show.act_based? ? "This #{what} has no acts in its running order yet, so there is nothing to cast." : "This #{what} has roles of its own, and none have been added yet, so there is nothing to cast."
+    button = cast_page.merge(variant: "primary")
+    cast_page = nil
+  else
+    text = "#{production.name} has no roles yet, so there is nothing to cast on this date."
+    button = { text: "Add roles", path: manage_casting_settings_section_path(production_id: production, section: "roles"), variant: "primary" } if manager
+  end
+%>
+<div class="border border-gray-200 rounded-lg bg-white px-4 py-3 flex flex-wrap items-center justify-between gap-3" data-show-casting-note="<%= kind %>">
+  <div class="min-w-0 flex-1 basis-64">
+    <h2 class="text-lg font-semibold text-gray-900">Casting</h2>
+    <p class="text-sm text-gray-600 mt-0.5"><%= text %></p>
+  </div>
+  <% if button || cast_page %>
+    <div class="flex flex-wrap items-center gap-2">
+      <% if cast_page %><%= render "shared/button", { size: "small" }.merge(cast_page) %><% end %>
+      <% if button %><%= render "shared/button", { size: "small" }.merge(button) %><% end %>
+    </div>
+  <% end %>
+</div>
