@@ -91,13 +91,6 @@ class AssetSpec < ApplicationRecord
 
   def square? = image? && width == height
 
-  # "a square", "a wide image", "a tall image".
-  def shape_words
-    return "square" if square?
-
-    width > height ? "wide" : "tall"
-  end
-
   def format_labels = formats.map { |key| FORMAT_LABELS.fetch(key, key.upcase) }
   def content_types = formats.flat_map { |key| FORMATS.fetch(key, []) }
 

@@ -14,12 +14,6 @@ module PersonSearch
     scope.where("people.name ILIKE :like OR people.public_key ILIKE :like OR LOWER(people.email) = :exact", like: like, exact: exact)
   end
 
-  # Users outside the organization; the scope must join people.
-  def outside_users(query, scope)
-    exact, like = terms(query)
-    scope.where("people.name ILIKE :like OR LOWER(users.email_address) = :exact", like: like, exact: exact)
-  end
-
   # Anyone on CocoScout: the organization's own people by any part of their
   # email too, everyone else as outside.
   def anyone(query, organization, scope = Person.all)

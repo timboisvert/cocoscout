@@ -17,10 +17,6 @@ module Courses
     def registered = confirmed.size
     def capacity = offering.capacity
 
-    def spots_left
-      capacity && [ capacity - offering.effective_registrations_count, 0 ].max
-    end
-
     # Before tax.
     def sales_cents = confirmed.sum { |r| r.amount_cents.to_i }
     def tax_cents = confirmed.sum { |r| r.tax_cents.to_i }

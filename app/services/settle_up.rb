@@ -21,7 +21,6 @@ class SettleUp
   # confirmed, with nothing for anyone to do (Tim, 2026-11-14).
   ShowPiece = Data.define(:show, :financials, :listing, :ticket_lines, :outside_sources, :products_cents, :other_revenue_cents, :expenses_cents, :flat_fee_cents, :pay_cell, :auto_non_revenue, :income_cell) do
     def confirmed? = financials&.data_confirmed? == true || auto_non_revenue
-    def tickets_count = ticket_lines.sum { |l| l[:count] }
     def tickets_cents = ticket_lines.sum { |l| l[:cents] }
     def in_cents = tickets_cents + products_cents + other_revenue_cents + flat_fee_cents
     # A show marked as having no revenue: nothing to count, nobody paid
@@ -141,8 +140,6 @@ class SettleUp
                                          .select { |p| p.contract.settlement_payment?(p) }
                                          .map { |p| ContractSettlementWorking.for(p) }
     end
-    # The settlement still being played or settled, if that's where it stands.
-    def working_in_progress = workings.detect(&:in_progress?)
   end
 
   Check = Data.define(:key, :name, :short, :state, :hold_reason) do

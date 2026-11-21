@@ -153,11 +153,6 @@ class SignUpFormInstance < ApplicationRecord
     registration
   end
 
-  # Generate slots from template
-  def generate_slots_from_template!
-    SlotManagementService.new(sign_up_form).generate_slots_for_instance!(self)
-  end
-
   # Display helpers
   def display_name
     "#{sign_up_form.name} - #{show.name_with_date}"

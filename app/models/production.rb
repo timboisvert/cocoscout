@@ -181,7 +181,6 @@ class Production < ApplicationRecord
     casting_setup_completed? ? :on : :not_set_up
   end
 
-  def casting_set_up? = casting_state == :on
   def casting_not_set_up? = casting_state == :not_set_up
 
   # Which dates are cast, chosen the way Ticketing chooses which dates it
@@ -583,10 +582,6 @@ class Production < ApplicationRecord
   # Mirrors Production.castable. See docs/production_listing_audit.md
   def castable?
     type_in_house?
-  end
-
-  def governed_by_contract?
-    contract.present? && contract.status_active?
   end
 
   # Agreement methods

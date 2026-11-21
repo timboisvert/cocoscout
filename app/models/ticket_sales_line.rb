@@ -33,10 +33,6 @@ class TicketSalesLine < ApplicationRecord
     ticket_source&.name.presence || "Ticket sales"
   end
 
-  def blank_entry?
-    tickets_sold.to_i.zero? && amount.to_f.zero?
-  end
-
   private
 
   def refresh_totals

@@ -22,6 +22,4 @@ class FollowerEmailBlock < ApplicationRecord
   after_create_commit { SuperadminNotices.follower_email_block_bought(self) }
 
   scope :bought_in, ->(month) { where(created_at: month.beginning_of_month.beginning_of_day..month.end_of_month.end_of_day) }
-
-  def self.price_words = ActiveSupport::NumberHelper.number_to_currency(PRICE_CENTS / 100.0, precision: 0)
 end

@@ -62,12 +62,6 @@ class ContentTemplateService
       }
     end
 
-    # Render a template with channel information included (alias for render)
-    # @deprecated Use render instead
-    def render_with_channel(key, variables = {})
-      render(key, variables)
-    end
-
     # Render only the subject line from a template
     # @param key [String] The template key
     # @param variables [Hash] Variables to interpolate
@@ -108,16 +102,6 @@ class ContentTemplateService
     # Get a template by key (returns nil if not found)
     def find_template(key)
       ContentTemplate.active.find_by(key: key)
-    end
-
-    # List all available templates
-    def all_templates
-      ContentTemplate.active.order(:category, :name)
-    end
-
-    # List templates by category
-    def templates_by_category(category)
-      ContentTemplate.active.by_category(category).order(:name)
     end
 
     # Create or update a template from a hash

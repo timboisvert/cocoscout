@@ -23,15 +23,6 @@ class WorkAvailabilityPicture
     end
 
     def editable_state = state == :limited ? "hours" : state.to_s
-
-    # For a narrow calendar header: "Anytime", "Off", "After 5p", "9a – 1p".
-    def short_label
-      case state
-      when :anytime then "Anytime"
-      when :off then "Off"
-      else windows.size == 1 ? WorkAvailabilityPicture.short_window(*windows.first) : "#{windows.size} windows"
-      end
-    end
   end
 
   Weekday = Struct.new(:wday, :name, :short_name, :answer, keyword_init: true)

@@ -51,8 +51,6 @@ class ContractDateRequest < ApplicationRecord
   def waiting? = status.in?(WAITING)
   def open? = status == "open"
 
-  # The date and time the request is about, in the organization's own clock.
-  def about_at = (kind == "add" ? proposed_at : (show&.date_and_time || original_at))&.in_time_zone(time_zone)
   def proposed_local = proposed_at&.in_time_zone(time_zone)
   def original_local = original_at&.in_time_zone(time_zone)
 
@@ -77,16 +75,6 @@ class ContractDateRequest < ApplicationRecord
   # "You requested to move Fri Dec 18 to 7:30 PM": the request read back to
   # whoever made it, where the date isn't otherwise on the page.
   def requested_words = kind == "question" ? "Your question #{words}" : "You requested to #{words}"
-
-  # "Requested a move to 7:30 PM", for the mark on the date itself.
-  def mark_words
-    case kind
-    when "move" then "Requested a move to #{move_target_words}"
-    when "cancel" then "Requested to cancel it"
-    when "add" then "Requested to add #{moment_words(proposed_local)}"
-    else "Sent a question about it"
-    end
-  end
 
   # "the request to move Fri Dec 18 to 7:30 PM" / "the question about Fri Dec 18, 8:00 PM".
   def request_phrase = kind == "question" ? "the question #{words}" : "the request to #{words}"

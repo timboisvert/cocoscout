@@ -48,22 +48,6 @@ module StaffingDayParts
     (Array(staffing_day_parts).map(&:to_s) & STAFFING_DAY_PART_KEYS).any?
   end
 
-  # The keys of every offered region a time of day falls in — [] in a gap
-  # (then only an all-day mark covers it).
-  def staffing_day_part_keys_for(time)
-    return [] unless time
-
-    minute = time.hour * 60 + time.min
-    staffing_day_parts_or_default.select { |p| self.class.day_part_covers_minute?(p, minute) }.map { |p| p["key"] }
-  end
-
-  def staffing_day_part_name(key)
-    return "All day" if key.blank?
-
-    part = STAFFING_DAY_PART_CATALOG.find { |p| p["key"] == key.to_s }
-    part ? part["name"] : key.to_s.titleize
-  end
-
   # Turn on exactly these regions (unknown keys ignored). An empty pick
   # goes back to the defaults.
   def update_staffing_day_part_keys!(keys)
@@ -76,18 +60,6 @@ module StaffingDayParts
     def staffing_day_parts_for_keys(keys)
       keys = Array(keys).map(&:to_s)
       STAFFING_DAY_PART_CATALOG.select { |p| keys.include?(p["key"]) }
-    end
-
-    def day_part_covers_minute?(part, minute)
-      starts = minute_of_day(part["starts"])
-      ends = minute_of_day(part["ends"])
-      return false if starts.nil? || ends.nil?
-
-      if ends > starts
-        minute >= starts && minute < ends
-      else
-        minute >= starts || minute < ends # runs past midnight
-      end
     end
 
     # "17:30" → 1050; "24:00" → 1440.

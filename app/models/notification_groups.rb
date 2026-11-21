@@ -13,7 +13,6 @@
 # for, so emails that read them keep honoring the person's choice.
 module NotificationGroups
   Group = Data.define(:key, :label, :description, :section, :push_default, :email, :email_default, :live, :legacy_email, :area) do
-    def email_by_plan? = email == :plan
     def ticketing? = section == :ticketing
   end
 

@@ -79,12 +79,6 @@ class User < ApplicationRecord
     Message.where(id: message_subscriptions.active.not_archived.pluck(:message_id))
   end
 
-  # Threads this user has archived (subscription-level). Used by the inbox's
-  # "Archived" filter.
-  def archived_message_threads
-    Message.where(id: message_subscriptions.active.archived.pluck(:message_id))
-  end
-
   normalizes :email_address, with: ->(e) { e.strip.downcase }
   validates :email_address, presence: true, uniqueness: { case_sensitive: false },
                             format: { with: URI::MailTo::EMAIL_REGEXP, message: "must be a valid email address" }

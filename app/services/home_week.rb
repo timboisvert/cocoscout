@@ -19,7 +19,6 @@ class HomeWeek
   Told = Data.define(:show, :kind, :change, :cast_ids, :cast_untold, :staff_ids, :staff_untold) do
     def cast_untold_count = cast_untold.size
     def staff_untold_count = staff_untold.size
-    def anyone_untold? = cast_untold.any? || staff_untold.any?
   end
   # A show taking sign-ups (an open mic): who's registered, of how many spots.
   Signups = Data.define(:instance, :count, :capacity, :queued) do

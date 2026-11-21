@@ -121,10 +121,6 @@ class ProductionTicketing < ApplicationRecord
     end
   end
 
-  def matches_show?(show)
-    matching_shows.exists?(id: show.id)
-  end
-
   # When online sales open for a show: right away, or N days before it.
   def on_sale_at_for(starts_at)
     schedule_mode == "relative" && starts_at ? starts_at - opens_days_before.days : nil

@@ -30,13 +30,4 @@ module ManageHelper
 
     "#{words} · show #{show_start.strftime('%-l:%M %p')}–#{show_end.strftime('%-l:%M %p')}"
   end
-
-  # Where "change the name or description" goes for this viewer.
-  def where_to_change_production_basics(production)
-    if can_amend_production_basics?(production)
-      amend_basics_manage_contract_path(production_basics_contract(production))
-    else
-      edit_manage_production_path(production)
-    end
-  end
 end

@@ -2079,21 +2079,6 @@ class Contract < ApplicationRecord
     payment
   end
 
-  # Every payment that settles a given show, however it happens to be linked.
-  # The explicit show link is the truth when there is one; otherwise a payment
-  # falling due on the show's own date is that show's, which is how per-event
-  # deals are written. Unlike #find_payment_for_show this asks nothing of the
-  # deal's basis — a plain per-event rental fee is still that show's money.
-  def payments_covering_show(show)
-    return [] if show.nil?
-
-    linked = contract_payments.where(show_id: show.id).by_due_date.to_a
-    return linked if linked.any?
-    return [] if show.date_and_time.blank?
-
-    contract_payments.where(show_id: nil, due_date: show.date_and_time.to_date).by_due_date.to_a
-  end
-
   # Get all shows that map to a given ContractPayment
   def shows_for_payment(payment)
     # If payment has a direct show link, use it (a period's settlement never
@@ -2522,14 +2507,6 @@ class Contract < ApplicationRecord
     when "revenue_minus_fee" then "org"     # we sell, keep a fee, pay them the rest
     when "revenue_share" then "contractor"  # legacy rev-share was generated as incoming (they pay us)
     end
-  end
-
-  def total_received_payments
-    contract_payments.where(direction: "incoming", status: "paid").sum(:amount)
-  end
-
-  def total_pending_payments
-    contract_payments.where(direction: "incoming", status: "pending").sum(:amount)
   end
 
   # Course runs already paid settle the contract's share for them (heals

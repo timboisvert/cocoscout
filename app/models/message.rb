@@ -621,15 +621,4 @@ class Message < ApplicationRecord
                                  .pluck("people.user_id")
     (writers + recipients).compact.uniq
   end
-
-  # Calculate depth for nested reply rendering
-  def calculate_depth
-    depth = 0
-    current = parent_message
-    while current && current != root_message
-      depth += 1
-      current = current.parent_message
-    end
-    depth
-  end
 end

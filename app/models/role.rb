@@ -283,11 +283,6 @@ class Role < ApplicationRecord
     show.show_person_role_assignments.where(role: self).count
   end
 
-  # Returns the number of remaining slots for this role in a given show
-  def slots_remaining(show)
-    total_slots - filled_slots(show)
-  end
-
   # Check if this role is fully filled for a given show
   def fully_filled?(show)
     filled_slots(show) >= total_slots

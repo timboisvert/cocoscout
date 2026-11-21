@@ -60,10 +60,6 @@ class SpaceRental < ApplicationRecord
   end
 
   # Display helpers
-  def date_display
-    starts_at.strftime("%B %d, %Y")
-  end
-
   def time_range_display
     "#{starts_at.strftime('%l:%M %p')} - #{ends_at.strftime('%l:%M %p')}".strip
   end
