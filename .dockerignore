@@ -7,8 +7,14 @@
 # Ignore bundler config.
 /.bundle
 
-# Ignore all environment files.
+# Ignore all environment files, at any depth (a worktree's .env copied its
+# keys into the image until 2026-11-20).
 /.env*
+**/.env*
+
+# Claude Code's folder: release worktrees are whole checkouts, each with its
+# own .env, and none of it belongs in the image.
+/.claude
 
 # Ignore all default key files.
 /config/master.key
