@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Staff shift notices, one per thing that happened to a person
-# (~/.claude/plans/cocoscout-staffing-notifications.md, Tim 2026-11-07):
+# (~/.claude/plans/archive/cocoscout-staffing-notifications.md, Tim 2026-11-07):
 #
 # - shift_assignments remember what the person was told (told_*), stamped
 #   with notified_at, so "changed" means the shift differs from that, not
