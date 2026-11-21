@@ -169,6 +169,15 @@ class ContractSettlementWorking
     else
       percent = contract.respond_to?(:contractor_share_percentage) ? contract.contractor_share_percentage : nil
       label = percent ? "Their #{percent.to_f.round(2).to_s.sub(/\.0\z/, '')}% share" : "Their share"
+      # A per-show minimum guarantee raised some nights: their share as it
+      # was, then what the minimum added (ContractRevenueGuarantee).
+      extra = contract.respond_to?(:guarantee_extra_for) ? (contract.guarantee_extra_for(shows).to_d * 100).round : 0
+      if extra.positive? && !payment.awaiting_amount?
+        # Toward them either way: more of ours handed over, or less of ours taken.
+        floor = Line.new(label: "Minimum guarantee (#{contract.guarantee_money} a show)", cents: extra, kind: :share)
+        return [ Line.new(label: label, cents: settlement_cents - extra, kind: :share), floor ]
+      end
+
       [ Line.new(label: label, cents: settlement_cents, kind: :share) ]
     end
   end

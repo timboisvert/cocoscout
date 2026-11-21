@@ -90,7 +90,7 @@ module ContractDatesHelper
     share = contract.date_term_field(show.event_type) == :share && !contract.event_rate_for_type(show.event_type) && !contract.per_event_deal?
     {
       terms: contract.date_terms_words(show.event_type, terms),
-      their_share: (share ? "#{contract.their_share_for(show).to_f.then { |n| n % 1 == 0 ? n.to_i : n }}% of ticket sales" : nil),
+      their_share: (share ? "#{contract.their_share_for(show).to_f.then { |n| n % 1 == 0 ? n.to_i : n }}% of ticket sales#{", at least #{contract.guarantee_money}" if contract.guarantee_per_show?}" : nil),
       note: terms["note"].presence,
       payout: payout,
       services: rows,

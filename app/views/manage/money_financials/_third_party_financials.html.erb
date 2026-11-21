@@ -21,7 +21,7 @@
       Revenue Share · <%= contract.revenue_share_percentage.to_i %>/<%= contract.contractor_share_percentage.to_i %> Split
     </span>
     <span class="text-sm text-gray-500">
-      You keep <%= contract.revenue_share_percentage.to_i %>%, <%= contract.contractor_name %> gets <%= contract.contractor_share_percentage.to_i %>%
+      You keep <%= contract.revenue_share_percentage.to_i %>%, <%= contract.contractor_name %> gets <%= contract.contractor_share_percentage.to_i %>%<% if contract.revenue_guarantee? %>, <%= contract.guarantee_short_words %><% end %>
     </span>
   </div>
 <% elsif contract&.ticket_revenue_minus_fee? %>
@@ -84,7 +84,13 @@
     <div class="bg-white rounded-lg border border-gray-200 p-5">
       <div class="text-sm text-gray-500 mb-1">Your Share (<%= our_pct %>%)</div>
       <div class="text-2xl font-semibold text-green-600"><%= number_to_currency(rs ? rs[:our_share] : 0) %></div>
-      <div class="text-xs text-gray-500">you keep</div>
+      <div class="text-xs text-gray-500">
+        <% if rs && rs[:guarantee_extra].to_f.positive? %>
+          you keep, after <%= number_to_currency(rs[:guarantee_extra]) %> for their minimum guarantee
+        <% else %>
+          you keep
+        <% end %>
+      </div>
     </div>
 
     <div class="bg-white rounded-lg border border-gray-200 p-5">

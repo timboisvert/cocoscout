@@ -209,7 +209,7 @@
           <% if our_take %>
             <%= number_to_currency(our_take) %>
           <% elsif awaiting_amount %>
-            TBD
+            <%= contract.guarantee_amount_label(payment) || "TBD" %>
           <% elsif wash || settled_by_offset %>
             <%# Nothing moves: the number is their share, which goes toward
                 what they owe. The working is listed below. %>
@@ -222,6 +222,10 @@
             <%= number_to_currency(payment.amount) %>
           <% end %>
         </div>
+        <%# What the minimum guarantee did to this payment (ContractRevenueGuarantee). %>
+        <% if (guarantee_note = contract.guarantee_payment_note(payment)) %>
+          <div class="text-xs text-gray-500"><%= guarantee_note %></div>
+        <% end %>
         <% if our_take %>
           <% unless itemized %>
             <div class="text-xs text-gray-500">

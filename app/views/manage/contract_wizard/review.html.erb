@@ -185,7 +185,7 @@
                 </span>
               </span>
               <span class="font-medium flex-shrink-0 <%= payment["amount_tbd"] ? 'text-gray-400' : (incoming ? 'text-green-600' : 'text-red-600') %>">
-                <% if payment["amount_tbd"] %>$TBD<% else %><%= incoming ? '+' : '-' %>$<%= '%.2f' % payment["amount"].to_f %><% end %>
+                <% if payment["amount_tbd"] %><%= @contract.guarantee_amount_label(payment) || "$TBD" %><% else %><%= incoming ? '+' : '-' %>$<%= '%.2f' % payment["amount"].to_f %><% end %>
               </span>
             </li>
           <% end %>

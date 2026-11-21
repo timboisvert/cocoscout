@@ -22,7 +22,7 @@ RSpec.describe Contract, "#deal_summary" do
     summary = values_for(c)
     expect(summary).to include("They do")
     expect(summary).to include("we keep 40%, they keep 60%")
-    expect(summary).to include("at least $500.00")
+    expect(summary).to include("at least $500 a show")
     expect(summary).to include("Settled weekly")
   end
 

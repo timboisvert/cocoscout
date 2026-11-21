@@ -56,6 +56,7 @@ class ContractAmendmentSummary
     out << share_line(old, new)
     out << fee_line(old, new)
     out << settlement_line(old, new)
+    out << guarantee_line(old, new)
     out << structure_line
     out.compact
   end
@@ -66,6 +67,22 @@ class ContractAmendmentSummary
     return if now.blank? || was.to_s == now.to_s
 
     was.present? ? "#{theirs} share goes from #{was}% to #{now}%." : "#{theirs} share is #{now}%."
+  end
+
+  # The minimum guarantee: added, removed, a new amount, or per show and
+  # for the run swapped (ContractRevenueGuarantee).
+  def guarantee_line(old, new)
+    was, now = [ old, new ].map do |cfg|
+      on = cfg["revenue_has_guarantee"].to_s == "true" || cfg["revenue_guarantee"].to_s == "true"
+      amount = cfg["revenue_guarantee_amount"].to_f
+      next nil unless on && amount.positive?
+
+      "at least #{money(amount)} #{cfg['revenue_guarantee_scope'] == 'run' ? 'for the whole run' : 'a show'}"
+    end
+    return if was == now
+    return "#{theirs} minimum guarantee is removed." if now.nil?
+
+    was ? "#{theirs} minimum guarantee goes from #{was} to #{now}." : "#{@perspective == :counterparty ? 'You' : 'They'} now take home #{now}."
   end
 
   def fee_line(old, new)

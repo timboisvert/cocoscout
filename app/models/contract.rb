@@ -1204,6 +1204,9 @@ class Contract < ApplicationRecord
     # After shows exist, so per-event payments can link to them; each date at
     # its own fee on a per-event deal.
     reconcile_amended_payments!(apply_show_terms_to_payments(amend["payments"])) if amend.key?("payments")
+    # A whole-run minimum's top-up follows the amended dates and deal.
+    @preloaded_money_shows = nil
+    settle_run_guarantee!
 
     # Rates for non-ticketed nights bill from the shows as they now stand.
     if previous_rated_types.any? || separately_rated_event_types.any?
@@ -1766,6 +1769,13 @@ class Contract < ApplicationRecord
       contractor_share_amount = settled
       our_share_amount = (confirmed_revenue - settled).round(2)
     end
+    # A whole-run minimum's top-up, once worked out, is theirs and out of ours
+    # (ContractRevenueGuarantee); a per-show one is already in each night.
+    topup = run_guarantee_topup&.dig(:topup).to_f
+    if topup.positive?
+      contractor_share_amount = (contractor_share_amount + topup).round(2)
+      our_share_amount = (our_share_amount - topup).round(2)
+    end
 
     {
       confirmed_revenue: confirmed_revenue,
@@ -1773,7 +1783,8 @@ class Contract < ApplicationRecord
       pending_count: pending_shows.count,
       our_share: our_share_amount,
       contractor_share: contractor_share_amount,
-      total_shows: all_shows.count
+      total_shows: all_shows.count,
+      guarantee_extra: (guarantee_extra_for(confirmed_shows) + topup).round(2)
     }
   end
 
@@ -1992,7 +2003,7 @@ class Contract < ApplicationRecord
     direct = contract_payments.where(show_id: show.id)
                               .where.not(settlement_method: "payout_deduction")
                               .order(:id).to_a
-                              .reject { |p| service_charge?(p) || period_settlement?(p) }
+                              .reject { |p| service_charge?(p) || period_settlement?(p) || run_guarantee_payment?(p) }
                               .first
     return direct if direct
 
@@ -2630,6 +2641,8 @@ class Contract < ApplicationRecord
       end
     end
     out << "</tbody></table>"
+    # The minimum guarantee, per show or for the run, in words under the grid.
+    out << %(<p><strong>Minimum guarantee.</strong> #{esc.(guarantee_sentences)}</p>) if guarantee_sentences
     out << license_payment_schedule_html
     out
   end
@@ -2916,10 +2929,7 @@ class Contract < ApplicationRecord
     source = Contract.normalized_revenue_source(cfg["revenue_source"]) == "tickets_and_products" ? "ticket sales and products" : "ticket sales"
     lines << { label: "How the money works", value: "Revenue share on #{source} — we keep #{our}%, they keep #{their}%" }
 
-    if revenue_guarantee?
-      words = guarantee_for_run? ? "for the whole run" : "a show"
-      lines << { label: "Minimum guarantee", value: "They take home at least #{deal_money(revenue_guarantee_amount)} #{words}" }
-    end
+    lines << { label: "Minimum guarantee", value: guarantee_sentences } if revenue_guarantee?
 
     settlement = {
       "same_day" => "Settled same day", "next_day" => "Settled next business day",
@@ -3053,6 +3063,9 @@ class Contract < ApplicationRecord
 
     # Link per-event payments to their corresponding shows
     link_payments_to_shows(created_payments, created_shows)
+    # A whole-run minimum's top-up sits on the last show (ContractRevenueGuarantee).
+    @preloaded_money_shows = nil
+    link_run_guarantee!
 
     # The production's ticketing, when it asked to sell on CocoScout.
     TicketListingSync.for_contract(self)

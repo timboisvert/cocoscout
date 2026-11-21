@@ -63,9 +63,35 @@ RSpec.describe ContractRevenueGuarantee, type: :model do
       expect(contract.reload.contract_payments.where(description: Contract::RUN_GUARANTEE)).to be_empty
     end
 
-    it "says so in the deal" do
-      lines = contract_with(scope: "per_show").deal_summary
-      expect(lines).to include({ label: "Minimum guarantee", value: "They take home at least $500.00 a show" })
+    it "says so in the deal, on the document, and on each date" do
+      contract = contract_with(scope: "per_show")
+      contract.update!(contractor_name: "Improv Night")
+      sentence = "Improv Night takes home at least $500 a show. On any date where their share of ticket sales comes to less, " \
+                 "#{organization.name} pays them $500 for that date."
+
+      expect(contract.deal_summary).to include({ label: "Minimum guarantee", value: sentence })
+      expect(Nokogiri::HTML(contract.send(:license_schedule_html)).text).to include("Minimum guarantee. #{sentence}")
+      expect(contract.date_terms_words("show", {})).to eq([ "Revenue share", "50% of ticket sales to us; they take home at least $500", false ])
+      expect(contract.guarantee_short_words).to eq("at least $500 a show")
+    end
+
+    it "labels a night still waiting on sales as at least the minimum, and says what the minimum added once it's in" do
+      contract = contract_with(scope: "per_show")
+      show = add_shows(contract, [ 600.0 ]).first
+      payment = create(:contract_payment, :revenue_share_tbd, contract: contract, show: show, direction: "outgoing",
+                                                              due_date: show.date_and_time.to_date + 1)
+      expect(contract.guarantee_amount_label(payment)).to eq("At least $500")
+      expect(contract.guarantee_amount_label({ "description" => "Mar 25", "amount_tbd" => true, "direction" => "outgoing" }))
+        .to eq("At least $500")
+
+      ContractPaymentSyncService.new(show).call
+      contract = Contract.find(contract.id)
+
+      expect(contract.guarantee_payment_note(payment.reload)).to eq("Includes $200 to bring it up to the $500 minimum a show.")
+      expect(ContractSettlementWorking.for(payment).lines.select { |l| l.kind == :share }.map { |l| [ l.label, l.cents ] })
+        .to eq([ [ "Their 50% share", 30_000 ], [ "Minimum guarantee ($500 a show)", 20_000 ] ])
+      summary = contract.revenue_share_summary
+      expect(summary.values_at(:our_share, :contractor_share, :guarantee_extra)).to eq([ 100.0, 500.0, 200.0 ])
     end
   end
 
@@ -130,10 +156,52 @@ RSpec.describe ContractRevenueGuarantee, type: :model do
       expect(payment.reload.amount.to_f).to eq(999.0)
     end
 
-    it "says so in the deal" do
-      lines = contract_with(scope: "run").deal_summary
-      expect(lines).to include({ label: "Minimum guarantee", value: "They take home at least $500.00 for the whole run" })
+    it "says so in the deal and on the document" do
+      contract = contract_with(scope: "run")
+      contract.update!(contractor_name: "Improv Night")
+      sentence = "Improv Night takes home at least $500 for the whole run. If their shares across every date come to less, " \
+                 "#{organization.name} pays them the difference after the last date."
+
+      expect(contract.deal_summary).to include({ label: "Minimum guarantee", value: sentence })
+      expect(Nokogiri::HTML(contract.send(:license_schedule_html)).text).to include("Minimum guarantee. #{sentence}")
+      expect(contract.guarantee_amount_label({ "description" => Contract::RUN_GUARANTEE, "amount_tbd" => true })).to eq("Up to $500")
     end
+
+    it "sits on the last show, due the day after, and is never that show's settlement" do
+      contract = contract_with(scope: "run", amount: 2000)
+      shows = add_shows(contract)
+      settlement = create(:contract_payment, :revenue_share_tbd, contract: contract, show: shows.last, direction: "outgoing",
+                                                                 due_date: shows.last.date_and_time.to_date)
+      payment = create(:contract_payment, contract: contract, description: Contract::RUN_GUARANTEE, amount: 0, amount_tbd: true,
+                                          direction: "outgoing", due_date: Date.new(2026, 4, 30), show: shows.last)
+      settlement.update_column(:id, payment.id + 1) # the top-up is the lower id, as at activation
+
+      contract = Contract.find(contract.id)
+      contract.link_run_guarantee!
+
+      expect(payment.reload).to have_attributes(show_id: shows.last.id, due_date: Date.new(2026, 3, 29))
+      expect(contract.find_payment_for_show(shows.last)).to eq(ContractPayment.find(payment.id + 1))
+    end
+
+    it "counts the top-up in what we keep and what they get" do
+      contract = contract_with(scope: "run", amount: 2000)
+      shows = add_shows(contract)
+      run_payment(contract)
+      ContractPaymentSyncService.new(shows.last).call
+      contract = Contract.find(contract.id)
+
+      summary = contract.revenue_share_summary
+      expect(summary.values_at(:our_share, :contractor_share, :guarantee_extra)).to eq([ 1100.0, 2000.0, 450.0 ])
+      expect(contract.guarantee_payment_note(contract.run_guarantee_payment)).to include("$450.00 under the $2,000.00 minimum")
+    end
+  end
+
+  it "names a guarantee change in an amendment" do
+    contract = contract_with(scope: "per_show")
+    lines = ContractAmendmentSummary.lines(contract, {
+      payment_config: contract.draft_payment_config.merge("revenue_guarantee_scope" => "run", "revenue_guarantee_amount" => "2000")
+    }, perspective: :org)
+    expect(lines).to include("Their minimum guarantee goes from at least $500.00 a show to at least $2,000.00 for the whole run.")
   end
 
   it "reads an older guarantee with no scope as per show, under either saved key" do

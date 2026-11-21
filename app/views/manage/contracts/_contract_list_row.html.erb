@@ -100,7 +100,7 @@
         <% elsif is_revenue_share %>
           <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Value</div>
           <div class="text-sm font-medium text-gray-900"><%= our_share %>/<%= their_share %> Revenue Share</div>
-          <div class="text-[10px] text-gray-500">We receive <%= our_share %>% of ticket sales</div>
+          <div class="text-[10px] text-gray-500">We receive <%= our_share %>% of ticket sales<% if contract.revenue_guarantee? %>; they take home <%= contract.guarantee_short_words %><% end %></div>
         <% elsif total_value > 0 %>
           <div class="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Value</div>
           <div class="text-sm font-medium text-gray-900"><%= number_to_currency(total_value) %></div>

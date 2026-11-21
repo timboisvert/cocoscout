@@ -37,6 +37,7 @@
 
     <p class="mb-3 text-sm text-gray-500">
       <% money_line = contract.deal_summary.detect { |line| line[:label] == "How the money works" }&.dig(:value) %>
+      <% money_line = "#{money_line}, and they take home #{contract.guarantee_short_words}" if money_line && contract.revenue_guarantee? %>
       <%= "#{money_line} ·" if money_line %>
       <%= link_to "Change the deal", deal_path, class: "font-medium text-pink-600 hover:text-pink-700" %>
     </p>
@@ -129,7 +130,7 @@
           <% parts << "our share of sales on #{pluralize(share_rows.size, 'show')}" if share_rows.any? %>
           <% parts << "our fee on #{pluralize(fee_rows.size, 'show')}" if fee_rows.any? %>
           <%# "Fixed charges $50.00, plus our share of sales on 2 shows"; "Our share of sales on 2 shows" %>
-          <%= parts.any? ? parts.join(", plus ").upcase_first : "Terms come from the deal" %>
+          <%= parts.any? ? parts.join(", plus ").upcase_first : "Terms come from the deal" %><% if share_rows.any? && contract.revenue_guarantee? %>. <%= contract.contractor_name.presence || "They" %> take<%= "s" if contract.contractor_name.present? %> home <%= contract.guarantee_short_words %><% end %>
         </span>
       </div>
     </div>
