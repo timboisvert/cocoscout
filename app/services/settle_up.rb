@@ -445,19 +445,27 @@ class SettleUp
   # Who worked the day, and when: a saved share's span when someone set it,
   # else Staffing's logged hours in the day's window, else the scheduled
   # shift; plus anyone already given a share. Each span knows its role.
+  # A shift that also covers other roles ("Front of house + Bartender")
+  # counts in the role that shares the tips, so someone covering the bar
+  # is on the bar (Tim, 2026-11-21).
   def self.workers(organization, date, shares)
     window = SettlementDay.window(organization, date)
+    rule = organization.tip_rule
     people = {}
     logged = Hash.new { |h, k| h[k] = [] }
     scheduled = Hash.new { |h, k| h[k] = [] }
-    organization.staff_time_entries.where(started_at: window).includes(:person, shift_assignment: :shift).each do |entry|
+    organization.staff_time_entries.where(started_at: window).includes(:person, shift_assignment: { shift: :shift_additional_roles }).each do |entry|
       people[entry.person_id] = entry.person
-      logged[entry.person_id] << TipSplit::Span.new(from: entry.started_at, to: entry.ended_at, house_role_id: entry.house_role_id || entry.shift_assignment&.shift&.house_role_id)
+      shift = entry.shift_assignment&.shift
+      role_id = entry.house_role_id || shift&.house_role_id
+      role_id = tip_role_id(rule, role_id, shift) if shift && (entry.house_role_id.nil? || entry.house_role_id == shift.house_role_id)
+      logged[entry.person_id] << TipSplit::Span.new(from: entry.started_at, to: entry.ended_at, house_role_id: role_id)
     end
-    organization.shifts.where(starts_at: window).includes(shift_assignments: :person).each do |shift|
+    organization.shifts.where(starts_at: window).includes(:shift_additional_roles, shift_assignments: :person).each do |shift|
+      role_id = tip_role_id(rule, shift.house_role_id, shift)
       shift.shift_assignments.select(&:active?).each do |assignment|
         people[assignment.person_id] ||= assignment.person
-        scheduled[assignment.person_id] << TipSplit::Span.new(from: shift.starts_at, to: shift.ends_at, house_role_id: shift.house_role_id)
+        scheduled[assignment.person_id] << TipSplit::Span.new(from: shift.starts_at, to: shift.ends_at, house_role_id: role_id)
       end
     end
     set_by_hand = {}
@@ -470,6 +478,14 @@ class SettleUp
       spans = set_by_hand[person.id] || (logged[person.id].presence || scheduled[person.id]).sort_by(&:from)
       Worker.new(person: person, staff_member: members[person.id], spans: spans)
     end
+  end
+
+  # The role a shift counts in for tips: its own when that role shares,
+  # else the first role it also covers that does, else its own.
+  def self.tip_role_id(rule, role_id, shift)
+    return role_id if rule.nil? || rule.shares?(role_id)
+
+    shift.shift_additional_roles.map(&:house_role_id).uniq.find { |id| rule.shares?(id) } || role_id
   end
 
   # What a ticket with no type of its own is called: a show CocoScout

@@ -593,6 +593,19 @@ RSpec.describe "Manage::SettlementDays tips by the clock", type: :request do
       expect(response.body).to include(%(name="shares[#{miles.id}][from]" value="18:00"), %(name="shares[#{miles.id}][to]" value="22:00"))
     end
 
+    # Front of house also covering the bar is on the bar (Tim, 2026-11-21):
+    # a shift's extra roles count, in the one that shares the tips.
+    it "counts a shift that also covers bartender as on the bar" do
+      org.shifts.find_by!(starts_at: at(18), house_role: bartender).update!(starts_at: at(19))
+      org.shifts.find_by!(house_role: door).shift_additional_roles.create!(house_role: bartender)
+
+      get manage_money_settle_up_day_path(date.iso8601)
+      expect(response.body).not_to include("Nobody on the bar")
+      expect(response.body).to include(%(name="shares[#{pat.id}][amount]"))
+      patch manage_check_register_money_settle_up_day_path(date.iso8601), params: { checked: "1" }
+      expect(SettlementDay.find_by!(organization: org, date: date).register_checked_at).to be_present
+    end
+
     it "asks who gets a stretch with nobody on the bar, by stretch, and won't check the register until it's answered" do
       # Miles on from 7, not 6: nobody on the bar 6 to 7, $40 from 8 orders.
       org.shifts.find_by!(starts_at: at(18)).update!(starts_at: at(19))
