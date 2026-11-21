@@ -14,8 +14,8 @@ module Manage
     end
 
     def update
-      answers = params.fetch(:answers, {}).permit!.to_h
-      notes = params.fetch(:notes, {}).permit!.to_h
+      answers = params.fetch(:answers, {}).permit(*AccessFeatures::KEYS).to_h
+      notes = params.fetch(:notes, {}).permit(*AccessFeatures::KEYS).to_h
       AccessAnswer.transaction do
         AccessFeatures::KEYS.each do |key|
           answer = answers[key].to_s
