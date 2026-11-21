@@ -1279,3 +1279,42 @@ RSpec.describe "Manage::SettlementDays corrects a paid contract settlement", typ
     expect(CGI.unescapeHTML(response.body)).to include("$20.00 paid over came out of a later share.")
   end
 end
+
+# A contract that has them pay us a flat fee for a show (Tim, 2026-11-20:
+# Full Five Fridays paid its $100 the day of the show, and the card said
+# "The contract has no payment for this show yet"). The card lists it,
+# paid or still due, the day counts it as money in, and No revenue isn't
+# offered over it.
+RSpec.describe "Manage::SettlementDays with a contract fee paid to us", type: :request do
+  let(:password) { "Password123!" }
+  let(:owner) { create(:user, password: password) }
+  let!(:org) { create(:organization, :pro, owner: owner, settlement_day_mode: "calendar", settle_up_starts_on: Date.current - 30) }
+  let!(:owner_role) { create(:organization_role, :manager, user: owner, organization: org) }
+  let!(:production) { create(:production, organization: org, production_type: "third_party", name: "Full Five") }
+  let(:contract) do
+    create(:contract, :active, organization: org, production: production, contractor_name: "DK Nearlander",
+                               draft_data: { "payment_structure" => "flat_fee" })
+  end
+  let!(:show) { create(:show, production: production, date_and_time: 2.days.ago.change(hour: 21)) }
+  let(:date) { SettlementDay.day_for(org, show.date_and_time) }
+
+  before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
+
+  it "lists a fee already paid, counts it in the day, and doesn't offer No revenue" do
+    create(:contract_payment, :paid, contract: contract, description: "Event 10 Fee", amount: 100, due_date: date, paid_date: date)
+
+    get manage_money_settle_up_day_path(date.iso8601)
+    body = CGI.unescapeHTML(response.body)
+    expect(body).to include("From DK Nearlander by contract", "Event 10 Fee · paid #{date.strftime('%b %-d')}")
+    expect(body).to include("The contract has DK Nearlander pay us $100.00 for it")
+    expect(body).not_to include("The contract has no payment for this show yet.", ">No revenue<")
+    expect(SettleUp.day(org, date).in_cents).to eq(10_000)
+  end
+
+  it "lists a fee still due as not received yet" do
+    create(:contract_payment, contract: contract, description: "Event 10 Fee", amount: 100, due_date: date)
+
+    get manage_money_settle_up_day_path(date.iso8601)
+    expect(CGI.unescapeHTML(response.body)).to include("Event 10 Fee · due #{date.strftime('%b %-d')}, not received yet")
+  end
+end

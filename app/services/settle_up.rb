@@ -19,7 +19,7 @@ class SettleUp
   # auto_non_revenue: a show of a production that takes no money
   # (Production#no_revenue) that took none: it settles as no revenue,
   # confirmed, with nothing for anyone to do (Tim, 2026-11-14).
-  ShowPiece = Data.define(:show, :financials, :listing, :ticket_lines, :outside_sources, :products_cents, :other_revenue_cents, :expenses_cents, :flat_fee_cents, :pay_cell, :auto_non_revenue) do
+  ShowPiece = Data.define(:show, :financials, :listing, :ticket_lines, :outside_sources, :products_cents, :other_revenue_cents, :expenses_cents, :flat_fee_cents, :pay_cell, :auto_non_revenue, :income_cell) do
     def confirmed? = financials&.data_confirmed? == true || auto_non_revenue
     def tickets_count = ticket_lines.sum { |l| l[:count] }
     def tickets_cents = ticket_lines.sum { |l| l[:cents] }
@@ -29,7 +29,14 @@ class SettleUp
     def non_revenue? = financials&.non_revenue_override? == true || auto_non_revenue
     # Nothing came in and nobody has said why: the card offers "No revenue"
     # (Tim, 2026-11-14: a show that wasn't canceled and sold nothing).
-    def offer_no_revenue? = !non_revenue? && !confirmed? && in_cents.zero?
+    def offer_no_revenue? = !non_revenue? && !confirmed? && in_cents.zero? && contract_in_cents.zero?
+    # What a contract has the other side pay us for this show (a rental's
+    # flat fee), paid or still due (Tim, 2026-11-20: a $100 fee paid the
+    # morning of the show didn't show on its card). It is the night's
+    # money in. Settling the day never posts it: the contract payment is on
+    # the books by itself (BooksOutsidePoster).
+    def contract_income = income_cell ? income_cell.value : []
+    def contract_in_cents = contract_income.sum(&:amount_cents)
     def state = confirmed? ? :ok : (financials&.has_data? || non_revenue? ? :wait : :miss)
     # Who gets paid from this show (Pay), worked out when first asked.
     def pay = pay_cell.value
@@ -267,7 +274,7 @@ class SettleUp
     def to_run_cents = shows.sum { |s| s.pay.to_run_cents }
     def to_run_count = shows.sum { |s| s.pay.to_run_count }
     def register_sales_cents = registers.sum { |r| r.gross_cents - r.refunds_cents }
-    def in_cents = shows.sum(&:in_cents) + register_sales_cents
+    def in_cents = shows.sum { |s| s.in_cents + s.contract_in_cents } + register_sales_cents
     def out_cents = shows.sum(&:expenses_cents) + registers.sum(&:fees_cents)
     # What the day leaves the house (Tim, 2026-11-11): everything taken in,
     # less expenses and fees, less what the shows pay their people. What a
@@ -326,18 +333,19 @@ class SettleUp
     end
   end
 
-  # Today, while it's still going, once a show of its has started or it has
-  # a register day, and nobody has settled it (Tim, 2026-11-13: "I should be
-  # able to start with settling today up"); nil otherwise. A day whose shows
-  # are all still to come has nothing to confirm yet. Settle up and the
-  # Money hub put it above the days that are over. It is never one of the
-  # days to settle that Home counts.
+  # Today, from the moment the day begins, whenever it has a show or a
+  # register day and nobody has settled it (Tim, 2026-11-13: "I should be
+  # able to start with settling today up"; 2026-11-20: "I can settle today
+  # up if I want before it happens ... I like to progressively do it
+  # throughout the day"). It no longer waits for a show to start: a show's
+  # numbers can be entered and confirmed before its curtain. nil otherwise.
+  # Settle up and the Money hub put it above the days that are over. It is
+  # never one of the days to settle that Home counts.
   def self.today_in_progress(organization, now: Time.current)
     today = day(organization, SettlementDay.day_for(organization, now))
     return nil if today.settled? || today.ended? || today.before_start?
 
-    started = today.shows.any? { |piece| piece.show.date_and_time <= now } || today.registers.any?
-    today if started
+    today if today.shows.any? || today.registers.any?
   end
 
   # Days that are over, had money in them, and nobody has settled, from the
@@ -521,7 +529,8 @@ class SettleUp
     auto = show.production.no_revenue? && took_nothing && !financials&.data_confirmed?
     ShowPiece.new(show: show, financials: financials, listing: listing, ticket_lines: lines, outside_sources: outside,
                   products_cents: products, other_revenue_cents: other, expenses_cents: expenses, flat_fee_cents: fee,
-                  pay_cell: Cell.new { pay_for(organization, show) }, auto_non_revenue: auto)
+                  pay_cell: Cell.new { pay_for(organization, show) }, auto_non_revenue: auto,
+                  income_cell: Cell.new { contract_income_for(show) })
   end
 
   # Who gets paid from a show, as it stands (Tim, 2026-11-04): a show on a
@@ -657,6 +666,20 @@ class SettleUp
     return true if fin.nil?
 
     fin.total_revenue.to_f.zero? && fin.ticket_sales_lines.sum { |l| l.amount.to_f }.zero? && (!fin.flat_fee? || fin.flat_fee.to_f.zero?)
+  end
+
+  # What a contract has the other side pay us for this show: its incoming
+  # payments tied to the show or due that day, not cancelled, that aren't a
+  # settlement (a revenue share facing us is the pay block's), a charge
+  # taken out of their share (that's less going out), or a correction.
+  def self.contract_income_for(show)
+    contract = show.space_rental&.contract || show.production.contract || show.contract_payments.first&.contract
+    return [] unless contract
+
+    contract_payments_for(show, contract).select do |p|
+      p.direction_incoming? && !p.status_cancelled? && p.correction_of_id.nil? && !contract.settlement_payment?(p) &&
+        !(p.status_pending? && p.deduct_from_payout?) && !(p.status_paid? && p.payment_method == "payout_deduction")
+    end
   end
 
   # The contract payments a show settles on (the same pick the show's payouts

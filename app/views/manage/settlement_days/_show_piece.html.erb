@@ -113,6 +113,13 @@
     <div>
       <div class="text-[11px] font-medium uppercase tracking-wide text-gray-500">Everything else for this show</div>
       <%= line.call("Products at the door", (piece.listing ? "from Ticketing" : nil), (piece.listing ? link_to(money.call(piece.products_cents), manage_ticket_listing_path(piece.listing), class: pink) : money.call(piece.products_cents))) %>
+      <%# What the contract has them pay us for this show, a rental's fee (Tim, 2026-11-20): paid or still due, with when it was received. %>
+      <% piece.contract_income.each do |payment| %>
+        <% payer = payment.contract.contractor&.name || payment.contract.contractor_name %>
+        <% status = payment.status_paid? ? "paid#{payment.paid_date ? " #{payment.paid_date.strftime('%b %-d')}" : ''}#{payment.offline_payment_method_label ? " · #{payment.offline_payment_method_label}" : ''}" : "due #{payment.due_date&.strftime('%b %-d')}, not received yet" %>
+        <%= line.call("From #{payer} by contract", [ payment.description.presence, status ].compact.join(" · "),
+              link_to(money.call(payment.amount_cents), manage_contract_path(payment.contract), class: pink, data: { turbo_frame: "_top" })) %>
+      <% end %>
       <%= line.call("Other revenue", (fin&.normalized_other_revenue_details&.reject { |i| i.is_a?(Hash) && i["description"] == TicketSalesSync::PRODUCTS_LABEL }&.filter_map { |i| i.is_a?(Hash) ? i["description"] : nil }&.join(", ")),
             (editable ? opens.call("other-revenue-#{show.id}", money.call(piece.other_revenue_cents)) : money.call(piece.other_revenue_cents))) %>
       <%= line.call("Expenses", (fin && fin.expense_items.any? ? pluralize(fin.expense_items.size, "item") : nil),

@@ -142,6 +142,8 @@
                 Nothing is paid until every day it covers is settled: it goes ahead <%= in_progress.when_words %>.
               <% end %>
             </span>
+          <% elsif pay.payments.empty? && facing_us.nil? && piece.contract_income.any? %>
+            <span class="block mt-0.5 text-xs text-gray-500">Nobody is paid from this show. The contract has <%= contract&.contractor_name || "them" %> pay us <%= money.call(piece.contract_in_cents) %> for it, listed above.</span>
           <% elsif pay.payments.empty? && facing_us.nil? %>
             <span class="block mt-0.5 text-xs text-gray-500">The contract has no payment for this show yet.</span>
           <% end %>
@@ -223,7 +225,7 @@
     </div>
   </div>
   <%= render "manage/contracts/settlement_calculation_modal", id: calculation_id, title: "How #{show.display_name} pays",
-        workings: workings, other_payments: pay.payments.reject { |p| working_for.key?(p.id) }, contract: contract %>
+        workings: workings, other_payments: pay.payments.reject { |p| working_for.key?(p.id) }, contract: contract, income: piece.contract_income %>
 <% else %>
   <%
     counts = pay.count_by_stage

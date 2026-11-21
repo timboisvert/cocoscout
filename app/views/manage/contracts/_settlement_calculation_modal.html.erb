@@ -5,8 +5,10 @@
   Reading only; the contract is a link from here for changing anything.
 
   Locals: id, title, workings, other_payments (payments with no working),
-          contract
+          contract, income (optional: what the contract has them pay us
+          for this show, SettleUp.contract_income_for)
 %>
+<% income = local_assigns[:income] || [] %>
 <div id="<%= id %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end justify-center sm:items-center sm:p-4"
      data-controller="modal" data-action="click->modal#closeOnBackdrop">
   <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[85vh]" data-action="click->modal#stopPropagation">
@@ -38,7 +40,13 @@
           <span class="tabular-nums font-semibold text-gray-900 whitespace-nowrap"><%= number_to_currency(payment.amount) %></span>
         </div>
       <% end %>
-      <% if workings.empty? && other_payments.empty? %>
+      <% income.each do |payment| %>
+        <div class="flex items-baseline justify-between gap-3 text-sm">
+          <span class="min-w-0 text-gray-600"><%= payment.display_name %>, paid to us<%= payment.status_paid? ? (payment.paid_date ? " #{payment.paid_date.strftime('%b %-d')}" : "") : (payment.due_date ? ", due #{payment.due_date.strftime('%b %-d')}, not received yet" : ", not received yet") %></span>
+          <span class="tabular-nums font-semibold text-gray-900 whitespace-nowrap"><%= number_to_currency(payment.amount) %></span>
+        </div>
+      <% end %>
+      <% if workings.empty? && other_payments.empty? && income.empty? %>
         <p class="text-sm text-gray-600">The contract has no payment for this show yet.</p>
       <% end %>
     </div>
