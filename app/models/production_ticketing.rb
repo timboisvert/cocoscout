@@ -53,9 +53,8 @@ class ProductionTicketing < ApplicationRecord
   # Its own comp rules (own_comps on), or the box office's (CompRules).
   include CompRules
   include HasPageColors
-  validates :comps_limit, inclusion: { in: TicketingProfile::COMPS_LIMITS }, allow_nil: true
-  validates :team_comps_limit, inclusion: { in: TicketingProfile::TEAM_COMPS_LIMITS }, allow_nil: true
-  validates :comps_per_show, :team_comps_per_show, :contract_comps_per_show, numericality: { only_integer: true, in: 0..10_000 }, allow_nil: true
+  validates :team_comps_limit, :contract_comps_limit, inclusion: { in: CompRules::SIDE_LIMITS }, allow_nil: true
+  validates :team_comps_per_show, :contract_comps_per_show, numericality: { only_integer: true, in: 0..10_000 }, allow_nil: true
   # Blank is all ages (AgeLimit).
   validates :minimum_age, numericality: { only_integer: true, in: AgeLimit::AGES }, allow_nil: true
   validate :production_belongs_to_organization

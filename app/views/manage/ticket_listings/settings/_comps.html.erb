@@ -1,16 +1,22 @@
-<%# This date's own comp rules, or (switch off) the ones it follows: its
+<%# This date's own comp rules, or (override off) the ones it follows: its
     production's own, else the box office's (CompRules). The one override
     control (manage/ticketing/own_switch). Locals: listing, setup. %>
 <%
   own = listing.own_comps
-  followed = setup&.own_comps ? setup : ticketing_profile
+  production = listing.production
+  from_production = setup&.own_comps
+  followed = from_production ? setup : ticketing_profile
   rules = own ? listing : followed
-  example = own ? comp_rules_sentence(listing, subject: "this date", single: true) : nil
+  contracted = comp_contracted?(production, listing: listing)
+  names = comp_side_names(production, listing: listing)
+  follows = from_production ? production.name : "your box office"
+  above = from_production ? possessive(production.name) : "your box office's"
 %>
 <%= form_with url: manage_ticket_listing_path(listing, section: "comps"), method: :patch do %>
-  <%= render "manage/ticketing_settings/comp_rules_fields", scope: "ticket_listing", rules: rules, save: true, own: own, sides: comp_sides(listing.production, listing: listing),
-        override: render("manage/ticketing/own_switch", title: "Comps for this date", what: "comps settings", follows: (setup&.own_comps ? listing.production.name : "your box office"),
-                         settings_path: (setup&.own_comps ? manage_edit_production_ticketing_path(listing.production, section: "comps") : manage_ticketing_settings_section_path(section: "comps")),
-                         only: "this date", name: "ticket_listing[own_comps]", id: "ticket_listing_own_comps", checked: own),
-        heading: "Issuing comps", off_words: "Turn them off and nobody issues comps on this date.", example: example %>
+  <%= render "manage/ticketing_settings/comp_rules_fields", scope: "ticket_listing", rules: rules, level: :date, save: true,
+        own: own, contracted: contracted, names: names, place: "this date", above: above, followed: followed,
+        house_limited: ticketing_profile.comps_limit == "fixed", override_id: "ticket_listing_own_comps",
+        override: render("manage/ticketing/own_switch", title: "Comps for this date", what: "comps settings", follows: follows,
+                         settings_path: (from_production ? manage_edit_production_ticketing_path(production, section: "comps") : manage_ticketing_settings_section_path(section: "comps")),
+                         only: "this date", name: "ticket_listing[own_comps]", id: "ticket_listing_own_comps", checked: own) %>
 <% end %>

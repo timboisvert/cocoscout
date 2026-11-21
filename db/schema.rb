@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_20_210000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_21_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2866,6 +2866,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_20_210000) do
     t.integer "team_comps_per_show"
     t.string "page_key"
     t.jsonb "old_page_keys", default: [], null: false
+    t.boolean "contract_comps"
+    t.string "contract_comps_limit"
+    t.boolean "contract_comps_own"
     t.integer "contract_comps_per_show"
     t.string "page_background_color"
     t.string "page_button_color"
@@ -4460,6 +4463,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_20_210000) do
     t.string "team_comps_limit"
     t.integer "team_comps_per_show"
     t.boolean "own_codes", default: false, null: false
+    t.boolean "contract_comps"
+    t.string "contract_comps_limit"
+    t.boolean "contract_comps_own"
     t.integer "contract_comps_per_show"
     t.string "page_background_color"
     t.string "page_button_color"
@@ -4943,7 +4949,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_20_210000) do
     t.string "follow_main_words"
     t.boolean "attach_pdf_tickets", default: false, null: false
     t.string "price_display", default: "all_in", null: false
-    t.integer "contract_comps_per_show", default: 0, null: false
+    t.boolean "contract_comps", default: false, null: false
+    t.string "contract_comps_limit", default: "fixed", null: false
+    t.boolean "contract_comps_own", default: true, null: false
+    t.integer "contract_comps_per_show", default: 4, null: false
+    t.string "house_comps_period", default: "show", null: false
     t.string "page_background_color"
     t.string "page_button_color"
     t.string "page_heading_color"

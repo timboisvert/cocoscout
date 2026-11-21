@@ -392,11 +392,11 @@ RSpec.describe "Contract connections", type: :request do
       create(:organization_role, :manager, user: colleague, organization: theirs)
       # None until the organization that sells says how many.
       expect(TicketSalesAccess.comp_allowance(colleague, listing)).to be_nil
-      TicketingProfile.for(venue).update!(contract_comps_per_show: 4)
+      TicketingProfile.for(venue).update!(contract_comps_own: true, contract_comps: true, contract_comps_per_show: 4)
       listing = TicketListing.find(listing.id)
       expect(TicketSalesAccess.comp_allowance(colleague, listing)).to include(contract: true, team_limit: 4, left: 4)
       # The production's own number comes ahead of the box office's.
-      ProductionTicketing.for(production).update!(own_comps: true, comps_enabled: true, comps_limit: "unlimited", contract_comps_per_show: 2)
+      ProductionTicketing.for(production).update!(own_comps: true, comps_enabled: true, contract_comps_own: true, contract_comps: true, contract_comps_per_show: 2)
       listing = TicketListing.find(listing.id)
       expect(TicketSalesAccess.comp_allowance(colleague, listing)).to include(team_limit: 2, left: 2)
 

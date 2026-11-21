@@ -235,7 +235,7 @@ module Manage
       own = raw[:own_comps] == "1"
       @setup.update!(CompRules.attributes_from(raw, own: own).merge(own_comps: own))
       CompRequest.close_turned_off!(@production.organization)
-      notice = own ? "Saved. #{@production.name} has its own comp rules: #{@setup.comp_rules_words}." : "Saved. #{@production.name} follows your box office's comp rules."
+      notice = own ? "Saved. #{@production.name} has its own comp rules. #{@setup.comp_rules_words(contracted: helpers.comp_contracted?(@production), names: helpers.comp_side_names(@production))}" : "Saved. #{@production.name} follows your box office's comp rules."
       redirect_to section_path("comps"), notice: notice
     end
 

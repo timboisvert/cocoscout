@@ -14,9 +14,9 @@
       <%
         name = request.requested_by.person&.name.presence || request.requested_by.email_address
         first_name = name.split.first
-        now = if request.contract? then listing.effective_contract_comps + listing.approved_comp_extra(:contract)
-              elsif listing.effective_team_comps_limit == "fixed" then listing.effective_team_comps_per_show + listing.approved_comp_extra(:team)
-              elsif (left = listing.comps_left) then TicketSalesAccess.team_comps_given(listing) + left
+        rule = listing.comp_side_rules(request.side)
+        now = if rule.limited? then rule.count + listing.approved_comp_extra(request.side)
+              elsif (left = listing.comps_left) then TicketSalesAccess.side_comps_given(listing, request.side.to_sym) + left
               else 0
               end
         seats = stats.remaining

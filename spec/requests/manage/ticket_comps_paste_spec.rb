@@ -96,7 +96,7 @@ RSpec.describe "Issuing comps from a pasted list", type: :request do
       expect(flash[:alert]).to eq("Line 2: fox@example isn't an email address.")
       expect(comps.count).to eq(0)
 
-      listing.update!(own_comps: true, comps_limit: "fixed", comps_per_show: 2)
+      TicketingProfile.for(listing.organization).update!(comps_limit: "fixed", comps_per_show: 2)
       post manage_ticket_listing_comps_path(listing), params: { mode: "paste", tier_id: general.id, text: "Dana Scully\nFox Mulder\nWalter Skinner" }
       expect(flash[:alert]).to eq("This date has 2 comps left to issue, and this list is 3.")
       expect(comps.count).to eq(0)

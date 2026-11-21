@@ -1,12 +1,6 @@
-<%# Ticketing settings → Comps: the box office's comp rules (CompRules). A
-    production can have its own on its Comps tab, and a date its own again. %>
-<%
-  profile = ticketing_profile
-  example = comp_rules_sentence(profile)
-%>
+<%# Ticketing settings → Comps: the box office's comp rules (CompRules), the
+    defaults for every production and date. A production can override them
+    on its Comps tab, and a date again on its own, except the house limit. %>
 <%= form_with url: manage_ticketing_settings_comps_path, method: :patch do %>
-  <%= render "manage/ticketing_settings/comp_rules_fields", scope: "ticketing_profile", rules: profile,
-        off_words: "Turn them off and nobody issues comps: not managers, not the door, not a production team.",
-        intro_tail: "These are your organization's rules; a production can have its own, and a single date its own again.",
-        example: example, save: true %>
+  <%= render "manage/ticketing_settings/comp_rules_fields", scope: "ticketing_profile", rules: ticketing_profile, level: :house, save: true %>
 <% end %>

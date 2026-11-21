@@ -31,7 +31,7 @@ RSpec.describe "Comp requests", type: :request do
   let!(:booked_show) { create(:show, production: booked, space_rental: rental, date_and_time: night, duration_minutes: 120, event_type: "show") }
   let!(:booked_listing) { create(:ticket_listing, organization: org, show: booked_show).tap { |l| l.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 40) } }
 
-  before { profile.update!(enabled: true, contract_comps_per_show: 3, contract_comp_requests: true) }
+  before { profile.update!(enabled: true, contract_comps_own: true, contract_comps: true, contract_comps_per_show: 3, contract_comp_requests: true) }
 
   def sign_in(user)
     post handle_signin_path, params: { email_address: user.email_address, password: password }
@@ -39,20 +39,20 @@ RSpec.describe "Comp requests", type: :request do
 
   def text = Nokogiri::HTML(response.body).at_css("body").text.gsub(/\s+/, " ")
 
-  it "saves who may request more comps at the box office, in three boxes" do
+  it "saves who may request more comps at the box office" do
     sign_in(owner)
     post set_organization_path(id: org.id)
     get manage_ticketing_settings_section_path(section: "comps")
     expect(response).to have_http_status(:ok)
     doc = Nokogiri::HTML(response.body)
-    expect(doc.css("[data-settings-card]").map { |card| card["data-settings-card"] }).to eq(%w[comps team-comps contract-comps])
-    expect(text).to include("Your own productions", "Productions on a contract", "Allow production team managers to issue comps",
-                            "Allow production team managers to request more comps when they run out", "Allow contractors to issue comps",
-                            "Allow contractors to request more comps when they run out")
+    expect(doc.css("[data-settings-card]").map { |card| card["data-settings-card"] }).to eq(%w[comps house-limit team-comps])
+    expect(text).to include("Productions", "What can productions on a contract issue?", "Let productions issue their own comps",
+                            "Let productions request more when they run out",
+                            "Let productions on a contract request more when they run out")
     expect(response.body).not_to match(/\bask(ed|s)?\b/i)
 
     patch manage_ticketing_settings_comps_path, params: { ticketing_profile: { comps_enabled: "1", comps_limit: "unlimited", team_comps: "1", team_comps_limit: "all",
-                                                                                contract_comps: "1", contract_comps_per_show: "3", team_comp_requests: "1", contract_comp_requests: "0" } }
+                                                                                contract_comps_own: "1", contract_comps: "1", contract_comps_per_show: "3", team_comp_requests: "1", contract_comp_requests: "0" } }
     expect(profile.reload.team_comp_requests).to be(true)
     expect(profile.contract_comp_requests).to be(false)
   end

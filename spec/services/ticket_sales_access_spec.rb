@@ -144,7 +144,7 @@ RSpec.describe TicketSalesAccess do
     let(:manager) { team_member("manager") }
 
     it "is for a production team manager at Everything only, while comps are on and the team may issue some" do
-      expect(described_class.comp_allowance(manager, listing)).to eq(date_left: nil, team_limit: nil, team_given: 0, left: nil, side: :team, base: nil, extra: 0)
+      expect(described_class.comp_allowance(manager, listing)).to eq(date_left: nil, team_limit: nil, team_given: 0, left: nil, side: :team, base: nil, extra: 0, contract: false, per_day: false)
       expect(described_class.can_comp?(manager, listing)).to be(true)
       expect(described_class.comp_allowance(team_member("viewer"), listing)).to be_nil
       expect(described_class.comp_allowance(performer, listing)).to be_nil
@@ -166,37 +166,57 @@ RSpec.describe TicketSalesAccess do
 
     it "counts the team's comps against a set number, within what the date has left" do
       profile.update!(team_comps_limit: "fixed", team_comps_per_show: 2)
-      expect(described_class.comp_allowance(manager, listing)).to eq(date_left: nil, team_limit: 2, team_given: 0, left: 2, side: :team, base: 2, extra: 0)
+      expect(described_class.comp_allowance(manager, listing)).to eq(date_left: nil, team_limit: 2, team_given: 0, left: 2, side: :team, base: 2, extra: 0, contract: false, per_day: false)
 
       TicketComps.give!(listing, [ guest(1) ], by: manager, email_them: false)
       expect(described_class.comp_allowance(manager, listing)[:left]).to eq(1)
 
       # A manager's own comp isn't the team's.
       TicketComps.give!(listing, [ guest(1) ], by: owner, email_them: false)
-      expect(described_class.comp_allowance(manager, listing)).to eq(date_left: nil, team_limit: 2, team_given: 1, left: 1, side: :team, base: 2, extra: 0)
+      expect(described_class.comp_allowance(manager, listing)).to eq(date_left: nil, team_limit: 2, team_given: 1, left: 1, side: :team, base: 2, extra: 0, contract: false, per_day: false)
 
       # The date's own limit caps it: 3 in all, 2 given, 1 left for anyone.
       profile.update!(comps_limit: "fixed", comps_per_show: 3)
-      expect(described_class.comp_allowance(manager, fresh_listing)).to eq(date_left: 1, team_limit: 2, team_given: 1, left: 1, side: :team, base: 2, extra: 0)
+      expect(described_class.comp_allowance(manager, fresh_listing)).to eq(date_left: 1, team_limit: 2, team_given: 1, left: 1, side: :team, base: 2, extra: 0, contract: false, per_day: false)
 
       TicketComps.give!(fresh_listing, [ guest(1) ], by: manager, email_them: false)
-      expect(described_class.comp_allowance(manager, fresh_listing)).to eq(date_left: 0, team_limit: 2, team_given: 2, left: 0, side: :team, base: 2, extra: 0)
+      expect(described_class.comp_allowance(manager, fresh_listing)).to eq(date_left: 0, team_limit: 2, team_given: 2, left: 0, side: :team, base: 2, extra: 0, contract: false, per_day: false)
       expect(described_class.can_comp?(manager, fresh_listing)).to be(false)
     end
 
     it "has no one-per-performer rule any more, and follows a production's or a date's own rules" do
       expect(TicketingProfile::COMPS_LIMITS).to eq(%w[unlimited fixed])
-      expect(TicketingProfile::TEAM_COMPS_LIMITS).to eq(%w[all fixed])
+      expect(CompRules::SIDE_LIMITS).to eq(%w[all fixed day])
       profile.team_comps_limit = "per_performer"
       expect(profile).not_to be_valid
 
       setup = ProductionTicketing.for(production)
-      setup.update!(own_comps: true, comps_enabled: true, comps_limit: "unlimited", team_comps: true, team_comps_limit: "fixed", team_comps_per_show: 5)
+      setup.update!(own_comps: true, comps_enabled: true, team_comps: true, team_comps_limit: "fixed", team_comps_per_show: 5)
       expect(fresh_listing.comp_rules_source).to eq(:production)
-      expect(described_class.comp_allowance(manager, fresh_listing)).to eq(date_left: nil, team_limit: 5, team_given: 0, left: 5, side: :team, base: 5, extra: 0)
+      expect(described_class.comp_allowance(manager, fresh_listing)).to eq(date_left: nil, team_limit: 5, team_given: 0, left: 5, side: :team, base: 5, extra: 0, contract: false, per_day: false)
 
       fresh_listing.update!(own_comps: true, comps_enabled: false)
       expect(described_class.comp_allowance(manager, fresh_listing)).to be_nil
+    end
+  end
+
+  describe "limits per day" do
+    let(:manager) { team_member("manager") }
+    let!(:matinee) { create(:show, production: production, date_and_time: show.date_and_time.change(hour: 14)) }
+    let!(:matinee_listing) { create(:ticket_listing, organization: org, show: matinee).tap { |l| l.ticket_tiers.create!(name: "General", price_cents: 2_000, quantity: 50) } }
+
+    it "counts a production's number across all its shows on one day" do
+      profile.update!(team_comps_limit: "day", team_comps_per_show: 2)
+      TicketComps.give!(matinee_listing, [ TicketComps::Guest.new(name: "Matinee Guest", email: nil, tier: matinee_listing.ticket_tiers.first, quantity: 1) ], by: manager, email_them: false)
+      expect(described_class.comp_allowance(manager, fresh_listing)).to include(team_limit: 2, team_given: 1, left: 1, per_day: true)
+    end
+
+    it "counts a per-day house limit across every show the organization has that day" do
+      profile.update!(comps_limit: "fixed", comps_per_show: 3, house_comps_period: "day")
+      TicketComps.give!(matinee_listing, [ TicketComps::Guest.new(name: "Matinee Guests", email: nil, tier: matinee_listing.ticket_tiers.first, quantity: 2) ], by: owner, email_them: false)
+      expect(fresh_listing.comps_left).to eq(1)
+      profile.update!(house_comps_period: "show")
+      expect(fresh_listing.comps_left).to eq(3)
     end
   end
 
@@ -207,7 +227,9 @@ RSpec.describe TicketSalesAccess do
       expect { TicketComps.give!(listing, [ guest(1) ], by: owner, email_them: false) }.to raise_error(TicketComps::Error, "Comps are off for this show.")
       expect { TicketDoor.new(listing, owner).sell({ general.id.to_s => 1 }, kind: "comp") }.to raise_error(TicketCheckout::Error, "Comps are off for this show.")
 
-      listing.update!(comps_enabled: true, comps_limit: "fixed", comps_per_show: 1)
+      listing.update!(comps_enabled: true)
+      profile.update!(comps_limit: "fixed", comps_per_show: 1)
+      listing.reload
       expect(listing.comps_left).to eq(1)
       expect { TicketComps.give!(listing, [ guest(2) ], by: owner, email_them: false) }.to raise_error(TicketComps::Error, "This date has 1 comp left to issue.")
       TicketComps.give!(listing, [ guest(1) ], by: owner, email_them: false)

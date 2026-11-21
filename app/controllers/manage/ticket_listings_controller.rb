@@ -345,7 +345,7 @@ module Manage
       own = raw[:own_comps] == "1"
       @listing.update!(CompRules.attributes_from(raw, own: own).merge(own_comps: own))
       CompRequest.close_turned_off!(@listing.organization)
-      notice = own ? "Saved. This date has its own comp rules: #{@listing.comp_rules_words}." : "Saved. This date follows #{@listing.comp_rules_source == :production ? "#{helpers.possessive(@listing.production.name)} comp rules" : "your box office's comp rules"}."
+      notice = own ? "Saved. This date has its own comp rules. #{@listing.comp_rules_words(contracted: helpers.comp_contracted?(@listing.production, listing: @listing), names: helpers.comp_side_names(@listing.production, listing: @listing), on_date: true)}" : "Saved. This date follows #{@listing.comp_rules_source == :production ? "#{helpers.possessive(@listing.production.name)} comp rules" : "your box office's comp rules"}."
       redirect_to settings_path("comps"), notice: notice
     end
 

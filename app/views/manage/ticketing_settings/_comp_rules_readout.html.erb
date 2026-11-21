@@ -1,0 +1,67 @@
+<%# The comp rules a production or a date follows while its override is off
+    (Tim, 2026-11-21: "a more artful way to display the inherited settings
+    ... not just sentence form"). The same questions as the form, in the
+    same order, each with its answer on the right, so turning the override
+    on shows the same rows as questions. A row that only follows from a yes
+    (a side's questions, request more) is left out after a no, as in the
+    form.
+
+    Locals: rules (the level followed), contracted, names ({ team:, contract: }),
+    place ("Stargazers Adventure Club" or "this date"), house_limited. %>
+<%
+  yes_icon = capture do %>
+    <svg class="w-4 h-4 text-green-600 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd"/></svg>
+  <% end
+  no_icon = capture do %>
+    <svg class="w-4 h-4 text-gray-400 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/></svg>
+  <% end
+
+  how_many = lambda do |rule|
+    case rule.limit
+    when "fixed" then "#{pluralize(rule.count, 'comp')} per show"
+    when "day" then "#{pluralize(rule.count, 'comp')} per day"
+    else "No limit"
+    end
+  end
+  side_rows = lambda do |who, rule, indent|
+    list = [ [ "Let #{who} issue their own comps", rule.issues ? how_many.call(rule) : "Not allowed", rule.issues, indent ] ]
+    if rule.issues && (rule.limited? || house_limited)
+      list << [ "Let #{who} request more when they run out", rule.requests ? "Allowed" : "Not allowed", rule.requests, indent ]
+    end
+    list
+  end
+
+  rows = []
+  allowed = rules.comps_enabled != false
+  rows << [ "Allow comps on #{place}", allowed ? "Allowed" : "Not allowed", allowed, false ]
+  production = rules.comp_side(:team)
+  if allowed
+    rows.concat(side_rows.call(names[:team], production, false))
+    # The contractor's one question sits under the production's, as in the form.
+    if contracted && production.issues
+      contractor = names[:contract].to_s
+      choice = if rules.contract_comps_own != true then [ "The same as above", true ]
+      elsif rules.contract_comps == true then [ "A limit of their own", true ]
+      else [ "None", false ]
+      end
+      rows << [ "What can #{contractor} issue?", choice.first, choice.last, true ]
+      if rules.contract_comps_own == true && rules.contract_comps == true
+        rule = rules.comp_side(:contract)
+        rows << [ "How many #{contractor} can issue", how_many.call(rule), true, true ]
+        if rule.limited? || house_limited
+          rows << [ "Let #{contractor} request more when they run out", rule.requests ? "Allowed" : "Not allowed", rule.requests, true ]
+        end
+      end
+    end
+  end
+%>
+<dl class="divide-y divide-gray-100" data-comp-readout>
+  <% rows.each do |label, value, on, indent| %>
+    <div class="<%= indent ? 'pl-12 pr-6' : 'px-6' %> py-3 flex items-center justify-between gap-6" data-comp-readout-row>
+      <dt class="text-sm text-gray-700"><%= label %></dt>
+      <dd class="flex items-center gap-1.5 text-sm font-medium whitespace-nowrap <%= on ? 'text-gray-900' : 'text-gray-500' %>">
+        <%= on ? yes_icon : no_icon %><%= value %>
+      </dd>
+    </div>
+  <% end %>
+</dl>

@@ -19,7 +19,8 @@
   extra = allowance[:extra].to_i
   waiting = comp_request&.waiting?
   can_request = left && listing.comp_requests_allowed?(side) && !waiting
-  total_words = if extra.positive? then "Includes #{extra} approved on request"
+  total_words = if allowance[:per_day] && allowance[:team_limit] then "Shared by every #{listing.production.name} show on this day"
+                elsif extra.positive? then "Includes #{extra} approved on request"
                 elsif side == :contract then "Shared by everyone on the contract"
                 else "For your production team"
                 end
@@ -44,7 +45,7 @@
   <div class="px-4 sm:px-5 py-4 space-y-4">
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <div class="<%= tile %>">
-        <div class="text-xs text-gray-500">For this date</div>
+        <div class="text-xs text-gray-500"><%= allowance[:per_day] && total ? "For this day" : "For this date" %></div>
         <div class="text-xl font-bold tabular-nums text-gray-900 mt-0.5"><%= total || "No limit" %></div>
         <div class="text-xs text-gray-500 mt-0.5"><%= total ? total_words : "Up to the seats left" %></div>
       </div>

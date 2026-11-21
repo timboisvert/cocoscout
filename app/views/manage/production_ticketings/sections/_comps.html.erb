@@ -1,15 +1,17 @@
-<%# This production's own comp rules, or (switch off) the box office's; its
-    dates follow it (CompRules). The one override control
+<%# This production's own comp rules, or (override off) the box office's;
+    its dates follow it (CompRules). The one override control
     (manage/ticketing/own_switch). Locals: setup, production. %>
 <%
   own = setup.own_comps
   profile = ticketing_profile
   rules = own ? setup : profile
-  example = own ? "#{comp_rules_sentence(setup, subject: "a #{production.name} date")} A single date can still have its own rules." : nil
+  contracted = comp_contracted?(production)
+  names = comp_side_names(production)
 %>
 <%= form_with url: manage_update_production_ticketing_path(production, section: "comps"), method: :patch do %>
-  <%= render "manage/ticketing_settings/comp_rules_fields", scope: "production_ticketing", rules: rules, save: true, own: own, sides: comp_sides(production),
+  <%= render "manage/ticketing_settings/comp_rules_fields", scope: "production_ticketing", rules: rules, level: :production, save: true,
+        own: own, contracted: contracted, names: names, place: production.name, above: "your box office's", followed: profile,
+        house_limited: profile.comps_limit == "fixed", override_id: "production_ticketing_own_comps",
         override: render("manage/ticketing/own_switch", title: "Comps for #{production.name}", what: "comps settings", follows: "your box office", settings_path: manage_ticketing_settings_section_path(section: "comps"),
-                         only: production.name, name: "production_ticketing[own_comps]", id: "production_ticketing_own_comps", checked: own),
-        heading: "Issuing comps", off_words: "Turn them off and nobody issues comps on #{production.name}.", example: example %>
+                         only: production.name, name: "production_ticketing[own_comps]", id: "production_ticketing_own_comps", checked: own) %>
 <% end %>

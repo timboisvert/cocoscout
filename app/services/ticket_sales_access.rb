@@ -80,50 +80,50 @@ class TicketSalesAccess
     team_level(user, production)
   end
 
-  # A production team manager's comps on one date, when Who sees sales gives
-  # them everything and the comp rules let the team give some:
-  #   date_left   what the date can still give away, whoever gives it (nil: no limit)
-  #   team_limit  the team's share of a date's comps (nil: all of them)
-  #   team_given  comps the production team has already given
-  #   left        what this manager can still give (nil: no limit)
-  # nil for everyone else, when comps are off, and once the date has started
-  # (Tim, 2026-10-17: no comps for a show that's already happened).
-  # The people on a contract that includes the date have a rule of their
-  # own (CompRules#contract_comps_per_show; Tim, 2026-11-17): none, or a
-  # number for the date shared between all of them: the contractor, the
-  # people added to the contract and, when the contract is connected to the
-  # contractor's own organization, that organization's owners and managers
-  # (LinkedTicketSales). For them team_limit is that number and team_given
-  # what their side has given; the production team's share doesn't apply.
+  # A side's comps on one date (CompRules), for a production team manager
+  # whom Who sees sales gives everything (:team), or the contract's side
+  # (:contract): the contractor, the people added to the contract and, when
+  # the contract is connected to the contractor's own organization, that
+  # organization's owners and managers (LinkedTicketSales).
+  #   date_left   what the house limit still allows (nil: no house limit)
+  #   team_limit  the side's own number, with any approved on request (nil: no limit)
+  #   team_given  comps the side has issued, on this date or, per day, on
+  #               all the production's shows that day
+  #   left        what they can still issue (nil: no limit)
+  #   per_day     the side's number counts the whole day
+  # nil for everyone else, when comps aren't allowed or the side doesn't
+  # issue them, and once the date has started (Tim, 2026-10-17).
   def self.comp_allowance(user, listing)
     return nil unless user && listing && open_for?(listing)
     return nil if listing.show.date_and_time <= Time.current
     return nil if listing.organization.manageable_by?(user)
     return nil unless listing.effective_comps_enabled
 
-    if on_contract_for?(user, listing) || LinkedTicketSales.manages_for?(user, listing)
-      base = listing.effective_contract_comps
-      return nil unless base.positive?
-
-      # Comps approved on a request count on top (CompRequest).
-      extra = listing.approved_comp_extra(:contract)
-      limit = base + extra
-      date_left = listing.comps_left
-      given = contract_comps_given(listing)
-      left = [ date_left, [ limit - given, 0 ].max ].compact.min
-      return { date_left: date_left, team_limit: limit, team_given: given, left: left, contract: true, side: :contract, base: base, extra: extra }
+    side = if on_contract_for?(user, listing) || LinkedTicketSales.manages_for?(user, listing) then :contract
+    elsif team_role(user, listing.production) == "manager" && team_level(user, listing.production) == :full then :team
     end
+    return nil unless side
 
-    return nil unless team_role(user, listing.production) == "manager" && team_level(user, listing.production) == :full
-    return nil unless listing.effective_team_comps
+    rule = listing.comp_side_rules(side)
+    return nil unless rule.issues
 
     date_left = listing.comps_left
-    extra = listing.approved_comp_extra(:team)
-    base = (listing.effective_team_comps_per_show if listing.effective_team_comps_limit == "fixed")
-    team_limit = base && (base + extra)
-    team_given = team_comps_given(listing)
-    left = [ date_left, (team_limit && [ team_limit - team_given, 0 ].max) ].compact.min
-    { date_left: date_left, team_limit: team_limit, team_given: team_given, left: left, side: :team, base: base, extra: extra }
+    extra = listing.approved_comp_extra(side)
+    base = (rule.count if rule.limited?)
+    limit = base && (base + extra)
+    given = if rule.per_day?
+      ids = listing.same_day_listing_ids(production: true)
+      TicketListing.where(id: ids).includes(:show, :organization).sum { |each| side_comps_given(each, side) }
+    else
+      side_comps_given(listing, side)
+    end
+    left = [ date_left, (limit && [ limit - given, 0 ].max) ].compact.min
+    { date_left: date_left, team_limit: limit, team_given: given, left: left, side: side, contract: side == :contract,
+      base: base, extra: extra, per_day: rule.per_day? }
+  end
+
+  def self.side_comps_given(listing, side)
+    side == :contract ? contract_comps_given(listing) : team_comps_given(listing)
   end
 
   # Which comps someone issues from on this date: :contract (the people on

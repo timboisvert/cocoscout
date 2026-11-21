@@ -90,28 +90,13 @@ module TicketingHelper
     counts.map { |n| [ "When #{n} or fewer are left#{' (the usual)' if n == TicketListing::LOW_STOCK_DEFAULT}", n ] } + [ [ "Never", 0 ] ]
   end
 
-  # The comp rules as one sentence, the way the Comps tabs read them back
-  # (CompRules): "With these rules, a date can give away as many comps as it
-  # has seats, its production team managers may issue any of them, and people
-  # on a contract give none of them."
-  # subject: "a date", "a Stargazers date", "this date".
-  def comp_rules_sentence(rules, subject: "a date", single: false)
-    return "With these rules, nobody issues comps#{single ? ' on this date' : ''}." if rules.comps_enabled == false
-
-    per_date = case rules.comps_limit.presence || "unlimited"
-    when "fixed" then "#{subject} can issue #{pluralize(rules.comps_per_show || 10, 'comp')}"
-    else "#{subject} can issue as many comps as it has seats"
-    end
-    team = if rules.team_comps == false
-      "its production team managers issue none of them"
-    else
-      case rules.team_comps_limit.presence || "all"
-      when "fixed" then "its production team managers may issue #{rules.team_comps_per_show || 2} of them"
-      else "its production team managers may issue any of them"
-      end
-    end
-    contract = rules.contract_comps_per_show.to_i.positive? ? "people on a contract may issue #{rules.contract_comps_per_show} of them" : "people on a contract issue none of them"
-    "With these rules, #{per_date}, #{team}, and #{contract}."
+  # Who each side is on a production's or a date's Comps settings (Tim,
+  # 2026-11-21: by then we know): the production by name, and the contractor
+  # by name when there's one.
+  def comp_side_names(production, listing: nil)
+    contracts = listing ? TicketSalesAccess.contracts_for(listing) : TicketSalesAccess.contracts_for_production(production)
+    names = contracts.map { |contract| contract.contractor_name.to_s.strip }.reject(&:blank?).uniq
+    { team: production.name, contract: names.one? ? names.first : "the contractor" }
   end
 
   # "Issue comps · 2 of 4 left", or "Give comps" with no limit.
@@ -119,18 +104,13 @@ module TicketingHelper
     allowance[:left] ? "Issue comps · #{allowance[:left]} of #{allowance[:team_limit] || allowance[:date_left]} left" : "Issue comps"
   end
 
-  # Which sides' comp rules a production's or a date's own Comps settings
-  # show (Tim, 2026-11-20): by then it is known whether it is on a contract.
-  # A contracted one shows the contractor's; an in-house one the production
-  # team's; a contracted one with production team managers of its own (an
-  # in-house co-producer) shows both. The box office shows both always.
-  def comp_sides(production, listing: nil)
-    contracted = if listing then TicketSalesAccess.contracts_for(listing).any?
+  # Whether a production's or a date's Comps settings ask about a contract
+  # (Tim, 2026-11-21): only when it is on one, under the production's own
+  # questions. The box office always asks.
+  def comp_contracted?(production, listing: nil)
+    if listing then TicketSalesAccess.contracts_for(listing).any?
     else production.third_party? || production.contracts.where.not(status: %w[draft cancelled]).exists?
     end
-    return [ :team ] unless contracted
-
-    production.production_permissions.where(role: "manager").exists? ? %i[contract team] : [ :contract ]
   end
 
   # Where a date's comp rules come from (CompRules), for "comps are off on …".

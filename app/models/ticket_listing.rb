@@ -206,9 +206,10 @@ class TicketListing < ApplicationRecord
 
   # --- Comps -----------------------------------------------------------------
   #
-  # The comp rules this date follows: its own (own_comps on), else its
-  # production's own, else the box office's (TicketingProfile). Each
-  # effective_* reads the whole rule from that one place, never a mix.
+  # The comp rules this date follows (CompRules): its own (own_comps on),
+  # else its production's own, else the box office's (TicketingProfile).
+  # Each side's rule comes whole from that one place. The house limit is
+  # always the box office's.
   include CompRules
   include HasPageColors
 
@@ -223,44 +224,29 @@ class TicketListing < ApplicationRecord
     case comp_rules_source
     when :listing then self
     when :production then production_ticketing
-    else profile || TicketingProfile.new
+    else house_comp_rules
     end
+  end
+
+  def house_comp_rules
+    profile || TicketingProfile.new
   end
 
   def effective_comps_enabled
     comp_rules.comps_enabled != false
   end
 
-  def effective_comps_limit
-    comp_rules.comps_limit.presence || "unlimited"
+  # One side's rule for this date (CompRules::Side): :team or :contract.
+  def comp_side_rules(side)
+    comp_rules.comp_side(side)
   end
 
-  def effective_comps_per_show
-    comp_rules.comps_per_show || 10
-  end
-
-  def effective_team_comps
-    comp_rules.team_comps != false
-  end
-
-  def effective_team_comps_limit
-    comp_rules.team_comps_limit.presence || "all"
-  end
-
-  def effective_team_comps_per_show
-    comp_rules.team_comps_per_show || 2
-  end
-
-  # How many comps the people on a contract may issue for this date, between
-  # all of them: 0 is none.
-  def effective_contract_comps
-    comp_rules.contract_comps_per_show.to_i
-  end
-
-  # Whether a side may request more comps for this date (CompRequest):
-  # :team (production team managers) or :contract (the contract's side).
+  # Whether a side may request more comps for this date (CompRequest): only
+  # a side that issues comps and has a number to run out of, its own or the
+  # house limit's.
   def comp_requests_allowed?(side)
-    (side.to_s == "contract" ? comp_rules.contract_comp_requests : comp_rules.team_comp_requests) == true
+    rule = comp_side_rules(side)
+    effective_comps_enabled && rule.issues && rule.requests && (rule.limited? || house_comps_limited?)
   end
 
   # The comps approved on top of the rules for this date (Tim, 2026-11-20:
@@ -272,12 +258,42 @@ class TicketListing < ApplicationRecord
     scope.sum(:approved_quantity)
   end
 
-  # How many comps this date can still give away, whoever gives them: nil
-  # when there's no limit.
-  def comps_left
-    return nil unless effective_comps_limit == "fixed"
+  def house_comps_limited?
+    house_comp_rules.comps_limit == "fixed"
+  end
 
-    [ effective_comps_per_show + approved_comp_extra - Ticketing::ListingStats.of(self).comps, 0 ].max
+  # How many comps can still be issued under the house limit, whoever
+  # issues them: nil when there's no house limit. Per show counts this
+  # date; per day counts every show the organization has that day.
+  def comps_left
+    return nil unless house_comps_limited?
+
+    house = house_comp_rules
+    if house.house_comps_period == "day"
+      ids = same_day_listing_ids
+      extra = CompRequest.approved.where(ticket_listing_id: ids).sum(:approved_quantity)
+      [ house.comps_per_show + extra - TicketListing.comps_held(ids), 0 ].max
+    else
+      [ house.comps_per_show + approved_comp_extra - Ticketing::ListingStats.of(self).comps, 0 ].max
+    end
+  end
+
+  # The dates on the same day as this one (the organization's time zone):
+  # every one the organization has, or production: true, just this
+  # production's.
+  def same_day_listing_ids(production: false)
+    zone = organization.time_zone.presence || Time.zone.name
+    day = show.date_and_time.in_time_zone(zone)
+    scope = TicketListing.where(organization_id: organization_id).joins(:show)
+                         .where(shows: { date_and_time: day.beginning_of_day..day.end_of_day })
+    scope = scope.where(production_id: production_id) if production
+    scope.pluck(:id)
+  end
+
+  # Comp tickets held on these dates, whoever issued them.
+  def self.comps_held(ids)
+    Ticket.joins(:ticket_order).where(ticket_listing_id: ids, status: Ticket::SOLD_STATUSES)
+          .where(ticket_orders: { channel: "comp", status: TicketOrder::WAS_PAID }).count
   end
 
   # "Only 3 left" when a count is at or under the threshold, else nil.

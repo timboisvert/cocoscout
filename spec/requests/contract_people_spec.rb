@@ -120,7 +120,7 @@ RSpec.describe "Contract people", type: :request do
 
   it "issues comps from a pasted list on the date's Tickets page, the whole list or none" do
     listing = open_box_office
-    TicketingProfile.for(org).update!(contract_comps_per_show: 3)
+    TicketingProfile.for(org).update!(contract_comps_own: true, contract_comps: true, contract_comps_per_show: 3)
     general = listing.ticket_tiers.first
     sign_in(priya)
     get my_show_tickets_path(listing.show)
@@ -157,7 +157,7 @@ RSpec.describe "Contract people", type: :request do
       .not_to(change { Ticket.where(ticket_listing_id: listing.id).count })
 
     # The box office allows three per date, between everyone on the contract.
-    TicketingProfile.for(org).update!(contract_comps_per_show: 3)
+    TicketingProfile.for(org).update!(contract_comps_own: true, contract_comps: true, contract_comps_per_show: 3)
     get my_show_tickets_path(listing.show)
     expect(response.body).to include(my_show_ticket_comps_path(listing.show))
     expect(Nokogiri::HTML(response.body).at_css("[data-comps-box]")&.text.to_s.squish).to match(/Issue comps.*For this date\s*3\s*Shared by everyone on the contract.*Issued\s*0.*Left to issue\s*3/)
@@ -193,7 +193,7 @@ RSpec.describe "Contract people", type: :request do
   # Tim, 2026-11-17: the side that issued a comp can change the guest's name or take it back; it doesn't matter who on it did.
   it "lets them edit and remove a comp the contract's side issued, never the organization's own or a sale" do
     listing = open_box_office
-    TicketingProfile.for(org).update!(contract_comps_per_show: 3)
+    TicketingProfile.for(org).update!(contract_comps_own: true, contract_comps: true, contract_comps_per_show: 3)
     tier = listing.ticket_tiers.first
     sign_in(priya)
     post my_show_ticket_comps_path(listing.show), params: { name: "Abe Comp", quantity: "2", tier_id: tier.id }
@@ -275,7 +275,7 @@ RSpec.describe "Contract people", type: :request do
 
   it "keeps a comp whose guest has already checked in" do
     listing = open_box_office
-    TicketingProfile.for(org).update!(contract_comps_per_show: 3)
+    TicketingProfile.for(org).update!(contract_comps_own: true, contract_comps: true, contract_comps_per_show: 3)
     sign_in(priya)
     post my_show_ticket_comps_path(listing.show), params: { name: "Early Bird", quantity: "1", tier_id: listing.ticket_tiers.first.id }
     comp = listing.ticket_orders.find_by!(buyer_name: "Early Bird")

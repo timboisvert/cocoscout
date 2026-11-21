@@ -1,253 +1,256 @@
-<%# The comp rules (CompRules) at every level: the box office (Ticketing
-    settings → Comps), a production's own and a date's own.
+<%# The comp rules (CompRules) at every level, as defaults by level (Tim,
+    2026-11-21).
 
-    At the box office, three boxes in one form, each with its own Save (Tim,
-    2026-11-20): Comps (on at all, and how many a date can issue), Your own
-    productions (production team managers: whether they issue comps, how
-    many, and whether they may request more) and Productions on a contract
-    (the same for contractors).
+    The box office (level: :house), three boxes in one form, each with its
+    own Save: Comps (allowed at all), House limit (none, or a number per show
+    or per day; only the box office sets it) and Productions (may they
+    issue comps themselves, how limited, may they request more) with, inside
+    it, what productions on a contract can issue.
 
-    On a production or a date (sides: given), one box: by then it is known
-    whether it is on a contract (TicketingHelper#comp_sides), so it shows only
-    the side that applies, the contractor's or the production team's, or both
-    for a contracted production that has production team managers of its own
-    (Tim, 2026-11-20). The side it leaves out keeps its values, in hidden
-    fields, so saving never changes it.
+    Productions on a contract are a subset of productions, not peers (Tim,
+    2026-11-21), at every level: their questions sit inside the
+    production's, in a box of their own, and show only once productions may
+    issue comps themselves. Then: a limit of their own, or the settings
+    above apply to them too.
+
+    A production (level: :production) or a date (level: :date), one box: the
+    override, then "Allow comps on ...", then the production's questions by
+    name and, when it is on a contract, the contractor's inside them. A
+    date's number is for that date, so it has no per show or per day. With
+    the override off, the answers it follows are read out instead
+    (comp_rules_readout).
+
+    Every question that depends on another shows only once that one is yes
+    (show-when). The contract's fields on a production that isn't on one
+    keep their values, in hidden fields, so saving never changes them.
 
     Locals: scope (the param prefix: ticketing_profile, production_ticketing
-    or ticket_listing), rules (anything with the fields; nil means the
-    default), off_words (what "off" means here), intro_tail (optional, one
-    more sentence for the intro), example (optional, the closing sentence),
-    heading (optional, default "Comps"), override (optional: the own_switch
-    html, at the top of the first box), own (with override: whether the
-    fields are on), save (true: a Save at the foot of each box), sides
-    (optional: :team and/or :contract, for one box with just those). %>
+    or ticket_listing), rules (what the fields start from), level, save.
+    Production and date only: contracted (it is on a contract), names
+    ({ team:, contract: }), place ("Stargazers Adventure Club" or "this
+    date"), override (the own_switch html), own, override_id (its switch's
+    DOM id), followed (the level it follows, read out while the override is
+    off: comp_rules_readout),
+    above (whose settings the override is over: "your box office's"),
+    house_limited (the box office has a house limit). %>
 <%
   input_class = "block w-20 px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
   radio_class = "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500 flex-shrink-0"
   card_class = "flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50"
-  enabled = rules.comps_enabled != false
-  comps_limit = rules.comps_limit.presence || "unlimited"
-  comps_per_show = rules.comps_per_show || 10
-  team_comps = rules.team_comps != false
-  team_comps_limit = rules.team_comps_limit.presence || "all"
-  team_comps_per_show = rules.team_comps_per_show || 2
-  per_date_choices = [
-    [ "unlimited", "No limit", "As many as there are seats." ],
-    [ "fixed", "A set number", "The same on every date." ]
-  ]
-  team_choices = [
-    [ "all", "All of them", "Up to the date's comps, whatever is left." ],
-    [ "fixed", "A set number", "Their own allowance on every date." ]
-  ]
-  contract_comps = rules.contract_comps_per_show.to_i.positive?
-  contract_comps_per_show = contract_comps ? rules.contract_comps_per_show : CompRules::CONTRACT_COMPS_SUGGESTED
-  override = local_assigns[:override]
-  sides = local_assigns[:sides]&.map(&:to_sym)
-  single = sides.present?
-  # The box office speaks of every contract; a production of its contractor.
-  contractors = single ? "the contractor" : "contractors"
-  # With an override, the settings sit in fieldsets that are disabled while
-  # the override is off (fieldset-toggle on the wrapper).
-  fieldset_open = override ? %(<fieldset #{'disabled' unless local_assigns[:own]} data-fieldset-toggle-target="fields" class="disabled:opacity-50 min-w-0">).html_safe : "".html_safe
-  fieldset_close = override ? "</fieldset>".html_safe : "".html_safe
+  row_class = "flex items-start justify-between gap-6"
+  house = level.to_sym == :house
+  on_date = level.to_sym == :date
+  contracted = house || local_assigns[:contracted]
+  names = local_assigns[:names] || {}
+  enabled_id = "#{scope}_comps_enabled"
+  house_id = "#{scope}_comps_limit"
   foot = capture do %>
     <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
       <%= render "shared/button", text: "Save", variant: "primary", size: "small", type: :submit %>
     </div>
   <% end
-  request_words = "For one date at a time. Your owners and managers get a notification, and approve the request, approve a different number, or decline it."
 
-  comps_heading = capture do %>
-    <%= render "shared/section_heading", title: local_assigns[:heading] || "Comps",
-          intro: "Free tickets for guests, with no fees. They take seats, and every one says who issued it. #{off_words}#{" #{local_assigns[:intro_tail]}" if local_assigns[:intro_tail].present?}" do %>
-      <%= render "shared/toggle_switch", name: "#{scope}[comps_enabled]", checked: enabled, hidden_false: true,
-            id: "#{scope}_comps_enabled", aria_label: "Comps on",
-            data: { dim_toggle_target: "switch", action: "change->dim-toggle#toggle" } %>
-    <% end %>
-  <% end
-
-  comps_rows = capture do %>
-    <%# The padding sits on a wrapper: a fieldset's own top padding opens a
-        gap between its legend and the rest (Tim, 2026-11-07). %>
-    <div class="px-6 py-4">
-    <fieldset data-controller="pick-radio">
-      <legend class="text-sm font-medium text-gray-900">Comps per date</legend>
-      <p class="text-xs text-gray-600 mt-0.5 mb-3">How many a date can issue in all, whoever issues them.</p>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <% per_date_choices.each do |value, title, explanation| %>
-          <label class="<%= card_class %>">
-            <%= radio_button_tag "#{scope}[comps_limit]", value, comps_limit == value, id: "#{scope}_comps_limit_#{value}", class: radio_class %>
-            <span class="min-w-0 flex-1">
-              <span class="block text-sm font-medium text-gray-900"><%= title %></span>
-              <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
-              <% if value == "fixed" %>
-                <span class="mt-2 flex items-center gap-2">
-                  <%= number_field_tag "#{scope}[comps_per_show]", comps_per_show, id: "#{scope}_comps_per_show", min: 0, max: 10_000, step: 1,
-                        class: input_class, "aria-label": "Comps per date", data: { action: "focus->pick-radio#pick" } %>
-                  <span class="text-xs text-gray-600">per date</span>
-                </span>
-              <% end %>
-            </span>
-          </label>
-        <% end %>
-      </div>
-    </fieldset>
-    </div>
-  <% end
-
-  team_rows = capture do %>
-    <div data-controller="dim-toggle">
-      <div class="px-6 py-4 flex items-center justify-between gap-6">
-        <div>
-          <p class="text-sm font-medium text-gray-900">Allow production team managers to issue comps</p>
-          <p class="text-xs text-gray-600 mt-0.5">From their own Production Dashboard, on their own productions. Managers always can.</p>
-        </div>
-        <%= render "shared/toggle_switch", name: "#{scope}[team_comps]", checked: team_comps, hidden_false: true,
-              id: "#{scope}_team_comps", aria_label: "Allow production team managers to issue comps",
-              data: { dim_toggle_target: "switch", action: "change->dim-toggle#toggle" } %>
-      </div>
-      <div class="px-6 pb-5" data-dim-toggle-target="dimmed">
-      <fieldset data-controller="pick-radio">
-        <legend class="text-sm font-medium text-gray-900">How many of them a production team may issue</legend>
-        <p class="text-xs text-gray-600 mt-0.5 mb-3">Their part of the date's comps. Never more than the date has.</p>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <% team_choices.each do |value, title, explanation| %>
-            <label class="<%= card_class %>">
-              <%= radio_button_tag "#{scope}[team_comps_limit]", value, team_comps_limit == value, id: "#{scope}_team_comps_limit_#{value}", class: radio_class %>
-              <span class="min-w-0 flex-1">
-                <span class="block text-sm font-medium text-gray-900"><%= title %></span>
-                <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
-                <% if value == "fixed" %>
-                  <span class="mt-2 flex items-center gap-2">
-                    <%= number_field_tag "#{scope}[team_comps_per_show]", team_comps_per_show, id: "#{scope}_team_comps_per_show", min: 0, max: 10_000, step: 1,
-                          class: input_class, "aria-label": "Comps the production team may issue per date", data: { action: "focus->pick-radio#pick" } %>
-                    <span class="text-xs text-gray-600">per date</span>
-                  </span>
-                <% end %>
-              </span>
-            </label>
-          <% end %>
-        </div>
-      </fieldset>
-      <div class="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between gap-6">
-        <div>
-          <p class="text-sm font-medium text-gray-900">Allow production team managers to request more comps when they run out</p>
-          <p class="text-xs text-gray-600 mt-0.5"><%= request_words %></p>
-        </div>
-        <%= render "shared/toggle_switch", name: "#{scope}[team_comp_requests]", checked: rules.team_comp_requests == true, hidden_false: true,
-              id: "#{scope}_team_comp_requests", aria_label: "Allow production team managers to request more comps when they run out" %>
-      </div>
-      </div>
-    </div>
-  <% end
-
-  contract_rows = capture do %>
-    <div data-controller="dim-toggle">
-      <div class="px-6 py-4 flex items-center justify-between gap-6">
-        <div>
-          <p class="text-sm font-medium text-gray-900">Allow <%= contractors %> to issue comps</p>
-          <p class="text-xs text-gray-600 mt-0.5">For the dates <%= single ? "the" : "their" %> contract covers. That is the contractor, the people added to the contract and, when the contract is connected to their own organization on CocoScout, the people who run that organization.</p>
-        </div>
-        <%= render "shared/toggle_switch", name: "#{scope}[contract_comps]", checked: contract_comps, hidden_false: true,
-              id: "#{scope}_contract_comps", aria_label: "Allow #{contractors} to issue comps",
-              data: { dim_toggle_target: "switch", action: "change->dim-toggle#toggle" } %>
-      </div>
-      <div class="px-6 pb-5" data-dim-toggle-target="dimmed">
-        <label for="<%= scope %>_contract_comps_per_show" class="block text-sm font-medium text-gray-900">How many they may issue</label>
-        <p class="text-xs text-gray-600 mt-0.5 mb-3">This is one number for each date, shared between everyone on the contract. It is never more than the date has.</p>
-        <span class="flex items-center gap-2">
-          <%= number_field_tag "#{scope}[contract_comps_per_show]", contract_comps_per_show, id: "#{scope}_contract_comps_per_show", min: 1, max: 10_000, step: 1,
-                class: input_class, "aria-label": "Comps the people on a contract may issue per date" %>
-          <span class="text-xs text-gray-600">per date</span>
-        </span>
-        <div class="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between gap-6">
-          <div>
-            <p class="text-sm font-medium text-gray-900">Allow <%= contractors %> to request more comps when they run out</p>
-            <p class="text-xs text-gray-600 mt-0.5"><%= request_words %></p>
-          </div>
-          <%= render "shared/toggle_switch", name: "#{scope}[contract_comp_requests]", checked: rules.contract_comp_requests == true, hidden_false: true,
-                id: "#{scope}_contract_comp_requests", aria_label: "Allow #{contractors} to request more comps when they run out" %>
-        </div>
-      </div>
-    </div>
-  <% end
-
-  # A side left out keeps its values (CompRules.attributes_from reads every field).
-  kept = capture do
-    unless !single || sides.include?(:team)
-      concat hidden_field_tag("#{scope}[team_comps]", team_comps ? "1" : "0", id: nil)
-      concat hidden_field_tag("#{scope}[team_comps_limit]", team_comps_limit, id: nil)
-      concat hidden_field_tag("#{scope}[team_comps_per_show]", team_comps_per_show, id: nil)
-      concat hidden_field_tag("#{scope}[team_comp_requests]", rules.team_comp_requests == true ? "1" : "0", id: nil)
+  # One side's questions: may they issue comps themselves, how they're
+  # limited and how many, and may they request more. inset: inside the
+  # contract's question, where the three-way choice stands in for the switch
+  # and details_when names the card that shows the rest.
+  side_rows = lambda do |side, who:, help: nil, inset: false, details_when: nil|
+    rule = rules.stored_comp_side(side)
+    limit = on_date && rule.limit == "day" ? "fixed" : rule.limit
+    issue_id = "#{scope}_#{side}_comps"
+    radio_id = ->(value) { "#{scope}_#{side}_comps_limit_#{value}" }
+    no_limit = if house then "Up to the house limit, if there is one."
+    elsif local_assigns[:house_limited] then "Up to your house limit."
+    else "As many as there are seats."
     end
-    unless !single || sides.include?(:contract)
-      concat hidden_field_tag("#{scope}[contract_comps]", contract_comps ? "1" : "0", id: nil)
-      concat hidden_field_tag("#{scope}[contract_comps_per_show]", contract_comps_per_show, id: nil)
-      concat hidden_field_tag("#{scope}[contract_comp_requests]", rules.contract_comp_requests == true ? "1" : "0", id: nil)
+    choices = if on_date
+      [ [ "all", "No limit", no_limit ], [ "fixed", "A set number", "For this date." ] ]
+    else
+      [ [ "all", "No limit", no_limit ],
+        [ "fixed", "Per show", "A number for each date." ],
+        [ "day", "Per day", "All of their shows on one day." ] ]
+    end
+    numbered = choices.map(&:first).reject { |value| value == "all" }.map { |value| radio_id.call(value) }
+    # Request more only shows when there's a number to run out of.
+    request_any = numbered.dup
+    request_any << house_id if house
+    request_any = [] if !house && local_assigns[:house_limited]
+    capture do %>
+      <% unless inset %>
+        <div class="px-6 py-4 <%= row_class %>">
+          <div>
+            <p class="text-sm font-medium text-gray-900">Let <%= who %> issue their own comps</p>
+            <p class="text-xs text-gray-600 mt-0.5"><%= help %></p>
+          </div>
+          <%= render "shared/toggle_switch", name: "#{scope}[#{side}_comps]", checked: rule.issues, hidden_false: true,
+                id: issue_id, aria_label: "Let #{who} issue their own comps" %>
+        </div>
+      <% end %>
+      <div class="<%= inset ? 'pt-4' : 'px-6 pb-5' %> space-y-4" data-show-when="<%= details_when || issue_id %>" data-comp-side-details="<%= side %>">
+        <fieldset>
+          <legend class="text-sm font-medium text-gray-900"><%= on_date ? "How many can they issue on this date?" : "How many can they issue?" %></legend>
+          <div class="grid grid-cols-1 sm:grid-cols-<%= choices.size %> gap-2 mt-2">
+            <% choices.each do |value, title, explanation| %>
+              <label class="<%= card_class %>">
+                <%= radio_button_tag "#{scope}[#{side}_comps_limit]", value, limit == value, id: radio_id.call(value), class: radio_class %>
+                <span class="min-w-0 flex-1">
+                  <span class="block text-sm font-medium text-gray-900"><%= title %></span>
+                  <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
+                </span>
+              </label>
+            <% end %>
+          </div>
+        </fieldset>
+        <div class="flex items-center gap-2" data-show-when-any="<%= numbered.join(' ') %>">
+          <%= number_field_tag "#{scope}[#{side}_comps_per_show]", rule.count, id: "#{scope}_#{side}_comps_per_show", min: 0, max: 10_000, step: 1,
+                class: input_class, "aria-label": "How many #{who} can issue" %>
+          <span class="text-sm text-gray-600">comps</span>
+        </div>
+        <div class="pt-4 border-t border-gray-100 <%= row_class %>" data-show-when-any="<%= request_any.join(' ') %>" data-comp-request-row="<%= side %>">
+          <div>
+            <p class="text-sm font-medium text-gray-900">Let <%= who %> request more when they run out</p>
+            <p class="text-xs text-gray-600 mt-0.5">They request more for one date at a time. Your owners and managers are notified, and can approve the request, approve a different number, or decline it.</p>
+          </div>
+          <%= render "shared/toggle_switch", name: "#{scope}[#{side}_comp_requests]", checked: rule.requests, hidden_false: true,
+                id: "#{scope}_#{side}_comp_requests", aria_label: "Let #{who} request more when they run out" %>
+        </div>
+      </div>
+    <% end
+  end
+
+  # Productions on a contract, an indented question inside the
+  # production's (Tim, 2026-11-21: one question with three answers, not two
+  # switches): the same as the production, a limit of their own, or none.
+  # The choice is saved as contract_comps_own and contract_comps
+  # (CompRules.attributes_from).
+  contract_block = lambda do |who:|
+    choice = if rules.contract_comps_own != true then "same"
+    elsif rules.contract_comps == true then "own"
+    else "none"
+    end
+    choice_id = ->(value) { "#{scope}_contract_choice_#{value}" }
+    options = [
+      [ "same", "The same as above", "The settings above apply to them too." ],
+      [ "own", "A limit of their own", "Set how many they can issue." ],
+      [ "none", "None", "They can't issue comps themselves." ]
+    ]
+    capture do %>
+      <div class="mx-6 mb-5 pl-5 border-l-2 border-gray-200" data-show-when="<%= scope %>_team_comps" data-comp-contract-block>
+        <fieldset>
+          <legend class="text-sm font-medium text-gray-900">What can <%= who %> issue?</legend>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+            <% options.each do |value, title, explanation| %>
+              <label class="<%= card_class %>">
+                <%= radio_button_tag "#{scope}[contract_choice]", value, choice == value, id: choice_id.call(value), class: radio_class %>
+                <span class="min-w-0 flex-1">
+                  <span class="block text-sm font-medium text-gray-900"><%= title %></span>
+                  <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
+                </span>
+              </label>
+            <% end %>
+          </div>
+          <p class="text-xs text-gray-600 mt-2">The contractor's side is the contractor, the people added to the contract and, when the contract is connected to their own organization on CocoScout, the people who run that organization.</p>
+        </fieldset>
+        <%= side_rows.call(:contract, who: who, inset: true, details_when: choice_id.call("own")) %>
+      </div>
+    <% end
+  end
+
+  # A production that isn't on a contract keeps the contract's values.
+  kept = capture do
+    unless contracted
+      rule = rules.stored_comp_side(:contract)
+      concat hidden_field_tag("#{scope}[contract_comps_own]", rules.contract_comps_own == true ? "1" : "0", id: nil)
+      concat hidden_field_tag("#{scope}[contract_comps]", rule.issues ? "1" : "0", id: nil)
+      concat hidden_field_tag("#{scope}[contract_comps_limit]", rule.limit, id: nil)
+      concat hidden_field_tag("#{scope}[contract_comps_per_show]", rule.count, id: nil)
+      concat hidden_field_tag("#{scope}[contract_comp_requests]", rule.requests ? "1" : "0", id: nil)
     end
   end
-  side_names = { team: "Production team managers", contract: "The contractor" }
 %>
-<% if single %>
-<div data-controller="dim-toggle<%= ' fieldset-toggle' if override %>">
-<div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="comps" data-comp-sides="<%= sides.join(' ') %>">
-  <%= override %>
-  <%= fieldset_open %>
-  <%= kept %>
-  <%= comps_heading %>
-  <div data-dim-toggle-target="dimmed">
-    <%= comps_rows %>
-    <% sides.each do |side| %>
-      <div class="border-t border-gray-100" data-comp-side="<%= side %>">
-        <% if sides.size > 1 %>
-          <p class="px-6 pt-4 text-[11px] font-semibold uppercase tracking-wider text-gray-500"><%= side_names[side] %></p>
-        <% end %>
-        <%= side == :team ? team_rows : contract_rows %>
-      </div>
+<% if house %>
+<div class="space-y-6" data-controller="show-when">
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="comps">
+    <%= render "shared/section_heading", title: "Comps",
+          intro: "Free tickets for guests, with no fees. They take seats, and every one says who issued it. When comps are turned off, nobody can issue them. That includes your managers, the door, and every production. A production can have its own settings, and so can a single date." do %>
+      <%= render "shared/toggle_switch", name: "#{scope}[comps_enabled]", checked: rules.comps_enabled != false, hidden_false: true,
+            id: enabled_id, aria_label: "Allow comps" %>
     <% end %>
-    <% if local_assigns[:example].present? %>
-      <p class="px-6 py-3 text-sm text-gray-600 bg-gray-50 border-t border-gray-100"><%= local_assigns[:example] %></p>
-    <% end %>
+    <%= foot if local_assigns[:save] %>
   </div>
-  <%= fieldset_close %>
-  <%= foot if local_assigns[:save] %>
-</div>
+
+  <div class="space-y-6" data-show-when="<%= enabled_id %>">
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="house-limit">
+      <%= render "shared/section_heading", title: "House limit",
+            intro: "The most comps your organization issues, whoever issues them. Productions and dates can't change it." do %>
+        <%= render "shared/toggle_switch", name: "#{scope}[comps_limit]", checked: rules.comps_limit == "fixed", hidden_false: true,
+              checked_value: "fixed", id: house_id, aria_label: "Have a house limit" %>
+      <% end %>
+      <div class="px-6 py-4 space-y-4" data-show-when="<%= house_id %>">
+        <fieldset>
+          <legend class="text-sm font-medium text-gray-900">What does it count?</legend>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+            <% [ [ "show", "Per show", "Every comp on any one show." ], [ "day", "Per day", "Every comp on one day, across all of your shows." ] ].each do |value, title, explanation| %>
+              <label class="<%= card_class %>">
+                <%= radio_button_tag "#{scope}[house_comps_period]", value, (rules.house_comps_period.presence || "show") == value, id: "#{scope}_house_comps_period_#{value}", class: radio_class %>
+                <span class="min-w-0 flex-1">
+                  <span class="block text-sm font-medium text-gray-900"><%= title %></span>
+                  <span class="block text-xs text-gray-600 mt-0.5"><%= explanation %></span>
+                </span>
+              </label>
+            <% end %>
+          </div>
+        </fieldset>
+        <div class="flex items-center gap-2">
+          <%= number_field_tag "#{scope}[comps_per_show]", rules.comps_per_show || 10, id: "#{scope}_comps_per_show", min: 0, max: 10_000, step: 1,
+                class: input_class, "aria-label": "House limit" %>
+          <span class="text-sm text-gray-600">comps</span>
+        </div>
+      </div>
+      <%= foot if local_assigns[:save] %>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="team-comps">
+      <%= render "shared/section_heading", title: "Productions",
+            intro: "The standard for every production, your own and those on a contract, unless a production or a date has its own settings." %>
+      <%= side_rows.call(:team, who: "productions",
+            help: "Production team managers issue them from their Production Dashboard, and contractors from their own page for each date. Your managers can always issue comps.") %>
+      <%= contract_block.call(who: "productions on a contract") %>
+      <%= foot if local_assigns[:save] %>
+    </div>
+  </div>
 </div>
 <% else %>
-<div class="space-y-6" data-controller="dim-toggle<%= ' fieldset-toggle' if override %>">
-<div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="comps">
-  <%= override %>
-  <%= fieldset_open %>
-  <%= comps_heading %>
-  <div data-dim-toggle-target="dimmed">
-    <%= comps_rows %>
-    <% if local_assigns[:example].present? %>
-      <p class="px-6 py-3 text-sm text-gray-600 bg-gray-50 border-t border-gray-100"><%= local_assigns[:example] %></p>
-    <% end %>
+<%
+  override_id = local_assigns[:override_id]
+  place = local_assigns[:place]
+  contractor = names[:contract].to_s
+  team_help = "Production team managers issue them from their Production Dashboard#{", and #{contractor} from their own page for each date" if contracted}. Your managers can always issue comps."
+%>
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="fieldset-toggle show-when"
+     data-settings-card="comps" data-comp-contracted="<%= contracted ? 'yes' : 'no' %>">
+  <%= local_assigns[:override] %>
+  <div data-show-unless="<%= override_id %>" data-comp-following>
+    <%= render "manage/ticketing_settings/comp_rules_readout", rules: local_assigns[:followed], contracted: contracted, names: names,
+          place: place, house_limited: local_assigns[:house_limited] %>
   </div>
-  <%= fieldset_close %>
+  <fieldset <%= 'disabled' unless local_assigns[:own] %> data-fieldset-toggle-target="fields" data-show-when="<%= override_id %>" class="min-w-0">
+    <%= kept %>
+    <div class="px-6 py-4 <%= row_class %>">
+      <div>
+        <p class="text-sm font-medium text-gray-900">Allow comps on <%= place %></p>
+        <p class="text-xs text-gray-600 mt-0.5">When this is turned off, nobody can issue comps on <%= place %>, whatever <%= local_assigns[:above] %> settings say.</p>
+      </div>
+      <%= render "shared/toggle_switch", name: "#{scope}[comps_enabled]", checked: rules.comps_enabled != false, hidden_false: true,
+            id: enabled_id, aria_label: "Allow comps on #{place}" %>
+    </div>
+    <div data-show-when="<%= enabled_id %>">
+      <div class="border-t border-gray-100">
+        <%= side_rows.call(:team, who: names[:team], help: team_help) %>
+        <%= contract_block.call(who: contractor) if contracted %>
+      </div>
+    </div>
+  </fieldset>
   <%= foot if local_assigns[:save] %>
-</div>
-
-<%# Your own productions: their production team managers. %>
-<div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="team-comps">
-  <%= render "shared/section_heading", title: "Your own productions",
-        intro: "Productions your organization runs. Their production team managers issue comps from their Production Dashboard." %>
-  <%= fieldset_open %>
-  <div data-dim-toggle-target="dimmed"><%= team_rows %></div>
-  <%= fieldset_close %>
-  <%= foot if local_assigns[:save] %>
-</div>
-
-<%# Productions on a contract: the contractor's side. %>
-<div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-settings-card="contract-comps">
-  <%= render "shared/section_heading", title: "Productions on a contract",
-        intro: "Productions a contractor brings to you. The contractor, and everyone on the contract, issue comps from their own page for each date." %>
-  <%= fieldset_open %>
-  <div data-dim-toggle-target="dimmed"><%= contract_rows %></div>
-  <%= fieldset_close %>
-  <%= foot if local_assigns[:save] %>
-</div>
 </div>
 <% end %>

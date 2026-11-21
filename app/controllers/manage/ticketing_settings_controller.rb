@@ -87,14 +87,15 @@ module Manage
       end
     end
 
-    # The box office's comp rules (CompRules): on at all, how many a date can
-    # give away, and the production team's share of them.
+    # The box office's comp rules (CompRules): allowed at all, the house
+    # limit, what productions may issue, and contracts' own default.
     def update_comps
       raw = params.require(:ticketing_profile).permit(*CompRules::PARAMS)
-      if ticketing_profile.update(CompRules.attributes_from(raw))
+      if ticketing_profile.update(CompRules.attributes_from(raw, house: true))
         # Requests waiting from a side that may no longer request close (CompRequest).
         CompRequest.close_turned_off!(ticketing_profile.organization)
-        redirect_to section_path("comps"), notice: "Saved. #{ticketing_profile.comp_rules_words.upcase_first}."
+        words = ticketing_profile.comp_rules_words(names: { team: "productions", contract: "productions on a contract" })
+        redirect_to section_path("comps"), notice: "Saved. #{words}"
       else
         @section = "comps"
         flash.now[:alert] = ticketing_profile.errors.full_messages.to_sentence
