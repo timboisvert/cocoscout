@@ -59,7 +59,14 @@ module Manage
     end
 
     def save_production
-      linked = linkable_productions.find_by(id: params[:link_production_id].presence)
+      # The choice made is the one that counts (Tim, 2026-11-20: "A new
+      # production" named Kid-Prov became Kawaii Comedy). The existing
+      # production's dropdown is only hidden when "A new production" is
+      # chosen, so a value left in it is still sent, and it used to win. It
+      # is read only when "An existing production" is the choice; a form
+      # with no choice (no existing productions to pick) is a new one.
+      existing = params[:production_mode] == "existing"
+      linked = existing ? linkable_productions.find_by(id: params[:link_production_id].presence) : nil
       @contract.production_name = linked&.name.presence || params[:production_name].presence
 
       if linked
