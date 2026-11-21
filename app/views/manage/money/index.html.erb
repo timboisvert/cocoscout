@@ -95,20 +95,30 @@
 
   <%= render layout: "manage/money/todo_section",
         locals: { title: "Days to settle", section: @todo.settle_days_listed, label: "Day",
-                  columns: [ "Pieces", "So far" ], min_width: "min-w-[420px]",
+                  min_width: "min-w-[320px]",
                   path: manage_money_settle_up_path, link_text: "Settle up",
                   empty: "Every day is settled." } do %>
     <% @todo.settle_days_listed.items.each do |day| %>
-      <%# Today, still going, is first and says so; the rest are over. %>
-      <%= link_to manage_money_settle_up_day_path(day.param), class: "grid grid-cols-[1fr_auto_auto] gap-3 items-center px-4 py-2.5 text-sm hover:bg-gray-50", data: ({ settle_today: true } unless day.ended?) do %>
-        <span class="min-w-0"><span class="block font-medium text-gray-900"><%= day.date.strftime("%a, %b %-d") %><% unless day.ended? %> <span class="font-normal text-gray-500">· today, still going</span><% end %></span><span class="block text-xs text-gray-500 truncate"><%= day.shows.map { |s| s.show.display_name }.to_sentence %></span></span>
-        <span class="flex flex-wrap gap-1 justify-end">
-          <% day.pieces.each do |label, state| %>
-            <% dot = { ok: "bg-green-500", wait: "bg-amber-500", miss: "bg-red-500" }.fetch(state) %>
-            <span class="inline-block w-2 h-2 rounded-full <%= dot %>" title="<%= label %>"></span>
-          <% end %>
+      <%# Today, still going, is first and says so; the rest are over. Each
+          piece is its own chip in show order, the same chip as the Settle up
+          list, so every name stands apart and you can see which are left
+          (Tim, 2026-11-21). The money is everything the day took in before
+          anything comes out, and says so: the net needs every show's pay
+          worked out, which a list of days never does. %>
+      <% pieces = day.pieces %>
+      <%= link_to manage_money_settle_up_day_path(day.param), class: "flex items-start gap-4 px-4 py-3 text-sm hover:bg-gray-50", data: ({ settle_today: true } unless day.ended?) do %>
+        <span class="flex-1 min-w-0">
+          <span class="block font-medium text-gray-900"><%= day.date.strftime("%a, %b %-d") %><span class="font-normal text-gray-500"><% unless day.ended? %> · today, still going<% end %> · <%= pieces.count { |_, state| state == :ok } %> of <%= pieces.size %> confirmed</span></span>
+          <span class="mt-1.5 flex flex-wrap gap-1.5">
+            <% pieces.each do |label, state| %>
+              <%= render "manage/settlement_days/piece_chip", label: label, state: state %>
+            <% end %>
+          </span>
         </span>
-        <span class="tabular-nums text-gray-900"><%= number_to_currency(day.in_cents / 100.0) %></span>
+        <span class="flex-shrink-0 text-right">
+          <span class="block tabular-nums text-gray-900"><%= number_to_currency(day.in_cents / 100.0) %></span>
+          <span class="block text-xs text-gray-500"><%= day.ended? ? "taken in" : "taken in so far" %></span>
+        </span>
       <% end %>
     <% end %>
   <% end %>

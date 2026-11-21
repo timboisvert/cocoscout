@@ -71,6 +71,9 @@ RSpec.describe "Money hub parity", type: :request do
         expect(links_to(day_path(later))).to be(true)
         expect(response.body).to include("today, still going")
         expect(response.body).not_to include("Every day is settled.")
+        # Each piece is a chip with its name, and the money says what it is.
+        row = Nokogiri::HTML(response.body).at_css("a[data-settle-today]")
+        expect(row.text).to include(later.display_name, "0 of 1 confirmed", "taken in so far")
 
         get manage_money_settle_up_path
         expect(response.body).to include("data-settle-today", "Every earlier day is settled.")
