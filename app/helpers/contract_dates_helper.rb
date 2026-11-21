@@ -5,7 +5,7 @@
 # costs, and what Edit can change.
 module ContractDatesHelper
   DateRow = Struct.new(:starts_at, :at, :event_type, :kind, :hours, :place, :field, :usual, :terms,
-                       :line, :sub, :changed, :cost, :fixed_amount, :settled, keyword_init: true)
+                       :line, :sub, :changed, :cost, :fixed_amount, :settled, :show_time, keyword_init: true)
 
   # settled: start times (Time or epoch) of dates already settled, which keep
   # their terms: no Edit, no tick (an amendment's list).
@@ -29,7 +29,8 @@ module ContractDatesHelper
                   kind: EventTypes.labels[type] || type.titleize, hours: hours,
                   place: (space&.name || location&.name), field: field, usual: contract.usual_date_term(type),
                   terms: terms, line: line, sub: sub, changed: changed,
-                  cost: cost_words(contract, type, terms, fixed), fixed_amount: fixed, settled: locked)
+                  cost: cost_words(contract, type, terms, fixed), fixed_amount: fixed, settled: locked,
+                  show_time: contract.booking_show_time_words(booking))
     end
   end
 
@@ -114,6 +115,15 @@ module ContractDatesHelper
     range = first.to_date == last.to_date ? first.strftime("%b %-d, %Y") : "#{first.strftime('%b %-d')} to #{last.strftime('%b %-d, %Y')}"
     kinds = rows.group_by(&:kind).map { |kind, rs| pluralize(rs.size, kind.downcase) }
     "#{range} · #{kinds.join(', ')}"
+  end
+
+  # Under the summary, when any show runs at its own time inside its booking:
+  # "On 3 dates the show runs at its own time inside the booking, marked below."
+  def contract_show_times_note(rows)
+    count = rows.count(&:show_time)
+    return nil if count.zero?
+
+    count == 1 ? "On 1 date the show runs at its own time inside the booking, marked below." : "On #{count} dates the show runs at its own time inside the booking, marked below."
   end
 
   # What Edit asks for on this kind of date: { label:, unit: "$" | "%", help: }.

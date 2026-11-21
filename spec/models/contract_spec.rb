@@ -812,6 +812,27 @@ RSpec.describe Contract, type: :model do
         expect(html).to include("Fri Mar 6, 2026", "6:00 PM", "11:00 PM", "The Mainstage")
       end
 
+      it "gives the show's own time its own column, and says when a show fills its booking" do
+        plain = booking(date: "2026-03-07").except("event_starts_at", "event_ends_at")
+        contract = create(:contract, organization: org,
+          draft_data: { "bookings" => [ booking(date: "2026-03-06"), plain ] })
+
+        html = contract.send(:license_schedule_html)
+        expect(html).to include("<th>Booking starts</th>", "<th>Booking ends</th>", "<th>Show time</th>")
+        expect(html).to include("<td>8:00 PM–10:00 PM</td>", "<td>Same as the booking</td>")
+        expect(contract.booking_show_time_words(booking(date: "2026-03-06"))).to eq("Show starts 8:00 PM and ends 10:00 PM")
+        expect(contract.booking_show_time_words(plain)).to be_nil
+      end
+
+      it "keeps the plain Start and End columns when every show fills its booking" do
+        plain = booking(date: "2026-03-07").except("event_starts_at", "event_ends_at")
+        contract = create(:contract, organization: org, draft_data: { "bookings" => [ plain ] })
+
+        html = contract.send(:license_schedule_html)
+        expect(html).to include("<th>Start</th>", "<th>End</th>")
+        expect(html).not_to include("Show time")
+      end
+
       it "uses the production name when the booking's event_type is the generic 'show'" do
         contract = create(:contract, organization: org, production_name: "Late Night Revue",
           draft_data: { "bookings" => [ booking(date: "2026-03-06") ] })

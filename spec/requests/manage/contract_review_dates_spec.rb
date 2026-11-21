@@ -49,6 +49,21 @@ RSpec.describe "Contract wizard: Review the dates", type: :request do
     expect(html).not_to include("rounded-full border px-3")
   end
 
+  it "marks a show that runs at its own time inside its booking, here and on Review" do
+    bookings = contract.draft_bookings
+    bookings[0] = bookings[0].merge("event_starts_at" => (show_times[0] + 30.minutes).iso8601,
+                                    "event_ends_at" => (show_times[0] + 90.minutes).iso8601)
+    contract.update!(draft_data: contract.draft_data.merge("bookings" => bookings))
+
+    html = page
+    expect(html).to include("On 1 date the show runs at its own time inside the booking, marked below.",
+                            "Booking · 2 hrs · Main Stage", "Show starts 8:00 PM and ends 9:00 PM")
+    expect(html.scan("Show starts").size).to eq(1)
+
+    get manage_review_contract_wizard_path(contract)
+    expect(response.body).to include("Show starts 8:00 PM and ends 9:00 PM")
+  end
+
   it "changes one date, down to $0 with a note, and back" do
     patch manage_review_dates_contract_wizard_path(contract), params: {
       dates: [ rehearsal_time.iso8601 ], values: { "rehearsal" => "0" }, note: "Tech rehearsal, included"

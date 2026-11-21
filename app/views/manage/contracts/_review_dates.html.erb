@@ -31,6 +31,7 @@
       <div>
         <p class="text-[17px] font-semibold text-pink-900"><%= pluralize(rows.size, "date") %> booked</p>
         <p class="text-sm text-pink-700"><%= contract_dates_summary(rows) %></p>
+        <% if (show_times_note = contract_show_times_note(rows)) %><p class="text-sm text-pink-700"><%= show_times_note %></p><% end %>
       </div>
       <%= link_to "Change the schedule", schedule_path, class: "text-sm font-medium text-pink-600 hover:text-pink-700" %>
     </div>
@@ -82,7 +83,8 @@
                 <% end %>
                 <span class="flex-1 min-w-0 flex flex-col">
                   <span class="text-sm font-medium text-gray-900"><%= row.at.strftime("%a, %b %-d · %-l:%M %p") %></span>
-                  <span class="text-xs text-gray-500"><%= [ date_length_words(row.hours), row.place ].compact.join(" · ") %></span>
+                  <span class="text-xs text-gray-500"><%= [ ("Booking" if row.show_time), date_length_words(row.hours), row.place ].compact.join(" · ") %></span>
+                  <% if row.show_time %><span class="text-xs font-medium text-pink-700"><%= row.show_time %></span><% end %>
                 </span>
                 <span class="@3xl:hidden inline-flex items-center rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700"><%= row.kind %></span>
             </div>

@@ -493,9 +493,37 @@ class Contract < ApplicationRecord
         "ends_at" => rental.ends_at&.iso8601,
         "location_id" => rental.location_id,
         "location_space_id" => rental.location_space_id,
+        "event_starts_at" => rental.event_starts_at&.iso8601,
+        "event_ends_at" => rental.event_ends_at&.iso8601,
         "event_type" => event_type
       }
     end
+  end
+
+  # The show's own times inside a booking, when it runs at its own time (the
+  # rental 12:00 to 3:00 PM, the show 12:30 to 2:00 PM): { starts_at:, ends_at: },
+  # or nil when the show fills the booking. Every list of a contract's dates
+  # says it, so it's confirmed along the way and lands on the document (Tim,
+  # 2026-11-20).
+  def booking_show_times(booking)
+    starts = parse_booking_time(booking["starts_at"])
+    return nil unless starts
+
+    ends = booking_end(booking, starts)
+    show_start = parse_booking_time(booking["event_starts_at"]) || starts
+    show_end = parse_booking_time(booking["event_ends_at"]) || ends
+    return nil if show_start == starts && show_end == ends
+
+    { starts_at: show_start, ends_at: show_end }
+  end
+
+  # "Show starts 12:30 PM and ends 2:00 PM", or nil when the show fills the booking.
+  def booking_show_time_words(booking)
+    times = booking_show_times(booking)
+    return nil unless times
+
+    start = times[:starts_at].strftime("%-l:%M %p")
+    times[:ends_at] ? "Show starts #{start} and ends #{times[:ends_at].strftime('%-l:%M %p')}" : "Show starts #{start}"
   end
 
   # Same idea for the money: the live payment rows (cancelled ones are
@@ -2568,6 +2596,23 @@ class Contract < ApplicationRecord
       out << "</tbody></table>"
     end
 
+    # A template without the inline grid has no list of dates, so a show
+    # running at its own time inside its booking is said here (Tim, 2026-11-20).
+    show_times = document_bookings.sort_by { |b| b["starts_at"].to_s }.filter_map do |b|
+      words = booking_show_time_words(b)
+      at = parse_booking_time(b["starts_at"])
+      next unless words && at
+
+      ends = booking_end(b, at)
+      booked = ends ? "booked #{at.strftime('%-l:%M %p')} to #{ends.strftime('%-l:%M %p')}" : "booked from #{at.strftime('%-l:%M %p')}"
+      [ at.strftime("%a %b %-d, %Y"), "#{words}; #{booked}." ]
+    end
+    if show_times.any?
+      out << "<h4>Show times inside the booking</h4><ul>"
+      show_times.each { |date, words| out << %(<li><strong>#{esc.(date)}:</strong> #{esc.(words)}</li>) }
+      out << "</ul>"
+    end
+
     own_terms = status_draft? ? deal_terms_own_date_lines : []
     if own_terms.any?
       out << "<h4>Dates with their own terms</h4><ul>"
@@ -2629,14 +2674,19 @@ class Contract < ApplicationRecord
   def license_schedule_html
     esc = ->(s) { ERB::Util.html_escape(s.to_s) }
     rows = license_schedule_rows
-    out = +%(<table><thead><tr><th>Dates</th><th>Event</th><th>Start</th><th>End</th><th>Stage</th><th>Rent</th></tr></thead><tbody>)
+    # A show running at its own time inside the booking gets its own column,
+    # and the booking's columns say they're the booking's (Tim, 2026-11-20).
+    show_times = rows.any? { |r| r[:show_time] }
+    heads = show_times ? %w[Dates Event Booking\ starts Booking\ ends Show\ time Stage Rent] : %w[Dates Event Start End Stage Rent]
+    out = +%(<table><thead><tr>#{heads.map { |h| "<th>#{h}</th>" }.join}</tr></thead><tbody>)
     if rows.empty?
-      out << %(<tr><td colspan="6">Dates to be confirmed.</td></tr>)
+      out << %(<tr><td colspan="#{heads.size}">Dates to be confirmed.</td></tr>)
     else
       rows.each do |r|
         out << "<tr>"
-        out << %(<td>#{esc.(r[:date])}</td><td>#{esc.(r[:event])}</td><td>#{esc.(r[:start])}</td>)
-        out << %(<td>#{esc.(r[:end])}</td><td>#{esc.(r[:stage])}</td><td>#{esc.(r[:rent])}</td>)
+        out << %(<td>#{esc.(r[:date])}</td><td>#{esc.(r[:event])}</td><td>#{esc.(r[:start])}</td><td>#{esc.(r[:end])}</td>)
+        out << %(<td>#{esc.(r[:show_time] || "Same as the booking")}</td>) if show_times
+        out << %(<td>#{esc.(r[:stage])}</td><td>#{esc.(r[:rent])}</td>)
         out << "</tr>"
       end
     end
@@ -2737,9 +2787,9 @@ class Contract < ApplicationRecord
     rent_label = license_rent_label
 
     document_bookings.filter_map do |b|
-      # The contract covers the whole booked slot (e.g. 8–11 PM), not the show's own
-      # time within it (e.g. 9–10:30) — the rental time is what's being licensed, so
-      # the grid shows the booking's start/end, not the event's.
+      # The contract licenses the whole booked slot (e.g. 8–11 PM), so Start and
+      # End are the booking's; the show's own time within it (e.g. 9–10:30) is
+      # its own column, so nobody signs without knowing when the show is.
       starts_at = parse_booking_time(b["starts_at"])
       next unless starts_at
 
@@ -2751,6 +2801,7 @@ class Contract < ApplicationRecord
         event: license_event_label(b),
         start: starts_at.strftime("%-l:%M %p"),
         end: ends_at ? ends_at.strftime("%-l:%M %p") : "—",
+        show_time: booking_show_times(b)&.then { |t| [ t[:starts_at], t[:ends_at] ].compact.map { |x| x.strftime("%-l:%M %p") }.join("–") },
         stage: space_id ? (space_names[space_id] || "Stage") : "Entire venue",
         rent: license_date_rent(b) || rent_by_date[starts_at.to_date] || rent_label
       }

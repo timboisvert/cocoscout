@@ -46,7 +46,8 @@
     next unless at
     type = b["event_type"].presence || "show"
     hours = b["duration"].to_f.positive? ? b["duration"].to_f : 2.0
-    { iso: b["starts_at"].to_s, key: at.to_i, at: at, type: type, kind: EventTypes.labels[type] || type.titleize, hours: hours }
+    { iso: b["starts_at"].to_s, key: at.to_i, at: at, type: type, kind: EventTypes.labels[type] || type.titleize, hours: hours,
+      show_time: (@contract || local_assigns[:contract])&.booking_show_time_words(b) }
   }.sort_by { |d| d[:at] }
   kinds = dates.group_by { |d| d[:type] }
   usual_choices = [ [ "Every date", "all" ] ] + kinds.map { |type, ds| [ "Every #{ds.first[:kind].downcase}", type ] } + [ [ "No dates", "none" ] ]
@@ -225,7 +226,10 @@
                       <input type="checkbox" aria-label="Select <%= date[:at].strftime('%b %-d') %>" data-contract-services-target="dateCheck"
                              data-date="<%= j %>" data-action="contract-services#datesTicked" class="<%= check %>">
                     <% end %>
-                    <span class="flex-1 min-w-0 text-sm font-medium text-gray-900"><%= date[:at].strftime("%a, %b %-d") %> · <span class="whitespace-nowrap"><%= date[:at].strftime("%-l:%M %p") %></span></span>
+                    <span class="flex-1 min-w-0 flex flex-col">
+                      <span class="text-sm font-medium text-gray-900"><%= date[:at].strftime("%a, %b %-d") %> · <span class="whitespace-nowrap"><%= date[:at].strftime("%-l:%M %p") %></span></span>
+                      <% if date[:show_time] %><span class="text-xs font-medium text-pink-700"><%= date[:show_time] %></span><% end %>
+                    </span>
                     <span class="@3xl:hidden inline-flex items-center rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700"><%= date[:kind] %></span>
                   </div>
                   <span class="hidden @3xl:inline-flex"><span class="inline-flex items-center rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700"><%= date[:kind] %></span></span>

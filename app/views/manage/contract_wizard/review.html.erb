@@ -129,6 +129,10 @@
                   <%= starts_at.strftime("%b %d, %Y") %> at <%= starts_at.strftime("%l:%M %p").strip %>
                   <span class="text-gray-400">·</span>
                   <%= duration %> hrs
+                  <% if (show_time = @contract.booking_show_time_words(booking)) %>
+                    <span class="text-gray-400">·</span>
+                    <span class="font-medium text-pink-700"><%= show_time %></span>
+                  <% end %>
                 <% else %>
                   Date TBD
                 <% end %>

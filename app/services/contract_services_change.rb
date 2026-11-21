@@ -22,7 +22,8 @@ class ContractServicesChange
   def bookings
     rentals.map do |r|
       { "starts_at" => r.starts_at.iso8601, "duration" => ((r.ends_at - r.starts_at) / 1.hour).round(1),
-        "event_type" => r.shows.first&.event_type || "show" }
+        "event_type" => r.shows.first&.event_type || "show",
+        "event_starts_at" => r.event_starts_at&.iso8601, "event_ends_at" => r.event_ends_at&.iso8601 }
     end
   end
 
