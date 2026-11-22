@@ -32,9 +32,9 @@ RSpec.describe "Contract thread", type: :request do
     get manage_contract_path(contract)
     expect(response.body).to include("Messages about this contract", "data-contract-thread")
 
-    post contract_thread_path(contract), params: { body: "Load-in is at 5 on Friday." }
+    post contract_thread_path(contract), params: { body: "Load-in is at 5 on Friday." }, headers: { "HTTP_REFERER" => manage_contract_url(contract) }
     root = ContractThread.root(contract)
-    expect(response).to redirect_to(open_my_message_path(root))
+    expect(response).to redirect_to(manage_contract_url(contract))
     expect(root.subject).to include("Carded")
     expect(root.subscribers).to include(owner, dan, priya)
 

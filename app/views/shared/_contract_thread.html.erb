@@ -28,7 +28,7 @@
     <% else %>
       <p class="text-gray-600">Write to everyone on this contract: the organization's managers, the contractor, and the people on the contract. Each of them gets it in their Messages.</p>
     <% end %>
-    <%= form_with url: contract_thread_path(contract), method: :post, class: "space-y-2", data: { turbo: false } do %>
+    <%= form_with url: contract_thread_path(contract), method: :post, class: "space-y-2", data: { turbo_action: "replace" } do %>
       <label for="contract_thread_body_<%= contract.id %>" class="sr-only">Your message</label>
       <textarea name="body" id="contract_thread_body_<%= contract.id %>" rows="3" placeholder="Write a message"
                 class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"></textarea>

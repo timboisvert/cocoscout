@@ -12,8 +12,10 @@ class ContractThreadsController < ApplicationController
     body = params[:body].to_s.strip
     return redirect_back(fallback_location: root_path, alert: "Write a message first.") if body.blank?
 
-    root = ContractThread.post!(contract, sender: Current.user, body: body)
-    redirect_to open_my_message_path(root), notice: "Sent to everyone on the contract."
+    ContractThread.post!(contract, sender: Current.user, body: body)
+    # Back to the contract page, where the card now shows it, at the same
+    # scroll (found testing 1.4 from main, 2026-11-22).
+    redirect_back fallback_location: root_path, notice: "Sent to everyone on the contract."
   rescue ArgumentError => e
     redirect_back fallback_location: root_path, alert: e.message
   end
