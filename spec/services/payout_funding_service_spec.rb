@@ -95,6 +95,7 @@ RSpec.describe PayoutFundingService do
 
   describe "PayoutBatchService.fund! without a source" do
     it "raises a clear error" do
+      allow(PayoutBatchService).to receive(:balance_first?).and_return(false)
       org.update!(funding_payment_method_id: nil)
       batch = org.payout_batches.create!(trigger: "manual", status: "draft", total_cents: 5000)
       expect { PayoutBatchService.fund!(batch) }.to raise_error(PayoutBatchService::Error, /Connect a bank or card/)

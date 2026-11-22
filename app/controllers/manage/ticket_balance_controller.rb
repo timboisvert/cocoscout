@@ -56,9 +56,12 @@ module Manage
     # needs keeping back for them. [label, cents]
     def runs_in_flight
       Current.organization.payout_batches.where(status: %w[funding funded processing partially_paid]).order(:created_at).filter_map do |batch|
-        if batch.status == "funding"
-          debit = [ batch.total_cents - batch.held_cents - batch.credit_applied_cents - batch.balance_applied_cents, 0 ].max
-          [ "Payout run ##{batch.id}: funded from your bank, the money's on its way", debit ]
+        if batch.awaiting_balance?
+          # It pays from "available" as that grows, before anything is withdrawn.
+          unpaid = batch.items.where(status: PayoutBatch::RETRYABLE_ITEM_STATUSES).sum(:amount_cents)
+          [ "Payout run ##{batch.id}: paying its people from your balance as it clears", unpaid ]
+        elsif batch.status == "funding"
+          [ "Payout run ##{batch.id}: funded from your bank, the money's on its way", batch.bank_debit_cents ]
         else
           unpaid = batch.items.where(status: PayoutBatch::RETRYABLE_ITEM_STATUSES).sum(:amount_cents)
           [ "Payout run ##{batch.id}: paying people now", unpaid ] if unpaid.positive?

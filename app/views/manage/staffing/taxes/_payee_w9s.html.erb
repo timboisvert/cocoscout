@@ -1,0 +1,46 @@
+<%# Performers, contract people paid personally, and instructors this
+    organization paid this year (Tim, 2026-11-22): what each has been paid and
+    where their W-9 stands. CocoScout requests it by email and notification
+    once they reach request_at_cents (PerformerW9SweepJob, daily) and reminds
+    them weekly until it's in.
+
+    Locals: people, paid ({ person_id => Tax::YearEarnings::Result }),
+    w9s ({ person_id => W9Submission }), requests ({ person_id => W9Request }),
+    year, request_at_cents. %>
+<% money = ->(cents) { number_to_currency(cents / 100.0, precision: 0) } %>
+<% if people.any? %>
+  <div class="mt-10" data-payee-w9s>
+    <div class="flex items-center gap-2 mb-1">
+      <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500">Performers and contract people</h3>
+      <span class="inline-flex items-center px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[11px] font-medium"><%= people.size %></span>
+    </div>
+    <p class="text-sm text-gray-600 mb-3">Everyone you've paid personally in <%= year %> who isn't on your staff. We request a W-9 by email and notification once someone has been paid <%= money.(request_at_cents) %>, and remind them each week until it's in.</p>
+    <div class="border border-gray-200 rounded-lg overflow-hidden bg-white divide-y divide-gray-100">
+      <% people.each do |person| %>
+        <%
+          w9 = w9s[person.id]
+          request = requests[person.id]
+          status = if w9
+            [ "W-9 on file since #{w9.signed_at.strftime('%b %-d')}", "bg-green-100 text-green-700" ]
+          elsif request
+            sent = request.last_reminded_at ? ", reminded #{request.last_reminded_at.strftime('%b %-d')}" : ""
+            [ "Requested #{request.requested_at.strftime('%b %-d')}#{sent}", "bg-amber-100 text-amber-700" ]
+          elsif paid[person.id].net_cents >= request_at_cents && PerformerW9Requester.requestable?(person)
+            [ "Will be requested in the next daily check", "bg-gray-100 text-gray-700" ]
+          elsif paid[person.id].net_cents >= request_at_cents
+            [ "No CocoScout account to request it through", "bg-red-50 text-red-700" ]
+          else
+            [ "Not needed yet", "bg-gray-100 text-gray-600" ]
+          end
+        %>
+        <div class="flex flex-wrap sm:flex-nowrap items-center gap-3 px-3 py-2.5" data-payee-w9-row>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium text-gray-900 truncate"><%= person.name %></div>
+            <div class="text-[11px] text-gray-500 mt-0.5">Paid <span class="font-medium text-gray-700 tabular-nums"><%= money.(paid[person.id].net_cents) %></span> in <%= year %></div>
+          </div>
+          <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium flex-shrink-0 <%= status.last %>"><%= status.first %></span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>

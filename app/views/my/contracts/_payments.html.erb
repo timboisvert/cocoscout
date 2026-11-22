@@ -1,0 +1,89 @@
+<%#
+  A contract's money on My Contracts (Tim, 2026-11-22): what it has paid,
+  what's on its way and still to come, every payment with where it stands
+  (ContractPayment#payee_stage), and what's owed to the organization with how
+  each is settled. Worded for the person it pays, or, for someone on the
+  contract it doesn't pay, in the contractor's name.
+
+  Locals: contract, payee (true when it pays this viewer)
+%>
+<%
+  org_name = contract.organization&.name.presence || "The organization"
+  who = payee ? "you" : (contract.contractor_name.presence || "the contractor")
+  outgoing = contract.contract_payments.select { |p| p.direction_outgoing? && !p.status_cancelled? }
+  incoming = contract.contract_payments.select { |p| p.direction_incoming? && !p.status_cancelled? }
+  staged = outgoing.map { |p| [ p, p.payee_stage ] }.sort_by { |p, _| [ p.due_date || Date.current ] }.reverse
+  paid_total = staged.select { |_, s| s.paid? }.sum { |p, _| p.amount.to_f }
+  on_way_total = staged.select { |_, s| s.on_its_way? }.sum { |p, _| p.amount.to_f }
+  coming = staged.reject { |_, s| s.paid? || s.on_its_way? }
+  coming_total = coming.sum { |p, _| p.amount.to_f }
+  tone_class = { neutral: "bg-gray-100 text-gray-700", approved: "bg-emerald-100 text-emerald-800", on_its_way: "bg-blue-100 text-blue-800",
+                 deposited: "bg-green-100 text-green-700", balance: "bg-purple-100 text-purple-800", returned: "bg-orange-100 text-orange-800" }
+  amount_words = lambda do |payment|
+    next number_to_currency(payment.amount) unless payment.awaiting_amount?
+
+    contract.guarantee_amount_label(payment) || "To be worked out"
+  end
+  any_by_hand = staged.any? { |_, s| s.key == :by_hand }
+  into_balance = staged.find { |_, s| s.key == :into_balance }&.last
+%>
+<% if outgoing.any? || incoming.any? %>
+  <div class="border-t border-gray-100" data-contract-payments>
+    <% if outgoing.any? %>
+      <div class="grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-100">
+        <div class="px-5 py-3"><div class="text-xs text-gray-500">Paid to <%= who %></div><div class="text-base font-bold text-gray-900 tabular-nums"><%= number_to_currency(paid_total) %></div></div>
+        <div class="px-5 py-3"><div class="text-xs text-gray-500">On its way</div><div class="text-base font-bold text-gray-900 tabular-nums"><%= number_to_currency(on_way_total) %></div></div>
+        <div class="px-5 py-3"><div class="text-xs text-gray-500">Still to come</div><div class="text-base font-bold text-gray-900 tabular-nums"><%= coming.any? && coming_total.zero? ? "To be worked out" : number_to_currency(coming_total) %></div></div>
+      </div>
+      <div class="flex items-center justify-between gap-3 px-5 pt-3 pb-1">
+        <h3 class="text-sm font-semibold text-gray-900">What this contract pays <%= who %></h3>
+        <% if payee %><%= link_to "See these in My Payments", my_payments_path, class: "text-sm font-medium text-pink-600 hover:text-pink-700" %><% end %>
+      </div>
+      <ul class="divide-y divide-gray-50">
+        <% staged.each do |payment, stage| %>
+          <li class="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1 px-5 py-2.5" data-contract-payment-row>
+            <span class="w-14 text-xs text-gray-500 flex-shrink-0"><%= payment.due_date&.strftime("%b %-d") %></span>
+            <span class="flex-1 min-w-0 text-sm text-gray-900"><%= payment.description.presence || "Payment" %></span>
+            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium flex-shrink-0 <%= tone_class.fetch(stage.tone) %>"><%= stage.words %></span>
+            <span class="w-28 text-right text-sm text-gray-900 tabular-nums flex-shrink-0"><%= amount_words.call(payment) %></span>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+
+    <% if incoming.any? %>
+      <h3 class="px-5 pt-3 pb-1 text-sm font-semibold text-gray-900"><%= payee ? "What you pay #{org_name}" : "What #{who} pays #{org_name}" %></h3>
+      <ul class="divide-y divide-gray-50">
+        <% incoming.sort_by { |p| p.due_date || Date.current }.each do |payment| %>
+          <%
+            settled = if payment.status_paid?
+              payment.payment_method == "payout_deduction" ? "Taken out of a payment" : (payment.received_via_label || "Paid")
+            elsif payment.deduct_from_payout?
+              "Taken out of a payment"
+            else
+              payment.due_date ? "Due #{payment.due_date.strftime('%b %-d')}" : "Scheduled"
+            end
+          %>
+          <li class="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1 px-5 py-2.5">
+            <span class="w-14 text-xs text-gray-500 flex-shrink-0"><%= payment.due_date&.strftime("%b %-d") %></span>
+            <span class="flex-1 min-w-0 text-sm text-gray-900"><%= payment.description.presence || "Payment" %></span>
+            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium flex-shrink-0 bg-gray-100 text-gray-700"><%= settled %></span>
+            <span class="w-28 text-right text-sm text-gray-900 tabular-nums flex-shrink-0"><%= number_to_currency(payment.amount) %></span>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+
+    <% if outgoing.any? %>
+      <p class="px-5 py-3 mt-1 text-xs text-gray-600 bg-gray-50 border-t border-gray-100">
+        <% if into_balance %>
+          Payments go into <%= into_balance.words.delete_prefix("Paid into ") %>'s balance on CocoScout.
+        <% elsif payee %>
+          Payments sent through CocoScout go to your bank account.<%= " Pay handed to you by check or cash shows here once #{org_name} records it." if any_by_hand %>
+        <% else %>
+          Payments go to <%= who %>. You're on this contract to see its dates, ticket sales, and terms.
+        <% end %>
+      </p>
+    <% end %>
+  </div>
+<% end %>

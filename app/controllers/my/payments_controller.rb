@@ -23,6 +23,9 @@ module My
       @person_1099s = TaxForm1099.where(person_id: person_ids)
                                   .where(status: %w[delivered filed corrected])
                                   .includes(:organization).order(tax_year: :desc, created_at: :desc)
+      # Everyone else that pays them personally (performers, contractors,
+      # instructors): what each has paid this year and their W-9 there.
+      @tax_years = MyTaxYears.for(Current.user, exclude_ids: @tax_memberships.map(&:organization_id))
     end
 
     # A receipt for one payment — everything it covered. Every lookup is scoped

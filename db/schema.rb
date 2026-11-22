@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_21_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_22_210100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2392,6 +2392,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_21_160000) do
     t.datetime "pro_monthly_until"
     t.jsonb "comp_reminders", default: {}, null: false
     t.string "time_zone", default: "Central Time (US & Canada)", null: false
+    t.jsonb "payout_pay_order", default: ["staffing", "contractor", "performer"], null: false
+    t.integer "payout_bank_after_days", default: 3, null: false
+    t.boolean "payout_waits_on_balance", default: true, null: false
     t.index ["books_categories_set_up_by_id"], name: "index_organizations_on_books_categories_set_up_by_id"
     t.index ["books_locked_by_id"], name: "index_organizations_on_books_locked_by_id"
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
@@ -2427,6 +2430,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_21_160000) do
     t.datetime "payee_notified_at"
     t.date "expected_deposit_on"
     t.datetime "deposited_at"
+    t.boolean "paid_from_balance", default: false, null: false
     t.index ["payee_type", "payee_id"], name: "index_payout_batch_items_on_payee_type_and_payee_id"
     t.index ["payout_batch_id", "status"], name: "idx_payout_batch_items_batch_status"
     t.index ["payout_batch_id"], name: "index_payout_batch_items_on_payout_batch_id"
@@ -2455,6 +2459,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_21_160000) do
     t.datetime "funded_at"
     t.datetime "completion_notified_at"
     t.datetime "funding_started_at"
+    t.jsonb "pay_order", default: {}, null: false
+    t.datetime "bank_due_at"
     t.index ["created_by_id"], name: "index_payout_batches_on_created_by_id"
     t.index ["organization_id", "status"], name: "idx_payout_batches_org_status"
     t.index ["organization_id"], name: "idx_payout_batches_one_open_run_per_org", unique: true, where: "(((status)::text = 'draft'::text) AND ((kind)::text <> 'course'::text))"
@@ -3293,6 +3299,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_21_160000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "impersonator_user_id"
+    t.string "sign_in_method"
     t.index ["impersonator_user_id"], name: "index_sessions_on_impersonator_user_id"
     t.index ["user_id"], name: "index_sessions_on_user_id"
   end
@@ -3701,6 +3708,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_21_160000) do
     t.index ["production_id"], name: "index_shows_on_production_id"
     t.index ["released_connection_id"], name: "index_shows_on_released_connection_id"
     t.index ["space_rental_id"], name: "index_shows_on_space_rental_id"
+  end
+
+  create_table "sign_in_codes", force: :cascade do |t|
+    t.string "email", null: false
+    t.bigint "user_id"
+    t.string "purpose", null: false
+    t.string "code_digest", null: false
+    t.integer "attempts", default: 0, null: false
+    t.datetime "expires_at", null: false
+    t.datetime "used_at"
+    t.string "ip_address"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email", "purpose", "created_at"], name: "index_sign_in_codes_on_email_and_purpose_and_created_at"
+    t.index ["user_id"], name: "index_sign_in_codes_on_user_id"
   end
 
   create_table "sign_up_form_holdouts", force: :cascade do |t|
@@ -5043,6 +5065,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_21_160000) do
     t.index ["person_id"], name: "index_training_credits_on_person_id"
   end
 
+  create_table "user_identities", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "provider", null: false
+    t.string "uid", null: false
+    t.string "email"
+    t.boolean "private_email", default: false, null: false
+    t.text "refresh_token"
+    t.string "client_id"
+    t.datetime "last_used_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["provider", "uid"], name: "index_user_identities_on_provider_and_uid", unique: true
+    t.index ["user_id"], name: "index_user_identities_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email_address", null: false
     t.string "password_digest", null: false
@@ -5067,6 +5104,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_21_160000) do
     t.jsonb "recent_production_ids", default: [], null: false
     t.datetime "deletion_requested_at"
     t.string "last_mode"
+    t.datetime "email_verified_at"
+    t.datetime "password_set_at"
     t.index ["default_person_id"], name: "index_users_on_default_person_id"
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
     t.index ["invitation_token"], name: "index_users_on_invitation_token", unique: true
@@ -5096,6 +5135,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_21_160000) do
     t.index ["city", "state"], name: "index_venues_on_city_and_state"
     t.index ["city_hub_id"], name: "index_venues_on_city_hub_id"
     t.index ["lat", "lng"], name: "index_venues_on_lat_and_lng"
+  end
+
+  create_table "w9_requests", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "person_id", null: false
+    t.datetime "requested_at", null: false
+    t.datetime "last_reminded_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "person_id"], name: "index_w9_requests_on_organization_id_and_person_id", unique: true
+    t.index ["organization_id"], name: "index_w9_requests_on_organization_id"
+    t.index ["person_id"], name: "index_w9_requests_on_person_id"
   end
 
   create_table "w9_submissions", force: :cascade do |t|
@@ -5546,6 +5597,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_21_160000) do
   add_foreign_key "shows", "productions"
   add_foreign_key "shows", "shows", column: "linked_show_id", on_delete: :nullify
   add_foreign_key "shows", "space_rentals"
+  add_foreign_key "sign_in_codes", "users"
   add_foreign_key "sign_up_form_holdouts", "sign_up_forms"
   add_foreign_key "sign_up_form_instances", "shows"
   add_foreign_key "sign_up_form_instances", "sign_up_forms"
@@ -5704,9 +5756,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_21_160000) do
   add_foreign_key "tip_shares", "people"
   add_foreign_key "tip_shares", "settlement_days"
   add_foreign_key "training_credits", "people"
+  add_foreign_key "user_identities", "users"
   add_foreign_key "users", "people"
   add_foreign_key "users", "people", column: "default_person_id"
   add_foreign_key "venues", "city_hubs"
+  add_foreign_key "w9_requests", "organizations"
+  add_foreign_key "w9_requests", "people"
   add_foreign_key "w9_submissions", "organization_staff_members", on_delete: :nullify
   add_foreign_key "w9_submissions", "organizations"
   add_foreign_key "w9_submissions", "people"

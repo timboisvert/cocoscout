@@ -13,6 +13,10 @@
             <% end %>
           </div>
           <% if line.detail.present? %><div class="text-xs text-gray-400 truncate"><%= line.detail %></div><% end %>
+          <% if line.contract %>
+            <%= link_to "Contract · #{line.contract.production_name.presence || line.contract.contractor_name}", my_contracts_path,
+                  class: "mt-1 inline-flex items-center rounded-full bg-pink-100 px-2 py-0.5 text-[11px] font-medium text-pink-800 hover:bg-pink-200" %>
+          <% end %>
         </div>
         <div class="text-sm tabular-nums flex-shrink-0 <%= line.tag ? 'text-gray-500' : 'text-gray-900' %>">
           <%= line.cents.negative? ? "−#{number_to_currency(line.cents.abs / 100.0)}" : number_to_currency(line.cents / 100.0) %>

@@ -5,6 +5,14 @@
 # CourseTemplates are for theirs). Each is a seeded ContentTemplate.
 class PlatformTemplates
   TEMPLATES = [
+    # The 6-digit code for signing in, confirming a new account's address, and
+    # (later) connecting a sign-in method (SignIn::Code). A code only, never a
+    # link: mail scanners open links.
+    { key: "auth_sign_in_code", name: "Sign-in code", channel: "email", category: "auth",
+      subject: "{{code}} is your CocoScout code",
+      body: %(<p>Your CocoScout code is:</p><p style="font-size:28px;font-weight:bold;letter-spacing:6px;margin:16px 0;">{{code}}</p><p>Enter it on the page that requested it. It works for {{lifetime}}, and only once.</p><p>If you didn't request a code, you can ignore this email. Nobody can get into your account without it.</p>),
+      variables: [ { "name" => "code", "description" => "The 6-digit code" },
+                   { "name" => "lifetime", "description" => "How long the code works, e.g. 10 minutes" } ] },
     { key: "payee_bank_setup_link", name: "Bank setup link for a payee", channel: "email",
       subject: "{{organization_name}} wants to pay you through CocoScout",
       body: %(<p>Hi {{first_name}},</p><p>{{organization_name}} pays people through CocoScout, straight to their bank. Connect yours here. It takes a few minutes, and you don't need a CocoScout account.</p><p><a href="{{setup_url}}">Connect your bank</a></p><p>This link is just for you, so please don't forward it. It works for 30 days. If you weren't expecting it, you can ignore this email.</p>),
@@ -91,7 +99,7 @@ class PlatformTemplates
       template = ContentTemplate.find_or_initialize_by(key: spec[:key])
       next if template.persisted? && !overwrite
 
-      template.assign_attributes(name: spec[:name], category: "payments", channel: spec[:channel], template_type: "structured",
+      template.assign_attributes(name: spec[:name], category: spec[:category] || "payments", channel: spec[:channel], template_type: "structured",
                                  active: true, subject: spec[:subject], body: spec[:body], available_variables: spec[:variables])
       template.save!
     end

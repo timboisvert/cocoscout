@@ -11,7 +11,7 @@ RSpec.describe "Post-authentication landing", type: :request do
 
   describe "signup" do
     it "lands a brand-new signup on the talent dashboard" do
-      post handle_signup_path, params: signup_params(email_address: "new@example.com", password: password)
+      complete_signup("new@example.com")
 
       expect(response).to redirect_to(my_dashboard_path)
     end
@@ -20,7 +20,7 @@ RSpec.describe "Post-authentication landing", type: :request do
       get my_tasks_path
       expect(response).to redirect_to(signin_path)
 
-      post handle_signup_path, params: signup_params(email_address: "walled@example.com", password: password)
+      complete_signup("walled@example.com")
 
       expect(response.headers["Location"]).to include(my_tasks_path)
     end

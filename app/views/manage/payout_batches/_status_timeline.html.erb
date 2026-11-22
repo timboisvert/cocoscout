@@ -34,11 +34,18 @@
       [ "Waiting on bank info",
         "Everyone here is waiting to connect a bank. Their money was funded with the runs they came from and stays set aside; each is paid the moment they connect.#{" We also check every morning — next #{next_try_text}." if next_try_text}",
         "bg-blue-50 border-blue-200", "text-blue-700" ]
+    elsif batch.awaiting_balance?
+      # Balance first (PayoutBatchService.start_from_balance!).
+      paid = breakdown ? breakdown[:paid] : nil
+      due = batch.bank_due_at&.in_time_zone(batch.organization.time_zone)
+      [ "Paying from your balance",
+        "#{paid && paid[:count].positive? ? "#{pluralize(paid[:count], 'payee')} paid so far. " : ''}The rest are paid as ticket money clears, or from your bank on #{due ? due.strftime('%B %-d') : 'their due date'}.",
+        "bg-amber-50 border-amber-200", "text-amber-700" ]
     else
     case batch.status
     when "draft"
       [ "Draft — not submitted",
-        "Nothing has been debited yet. Fund & pay when you're ready; payees with a connected bank are paid as soon as the funding clears, and anyone without one waits on this run until they connect.",
+        "Nothing has been paid or debited yet. Pay now when you're ready; anyone without a connected bank waits on this run until they connect.",
         "bg-gray-50 border-gray-300", "text-gray-500" ]
     when "funding"
       [ "Funding — ACH clearing",

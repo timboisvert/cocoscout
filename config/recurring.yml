@@ -210,6 +210,12 @@ production:
     class: RetryParkedPayoutsJob
     schedule: at 6:15am every day
 
+  # Payout runs paying from the CocoScout balance: whoever it now covers,
+  # each morning after the night's ticket money is released.
+  payout_balance_waves:
+    class: PayoutBalanceWavesJob
+    schedule: at 8am every day America/Chicago
+
   # Chases unsigned contracts and expires the ones past their deadline.
   contract_signature_reminders:
     class: ContractSignatureRemindersJob
@@ -230,6 +236,10 @@ production:
   w9_reminders:
     class: W9RemindersJob
     schedule: at 10am every day
+
+  performer_w9_sweep:
+    class: PerformerW9SweepJob
+    schedule: at 10:15am every day
 
   # Ticket checkouts nobody paid for: their seat holds lapse after ten minutes.
   expire_ticket_holds:

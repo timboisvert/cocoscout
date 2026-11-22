@@ -54,6 +54,7 @@
         note: @breakdown[:paid][:count].positive? ? "#{pluralize(@breakdown[:paid][:count], 'payee')} · #{balance_lines.any? ? 'paid' : 'transferred'}" : "nobody yet" },
       { state: :ready,    label: in_flight ? "Paying" : "Ready to pay", cents: @breakdown[:ready][:cents], count: @breakdown[:ready][:count], color: in_flight ? "text-amber-700" : "text-pink-600", ring: in_flight ? "ring-amber-300" : "ring-pink-300", tint: in_flight ? "bg-amber-50 border-amber-200" : "bg-pink-50 border-pink-200",
         note: if @breakdown[:ready][:count].zero? then "nobody waiting on you"
+              elsif @awaiting_balance then "#{pluralize(@breakdown[:ready][:count], 'payee')} · paid as your balance clears"
               elsif in_flight then "#{pluralize(@breakdown[:ready][:count], 'payee')} · goes out once funding clears"
               elsif @batch.open? then "#{pluralize(@breakdown[:ready][:count], 'payee')} · #{ready_word}, fund the run to pay"
               else "#{pluralize(@breakdown[:ready][:count], 'payee')} · #{ready_word}, pay remaining"
@@ -96,7 +97,9 @@
         what to do next, then the run's particulars. ---- %>
     <aside class="space-y-6 lg:order-2">
       <%# Next step — one card, whichever applies. %>
-      <% if @batch.status == "funding" %>
+      <% if @awaiting_balance %>
+        <%= render "manage/payout_batches/awaiting_balance_box", batch: @batch, items: @items %>
+      <% elsif @batch.status == "funding" %>
         <div class="rounded-lg border border-amber-200 bg-amber-50 p-5">
           <h2 class="text-sm font-semibold text-amber-900">Funding in progress</h2>
           <p class="text-sm text-amber-800 mt-1">We're collecting the funds for this run. Payouts to each payee go out automatically once it clears.</p>
@@ -198,106 +201,7 @@
           </div>
         </div>
       <% elsif @batch.open? && @items.any? %>
-        <%
-          # Course sales and collected contract money on this run are already in
-          # CocoScout's balance — the bank debit covers only the remainder.
-          held_cents = @batch.held_cents(@items)
-          fundable_cents = [ @batch.total_cents - held_cents, 0 ].max
-          # Available funding credit shrinks the debit further — say so up
-          # front, or the smaller bank charge reads as a mistake.
-          fund_credit_cents = PayoutFundingCredit.available_cents(Current.organization)
-          fund_credit_applied = [ fund_credit_cents, fundable_cents ].min
-          fund_debit_cents = fundable_cents - fund_credit_applied
-          # Then the CocoScout balance (tickets, classes, contract money) —
-          # PayoutBatchService.fund! spends it the same way.
-          fund_balance_applied = [ CocoScoutBalance.available_cents(Current.organization), fund_debit_cents ].min
-          fund_debit_cents -= fund_balance_applied
-        %>
-        <% if fund_debit_cents.zero? %>
-          <%# Nothing to debit: held money (and any credit) covers the whole
-              run — one click sends it. %>
-          <div class="rounded-lg border border-pink-200 bg-pink-50 p-5">
-            <h2 class="text-sm font-semibold text-gray-900">
-              Ready to send <%= number_to_currency(@batch.total_cents / 100.0) %>
-            </h2>
-            <p class="text-xs text-gray-600 mt-1">CocoScout is already holding this money for you — no bank debit. <%= send_words %></p>
-            <% if fund_balance_applied.positive? %>
-              <p class="text-xs text-gray-600 mt-1">Paid from your CocoScout balance: <%= number_to_currency(fund_balance_applied / 100.0) %>.</p>
-            <% end %>
-            <% if @breakdown[:waiting][:count].positive? %>
-              <p class="text-xs text-gray-600 mt-1">The <%= number_to_currency(@breakdown[:waiting][:cents] / 100.0) %> for payees without a connected bank stays on this run until they connect.</p>
-            <% end %>
-            <div class="mt-3">
-              <% pay_now_cid = "confirm-pay-now-batch" %>
-              <%= render "shared/button", text: "Pay now", variant: "primary", size: "medium", type: :button,
-                    data: { controller: "modal", action: "click->modal#open", modal_id: pay_now_cid } %>
-              <%= render "shared/confirm_modal", id: pay_now_cid,
-                    title: "Send this money now?",
-                    message: "Send #{number_to_currency(@breakdown[:ready][:cents] / 100.0)} straight from the money CocoScout holds for you? No bank debit.",
-                    confirm_text: "Pay now",
-                    url: manage_fund_payout_batch_path(@batch),
-                    method: :post %>
-            </div>
-          </div>
-        <% else %>
-          <div class="rounded-lg border border-pink-200 bg-pink-50 p-5">
-            <h2 class="text-sm font-semibold text-gray-900">
-              <% if @breakdown[:ready][:count].positive? %>
-                Ready to pay <%= pluralize(@breakdown[:ready][:count], "payee") %> · <%= number_to_currency(@breakdown[:ready][:cents] / 100.0) %>
-              <% else %>
-                Fund this run · <%= number_to_currency(@batch.total_cents / 100.0) %>
-              <% end %>
-            </h2>
-            <p class="text-xs text-gray-600 mt-1">We debit your bank via ACH, then pay each payee to their connected bank.</p>
-            <% if fund_debit_cents.positive? && (note = bank_debit_note(Current.organization)) %>
-              <p class="text-xs text-gray-600 mt-1"><%= note %></p>
-            <% end %>
-            <% if held_cents.positive? %>
-              <p class="text-xs text-gray-600 mt-1">CocoScout already holds <%= number_to_currency(held_cents / 100.0) %> of this run (course sales &amp; collected contract money) — your bank is debited only <%= number_to_currency(fund_debit_cents / 100.0) %>.</p>
-            <% end %>
-            <% if fund_balance_applied.positive? %>
-              <p class="text-xs text-gray-600 mt-1">Paid from your CocoScout balance: <%= number_to_currency(fund_balance_applied / 100.0) %> · bank debit: <%= number_to_currency(fund_debit_cents / 100.0) %>.</p>
-            <% end %>
-            <% if @breakdown[:waiting][:count].positive? %>
-              <p class="text-xs text-gray-600 mt-1">The full <%= number_to_currency(@batch.total_cents / 100.0) %> is funded up front; the <%= number_to_currency(@breakdown[:waiting][:cents] / 100.0) %> for payees without a bank waits on this run until they connect.</p>
-            <% end %>
-            <% earliest, latest = estimated_deposit_window %>
-            <p class="text-xs font-medium text-gray-800 mt-2">
-              Fund &amp; pay today → most payees see deposits by <%= l(latest, format: :long) %>
-              <span class="font-normal text-gray-400">(≈2–4 business days — an estimate)</span>
-            </p>
-            <div class="mt-3">
-              <% if Current.organization.funding_payment_method_id.present? %>
-                <% fund_pay_cid = "confirm-fund-pay-batch" %>
-                <%= render "shared/button", text: "Fund & pay", variant: "primary", size: "medium", type: :button,
-                      data: { controller: "modal", action: "click->modal#open", modal_id: fund_pay_cid } %>
-                <%
-                  fund_message = if fund_balance_applied.positive?
-                    "We'll pay #{number_to_currency(fund_balance_applied / 100.0)} from your CocoScout balance and debit #{number_to_currency(fund_debit_cents / 100.0)} from your bank."
-                  elsif held_cents.positive? && fund_credit_applied.positive?
-                    "CocoScout already holds #{number_to_currency(held_cents / 100.0)} of it; we'll apply your #{number_to_currency(fund_credit_applied / 100.0)} funding credit and debit #{number_to_currency(fund_debit_cents / 100.0)} from your bank."
-                  elsif held_cents.positive?
-                    "CocoScout already holds #{number_to_currency(held_cents / 100.0)} of it — we'll debit only #{number_to_currency(fund_debit_cents / 100.0)} from your bank."
-                  elsif fund_credit_applied.positive?
-                    "We'll apply your #{number_to_currency(fund_credit_applied / 100.0)} funding credit and debit #{number_to_currency(fund_debit_cents / 100.0)} from your bank."
-                  else
-                    "We'll debit #{number_to_currency(@batch.total_cents / 100.0)} from your bank."
-                  end
-                  fund_message = [ fund_message, bank_debit_note(Current.organization) ].compact.join(" ") if fund_debit_cents.positive?
-                %>
-                <%= render "shared/confirm_modal", id: fund_pay_cid,
-                      title: "Fund and pay this payout run?",
-                      message: fund_message,
-                      confirm_text: "Fund & pay",
-                      url: manage_fund_payout_batch_path(@batch),
-                      method: :post %>
-              <% else %>
-                <%= render "shared/button", text: "Connect a bank account first", variant: "primary", size: "small",
-                      path: manage_connect_payout_funding_path(return_to: manage_payout_batch_path(@batch)), method: :post, form: { data: { turbo: false } } %>
-              <% end %>
-            </div>
-          </div>
-        <% end %>
+        <%= render "manage/payout_batches/pay_box", batch: @batch, items: @items, breakdown: @breakdown, plan: @balance_plan, balance_first: @balance_first %>
       <% end %>
 
       <%# Who's holding it up, by name — and when we'll try them again. %>

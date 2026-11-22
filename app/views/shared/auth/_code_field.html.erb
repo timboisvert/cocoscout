@@ -1,0 +1,29 @@
+<%#
+  The 6-digit code field (SignIn::Code): six boxes drawn over ONE real input,
+  so a paste, the keyboard's code suggestion, and a password manager all fill
+  it in one go (code_field_controller.js mirrors the input into the boxes).
+  Without JavaScript the input itself shows, wide-spaced.
+
+  Locals: name (default :code), error (true draws the pink border), autofocus.
+%>
+<%
+  name  = local_assigns[:name] || :code
+  error = local_assigns[:error] || false
+  cell  = "flex h-12 flex-1 items-center justify-center rounded-lg border bg-white text-xl font-semibold text-slate-900 shadow-sm"
+%>
+<div data-controller="code-field">
+  <label for="sign_in_code" class="mb-1.5 block text-sm font-medium text-slate-700">Code</label>
+  <div class="relative">
+    <div class="flex gap-2" aria-hidden="true">
+      <% 6.times do %>
+        <div class="<%= cell %> <%= error ? "border-pink-500" : "border-gray-300" %>" data-code-field-target="cell"></div>
+      <% end %>
+    </div>
+    <%= text_field_tag name, nil,
+          id: "sign_in_code", required: true, inputmode: "numeric", pattern: "[0-9 ]*", maxlength: 7,
+          autocomplete: "one-time-code", autofocus: local_assigns[:autofocus],
+          aria: { label: "6-digit code" },
+          class: "absolute inset-0 h-full w-full cursor-text rounded-lg border-0 bg-transparent text-center text-xl tracking-[0.6em] text-transparent caret-transparent focus:outline-none focus:!ring-0 focus:!shadow-none",
+          data: { code_field_target: "input", action: "input->code-field#draw focus->code-field#draw blur->code-field#draw" } %>
+  </div>
+</div>

@@ -10,12 +10,23 @@ class BalanceWithdrawalService
 
   # What the theater's open payout run will need from the balance to go out
   # without a bank debit (what's left after held money and funding credit).
+  # A run already paying from the balance (awaiting_balance) needs what it
+  # hasn't paid yet, too.
   def self.open_run_need_cents(organization)
     run = PayoutBatch.current_open_draft(organization)
-    return 0 unless run&.total_cents.to_i.positive?
+    waiting = waiting_run_need_cents(organization)
+    return waiting unless run&.total_cents.to_i.positive?
 
     fundable = [ run.total_cents - run.held_cents, 0 ].max
-    [ fundable - PayoutFundingCredit.available_cents(organization), 0 ].max
+    [ fundable - PayoutFundingCredit.available_cents(organization), 0 ].max + waiting
+  end
+
+  # What submitted runs paying from the balance (awaiting_balance) still
+  # need from it: they pay their people with it each morning.
+  def self.waiting_run_need_cents(organization)
+    organization.payout_batches.where(status: "funding", funding_status: "awaiting_balance").sum do |batch|
+      [ batch.items.where(status: PayoutBatch::RETRYABLE_ITEM_STATUSES).sum(:amount_cents) - batch.held_cents, 0 ].max
+    end
   end
 
   def self.withdraw!(organization, amount_cents:, by: nil, automatic: false)

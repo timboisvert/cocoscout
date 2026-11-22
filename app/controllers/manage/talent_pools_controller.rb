@@ -237,10 +237,7 @@ module Manage
         person.organizations << Current.organization
 
         # Create user account
-        user = User.create!(
-          email_address: email,
-          password: User.generate_secure_password
-        )
+        user = User.create_unclaimed!(email_address: email)
         person.update!(user: user)
 
         # Create invitation linked to talent pool

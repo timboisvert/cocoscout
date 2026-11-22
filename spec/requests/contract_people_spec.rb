@@ -58,13 +58,14 @@ RSpec.describe "Contract people", type: :request do
     get my_contracts_path
     expect(response).to have_http_status(:ok)
     html = response.body.gsub(/\s+/, " ")
-    expect(html).to include("Carded LLC", "Payments go to Carded LLC", "Coming to Carded LLC")
-    expect(html).not_to include("Connect your bank", "Report sales", "Coming to you")
+    # Every payment with where it stands, in the contractor's name (Tim, 2026-11-22).
+    expect(html).to include("Carded LLC", "Payments go to Carded LLC", "What this contract pays Carded LLC", "What Carded LLC pays Stars &amp; Garters")
+    expect(html).not_to include("Connect your bank", "Report sales", "What this contract pays you", "See these in My Payments")
 
     sign_in(dan)
     get my_contracts_path
-    expect(response.body).to include("Coming to you")
-    expect(response.body).not_to include("Payments go to")
+    expect(response.body).to include("What this contract pays you", "See these in My Payments", "Paid to you", "Still to come")
+    expect(response.body).not_to include("Payments go to Carded LLC")
   end
 
   it "lists the date in My shows & events as theirs by contract, and reads the deal their way on its page" do

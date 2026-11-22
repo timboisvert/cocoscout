@@ -15,8 +15,11 @@ class OrganizationJoinController < ApplicationController
       @already_member = person&.organizations&.include?(@organization)
       @existing_user = true unless @already_member
     else
-      # User not logged in - show signup form
+      # Not signed in: the page carries the sign-in screen's first step (the
+      # email address). Signing in or creating an account there comes
+      # straight back here, signed in, to join with one tap.
       @existing_user = false
+      session[:return_to] = join_organization_path(params[:token])
     end
   end
 
@@ -30,48 +33,23 @@ class OrganizationJoinController < ApplicationController
       return
     end
 
-    # Case 2: New user or existing user not logged in
+    # Case 2: not signed in. The page no longer posts here signed out (its
+    # form is the sign-in screen's email step), so this is an older copy of
+    # the page posting an email and a password. An existing account's right
+    # password still joins; everyone else goes through the sign-in screen,
+    # where a new address is confirmed with a code before its account is made.
     email = params[:email]&.downcase&.strip
-    password = params[:password]
+    user = User.find_by(email_address: email) if email.present?
 
-    if email.blank? || password.blank?
+    if user && params[:password].present? && user.authenticate(params[:password])
+      start_new_session_for user, sign_in_method: "password"
+      add_user_to_organization(user)
+    elsif user && params[:password].present?
       @email = email
-      flash.now[:alert] = "Email and password are required"
+      @existing_user_wrong_password = true
       render :show, status: :unprocessable_content
-      return
-    end
-
-    # Check if user already exists
-    user = User.find_by(email_address: email)
-
-    if user
-      # User exists - try to authenticate
-      if user.authenticate(password)
-        # Password correct - sign in and add to org
-        start_new_session_for user
-        add_user_to_organization(user)
-      else
-        # Wrong password - show error with link to sign in
-        @email = email
-        @existing_user_wrong_password = true
-        render :show, status: :unprocessable_content
-      end
     else
-      # New user - create the account (User + Person together)
-      result = AccountCreator.call(email: email, password: password)
-
-      unless result.user.persisted?
-        @email = email
-        @user = result.user
-        render :show, status: :unprocessable_content
-        return
-      end
-
-      # Sign in the new user
-      start_new_session_for result.user
-
-      # Add to organization
-      add_user_to_organization(result.user)
+      redirect_to signin_path(start_over: 1, email_address: email.presence, redirect_to: join_organization_path(params[:token]))
     end
   end
 

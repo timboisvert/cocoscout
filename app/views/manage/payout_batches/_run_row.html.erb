@@ -37,7 +37,8 @@
               parts << "#{pluralize(ready[:count], 'payee')} ready — pay remaining" if ready[:count].positive?
               parts << "retrying #{when_text} #{next_try.strftime('%-l:%M%P')}" if next_try
               parts.any? ? parts.join(" · ") : "Funded, finishing up"
-            when "funding", "funded", "processing" then "ACH clearing — pays out automatically"
+            when "funding", "funded", "processing"
+              batch.awaiting_balance? ? "Paying from your balance as it clears" : "ACH clearing — pays out automatically"
             when "completed" then "Everyone paid#{" · #{batch.completed_at.strftime('%b %-d')}" if batch.completed_at}"
             when "failed" then "Funding failed"
             when "canceled" then "Canceled"

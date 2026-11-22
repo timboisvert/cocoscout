@@ -60,8 +60,9 @@ class Rack::Attack
   # The same script from a pool in some other range would still be capped:
   # signups are counted per /16 (per /48 for IPv6), not per address, and no
   # honest neighborhood of the internet creates ten CocoScout accounts an hour.
+  # An account is created by the sign-in screen's last step (step=create).
   throttle("signup/net", limit: 10, period: 1.hour) do |req|
-    next unless req.post? && req.path == "/signup"
+    next unless req.post? && req.path == "/signin" && req.params["step"] == "create"
 
     begin
       addr = IPAddr.new(req.ip.to_s)

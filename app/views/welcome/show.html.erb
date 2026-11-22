@@ -9,8 +9,8 @@
   </div>
 
   <div class="mt-10 w-full max-w-sm mx-auto space-y-3">
-    <%= render "shared/button", text: "Sign in", variant: "primary", size: "large", path: signin_path, classes: "w-full justify-center" %>
-    <%= render "shared/button", text: "Create an account", variant: "secondary", size: "large", path: signup_path, classes: "w-full justify-center" %>
+    <%# One door now: the email address decides whether it's a sign-in or a new account. %>
+    <%= render "shared/button", text: "Continue with email", variant: "primary", size: "large", path: signin_path, classes: "w-full justify-center" %>
     <p class="pt-2 text-xs text-slate-500 text-center">Got an invitation? Open the link in your email and it'll bring you here.</p>
   </div>
 </div>

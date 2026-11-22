@@ -29,6 +29,7 @@ def seed_content_templates
   templates = [
     { key: "auth_welcome", name: "Welcome Email", subject: "Welcome to CocoScout", body: "Hello {{ recipient_name }}", category: "authentication", channel: "email" },
     { key: "auth_password_reset", name: "Password Reset", subject: "Reset", body: "Reset: {{ reset_url }}", category: "authentication", channel: "email" },
+    { key: "auth_sign_in_code", name: "Sign-in code", subject: "{{code}} is your CocoScout code", body: "Code: {{code}} for {{lifetime}}", category: "auth", channel: "email" },
     { key: "person_invitation", name: "Person Invitation", subject: "You've been invited to join {{organization_name}} on CocoScout", body: "<p>{{organization_name}} is using CocoScout. <a href=\"{{setup_url}}\">Set Up Your Account</a></p>", category: "invitations", channel: "email" },
     { key: "contract_person_added", name: "Added to a Contract", subject: "{{organization_name}} added you to a contract", body: "<p>{{organization_name}} has set you up on a contract in CocoScout. <a href=\"{{contracts_url}}\">View your contracts</a>.</p>", category: "invitations", channel: "message" },
     { key: "group_invitation", name: "Group Invitation", subject: "Group Invite", body: "Join group", category: "invitations", channel: "email" },
@@ -140,6 +141,19 @@ def seed_content_templates
       body: "<p>Hi {{recipient_name}},</p><p>A {{run_kind}} run was submitted{{#funded}} and funded{{/funded}}: {{total}} to {{people_count}}.</p>" \
             "{{payee_lines}}<p>Expected {{expected_window}}</p><p><a href=\"{{payout_run_url}}\">View the payout run</a></p>",
       category: "payments", channel: "both" },
+    { key: "payout_run_submitted_from_balance", name: "Payout Run Submitted, Paid From Balance",
+      subject: "Payout run submitted: {{paid_count}} paid from your balance",
+      body: "<p>{{paid_count}} ({{paid_total}}) paid now.{{#waiting_on_balance}} {{waiting_count}} wait until {{bank_date}}.{{/waiting_on_balance}}" \
+            "{{#waiting_on_bank}} {{waiting_count}} wait on the bank.{{/waiting_on_bank}}</p><p><a href=\"{{payout_run_url}}\">View</a></p>",
+      category: "payments", channel: "both" },
+    { key: "payout_rest_funding_failed", name: "Payout Rest Funding Failed",
+      subject: "The bank debit for the rest of your payout run didn't go through",
+      body: "<p>{{paid_count}} stay paid; {{waiting_count}} ({{waiting_total}}) wait.</p><p><a href=\"{{payout_run_url}}\">View</a></p>",
+      category: "payments", channel: "both" },
+    { key: "payout_run_more_paid", name: "Payout Run, More Paid From Balance",
+      subject: "{{paid_count}} paid from your CocoScout balance",
+      body: "<p>Paid {{paid_names}} ({{paid_total}}).</p><p>{{next_words}}</p><p><a href=\"{{payout_run_url}}\">View</a></p>",
+      category: "payments", channel: "message" },
     { key: "payout_run_funded", name: "Payout Run Funded",
       subject: "Your {{total}} payout run is funded — payments are going out",
       body: "<p>Expected {{expected_window}}</p><p><a href=\"{{payout_run_url}}\">View</a></p>",

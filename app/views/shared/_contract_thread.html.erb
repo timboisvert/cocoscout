@@ -1,0 +1,38 @@
+<%#
+  Messages about this contract (ContractThread; linked productions step 5):
+  the thread's latest message and a box to write into it, for everyone on
+  the contract, on the organization's contract page and on the contract
+  person's own.
+
+  Locals: contract
+%>
+<% root = ContractThread.root(contract) %>
+<% latest = root && ([ root ] + root.child_messages.not_deleted.to_a).max_by(&:created_at) %>
+<% count = root ? 1 + root.child_messages.not_deleted.count : 0 %>
+<%
+  sender_name = case latest&.sender
+                when User then latest.sender.person&.name
+                when Person then latest.sender.name
+                else contract.organization.name
+                end
+%>
+<div class="border border-gray-200 rounded-lg overflow-hidden bg-white" data-contract-thread>
+  <%= render "shared/section_heading", padding: "px-4 py-3", title: "Messages about this contract" %>
+  <div class="px-4 py-3 space-y-3 text-sm">
+    <% if latest %>
+      <div class="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2">
+        <div class="text-xs text-gray-500"><%= sender_name %> · <%= time_ago_in_words(latest.created_at) %> ago</div>
+        <p class="text-gray-800 mt-1"><%= latest.body.to_plain_text.squish.truncate(160) %></p>
+      </div>
+      <%= link_to "Open the conversation (#{pluralize(count, 'message')})", open_my_message_path(root), class: "font-medium text-pink-600 hover:text-pink-700" %>
+    <% else %>
+      <p class="text-gray-600">Write to everyone on this contract: the organization's managers, the contractor, and the people on the contract. Each of them gets it in their Messages.</p>
+    <% end %>
+    <%= form_with url: contract_thread_path(contract), method: :post, class: "space-y-2", data: { turbo: false } do %>
+      <label for="contract_thread_body_<%= contract.id %>" class="sr-only">Your message</label>
+      <textarea name="body" id="contract_thread_body_<%= contract.id %>" rows="3" placeholder="Write a message"
+                class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"></textarea>
+      <%= render "shared/button", text: "Send", variant: "secondary", size: "small", type: :submit %>
+    <% end %>
+  </div>
+</div>

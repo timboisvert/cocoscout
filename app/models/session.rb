@@ -12,4 +12,17 @@ class Session < ApplicationRecord
   def label
     DeviceLabel.from_user_agent(user_agent)
   end
+
+  # How this device got in, for the Account page: "with a password". nil for
+  # sign-ins from before we kept it, so the page says nothing rather than guess.
+  SIGN_IN_METHOD_WORDS = {
+    "password" => "with a password",
+    "code" => "with an emailed code",
+    "reset_link" => "with a password link",
+    "invitation" => "with an invitation"
+  }.freeze
+
+  def sign_in_method_words
+    SIGN_IN_METHOD_WORDS[sign_in_method]
+  end
 end

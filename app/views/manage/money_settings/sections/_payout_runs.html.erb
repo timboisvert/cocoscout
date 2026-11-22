@@ -1,0 +1,60 @@
+<%#
+  Payout runs that pay from the CocoScout balance first (Tim, 2026-11-22):
+  the default pay order, and how long the rest wait on the balance before
+  the bank pays them. A run can change its own order in its Pay order window.
+%>
+<%
+  org = Current.organization
+  input = "w-20 px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  handle_svg = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M7 4a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm9-12a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/></svg>'.html_safe
+%>
+<%= form_with url: manage_money_settings_payout_runs_path, method: :patch, class: "space-y-6",
+      data: { controller: "reorderable", reorderable_handle_value: ".pay-order-handle", reorderable_auto_save_value: false } do %>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <%= render "shared/section_heading", title: "Pay order",
+          intro: "When your CocoScout balance can't cover a whole payout run, it pays these groups first, in this order. Within a group, the smallest amounts go first, so the most people are paid. A run can change its own order with Manage payout priority." %>
+    <div class="px-6 py-5">
+      <div class="space-y-2 max-w-md" data-reorderable-target="list">
+        <% PayoutPayOrder.default_groups(org).each_with_index do |group, index| %>
+          <div class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2" data-position="<%= index %>">
+            <%= hidden_field_tag "groups[]", group, id: nil %>
+            <span class="pay-order-handle cursor-grab text-gray-400 hover:text-gray-600 p-1" title="Drag to reorder" aria-hidden="true"><%= handle_svg %></span>
+            <span class="flex-1 text-sm font-medium text-gray-900"><%= PayoutPayOrder::LABELS.fetch(group) %></span>
+            <%= render "shared/button", text: "", variant: "ghost", size: "xs", type: :button, title: "Move #{PayoutPayOrder::LABELS.fetch(group).downcase} up", icon: "chevron-up",
+                  classes: "!p-1 text-gray-400 hover:text-gray-700", data: { action: "reorderable#moveUp" } %>
+            <%= render "shared/button", text: "", variant: "ghost", size: "xs", type: :button, title: "Move #{PayoutPayOrder::LABELS.fetch(group).downcase} down", icon: "chevron-down",
+                  classes: "!p-1 text-gray-400 hover:text-gray-700", data: { action: "reorderable#moveDown" } %>
+          </div>
+        <% end %>
+      </div>
+      <p class="text-sm text-gray-500 mt-3">Someone with both staff and performer pay counts as staff. Contractors include other organizations you pay.</p>
+    </div>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden" data-controller="show-when">
+    <%= render "shared/section_heading", title: "When your balance can't cover everyone",
+          intro: "A payout run pays everyone your balance covers when you submit it. This decides what happens to the rest." %>
+    <div class="px-6 py-5 space-y-4">
+      <div class="flex items-start justify-between gap-4">
+        <div class="text-sm">
+          <div class="font-medium text-gray-900">Pay them from your balance as ticket money clears</div>
+          <div class="text-gray-500">Every morning we pay whoever your balance now covers, and you get a notification saying who. When this is turned off, your bank pays the rest as soon as you submit the run.</div>
+        </div>
+        <%= render "shared/toggle_switch", name: "payout_waits_on_balance", id: "payout_waits_on_balance", hidden_false: true,
+              checked: org.payout_waits_on_balance, aria_label: "Pay them from your balance as ticket money clears" %>
+      </div>
+      <div class="space-y-2" data-show-when="payout_waits_on_balance">
+        <label class="flex flex-wrap items-center gap-3 text-sm">
+          <span class="font-medium text-gray-900">Then pay whoever is left from my bank after</span>
+          <%= number_field_tag :payout_bank_after_days, org.payout_bank_after_days, min: 1, max: 30, class: input %>
+          <span class="text-gray-900">days</span>
+        </label>
+        <p class="text-sm text-gray-500">A run can always be paid from your bank sooner with Pay the rest from my bank.</p>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+  </div>
+<% end %>

@@ -1,0 +1,34 @@
+<%#
+  Taxes, for someone paid personally (MyTaxYears; Tim, 2026-11-22): one row
+  per organization with what it has paid them this year and where their W-9
+  stands, each opening their page about the year. On My Contracts and My
+  Payments. Locals: rows (MyTaxYears::Row), title (optional).
+%>
+<% rows = local_assigns[:rows] || [] %>
+<% if rows.any? %>
+  <% money = ->(cents) { number_to_currency(cents / 100.0, precision: 0) } %>
+  <div class="border border-gray-200 rounded-lg overflow-hidden bg-white" data-my-tax-years>
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: local_assigns[:title] || "Taxes" %>
+    <div class="divide-y divide-gray-100">
+      <% rows.each do |row| %>
+        <%
+          status = if row.w9
+            [ "W-9 on file", "bg-green-100 text-green-700" ]
+          elsif row.request
+            [ "W-9 requested", "bg-amber-100 text-amber-700" ]
+          else
+            [ "No W-9 needed yet", "bg-gray-100 text-gray-600" ]
+          end
+        %>
+        <%= link_to my_tax_year_path(row.organization.id), class: "flex items-center gap-3 px-4 py-3 hover:bg-gray-50" do %>
+          <span class="flex-1 min-w-0">
+            <span class="block text-sm font-medium text-gray-900 truncate"><%= row.organization.name %></span>
+            <span class="block text-xs text-gray-500 mt-0.5"><%= money.(row.paid_cents) %> paid to you in <%= row.year %></span>
+          </span>
+          <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium flex-shrink-0 <%= status.last %>"><%= status.first %></span>
+          <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+<% end %>

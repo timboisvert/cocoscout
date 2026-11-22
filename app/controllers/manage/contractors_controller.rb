@@ -304,7 +304,7 @@ module Manage
       return if person.user.present?
 
       user = User.find_by(email_address: person.email.downcase) ||
-             User.create!(email_address: person.email.downcase, password: User.generate_secure_password)
+             User.create_unclaimed!(email_address: person.email.downcase)
       person.update!(user: user)
     end
 

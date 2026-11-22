@@ -246,6 +246,12 @@ Rails.application.routes.draw do
   get   "/account",                       to: "account#show",                as: "account"
   patch "/account",                       to: "account#update"
   patch "/account/email",                 to: "account#update_email",        as: "update_email_account"
+  # Choosing or changing the password, from the Account page's Sign-in
+  # methods. Not ".../password": the app's page rules treat a path ending in
+  # /password as the old forgot-password screen.
+  get   "/account/choose-password",       to: "account#choose_password",     as: "choose_password_account"
+  patch "/account/choose-password",       to: "account#update_password"
+  post  "/account/choose-password/code",  to: "account#send_password_code",  as: "password_code_account"
   get   "/account/profiles",              to: "account#profiles",            as: "account_profiles"
   post  "/account/profiles",              to: "account#create_profile",      as: "create_profile_account"
   post  "/account/profiles/:id/set_default", to: "account#set_default_profile", as: "set_default_profile_account"
@@ -397,6 +403,8 @@ Rails.application.routes.draw do
   # Pilot user setup (superadmins only)
 
   # Respond to an audition request
+  # Writing into a contract's thread, from either side of the contract.
+  post "/contracts/:contract_id/thread", to: "contract_threads#create", as: "contract_thread"
   get "/a/:token", to: "my/submit_audition_request#entry", as: "submit_audition_request"
 
   # Short URL for sign-up forms
@@ -691,7 +699,9 @@ Rails.application.routes.draw do
     get  "/onboarding/:organization_id",             to: "onboarding#show",        as: "onboarding"
     post "/onboarding/:organization_id/acknowledge", to: "onboarding#acknowledge", as: "acknowledge_onboarding"
     post "/staff-agreement/:organization_id/sign",   to: "staff_agreements#sign",   as: "sign_staff_agreement"
-    # The W-9 a staff member gives each org they work for.
+    # The W-9 someone gives each organization that pays them, and their page
+    # about the year with that organization (what it's paid them, the 1099 line).
+    get  "/tax-forms/:organization_id",              to: "tax_forms#year",         as: "tax_year"
     get  "/tax-forms/:organization_id/w9",           to: "tax_forms#w9",           as: "w9"
     post "/tax-forms/:organization_id/w9",           to: "tax_forms#submit_w9"
     get  "/tax-forms/:organization_id/w9/copy",      to: "tax_forms#w9_copy",      as: "w9_copy"
@@ -1248,6 +1258,9 @@ Rails.application.routes.draw do
       member do
         get :confirm_delete
         post :transfer_ownership
+        # Changing the time zone: what moves, and keep the clock or the moment.
+        get :time_zone
+        post :time_zone, action: :change_time_zone
         delete :remove_logo
         # Named settings sections, so a link never depends on tab position.
         get "section/:section", action: :show, as: :section
@@ -1809,6 +1822,7 @@ Rails.application.routes.draw do
     patch  "money/settings/notifications", to: "money_settings#update_notifications", as: "money_settings_notifications"
     patch  "money/settings/settle-up", to: "money_settings#update_settle_up", as: "money_settings_settle_up"
     patch  "money/settings/tips", to: "money_settings#update_tips", as: "money_settings_tips"
+    patch  "money/settings/payout-runs", to: "money_settings#update_payout_runs", as: "money_settings_payout_runs"
     patch  "money/settings/books", to: "money_settings#update_books", as: "money_settings_books"
     post   "money/settings/ticket-sources", to: "money_settings#create_ticket_source", as: "money_settings_ticket_sources"
     patch  "money/settings/ticket-sources/:id", to: "money_settings#update_ticket_source", as: "money_settings_ticket_source"
@@ -1836,6 +1850,9 @@ Rails.application.routes.draw do
     post "money/payout-runs/:id/fund", to: "payout_batches#fund", as: "fund_payout_batch"
     post "money/payout-runs/:id/pay-now", to: "payout_batches#pay_now", as: "pay_now_payout_batch"
     post "money/payout-runs/:id/pay-remaining", to: "payout_batches#pay_remaining", as: "pay_remaining_payout_batch"
+    post "money/payout-runs/:id/pay-rest", to: "payout_batches#pay_rest", as: "pay_rest_payout_batch"
+    patch "money/payout-runs/:id/pay-order", to: "payout_batches#update_pay_order", as: "pay_order_payout_batch"
+    patch "money/payout-runs/:id/bank-day", to: "payout_batches#update_bank_day", as: "bank_day_payout_batch"
     post "money/payout-runs/:id/close-out", to: "payout_batches#close_out", as: "close_out_payout_batch"
     post "money/bank-setup-emails", to: "bank_setup_emails#create", as: "bank_setup_emails"
     # Dev-only escape hatch (the action 404s outside development).

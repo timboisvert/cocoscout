@@ -135,8 +135,12 @@ class TicketBalance
     ).to_i
   end
 
+  # Also what payout runs paid straight from the balance before they were
+  # funded (PayoutBatchService.pay_from_balance!), payment by payment.
   def self.spent_cents(organization)
     PayoutBatch.where(organization_id: organization.id).where.not(status: "failed").sum(:balance_applied_cents) +
+      PayoutBatchItem.joins(:payout_batch).where(payout_batches: { organization_id: organization.id })
+                     .where(paid_from_balance: true, status: %w[paid returned]).sum(:amount_cents) +
       BalanceWithdrawal.where(organization_id: organization.id).not_failed.sum(:amount_cents)
   end
 

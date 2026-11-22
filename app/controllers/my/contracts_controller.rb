@@ -33,6 +33,8 @@ module My
         []
       end
       @needs_bank = @paying_organizations.any? && Current.user.people.select(&:can_receive_payouts?).empty?
+      # Taxes with each organization whose contracts pay them (MyTaxYears).
+      @tax_years = MyTaxYears.for(Current.user, organizations: @contracts.select { |c| @payee_contract_ids.include?(c.id) }.map(&:organization))
       # Live ticket sales for the contracts' upcoming shows, when the theater
       # sells them on CocoScout and shares the numbers (TicketSalesAccess).
       @ticket_sales = ticket_sales_by_contract

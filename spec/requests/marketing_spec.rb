@@ -177,16 +177,15 @@ RSpec.describe "Public marketing site", type: :request do
   describe "auth pages" do
     # One single-column shell (shared/auth/_shell); the pitch lives on the
     # marketing pages, not here.
-    it "sign in renders, with a way in for people an organization invited" do
+    it "sign in renders as one screen for signing in and creating an account" do
       get signin_path
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Invited by an organization?", %(href="#{password_path}"))
+      expect(response.body).to include("Sign in or create an account", "Email address")
     end
 
-    it "sign up renders" do
+    it "sign up leads to the same screen" do
       get signup_path
-      expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Create your account", "Free to join · No card needed")
+      expect(response).to redirect_to(signin_path)
     end
   end
 end

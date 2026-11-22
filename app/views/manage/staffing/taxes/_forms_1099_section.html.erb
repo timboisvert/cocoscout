@@ -4,7 +4,10 @@
     page stays a single scroll.
 
     Locals: tax_year, tax_years, threshold_cents, forms_by_person, earnings,
-    members, tax_setting. %>
+    members, tax_setting; and payees (people paid who aren't staff) with
+    payee_w9s ({ person_id => W-9 }). %>
+<% payees = local_assigns[:payees] || [] %>
+<% payee_w9s = local_assigns[:payee_w9s] || {} %>
 <% due_date = Tax::Calendar.nec_due_date(tax_year) %>
 <% payer_ready = tax_setting&.complete? %>
 <% ready_forms_count = forms_by_person.values.count { |f| f.status.in?(%w[ready delivered filed]) } %>
@@ -50,7 +53,7 @@
     then come back and mark them filed.
   </p>
 
-  <% if members.empty? %>
+  <% if members.empty? && payees.empty? %>
     <div class="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6 text-center">
       <p class="text-sm text-gray-600">Nobody was paid in <%= tax_year %> yet. 1099s appear here after the first payout run of the year.</p>
     </div>
@@ -62,6 +65,13 @@
                 member: member,
                 form: forms_by_person[member.person_id],
                 earnings: earnings[member.person_id],
+                threshold_cents: threshold_cents %>
+        <% end %>
+        <% payees.each do |person| %>
+          <%= render "manage/staffing/taxes/form_1099_row",
+                person: person, w9_received: payee_w9s.key?(person.id),
+                form: forms_by_person[person.id],
+                earnings: earnings[person.id],
                 threshold_cents: threshold_cents %>
         <% end %>
       </div>

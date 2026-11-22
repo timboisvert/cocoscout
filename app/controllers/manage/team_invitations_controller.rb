@@ -2,6 +2,8 @@
 
 module Manage
   class TeamInvitationsController < Manage::ManageController
+    include InvitationSignIn
+
     allow_unauthenticated_access only: %i[accept do_accept]
 
     skip_before_action :require_current_organization, only: %i[accept do_accept]
@@ -32,9 +34,11 @@ module Manage
         person = @available_profiles.first
       end
 
+      new_account = user.nil?
       if user
-        if user.authenticate(params[:password])
-          # User has entered the correct password
+        if proved_invited_account?(user)
+          # The right password, or already signed in to this account (for
+          # example after signing in with a code and coming back).
         else
           @authentication_error = true
           @user = user
@@ -43,6 +47,8 @@ module Manage
       else
         user = User.new(email_address: @team_invitation.email.downcase)
         user.password = params[:password]
+        # The invitation link came to this address, so opening it proves it.
+        user.email_verified_at = Time.current
         # Their profile is linked below (person.user = user), once the user exists.
 
         unless user.valid?
@@ -73,7 +79,7 @@ module Manage
         contract = @team_invitation.contract
         ContractPerson.find_or_create_by!(contract: contract, person: person)
         @team_invitation.update(accepted_at: Time.current)
-        start_new_session_for user
+        start_invited_session(user, new_account: new_account)
         return redirect_to my_contracts_path, status: :see_other,
                            notice: "You're on #{contract.contractor_name}'s contract with #{contract.organization.name}."
       end
@@ -124,7 +130,7 @@ module Manage
       @team_invitation.update(accepted_at: Time.current)
 
       # Sign the user in
-      start_new_session_for user
+      start_invited_session(user, new_account: new_account)
 
       # Set the current organization in session
       user_id = user&.id

@@ -124,7 +124,7 @@ module Manage
 
           if person.user.nil?
             user = User.find_by(email_address: email) ||
-                   User.create!(email_address: email, password: User.generate_secure_password)
+                   User.create_unclaimed!(email_address: email)
             person.update!(user: user)
           end
 

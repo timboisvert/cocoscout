@@ -20,12 +20,14 @@
 #            no word came), so a deposit says what it was for.
 class MyPaymentsSummary
   # One thing they're paid for. deductions: Lines taken out of it (negative).
-  Line = Data.define(:label, :detail, :cents, :deductions, :tag) do
-    def initialize(detail: nil, deductions: [], tag: nil, **rest) = super(detail:, deductions:, tag:, **rest)
+  # contract: the Contract it's paid under, for its tag (Tim, 2026-11-22).
+  Line = Data.define(:label, :detail, :cents, :deductions, :tag, :contract) do
+    def initialize(detail: nil, deductions: [], tag: nil, contract: nil, **rest) = super(detail:, deductions:, tag:, contract:, **rest)
     def net_cents = cents + deductions.sum(&:cents)
   end
 
-  # A batch of coming money: kind :on_its_way, :queued or :owed.
+  # A batch of coming money: kind :on_its_way, :queued, :owed, :waiting, or
+  # :contract (a contract's payments not on a payout run yet).
   Group = Data.define(:kind, :org, :when_text, :lines, :total_cents)
 
   # One payment sent. kind: run / show / hours / offset (the receipt kinds).
@@ -71,10 +73,33 @@ class MyPaymentsSummary
   end
 
   # Approved or waiting for approval: not sent yet.
-  def still_to_come_groups = coming_groups.reject { |g| g.kind == :on_its_way }
+  def still_to_come_groups = coming_groups.reject { |g| g.kind == :on_its_way } + contract_groups
 
   def still_to_come_cents
-    coming_total_cents - on_its_way_groups.sum(&:total_cents)
+    coming_total_cents - on_its_way_groups.sum(&:total_cents) + contract_groups.sum(&:total_cents)
+  end
+
+  # Each contract's payments to them not on a payout run yet (Tim,
+  # 2026-11-22): they earn nothing in the ledger until they join a run, so
+  # the balance above can't show them. One group per contract, each line
+  # with where it stands. A contract that pays into the contractor's own
+  # organization isn't theirs to see here.
+  def contract_groups
+    @contract_groups ||= ContractPayment.joins(contract: :contractor).where(contractors: { person_id: person.id })
+                                        .direction_outgoing.where(status: %w[pending overdue])
+                                        .where.missing(:payout_contribution)
+                                        .includes(contract: :organization).order(:due_date).to_a
+                                        .reject { |p| ContractConnections.pay_target(p.contract) }
+                                        .group_by(&:contract).map do |contract, pays|
+      lines = pays.map do |p|
+        Line.new(label: self.class.payee_words(p.description.presence || "Payment"),
+                 detail: (p.awaiting_amount? ? contract.guarantee_amount_label(p) || "Worked out after the show" : nil),
+                 cents: (p.awaiting_amount? ? 0 : (p.amount.to_d * 100).round), tag: p.payee_stage.words, contract: contract)
+      end
+      Group.new(kind: :contract, org: contract.organization&.name,
+                when_text: "Under your contract for #{contract.production_name.presence || contract.organization&.name}",
+                lines: lines, total_cents: lines.sum(&:cents))
+    end
   end
 
   # Everything sent to their bank account through CocoScout, ever: what the
@@ -97,7 +122,7 @@ class MyPaymentsSummary
   # The newest HISTORY_LIMIT. Each kind reads only its own newest that many,
   # so years of weekly pay cost what one year does.
   def payments
-    @payments ||= (run_payments + show_payments + hours_payments + offset_payments)
+    @payments ||= (run_payments + show_payments + hours_payments + offset_payments + contract_payments_by_hand)
                   .reject { |p| p.cents <= 0 && p.offset_cents.to_i <= 0 }
                   .sort_by { |p| p.paid_at&.to_time || Time.at(0) }.reverse.first(HISTORY_LIMIT)
   end
@@ -113,7 +138,8 @@ class MyPaymentsSummary
                               .where("amount > COALESCE(advance_deduction, 0)")
                               .sum(Arel.sql("ROUND((amount - COALESCE(advance_deduction, 0)) * 100)")).to_i
     hours = offline_hours.where(offline_paid_at: span).sum { |e| [ hours_cents(e), 0 ].max }
-    runs + shows + hours
+    by_hand = contracts_paid_by_hand.where(paid_date: span.begin.to_date..span.end.to_date).sum(:amount)
+    runs + shows + hours + (by_hand.to_d * 100).round.to_i
   end
 
   # Payee words for a line written from the organization's side:
@@ -174,7 +200,8 @@ class MyPaymentsSummary
 
     lines = PayoutContribution.with_deductions(contributions).map do |c, taken|
       Line.new(label: self.class.payee_words(c.label), detail: dates_text(c.covered_date_range(hours_spans: hours_spans)), cents: c.amount_cents,
-               deductions: taken.map { |d| Line.new(label: d.deduction_label, cents: d.amount_cents) })
+               deductions: taken.map { |d| Line.new(label: d.deduction_label, cents: d.amount_cents) },
+               contract: (c.source.contract if c.source.is_a?(ContractPayment)))
     end
     rest = item.amount_cents - lines.sum(&:net_cents)
     lines << Line.new(label: rest.negative? ? "Advance repaid" : "Earlier balance", cents: rest) unless rest.zero?
@@ -307,6 +334,23 @@ class MyPaymentsSummary
                   method: "offset", cents: 0, offset_cents: cents,
                   lines: [ Line.new(label: label, cents: cents, deductions: paid_down) ])
     end
+  end
+
+  # Contract payments the organization paid them by hand (cash, check,
+  # another way): no payout run, so no deposit; listed so the contract's pay
+  # is all here (Tim, 2026-11-22). kind "contract".
+  def contract_payments_by_hand
+    contracts_paid_by_hand.order(paid_date: :desc).limit(HISTORY_LIMIT).includes(contract: :organization).map do |payment|
+      cents = (payment.amount.to_d * 100).round
+      Payment.new(kind: "contract", id: payment.id, org: payment.contract.organization&.name, paid_at: payment.paid_date,
+                  method: payment.payment_method, cents: cents, offset_cents: nil,
+                  lines: [ Line.new(label: self.class.payee_words(payment.description.presence || "Payment"), cents: cents, contract: payment.contract) ])
+    end
+  end
+
+  def contracts_paid_by_hand
+    ContractPayment.joins(contract: :contractor).where(contractors: { person_id: person.id })
+                   .direction_outgoing.status_paid.where(payment_method: ContractPayment::OFFLINE_PAYOUT_METHODS)
   end
 
   # The charges a share settled by offset paid down: settled by deduction on

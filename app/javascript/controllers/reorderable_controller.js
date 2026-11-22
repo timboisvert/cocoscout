@@ -4,6 +4,11 @@ import { Controller } from "@hotwired/stimulus"
 // Provides drag-and-drop reordering for list items using native HTML5 drag API,
 // plus moveUp / moveDown actions for buttons (phones don't drag, and neither
 // do keyboards).
+//
+// Lists can nest (a payout run's Pay order window: groups, and people in each
+// group). An item only ever moves within its own list: a drag that started in
+// an inner item is ignored by the outer item it bubbles through, and nothing
+// drops into a list it didn't come from.
 export default class extends Controller {
     static targets = ["list"]
     static values = {
@@ -43,6 +48,7 @@ export default class extends Controller {
     }
 
     dragStart(e, item) {
+        if (e.target !== item) return
         this.draggedItem = item
         item.classList.add("reorderable-dragging")
         e.dataTransfer.effectAllowed = "move"
@@ -55,6 +61,7 @@ export default class extends Controller {
     }
 
     dragEnd(e, item) {
+        if (e.target !== item) return
         item.removeAttribute("draggable")
         item.classList.remove("reorderable-dragging", "reorderable-ghost")
         this.draggedItem = null
@@ -68,6 +75,7 @@ export default class extends Controller {
 
     dragOver(e, item) {
         if (!this.draggedItem || this.draggedItem === item) return
+        if (this.draggedItem.parentNode !== item.parentNode) return
         e.preventDefault()
         e.dataTransfer.dropEffect = "move"
 
@@ -89,6 +97,7 @@ export default class extends Controller {
 
     dragEnter(e, item) {
         if (!this.draggedItem || this.draggedItem === item) return
+        if (this.draggedItem.parentNode !== item.parentNode) return
         e.preventDefault()
     }
 
@@ -101,6 +110,7 @@ export default class extends Controller {
 
     drop(e, item) {
         if (!this.draggedItem || this.draggedItem === item) return
+        if (this.draggedItem.parentNode !== item.parentNode) return
         e.preventDefault()
 
         const rect = item.getBoundingClientRect()

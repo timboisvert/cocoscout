@@ -37,16 +37,39 @@
     </nav>
   <% end %>
 
+  <%# Sign-in methods: every way into this account, one row each. Today the
+      emailed code (always available) and the password; Apple, Google, and
+      passkeys get their rows when they arrive (the sign-in plan). %>
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6">
-    <%= render "shared/section_heading", title: "Sign-in and help", padding: "px-4 py-3 sm:px-6 sm:py-4" %>
+    <%= render "shared/section_heading", title: "Sign-in methods", intro: "Every method opens the same account.",
+          padding: "px-4 py-3 sm:px-6 sm:py-4" %>
     <div class="divide-y divide-gray-100">
       <div class="<%= row_class %>">
         <div class="min-w-0">
-          <div class="text-sm font-medium text-gray-900">Password</div>
-          <div class="text-sm text-gray-600">We'll email you a link to set a new one.</div>
+          <div class="text-sm font-medium text-gray-900">Email code</div>
+          <div class="text-sm text-gray-600">A 6-digit code sent to <%= Current.user.email_address %>. Always available.</div>
         </div>
-        <%= render "shared/button", text: "Reset password", path: password_path, variant: "secondary", size: "small" %>
       </div>
+      <div class="<%= row_class %>">
+        <div class="min-w-0">
+          <div class="text-sm font-medium text-gray-900">Password</div>
+          <div class="text-sm text-gray-600">
+            <% if Current.user.password_chosen? %>
+              Chosen on <%= Current.user.password_set_at.strftime("%B %-d, %Y") %>.
+            <% else %>
+              Not chosen. The code signs you in without one.
+            <% end %>
+          </div>
+        </div>
+        <%= render "shared/button", text: (Current.user.password_chosen? ? "Change" : "Choose a password"),
+              path: choose_password_account_path, variant: "secondary", size: "small" %>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6">
+    <%= render "shared/section_heading", title: "Devices and help", padding: "px-4 py-3 sm:px-6 sm:py-4" %>
+    <div class="divide-y divide-gray-100">
       <%# Where else you're signed in: browsers, the app, and API sign-ins.
           A new password signs them all out. %>
       <% others = @other_sessions.to_a %>
@@ -68,7 +91,7 @@
         <div class="<%= row_class %>">
           <div class="min-w-0">
             <div class="text-sm text-gray-900"><%= other.label %></div>
-            <div class="text-sm text-gray-600">Signed in <%= other.created_at.strftime("%b %-d, %Y") %></div>
+            <div class="text-sm text-gray-600">Signed in <%= other.created_at.strftime("%b %-d, %Y") %><%= " #{other.sign_in_method_words}" if other.sign_in_method_words %></div>
           </div>
           <%= form_with url: sign_out_session_account_path(other), method: :delete, class: "inline" do %>
             <%= render "shared/button", text: "Sign out", variant: "secondary", size: "small", type: :submit %>
@@ -131,80 +154,94 @@
     <% end %>
   </div>
 
-  <!-- Email Change Modal -->
+  <%# Change email: two steps in one modal (account_email_controller.js). The
+      new address, then the 6-digit code we emailed to it; nothing changes
+      until the code is entered. %>
   <div data-account-email-target="modal"
        data-action="click->account-email#close keydown.esc@window->account-email#close"
        class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-lg shadow-xl max-w-lg w-full" data-action="click->account-email#stopPropagation">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-900 coustard-regular">Change Email Address</h2>
+    <div class="bg-white rounded-lg shadow-xl max-w-lg w-full overflow-hidden" data-action="click->account-email#stopPropagation">
+      <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+        <h2 class="text-lg font-semibold text-white">Change your email address</h2>
+        <button type="button" class="text-white/90 hover:text-white" aria-label="Close" data-action="click->account-email#close">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+        </button>
       </div>
 
       <form data-account-email-target="form" data-action="submit->account-email#submit">
         <div class="p-6 space-y-5">
-          <!-- Warning Box -->
-          <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <div class="flex gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-              </svg>
-              <div class="text-sm text-amber-800">
-                <p class="font-medium mb-1">Important: Changing your email affects your login</p>
-                <ul class="list-disc list-inside space-y-1 text-amber-700">
-                  <li>You'll use your new email to sign in</li>
-                  <li>Password reset emails will go to your new address</li>
-                  <li>Existing sessions will remain active</li>
-                </ul>
-              </div>
-            </div>
-          </div>
+          <div data-account-email-target="errorMessage" class="hidden rounded-lg border border-pink-200 bg-pink-50 px-4 py-3 text-sm text-pink-800" role="alert"></div>
 
-          <!-- Error Message -->
-          <div data-account-email-target="errorMessage" class="hidden bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700"></div>
-
-          <!-- Current Email -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Current Email</label>
-            <div class="text-gray-900"><%= Current.user.email_address %></div>
-          </div>
-
-          <!-- New Email -->
-          <div>
-            <label for="new_email" class="block text-sm font-medium text-gray-700 mb-1">New Email Address</label>
-            <input type="email"
-                   id="new_email"
-                   data-account-email-target="emailInput"
-                   required
-                   class="w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-pink-500 focus:ring-pink-500"
-                   placeholder="your.new.email@example.com">
-          </div>
-
-          <!-- Profile Emails -->
-          <% profiles_with_matching_email = Current.user.people.active.where(email: Current.user.email_address) %>
-          <% if profiles_with_matching_email.any? %>
+          <%# Step one: the new address. %>
+          <div data-account-email-target="addressStep" class="space-y-5">
+            <p class="text-sm leading-relaxed text-gray-600">
+              You'll sign in with the new address, and codes and notices will go there. To confirm it's yours, we'll email it a 6-digit code. Nothing changes until you enter the code.
+            </p>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Also update email on these profiles:</label>
-              <div class="space-y-2">
-                <% profiles_with_matching_email.each do |profile| %>
-                  <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
-                    <input type="checkbox"
-                           value="<%= profile.id %>"
-                           checked
-                           data-account-email-target="profileCheckbox"
-                           class="h-4 w-4 rounded border-gray-300 text-pink-500 focus:ring-pink-500 accent-pink-500">
-                    <span class="text-sm text-gray-900"><%= profile.name %></span>
-                    <span class="text-xs text-gray-500">(<%= profile.email %>)</span>
-                  </label>
-                <% end %>
-              </div>
-              <p class="text-xs text-gray-500 mt-2">Uncheck any profiles you want to keep on the old email.</p>
+              <div class="block text-sm font-medium text-gray-700 mb-1">Current email</div>
+              <div class="text-gray-900"><%= Current.user.email_address %></div>
             </div>
-          <% end %>
+            <div>
+              <label for="new_email" class="block text-sm font-medium text-gray-700 mb-1">New email address</label>
+              <input type="email"
+                     id="new_email"
+                     data-account-email-target="emailInput"
+                     required
+                     autocomplete="email"
+                     class="<%= auth_input_class %>"
+                     placeholder="you@example.com">
+            </div>
+
+            <% profiles_with_matching_email = Current.user.people.active.where(email: Current.user.email_address) %>
+            <% if profiles_with_matching_email.any? %>
+              <div>
+                <div class="block text-sm font-medium text-gray-700 mb-2">Also update the email on these profiles:</div>
+                <div class="space-y-2">
+                  <% profiles_with_matching_email.each do |profile| %>
+                    <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                      <input type="checkbox"
+                             value="<%= profile.id %>"
+                             checked
+                             data-account-email-target="profileCheckbox"
+                             class="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+                      <span class="text-sm text-gray-900"><%= profile.name %></span>
+                      <span class="text-xs text-gray-500">(<%= profile.email %>)</span>
+                    </label>
+                  <% end %>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Uncheck any profiles you want to keep on the old email.</p>
+              </div>
+            <% end %>
+          </div>
+
+          <%# Step two: the code we sent to the new address. %>
+          <div data-account-email-target="codeStep" class="hidden space-y-5">
+            <p class="text-sm leading-relaxed text-gray-600">
+              We sent a 6-digit code to <strong class="font-semibold text-gray-900" data-account-email-target="sentTo"></strong>.
+              It works for <span data-account-email-target="lifetime">10 minutes</span>.
+            </p>
+            <div>
+              <label for="new_email_code" class="block text-sm font-medium text-gray-700 mb-1">Code</label>
+              <input type="text"
+                     id="new_email_code"
+                     data-account-email-target="codeInput"
+                     inputmode="numeric" autocomplete="one-time-code" maxlength="7"
+                     class="<%= auth_input_class %> tracking-[0.4em]"
+                     placeholder="000000">
+            </div>
+            <p class="text-sm text-gray-600">
+              Wrong address?
+              <%= render "shared/button", text: "Use a different one", variant: "ghost", size: "small", type: :button,
+                    classes: "!px-0 !py-0 !text-pink-600 underline hover:!bg-transparent hover:!text-pink-700",
+                    data: { action: "click->account-email#startOver" } %>
+            </p>
+          </div>
         </div>
 
         <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
-          <%= render "shared/button", text: "Cancel", variant: "ghost-cancel", type: :button, data: { action: "click->account-email#close" } %>
-          <%= render "shared/button", text: "Change Email", variant: "primary", type: :submit %>
+          <%= render "shared/button", text: "Cancel", variant: "secondary", type: :button, data: { action: "click->account-email#close" } %>
+          <span data-account-email-target="sendButton"><%= render "shared/button", text: "Email me a code", variant: "primary", type: :submit %></span>
+          <span data-account-email-target="changeButton" class="hidden"><%= render "shared/button", text: "Change email", variant: "primary", type: :submit %></span>
         </div>
       </form>
     </div>

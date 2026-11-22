@@ -22,8 +22,13 @@ class OrgMoneySummary
   def in_flight
     rows = []
     organization.payout_batches.where(status: "funding").find_each do |batch|
-      debit = [ batch.total_cents - batch.held_cents - batch.credit_applied_cents - batch.balance_applied_cents, 0 ].max
-      rows << InFlight.new(label: "Payout run ##{batch.id}: bank debit on its way in", cents: debit,
+      if batch.awaiting_balance?
+        unpaid = batch.items.where(status: PayoutBatch::RETRYABLE_ITEM_STATUSES).sum(:amount_cents)
+        rows << InFlight.new(label: "Payout run ##{batch.id}: paying from their balance as it clears", cents: unpaid,
+                             detail: "#{fmt(batch.total_cents)} run; the bank pays what's left on #{batch.bank_due_at&.strftime('%b %-d')}", since: batch.updated_at)
+        next
+      end
+      rows << InFlight.new(label: "Payout run ##{batch.id}: bank debit on its way in", cents: batch.bank_debit_cents,
                            detail: "#{fmt(batch.total_cents)} run; #{fmt(batch.balance_applied_cents)} from their balance", since: batch.updated_at)
     end
     organization.payout_batches.where(status: %w[funded processing partially_paid]).find_each do |batch|

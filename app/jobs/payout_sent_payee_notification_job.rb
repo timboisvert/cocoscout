@@ -52,6 +52,10 @@ class PayoutSentPayeeNotificationJob < ApplicationJob
   # "paid" and gets the notice then.
   def needs_notice?(item)
     return false unless %w[pending paid].include?(item.status)
+    # A run paying from the balance first: whoever isn't paid yet hasn't had
+    # money set aside for them either. They hear when they're paid, or when
+    # the rest of the run is funded.
+    return false if item.status == "pending" && item.payout_batch.funding_status == "awaiting_balance"
     return true if item.payee_notified_at.blank?
 
     item.status == "paid" && item.paid_at.present? && item.paid_at > item.payee_notified_at

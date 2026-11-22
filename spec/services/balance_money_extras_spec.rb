@@ -36,7 +36,7 @@ RSpec.describe "Balance extras" do
       PayoutLedgerEntry.post!(organization: org, payee: other, entry_type: "earning", amount_cents: 2_500) # owed, can't be paid yet
 
       labels = BalanceObligations.items(org).to_h { |i| [ i.label, i.cents ] }
-      expect(labels).to eq("Your open payout run" => 4_000, "Owed to performers and others, not yet on a run" => 2_500)
+      expect(labels).to eq("Your payout runs, still to pay" => 4_000, "Owed to performers and others, not yet on a run" => 2_500)
       expect(BalanceObligations.safe_to_withdraw_cents(org)).to eq(20_000 - 6_500)
     end
 

@@ -103,11 +103,16 @@
     <%= render "shared/empty_state", icon: "document", title: "No staff yet", body: "When you add someone, they're asked for a W-9 as part of onboarding." %>
   <% end %>
 
+  <%# ---- Performers and contract people: W-9s requested automatically ---- %>
+  <%= render "manage/staffing/taxes/payee_w9s", people: @payee_people, paid: @payee_paid, w9s: @payee_w9s,
+        requests: @payee_requests, year: @payee_year, request_at_cents: @w9_request_at_cents %>
+
   <%# ---- 1099-NECs ---- %>
   <%= render "manage/staffing/taxes/forms_1099_section",
         tax_year: @tax_year, tax_years: @tax_years, threshold_cents: @nec_threshold_cents,
         forms_by_person: @forms_by_person, earnings: @earnings,
-        members: @person_1099_rows, tax_setting: @tax_setting %>
+        members: @person_1099_rows, tax_setting: @tax_setting,
+        payees: @payee_1099_rows, payee_w9s: @payee_w9s %>
 
   <%# Outside the bulk form: the preview modal carries its own form. %>
   <%= render "manage/staffing/invite_preview_modal" %>

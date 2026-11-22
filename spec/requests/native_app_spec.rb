@@ -120,12 +120,15 @@ RSpec.describe "The iOS app's web side", type: :request do
       expect(menu).to be_nil
     end
 
-    # The password page is open to everyone, so it doesn't load the session
-    # on its own; it must still tell the app you're signed in, or the app
-    # resets to its sign-in screen (Reset password "did nothing").
-    it "keeps a signed-in person's menu on pages open to everyone" do
+    # A page open to everyone doesn't load the session on its own; it must
+    # still tell the app you're signed in, or the app resets to its sign-in
+    # screen. The old forgot-password address is one: signed in, it leads to
+    # the Account page's password page, menu and all.
+    it "keeps a signed-in person's menu when an old page open to everyone sends them on" do
       sign_in
       get password_path, headers: in_app
+      expect(response).to redirect_to(choose_password_account_path)
+      follow_redirect!(headers: in_app)
       expect(menu.map { |item| item["id"] }).to include("home", "settings")
     end
   end
@@ -145,18 +148,19 @@ RSpec.describe "The iOS app's web side", type: :request do
     end
 
     # Opening the app signed out: a welcome screen first, not the form (Tim, 2026-10-15).
-    it "opens on the welcome screen when signed out, with Back links from sign-in and sign-up" do
+    it "opens on the welcome screen when signed out, with a Back link from the sign-in screen" do
       get my_dashboard_path, headers: in_app
       expect(response).to redirect_to(welcome_path)
 
       get welcome_path, headers: in_app
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Your shows, your messages, your ticketing. All in one place.", "Create an account",
-                                       signin_path, signup_path)
+      expect(response.body).to include("Your shows, your messages, your ticketing. All in one place.", "Continue with email",
+                                       signin_path)
 
       get signin_path, headers: in_app
       expect(Nokogiri::HTML(response.body).at_css("a[href='#{welcome_path}']")&.text).to include("Back")
       get signup_path, headers: in_app
+      follow_redirect!(headers: in_app)
       expect(Nokogiri::HTML(response.body).at_css("a[href='#{welcome_path}']")&.text).to include("Back")
 
       # The page rules open it as the app's whole screen; sign-in goes on top of it.
@@ -292,8 +296,7 @@ RSpec.describe "The iOS app's web side", type: :request do
     json = JSON.parse(response.body)
     details = json.dig("applinks", "details").sole
     expect(details["appIDs"]).to eq([ "3Y9EQJP24Y.com.cocoscout.app" ])
-    expect(details["components"].map { |c| c["/"] }).to include("/my/*", "/door/*", "/claim/*", "/vacancy/*")
-    expect(details["components"].map { |c| c["/"] }).not_to include("/manage/*")
+    expect(details["components"].map { |c| c["/"] }).to include("/my/*", "/door/*", "/claim/*", "/vacancy/*", "/manage", "/manage/*")
     expect(json.dig("webcredentials", "apps")).to eq([ "3Y9EQJP24Y.com.cocoscout.app" ])
   end
 
@@ -313,7 +316,10 @@ RSpec.describe "The iOS app's web side", type: :request do
     rules = JSON.parse(Rails.public_path.join("hotwire-native/path-configuration.json").read)["rules"]
     open_in = rules.select { |rule| rule["properties"]["open_in"] }.to_h { |rule| [ rule["properties"]["open_in"], rule["patterns"] ] }
 
-    expect(open_in["safari"]).to include("^/manage")
+    # V1 shows Manage in its own web view, never back out to Safari: Manage is a
+    # claimed link from 1.4, so Safari would hand it straight back to the app.
+    expect(open_in["safari"]).to include("^/superadmin")
+    expect(open_in["safari"]).not_to include("^/manage")
     expect(open_in["document"].any? { |pattern| Regexp.new(pattern).match?("/my/tax-forms/12/w9/copy") }).to be(true)
     expect(rules.flat_map { |rule| rule["patterns"] }.any? { |pattern| Regexp.new(pattern).match?("/my/signups/ABC12/form") }).to be(true)
 

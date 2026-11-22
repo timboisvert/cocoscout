@@ -1,0 +1,131 @@
+<%#
+  Someone's year with an organization that pays them (Tim, 2026-11-22): what
+  it has paid them so far, drawn against the W-9 request line and the 1099
+  line; where their W-9 stands; what a W-9 and a 1099-NEC are, in plain
+  words; and links to the IRS's own pages. We explain; we don't give tax
+  advice. Reached from the W-9 request's email and notification.
+%>
+<% content_for :title, "Your #{@tax_year} with #{@organization.name}" %>
+<%
+  money = ->(cents) { number_to_currency(cents / 100.0, precision: 0) }
+  scale_top = [ @threshold_cents * 1.25, @paid_cents * 1.1 ].max
+  pct = ->(cents) { (cents / scale_top * 100).clamp(0, 100).round(1) }
+  over_line = @paid_cents >= @threshold_cents
+  links = [
+    [ "About Form W-9", "https://www.irs.gov/forms-pubs/about-form-w-9" ],
+    [ "About Form 1099-NEC", "https://www.irs.gov/forms-pubs/about-form-1099-nec" ],
+    [ "The IRS's tax center for self-employed people", "https://www.irs.gov/businesses/small-businesses-self-employed/self-employed-individuals-tax-center" ],
+    [ "Estimated taxes, and who pays them", "https://www.irs.gov/businesses/small-businesses-self-employed/estimated-taxes" ]
+  ]
+%>
+<%= render partial: "shared/top_menu", locals: { breadcrumbs: [ [ "Payments", my_payments_path ] ], text: "Taxes with #{@organization.name}", links: [] } %>
+<%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+
+<div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2 space-y-6">
+    <section class="bg-white border border-gray-200 rounded-lg overflow-hidden" data-tax-year>
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "What #{@organization.name} has paid you in #{@tax_year}" %>
+      <div class="px-4 py-5 space-y-5">
+        <div>
+          <p class="text-3xl font-bold text-gray-900 tabular-nums"><%= money.(@paid_cents) %></p>
+          <p class="text-sm text-gray-600 mt-1">Each payment counts on the day it was sent to you. Reimbursements aren't included, because they pay you back for costs rather than pay you for work.</p>
+        </div>
+
+        <%# The bar: what's been paid, against the W-9 request line and the 1099 line. %>
+        <div class="pt-6 pb-8" role="img" aria-label="<%= money.(@paid_cents) %> paid so far. A W-9 is requested at <%= money.(@request_at_cents) %>, and a 1099-NEC is sent at <%= money.(@threshold_cents) %>.">
+          <div class="relative h-4 rounded-full bg-gray-100">
+            <div class="absolute inset-y-0 left-0 rounded-full bg-pink-500" style="width: <%= pct.(@paid_cents) %>%"></div>
+            <% [ [ @request_at_cents, "W-9 requested" ], [ @threshold_cents, "1099-NEC" ] ].each do |cents, label| %>
+              <div class="absolute -top-6 -bottom-8 flex flex-col items-center" style="left: <%= pct.(cents) %>%; transform: translateX(-50%)">
+                <span class="text-[11px] font-medium text-gray-600 whitespace-nowrap"><%= label %></span>
+                <span class="flex-1 w-px bg-gray-400"></span>
+                <span class="text-[11px] text-gray-500 tabular-nums"><%= money.(cents) %></span>
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <p class="text-sm text-gray-700">
+          <% if over_line %>
+            You've been paid more than <%= money.(@threshold_cents) %> this year, so <%= @organization.name %> will send you a Form 1099-NEC for <%= @tax_year %> by January 31, <%= @tax_year + 1 %>, and report the same amount to the IRS.
+          <% elsif @paid_cents >= @request_at_cents %>
+            You're <%= money.(@threshold_cents - @paid_cents) %> away from <%= money.(@threshold_cents) %>. Once <%= @organization.name %> has paid you that much this year, it has to send you a Form 1099-NEC and report the payments to the IRS. That's why it has requested your W-9 now: so it has what it needs if you get there.
+          <% else %>
+            If <%= @organization.name %> pays you <%= money.(@threshold_cents) %> or more this year, it will send you a Form 1099-NEC and report the payments to the IRS. You're <%= money.(@threshold_cents - @paid_cents) %> away.
+          <% end %>
+        </p>
+      </div>
+    </section>
+
+    <section class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "What this means" %>
+      <div class="px-4 py-4 space-y-4 text-sm text-gray-700">
+        <div>
+          <h3 class="font-semibold text-gray-900">What a W-9 is</h3>
+          <p class="mt-1">A Form W-9 gives <%= @organization.name %> your legal name, your address, and your taxpayer ID (your Social Security number, or an EIN if you have a business). It needs these to report what it paid you. You fill it in once for each organization that pays you, and again only if something changes. Only <%= @organization.name %> sees what you enter.</p>
+        </div>
+        <div>
+          <h3 class="font-semibold text-gray-900">What a 1099-NEC is</h3>
+          <p class="mt-1">When an organization pays someone who isn't its employee <%= money.(@threshold_cents) %> or more in a year, it sends them a Form 1099-NEC by January 31 and sends the IRS a copy. It shows what you were paid. Nothing is taken out of your pay for taxes, so the 1099 helps you report that income on your own tax return.</p>
+        </div>
+        <div>
+          <h3 class="font-semibold text-gray-900">Where to get help</h3>
+          <p class="mt-1">CocoScout can't give tax advice. If you aren't sure what to report or whether to pay estimated taxes, a tax professional can help, and the IRS explains it on the pages linked here.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="space-y-6">
+    <section class="bg-white border border-gray-200 rounded-lg overflow-hidden" data-w9-status>
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "Your W-9" %>
+      <div class="px-4 py-4 space-y-3 text-sm">
+        <% if @existing %>
+          <p class="text-gray-900">On file with <%= @organization.name %> since <%= @existing.signed_at.strftime("%B %-d, %Y") %>.</p>
+          <div class="flex flex-wrap gap-2">
+            <%= link_to my_w9_copy_path(@organization.id), target: "_blank" do %>
+              <%= render "shared/button", text: "View your copy", variant: "secondary", size: "small" %>
+            <% end %>
+            <%= link_to my_w9_path(@organization.id) do %>
+              <%= render "shared/button", text: "Update it", variant: "tertiary", size: "small" %>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-gray-900">
+            <% if @w9_request %>
+              <%= @organization.name %> requested your W-9 on <%= @w9_request.requested_at.strftime("%B %-d") %>. It takes about five minutes.
+            <% else %>
+              <%= @organization.name %> doesn't have a W-9 from you yet. It takes about five minutes.
+            <% end %>
+          </p>
+          <%= link_to my_w9_path(@organization.id) do %>
+            <%= render "shared/button", text: "Fill in your W-9", variant: "primary", size: "medium" %>
+          <% end %>
+        <% end %>
+      </div>
+    </section>
+
+    <% if @forms.any? %>
+      <section class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Your 1099s" %>
+        <ul class="divide-y divide-gray-100 text-sm">
+          <% @forms.each do |form| %>
+            <li class="px-4 py-3 flex items-center justify-between gap-3">
+              <span class="text-gray-900"><%= form.tax_year %> · <%= money.(form.reported_box1_cents) %></span>
+              <%= link_to "Open", my_form_1099_path(@organization.id, form.tax_year), target: "_blank", class: "text-pink-600 hover:text-pink-700 font-medium" %>
+            </li>
+          <% end %>
+        </ul>
+      </section>
+    <% end %>
+
+    <section class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "From the IRS" %>
+      <ul class="px-4 py-3 space-y-2 text-sm">
+        <% links.each do |label, url| %>
+          <li><%= link_to label, url, target: "_blank", rel: "noopener noreferrer", class: "text-pink-600 hover:text-pink-700 font-medium" %></li>
+        <% end %>
+      </ul>
+    </section>
+  </div>
+</div>

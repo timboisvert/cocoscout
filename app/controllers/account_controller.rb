@@ -6,6 +6,15 @@ class AccountController < ApplicationController
   before_action :set_account_sidebar
   before_action :set_profile, only: [ :set_default_profile, :archive_profile ]
 
+  # Sign-in methods can't be changed by a superadmin acting as someone else.
+  before_action :not_while_impersonating, only: %i[update_email update_password send_password_code]
+  rate_limit to: 10, within: 10.minutes, only: %i[update_password update_email], name: "account-sign-in-methods", with: lambda {
+    respond_to do |format|
+      format.json { render json: { success: false, error: "Too many tries. Please try again in a few minutes." }, status: :too_many_requests }
+      format.any { redirect_to account_path, alert: "Too many tries. Please try again in a few minutes." }
+    end
+  }
+
   # Rate limit: can only change email once per 24 hours
   EMAIL_CHANGE_COOLDOWN = 24.hours
 
@@ -23,8 +32,12 @@ class AccountController < ApplicationController
     end
   end
 
+  # Changing the sign-in email takes two posts from the Account page's modal:
+  # the new address (we email it a 6-digit code), then the address again with
+  # the code. Only the second changes anything, so the account's email is
+  # always an address its owner has proved they receive mail at.
   def update_email
-    new_email = params[:email_address]&.strip&.downcase
+    new_email = params[:email_address].to_s.delete("\0").strip.downcase
 
     # Check rate limit
     if Current.user.email_changed_at.present? && Current.user.email_changed_at > EMAIL_CHANGE_COOLDOWN.ago
@@ -44,14 +57,39 @@ class AccountController < ApplicationController
       return
     end
 
+    probe = User.new_unclaimed(email_address: new_email)
+    unless probe.valid?
+      render json: { success: false, error: "That doesn't look like an email address we can use. Check it and try again." }, status: :unprocessable_content
+      return
+    end
+
+    if params[:code].blank?
+      result = SignIn::Code.deliver(email: new_email, purpose: "change_email", user: Current.user, ip_address: request.remote_ip)
+      if result == :too_many
+        render json: { success: false, error: "We've sent that address several codes in the last hour. Use the newest one, or try again later." }, status: :unprocessable_content
+      else
+        render json: { success: true, needs_code: true, email_address: new_email, lifetime: SignIn::Code.lifetime_in_words }
+      end
+      return
+    end
+
+    status, _record = SignIn::Code.redeem(email: new_email, purpose: "change_email", code: params[:code])
+    unless status == :ok
+      error = { wrong: "That code doesn't match. Check the email and try again.",
+                expired: "That code has expired or was already used. Request a new one.",
+                locked: "That code has had too many tries. Request a new one." }[status]
+      render json: { success: false, error: error }, status: :unprocessable_content
+      return
+    end
+
     # Get profile IDs to update
     profile_ids_to_update = params[:profile_ids] || []
 
     ActiveRecord::Base.transaction do
       old_email = Current.user.email_address
 
-      # Update user email
-      Current.user.update!(email_address: new_email, email_changed_at: Time.current)
+      # Update user email. The code just proved the new address.
+      Current.user.update!(email_address: new_email, email_changed_at: Time.current, email_verified_at: Time.current)
 
       # Update selected profile emails
       if profile_ids_to_update.any?
@@ -64,6 +102,50 @@ class AccountController < ApplicationController
     render json: { success: true, message: "Email updated successfully." }
   rescue ActiveRecord::RecordInvalid => e
     render json: { success: false, error: e.record.errors.full_messages.join(", ") }, status: :unprocessable_content
+  end
+
+  # Choosing a first password, or changing it (Sign-in methods). Being signed
+  # in isn't enough to change how an account is signed in to: the person
+  # proves it's them with their current password, or with a 6-digit code sent
+  # to their email (the only way for someone who never chose a password, and
+  # the way for someone who forgot theirs).
+  def choose_password
+    @with_code = params[:with] == "code" || !Current.user.password_chosen?
+    @code_sent = session[:password_code_sent]
+  end
+
+  def send_password_code
+    result = SignIn::Code.deliver(email: Current.user.email_address, purpose: "change_password", user: Current.user,
+                                  ip_address: request.remote_ip)
+    session[:password_code_sent] = result.to_s
+    redirect_to choose_password_account_path(with: "code")
+  end
+
+  def update_password
+    user = Current.user
+    @with_code = params[:with] == "code" || !user.password_chosen?
+    @code_sent = session[:password_code_sent]
+
+    # The new password first, so a code isn't used up on a password that
+    # doesn't meet the rules.
+    user.password = params[:password].to_s.delete("\0")
+    unless user.password.present? && user.valid?
+      @password_errors = user.password.present? ? user.errors.full_messages.to_sentence : "Enter a new password"
+      user.restore_attributes
+      return render(:choose_password, status: :unprocessable_content)
+    end
+
+    proved, problem = prove_for_password_change(user)
+    unless proved
+      @proof_problem = problem
+      user.restore_attributes
+      return render(:choose_password, status: :unprocessable_content)
+    end
+
+    user.email_verified_at = Time.current if @with_code
+    user.save!
+    session.delete(:password_code_sent)
+    redirect_to account_path, notice: "Your password is saved, and you're signed out everywhere else."
   end
 
   def profiles
@@ -366,6 +448,31 @@ class AccountController < ApplicationController
 
   def set_account_sidebar
     @show_account_sidebar = true
+  end
+
+  def not_while_impersonating
+    return unless impersonating?
+
+    respond_to do |format|
+      format.json { render json: { success: false, error: "Sign-in methods can't be changed while you're acting as someone else." }, status: :forbidden }
+      format.any { redirect_to account_path, alert: "Sign-in methods can't be changed while you're acting as someone else." }
+    end
+  end
+
+  # [true, nil] when the person proved it's them, or [false, what to show].
+  def prove_for_password_change(user)
+    if @with_code
+      status, _record = SignIn::Code.redeem(email: user.email_address, purpose: "change_password", code: params[:code])
+      return [ true, nil ] if status == :ok
+
+      [ false, { wrong: "That code doesn't match. Check the email and try again.",
+                 expired: "That code has expired or was already used. Send a new code below.",
+                 locked: "That code has had too many tries. Send a new code below." }[status] ]
+    elsif User.authenticate_by(email_address: user.email_address, password: params[:current_password].to_s.delete("\0"))
+      [ true, nil ]
+    else
+      [ false, "That isn't your current password. Try again, or use a code instead." ]
+    end
   end
 
   def set_profile

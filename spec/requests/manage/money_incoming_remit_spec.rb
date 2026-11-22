@@ -148,11 +148,10 @@ RSpec.describe "Manage remitting collected contract money", type: :request do
       get manage_payout_batch_path(batch)
 
       body = response.body
-      expect(body).to include("Ready to send $242.00")
+      expect(body).to include("CocoScout already holds this money, so nothing comes from your bank.")
       expect(body).to include("Pay now")
       expect(body).to include(manage_fund_payout_batch_path(batch))
-      expect(body).not_to include("Fund and pay this payout run?")
-      expect(body).not_to include("We debit your bank via ACH")
+      expect(body).not_to include("Your bank pays")
     end
 
     it "debits only the non-held remainder when show pay shares the run" do
@@ -169,10 +168,8 @@ RSpec.describe "Manage remitting collected contract money", type: :request do
       get manage_payout_batch_path(batch)
 
       body = response.body
-      expect(body).to include("We debit your bank via ACH")
-      expect(body).to include("CocoScout already holds $242.00 of this run")
-      expect(body).to include("debited only $50.00")
-      expect(body).to include("Fund and pay this payout run?")
+      expect(body).to include("CocoScout already holds $242.00 of this run, so your bank pays $50.00.")
+      expect(body).to include("Pay this run?")
     end
 
     it "pays the fully-held run with no bank debit when funded" do

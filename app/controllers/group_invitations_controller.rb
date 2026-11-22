@@ -155,8 +155,10 @@ class GroupInvitationsController < ApplicationController
       person = user.person
     else
       if user && params[:password].present?
-        # Existing user setting/updating password
+        # Existing user setting/updating password. The invitation link came
+        # to this address, so opening it proves it.
         user.password = params[:password]
+        user.email_verified_at = Time.current
         unless user.valid?
           @user = user
           render :accept, status: :unprocessable_content and return
@@ -164,7 +166,7 @@ class GroupInvitationsController < ApplicationController
         user.save!
       elsif params[:password].present?
         # New user - create account
-        user = User.new(email_address: @invitation.email.downcase, password: params[:password])
+        user = User.new(email_address: @invitation.email.downcase, password: params[:password], email_verified_at: Time.current)
         unless user.save
           @user = user
           render :accept, status: :unprocessable_content and return

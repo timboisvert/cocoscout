@@ -295,10 +295,7 @@ module Manage
         person = Person.create!(name: name, email: email)
         person.organizations << Current.organization
 
-        user = User.create!(
-          email_address: email,
-          password: User.generate_secure_password
-        )
+        user = User.create_unclaimed!(email_address: email)
         person.update!(user: user)
 
         # Send invitation email

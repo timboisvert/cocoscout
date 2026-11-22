@@ -55,7 +55,7 @@
       }
     },
     {
-      "patterns": ["^/manage", "^/superadmin", "^/select/", "^/$", "^/for-performers", "^/for-producers", "^/pricing", "^/sketchfest"],
+      "patterns": ["^/superadmin", "^/select/", "^/$", "^/for-performers", "^/for-producers", "^/pricing", "^/sketchfest"],
       "properties": {
         "open_in": "safari"
       }

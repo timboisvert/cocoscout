@@ -83,21 +83,27 @@ class TaxForm1099 < ApplicationRecord
     payer = organization.tax_setting
     raise ArgumentError, "add your payer details before generating 1099s" unless payer&.complete?
 
+    # Everyone the organization paid personally this year: staff, performers,
+    # contract people and instructors (Tim, 2026-11-22), each with their
+    # current W-9 here, whoever they were paid as.
     earnings = Tax::YearEarnings.for(organization, tax_year)
-    members = organization.organization_staff_members.where(person_id: earnings.keys)
-                          .includes(:person, :w9_submissions)
+    people = Person.where(id: earnings.keys).index_by(&:id)
+    staff_names = organization.organization_staff_members.where(person_id: earnings.keys).index_by(&:person_id)
+    w9s = current_w9s(organization, earnings.keys)
 
     generated = []
-    members.each do |member|
-      result = earnings[member.person_id]
-      next if result.nil? || result.net_cents <= 0
+    earnings.each do |person_id, result|
+      person = people[person_id]
+      next if person.nil? || result.net_cents <= 0
 
-      form = organization.tax_form_1099s.find_or_initialize_by(person_id: member.person_id, tax_year: tax_year, corrects_id: nil)
+      w9 = w9s[person_id]
+      name = staff_names[person_id]&.display_name || person.name
+      form = organization.tax_form_1099s.find_or_initialize_by(person_id: person_id, tax_year: tax_year, corrects_id: nil)
       form.nec_box1_cents = result.net_cents
       form.generated_by ||= generated_by
 
       if form.new_record?
-        snapshot_recipient_from(form, member)
+        snapshot_recipient_from(form, w9: w9, name: name)
         snapshot_payer_from(form, payer)
         form.status = "draft"
         form.save!
@@ -105,7 +111,7 @@ class TaxForm1099 < ApplicationRecord
       elsif form.editable?
         # Refresh amount and W-9 snapshot for drafts still being tuned; leave
         # anything delivered/filed frozen.
-        snapshot_recipient_from(form, member) if member.current_w9&.id != form.w9_submission_id
+        snapshot_recipient_from(form, w9: w9, name: name) if w9&.id != form.w9_submission_id
         form.save! if form.changed?
         generated << form
       end
@@ -113,8 +119,12 @@ class TaxForm1099 < ApplicationRecord
     generated
   end
 
-  def self.snapshot_recipient_from(form, member)
-    w9 = member.current_w9
+  # { person_id => their current W-9 at this organization }.
+  def self.current_w9s(organization, person_ids)
+    organization.w9_submissions.current.where(person_id: person_ids).order(:signed_at).index_by(&:person_id)
+  end
+
+  def self.snapshot_recipient_from(form, w9:, name:)
     if w9
       form.assign_attributes(
         w9_submission: w9,
@@ -135,7 +145,7 @@ class TaxForm1099 < ApplicationRecord
       # way, but the payer will see it needs a W-9.
       form.assign_attributes(
         w9_submission: nil,
-        recipient_name: member.display_name,
+        recipient_name: name,
         recipient_tin_type: "ssn",
         recipient_tin_last4: "0000",
         recipient_address_line1: "—",

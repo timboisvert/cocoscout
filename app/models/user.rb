@@ -20,6 +20,12 @@ class User < ApplicationRecord
     password_digest
   end
 
+  # Sign-in methods beyond the password: connected Apple and Google accounts
+  # (UserIdentity) and the 6-digit codes we email (SignInCode).
+  has_many :identities, class_name: "UserIdentity", dependent: :destroy
+  has_many :sign_in_codes, dependent: :delete_all
+  before_save :stamp_password_set_at, if: :will_save_change_to_password_digest?
+
   has_many :sessions, dependent: :destroy
   # The app's signed-in phones (AppSession). A new password ends them all, and
   # every web sign-in but the one making the change (the iOS app signs in
@@ -96,9 +102,49 @@ class User < ApplicationRecord
   SUPERADMIN_EMAILS = [ "boisvert@gmail.com", "andiewonnacott@gmail.com" ].freeze
 
   # Generate a secure random password that meets complexity requirements
-  # (uppercase, lowercase, number, special character)
+  # (uppercase, lowercase, number, special character). Only this model calls
+  # it (spec/models/user_spec.rb checks): everything else goes through
+  # create_unclaimed! or forget_password!, which also record that nobody
+  # chose it.
   def self.generate_secure_password
     "#{SecureRandom.hex(8)}A!1a"
+  end
+
+  # An account for someone who hasn't chosen a password: a person an
+  # organization added, or a new person who signs in with a code. The column
+  # can't be empty, so it holds a random password nobody knows, and
+  # password_set_at stays empty to say so.
+  def self.new_unclaimed(**attributes)
+    new(**attributes).tap(&:forget_password)
+  end
+
+  def self.create_unclaimed!(**attributes)
+    new_unclaimed(**attributes).tap(&:save!)
+  end
+
+  # Replace the password with a random one nobody knows.
+  def forget_password
+    @password_not_chosen = true
+    self.password = self.class.generate_secure_password
+    self.password_set_at = nil
+  end
+
+  def forget_password!
+    forget_password
+    save!
+  end
+
+  # Did this person choose a password? Decides which step the sign-in screen
+  # shows (their password, or a code), never what is safe: the backfill was a
+  # guess, so a right password always signs in whatever this says.
+  def password_chosen?
+    password_set_at.present?
+  end
+
+  # Has this person ever got into their account? False for someone an
+  # organization added who has never signed in.
+  def claimed?
+    last_seen_at.present? || email_verified_at.present?
   end
 
   # Returns the user's primary person profile
@@ -522,6 +568,13 @@ class User < ApplicationRecord
   end
 
   private
+
+  # Any password saved through the ordinary setter was chosen by the person.
+  # forget_password is the one way to save a password nobody chose.
+  def stamp_password_set_at
+    self.password_set_at = Time.current unless @password_not_chosen
+    @password_not_chosen = false
+  end
 
   def end_other_sign_ins
     app_sessions.destroy_all

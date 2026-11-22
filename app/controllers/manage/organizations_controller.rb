@@ -2,10 +2,10 @@
 
 module Manage
   class OrganizationsController < Manage::ManageController
-    before_action :set_organization, only: %i[show edit update destroy transfer_ownership remove_logo confirm_delete]
+    before_action :set_organization, only: %i[show edit update destroy transfer_ownership remove_logo confirm_delete time_zone change_time_zone]
     skip_before_action :show_manage_sidebar, only: %i[new create index edit]
     before_action :ensure_user_is_owner, only: %i[destroy transfer_ownership confirm_delete]
-    before_action :ensure_user_can_manage, only: %i[show edit update remove_logo]
+    before_action :ensure_user_can_manage, only: %i[show edit update remove_logo time_zone change_time_zone]
 
     def index
       # Management screen - list all organizations with management options
@@ -85,7 +85,19 @@ module Manage
     end
 
     def update
-      if @organization.update(organization_params)
+      # A new time zone on an organization with times already entered goes to
+      # its own page first: keep the clock or keep the moment (Tim,
+      # 2026-11-22; OrganizationTimeZoneChange). Everything else saves now.
+      attrs = organization_params
+      new_zone = attrs[:time_zone].presence
+      if new_zone && new_zone != @organization.time_zone && OrganizationTimeZoneChange.preview(@organization, to: new_zone)[:counts].any?
+        attrs = attrs.except(:time_zone)
+        if @organization.update(attrs)
+          return redirect_to time_zone_manage_organization_path(@organization, to: new_zone), status: :see_other
+        end
+      end
+
+      if @organization.update(attrs)
         redirect_to manage_organization_path(@organization), notice: "Organization was successfully updated",
                                                              status: :see_other
       else
@@ -100,6 +112,24 @@ module Manage
         @agreement_templates = @organization.agreement_templates.order(:name)
         render :show, status: :unprocessable_content
       end
+    end
+
+    # What changing to params[:to] would move, and the two choices.
+    def time_zone
+      @to = ActiveSupport::TimeZone[params[:to].to_s]
+      return redirect_to(manage_organization_path(@organization), alert: "That isn't a time zone we know.") unless @to
+
+      @preview = OrganizationTimeZoneChange.preview(@organization, to: @to.name)
+    end
+
+    def change_time_zone
+      zone = ActiveSupport::TimeZone[params[:to].to_s]
+      keep = params[:keep].presence_in(%w[clock moment])
+      return redirect_to(manage_organization_path(@organization), alert: "Choose how to change the time zone.") unless zone && keep
+
+      OrganizationTimeZoneChange.apply!(@organization, to: zone.name, keep: keep)
+      notice = keep == "clock" ? "Time zone changed to #{zone.name}. Every time you entered reads as it did." : "Time zone changed to #{zone.name}. Times now show in #{zone.name}."
+      redirect_to manage_organization_path(@organization), notice: notice, status: :see_other
     end
 
     def destroy

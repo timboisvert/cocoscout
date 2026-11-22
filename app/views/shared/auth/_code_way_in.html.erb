@@ -1,0 +1,18 @@
+<%#
+  On an invitation page for an address that already has an account: the way
+  in for someone with no password to hand. It goes through the sign-in
+  screen (a 6-digit code to that address) and comes straight back to the
+  invitation, signed in.
+
+  Locals: email, return_to (this invitation page's own path),
+          primary (true draws it as the page's one button, for someone who
+          never chose a password; otherwise a line under the password form).
+%>
+<% path = code_way_in_link(local_assigns.fetch(:email), return_to: local_assigns.fetch(:return_to)) %>
+<% if local_assigns[:primary] %>
+  <%= render "shared/button", text: "Sign in with a code", variant: "primary", size: "jumbo", path: path %>
+<% else %>
+  <div class="border-t border-slate-200 pt-4 text-center text-sm leading-[1.8] text-slate-600">
+    No password to hand? <%= link_to "Sign in with a code", path, class: "font-medium text-pink-600 hover:text-pink-700" %> and we'll bring you back here.
+  </div>
+<% end %>
