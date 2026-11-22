@@ -99,8 +99,9 @@
                 headline: "#{number_to_currency(ready_cents / 100.0)} is waiting on your bank",
                 body: "Add your bank and it goes out with the next payout run. It reaches your bank about two business days later.",
                 actions: [ { text: "Add your bank", path: my_payments_connect_bank_path, method: :post, form: { data: { turbo: false } } } ] %>
-        <% elsif !@person.can_receive_payouts? && contract_cents.positive? %>
-          <%# Contract payments still ahead of their dates: the bank has to be there before they're sent. %>
+        <% elsif !@person.can_receive_payouts? && contract_cents.positive? && !(@person.needs_bank_connection? && @person.organizations.exists?) %>
+          <%# Contract payments still ahead of their dates: the bank has to be there before they're sent.
+              Not when the page's own bank banner already shows (found testing 1.4, 2026-11-22). %>
           <%= render "shared/alert_panel",
                 eyebrow: "Before your contract pays you",
                 headline: "Add your bank so your contract payments can be sent",
