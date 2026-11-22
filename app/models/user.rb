@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 class User < ApplicationRecord
+  # Never read or written (Tim, 2026-11-22). Step 1 of 3: ignored here, then a
+  # migration drops them, then this line goes.
+  self.ignored_columns += %w[invitation_sent_at last_message_digest_sent_at]
+
   # Multi-profile support: users can have multiple person profiles
   has_many :people, dependent: :nullify
   belongs_to :default_person, class_name: "Person", optional: true
