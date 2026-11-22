@@ -11,7 +11,7 @@
 <% strip = capture do %>
   <%= render layout: "shared/auth/strip", locals: { image: (org.logo if org.logo.attached?), initial: org.name } do %>
     <strong class="font-semibold text-slate-900"><%= sign_up_form.name %></strong> ·
-    <%= org.name %> runs its sign-ups on CocoScout. Create a free account to take a spot.
+    <%= org.name %> runs its sign-ups on CocoScout. Sign in or create a free account to take a spot.
   <% end %>
   <% if sign_up_form.instruction_text.present? %>
     <div class="prose prose-sm prose-slate mt-3 max-w-none rounded-lg border border-slate-200 bg-white px-4 py-3.5 text-slate-700">
@@ -31,12 +31,8 @@
 <% end %>
 
 <%= render layout: "shared/auth/shell",
-      locals: { title: "Create your account", strip: strip, notices: notices, legal: "creating an account",
+      locals: { title: "Sign in or create an account", strip: strip, notices: notices,
                 pill: "Free to join · No card needed",
                 lede: "Your account keeps your spot, shows you where you stand, and holds the schedule once you're in." } do %>
-  <%= render "shared/auth/signup_form", user: @user, submit_text: "Create account and sign up", email_value: params[:email_address] %>
-
-  <div class="border-t border-slate-200 pt-4 text-center text-sm leading-[1.8] text-slate-600">
-    Already have an account? <%= link_to "Sign in", signin_path, class: "font-medium text-pink-600 hover:text-pink-700" %>
-  </div>
+  <%= render "shared/auth/email_form", email_value: params[:email_address] %>
 <% end %>

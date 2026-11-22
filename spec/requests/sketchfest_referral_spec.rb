@@ -42,21 +42,21 @@ RSpec.describe "SketchFest referral attribution", type: :request do
   describe "the full journey to a created organization" do
     it "attributes an org created after a SketchFest signup" do
       get sketchfest_path
-      post handle_signup_path, params: signup_params(email_address: "team@example.com", password: password)
+      complete_signup("team@example.com")
       post manage_organizations_path, params: { organization: { name: "The Late Shift" } }
 
       expect(Organization.find_by(name: "The Late Shift").referral_source).to eq("sketchfest")
     end
 
     it "leaves referral_source nil for an organic signup" do
-      post handle_signup_path, params: signup_params(email_address: "organic@example.com", password: password)
+      complete_signup("organic@example.com")
       post manage_organizations_path, params: { organization: { name: "Some Theater Co" } }
 
       expect(Organization.find_by(name: "Some Theater Co").referral_source).to be_nil
     end
 
     it "cannot be spoofed by posting the attribute directly" do
-      post handle_signup_path, params: signup_params(email_address: "sneaky@example.com", password: password)
+      complete_signup("sneaky@example.com")
       post manage_organizations_path,
            params: { organization: { name: "Fake Referral Co", referral_source: "sketchfest" } }
 
@@ -65,24 +65,26 @@ RSpec.describe "SketchFest referral attribution", type: :request do
   end
 
   describe "sketch-flavored copy" do
-    it "swaps the signup panel for team language after the sponsor page" do
+    it "swaps the first sign-in step for team language after the sponsor page" do
       get sketchfest_path
       get signup_path
+      follow_redirect!
 
       expect(response.body).to include("Welcome from SketchFest.")
       expect(response.body).to include("Put your run in once")
     end
 
-    it "leaves the default multi-persona signup panel alone otherwise" do
+    it "leaves the default first step alone otherwise" do
       get signup_path
+      follow_redirect!
 
-      expect(response.body).to include("One account for everything you do in live entertainment")
+      expect(response.body).to include("Everything about your shows lives here")
       expect(response.body).not_to include("Welcome from SketchFest.")
     end
 
     it "asks a sketch signup what their team is called, not their organization" do
       get sketchfest_path
-      post handle_signup_path, params: signup_params(email_address: "troupe@example.com", password: password)
+      complete_signup("troupe@example.com")
       get new_manage_organization_path
 
       expect(response.body).to include("Set up your team")
@@ -91,7 +93,7 @@ RSpec.describe "SketchFest referral attribution", type: :request do
     end
 
     it "keeps the generic organization form for everyone else" do
-      post handle_signup_path, params: signup_params(email_address: "generic@example.com", password: password)
+      complete_signup("generic@example.com")
       get new_manage_organization_path
 
       expect(response.body).to include("Organization Name")

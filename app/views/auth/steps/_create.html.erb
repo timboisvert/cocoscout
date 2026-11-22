@@ -1,0 +1,36 @@
+<% content_for :title, "Create your account" %>
+<%
+  # A new person whose address the code just confirmed. Their name and the
+  # account opens. No password: they sign in with a code, and can choose a
+  # password later on the Account page.
+%>
+<% notices = capture do %>
+  <% if @name_error %>
+    <%= render "shared/auth/notice", kind: :error, body: @name_error %>
+  <% end %>
+<% end %>
+
+<%= render layout: "shared/auth/shell",
+      locals: { title: "Create your account",
+                lede: "Enter your name the way organizations should see it on cast lists, messages, and contracts.",
+                pill: "Free to join · No card needed", notices: notices, legal: "creating an account" } do %>
+  <%= form_with url: handle_signin_path, class: "space-y-4" do |form| %>
+    <%= hidden_field_tag :step, "create", id: nil %>
+    <%= render "shared/auth/account_row", email: @email_address, change: signin_path(start_over: 1) %>
+
+    <div>
+      <label for="first_name" class="mb-1.5 block text-sm font-medium text-slate-700">First name</label>
+      <%= text_field_tag :first_name, @first_name, required: true, autofocus: !auth_native_app?, autocomplete: "given-name",
+            maxlength: 60, class: auth_input_class(error: @name_error.present? && @first_name.blank?) %>
+    </div>
+    <div>
+      <label for="last_name" class="mb-1.5 block text-sm font-medium text-slate-700">Last name</label>
+      <%= text_field_tag :last_name, @last_name, required: true, autocomplete: "family-name",
+            maxlength: 60, class: auth_input_class(error: @name_error.present? && @last_name.blank?) %>
+    </div>
+
+    <div class="pt-1">
+      <%= render "shared/button", text: "Create account", variant: "primary", size: "jumbo", type: :submit %>
+    </div>
+  <% end %>
+<% end %>

@@ -1,0 +1,51 @@
+<% content_for :title, "Sign in or create an account" %>
+<%
+  # Who lands here: a performer who clicked a cast message, a producer heading
+  # to Manage or arriving from "Start free", someone whose session lapsed,
+  # someone an organization added, someone brand new. One field serves them
+  # all: the email decides the next step. Visitors who came in through a
+  # campaign page get that campaign's framing in the strip.
+  sketch = referred_from?("sketchfest")
+  lede =
+    if sketch
+      "Put your run in once and your whole team sees it: rehearsals and show dates on one calendar, who can make which night, and who's cast in what. Your performers are free forever."
+    elsif auth_native_app?
+      "Your calendar, cast messages, contracts and pay, and the door scanner when you're working it. Enter your email address to sign in or to create your account."
+    else
+      "Everything about your shows lives here: your calendar, cast messages, contracts and pay, and any organization you run. Enter your email address to sign in or to create your account."
+    end
+  back = sketch && !auth_native_app? ? { text: "SketchFest", path: sketchfest_path } : nil
+%>
+<% strip = capture do %>
+  <% if sketch %>
+    <%= render layout: "shared/auth/strip", locals: { initial: "S", dark: true } do %>
+      <strong class="font-semibold text-slate-900">Welcome from SketchFest.</strong>
+      Free for sketch teams up to <%= Organization::FREE_MONTHLY_EVENT_LIMIT %> rehearsals or shows a month.
+    <% end %>
+  <% end %>
+<% end %>
+<% notices = capture do %>
+  <% if @reset_link_expired_or_invalid %>
+    <%= render "shared/auth/notice", kind: :error, title: "That link has expired.",
+          body: "Enter your email address and we'll send you a code instead." %>
+  <% end %>
+  <% if @invitation_link_invalid %>
+    <%= render "shared/auth/notice", kind: :error,
+          body: "That invitation link isn't valid. Request a new one from whoever sent it, or sign in if you already have an account." %>
+  <% end %>
+  <% if @email_error %>
+    <%= render "shared/auth/notice", kind: :error, body: "That doesn't look like an email address. Check it and try again." %>
+  <% end %>
+  <% if @signup_retry %>
+    <%= render "shared/auth/notice", kind: :error, body: "That didn't go through. Please click Continue again." %>
+  <% end %>
+<% end %>
+
+<%= render layout: "shared/auth/shell",
+      locals: { title: "Sign in or create an account", lede: lede, strip: strip, notices: notices, back: back }.compact do %>
+  <%= render "shared/auth/email_form",
+        signup_token: @signup_token,
+        email_value: @email_address,
+        error: @email_error,
+        autofocus: !auth_native_app? %>
+<% end %>

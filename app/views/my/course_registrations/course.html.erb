@@ -149,7 +149,7 @@
         <% end %>
         <p class="mt-2 text-xs text-center text-gray-500">Card payment through Stripe.</p>
       <% else %>
-        <h2 class="font-semibold text-gray-900">Create your account to register</h2>
+        <h2 class="font-semibold text-gray-900">Sign in or create an account to register</h2>
         <p class="mt-1 text-sm text-gray-600"><%= organization.name %> runs its classes on CocoScout. Your free account holds your schedule and anything the instructors send.</p>
 
         <% if @authentication_error %>
@@ -162,12 +162,7 @@
         <% end %>
 
         <div class="mt-4">
-          <%= render "shared/auth/signup_form", user: @user, submit_text: "Create account and continue", email_value: params[:email_address] %>
-        </div>
-        <div class="mt-4">
-          <p class="text-center text-sm text-gray-600">
-            Already have one? <%= link_to "Sign in", signin_path, class: "font-medium text-pink-700 hover:text-pink-800" %>
-          </p>
+          <%= render "shared/auth/email_form", email_value: params[:email_address] %>
         </div>
       <% end %>
     </div>

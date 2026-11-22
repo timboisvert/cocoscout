@@ -2,9 +2,10 @@
 
 require "rails_helper"
 
-# The public signup form's bot defenses: the honeypot field and the signed
-# form-age token in AuthController#signup_gate_passed?, plus the Rack::Attack
-# blocklist/throttle on POST /signup. Added after the 2026-08-18 proxy-pool
+# The bot defenses in front of a new address on the sign-in screen: the
+# honeypot field and the signed form-age token in
+# AuthController#signup_gate_passed?, plus the Rack::Attack blocklist on the
+# auth posts and the per-network cap on new accounts. Added after the 2026-08-18 proxy-pool
 # signup wave.
 RSpec.describe "Signup bot defense", type: :request do
   include ActiveSupport::Testing::TimeHelpers
@@ -16,7 +17,7 @@ RSpec.describe "Signup bot defense", type: :request do
   describe "the form" do
     it "carries a fresh signed token and the honeypot field" do
       freeze_time
-      get signup_path
+      get signin_path
       expect(response).to have_http_status(:ok)
       token = response.body[/name="signup_token" value="([^"]+)"/, 1]
       expect(SignupFormToken.age(token)).to eq(0)
@@ -25,63 +26,61 @@ RSpec.describe "Signup bot defense", type: :request do
   end
 
   describe "the honeypot" do
-    it "quietly refuses a submission that filled it" do
+    it "quietly refuses a submission that filled it, and emails nothing" do
       expect do
-        post handle_signup_path,
-             params: signup_params(email_address: "bot@example.com", password: password, website: "http://spam.example")
+        complete_signup("bot@example.com", website: "http://spam.example")
       end.not_to change { user_count }
       expect(response).to redirect_to(root_path)
       expect(cookies[:session_id]).to be_blank
+      expect(SignInCode.count).to eq(0)
     end
   end
 
   describe "the form token" do
-    it "lets a submission through once the form has been open a few seconds" do
-      expect do
-        post handle_signup_path, params: signup_params(email_address: "human@example.com", password: password)
-      end.to change { user_count }.by(1)
+    it "lets a new person through once the form has been open a few seconds" do
+      expect { complete_signup("human@example.com") }.to change { user_count }.by(1)
       expect(response).to have_http_status(:redirect)
     end
 
     it "refuses a submission posted instantly, but hands back the same token so a real person can just retry" do
       token = SignupFormToken.generate
-      expect do
-        post handle_signup_path, params: { user: { email_address: "fast@example.com", password: password }, signup_token: token }
-      end.not_to change { user_count }
+      post handle_signin_path, params: { step: "start", email_address: "fast@example.com", signup_token: token }
       expect(response).to have_http_status(:unprocessable_content)
-      expect(response.body).to include("Please click Create account again")
+      expect(response.body).to include("Please click Continue again")
       expect(response.body).to include(%(value="#{token}"))
+      expect(SignInCode.count).to eq(0)
 
       travel(SignupFormToken::MIN_AGE + 1.second) do
-        expect do
-          post handle_signup_path, params: { user: { email_address: "fast@example.com", password: password }, signup_token: token }
-        end.to change { user_count }.by(1)
+        post handle_signin_path, params: { step: "start", email_address: "fast@example.com", signup_token: token }
+        expect(response).to redirect_to(signin_path)
+        expect(SignInCode.count).to eq(1)
       end
     end
 
     it "refuses a submission with no token and re-renders with a fresh one" do
-      expect do
-        post handle_signup_path, params: { user: { email_address: "cold@example.com", password: password } }
-      end.not_to change { user_count }
+      post handle_signin_path, params: { step: "start", email_address: "cold@example.com" }
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to match(/name="signup_token" value="[^"]+"/)
+      expect(SignInCode.count).to eq(0)
     end
 
     it "refuses a tampered token" do
-      expect do
-        post handle_signup_path,
-             params: { user: { email_address: "forged@example.com", password: password }, signup_token: "not-a-real-token" }
-      end.not_to change { user_count }
+      post handle_signin_path, params: { step: "start", email_address: "forged@example.com", signup_token: "not-a-real-token" }
       expect(response).to have_http_status(:unprocessable_content)
+      expect(SignInCode.count).to eq(0)
     end
 
     it "refuses an expired token" do
-      expect do
-        post handle_signup_path,
-             params: signup_params(email_address: "stale@example.com", password: password,
-                                   issued_at: SignupFormToken::MAX_AGE.ago - 1.minute)
-      end.not_to change { user_count }
+      post handle_signin_path,
+           params: signup_params(email_address: "stale@example.com", issued_at: SignupFormToken::MAX_AGE.ago - 1.minute)
       expect(response).to have_http_status(:unprocessable_content)
+      expect(SignInCode.count).to eq(0)
+    end
+
+    it "never slows down someone who already has an account" do
+      user = create(:user, password: password)
+      post handle_signin_path, params: { step: "start", email_address: user.email_address }
+      expect(response).to redirect_to(signin_path)
     end
   end
 
@@ -98,9 +97,7 @@ RSpec.describe "Signup bot defense", type: :request do
     end
 
     def post_signup(from:, email: "someone@example.com")
-      post handle_signup_path,
-           params: signup_params(email_address: email, password: password),
-           env: { "REMOTE_ADDR" => from }
+      complete_signup(email, env: { "REMOTE_ADDR" => from })
     end
 
     it "blocks POST /signup and /signin from the blocked ranges" do
@@ -111,8 +108,8 @@ RSpec.describe "Signup bot defense", type: :request do
       expect(response).to have_http_status(:forbidden)
     end
 
-    it "still serves GET /signup from a blocked range (only the auth posts are refused)" do
-      get signup_path, env: { "REMOTE_ADDR" => "169.58.179.180" }
+    it "still serves GET /signin from a blocked range (only the auth posts are refused)" do
+      get signin_path, env: { "REMOTE_ADDR" => "169.58.179.180" }
       expect(response).to have_http_status(:ok)
     end
 
