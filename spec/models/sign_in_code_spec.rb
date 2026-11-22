@@ -60,20 +60,26 @@ RSpec.describe SignInCode do
   end
 
   describe ".send_refusal" do
-    it "refuses a second code within the resend wait, then allows it" do
+    it "refuses a second code for the same purpose within the resend wait, then allows it" do
       described_class.issue!(email: email, purpose: "sign_in")
-      expect(described_class.send_refusal(email)).to eq(:too_soon)
+      expect(described_class.send_refusal(email, "sign_in")).to eq(:too_soon)
 
-      travel_to(1.minute.from_now) { expect(described_class.send_refusal(email)).to be_nil }
+      travel_to(1.minute.from_now) { expect(described_class.send_refusal(email, "sign_in")).to be_nil }
     end
 
-    it "refuses once the address has had its share for the hour" do
+    # "Use the code we just sent" would be untrue: that code is for something else.
+    it "does not hold back a code for a different purpose" do
+      described_class.issue!(email: email, purpose: "sign_in")
+      expect(described_class.send_refusal(email, "change_password")).to be_nil
+    end
+
+    it "refuses once the address has had its share for the hour, whatever the codes were for" do
       described_class::SENDS_PER_HOUR.times do |i|
-        travel_to((i * 2).minutes.from_now) { described_class.issue!(email: email, purpose: "sign_in") }
+        travel_to((i * 2).minutes.from_now) { described_class.issue!(email: email, purpose: i.even? ? "sign_in" : "change_password") }
       end
 
-      travel_to(15.minutes.from_now) { expect(described_class.send_refusal(email)).to eq(:too_many) }
-      travel_to(2.hours.from_now) { expect(described_class.send_refusal(email)).to be_nil }
+      travel_to(15.minutes.from_now) { expect(described_class.send_refusal(email, "sign_in")).to eq(:too_many) }
+      travel_to(2.hours.from_now) { expect(described_class.send_refusal(email, "sign_in")).to be_nil }
     end
   end
 end

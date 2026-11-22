@@ -2,10 +2,12 @@
 
 # Accepting a share of a show's ticket sales (the show page → Who can see
 # sales → invite by email). Someone with a CocoScout account signs in with
-# its password; someone new makes one right here. Then the waiting share is
+# its password or a code; someone new makes one right here. Then the waiting share is
 # theirs and they land on their Ticket Sales. Mirrors DoorInvitationsController.
 class TicketSalesInvitationsController < ApplicationController
   layout "door"
+
+  include InvitationSignIn
 
   allow_unauthenticated_access
   before_action :set_viewer
@@ -16,14 +18,18 @@ class TicketSalesInvitationsController < ApplicationController
 
   def accept
     user = User.find_by(email_address: @viewer.invited_email)
+    new_account = user.nil?
     if user
-      unless user.authenticate(params[:password].to_s)
+      # The right password, or already signed in to this account (for
+      # example after signing in with a code and coming back).
+      unless proved_invited_account?(user)
         @existing_user = user
         @error = "That password isn't right."
         render :show, status: :unprocessable_content and return
       end
     else
-      user = User.new(email_address: @viewer.invited_email, password: params[:password].to_s)
+      # The invitation link came to this address, so opening it proves it.
+      user = User.new(email_address: @viewer.invited_email, password: params[:password].to_s, email_verified_at: Time.current)
       unless user.save
         @error = user.errors.full_messages.to_sentence
         render :show, status: :unprocessable_content and return
@@ -35,7 +41,7 @@ class TicketSalesInvitationsController < ApplicationController
     end
 
     @viewer.accept!(user)
-    start_new_session_for(user)
+    start_invited_session(user, new_account: new_account)
     redirect_to shared_sales_path(user), notice: "You can now see the ticket sales for #{@viewer.scope_label}.", status: :see_other
   end
 

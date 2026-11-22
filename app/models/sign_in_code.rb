@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 # A 6-digit code we emailed to an address: to sign in, to confirm the address
-# of a new account, and later to connect a sign-in method or change an email.
+# of a new account, to confirm a new email address or a new password from the
+# Account page, and later to connect a sign-in method.
 # A code, never a link, so a mail scanner that opens every link can't use it
 # up. Only a digest is stored. The sign-in pages quote LIFETIME, so change it
 # here and the copy follows.
@@ -10,7 +11,7 @@ class SignInCode < ApplicationRecord
   MAX_ATTEMPTS = 5
   RESEND_AFTER = 30.seconds
   SENDS_PER_HOUR = 5
-  PURPOSES = %w[sign_in confirm_address connect change_email].freeze
+  PURPOSES = %w[sign_in confirm_address connect change_email change_password].freeze
 
   belongs_to :user, optional: true
 
@@ -20,13 +21,14 @@ class SignInCode < ApplicationRecord
   scope :live, -> { where(used_at: nil).where("expires_at > ?", Time.current) }
   scope :for_address, ->(email) { where(email: email.to_s.strip.downcase) }
 
-  # Why a new code can't go out right now: :too_soon (one went out moments
-  # ago) or :too_many (this address has had its share for the hour). nil when
-  # it can.
-  def self.send_refusal(email)
+  # Why a new code can't go out right now: :too_soon (one for the same
+  # purpose went out moments ago, so the page can truthfully say "use that
+  # one") or :too_many (this address has had its share for the hour, whatever
+  # the codes were for). nil when it can.
+  def self.send_refusal(email, purpose)
     recent = for_address(email).where("created_at > ?", 1.hour.ago)
     return :too_many if recent.count >= SENDS_PER_HOUR
-    return :too_soon if recent.where("created_at > ?", RESEND_AFTER.ago).exists?
+    return :too_soon if recent.where(purpose: purpose).where("created_at > ?", RESEND_AFTER.ago).exists?
 
     nil
   end

@@ -92,11 +92,11 @@ RSpec.describe "Auth shell", type: :request do
   describe "invitation pages" do
     let(:org) { create(:organization, name: "Blue Room Theater") }
 
-    it "the organization join link explains what the account is for and carries the strip" do
+    it "the organization join link explains what the account is for and carries the strip and the email step" do
       org.update_column(:invite_token, "join-token-9")
       get join_organization_path("join-token-9")
-      expect(response.body).to include("invited you to join them on CocoScout", "Create your account to join",
-                                       "Join Blue Room Theater", "Free to join · No card needed", "Sign in to join")
+      expect(response.body).to include("invited you to join them on CocoScout", "Sign in or create an account to join",
+                                       "Free to join · No card needed", "Email address", 'name="signup_token"')
     end
 
     it "a personal invitation is about choosing a password, with the email locked" do
@@ -106,7 +106,7 @@ RSpec.describe "Auth shell", type: :request do
                                        "Join Blue Room Theater", "Decline this invitation", "Already set a password?")
     end
 
-    it "a team invitation for a new person chooses a password; for an existing one it signs in" do
+    it "a team invitation for a new person chooses a password; for an existing one it signs in, by password or code" do
       invitation = create(:team_invitation, organization: org, email: "new@example.com")
       get accept_manage_team_invitations_path(token: invitation.token)
       expect(response.body).to include("Choose your password", "invited you to their team", "Join Blue Room Theater")
@@ -114,8 +114,16 @@ RSpec.describe "Auth shell", type: :request do
       create(:user, email_address: "old@example.com", password: password)
       invitation = create(:team_invitation, organization: org, email: "old@example.com")
       get accept_manage_team_invitations_path(token: invitation.token)
-      expect(response.body).to include("Sign in to join the team", "Forgot your password?")
+      expect(response.body).to include("Sign in to join the team", "No password to hand?", "Sign in with a code")
       expect(response.body).not_to include("data-password-strength-target=\"meter\"")
+    end
+
+    it "a team invitation for someone who never chose a password offers the code, not a password field" do
+      User.create_unclaimed!(email_address: "added@example.com")
+      invitation = create(:team_invitation, organization: org, email: "added@example.com")
+      get accept_manage_team_invitations_path(token: invitation.token)
+      expect(response.body).to include("Sign in with a code", "we&#39;ll bring you straight back here")
+      expect(response.body).not_to include('autocomplete="current-password"')
     end
 
     it "a group invitation names the group and the inviter" do

@@ -14,7 +14,8 @@
 #             their name and the account opens (no password; AccountCreator)
 #
 # A right password always signs in, whichever step is showing. /signup,
-# /password, and their posts stay for old links and pages and lead here.
+# /password, and their posts stay for old links and pages and lead here (a
+# signed-in person's /password leads to the Account page's password page).
 # /reset/:token keeps working for links already in inboxes.
 class AuthController < ApplicationController
   include SignupTracking
@@ -98,30 +99,21 @@ class AuthController < ApplicationController
   end
 
   # Forgot it, or never chose one: both are the email-first screen now, where
-  # a code gets either person in.
-  #
-  # Someone already signed in comes here from the Account page's "Reset
-  # password" button. Until the Account page has its own Sign-in methods
-  # section (the next piece of the sign-in plan), they keep the page that
-  # emails a link to choose a new password, exactly as before.
+  # a code gets either person in. Someone already signed in (an old link, or
+  # an older app page) goes to the Account page's own password page.
   def password
-    return if authenticated?
+    return redirect_to(choose_password_account_path) if authenticated?
 
     redirect_to signin_path(email_address: params[:email_address].presence)
   end
 
   # An old forgot-password page posting an email. Someone with an account is
-  # sent a code; anyone else starts at the first screen. A signed-in person
-  # (from the Account page) is emailed the link to choose a new password.
+  # sent a code; anyone else starts at the first screen.
   def handle_password
+    return redirect_to(choose_password_account_path) if authenticated?
+
     email = clean_email(params[:email_address])
     user = User.find_by(email_address: email) if email.match?(URI::MailTo::EMAIL_REGEXP)
-
-    if authenticated?
-      AuthMailer.password(user, user.generate_token_for(:password_reset)).deliver_later if user
-      return redirect_to(account_path,
-                         notice: "If there's an account for that address, a link to choose a new password is on its way. It works for #{User::PASSWORD_RESET_LINK_LIFETIME.in_hours.round} hours.")
-    end
     return redirect_to(signin_path(email_address: email.presence)) unless user
 
     start_code(email: email, user: user, purpose: "sign_in")

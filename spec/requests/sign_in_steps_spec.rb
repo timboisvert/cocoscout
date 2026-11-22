@@ -213,20 +213,12 @@ RSpec.describe "Sign-in steps", type: :request do
     expect(response).to redirect_to(my_dashboard_path)
   end
 
-  # Until the Account page has its Sign-in methods section, its "Reset
-  # password" button keeps working for a signed-in person as it always has.
-  it "still emails a signed-in person a link to choose a new password" do
+  it "sends a signed-in person's old forgot-password address to the Account page's password page" do
     user = create(:user, password: password)
     post handle_signin_path, params: { email_address: user.email_address, password: password }
 
     get password_path
-    expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Reset your password", user.email_address)
-
-    expect {
-      post handle_password_path, params: { email_address: user.email_address }
-    }.to have_enqueued_mail(AuthMailer, :password)
-    expect(response).to redirect_to(account_path)
+    expect(response).to redirect_to(choose_password_account_path)
   end
 
   def delete_session_cookie

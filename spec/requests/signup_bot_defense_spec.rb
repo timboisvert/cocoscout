@@ -140,10 +140,10 @@ RSpec.describe "Signup bot defense", type: :request do
       post "/join/join-token-1", params: { email: "Dana@example.com", password: password }, env: { "REMOTE_ADDR" => "73.1.2.3" }
       expect(response).to have_http_status(:too_many_requests)
 
-      # Someone else on the same venue Wi-Fi joins fine.
-      expect {
-        post "/join/join-token-1", params: { email: "newcast@example.com", password: password }, env: { "REMOTE_ADDR" => "24.13.93.231" }
-      }.to change { user_count }.by(1)
+      # Someone else on the same venue Wi-Fi isn't held up by it.
+      create(:user, email_address: "castmate@example.com", password: password)
+      post "/join/join-token-1", params: { email: "castmate@example.com", password: password }, env: { "REMOTE_ADDR" => "24.13.93.231" }
+      expect(response).to redirect_to(my_dashboard_path)
     end
 
     it "leaves assets and Active Storage out of the general per-IP ceiling" do

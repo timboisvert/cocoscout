@@ -12,7 +12,7 @@ module SignIn
 
     # Emails a fresh code. Returns :sent, or why not: :too_soon, :too_many.
     def self.deliver(email:, purpose:, user: nil, ip_address: nil)
-      refusal = SignInCode.send_refusal(email)
+      refusal = SignInCode.send_refusal(email, purpose)
       return refusal if refusal
 
       _record, code = SignInCode.issue!(email: email, purpose: purpose, user: user, ip_address: ip_address)

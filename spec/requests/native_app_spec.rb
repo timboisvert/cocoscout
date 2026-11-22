@@ -120,12 +120,15 @@ RSpec.describe "The iOS app's web side", type: :request do
       expect(menu).to be_nil
     end
 
-    # The password page is open to everyone, so it doesn't load the session
-    # on its own; it must still tell the app you're signed in, or the app
-    # resets to its sign-in screen (Reset password "did nothing").
-    it "keeps a signed-in person's menu on pages open to everyone" do
+    # A page open to everyone doesn't load the session on its own; it must
+    # still tell the app you're signed in, or the app resets to its sign-in
+    # screen. The old forgot-password address is one: signed in, it leads to
+    # the Account page's password page, menu and all.
+    it "keeps a signed-in person's menu when an old page open to everyone sends them on" do
       sign_in
       get password_path, headers: in_app
+      expect(response).to redirect_to(choose_password_account_path)
+      follow_redirect!(headers: in_app)
       expect(menu.map { |item| item["id"] }).to include("home", "settings")
     end
   end

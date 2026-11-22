@@ -246,6 +246,12 @@ Rails.application.routes.draw do
   get   "/account",                       to: "account#show",                as: "account"
   patch "/account",                       to: "account#update"
   patch "/account/email",                 to: "account#update_email",        as: "update_email_account"
+  # Choosing or changing the password, from the Account page's Sign-in
+  # methods. Not ".../password": the app's page rules treat a path ending in
+  # /password as the old forgot-password screen.
+  get   "/account/choose-password",       to: "account#choose_password",     as: "choose_password_account"
+  patch "/account/choose-password",       to: "account#update_password"
+  post  "/account/choose-password/code",  to: "account#send_password_code",  as: "password_code_account"
   get   "/account/profiles",              to: "account#profiles",            as: "account_profiles"
   post  "/account/profiles",              to: "account#create_profile",      as: "create_profile_account"
   post  "/account/profiles/:id/set_default", to: "account#set_default_profile", as: "set_default_profile_account"

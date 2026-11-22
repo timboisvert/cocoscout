@@ -2,7 +2,8 @@
 <%
   # The public invite link an organization hands out. Three people arrive:
   # someone signed in who's already a member, someone signed in who isn't,
-  # and everyone else (who creates an account, or signs in, right here).
+  # and everyone else (who enters their email here, signs in or creates an
+  # account on the sign-in screen, and comes back to join).
   org = @organization
   join_path = do_join_organization_path(params[:token])
 %>
@@ -30,54 +31,22 @@
   <% end %>
 
 <% else %>
+  <%# Not signed in. The form is the sign-in screen's first step: the email
+      address decides whether this is a sign-in or a new account, and either
+      way the person comes straight back here to join with one tap. %>
   <% notices = capture do %>
     <% if @existing_user_wrong_password %>
       <%= render layout: "shared/auth/notice", locals: { title: "You already have an account." } do %>
         There's a CocoScout account for <strong class="font-semibold"><%= @email %></strong>, but that password didn't match.
-        <%= link_to "Sign in to join", signin_path(email_address: @email, redirect_to: join_organization_path(params[:token])), class: "font-semibold underline" %>,
-        or <%= link_to "reset your password", password_path, class: "font-semibold underline" %> if you've never set one.
+        Enter the address below to sign in with your password or a code, and we'll bring you back here to join.
       <% end %>
-    <% elsif flash.now[:alert].present? || flash[:alert].present? %>
-      <%= render "shared/auth/notice", kind: :error, body: (flash.now[:alert] || flash[:alert]) %>
-    <% elsif @user&.errors&.any? %>
-      <%= render "shared/auth/notice", kind: :error, title: "That didn't work.", body: @user.errors.full_messages.to_sentence + "." %>
     <% end %>
   <% end %>
 
   <%= render layout: "shared/auth/shell",
-        locals: { title: "Create your account to join", strip: strip, notices: notices, legal: "creating an account",
+        locals: { title: "Sign in or create an account to join", strip: strip, notices: notices, legal: "joining",
                   pill: "Free to join · No card needed",
                   lede: "Your account is where everything #{org.name} sends you lands: call times, cast messages, contracts, and pay. It works with any other organization you join later, too." } do %>
-    <%= form_with url: join_path, method: :post, class: "space-y-4", data: { turbo: false, controller: "password-strength" } do |form| %>
-      <div>
-        <label for="email" class="mb-1.5 block text-sm font-medium text-slate-700">Email address</label>
-        <%= form.email_field :email,
-              required: true,
-              autocomplete: "username",
-              autocapitalize: "none",
-              placeholder: "you@example.com",
-              value: @email,
-              class: auth_input_class(error: @user&.errors&.[](:email_address)&.any? || false) %>
-      </div>
-
-      <%= render "shared/auth/password_field", form: form, strength: true, autocomplete: "new-password",
-            error: @user&.errors&.[](:password)&.any? || false %>
-
-      <div class="pt-1">
-        <%= render "shared/button",
-            text: "Join #{org.name}",
-            variant: "primary",
-            size: "jumbo",
-            type: :submit,
-            disabled: true,
-            classes: "!opacity-50 !cursor-not-allowed",
-            data: { password_strength_target: "submit" } %>
-      </div>
-    <% end %>
-
-    <div class="border-t border-slate-200 pt-4 text-center text-sm leading-[1.8] text-slate-600">
-      Already have an account?
-      <%= link_to "Sign in to join", signin_path(redirect_to: join_organization_path(params[:token])), class: "font-medium text-pink-600 hover:text-pink-700" %>
-    </div>
+    <%= render "shared/auth/email_form", email_value: @email %>
   <% end %>
 <% end %>

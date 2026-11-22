@@ -511,8 +511,9 @@ class SuperadminController < ApplicationController
     # Wrap in a transaction so both updates succeed or both are rolled back
     updates_made = []
     ActiveRecord::Base.transaction do
-      # Update user email
-      user.update!(email_address: new_email)
+      # Update user email. Nobody has proved they receive mail at the new
+      # address, so the proof of the old one goes.
+      user.update!(email_address: new_email, email_verified_at: nil)
       updates_made << "User email"
 
       # Update person email if person exists

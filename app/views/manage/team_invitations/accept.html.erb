@@ -9,6 +9,12 @@
   existing = @existing_user.present?
   profile = inv.person
   onto_contract = inv.contract_invite?
+  # Three people with an account: already signed in to it (one tap), someone
+  # who chose a password (they enter it, or sign in with a code), and someone
+  # who never chose one (a code is their way in).
+  signed_in = existing && signed_in_as?(@existing_user)
+  has_password = existing && @existing_user.password_chosen?
+  this_page = accept_manage_team_invitations_path(token: inv.token)
 %>
 <% strip = capture do %>
   <%= render layout: "shared/auth/strip", locals: { image: (org.logo if org.logo.attached?), initial: org.name } do %>
@@ -22,20 +28,26 @@
 <% notices = capture do %>
   <% if @authentication_error %>
     <%= render layout: "shared/auth/notice", locals: { kind: :error } do %>
-      That password didn't match. Try again, or <%= link_to "reset your password", password_path, class: "font-semibold underline" %>.
+      That password didn't match. Try again, or <%= link_to "sign in with a code", code_way_in_link(inv.email, return_to: this_page), class: "font-semibold underline" %>.
     <% end %>
   <% elsif @user&.errors&.any? %>
     <%= render "shared/auth/notice", kind: :error, title: "That password didn't work.", body: @user.errors.full_messages.to_sentence + "." %>
   <% end %>
 <% end %>
 <%
-  title = existing ? (onto_contract ? "Sign in to see the contract" : "Sign in to join the team") : "Choose your password"
-  lede = if onto_contract && existing
-    "Enter the password for #{inv.email} and you're on the contract: its dates, how tickets are selling, who's coming, and what it pays, on your My pages."
+  goal = onto_contract ? "you're on the contract: its dates, how tickets are selling, who's coming, and what it pays, on your My pages" : "you're on #{org.name}'s team: their productions, casting, and scheduling, yours to work on too"
+  title = if signed_in then (onto_contract ? "See the contract" : "Join the team")
+          elsif existing then (onto_contract ? "Sign in to see the contract" : "Sign in to join the team")
+          else "Choose your password"
+          end
+  lede = if signed_in
+    "You're signed in as #{inv.email}. One tap and #{goal}."
+  elsif has_password
+    "Enter the password for #{inv.email} and #{goal}."
+  elsif existing
+    "Sign in as #{inv.email} with a 6-digit code sent to that address, and we'll bring you straight back here."
   elsif onto_contract
     "You're on #{inv.contract.contractor_name}'s contract with #{org.name}. Pick a password and you'll see its dates, how tickets are selling, who's coming, and what it pays."
-  elsif existing
-    "Enter the password for #{inv.email} and you're on #{org.name}'s team: their productions, casting, and scheduling, yours to work on too."
   else
     "#{org.name} set you up as part of their team. Pick a password and you're in; their productions, casting, and scheduling are yours to work on too."
   end
@@ -66,11 +78,17 @@
       </div>
     <% end %>
 
-    <% if existing %>
+    <% if signed_in %>
+      <div class="pt-1">
+        <%= render "shared/button", text: "Join #{org.name}", variant: "primary", size: "jumbo", type: :submit %>
+      </div>
+    <% elsif has_password %>
       <%= render "shared/auth/password_field", form: form, autocomplete: "current-password", error: @authentication_error.present? %>
       <div class="pt-1">
         <%= render "shared/button", text: "Join #{org.name}", variant: "primary", size: "jumbo", type: :submit %>
       </div>
+    <% elsif existing %>
+      <%= render "shared/auth/code_way_in", email: inv.email, return_to: this_page, primary: true %>
     <% else %>
       <%= render "shared/auth/password_field", form: form, strength: true, autocomplete: "new-password",
             error: @user&.errors&.[](:password)&.any? || false %>
@@ -87,9 +105,7 @@
     <% end %>
   <% end %>
 
-  <% if existing %>
-    <div class="border-t border-slate-200 pt-4 text-center text-sm leading-[1.8] text-slate-600">
-      Forgot your password? <%= link_to "Reset it", password_path, class: "font-medium text-pink-600 hover:text-pink-700" %>
-    </div>
+  <% if has_password && !signed_in %>
+    <%= render "shared/auth/code_way_in", email: inv.email, return_to: this_page %>
   <% end %>
 <% end %>

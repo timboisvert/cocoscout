@@ -55,6 +55,8 @@ module Manage
         # Existing account, different password: treat the submission as setting
         # a new password (the normal path for manager-created accounts).
         user.password = params[:password]
+        # The invitation link came to this address, so opening it proves it.
+        user.email_verified_at = Time.current
         unless user.valid?
           @user = user
           render :accept, status: :unprocessable_content and return

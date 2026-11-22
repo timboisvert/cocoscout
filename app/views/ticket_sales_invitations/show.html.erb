@@ -9,13 +9,31 @@
       <div class="block text-sm font-medium text-gray-700 mb-1.5">Email</div>
       <div class="text-sm text-gray-900"><%= @viewer.invited_email %></div>
     </div>
-    <div>
-      <label for="password" class="block text-sm font-medium text-gray-700 mb-1.5">
-        <%= @existing_user ? "Your CocoScout password" : "Choose a password for your new CocoScout account" %>
-      </label>
-      <%= password_field_tag :password, nil, required: true, autocomplete: @existing_user ? "current-password" : "new-password", class: input_class %>
-      <% if @error %><p class="mt-1 text-sm text-red-600"><%= @error %></p><% end %>
-    </div>
-    <%= render "shared/button", text: @existing_user ? "Sign in and see the sales" : "Make my account and see the sales", variant: "primary", size: "medium", type: :submit, classes: "w-full justify-center" %>
+    <%# Someone with an account: already signed in to it (one tap), with a
+        password (they enter it, or sign in with a code), or with none chosen
+        (a code is the way in). Someone new chooses a password here. %>
+    <% signed_in = signed_in_as?(@existing_user) %>
+    <% this_page = ticket_sales_invitation_path(token: @viewer.invitation_token) %>
+    <% if signed_in %>
+      <%= render "shared/button", text: "See the sales", variant: "primary", size: "medium", type: :submit, classes: "w-full justify-center" %>
+    <% elsif @existing_user && !@existing_user.password_chosen? %>
+      <p class="text-sm text-gray-600">Sign in with a 6-digit code sent to this address, and we'll bring you straight back here.</p>
+      <%= render "shared/button", text: "Sign in with a code", variant: "primary", size: "medium",
+            path: code_way_in_link(@viewer.invited_email, return_to: this_page), classes: "w-full justify-center" %>
+    <% else %>
+      <div>
+        <label for="password" class="block text-sm font-medium text-gray-700 mb-1.5">
+          <%= @existing_user ? "Your CocoScout password" : "Choose a password for your new CocoScout account" %>
+        </label>
+        <%= password_field_tag :password, nil, required: true, autocomplete: @existing_user ? "current-password" : "new-password", class: input_class %>
+        <% if @error %><p class="mt-1 text-sm text-red-600"><%= @error %></p><% end %>
+      </div>
+      <%= render "shared/button", text: @existing_user ? "Sign in and see the sales" : "Make my account and see the sales", variant: "primary", size: "medium", type: :submit, classes: "w-full justify-center" %>
+      <% if @existing_user %>
+        <p class="text-center text-sm text-gray-600">
+          No password to hand? <%= link_to "Sign in with a code", code_way_in_link(@viewer.invited_email, return_to: this_page), class: "font-medium text-pink-600 hover:text-pink-700" %> and we'll bring you back here.
+        </p>
+      <% end %>
+    <% end %>
   <% end %>
 </div>
