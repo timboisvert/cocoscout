@@ -83,6 +83,10 @@ module Manage
     def show
       @batch = organization.payout_batches.find(params[:id])
       @items = @batch.items.includes(:payee, payout_contributions: :source).order(:created_at).to_a
+      # A run that pays from the CocoScout balance first lists its payees in
+      # the order it pays them, so a saved Pay order shows here (Tim, 2026-11-22).
+      @balance_first = PayoutBatchService.balance_first?(@batch)
+      @items = PayoutPayOrder.sort(@batch, @items) if @balance_first
 
       # Every dollar on the run, by payee state (paid / ready / waiting on bank /
       # returned) — the boxes up top, and the list filter below.
@@ -117,9 +121,10 @@ module Manage
       end
       # Balance first: who the balance pays now, and who waits (the box's
       # words, and the Pay order window).
-      @balance_first = PayoutBatchService.balance_first?(@batch)
       @awaiting_balance = @batch.status == "funding" && @batch.funding_status == "awaiting_balance"
       @balance_plan = PayoutBatchService.balance_preview(@batch, @items) if @balance_first && (@batch.open? || @awaiting_balance)
+      @covered_ids = @balance_plan ? @balance_plan[:now].to_set(&:id) : Set.new
+      @waiting_ids = @balance_plan ? @balance_plan[:later].to_set(&:id) : Set.new
       # Unpaid items whose payee has since become payable (connected a bank, or
       # a failed transfer worth retrying) — what "Pay remaining" would send.
       @payable_remaining_items = if @batch.status == "partially_paid" && (@batch.funding_status == "succeeded" || @batch.skips_funding?)

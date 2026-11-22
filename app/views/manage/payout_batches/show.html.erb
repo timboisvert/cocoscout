@@ -363,6 +363,14 @@
           </h3>
           <span class="text-sm font-semibold text-gray-900 tabular-nums"><%= number_to_currency(@visible_items.sum(&:amount_cents) / 100.0) %></span>
         </div>
+        <% if @balance_plan && (@covered_ids.any? || @waiting_ids.any?) %>
+          <%# In pay order (PayoutPayOrder), and how far the balance reaches today (Tim, 2026-11-22). %>
+          <p class="px-5 py-2.5 border-b border-gray-100 bg-gray-50 text-sm text-gray-600" data-pay-order-note>
+            In pay order. Your CocoScout balance covers
+            <span class="font-medium text-gray-900"><%= @covered_ids.size %> of the <%= @covered_ids.size + @waiting_ids.size %></span>
+            payees still to pay right now (<%= number_to_currency(@balance_plan[:now].sum(&:amount_cents) / 100.0) %>).
+          </p>
+        <% end %>
         <div class="divide-y divide-gray-100">
           <% if @visible_items.empty? %>
             <div class="px-5 py-8 text-center text-sm text-gray-500">No payments in this state.</div>
@@ -383,13 +391,18 @@
                       <div class="min-w-0">
                         <div class="text-gray-900 truncate"><%= item.payee&.name %></div>
                         <% if item.partner_organization? %><span class="inline-flex items-center rounded-full bg-pink-50 px-2 py-0.5 text-[11px] font-medium text-pink-700 mt-0.5" data-into-balance>Into their CocoScout balance</span><% end %>
+                        <% if @covered_ids.include?(item.id) %>
+                          <span class="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700 mt-0.5" data-balance-covers>Covered by your balance</span>
+                        <% elsif @waiting_ids.include?(item.id) %>
+                          <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 mt-0.5" data-balance-waits>Waits for more balance or the bank</span>
+                        <% end %>
                       </div>
                       <div class="text-xs text-gray-400 flex-shrink-0"><%= pluralize(contributions.size, "item") %></div>
                     </div>
                   </div>
                   <div class="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-3 flex-shrink-0">
                     <span class="font-semibold text-gray-900 tabular-nums"><%= number_to_currency(item.amount_cents / 100.0) %></span>
-                    <%= render "manage/payout_batches/item_state_badge", item: item, batch: @batch %>
+                    <%= render "manage/payout_batches/item_state_badge", item: item, batch: @batch, waiting_on_balance: @awaiting_balance && @waiting_ids.include?(item.id) %>
                   </div>
                 </summary>
                 <% if item.error.present? %>
@@ -451,13 +464,18 @@
                 <div class="min-w-0">
                   <span class="text-gray-900"><%= item.payee&.name %></span>
                   <% if item.partner_organization? %><span class="inline-flex items-center rounded-full bg-pink-50 px-2 py-0.5 text-[11px] font-medium text-pink-700 ml-1" data-into-balance>Into their CocoScout balance</span><% end %>
+                  <% if @covered_ids.include?(item.id) %>
+                    <span class="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700 ml-1" data-balance-covers>Covered by your balance</span>
+                  <% elsif @waiting_ids.include?(item.id) %>
+                    <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 ml-1" data-balance-waits>Waits for more balance or the bank</span>
+                  <% end %>
                   <% if item.error.present? %>
                     <div class="text-xs text-red-600 mt-0.5"><%= item.error %></div>
                   <% end %>
                 </div>
                 <div class="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-3 flex-shrink-0">
                   <span class="font-semibold text-gray-900 tabular-nums"><%= number_to_currency(item.amount_cents / 100.0) %></span>
-                  <%= render "manage/payout_batches/item_state_badge", item: item, batch: @batch %>
+                  <%= render "manage/payout_batches/item_state_badge", item: item, batch: @batch, waiting_on_balance: @awaiting_balance && @waiting_ids.include?(item.id) %>
                 </div>
               </div>
             <% end %>

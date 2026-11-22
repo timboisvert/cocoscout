@@ -57,6 +57,27 @@ RSpec.describe "Manage balance-first payout runs", type: :request do
     expect(batch.reload.pay_order).to eq({})
   end
 
+  # The list follows the saved pay order and says how far the balance reaches
+  # (Tim, 2026-11-22: "it should be in priority order once I set it").
+  it "lists the payees in pay order, marking who the balance covers right now" do
+    list = -> { response.body[response.body.index("data-pay-order-note")..] }
+    get manage_payout_batch_path(batch)
+    expect(list.call).to include("In pay order. Your CocoScout balance covers", "1 of the 2", "($50.00)")
+    expect(list.call.index("Sam Staff")).to be < list.call.index("Pat Performer")
+    expect(list.call[list.call.index("Sam Staff")..list.call.index("Pat Performer")]).to include("Covered by your balance")
+    expect(list.call[list.call.index("Pat Performer")..]).to include("Waits for more balance or the bank")
+
+    patch manage_pay_order_payout_batch_path(batch), params: { groups: %w[performer staffing contractor] }
+    get manage_payout_batch_path(batch)
+    expect(list.call.index("Pat Performer")).to be < list.call.index("Sam Staff")
+    expect(list.call[list.call.index("Pat Performer")..list.call.index("Sam Staff")]).to include("Covered by your balance")
+    expect(list.call).to include("($30.00)")
+
+    post manage_fund_payout_batch_path(batch)
+    get manage_payout_batch_path(batch)
+    expect(response.body[response.body.index("Sam Staff")..]).to include("Waiting on balance")
+  end
+
   it "shows a waiting run, and has the bank pay the rest on request" do
     post manage_fund_payout_batch_path(batch)
     expect(flash[:notice]).to start_with("Paid 1 payee from your CocoScout balance. The other 1 is paid as ticket money clears")
