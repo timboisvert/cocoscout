@@ -40,6 +40,7 @@
       </div>
       <%= render "manage/productions/page/registration_link", page: page if page.course? && page.current_run %>
       <%= render "manage/productions/page/people", page: page %>
+      <%= render "manage/productions/page/access_needs", page: page %>
       <%= render "manage/productions/page/images", page: page if page.manager? %>
     </div>
   </div>

@@ -13,3 +13,6 @@
 <div class="mt-6">
   <%= render partial: "my/auditions/audition_upcoming", locals: { audition: @audition, show_change_buttons: true } %>
 </div>
+
+<%# An audition has a location, no room: its answers for performers (accessibility plan §3). %>
+<div class="mt-4"><%= render "shared/backstage_access", owner: @session&.location %></div>

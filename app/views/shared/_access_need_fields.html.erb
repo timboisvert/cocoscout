@@ -1,0 +1,28 @@
+<%#
+  "I have an access need" (accessibility plan §3): an optional tick box and a
+  private note, posted as access_need[needed] and access_need[note]. Only the
+  production team managers see the note; it's deleted when the audition cycle
+  or the production ends. Saved by AccessNeed.record!.
+
+  Locals:
+    need  - the person's AccessNeed here, or nil
+    label - "I have an access need for this audition" / "... production"
+%>
+<% need = local_assigns[:need] %>
+<div class="bg-white border border-slate-200 rounded-lg p-4" data-controller="toggle-section">
+  <label class="flex items-start gap-3 cursor-pointer">
+    <input type="hidden" name="access_need[needed]" value="0">
+    <input type="checkbox" name="access_need[needed]" value="1" id="access_need_needed" <%= "checked" if need %>
+           data-toggle-section-target="toggle" data-action="change->toggle-section#toggle"
+           class="mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500">
+    <span>
+      <span class="block text-sm font-medium text-gray-900"><%= label %></span>
+      <span class="block text-sm text-gray-500">Only the production team managers will see what you write here. It isn't shown to anyone else, and it's deleted when this ends.</span>
+    </span>
+  </label>
+  <div data-toggle-section-target="content" class="<%= "hidden" unless need %> mt-3">
+    <label for="access_need_note" class="block text-sm font-medium text-gray-700 mb-1.5">What would help?</label>
+    <textarea name="access_need[note]" id="access_need_note" rows="3" maxlength="<%= AccessNeed::MAX_NOTE %>"
+              class="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"><%= need&.note %></textarea>
+  </div>
+</div>

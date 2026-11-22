@@ -222,6 +222,13 @@ module My
         # Save the audition request and redirect to the success page
         @audition_request.save!
 
+        # A person's private access need for this audition (accessibility
+        # plan §3): kept only for the production team managers.
+        if @requestable.is_a?(Person) && params[:access_need].present?
+          AccessNeed.record!(person: @requestable, production: @audition_cycle.production, audition_cycle: @audition_cycle,
+                             needed: params.dig(:access_need, :needed) == "1", note: params.dig(:access_need, :note))
+        end
+
         # Notify producers if this is a new audition request
         if is_new_request
           AuditionRequestNotificationJob.perform_later(@audition_request.id)

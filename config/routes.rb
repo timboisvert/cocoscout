@@ -607,6 +607,7 @@ Rails.application.routes.draw do
     get   "/courses/:id",                   to: "courses#show",             as: "course"
     get   "/shows",                         to: "shows#index",              as: "shows"
     get   "/shows/:id",                     to: "shows#show",              as: "show"
+    patch "/shows/:id/access_need",         to: "shows#access_need",       as: "show_access_need"
     # One date's ticket sales for someone it's shared with or who is on its
     # contract: a sub-page of the show, reached from the show's own page
     # (Tim, 2026-11-17). There is no list of them.

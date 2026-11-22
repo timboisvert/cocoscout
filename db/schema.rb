@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_20_210000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_22_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -29,6 +29,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_20_210000) do
     t.index ["owner_type", "owner_id", "feature_key"], name: "idx_on_owner_type_owner_id_feature_key_af69aa965b", unique: true
     t.index ["owner_type", "owner_id"], name: "index_access_answers_on_owner"
     t.index ["updated_by_id"], name: "index_access_answers_on_updated_by_id"
+  end
+
+  create_table "access_needs", force: :cascade do |t|
+    t.bigint "person_id", null: false
+    t.bigint "production_id", null: false
+    t.bigint "audition_cycle_id"
+    t.text "note", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["audition_cycle_id"], name: "index_access_needs_on_audition_cycle_id"
+    t.index ["person_id", "audition_cycle_id"], name: "index_access_needs_one_per_audition", unique: true, where: "(audition_cycle_id IS NOT NULL)"
+    t.index ["person_id", "production_id"], name: "index_access_needs_one_per_production", unique: true, where: "(audition_cycle_id IS NULL)"
+    t.index ["person_id"], name: "index_access_needs_on_person_id"
+    t.index ["production_id"], name: "index_access_needs_on_production_id"
   end
 
   create_table "action_mailbox_inbound_emails", force: :cascade do |t|
@@ -5505,6 +5519,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_20_210000) do
   end
 
   add_foreign_key "access_answers", "users", column: "updated_by_id"
+  add_foreign_key "access_needs", "audition_cycles"
+  add_foreign_key "access_needs", "people"
+  add_foreign_key "access_needs", "productions"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "advance_recoveries", "person_advances"
   add_foreign_key "advance_recoveries", "show_payout_line_items"

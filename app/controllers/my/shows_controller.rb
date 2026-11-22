@@ -594,6 +594,23 @@ module My
       end
     end
 
+    # A cast or crew member's private access need for the production
+    # (accessibility plan §3), from their date's page. Only someone assigned
+    # to the date can save one; only the production team managers see it.
+    def access_need
+      @show = Show.find(params[:id])
+      people_ids = Current.user.people.active.pluck(:id)
+      group_ids = GroupMembership.where(person_id: people_ids).pluck(:group_id)
+      visible = @show.show_person_role_assignments.visible_to_performers
+      assigned = visible.where(assignable_type: "Person", assignable_id: people_ids)
+                        .or(visible.where(assignable_type: "Group", assignable_id: group_ids)).exists?
+      raise ActiveRecord::RecordNotFound unless assigned && Current.user.person
+
+      saved = AccessNeed.record!(person: Current.user.person, production: @show.production,
+                                 needed: params.dig(:access_need, :needed) == "1", note: params.dig(:access_need, :note))
+      redirect_to my_show_path(@show), notice: (saved ? "Your access need has been saved. Only the production team managers can see it." : "Your access need has been removed.")
+    end
+
     private
 
     # The Tickets box (TicketSalesAccess, by Who sees sales): the count and

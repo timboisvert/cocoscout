@@ -703,6 +703,14 @@
           <% end %>
         </div>
       </div>
+      <div class="mt-4"><%= render "shared/backstage_access", owner: @show.venue_access_owner %></div>
+    <% end %>
+    <% if @my_assignments.any? && @person %>
+      <%= form_with url: my_show_access_need_path(@show), method: :patch, class: "mt-4 space-y-3", data: { turbo_action: "replace" } do %>
+        <%= render "shared/access_need_fields", label: "I have an access need for this production",
+              need: AccessNeed.find_by(person: @person, production: @production, audition_cycle: nil) %>
+        <%= render "shared/button", text: "Save", variant: "secondary", size: "small", type: :submit %>
+      <% end %>
     <% end %>
 
   </div>

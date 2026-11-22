@@ -1353,6 +1353,14 @@ class Show < ApplicationRecord
   # Where it happens: its own location, or the venue of the date it follows.
   def venue_location = location || (linked_show&.location if follows_contract?)
 
+  # Whose accessibility answers a cast member reads for this date: its room
+  # (a room inherits the location's answers), or the location itself. A date
+  # that follows a contract date reads the other organization's venue.
+  def venue_access_owner
+    room = location ? location_space : (linked_show&.location_space if follows_contract?)
+    room || venue_location
+  end
+
   # The room worth naming: nil at a location with one room (Tim, 2026-11-18;
   # Location#several_rooms?). Every show with a location sits in a room now,
   # and "Main room" alone says nothing, so those shows read as their location

@@ -23,6 +23,7 @@ class Production < ApplicationRecord
   has_many :production_service_needs, dependent: :destroy
   has_many :event_linkages, dependent: :destroy
   has_many :audition_cycles, dependent: :destroy
+  has_many :access_needs, dependent: :destroy
   has_many :audition_requests, through: :audition_cycles
   has_many :talent_pools, dependent: :destroy
   has_many :talent_pool_shares, dependent: :destroy

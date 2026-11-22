@@ -73,6 +73,7 @@
                 <% end %>
               </div>
             </div>
+            <%= render "shared/backstage_access", owner: venue %>
           <% end %>
         <% end %>
       </div>
@@ -455,6 +456,14 @@
     <!-- Open sign-up: pick the slot last, after they've filled everything else in -->
     <% if @audition_cycle.signup_mode_open? && @audition_sessions.present? %>
       <%= render "open_slot_picker" %>
+    <% end %>
+
+    <%# A person's private access need for this audition (accessibility plan §3). %>
+    <% if @requestable.is_a?(Person) %>
+      <div class="mb-6">
+        <%= render "shared/access_need_fields", label: "I have an access need for this audition",
+              need: AccessNeed.find_by(person: @requestable, audition_cycle: @audition_cycle) %>
+      </div>
     <% end %>
 
     <!-- Submit Button -->

@@ -13,6 +13,7 @@ class Person < ApplicationRecord
   accepts_nested_attributes_for :socials, allow_destroy: true
 
   has_many :audition_requests, as: :requestable, dependent: :destroy
+  has_many :access_needs, dependent: :destroy
 
   has_many :talent_pool_memberships, as: :member, dependent: :destroy
   has_many :talent_pools, through: :talent_pool_memberships

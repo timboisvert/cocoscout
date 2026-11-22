@@ -1,0 +1,54 @@
+<%#
+  "Getting in and backstage" (accessibility plan §3): the venue's answers that
+  matter to performers and crew, for a cast member's date, an audition, and a
+  sign-up. Each answered feature says Yes, No or Ask us with its note, then the
+  room's own stage facts and who to ask. Shows nothing when the venue hasn't
+  answered anything for performers and crew and has no access contact. We
+  describe; we never certify.
+
+  Locals:
+    owner - the room (LocationSpace) or the Location; nil renders nothing
+%>
+<% owner = local_assigns[:owner] %>
+<% if owner %>
+  <%
+    profile = AccessProfile.for(owner)
+    rows = AccessFeatures::CATALOG.select(&:backstage?).filter_map do |feature|
+      answer = profile.answer(feature.key)
+      [ feature, answer, profile.note(feature.key) ] if answer
+    end
+    room = profile.room
+    room_facts = []
+    room_facts << [ "Getting onto the stage", room.stage_access_label ] if room&.stage_access_label
+    room_facts << [ "Floor", room.floor_label ] if room&.floor_label.present?
+    contact = [ profile.contact_email, profile.contact_phone ].compact
+  %>
+  <% if rows.any? || room_facts.any? || contact.any? %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden bg-white" data-backstage-access>
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "Getting in and backstage" %>
+      <div class="px-4 py-3 space-y-3 text-sm">
+        <% if rows.any? || room_facts.any? %>
+          <dl class="divide-y divide-gray-100">
+            <% rows.each do |feature, answer, note| %>
+              <div class="py-2 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
+                <dt class="text-gray-700"><%= feature.label %></dt>
+                <dd class="text-gray-900 sm:text-right">
+                  <span class="font-medium"><%= AccessFeatures::ANSWER_LABELS.fetch(answer) %></span><% if note.present? %><span class="text-gray-500"> · <%= note %></span><% end %>
+                </dd>
+              </div>
+            <% end %>
+            <% room_facts.each do |label, value| %>
+              <div class="py-2 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
+                <dt class="text-gray-700"><%= label %></dt>
+                <dd class="font-medium text-gray-900 sm:text-right"><%= value %></dd>
+              </div>
+            <% end %>
+          </dl>
+        <% end %>
+        <% if contact.any? %>
+          <p class="text-gray-600">Questions about getting in or backstage: <span class="text-gray-900 select-all"><%= contact.join(" · ") %></span></p>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+<% end %>

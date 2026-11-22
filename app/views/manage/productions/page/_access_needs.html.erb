@@ -1,0 +1,18 @@
+<%# Access needs (accessibility plan §3): what cast and crew asked the
+    production team managers to know, from their dates' pages. Managers only,
+    never in exports, deleted when the production ends. Locals: page. %>
+<% needs = page.manager? ? page.production.access_needs.for_productions.includes(:person).order(:created_at).to_a : [] %>
+<% if needs.any? %>
+  <section class="<%= ProductionPageHelper::CARD %>" data-production-access-needs>
+    <%= render "shared/section_heading", padding: "px-4 py-3", title: "Access needs" %>
+    <ul class="divide-y divide-gray-100">
+      <% needs.each do |need| %>
+        <li class="px-4 py-3 text-sm">
+          <div class="font-medium text-gray-900"><%= need.person.name %></div>
+          <p class="mt-0.5 text-gray-700 whitespace-pre-line"><%= need.note %></p>
+        </li>
+      <% end %>
+    </ul>
+    <p class="px-4 pb-3 text-xs text-gray-500">Only production team managers see these. They're deleted when the production ends.</p>
+  </section>
+<% end %>
