@@ -115,6 +115,11 @@ module Manage
       else
         []
       end
+      # Balance first: who the balance pays now, and who waits (the box's
+      # words, and the Pay order window).
+      @balance_first = PayoutBatchService.balance_first?(@batch)
+      @awaiting_balance = @batch.status == "funding" && @batch.funding_status == "awaiting_balance"
+      @balance_plan = PayoutBatchService.balance_preview(@batch, @items) if @balance_first && (@batch.open? || @awaiting_balance)
       # Unpaid items whose payee has since become payable (connected a bank, or
       # a failed transfer worth retrying) — what "Pay remaining" would send.
       @payable_remaining_items = if @batch.status == "partially_paid" && (@batch.funding_status == "succeeded" || @batch.skips_funding?)
@@ -181,10 +186,63 @@ module Manage
       end
 
       PayoutBatchService.fund!(batch, method: "ach")
-      redirect_to manage_payout_batch_path(batch),
-                  notice: "Funding started — everyone in this run gets paid once it clears."
+      redirect_to manage_payout_batch_path(batch), notice: fund_notice(batch.reload)
     rescue PayoutBatchService::Error => e
       redirect_to manage_payout_batch_path(batch), alert: e.message
+    end
+
+    # A run paying from the balance: the bank pays everyone left, now.
+    def pay_rest
+      batch = organization.payout_batches.find(params[:id])
+      unless batch.status == "funding" && batch.funding_status == "awaiting_balance"
+        redirect_to(manage_payout_batch_path(batch), alert: "This run isn't waiting on your balance.") and return
+      end
+
+      PayoutBatchService.advance_from_balance!(batch, bank: true)
+      redirect_to manage_payout_batch_path(batch), notice: fund_notice(batch.reload)
+    rescue PayoutBatchService::Error => e
+      redirect_to manage_payout_batch_path(batch), alert: e.message
+    end
+
+    # A run paying from the balance: move the day the bank pays the rest,
+    # when the forecast shows waiting longer would save the debit. Any day
+    # from tomorrow to two weeks out; the bank pays on that day's morning.
+    def update_bank_day
+      batch = organization.payout_batches.find(params[:id])
+      unless batch.awaiting_balance?
+        redirect_to(manage_payout_batch_path(batch), alert: "This run isn't waiting on your balance.") and return
+      end
+
+      zone = ActiveSupport::TimeZone[organization.time_zone] || Time.zone
+      today = Time.current.in_time_zone(zone).to_date
+      day = Date.iso8601(params[:date].to_s)
+      unless day > today && day <= today + 14
+        redirect_to(manage_payout_batch_path(batch), alert: "Choose a day from tomorrow to two weeks from now.") and return
+      end
+
+      batch.update!(bank_due_at: day.in_time_zone(zone))
+      redirect_to manage_payout_batch_path(batch), notice: "Your bank pays whoever is left on #{day.strftime('%A, %B %-d')}."
+    rescue Date::Error
+      redirect_to manage_payout_batch_path(batch), alert: "Choose a day from tomorrow to two weeks from now."
+    end
+
+    # The run's own pay order (PayoutPayOrder), from its Pay order window:
+    # the groups in order, and the people in order within them. reset: back
+    # to the organization's default.
+    def update_pay_order
+      batch = organization.payout_batches.find(params[:id])
+      unless batch.open? || (batch.status == "funding" && batch.funding_status == "awaiting_balance")
+        redirect_to(manage_payout_batch_path(batch), alert: "This run's people are already paid.") and return
+      end
+
+      if params[:reset].present?
+        batch.update!(pay_order: {})
+      else
+        keys = batch.items.map { |item| PayoutPayOrder.payee_key(item) }
+        batch.update!(pay_order: { "groups" => PayoutPayOrder.clean_groups(params[:groups]),
+                                   "payees" => Array(params[:payees]).map(&:to_s) & keys })
+      end
+      redirect_to manage_payout_batch_path(batch), notice: "Pay order saved."
     end
 
     # LEGACY: pay a pre-fold course-kind run (skips_funding?) — the money is
@@ -339,6 +397,26 @@ module Manage
     end
 
     private
+
+    # What just happened when a run was paid: who the balance paid, and when
+    # the rest are paid.
+    def fund_notice(batch)
+      from_balance = batch.items.where(paid_from_balance: true)
+      rest = batch.items.where(status: PayoutBatch::RETRYABLE_ITEM_STATUSES)
+      paid_words = "Paid #{helpers.pluralize(from_balance.count, 'payee')} from your CocoScout balance."
+      if batch.funding_status == "awaiting_balance"
+        due = batch.bank_due_at&.in_time_zone(organization.time_zone)
+        "#{from_balance.any? ? "#{paid_words} " : ''}#{from_balance.any? ? "The other #{rest.count}" : 'Everyone'} " \
+          "#{rest.count == 1 || from_balance.none? ? 'is' : 'are'} paid as ticket money clears, " \
+          "or from your bank on #{due&.strftime('%B %-d') || 'their due date'}."
+      elsif batch.funded_at.blank?
+        "#{from_balance.any? ? "#{paid_words} " : ''}#{from_balance.any? ? 'The rest are' : 'Everyone in this run is'} paid when your bank debit clears."
+      elsif rest.any?
+        "Paid everyone with a connected bank. The #{helpers.pluralize(rest.count, 'payee')} without one are paid once they connect."
+      else
+        "Everyone in this run is paid."
+      end
+    end
 
     # Only allow a same-app relative path as the post-funding redirect target,
     # so ?return_to= can't be used as an open redirect.

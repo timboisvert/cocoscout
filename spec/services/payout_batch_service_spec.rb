@@ -218,6 +218,9 @@ RSpec.describe PayoutBatchService do
 
   describe ".fund!" do
     before do
+      # An organization with no CocoScout balance: the bank funds the whole
+      # run (balance-first runs have their own examples below).
+      allow(PayoutBatchService).to receive(:balance_first?).and_return(false)
       org.update!(stripe_customer_id: "cus_1", funding_payment_method_id: "pm_1", funding_payment_method_type: "us_bank_account")
       # process! looks up the funding charge to source its transfers from.
       allow(Stripe::PaymentIntent).to receive(:retrieve)
@@ -473,6 +476,7 @@ RSpec.describe PayoutBatchService do
     include ActiveJob::TestHelper
 
     before do
+      allow(PayoutBatchService).to receive(:balance_first?).and_return(false)
       org.update!(stripe_customer_id: "cus_1", funding_payment_method_id: "pm_1", funding_payment_method_type: "us_bank_account")
       allow(Stripe::PaymentIntent).to receive(:retrieve).and_return(double("pi", amount: 5000, latest_charge: "py_fund"))
       allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_1"))

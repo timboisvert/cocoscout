@@ -1,0 +1,4 @@
+<%# Opens the run's Pay order window (manage/payout_batches/_pay_order_modal). %>
+<%= link_to "Manage payout priority", "#",
+      class: "text-sm font-medium text-pink-700 hover:text-pink-800 underline",
+      data: { controller: "modal", action: "click->modal#open", modal_id: "pay-order-#{batch.id}" } %>

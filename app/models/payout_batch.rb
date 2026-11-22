@@ -227,7 +227,25 @@ class PayoutBatch < ApplicationRecord
   end
 
   def display_status
+    return "Paying from your balance" if awaiting_balance?
+
     status == "partially_paid" ? "Partially paid" : status.titleize
+  end
+
+  # Submitted, paying from the CocoScout balance as it clears; the bank pays
+  # whoever is left on bank_due_at (PayoutBatchService.start_from_balance!).
+  def awaiting_balance?
+    status == "funding" && funding_status == "awaiting_balance"
+  end
+
+  # What the run's bank debit is for: the run, less whoever the balance paid
+  # before it was funded, held money, funding credit and what it claimed from
+  # the balance. Nothing while it's still paying from the balance.
+  def bank_debit_cents
+    return 0 if awaiting_balance?
+
+    from_balance = items.where(paid_from_balance: true).sum(:amount_cents)
+    [ total_cents - from_balance - held_cents - credit_applied_cents - balance_applied_cents, 0 ].max
   end
 
   # The ordered lifecycle steps for the run-page timeline, each tagged with its

@@ -2392,6 +2392,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_210100) do
     t.datetime "pro_monthly_until"
     t.jsonb "comp_reminders", default: {}, null: false
     t.string "time_zone", default: "Central Time (US & Canada)", null: false
+    t.jsonb "payout_pay_order", default: ["staffing", "contractor", "performer"], null: false
+    t.integer "payout_bank_after_days", default: 3, null: false
+    t.boolean "payout_waits_on_balance", default: true, null: false
     t.index ["books_categories_set_up_by_id"], name: "index_organizations_on_books_categories_set_up_by_id"
     t.index ["books_locked_by_id"], name: "index_organizations_on_books_locked_by_id"
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true
@@ -2427,6 +2430,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_210100) do
     t.datetime "payee_notified_at"
     t.date "expected_deposit_on"
     t.datetime "deposited_at"
+    t.boolean "paid_from_balance", default: false, null: false
     t.index ["payee_type", "payee_id"], name: "index_payout_batch_items_on_payee_type_and_payee_id"
     t.index ["payout_batch_id", "status"], name: "idx_payout_batch_items_batch_status"
     t.index ["payout_batch_id"], name: "index_payout_batch_items_on_payout_batch_id"
@@ -2455,6 +2459,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_210100) do
     t.datetime "funded_at"
     t.datetime "completion_notified_at"
     t.datetime "funding_started_at"
+    t.jsonb "pay_order", default: {}, null: false
+    t.datetime "bank_due_at"
     t.index ["created_by_id"], name: "index_payout_batches_on_created_by_id"
     t.index ["organization_id", "status"], name: "idx_payout_batches_org_status"
     t.index ["organization_id"], name: "idx_payout_batches_one_open_run_per_org", unique: true, where: "(((status)::text = 'draft'::text) AND ((kind)::text <> 'course'::text))"

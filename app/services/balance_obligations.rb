@@ -20,7 +20,7 @@ class BalanceObligations
 
   def self.items(organization)
     [
-      Item.new("Your open payout run", BalanceWithdrawalService.open_run_need_cents(organization)),
+      Item.new("Your payout runs, still to pay", BalanceWithdrawalService.open_run_need_cents(organization)),
       Item.new("Approved staff hours not yet paid", staff_hours_cents(organization)),
       Item.new("Owed to performers and others, not yet on a run", owed_not_staged_cents(organization)),
       Item.new("Contract payments due in the next two weeks, not on a run yet", contract_payments_due_cents(organization))

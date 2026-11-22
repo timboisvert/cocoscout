@@ -74,7 +74,9 @@ RSpec.describe CocoScoutBalance do
       allow(Stripe::Transfer).to receive(:create).and_return(Stripe::Transfer.construct_from(id: "tr_1"))
 
       PayoutBatchService.fund!(batch)
-      expect(batch.reload.balance_applied_cents).to eq(4_000)
+      # Paid straight from the balance when the run was submitted: no bank debit.
+      expect(batch.reload.status).to eq("completed")
+      expect(item.reload.paid_from_balance).to be(true)
       expect(batch.funding_payment_intent_id).to be_nil
       expect(described_class.available_cents(org)).to eq(5_000)
 
@@ -86,7 +88,9 @@ RSpec.describe CocoScoutBalance do
 
     it "keeps balance a run claimed spoken for while its bank debit is on its way, and lets it go if the debit bounces" do
       course_sale(10_000, at: 3.days.ago)
-      org.update!(stripe_customer_id: "cus_sg", funding_payment_method_id: "pm_bank", funding_payment_method_type: "us_bank_account")
+      # The bank pays what the balance can't, at once.
+      org.update!(stripe_customer_id: "cus_sg", funding_payment_method_id: "pm_bank", funding_payment_method_type: "us_bank_account",
+                  payout_waits_on_balance: false)
       PayoutFundingCredit.create!(organization: org, amount_cents: 1_000, note: "Paid another way")
       performer = create(:person, stripe_account_id: "acct_p", payouts_enabled: true)
       batch = PayoutBatch.open_for(org, created_by: owner)

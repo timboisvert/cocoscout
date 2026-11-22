@@ -6,10 +6,11 @@ module Manage
   # people outside CocoScout's Stripe rail, who hears about payout runs, and
   # where the org sells tickets.
   class MoneySettingsController < Manage::ManageController
-    SECTIONS = %w[settle_up tips offline_methods notifications ticket_sources books].freeze
+    SECTIONS = %w[settle_up tips payout_runs offline_methods notifications ticket_sources books].freeze
     SECTION_LABELS = {
       "settle_up" => "Settle up",
       "tips" => "Tips",
+      "payout_runs" => "Payout runs",
       "offline_methods" => "Offline Methods",
       "notifications" => "Notifications",
       "ticket_sources" => "Ticket Sources",
@@ -104,6 +105,18 @@ module Manage
     def restore_ticket_source
       @ticket_source.restore!
       redirect_to section_path("ticket_sources"), notice: "#{@ticket_source.name} is back on the list."
+    end
+
+    # Payout runs paying from the CocoScout balance first (Tim, 2026-11-22):
+    # who's paid first when it can't cover everyone, whether the rest wait on
+    # the balance (paid each morning as it clears), and for how many days
+    # before the bank pays them.
+    def update_payout_runs
+      days = params[:payout_bank_after_days].to_s.strip
+      days = days.match?(/\A\d+\z/) ? days.to_i.clamp(1, 30) : Current.organization.payout_bank_after_days
+      Current.organization.update!(payout_pay_order: PayoutPayOrder.clean_groups(params[:groups]), payout_bank_after_days: days,
+                                   payout_waits_on_balance: params[:payout_waits_on_balance] == "1")
+      redirect_to section_path("payout_runs"), notice: "Payout run settings saved."
     end
 
     # Which managers get an email when a payout run is submitted. Store only ids

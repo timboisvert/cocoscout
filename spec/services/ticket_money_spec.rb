@@ -99,7 +99,8 @@ RSpec.describe "Ticket money" do
         PayoutBatchService.fund!(batch)
 
         expect(Stripe::PaymentIntent).not_to have_received(:create)
-        expect([ batch.reload.status, batch.balance_applied_cents ]).to eq([ "completed", 6_000 ])
+        # Paid straight from the balance the moment the run was submitted.
+        expect([ batch.reload.status, batch.items.first.paid_from_balance ]).to eq([ "completed", true ])
         expect(summary.available_cents).to eq(4_000)
       end
     end
@@ -122,7 +123,9 @@ RSpec.describe "Ticket money" do
       travel_to(Time.zone.local(2026, 10, 14, 10)) do
         batch = run_for(15_000)
         expect { PayoutBatchService.fund!(batch) }.to raise_error(PayoutBatchService::Error)
-        expect([ batch.reload.status, batch.balance_applied_cents ]).to eq([ "failed", 0 ])
+        # The balance couldn't pay anyone on its own, so nothing happened: the
+        # run is a draft again, with the reason on it.
+        expect([ batch.reload.status, batch.balance_applied_cents, batch.funding_error ]).to eq([ "draft", 0, "declined" ])
         expect(summary.available_cents).to eq(10_000)
       end
     end

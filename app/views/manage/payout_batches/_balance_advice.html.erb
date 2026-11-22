@@ -1,0 +1,76 @@
+<%#
+  Whether waiting would help, in one sentence (PayoutBalanceForecast.advice),
+  and See each day: a window with what the bank would pay on each day the
+  money already sold changes it (Tim, 2026-11-22: "basic single
+  recommendation plus the ability to pop a modal to show more"). On a waiting
+  run, the scheduled bank debit can move to a later day.
+
+  Locals: batch, rows, bank_day (Date), can_move (true on a waiting run)
+%>
+<%
+  org = Current.organization
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  today = Time.current.in_time_zone(org.time_zone).to_date
+  advice = PayoutBalanceForecast.advice(rows, bank_day: bank_day)
+  modal_id = "forecast-#{batch.id}"
+%>
+<% if advice %>
+  <p class="text-sm text-gray-900 mt-2">
+    <%= advice[:text] %>
+    <%= link_to "See each day", "#", class: "font-medium text-pink-700 hover:text-pink-800 underline whitespace-nowrap",
+          data: { controller: "modal", action: "click->modal#open", modal_id: modal_id } %>
+  </p>
+
+  <div id="<%= modal_id %>"
+       class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+       data-controller="modal"
+       data-action="click->modal#closeOnBackdrop">
+    <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-md sm:mx-4 overflow-hidden"
+         data-action="click->modal#stopPropagation">
+      <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+        <h3 class="text-lg font-semibold text-white">If you wait</h3>
+        <button type="button" data-action="click->modal#close"
+                class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="px-6 py-5">
+        <p class="text-sm text-gray-600">If everyone still waiting were paid on one of these days, this is how much would come from your bank. It counts only ticket money already sold, so new sales lower it.</p>
+        <table class="mt-4 w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs font-semibold text-gray-500 border-b border-gray-200">
+              <th class="py-2 font-semibold">Day</th>
+              <th class="py-2 font-semibold text-right">From your bank</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <% rows.each do |row| %>
+              <tr>
+                <td class="py-2.5 text-gray-900">
+                  <%= row.date == today ? "Today" : row.date.strftime("%A, %B %-d") %>
+                  <% if row.date == bank_day %>
+                    <div class="text-xs text-gray-500">Bank debit scheduled</div>
+                  <% end %>
+                </td>
+                <td class="py-2.5 text-right tabular-nums <%= row.bank_cents.zero? ? 'text-green-700 font-medium' : 'text-gray-900' %>">
+                  <%= row.bank_cents.zero? ? "Nothing" : money.call(row.bank_cents) %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      <div class="px-4 sm:px-6 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] sm:py-4 bg-gray-50 border-t border-gray-200 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 [&_button]:w-full sm:[&_button]:w-auto">
+        <%= render "shared/button", text: "Close", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+        <% if can_move && advice[:wait_until] %>
+          <%= form_with url: manage_bank_day_payout_batch_path(batch), method: :patch do %>
+            <%= hidden_field_tag :date, advice[:wait_until].iso8601, id: nil %>
+            <%= render "shared/button", text: "Wait until #{advice[:wait_until].strftime('%A')}", variant: "primary", size: "medium", type: :submit %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>

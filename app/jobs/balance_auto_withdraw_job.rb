@@ -23,6 +23,8 @@ class BalanceAutoWithdrawJob < ApplicationJob
       next if profile.auto_withdraw == "off"
       next if profile.auto_withdraw == "weekly" && !today.monday?
       next unless organization.can_receive_payouts?
+      # A payout run is paying its people from this balance as it clears.
+      next if organization.payout_batches.where(status: "funding", funding_status: "awaiting_balance").exists?
 
       cents = CocoScoutBalance.available_cents(organization)
       next if cents < MINIMUM_CENTS
@@ -35,8 +37,11 @@ class BalanceAutoWithdrawJob < ApplicationJob
 
   private
 
+  # Year-old money a payout run is waiting on stays: the run pays its people
+  # with it the next morning (PayoutBalanceWavesJob), which beats sending it
+  # to the bank only to debit the bank for the same people.
   def send_back_aged_money(organization, today)
-    aged = CocoScoutBalance.aged_cents(organization)
+    aged = CocoScoutBalance.aged_cents(organization) - BalanceWithdrawalService.waiting_run_need_cents(organization)
     return if aged < MINIMUM_CENTS
 
     if organization.can_receive_payouts?

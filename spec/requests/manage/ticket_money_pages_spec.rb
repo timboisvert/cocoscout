@@ -221,7 +221,7 @@ RSpec.describe "Manage ticketing money", type: :request do
       PayoutBatchService.build_for(organization: org)
 
       get manage_ticket_balance_path
-      expect(response.body).to include("Keep $15.00 for the next two weeks of payouts; you can safely withdraw $45.00", "Your open payout run", 'value="45.00"')
+      expect(response.body).to include("Keep $15.00 for the next two weeks of payouts; you can safely withdraw $45.00", "Your payout runs, still to pay", 'value="45.00"')
 
       org.update!(stripe_customer_id: "cus_sg", funding_payment_method_id: "pm_sg", funding_payment_method_type: "us_bank_account")
       allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_top", status: "processing"))
@@ -263,7 +263,7 @@ RSpec.describe "Manage ticketing money", type: :request do
       org.update!(funding_payment_method_id: "pm_1")
 
       get manage_payout_batch_path(batch)
-      expect(response.body).to include("Paid from your CocoScout balance: $50.00")
+      expect(response.body).to include("Everyone with a connected bank is paid today from your CocoScout balance.")
     end
   end
 

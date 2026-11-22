@@ -186,6 +186,10 @@ class PayoutBatchService
   # days) or a card charge (instant "pay now" rush). Creates a PaymentIntent
   # against the org's Stripe customer; card funding that succeeds immediately is
   # advanced straight into processing, while ACH waits for the webhook.
+  #
+  # An organization with a CocoScout balance pays from it first (Tim,
+  # 2026-11-22): see start_from_balance!. Everyone else funds the whole run
+  # from the bank, as before.
   def self.fund!(batch, method: nil, payment_method_id: nil)
     return batch if batch.total_cents.zero?
 
@@ -207,15 +211,207 @@ class PayoutBatchService
     # it at the moment of submission.
     batch.update!(payday: Date.current) if batch.payday.blank? || batch.payday < Date.current
 
+    return start_from_balance!(batch, attempt: attempt, payment_method_id: payment_method_id) if balance_first?(batch)
+
+    fund_rest!(batch, attempt: attempt, payment_method_id: payment_method_id, notify: true)
+  end
+
+  # Runs that pay from the organization's CocoScout balance before its bank.
+  def self.balance_first?(batch)
+    !batch.skips_funding? && CocoScoutBalance.pooled?(batch.organization)
+  end
+
+  # Balance first (Tim, 2026-11-22): the run pays everyone the balance covers
+  # right away, in pay order (PayoutPayOrder), one whole payment each. The rest
+  # wait on the run ("awaiting_balance"): every morning PayoutBalanceWavesJob
+  # pays whoever the balance now covers, and once it covers everyone left, or
+  # on the run's bank_due_at (bank_due_at_for: the organization's days after
+  # submit, or at once), fund_rest! funds what's left, from the balance and the bank,
+  # and the run carries on exactly as a funded run always has.
+  def self.start_from_balance!(batch, attempt:, payment_method_id: nil)
+    # The bank pays whatever the balance can't, sooner or later: a run the
+    # balance can't cover today needs a bank behind it before it starts.
+    if (payment_method_id.presence || batch.organization.funding_payment_method_id).blank? && rest_bank_cents(batch).positive?
+      message = "Connect a bank or card to fund payouts first."
+      batch.update!(funding_error: message)
+      raise Error, message
+    end
+
+    batch.update!(status: "funding", funding_status: "awaiting_balance", funding_started_at: Time.current,
+                  funding_payment_intent_id: nil, bank_due_at: bank_due_at_for(batch.organization))
+    begin
+      advance_from_balance!(batch, attempt: attempt, payment_method_id: payment_method_id)
+    rescue Error
+      # The bank half didn't start (no bank connected, or the debit was
+      # refused). Whoever the balance paid stays paid; the reason is on the
+      # run, and the rest wait for the balance or the next try. When the
+      # balance paid nobody, nothing happened: the run is a draft again and
+      # the manager sees why.
+      raise if batch.reload.items.where(paid_from_balance: true).none? && back_to_draft!(batch)
+    end
+    batch.reload
+    if batch.funding_status == "succeeded" && batch.items.where(paid_from_balance: true).none?
+      PayoutRunSubmittedNotificationJob.perform_later(batch.id, funded: true)
+    elsif batch.funding_status == "awaiting_balance" || batch.items.where(paid_from_balance: true).exists?
+      PayoutRunSubmittedNotificationJob.perform_later(batch.id, from_balance: true)
+    else
+      PayoutRunSubmittedNotificationJob.perform_later(batch.id, funded: false)
+    end
+    batch
+  end
+
+  # A balance-first run that paid nobody and couldn't start its bank debit.
+  # False when another draft opened meanwhile (one open run per organization):
+  # it stays waiting on the balance, the reason on it.
+  def self.back_to_draft!(batch)
+    batch.update!(status: "draft", funding_status: nil, funding_started_at: nil, bank_due_at: nil, funding_payment_intent_id: nil)
+    true
+  rescue ActiveRecord::RecordNotUnique
+    false
+  end
+
+  # When the bank pays whoever the balance hasn't: the morning of the day the
+  # organization's days from now (PayoutBalanceWavesJob runs each morning), or
+  # now when the organization doesn't wait on the balance, or no money is on
+  # its way into it (nothing settling, nothing sold for shows still to come),
+  # since waiting would only delay everyone.
+  def self.bank_due_at_for(organization, now: Time.current)
+    days = organization.payout_bank_after_days.to_i.clamp(0, 30)
+    return now if days.zero? || !organization.payout_waits_on_balance
+
+    summary = CocoScoutBalance.summary(organization)
+    return now unless (summary.settling_cents + summary.upcoming_cents).positive?
+
+    zone = ActiveSupport::TimeZone[organization.time_zone] || Time.zone
+    (now.in_time_zone(zone).to_date + days).in_time_zone(zone)
+  end
+
+  # Pay whoever the balance now covers; then, when the balance covers everyone
+  # left, or its scheduled bank debit has come (or bank: true, a manager's "Pay the rest
+  # from my bank"), fund the rest. A run whose bank half failed waits for a
+  # manager before the bank is tried again. notify: the morning pass tells the
+  # managers when it paid more (PayoutRunMorePaidNotificationJob); a run it
+  # finished gets the usual "everyone's paid" instead.
+  def self.advance_from_balance!(batch, bank: false, attempt: nil, payment_method_id: nil, notify: false)
+    return batch unless batch.status == "funding" && batch.funding_status == "awaiting_balance"
+
+    paid_ids = pay_from_balance!(batch)
+    batch.reload
+    if rest_cents(batch).zero?
+      batch.update!(status: "funded", funding_status: "succeeded", funded_at: Time.current)
+      finalize_status!(batch)
+      return batch
+    end
+
+    begin
+      due = batch.bank_due_at.present? && batch.bank_due_at <= Time.current && batch.funding_error.blank?
+      if bank || due || rest_bank_cents(batch).zero?
+        attempt ||= batch.with_lock do
+          batch.increment!(:funding_attempts)
+          batch.funding_attempts
+        end
+        batch.update!(funding_error: nil) if bank && batch.funding_error.present?
+        fund_rest!(batch, attempt: attempt, payment_method_id: payment_method_id)
+      end
+    ensure
+      if notify && paid_ids.any? && !batch.reload.completed?
+        PayoutRunMorePaidNotificationJob.perform_later(batch.id, paid_ids)
+      end
+    end
+    batch
+  end
+
+  # Everyone on the run not paid yet: what funding the rest has to cover (the
+  # run's total, for a run nobody on it has been paid from yet).
+  def self.rest_cents(batch)
+    [ batch.total_cents.to_i - batch.items.where(status: %w[paid returned]).sum(:amount_cents), 0 ].max
+  end
+
+  # What the bank would be debited for the rest today, after held money,
+  # funding credit and the balance.
+  def self.rest_bank_cents(batch)
+    org = batch.organization
+    fundable = [ rest_cents(batch) - batch.held_cents, 0 ].max
+    fundable -= [ PayoutFundingCredit.available_cents(org), fundable ].min
+    [ fundable - CocoScoutBalance.available_cents(org), 0 ].max
+  end
+
+  # One pass of the balance over the run: each person it covers, in pay order,
+  # paid in full now. Someone who doesn't fit is passed over for the next, so
+  # the money pays as many people as it can. Nobody is paid in parts, and
+  # nobody without a connected bank takes any of it (they wait, as they always
+  # have). Returns the ids of the items it paid.
+  def self.pay_from_balance!(batch)
+    conn = ActiveRecord::Base.connection
+    return [] unless conn.select_value("SELECT pg_try_advisory_lock(3085, #{batch.id.to_i})")
+
+    begin
+      waiting = batch.items.pending.where("amount_cents > 0").includes(:payee, :payout_contributions).select(&:payable_now?)
+      budget = CocoScoutBalance.available_cents(batch.organization)
+      paid = []
+      PayoutPayOrder.sort(batch, waiting).each do |item|
+        break unless budget.positive?
+        next if item.amount_cents > budget
+        next unless send_from_balance!(batch, item)
+
+        budget -= item.amount_cents
+        paid << item.id
+      end
+      PayoutSentPayeeNotificationJob.perform_later(batch.id) if paid.any?
+      paid
+    ensure
+      conn.select_value("SELECT pg_advisory_unlock(3085, #{batch.id.to_i})")
+    end
+  end
+
+  # Who the balance would pay right now, without paying anyone: the run
+  # page's words before a manager presses Pay now. { now:, later:, no_bank: },
+  # each a list of pending items (now and later in pay order).
+  def self.balance_preview(batch, items = batch.items.includes(:payee, :payout_contributions).to_a)
+    pending = items.select { |item| item.status == "pending" && item.amount_cents.to_i.positive? }
+    payable, no_bank = pending.partition(&:payable_now?)
+    budget = CocoScoutBalance.available_cents(batch.organization)
+    now = []
+    PayoutPayOrder.sort(batch, payable).each do |item|
+      next if item.amount_cents > budget
+
+      now << item
+      budget -= item.amount_cents
+    end
+    { now: now, later: PayoutPayOrder.sort(batch, payable - now), no_bank: no_bank }
+  end
+
+  def self.send_from_balance!(batch, item)
+    if item.partner_organization?
+      pay_into_balance!(batch, item, from_balance: true)
+    else
+      send_transfer!(batch, item, transfer_group: "org_#{batch.organization_id}", from_balance: true)
+    end
+    item.reload
+    return false unless item.paid?
+
+    item.update_columns(paid_from_balance: true)
+    true
+  end
+
+  # Fund whoever on the run isn't paid yet: held money (course sales and
+  # collected contract money already in CocoScout), then funding credit, then
+  # the CocoScout balance, and the bank for the rest. For a run that wasn't
+  # balance first this is the whole run. notify: tell the managers it was
+  # submitted (the first funding of a run that wasn't balance first).
+  def self.fund_rest!(batch, attempt:, payment_method_id: nil, notify: false)
     org = batch.organization
     payment_method = payment_method_id.presence || org.funding_payment_method_id.presence
+    # A balance-first run whose bank half fails goes back to waiting on the
+    # balance, never to "failed": some of its people are already paid.
+    resumable = batch.funding_status == "awaiting_balance"
 
     # Money CocoScout already holds for the org — course sales and collected
     # contract payments staged on this run — never needs to come out of their
     # bank; ACH-debiting the org to hand them their own held money would charge
     # them twice. Only the remainder is fundable.
     held_cents = batch.held_cents
-    fundable_cents = [ batch.total_cents - held_cents, 0 ].max
+    fundable_cents = [ rest_cents(batch) - held_cents, 0 ].max
 
     # Money released back from earlier funded runs (payees paid another way)
     # never left the Stripe balance — spend it before debiting the bank.
@@ -238,7 +434,7 @@ class PayoutBatchService
       advance_funding!(batch, "succeeded", at_submit: true)
       # Funded in this same request: the submitted notice says so, and no
       # separate funded notice follows.
-      PayoutRunSubmittedNotificationJob.perform_later(batch.id, funded: true)
+      PayoutRunSubmittedNotificationJob.perform_later(batch.id, funded: true) if notify
       return batch
     end
 
@@ -274,7 +470,7 @@ class PayoutBatchService
     # how much, expected deposit window). Async; no recipients chosen = no-op.
     # A card settles here and now, so the words say "submitted and funded";
     # an ACH debit gets its own funded notice when the webhook lands.
-    PayoutRunSubmittedNotificationJob.perform_later(batch.id, funded: batch.funded_at.present?)
+    PayoutRunSubmittedNotificationJob.perform_later(batch.id, funded: batch.funded_at.present?) if notify
     batch
   rescue Stripe::StripeError => e
     # The debit never happened — give back any credit this attempt consumed so
@@ -286,8 +482,13 @@ class PayoutBatchService
     end
     # Keep Stripe's own words on the run: a flash message is gone by the time
     # anyone asks why run 29 failed (2026-10-13).
-    batch.update!(status: "failed", funding_status: "failed", balance_applied_cents: 0, credit_applied_cents: 0,
-                  funding_error: e.message)
+    if resumable
+      batch.update!(status: "funding", funding_status: "awaiting_balance", balance_applied_cents: 0, credit_applied_cents: 0,
+                    funding_payment_intent_id: nil, funding_error: e.message)
+    else
+      batch.update!(status: "failed", funding_status: "failed", balance_applied_cents: 0, credit_applied_cents: 0,
+                    funding_error: e.message)
+    end
     raise Error, e.message
   end
 
@@ -295,16 +496,26 @@ class PayoutBatchService
   # credit the run spent and let go of the balance it claimed, exactly as a
   # failure at submission does, so the org's available money stays truthful.
   # `reason` is Stripe's last_payment_error message when the webhook carries one.
+  #
+  # A run that paid from the balance first goes back to waiting on it: the
+  # people it paid stay paid, and the balance keeps paying the rest until a
+  # manager tries the bank again (PayoutFundingFailedNotificationJob tells them).
   def self.funding_failed!(batch, reason: nil)
     batch.with_lock do
-      return batch if batch.status == "failed"
+      return batch if batch.status == "failed" || batch.funding_status == "awaiting_balance"
 
       if batch.credit_applied_cents.positive?
         PayoutFundingCredit.create!(organization: batch.organization, amount_cents: batch.credit_applied_cents,
                                     note: "Restored after failed funding of run ##{batch.id}")
       end
-      batch.update!(status: "failed", funding_status: "failed", balance_applied_cents: 0, credit_applied_cents: 0,
-                    funding_error: reason.presence || "The bank debit was returned by the bank.")
+      message = reason.presence || "The bank debit was returned by the bank."
+      if batch.items.where(paid_from_balance: true).exists?
+        batch.update!(status: "funding", funding_status: "awaiting_balance", balance_applied_cents: 0, credit_applied_cents: 0,
+                      funding_error: message)
+      else
+        batch.update!(status: "failed", funding_status: "failed", balance_applied_cents: 0, credit_applied_cents: 0,
+                      funding_error: message)
+      end
     end
     batch
   end
@@ -386,71 +597,13 @@ class PayoutBatchService
       # pending — their slice of the funded money waits on this run.
       next unless item.payable_now?
 
-      params = {
-        amount: item.amount_cents,
-        currency: "usd",
-        destination: item.payee.stripe_account_id,
-        transfer_group: transfer_group,
-        metadata: { payout_batch_item_id: item.id, organization_id: batch.organization_id }
-      }
       # Draw on the funding charge itself, not the platform's available balance
       # (see funding_charge_for). Falls back to the balance when the charge's
       # transferable capacity can't cover this item (credit-funded slices).
       use_source = source_charge.present? && item.amount_cents <= source_remaining
-      if use_source
-        params[:source_transaction] = source_charge
-        # A charge-pinned transfer inherits the charge's transfer_group, and
-        # Stripe rejects an explicit one that differs ("You cannot use
-        # transfer_group if the source_transaction already has one set").
-        # Funding charges from before PaymentIntents carried a group can be
-        # stamped with something else — inherit rather than fail the payee.
-        params.delete(:transfer_group) if source_group.present? && source_group != transfer_group
-      end
-
-      # Reserve the money on the org's cash ledger before touching Stripe.
-      # Charge-pinned transfers can't be blocked (Stripe guarantees the charge
-      # covers them — enforce: false); a fallback draw on the shared platform
-      # balance must fit within the org's own held money, or it parks here
-      # instead of spending another org's cash.
-      begin
-        OrgCashEntry.debit!(
-          organization: batch.organization,
-          amount_cents: item.amount_cents,
-          source: item,
-          enforce: !use_source,
-          description: "Payout run ##{batch.id} transfer"
-        )
-      rescue OrgCashEntry::InsufficientFunds
-        item.mark_failed!("Insufficient held balance — not sent")
-        next
-      end
-
-      # The idempotency key survives a crash between the transfer succeeding
-      # and mark_paid! landing: the item is still pending with the same
-      # updated_at, so the retry replays the same transfer instead of paying
-      # twice. Any status change (mark_failed!, the pending reset in
-      # pay_remaining!) touches updated_at and mints a fresh key.
-      transfer = Stripe::Transfer.create(
-        params,
-        idempotency_key: "payout-batch-item-#{item.id}-#{item.updated_at.to_i}"
-      )
-      source_remaining -= item.amount_cents if use_source
-      item.mark_paid!(transfer_id: transfer.id)
-      settle_item_sources!(item, transfer.id)
-    rescue Stripe::StripeError => e
-      if destination_not_ready?(e)
-        # Their Stripe account isn't cleared to receive a transfer yet (see
-        # StripeConnectService.transferable?). Re-read the account so our copy
-        # of "can they be paid" stops claiming yes, and park the item instead
-        # of failing it: the money stays on the run, the manager sees "waiting
-        # on bank info" rather than a paragraph of Stripe capability jargon,
-        # and the account.updated webhook that fires when the capability goes
-        # active pays them without anyone clicking.
-        resync_payee!(item.payee)
-        item.mark_parked!("Stripe hasn't finished clearing their account to receive transfers — we'll send this automatically once it is.")
-      else
-        item.mark_failed!(e.message)
-      end
+      sent = send_transfer!(batch, item, transfer_group: transfer_group,
+                                         source_charge: (source_charge if use_source), source_group: source_group)
+      source_remaining -= item.amount_cents if use_source && sent == :paid
     end
 
     finalize_status!(batch)
@@ -466,6 +619,87 @@ class PayoutBatchService
     batch
   end
 
+  # Send one item's transfer to its payee's connected account; returns :paid,
+  # :failed, :parked or :short.
+  #
+  # source_charge: the run's funding charge to draw on (see
+  # funding_charge_for), or nil to draw on the platform's balance, which must
+  # then fit within the organization's own money. from_balance: a payment
+  # from the balance before the run is funded (pay_from_balance!), where
+  # anything that stops it leaves the item waiting on the run rather than
+  # failed: the bank's funding pays it later if the balance doesn't.
+  def self.send_transfer!(batch, item, transfer_group:, source_charge: nil, source_group: nil, from_balance: false)
+    params = {
+      amount: item.amount_cents,
+      currency: "usd",
+      destination: item.payee.stripe_account_id,
+      transfer_group: transfer_group,
+      metadata: { payout_batch_item_id: item.id, organization_id: batch.organization_id }
+    }
+    if source_charge
+      params[:source_transaction] = source_charge
+      # A charge-pinned transfer inherits the charge's transfer_group, and
+      # Stripe rejects an explicit one that differs ("You cannot use
+      # transfer_group if the source_transaction already has one set").
+      # Funding charges from before PaymentIntents carried a group can be
+      # stamped with something else — inherit rather than fail the payee.
+      params.delete(:transfer_group) if source_group.present? && source_group != transfer_group
+    end
+
+    # Reserve the money on the org's cash ledger before touching Stripe.
+    # Charge-pinned transfers can't be blocked (Stripe guarantees the charge
+    # covers them — enforce: false); a fallback draw on the shared platform
+    # balance must fit within the org's own held money, or it parks here
+    # instead of spending another org's cash.
+    begin
+      OrgCashEntry.debit!(
+        organization: batch.organization,
+        amount_cents: item.amount_cents,
+        source: item,
+        enforce: source_charge.nil?,
+        description: "Payout run ##{batch.id} transfer"
+      )
+    rescue OrgCashEntry::InsufficientFunds
+      return :short if from_balance
+
+      item.mark_failed!("Insufficient held balance — not sent")
+      return :failed
+    end
+
+    # The idempotency key survives a crash between the transfer succeeding
+    # and mark_paid! landing: the item is still pending with the same
+    # updated_at, so the retry replays the same transfer instead of paying
+    # twice. Any status change (mark_failed!, the pending reset in
+    # pay_remaining!) touches updated_at and mints a fresh key.
+    transfer = Stripe::Transfer.create(
+      params,
+      idempotency_key: "payout-batch-item-#{item.id}-#{item.updated_at.to_i}"
+    )
+    item.mark_paid!(transfer_id: transfer.id)
+    settle_item_sources!(item, transfer.id)
+    :paid
+  rescue Stripe::StripeError => e
+    if destination_not_ready?(e)
+      # Their Stripe account isn't cleared to receive a transfer yet (see
+      # StripeConnectService.transferable?). Re-read the account so our copy
+      # of "can they be paid" stops claiming yes, and park the item instead
+      # of failing it: the money stays on the run, the manager sees "waiting
+      # on bank info" rather than a paragraph of Stripe capability jargon,
+      # and the account.updated webhook that fires when the capability goes
+      # active pays them without anyone clicking.
+      resync_payee!(item.payee)
+      item.mark_parked!("Stripe hasn't finished clearing their account to receive transfers — we'll send this automatically once it is.")
+      :parked
+    elsif from_balance
+      # Not sent from the balance this time; the run pays them later.
+      item.mark_parked!("Not sent from your CocoScout balance yet: #{e.message}")
+      :parked
+    else
+      item.mark_failed!(e.message)
+      :failed
+    end
+  end
+
   # Pay an item whose payee is another organization (a contractor's own, by
   # the contractor's choice: ContractConnections.pay_target): the money moves
   # from this organization's CocoScout balance into theirs, at once, with no
@@ -475,7 +709,7 @@ class PayoutBatchService
   #
   # A funded run's money is already in this organization's ledger, so its
   # items are never blocked; a run paid from the balance must fit within it.
-  def self.pay_into_balance!(batch, item)
+  def self.pay_into_balance!(batch, item, from_balance: false)
     target = item.payee
     unless ContractConnections.balance_available?(target)
       item.mark_failed!("#{target.name} can't be paid into a CocoScout balance any more. Take this out of the run and add it again to pay their bank.")
@@ -496,7 +730,8 @@ class PayoutBatchService
     end
     ContractConnectionNotices.share_paid_into_balance(item)
   rescue OrgCashEntry::InsufficientFunds
-    item.mark_failed!("Insufficient held balance — not sent")
+    # Paying from the balance before the run is funded: it simply waits.
+    item.mark_failed!("Insufficient held balance — not sent") unless from_balance
   end
 
   # Stripe refused the transfer because the destination account can't receive
@@ -531,8 +766,9 @@ class PayoutBatchService
   # though the org's money was fully collected.
   #
   # Remaining capacity conservatively assumes every already-paid item drew on
-  # this charge, so a retry can never over-commit it; items it can't cover
-  # (e.g. the credit-funded slice of a run) fall back to the plain balance.
+  # this charge (except those paid from the balance before it), so a retry can
+  # never over-commit it; items it can't cover (e.g. the credit-funded slice
+  # of a run) fall back to the plain balance.
   # Best-effort: if Stripe can't tell us, transfers proceed the old way.
   def self.funding_charge_for(batch)
     return [ nil, 0, nil ] if batch.funding_payment_intent_id.blank?
@@ -543,7 +779,8 @@ class PayoutBatchService
     return [ nil, 0, nil ] if charge_id.blank?
 
     charge_group = charge.is_a?(String) ? nil : charge.try(:transfer_group)
-    [ charge_id, intent.amount - batch.items.paid.sum(:amount_cents), charge_group ]
+    # Paid from the balance before the run was funded: never drew on it.
+    [ charge_id, intent.amount - batch.items.paid.where(paid_from_balance: false).sum(:amount_cents), charge_group ]
   rescue Stripe::StripeError => e
     Rails.logger.warn("[PayoutBatchService] no funding charge for batch #{batch.id}: #{e.message}")
     [ nil, 0, nil ]

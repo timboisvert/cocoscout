@@ -1,0 +1,97 @@
+<%#
+  The run's Pay order window (Tim, 2026-11-22): when the CocoScout balance
+  can't cover everyone, who it pays first. The groups (staff, performers,
+  contractors) in order, and the people in order within each, dragged or
+  moved with the arrows. Saved on this run only (payout_batches.pay_order);
+  the organization's default order is in Money settings. Only people with a
+  connected bank are listed: nobody else takes any of the balance.
+
+  Locals: batch, items
+%>
+<%
+  modal_id = "pay-order-#{batch.id}"
+  form_id = "pay-order-form-#{batch.id}"
+  waiting = items.select { |item| item.status == "pending" && item.amount_cents.to_i.positive? && item.payable_now? }
+  groups = PayoutPayOrder.grouped(batch, waiting)
+  empty_groups = PayoutPayOrder.groups_for(batch) - groups.map(&:first)
+  money = ->(cents) { number_to_currency(cents / 100.0) }
+  handle_svg = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M7 4a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm9-12a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/></svg>'.html_safe
+%>
+<div id="<%= modal_id %>"
+     class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+     data-controller="modal"
+     data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-lg sm:mx-4 overflow-hidden max-h-[90vh] flex flex-col"
+       data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white">Payout priority</h3>
+      <button type="button"
+              data-action="click->modal#close"
+              class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <%= form_with url: manage_pay_order_payout_batch_path(batch), method: :patch, id: form_id,
+          class: "flex-1 overflow-y-auto",
+          data: { controller: "reorderable", reorderable_handle_value: ".pay-order-handle", reorderable_auto_save_value: false } do %>
+      <p class="px-6 pt-5 pb-3 text-sm text-gray-600">
+        When your balance can't cover everyone, people higher on this list are paid first.
+        Your balance has <%= money.call(CocoScoutBalance.available_cents(batch.organization)) %> available now.
+      </p>
+      <div class="px-4 pb-5 space-y-3" data-reorderable-target="list">
+        <% groups.each_with_index do |(group, members), group_index| %>
+          <div class="rounded-lg border border-gray-200 bg-white overflow-hidden" data-position="<%= group_index %>">
+            <%= hidden_field_tag "groups[]", group, id: nil %>
+            <div class="flex items-center gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200">
+              <span class="pay-order-handle cursor-grab text-gray-400 hover:text-gray-600 p-1" title="Drag to reorder" aria-hidden="true"><%= handle_svg %></span>
+              <span class="text-sm font-semibold text-gray-900"><%= PayoutPayOrder::LABELS.fetch(group) %></span>
+              <span class="text-xs text-gray-500"><%= pluralize(members.size, "payee") %> · <%= money.call(members.sum(&:amount_cents)) %></span>
+              <span class="ml-auto flex items-center">
+                <%= render "shared/button", text: "", variant: "ghost", size: "xs", type: :button, title: "Move #{PayoutPayOrder::LABELS.fetch(group).downcase} up", icon: "chevron-up",
+                      classes: "!p-1 text-gray-400 hover:text-gray-700", data: { action: "reorderable#moveUp" } %>
+                <%= render "shared/button", text: "", variant: "ghost", size: "xs", type: :button, title: "Move #{PayoutPayOrder::LABELS.fetch(group).downcase} down", icon: "chevron-down",
+                      classes: "!p-1 text-gray-400 hover:text-gray-700", data: { action: "reorderable#moveDown" } %>
+              </span>
+            </div>
+            <div class="divide-y divide-gray-100" data-reorderable-target="list">
+              <% members.each_with_index do |item, index| %>
+                <div class="flex items-center gap-2 px-3 py-2 bg-white" data-position="<%= index %>">
+                  <%= hidden_field_tag "payees[]", PayoutPayOrder.payee_key(item), id: nil %>
+                  <span class="pay-order-handle cursor-grab text-gray-300 hover:text-gray-500 p-1" title="Drag to reorder" aria-hidden="true"><%= handle_svg %></span>
+                  <span class="min-w-0 flex-1 truncate text-sm text-gray-900"><%= item.payee&.name %></span>
+                  <span class="text-sm tabular-nums text-gray-700"><%= money.call(item.amount_cents) %></span>
+                  <span class="flex items-center">
+                    <%= render "shared/button", text: "", variant: "ghost", size: "xs", type: :button, title: "Pay #{item.payee&.name} sooner", icon: "chevron-up",
+                          classes: "!p-1 text-gray-400 hover:text-gray-700", data: { action: "reorderable#moveUp" } %>
+                    <%= render "shared/button", text: "", variant: "ghost", size: "xs", type: :button, title: "Pay #{item.payee&.name} later", icon: "chevron-down",
+                          classes: "!p-1 text-gray-400 hover:text-gray-700", data: { action: "reorderable#moveDown" } %>
+                  </span>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+      <% empty_groups.each do |group| %>
+        <%= hidden_field_tag "groups[]", group, id: nil %>
+      <% end %>
+    <% end %>
+
+    <div class="px-4 sm:px-6 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] sm:py-4 bg-gray-50 border-t border-gray-200 flex flex-col-reverse sm:flex-row sm:items-center gap-2 [&_button]:w-full sm:[&_button]:w-auto">
+      <% if batch.pay_order.present? %>
+        <%= form_with url: manage_pay_order_payout_batch_path(batch), method: :patch, class: "sm:mr-auto" do %>
+          <%= hidden_field_tag :reset, "1", id: nil %>
+          <%= render "shared/button", text: "Use the default order", variant: "secondary", size: "medium", type: :submit %>
+        <% end %>
+      <% end %>
+      <div class="flex flex-col-reverse sm:flex-row gap-2 sm:ml-auto">
+        <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button,
+              data: { action: "click->modal#close" } %>
+        <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit, form_id: form_id %>
+      </div>
+    </div>
+  </div>
+</div>

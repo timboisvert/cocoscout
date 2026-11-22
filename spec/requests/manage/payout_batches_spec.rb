@@ -100,6 +100,8 @@ RSpec.describe "Manage::PayoutBatches", type: :request do
 
   describe "a run with someone still waiting on a bank" do
     before do
+      # Nothing in the balance, and the bank pays the rest at once.
+      org.update!(payout_waits_on_balance: false)
       allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded", amount: 5000))
       allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_1"))
     end
@@ -156,8 +158,11 @@ RSpec.describe "Manage::PayoutBatches", type: :request do
 
       get manage_payout_batch_path(batch, state: :waiting)
       expect(response.body).to include("Nobank Ned")
-      # Rita's payment row is filtered out (her name still appears nowhere else on a draft run).
-      expect(response.body).not_to include("Ready Rita")
+      # Rita's payment row is filtered out: outside the Pay order window, her
+      # name appears nowhere else on a draft run.
+      page = Nokogiri::HTML(response.body)
+      page.css("#pay-order-#{batch.id}").each(&:remove)
+      expect(page.text).not_to include("Ready Rita")
     end
 
     it "lists what each run is waiting on in the runs index" do
@@ -187,7 +192,7 @@ RSpec.describe "Manage::PayoutBatches", type: :request do
       allow(Stripe::PaymentIntent).to receive(:create).and_return(double("pi", id: "pi_1", status: "succeeded", amount: 5000))
       allow(Stripe::PaymentIntent).to receive(:retrieve).and_return(double("pi", amount: 5000, latest_charge: "py_1"))
       allow(Stripe::Transfer).to receive(:create).and_return(double("tr", id: "tr_1"))
-      org.update!(payout_notification_user_ids: [ owner.id ])
+      org.update!(payout_notification_user_ids: [ owner.id ], payout_waits_on_balance: false)
       ActionMailer::Base.deliveries.clear
     end
 

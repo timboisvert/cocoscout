@@ -1822,6 +1822,7 @@ Rails.application.routes.draw do
     patch  "money/settings/notifications", to: "money_settings#update_notifications", as: "money_settings_notifications"
     patch  "money/settings/settle-up", to: "money_settings#update_settle_up", as: "money_settings_settle_up"
     patch  "money/settings/tips", to: "money_settings#update_tips", as: "money_settings_tips"
+    patch  "money/settings/payout-runs", to: "money_settings#update_payout_runs", as: "money_settings_payout_runs"
     patch  "money/settings/books", to: "money_settings#update_books", as: "money_settings_books"
     post   "money/settings/ticket-sources", to: "money_settings#create_ticket_source", as: "money_settings_ticket_sources"
     patch  "money/settings/ticket-sources/:id", to: "money_settings#update_ticket_source", as: "money_settings_ticket_source"
@@ -1849,6 +1850,9 @@ Rails.application.routes.draw do
     post "money/payout-runs/:id/fund", to: "payout_batches#fund", as: "fund_payout_batch"
     post "money/payout-runs/:id/pay-now", to: "payout_batches#pay_now", as: "pay_now_payout_batch"
     post "money/payout-runs/:id/pay-remaining", to: "payout_batches#pay_remaining", as: "pay_remaining_payout_batch"
+    post "money/payout-runs/:id/pay-rest", to: "payout_batches#pay_rest", as: "pay_rest_payout_batch"
+    patch "money/payout-runs/:id/pay-order", to: "payout_batches#update_pay_order", as: "pay_order_payout_batch"
+    patch "money/payout-runs/:id/bank-day", to: "payout_batches#update_bank_day", as: "bank_day_payout_batch"
     post "money/payout-runs/:id/close-out", to: "payout_batches#close_out", as: "close_out_payout_batch"
     post "money/bank-setup-emails", to: "bank_setup_emails#create", as: "bank_setup_emails"
     # Dev-only escape hatch (the action 404s outside development).
