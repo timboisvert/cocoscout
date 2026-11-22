@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_21_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_22_210100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -5098,6 +5098,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_21_160000) do
     t.index ["lat", "lng"], name: "index_venues_on_lat_and_lng"
   end
 
+  create_table "w9_requests", force: :cascade do |t|
+    t.bigint "organization_id", null: false
+    t.bigint "person_id", null: false
+    t.datetime "requested_at", null: false
+    t.datetime "last_reminded_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "person_id"], name: "index_w9_requests_on_organization_id_and_person_id", unique: true
+    t.index ["organization_id"], name: "index_w9_requests_on_organization_id"
+    t.index ["person_id"], name: "index_w9_requests_on_person_id"
+  end
+
   create_table "w9_submissions", force: :cascade do |t|
     t.bigint "organization_id", null: false
     t.bigint "person_id", null: false
@@ -5707,6 +5719,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_21_160000) do
   add_foreign_key "users", "people"
   add_foreign_key "users", "people", column: "default_person_id"
   add_foreign_key "venues", "city_hubs"
+  add_foreign_key "w9_requests", "organizations"
+  add_foreign_key "w9_requests", "people"
   add_foreign_key "w9_submissions", "organization_staff_members", on_delete: :nullify
   add_foreign_key "w9_submissions", "organizations"
   add_foreign_key "w9_submissions", "people"

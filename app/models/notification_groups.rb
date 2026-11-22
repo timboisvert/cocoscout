@@ -86,6 +86,7 @@ module NotificationGroups
     "staff_schedule_notification" => "shifts", "staff_schedule_changes" => "shifts", "staff_onboarding_invite" => "shifts",
     "staff_availability_confirm_request" => "shifts",
     "staff_w9_request" => "pay", "staff_w9_reminder" => "pay",
+    "performer_w9_request" => "pay", "performer_w9_reminder" => "pay",
     "payout_setup_reminder" => "pay", "payment_setup_reminder" => "pay",
     "group_member_added" => "invitations", "questionnaire_invitation" => "invitations",
     "contract_invoice" => "contracts", "contract_invoice_reminder" => "contracts"
@@ -117,7 +118,8 @@ module NotificationGroups
   # availability requests are a manager's own send, drafted as an email on
   # their page; they stay as they are until those pages change.
   EMAIL_AS_BEFORE = %w[staff_1099_ready staff_onboarding_invite contract_invoice contract_invoice_reminder course_cancelled_registrant course_registration_confirmed
-                       staff_w9_request staff_w9_reminder staff_availability_confirm_request].freeze
+                       staff_w9_request staff_w9_reminder staff_availability_confirm_request
+                       performer_w9_request performer_w9_reminder].freeze
 
   # Notices whose words are the news and whose link goes to a page that
   # doesn't repeat them (Tim, 2026-11-09, on Hours approved: "all this detail

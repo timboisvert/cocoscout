@@ -39,6 +39,23 @@ module Manage
                                     .includes(:person, :w9_submissions)
                                     .sort_by { |m| m.display_name.to_s.downcase }
         @nec_threshold_cents = TaxForm1099.threshold_cents(@tax_year)
+
+        # Everyone else it paid personally (Tim, 2026-11-22): performers,
+        # contract people and instructors. Their 1099 rows sit with the
+        # staff's, and their W-9s get their own list for the current year:
+        # what each has been paid, and whether their W-9 is in, was requested
+        # (at PerformerW9Requester::REQUEST_AT_CENTS, by PerformerW9SweepJob),
+        # or isn't due yet.
+        staff_person_ids = Current.organization.organization_staff_members.active.pluck(:person_id).to_set
+        @payee_1099_rows = Person.where(id: person_ids.reject { |id| staff_person_ids.include?(id) })
+                                 .sort_by { |p| p.name.to_s.downcase }
+        @payee_year = Time.current.year
+        payee_earnings = @payee_year == @tax_year ? @earnings : Tax::YearEarnings.for(Current.organization, @payee_year)
+        @payee_paid = payee_earnings.reject { |id, result| staff_person_ids.include?(id) || result.net_cents <= 0 }
+        @payee_people = Person.where(id: @payee_paid.keys).includes(:user).sort_by { |p| -@payee_paid[p.id].net_cents }
+        @payee_w9s = TaxForm1099.current_w9s(Current.organization, @payee_paid.keys + @payee_1099_rows.map(&:id))
+        @payee_requests = W9Request.where(organization: Current.organization, person_id: @payee_paid.keys).index_by(&:person_id)
+        @w9_request_at_cents = PerformerW9Requester::REQUEST_AT_CENTS
       end
 
       # Ask a batch for their W-9, from the "Ask for W-9s" modal: the people
@@ -173,15 +190,15 @@ module Manage
       def correct_1099
         original = @form
         TaxForm1099.transaction do
-          member = Current.organization.organization_staff_members.find_by(person_id: original.person_id)
+          w9 = TaxForm1099.current_w9s(Current.organization, [ original.person_id ])[original.person_id]
           correction = original.dup
           correction.assign_attributes(status: "draft", delivered_at: nil, filed_at: nil,
                                        filing_reference: nil, filing_notes: nil, corrects: original,
                                        generated_by: Current.user)
-          # Refresh the recipient snapshot only if the member has a current W-9;
+          # Refresh the recipient snapshot only if they have a current W-9;
           # if they don't, keep the original's frozen snapshot rather than
           # clobbering it with "—" placeholders.
-          TaxForm1099.snapshot_recipient_from(correction, member) if member&.current_w9
+          TaxForm1099.snapshot_recipient_from(correction, w9: w9, name: original.recipient_name) if w9
           correction.save!
           original.update!(status: "corrected") if original.status.in?(%w[delivered filed])
         end

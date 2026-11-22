@@ -691,7 +691,9 @@ Rails.application.routes.draw do
     get  "/onboarding/:organization_id",             to: "onboarding#show",        as: "onboarding"
     post "/onboarding/:organization_id/acknowledge", to: "onboarding#acknowledge", as: "acknowledge_onboarding"
     post "/staff-agreement/:organization_id/sign",   to: "staff_agreements#sign",   as: "sign_staff_agreement"
-    # The W-9 a staff member gives each org they work for.
+    # The W-9 someone gives each organization that pays them, and their page
+    # about the year with that organization (what it's paid them, the 1099 line).
+    get  "/tax-forms/:organization_id",              to: "tax_forms#year",         as: "tax_year"
     get  "/tax-forms/:organization_id/w9",           to: "tax_forms#w9",           as: "w9"
     post "/tax-forms/:organization_id/w9",           to: "tax_forms#submit_w9"
     get  "/tax-forms/:organization_id/w9/copy",      to: "tax_forms#w9_copy",      as: "w9_copy"

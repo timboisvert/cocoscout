@@ -13,6 +13,16 @@ class StaffTaxFormMailer < ApplicationMailer
     end
   end
 
+  # A W-9 request to someone the organization pays who isn't on its staff
+  # (PerformerW9Requester); the words come from its content template.
+  def performer_w9_request(to:, subject:, body:)
+    return if to.blank?
+
+    mail(to: to, subject: subject) do |format|
+      format.html { render html: body.html_safe, layout: "mailer" }
+    end
+  end
+
   # "Your 1099 is ready" — the link inside opens the PDF from My Payments;
   # the PDF is deliberately not attached (avoids inboxing tax info).
   def form_1099_ready(form, to:, subject:, body:)

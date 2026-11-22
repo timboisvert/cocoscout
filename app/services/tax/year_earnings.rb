@@ -1,8 +1,12 @@
 # frozen_string_literal: true
 
 module Tax
-  # Sums what an org actually paid each staff-category payee in a calendar
-  # year, cash basis (by the date money was paid), for 1099-NEC purposes.
+  # Sums what an org actually paid each person in a calendar year, cash basis
+  # (by the date money was paid), for 1099-NEC purposes: staff pay and show
+  # pay (performers, contract people paid personally, course instructors)
+  # together, since one payer sends one person one 1099 (Tim, 2026-11-22).
+  # Money paid into another organization's balance isn't a person's and isn't
+  # counted here.
   #
   # NEC compensation excludes reimbursements — they're not compensation, just
   # expense refunds. Cash tips are already excluded from payouts. Bank returns
@@ -12,6 +16,7 @@ module Tax
   class YearEarnings
     # Payout contribution labels that are NOT compensation.
     REIMBURSEMENT_LABELS = [ "Reimbursement" ].freeze
+    CATEGORIES = %w[staffing performer].freeze
 
     Result = Struct.new(:person_id, :paid_cents, :reimbursement_cents, :onchain_cents, :offline_cents, :onchain_return_cents, keyword_init: true) do
       def net_cents
@@ -62,13 +67,15 @@ module Tax
     # its contributions itemize what it was for. Reimbursement components are
     # peeled off so they're not on the 1099.
     def each_onchain_payment
-      entries = PayoutLedgerEntry.where(organization: @organization, category: "staffing", entry_type: "payout", payee_type: "Person")
+      entries = PayoutLedgerEntry.where(organization: @organization, category: CATEGORIES, entry_type: "payout", payee_type: "Person")
                                  .where(occurred_at: year_range)
       entries.find_each do |entry|
         item = entry.source
+        # Show pay marked paid another way posts its own payout entry.
+        next yield(entry.payee_id, -entry.amount_cents, 0) if item.is_a?(ShowPayoutLineItem)
         next unless item.is_a?(PayoutBatchItem)
 
-        reimbursement, reportable = split_item(item)
+        reimbursement, reportable = split_item(item, entry.category)
         # Guard against a hand-edited ledger entry whose amount doesn't match
         # the underlying item (should never happen): scale.
         gross = reimbursement + reportable
@@ -83,13 +90,13 @@ module Tax
     # A payout that reached the payee's bank and was rejected — same split,
     # taken back out of the year.
     def each_onchain_reversal
-      entries = PayoutLedgerEntry.where(organization: @organization, category: "staffing", entry_type: "reversal", payee_type: "Person")
+      entries = PayoutLedgerEntry.where(organization: @organization, category: CATEGORIES, entry_type: "reversal", payee_type: "Person")
                                  .where(occurred_at: year_range)
       entries.find_each do |entry|
         item = entry.source
         next unless item.is_a?(PayoutBatchItem)
 
-        reimbursement, reportable = split_item(item)
+        reimbursement, reportable = split_item(item, entry.category)
         gross = reimbursement + reportable
         next if gross.zero?
 
@@ -123,13 +130,13 @@ module Tax
     # Sum the payable contributions on a paid batch item, split into
     # reimbursement (not on 1099) and everything else. Excluded contributions
     # (cash tips) are already ignored.
-    # Only the item's staff lines: since the runs merged, one item can also
-    # carry a person's show pay, which posts to the performer ledger and isn't
-    # part of this staffing payout entry.
-    def split_item(item)
+    # Only the lines of the entry's own category: since the runs merged, one
+    # item can carry a person's staff pay and show pay, each posting its own
+    # payout entry.
+    def split_item(item, category)
       reimbursement = 0
       reportable = 0
-      item.payout_contributions.payable.where(category: "staffing").each do |c|
+      item.payout_contributions.payable.where(category: category).each do |c|
         if REIMBURSEMENT_LABELS.include?(c.label)
           reimbursement += c.amount_cents
         else

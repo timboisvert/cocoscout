@@ -231,6 +231,10 @@ production:
     class: W9RemindersJob
     schedule: at 10am every day
 
+  performer_w9_sweep:
+    class: PerformerW9SweepJob
+    schedule: at 10:15am every day
+
   # Ticket checkouts nobody paid for: their seat holds lapse after ten minutes.
   expire_ticket_holds:
     class: ExpireTicketHoldsJob
