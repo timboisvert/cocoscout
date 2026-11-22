@@ -14,8 +14,6 @@ module Manage
     # Step 1: What are you creating?
     def genre
       capture_plan_params
-      # SketchFest arrivals are sketch teams until they say otherwise.
-      @setup_state[:genre] ||= "sketch" if referred_from_sketchfest?
     end
 
     def save_genre
@@ -65,9 +63,6 @@ module Manage
         # One name for both: the organization stays invisible scaffolding until
         # the user grows into needing it (a second production, a team, billing).
         @organization = Organization.new(name: @setup_state[:name], owner: Current.user)
-        # Campaign attribution — from the session on purpose, so a crafted form
-        # post can't fake it (same rule as Manage::OrganizationsController).
-        @organization.referral_source = session[:referral_source]
         @organization.save!
 
         OrganizationRole.create!(user: Current.user, organization: @organization, company_role: "manager")
@@ -166,10 +161,6 @@ module Manage
       prefs = {} unless prefs.is_a?(Hash)
       prefs[Current.user.id.to_s] = "my"
       cookies.encrypted[:last_dashboard] = { value: prefs, expires: 1.year.from_now }
-    end
-
-    def referred_from_sketchfest?
-      session[:referral_source] == "sketchfest"
     end
   end
 end

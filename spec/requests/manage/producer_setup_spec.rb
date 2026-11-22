@@ -108,22 +108,6 @@ RSpec.describe "Producer setup", type: :request do
   end
 
   describe "attribution and flavoring" do
-    it "stamps referral_source on the created org" do
-      get sketchfest_path
-      sign_up("sketch@example.com")
-      complete_setup
-
-      expect(Organization.find_by(name: "The Late Shift").referral_source).to eq("sketchfest")
-    end
-
-    it "preselects the sketch genre for SketchFest arrivals" do
-      get sketchfest_path
-      sign_up("sketch@example.com")
-      get manage_producer_setup_path
-
-      expect(response.body).to match(/value="sketch"[^>]*checked/)
-    end
-
     it "asks what the team is called for a sketch genre" do
       sign_up
       post manage_producer_setup_save_genre_path, params: { genre: "sketch" }

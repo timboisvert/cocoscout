@@ -2,8 +2,7 @@
 
 require "rails_helper"
 
-# Producer-intent routing: the CTAs on /for-producers, /pricing, and
-# /sketchfest declare why the visitor is signing up, and a brand-new signup
+# Producer-intent routing: the CTAs on /for-producers and /pricing declare why the visitor is signing up, and a brand-new signup
 # with producer intent lands on the producer side instead of the talent
 # dashboard. Intent rides the session (allowlisted, last-touch) and is
 # consumed exactly once.
@@ -28,11 +27,6 @@ RSpec.describe "Signup intent routing", type: :request do
     it "lets the most recent CTA win" do
       get signup_path(intent: "performer")
       get signup_path(intent: "producer")
-      expect(session[:signup_intent]).to eq("producer")
-    end
-
-    it "treats landing on the SketchFest page as producer intent" do
-      get sketchfest_path
       expect(session[:signup_intent]).to eq("producer")
     end
 
@@ -88,14 +82,6 @@ RSpec.describe "Signup intent routing", type: :request do
       sign_up("once@example.com")
       expect(session[:signup_intent]).to be_nil
       expect(session[:signup_plan]).to be_nil
-    end
-
-    it "routes a SketchFest signup to producer setup while keeping attribution" do
-      get sketchfest_path
-      sign_up("sketch@example.com")
-
-      expect(response).to redirect_to(manage_producer_setup_path)
-      expect(session[:referral_source]).to eq("sketchfest")
     end
   end
 end

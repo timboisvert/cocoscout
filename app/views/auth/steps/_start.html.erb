@@ -3,27 +3,14 @@
   # Who lands here: a performer who clicked a cast message, a producer heading
   # to Manage or arriving from "Start free", someone whose session lapsed,
   # someone an organization added, someone brand new. One field serves them
-  # all: the email decides the next step. Visitors who came in through a
-  # campaign page get that campaign's framing in the strip.
-  sketch = referred_from?("sketchfest")
+  # all: the email decides the next step.
   lede =
-    if sketch
-      "Put your run in once and your whole team sees it: rehearsals and show dates on one calendar, who can make which night, and who's cast in what. Your performers are free forever."
-    elsif auth_native_app?
+    if auth_native_app?
       "Your calendar, cast messages, contracts and pay, and the door scanner when you're working it. Enter your email address to sign in or to create your account."
     else
       "Everything about your shows lives here: your calendar, cast messages, contracts and pay, and any organization you run. Enter your email address to sign in or to create your account."
     end
-  back = sketch && !auth_native_app? ? { text: "SketchFest", path: sketchfest_path } : nil
 %>
-<% strip = capture do %>
-  <% if sketch %>
-    <%= render layout: "shared/auth/strip", locals: { initial: "S", dark: true } do %>
-      <strong class="font-semibold text-slate-900">Welcome from SketchFest.</strong>
-      Free for sketch teams up to <%= Organization::FREE_MONTHLY_EVENT_LIMIT %> rehearsals or shows a month.
-    <% end %>
-  <% end %>
-<% end %>
 <% notices = capture do %>
   <% if @reset_link_expired_or_invalid %>
     <%= render "shared/auth/notice", kind: :error, title: "That link has expired.",
@@ -42,7 +29,7 @@
 <% end %>
 
 <%= render layout: "shared/auth/shell",
-      locals: { title: "Sign in or create an account", lede: lede, strip: strip, notices: notices, back: back }.compact do %>
+      locals: { title: "Sign in or create an account", lede: lede, notices: notices } do %>
   <%= render "shared/auth/email_form",
         signup_token: @signup_token,
         email_value: @email_address,

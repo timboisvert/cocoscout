@@ -109,7 +109,6 @@
         "^/for-performers",
         "^/for-producers",
         "^/pricing",
-        "^/sketchfest",
         "^/manage/billing",
         "^/manage/organizations/[^/]+/section/billing"
       ],

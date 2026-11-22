@@ -1,11 +1,7 @@
 # frozen_string_literal: true
 
-# Carries two facts about a visitor from the public marketing pages to the
-# moments that need them, several requests later:
-#
-#   session[:referral_source] — WHERE the signup came from (campaign
-#   attribution, e.g. "sketchfest"). First touch wins, and it is persisted to
-#   the Organization the user eventually creates.
+# Carries a visitor's signup intent from the public marketing pages to the
+# moment that needs it, several requests later:
 #
 #   session[:signup_intent] — WHY they're signing up ("producer" or
 #   "performer"), set by the CTA they clicked. Last touch wins — someone who
@@ -15,7 +11,7 @@
 #   session[:signup_plan] / session[:signup_plan_interval] so the plan choice
 #   survives to the producer setup flow.
 #
-# The values ride in the session rather than the query string because signup
+# The value rides in the session rather than the query string because signup
 # happens long after the link is clicked, and because a session value can't be
 # forged by posting a crafted form. Only allowlisted slugs are accepted.
 #
@@ -27,29 +23,15 @@
 module SignupTracking
   extend ActiveSupport::Concern
 
-  # Campaign slugs we recognize. Anything else is ignored, so the column can't
-  # be stuffed with junk (or markup) by hitting any page with ?ref=whatever.
-  REFERRAL_SOURCES = %w[sketchfest].freeze
-
   SIGNUP_INTENTS = %w[producer performer].freeze
   SIGNUP_PLANS = %w[pro].freeze
   PLAN_INTERVALS = %w[month year].freeze
 
   included do
-    before_action :capture_referral_source
     before_action :capture_signup_intent
   end
 
   private
-
-  # First touch wins — someone who arrives via a campaign and wanders the site
-  # before signing up still gets attributed to the campaign.
-  def capture_referral_source
-    source = params[:ref].to_s
-    return unless REFERRAL_SOURCES.include?(source)
-
-    session[:referral_source] ||= source
-  end
 
   # Last touch wins — intent is about what the visitor wants NOW, and the most
   # recent CTA they clicked is the best evidence of that.

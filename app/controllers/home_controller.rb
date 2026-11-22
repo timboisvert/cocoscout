@@ -8,7 +8,7 @@ class HomeController < ApplicationController
   # The app doesn't carry the marketing site: App Review rejects an app that
   # shows a website (and these pages sell Pro). Links to them open in Safari
   # (path-configuration.json); a redirect here lands on My, or the app's welcome screen.
-  before_action :keep_out_of_the_app, only: %i[new_landing new_performers new_producers pricing sketchfest app]
+  before_action :keep_out_of_the_app, only: %i[new_landing new_performers new_producers pricing app]
 
   # Use the public facing layout
   layout "home"
@@ -20,23 +20,6 @@ class HomeController < ApplicationController
 
   # Free vs. Pro plan comparison
   def pricing; end
-
-  # CocoScout x Chicago SketchFest sponsor page — /sketchfest.
-  #
-  # Landing here counts as the referral even without ?ref=, so someone who
-  # already has an account and signs in (rather than signing up) still gets
-  # attributed when they later create an organization.
-  def sketchfest
-    session[:referral_source] ||= "sketchfest"
-    # The whole page is a producer pitch, so landing here is producer intent —
-    # but don't clobber a choice an earlier CTA click already made.
-    session[:signup_intent] ||= "producer"
-  end
-
-  # QR code for /sketchfest, for pasting into flyers and decks. Viewing this
-  # page is not itself a referral — scanning the code lands on /sketchfest,
-  # which does the attribution.
-  def sketchfest_qr; end
 
   # cocoscout.com/app. A phone is sent straight to its own store, so nobody
   # on a phone ever sees two badges; everyone else gets the page with both

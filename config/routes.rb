@@ -36,12 +36,6 @@ Rails.application.routes.draw do
   get "/for-producers", to: "home#new_producers", as: "producers"
   get "/pricing", to: "home#pricing", as: "pricing"
 
-  # Campaign page — cocoscout.com/sketchfest. Handed out at the festival, so
-  # it's deliberately not in the marketing nav.
-  get "/sketchfest", to: "home#sketchfest", as: "sketchfest"
-  # Printable/copyable QR code that points at /sketchfest, for flyers and decks.
-  get "/sketchfest/qr", to: "home#sketchfest_qr", as: "sketchfest_qr"
-
   # Redirects from old /new paths
   get "/new", to: redirect("/")
   get "/new/for-performers", to: redirect("/for-performers")
