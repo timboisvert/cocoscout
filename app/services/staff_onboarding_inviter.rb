@@ -70,14 +70,14 @@ class StaffOnboardingInviter
   # create a password before they can sign in and onboard.
   def account_unclaimed?
     user = @person.user
-    user.nil? || user.last_seen_at.blank?
+    user.nil? || !user.claimed?
   end
 
   def ensure_account(email)
     return if @person.user.present?
 
     user = User.find_by(email_address: email) ||
-           User.create!(email_address: email, password: User.generate_secure_password)
+           User.create_unclaimed!(email_address: email)
     @person.update!(user: user)
   end
 

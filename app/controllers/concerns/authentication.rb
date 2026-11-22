@@ -100,8 +100,11 @@ module Authentication
     end
   end
 
-  def start_new_session_for(user)
-    user.sessions.create!(user_agent: request.user_agent, ip_address: request.remote_ip).tap do |session|
+  # sign_in_method: how this device got in (password, code, reset_link, and
+  # later apple, google, passkey), for the Account page's list of devices.
+  def start_new_session_for(user, sign_in_method: nil)
+    user.sessions.create!(user_agent: request.user_agent, ip_address: request.remote_ip,
+                          sign_in_method: sign_in_method).tap do |session|
       Current.session = session
       cookies.signed.permanent[:session_id] = { value: session.id, httponly: true, same_site: :lax }
     end

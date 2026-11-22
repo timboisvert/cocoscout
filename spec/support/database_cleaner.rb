@@ -29,6 +29,7 @@ def seed_content_templates
   templates = [
     { key: "auth_welcome", name: "Welcome Email", subject: "Welcome to CocoScout", body: "Hello {{ recipient_name }}", category: "authentication", channel: "email" },
     { key: "auth_password_reset", name: "Password Reset", subject: "Reset", body: "Reset: {{ reset_url }}", category: "authentication", channel: "email" },
+    { key: "auth_sign_in_code", name: "Sign-in code", subject: "{{code}} is your CocoScout code", body: "Code: {{code}} for {{lifetime}}", category: "auth", channel: "email" },
     { key: "person_invitation", name: "Person Invitation", subject: "You've been invited to join {{organization_name}} on CocoScout", body: "<p>{{organization_name}} is using CocoScout. <a href=\"{{setup_url}}\">Set Up Your Account</a></p>", category: "invitations", channel: "email" },
     { key: "contract_person_added", name: "Added to a Contract", subject: "{{organization_name}} added you to a contract", body: "<p>{{organization_name}} has set you up on a contract in CocoScout. <a href=\"{{contracts_url}}\">View your contracts</a>.</p>", category: "invitations", channel: "message" },
     { key: "group_invitation", name: "Group Invitation", subject: "Group Invite", body: "Join group", category: "invitations", channel: "email" },

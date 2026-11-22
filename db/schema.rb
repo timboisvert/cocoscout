@@ -3293,6 +3293,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_210100) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "impersonator_user_id"
+    t.string "sign_in_method"
     t.index ["impersonator_user_id"], name: "index_sessions_on_impersonator_user_id"
     t.index ["user_id"], name: "index_sessions_on_user_id"
   end
@@ -3701,6 +3702,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_210100) do
     t.index ["production_id"], name: "index_shows_on_production_id"
     t.index ["released_connection_id"], name: "index_shows_on_released_connection_id"
     t.index ["space_rental_id"], name: "index_shows_on_space_rental_id"
+  end
+
+  create_table "sign_in_codes", force: :cascade do |t|
+    t.string "email", null: false
+    t.bigint "user_id"
+    t.string "purpose", null: false
+    t.string "code_digest", null: false
+    t.integer "attempts", default: 0, null: false
+    t.datetime "expires_at", null: false
+    t.datetime "used_at"
+    t.string "ip_address"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email", "purpose", "created_at"], name: "index_sign_in_codes_on_email_and_purpose_and_created_at"
+    t.index ["user_id"], name: "index_sign_in_codes_on_user_id"
   end
 
   create_table "sign_up_form_holdouts", force: :cascade do |t|
@@ -5043,6 +5059,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_210100) do
     t.index ["person_id"], name: "index_training_credits_on_person_id"
   end
 
+  create_table "user_identities", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "provider", null: false
+    t.string "uid", null: false
+    t.string "email"
+    t.boolean "private_email", default: false, null: false
+    t.text "refresh_token"
+    t.string "client_id"
+    t.datetime "last_used_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["provider", "uid"], name: "index_user_identities_on_provider_and_uid", unique: true
+    t.index ["user_id"], name: "index_user_identities_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email_address", null: false
     t.string "password_digest", null: false
@@ -5067,6 +5098,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_210100) do
     t.jsonb "recent_production_ids", default: [], null: false
     t.datetime "deletion_requested_at"
     t.string "last_mode"
+    t.datetime "email_verified_at"
+    t.datetime "password_set_at"
     t.index ["default_person_id"], name: "index_users_on_default_person_id"
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
     t.index ["invitation_token"], name: "index_users_on_invitation_token", unique: true
@@ -5558,6 +5591,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_210100) do
   add_foreign_key "shows", "productions"
   add_foreign_key "shows", "shows", column: "linked_show_id", on_delete: :nullify
   add_foreign_key "shows", "space_rentals"
+  add_foreign_key "sign_in_codes", "users"
   add_foreign_key "sign_up_form_holdouts", "sign_up_forms"
   add_foreign_key "sign_up_form_instances", "shows"
   add_foreign_key "sign_up_form_instances", "sign_up_forms"
@@ -5716,6 +5750,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_210100) do
   add_foreign_key "tip_shares", "people"
   add_foreign_key "tip_shares", "settlement_days"
   add_foreign_key "training_credits", "people"
+  add_foreign_key "user_identities", "users"
   add_foreign_key "users", "people"
   add_foreign_key "users", "people", column: "default_person_id"
   add_foreign_key "venues", "city_hubs"

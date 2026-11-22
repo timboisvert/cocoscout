@@ -180,10 +180,7 @@ module Manage
 
         # Create user if needed
         if person.user.nil?
-          user = User.create!(
-            email_address: person.email,
-            password: User.generate_secure_password
-          )
+          user = User.create_unclaimed!(email_address: person.email)
           person.update!(user: user)
         end
 
@@ -216,10 +213,7 @@ module Manage
       # They will be added when they accept the invitation.
 
       if person.user.nil?
-        user = User.new(
-          email_address: person.email,
-          password: User.generate_secure_password
-        )
+        user = User.new_unclaimed(email_address: person.email)
         unless user.save
           redirect_to [ :manage, person ], alert: "Cannot create user account: #{user.errors.full_messages.join(', ')}"
           return
@@ -249,10 +243,7 @@ module Manage
         # Note: We don't add the person to the organization here.
         # They will be added when they accept the invitation.
 
-        user = User.create!(
-          email_address: @person.email,
-          password: User.generate_secure_password
-        )
+        user = User.create_unclaimed!(email_address: @person.email)
         @person.update!(user: user)
 
         talent_pool = selected_talent_pool

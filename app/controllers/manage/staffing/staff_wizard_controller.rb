@@ -274,7 +274,7 @@ module Manage
         user = @staff_member.person&.user
         # A brand-new account gets the standard "set your password" invite first;
         # an existing account goes straight to the (editable) onboarding email.
-        @needs_account_setup = user.nil? || user.last_seen_at.blank?
+        @needs_account_setup = user.nil? || !user.claimed?
         render :send # the view is send.html.erb; the action is send_step because `send` is reserved
       end
 
@@ -358,7 +358,7 @@ module Manage
         return if person.user.present? || person.email.blank?
 
         user = User.find_by(email_address: person.email) ||
-               User.create!(email_address: person.email, password: User.generate_secure_password)
+               User.create_unclaimed!(email_address: person.email)
         person.update!(user: user)
       end
 
@@ -380,7 +380,7 @@ module Manage
 
         if person.user.nil?
           user = User.find_by(email_address: email) ||
-                 User.create!(email_address: email, password: User.generate_secure_password)
+                 User.create_unclaimed!(email_address: email)
           person.update!(user: user)
         end
 

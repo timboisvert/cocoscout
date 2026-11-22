@@ -1464,10 +1464,7 @@ module Manage
 
       # Send invitation if person doesn't have a user account yet
       unless person.user
-        user = User.create!(
-          email_address: person.email,
-          password: User.generate_secure_password
-        )
+        user = User.create_unclaimed!(email_address: person.email)
         person.update!(user: user)
 
         person_invitation = PersonInvitation.create!(
