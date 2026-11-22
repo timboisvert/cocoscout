@@ -77,7 +77,7 @@
     <% if outgoing.any? %>
       <p class="px-5 py-3 mt-1 text-xs text-gray-600 bg-gray-50 border-t border-gray-100">
         <% if into_balance %>
-          Payments go into <%= into_balance.words.delete_prefix("Paid into ") %>'s balance on CocoScout.
+          Payments go into <%= possessive(into_balance.words.delete_prefix("Paid into ")) %> balance on CocoScout.
         <% elsif payee %>
           Payments sent through CocoScout go to your bank account.<%= " Pay handed to you by check or cash shows here once #{org_name} records it." if any_by_hand %>
         <% else %>

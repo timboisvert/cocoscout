@@ -244,7 +244,7 @@
       <%# Footer %>
       <div class="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-200">
         <% if receiving.any? %>
-          <span class="text-sm text-gray-500"><%= into_balance ? "Payments go into #{into_balance.words.delete_prefix('Paid into ')}'s balance." : (payee ? "Payments go to the bank you connected, or as #{org_name} records them." : "Payments go to #{who}.") %></span>
+          <span class="text-sm text-gray-500"><%= into_balance ? "Payments go into #{possessive(into_balance.words.delete_prefix('Paid into '))} balance." : (payee ? "Payments go to the bank you connected, or as #{org_name} records them." : "Payments go to #{who}.") %></span>
         <% else %>
           <span></span>
         <% end %>

@@ -49,7 +49,7 @@
           <% if over_line %>
             You've been paid more than <%= money.(@threshold_cents) %> this year, so <%= @organization.name %> will send you a Form 1099-NEC for <%= @tax_year %> by January 31, <%= @tax_year + 1 %>, and report the same amount to the IRS.
           <% elsif @paid_cents >= @request_at_cents %>
-            You're <%= money.(@threshold_cents - @paid_cents) %> away from <%= money.(@threshold_cents) %>. Once <%= @organization.name %> has paid you that much this year, it has to send you a Form 1099-NEC and report the payments to the IRS. That's why it has requested your W-9 now: so it has what it needs if you get there.
+            You're <%= money.(@threshold_cents - @paid_cents) %> away from <%= money.(@threshold_cents) %>. Once <%= @organization.name %> has paid you that much this year, it has to send you a Form 1099-NEC and report the payments to the IRS. That's why it needs your W-9 now: so it has what it needs if you get there.
           <% else %>
             If <%= @organization.name %> pays you <%= money.(@threshold_cents) %> or more this year, it will send you a Form 1099-NEC and report the payments to the IRS. You're <%= money.(@threshold_cents - @paid_cents) %> away.
           <% end %>

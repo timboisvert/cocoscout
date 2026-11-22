@@ -16,6 +16,9 @@
             [ "W-9 on file", "bg-green-100 text-green-700" ]
           elsif row.request
             [ "W-9 requested", "bg-amber-100 text-amber-700" ]
+          elsif row.paid_cents >= PerformerW9Requester::REQUEST_AT_CENTS
+            # Past the line before the daily check has sent the request.
+            [ "W-9 needed", "bg-amber-100 text-amber-700" ]
           else
             [ "No W-9 needed yet", "bg-gray-100 text-gray-600" ]
           end
