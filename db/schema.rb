@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_22_230000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_22_233000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -4313,11 +4313,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_230000) do
     t.integer "rate_bps", null: false
     t.string "jurisdiction"
     t.string "kind", default: "sales", null: false
-    t.boolean "applies_to_fees", default: false, null: false
     t.string "remitter", default: "organization", null: false
-    t.string "registration_number"
     t.date "effective_from"
-    t.date "effective_to"
     t.datetime "archived_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -5087,7 +5084,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_230000) do
     t.datetime "updated_at", null: false
     t.bigint "person_id"
     t.string "invitation_token"
-    t.datetime "invitation_sent_at"
     t.datetime "last_seen_at"
     t.bigint "default_person_id"
     t.datetime "email_changed_at"
@@ -5096,7 +5092,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_230000) do
     t.datetime "last_unread_digest_sent_at"
     t.datetime "last_inbox_visit_at"
     t.boolean "message_digest_enabled", default: true
-    t.datetime "last_message_digest_sent_at"
     t.integer "digest_throttle_days", default: 1, null: false
     t.integer "digests_ignored", default: 0, null: false
     t.datetime "app_announced_at"
