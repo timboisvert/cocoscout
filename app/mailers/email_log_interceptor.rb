@@ -39,7 +39,9 @@ class EmailLogInterceptor
     end
 
     unless user
-      Rails.logger.warn("Email sent without user tracking: #{message.subject}")
+      # Names the mailer, never the subject: a sign-in code's subject is the code
+      # (found testing 1.4 from main, 2026-11-22).
+      Rails.logger.warn("Email sent without user tracking: #{header_value(message, 'X-Mailer-Class')}##{header_value(message, 'X-Mailer-Action')}")
       return
     end
 
