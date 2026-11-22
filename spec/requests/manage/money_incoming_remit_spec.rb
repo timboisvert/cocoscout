@@ -169,7 +169,7 @@ RSpec.describe "Manage remitting collected contract money", type: :request do
 
       body = response.body
       expect(body).to include("CocoScout already holds $242.00 of this run, so your bank pays $50.00.")
-      expect(body).to include("Pay this run?")
+      expect(body).to include("Pay 2 payees from your bank?")
     end
 
     it "pays the fully-held run with no bank debit when funded" do

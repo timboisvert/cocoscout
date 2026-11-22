@@ -2,7 +2,10 @@
   The open run's one box: who's being paid, one line on how, Pay now, and
   (for a run that pays from the CocoScout balance first) the Manage payout
   priority link that opens the Pay order window (Tim, 2026-11-22: "SO MUCH
-  TEXT"). The rest (the monthly bank debit fee) is in the confirm window.
+  TEXT"). The confirm window says what pressing Pay now does, today and
+  later, and the monthly bank debit fee only when that press debits the bank
+  (Tim, 2026-11-22): a debit days away isn't a fee to raise yet, and Pay the
+  rest from my bank raises it when the manager chooses the bank.
 
   Locals: batch, items, breakdown (PayoutBatch#money_by_item_state),
   plan (PayoutBatchService.balance_preview, or nil), balance_first
@@ -55,7 +58,45 @@
   end
 
   can_pay = bank_cents.zero? || org.funding_payment_method_id.present?
-  confirm_message = [ line, (bank_debit_note(org) if bank_cents.positive?) ].compact.join(" ")
+
+  # The confirm window: a title that says what Pay now does, then a short
+  # paragraph for each step. A run that waits on the balance debits the bank
+  # only on its bank day (or on Pay the rest from my bank), so its fee isn't
+  # raised here.
+  waits = balance_first && plan && days.positive?
+  sooner = "To pay them sooner, choose Pay the rest from my bank on this run."
+  confirm_title, confirm_paras = if ready[:count].zero?
+    [ "Pay this run?", [ line ] ]
+  elsif balance_first && plan
+    now, later = plan[:now], plan[:later]
+    today = "Today, your CocoScout balance pays #{pluralize(now.size, 'payee')} (#{money.call(now.sum(&:amount_cents))})."
+    rest = "the other #{later.size} (#{money.call(later.sum(&:amount_cents))})"
+    if later.empty?
+      [ "Pay #{pluralize(now.size, 'payee')} from your balance?",
+        [ today, ("Nothing comes from your bank." if bank_cents.zero?) ] ]
+    elsif now.any? && waits
+      [ "Pay #{now.size} of #{now.size + later.size} payees today?",
+        [ today,
+          "After that, #{rest} are paid in payout priority order as ticket money clears into your balance. Anyone still waiting on #{bank_day} is paid from your bank that day.",
+          sooner ] ]
+    elsif now.any?
+      [ "Pay #{pluralize(now.size + later.size, 'payee')} now?",
+        [ today, "Your bank pays #{rest}, and their deposits land by about #{deposit_day}." ] ]
+    elsif waits
+      [ "Start paying this run?",
+        [ "Your CocoScout balance can't cover anyone yet. Payees are paid in payout priority order as ticket money clears into your balance, and anyone still waiting on #{bank_day} is paid from your bank that day.",
+          sooner ] ]
+    else
+      [ "Pay #{pluralize(ready[:count], 'payee')} from your bank?", [ bank_words ] ]
+    end
+  elsif bank_cents.zero?
+    [ "Pay #{pluralize(ready[:count], 'payee')}?", [ bank_words ] ]
+  else
+    [ "Pay #{pluralize(ready[:count], 'payee')} from your bank?", [ bank_words ] ]
+  end
+  confirm_paras = confirm_paras.compact
+  confirm_paras << bank_debit_note(org) if bank_cents.positive? && !waits
+  confirm_message = safe_join(confirm_paras.compact.each_with_index.map { |text, i| content_tag(:p, text, class: (i.zero? ? nil : "mt-3")) })
 %>
 <div class="rounded-lg border border-pink-200 bg-pink-50 p-5">
   <h2 class="text-sm font-semibold text-gray-900">
@@ -76,8 +117,8 @@
       <%= render "shared/button", text: "Pay now", variant: "primary", size: "medium", type: :button,
             data: { controller: "modal", action: "click->modal#open", modal_id: pay_cid } %>
       <%= render "shared/confirm_modal", id: pay_cid,
-            title: "Pay this run?",
-            message: h(confirm_message),
+            title: confirm_title,
+            message: confirm_message,
             confirm_text: "Pay now",
             url: manage_fund_payout_batch_path(batch),
             method: :post %>

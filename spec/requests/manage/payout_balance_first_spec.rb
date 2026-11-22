@@ -43,6 +43,22 @@ RSpec.describe "Manage balance-first payout runs", type: :request do
     expect(response.body).not_to include("We debit your bank via ACH")
   end
 
+  it "confirms what Pay now does, with no bank fee when the bank debit is days away" do
+    get manage_payout_batch_path(batch)
+    due = 3.days.from_now.in_time_zone(org.time_zone).strftime("%B %-d")
+    expect(response.body).to include("Pay 1 of 2 payees today?",
+                                     "Today, your CocoScout balance pays 1 payee ($50.00).",
+                                     "Anyone still waiting on #{due} is paid from your bank that day.",
+                                     "To pay them sooner, choose Pay the rest from my bank on this run.")
+    expect(response.body).not_to include("free bank debit", "monthly bill", "Pay this run?")
+  end
+
+  it "keeps the bank fee in the confirm when the bank pays the rest right away" do
+    allow(PayoutBatchService).to receive(:bank_due_at_for) { Time.current }
+    get manage_payout_batch_path(batch)
+    expect(response.body).to include("Pay 2 payees now?", "Your bank pays the other 1 ($30.00)", "monthly bill")
+  end
+
   it "saves the run's own pay order, and goes back to the default" do
     patch manage_pay_order_payout_batch_path(batch),
           params: { groups: %w[performer staffing contractor], payees: [ "Person:#{performer.id}", "Person:#{staffer.id}", "Person:999" ] }
