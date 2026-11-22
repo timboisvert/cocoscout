@@ -1250,6 +1250,9 @@ Rails.application.routes.draw do
       member do
         get :confirm_delete
         post :transfer_ownership
+        # Changing the time zone: what moves, and keep the clock or the moment.
+        get :time_zone
+        post :time_zone, action: :change_time_zone
         delete :remove_logo
         # Named settings sections, so a link never depends on tab position.
         get "section/:section", action: :show, as: :section

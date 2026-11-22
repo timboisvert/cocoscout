@@ -1,0 +1,60 @@
+<%#
+  Changing the organization's time zone when it has times entered already
+  (Tim, 2026-11-22; OrganizationTimeZoneChange): what would move, with an
+  upcoming date as the example, and the choice between keeping the clock
+  readings (the usual fix when times were entered on the old zone by mistake)
+  and keeping the moments.
+%>
+<% content_for :title, "Change the time zone" %>
+<%
+  from = ActiveSupport::TimeZone[@organization.time_zone]
+  example = @preview[:example]
+  clock = ->(t, zone) { t.in_time_zone(zone).strftime("%a, %b %-d at %-l:%M %p") }
+%>
+<div class="w-full">
+  <%= render partial: "shared/top_menu", locals: {
+    breadcrumbs: [ [ "Organizations", manage_organizations_path ], [ @organization.name, manage_organization_path(@organization) ] ],
+    text: "Change the time zone", links: []
+  } %>
+
+  <%= form_with url: time_zone_manage_organization_path(@organization), method: :post, class: "mt-6 space-y-6", data: { turbo: false } do %>
+    <%= hidden_field_tag :to, @to.name %>
+    <section class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "From #{from.name} to #{@to.name}" %>
+      <div class="px-4 py-4 space-y-4 text-sm text-gray-700">
+        <p>Your times are stored as moments, read in your time zone. If you entered them on <%= from.name %> because that's what CocoScout started you on, they'll read wrong in <%= @to.name %> unless they move with the change.</p>
+        <% if example %>
+          <p class="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2">
+            <%= example[:name] %> is entered for <strong><%= clock.(example[:moment], from) %></strong>. In <%= @to.name %> that moment reads <strong><%= clock.(example[:moment], @to) %></strong>.
+          </p>
+        <% end %>
+        <p>What would move if you keep the clock: <%= @preview[:counts].map { |label, n| "#{label.downcase} (#{n})" }.to_sentence %>.</p>
+      </div>
+    </section>
+
+    <section class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "How should your times change?" %>
+      <div class="px-4 py-4 space-y-3">
+        <label class="flex items-start gap-3 rounded-lg border border-gray-200 p-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+          <input type="radio" name="keep" value="clock" id="keep_clock" checked class="mt-1 h-4 w-4 accent-pink-500">
+          <span>
+            <span class="block text-sm font-medium text-gray-900">Keep the times as I entered them</span>
+            <span class="block text-sm text-gray-600">Every time keeps its clock reading in <%= @to.name %><% if example %>: <%= example[:name] %> stays <%= clock.(example[:kept_clock], @to) %><% end %>. Choose this if you entered your times on the wrong zone. Nobody is notified of a change.</span>
+          </span>
+        </label>
+        <label class="flex items-start gap-3 rounded-lg border border-gray-200 p-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+          <input type="radio" name="keep" value="moment" id="keep_moment" class="mt-1 h-4 w-4 accent-pink-500">
+          <span>
+            <span class="block text-sm font-medium text-gray-900">Keep the moments, and show them in <%= @to.name %></span>
+            <span class="block text-sm text-gray-600">Nothing moves; times just read in the new zone<% if example %>: <%= example[:name] %> reads <%= clock.(example[:moment], @to) %><% end %>. Choose this if your times were already right.</span>
+          </span>
+        </label>
+      </div>
+    </section>
+
+    <div class="flex items-center justify-between">
+      <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", path: manage_organization_path(@organization) %>
+      <%= render "shared/button", text: "Change the time zone", variant: "primary", size: "medium", type: :submit %>
+    </div>
+  <% end %>
+</div>
