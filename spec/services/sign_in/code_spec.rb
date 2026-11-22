@@ -20,6 +20,18 @@ RSpec.describe SignIn::Code do
     expect(described_class.redeem(email: "maya@example.com", purpose: "sign_in", code: code).first).to eq(:ok)
   end
 
+  it "never puts the code in plain text in the mail job's arguments" do
+    described_class.deliver(email: "maya@example.com", purpose: "sign_in")
+    job = ActiveJob::Base.queue_adapter.enqueued_jobs.last
+    sealed = job[:args][3]["args"][1]
+
+    perform_enqueued_jobs
+    code = ActionMailer::Base.deliveries.last.subject[/\d{6}/]
+    expect(job[:args].to_s).not_to include(code)
+    expect(described_class.unseal(sealed)).to eq(code)
+    expect(described_class.unseal(code)).to be_nil
+  end
+
   it "sends nothing when a code went out moments ago" do
     described_class.deliver(email: "maya@example.com", purpose: "sign_in")
 

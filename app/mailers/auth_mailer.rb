@@ -15,8 +15,12 @@ class AuthMailer < ApplicationMailer
   end
 
   # The 6-digit code (SignIn::Code). The address may not have an account yet:
-  # a new person confirms their address before the account is made.
-  def sign_in_code(email, code)
+  # a new person confirms their address before the account is made. The code
+  # arrives sealed (SignIn::Code.seal) so the job's arguments never show it.
+  def sign_in_code(email, sealed_code)
+    code = SignIn::Code.unseal(sealed_code)
+    return if code.blank? # expired in the queue: a stale code is no use
+
     @user = User.find_by(email_address: email)
     @person = @user&.person # For recipient entity tracking
 

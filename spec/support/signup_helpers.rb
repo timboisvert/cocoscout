@@ -32,7 +32,7 @@ module SignupHelpers
     end
     raise "no sign-in code was emailed to #{email}" unless job
 
-    job[:args][3]["args"][1]
+    SignIn::Code.unseal(job[:args][3]["args"][1])
   end
 end
 

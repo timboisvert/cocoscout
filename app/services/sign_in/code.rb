@@ -16,9 +16,29 @@ module SignIn
       return refusal if refusal
 
       _record, code = SignInCode.issue!(email: email, purpose: purpose, user: user, ip_address: ip_address)
-      AuthMailer.sign_in_code(email.to_s.strip.downcase, code).deliver_later
+      AuthMailer.sign_in_code(email.to_s.strip.downcase, seal(code)).deliver_later
       :sent
     end
+
+    # The code goes to the mail job encrypted, so it never sits in plain text
+    # in the job's logged arguments or its queue row (found testing 1.4 from
+    # main, 2026-11-22). Only the mailer opens it; it expires with the code.
+    def self.seal(code)
+      encryptor.encrypt_and_sign(code.to_s, expires_in: SignInCode::LIFETIME, purpose: :sign_in_code_mail)
+    end
+
+    def self.unseal(sealed)
+      encryptor.decrypt_and_verify(sealed.to_s, purpose: :sign_in_code_mail)
+    rescue ActiveSupport::MessageEncryptor::InvalidMessage
+      nil
+    end
+
+    def self.encryptor
+      @encryptor ||= ActiveSupport::MessageEncryptor.new(
+        Rails.application.key_generator.generate_key("sign_in/code mail", ActiveSupport::MessageEncryptor.key_len)
+      )
+    end
+    private_class_method :encryptor
 
     # [:ok, SignInCode] or [:wrong | :expired | :locked, nil].
     def self.redeem(email:, purpose:, code:)
