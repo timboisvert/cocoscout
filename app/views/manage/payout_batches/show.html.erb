@@ -363,124 +363,73 @@
           </h3>
           <span class="text-sm font-semibold text-gray-900 tabular-nums"><%= number_to_currency(@visible_items.sum(&:amount_cents) / 100.0) %></span>
         </div>
-        <% if @balance_plan && (@covered_ids.any? || @waiting_ids.any?) %>
-          <%# In pay order (PayoutPayOrder), and how far the balance reaches today (Tim, 2026-11-22). %>
-          <p class="px-5 py-2.5 border-b border-gray-100 bg-gray-50 text-sm text-gray-600" data-pay-order-note>
-            In pay order. Your CocoScout balance covers
-            <span class="font-medium text-gray-900"><%= @covered_ids.size %> of the <%= @covered_ids.size + @waiting_ids.size %></span>
-            payees still to pay right now (<%= number_to_currency(@balance_plan[:now].sum(&:amount_cents) / 100.0) %>).
-          </p>
-        <% end %>
-        <div class="divide-y divide-gray-100">
-          <% if @visible_items.empty? %>
-            <div class="px-5 py-8 text-center text-sm text-gray-500">No payments in this state.</div>
+        <% if @visible_items.empty? %>
+          <div class="px-5 py-8 text-center text-sm text-gray-500">No payments in this state.</div>
+        <% elsif @balance_plan && (@covered_ids.any? || @waiting_ids.any?) %>
+          <%# A balance-first run, in pay order (PayoutPayOrder), split by how far
+              the balance reaches today. Each group says its state once in its
+              header, so the rows carry no badge (Tim, 2026-11-22). %>
+          <% covered = @visible_items.select { |i| @covered_ids.include?(i.id) } %>
+          <% waiting = @visible_items.select { |i| @waiting_ids.include?(i.id) } %>
+          <% others = @visible_items - covered - waiting %>
+          <% if covered.any? %>
+            <div class="px-4 sm:px-5 py-2.5 bg-green-50 border-b border-green-100 flex items-center justify-between gap-3 text-sm font-medium text-green-800" data-balance-covers>
+              <span class="flex items-center gap-2">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                <span>Your CocoScout balance covers these now <span class="font-normal text-green-700">· <%= pluralize(covered.size, "payee") %></span></span>
+              </span>
+              <span class="tabular-nums"><%= number_to_currency(covered.sum(&:amount_cents) / 100.0) %></span>
+            </div>
+            <div class="divide-y divide-gray-100">
+              <% covered.each do |item| %>
+                <%= render "manage/payout_batches/payee_item", item: item, batch: @batch, rank: @pay_rank[item.id], show_badge: false %>
+              <% end %>
+            </div>
           <% end %>
-          <% @visible_items.each do |item| %>
-            <% contributions = item.payout_contributions.to_a %>
-            <% if contributions.any? %>
-              <%# Click a payee to expand what they're being paid for. %>
-              <details class="group">
-                <%# On a phone the name gets the room: its count sits under it and
-                    the badge under the amount (names were cut to "An…"). %>
-                <summary class="px-4 sm:px-5 py-3 flex items-center justify-between gap-3 sm:gap-4 cursor-pointer list-none hover:bg-gray-50">
-                  <div class="flex items-center gap-2 min-w-0">
-                    <svg class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-90 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                    <div class="min-w-0 sm:flex sm:items-center sm:gap-2">
-                      <%# The balance tag sits under the name: beside it, it took the
-                          name's room and the name was cut to "Co…". %>
-                      <div class="min-w-0">
-                        <div class="text-gray-900 truncate"><%= item.payee&.name %></div>
-                        <% if item.partner_organization? %><span class="inline-flex items-center rounded-full bg-pink-50 px-2 py-0.5 text-[11px] font-medium text-pink-700 mt-0.5" data-into-balance>Into their CocoScout balance</span><% end %>
-                        <% if @covered_ids.include?(item.id) %>
-                          <span class="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700 mt-0.5" data-balance-covers>Covered by your balance</span>
-                        <% elsif @waiting_ids.include?(item.id) %>
-                          <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 mt-0.5" data-balance-waits>Waits for more balance or the bank</span>
-                        <% end %>
-                      </div>
-                      <div class="text-xs text-gray-400 flex-shrink-0"><%= pluralize(contributions.size, "item") %></div>
-                    </div>
-                  </div>
-                  <div class="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-3 flex-shrink-0">
-                    <span class="font-semibold text-gray-900 tabular-nums"><%= number_to_currency(item.amount_cents / 100.0) %></span>
-                    <%= render "manage/payout_batches/item_state_badge", item: item, batch: @batch, waiting_on_balance: @awaiting_balance && @waiting_ids.include?(item.id) %>
-                  </div>
-                </summary>
-                <% if item.error.present? %>
-                  <div class="px-5 pb-2 pl-11 text-xs text-red-600"><%= item.error %></div>
-                <% end %>
-                <div class="bg-gray-50 border-t border-gray-100 px-4 sm:px-5 py-1.5 pl-10 sm:pl-11">
-                  <% contributions.each do |c| %>
-                    <% source_path = payout_contribution_source_path(c) %>
-                    <% worksheet = c.worksheet_entries %>
-                    <div class="py-1.5 text-sm">
-                      <div class="flex items-center justify-between gap-4">
-                        <% if worksheet.any? %>
-                          <%# Trace tips/cash-tips back to the days they came from. %>
-                          <details class="group/ws min-w-0">
-                            <summary class="flex items-center gap-1.5 min-w-0 cursor-pointer list-none <%= c.excluded_from_payout ? "text-gray-400" : "text-gray-600" %> hover:text-pink-600">
-                              <svg class="w-3.5 h-3.5 flex-shrink-0 text-gray-300 transition-transform group-open/ws:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                              <span class="truncate"><%= c.label %></span>
-                              <span class="text-[11px] text-gray-400 flex-shrink-0"><%= pluralize(worksheet.size, "day") %></span>
-                            </summary>
-                            <div class="mt-1 ml-5 space-y-0.5">
-                              <% worksheet.each do |w| %>
-                                <div class="flex items-center justify-between gap-4 text-xs text-gray-500">
-                                  <span><%= w["date"].present? ? l(Date.parse(w["date"]), format: :long) : "No date" %></span>
-                                  <span class="tabular-nums"><%= number_to_currency(w["amount_cents"].to_i / 100.0) %></span>
-                                </div>
-                              <% end %>
-                            </div>
-                          </details>
-                        <% elsif source_path %>
-                          <%# Trace back to what created this payment (show, advance, contract, course). %>
-                          <%= link_to source_path, class: "group/trace flex items-center gap-1.5 min-w-0 text-gray-600 hover:text-pink-600" do %>
-                            <span class="truncate group-hover/trace:underline"><%= c.label %></span>
-                            <svg class="w-3.5 h-3.5 flex-shrink-0 text-gray-300 group-hover/trace:text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                          <% end %>
-                        <% else %>
-                          <span class="<%= c.excluded_from_payout ? "text-gray-400" : "text-gray-600" %> truncate"><%= c.label %></span>
-                        <% end %>
-                        <div class="flex items-center gap-2 flex-shrink-0">
-                          <% if c.excluded_from_payout %>
-                            <span class="text-[10px] font-medium uppercase tracking-wide text-gray-400 bg-gray-100 rounded px-1.5 py-0.5">Recorded · not paid</span>
-                            <span class="text-gray-400 tabular-nums"><%= number_to_currency(c.amount_cents / 100.0) %></span>
-                          <% else %>
-                            <span class="text-gray-800 tabular-nums"><%= number_to_currency(c.amount_cents / 100.0) %></span>
-                          <% end %>
-                          <%= render "manage/payout_batches/line_menu", batch: @batch, contribution: c, item: item %>
-                        </div>
-                      </div>
-                      <% if c.moved_from_batch %>
-                        <div class="text-[11px] text-gray-400">
-                          from <%= link_to "#{c.moved_from_batch.kind_label} · #{c.moved_from_batch.created_at.strftime('%b %-d, %Y')}", manage_payout_batch_path(c.moved_from_batch), class: "underline hover:text-gray-600" %>
-                        </div>
-                      <% end %>
-                    </div>
-                  <% end %>
-                </div>
-              </details>
-            <% else %>
-              <div class="px-4 sm:px-5 py-3 flex items-center justify-between gap-3 sm:gap-4">
-                <div class="min-w-0">
-                  <span class="text-gray-900"><%= item.payee&.name %></span>
-                  <% if item.partner_organization? %><span class="inline-flex items-center rounded-full bg-pink-50 px-2 py-0.5 text-[11px] font-medium text-pink-700 ml-1" data-into-balance>Into their CocoScout balance</span><% end %>
-                  <% if @covered_ids.include?(item.id) %>
-                    <span class="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700 ml-1" data-balance-covers>Covered by your balance</span>
-                  <% elsif @waiting_ids.include?(item.id) %>
-                    <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 ml-1" data-balance-waits>Waits for more balance or the bank</span>
-                  <% end %>
-                  <% if item.error.present? %>
-                    <div class="text-xs text-red-600 mt-0.5"><%= item.error %></div>
-                  <% end %>
-                </div>
-                <div class="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-3 flex-shrink-0">
-                  <span class="font-semibold text-gray-900 tabular-nums"><%= number_to_currency(item.amount_cents / 100.0) %></span>
-                  <%= render "manage/payout_batches/item_state_badge", item: item, batch: @batch, waiting_on_balance: @awaiting_balance && @waiting_ids.include?(item.id) %>
-                </div>
-              </div>
+          <% if waiting.any? %>
+            <%# Why the rest wait: every one of them needs more than is left. %>
+            <% left = @balance_plan[:left].to_i %>
+            <p class="px-4 sm:px-5 py-2 border-t border-dashed border-gray-300 text-xs text-gray-500" data-balance-left>
+              <% if @covered_ids.any? %>
+                <%= number_to_currency(left / 100.0) %> is left in your CocoScout balance after these, less than any payee below needs.
+              <% elsif left.positive? %>
+                Your CocoScout balance has <%= number_to_currency(left / 100.0) %>, less than any payee below needs.
+              <% else %>
+                Your CocoScout balance is empty right now.
+              <% end %>
+            </p>
+            <div class="px-4 sm:px-5 py-2.5 bg-gray-50 border-y border-gray-200 flex items-center justify-between gap-3 text-sm font-medium text-gray-600" data-balance-waits>
+              <span class="flex items-center gap-2">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>Waits for more balance or your bank <span class="font-normal text-gray-500">· <%= pluralize(waiting.size, "payee") %></span></span>
+              </span>
+              <span class="tabular-nums"><%= number_to_currency(waiting.sum(&:amount_cents) / 100.0) %></span>
+            </div>
+            <div class="divide-y divide-gray-100">
+              <% waiting.each do |item| %>
+                <%= render "manage/payout_batches/payee_item", item: item, batch: @batch, rank: @pay_rank[item.id], show_badge: false, muted: true %>
+              <% end %>
+            </div>
+          <% end %>
+          <% if others.any? %>
+            <div class="px-4 sm:px-5 py-2.5 bg-gray-50 border-y border-gray-200 flex items-center justify-between gap-3 text-sm font-medium text-gray-600">
+              <%# Paid when that's all they are (a run waiting on the balance, after its first payees). %>
+              <span><%= others.all? { |i| PayoutBatch.item_state(i) == :paid } ? "Paid" : "Other payees" %> <span class="font-normal text-gray-500">· <%= pluralize(others.size, "payee") %></span></span>
+              <span class="tabular-nums"><%= number_to_currency(others.sum(&:amount_cents) / 100.0) %></span>
+            </div>
+            <div class="divide-y divide-gray-100">
+              <% others.each do |item| %>
+                <%= render "manage/payout_batches/payee_item", item: item, batch: @batch, rank: nil, show_badge: true %>
+              <% end %>
+            </div>
+          <% end %>
+        <% else %>
+          <div class="divide-y divide-gray-100">
+            <% @visible_items.each do |item| %>
+              <%= render "manage/payout_batches/payee_item", item: item, batch: @batch, rank: nil, show_badge: true, waiting_on_balance: @awaiting_balance && @waiting_ids.include?(item.id) %>
             <% end %>
-          <% end %>
-        </div>
+          </div>
+        <% end %>
       </div>
 
       <%# Discard lives quietly at the very bottom — a draft run that hasn't been funded. %>

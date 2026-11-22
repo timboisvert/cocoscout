@@ -378,7 +378,10 @@ class PayoutBatchService
       now << item
       budget -= item.amount_cents
     end
-    { now: now, later: PayoutPayOrder.sort(batch, payable - now), no_bank: no_bank }
+    # left: what the balance has after paying `now`. Each payee in `later`
+    # needs more than that (they were skipped for needing more than was left
+    # at their turn, and what was left only went down).
+    { now: now, later: PayoutPayOrder.sort(batch, payable - now), no_bank: no_bank, left: budget }
   end
 
   def self.send_from_balance!(batch, item)

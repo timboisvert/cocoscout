@@ -125,6 +125,10 @@ module Manage
       @balance_plan = PayoutBatchService.balance_preview(@batch, @items) if @balance_first && (@batch.open? || @awaiting_balance)
       @covered_ids = @balance_plan ? @balance_plan[:now].to_set(&:id) : Set.new
       @waiting_ids = @balance_plan ? @balance_plan[:later].to_set(&:id) : Set.new
+      # Each payee's place in the pay order, numbered on the list. The balance
+      # skips a payee it can't cover and goes on to smaller ones, so the two
+      # groups' numbers can interleave (3 waits while 4 is covered).
+      @pay_rank = @balance_plan ? PayoutPayOrder.sort(@batch, @balance_plan[:now] + @balance_plan[:later]).each_with_index.to_h { |item, i| [ item.id, i + 1 ] } : {}
       # Unpaid items whose payee has since become payable (connected a bank, or
       # a failed transfer worth retrying) — what "Pay remaining" would send.
       @payable_remaining_items = if @batch.status == "partially_paid" && (@batch.funding_status == "succeeded" || @batch.skips_funding?)

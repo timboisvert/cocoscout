@@ -1,0 +1,101 @@
+<%#
+  One payee's line on a run, on one line: chevron, place in the pay order,
+  name, how many items, amount, and (show_badge) the state badge. Click it to
+  see what they're paid for. The balance groups on a balance-first run say the
+  state in their headers, so their rows drop the badge (Tim, 2026-11-22).
+  Locals: item, batch, rank (nil when the run has no pay order to number),
+  show_badge, waiting_on_balance, muted (the group waiting on more balance)
+%>
+<% contributions = item.payout_contributions.to_a %>
+<% name_cls = local_assigns[:muted] ? "text-gray-500" : "text-gray-900" %>
+<% line = capture do %>
+  <% if rank %>
+    <span class="w-6 flex-shrink-0 text-right text-xs text-gray-400 tabular-nums" data-pay-rank><%= rank %></span>
+  <% end %>
+  <div class="min-w-0 flex-1">
+    <div class="flex items-center gap-2 min-w-0">
+      <span class="<%= name_cls %> truncate"><%= item.payee&.name %></span>
+      <% if item.partner_organization? %><span class="hidden sm:inline-flex flex-shrink-0 items-center rounded-full bg-pink-50 px-2 py-0.5 text-[11px] font-medium text-pink-700" data-into-balance>Into their CocoScout balance</span><% end %>
+    </div>
+    <%# On a phone the count and the partner tag go under the name, so the name keeps its room. %>
+    <div class="sm:hidden text-xs text-gray-400">
+      <%= pluralize(contributions.size, "item") if contributions.any? %><%= " · " if contributions.any? && item.partner_organization? %><%= "Into their CocoScout balance" if item.partner_organization? %>
+    </div>
+  </div>
+  <span class="hidden sm:block w-16 flex-shrink-0 text-right text-sm text-gray-400"><%= pluralize(contributions.size, "item") if contributions.any? %></span>
+  <span class="w-24 flex-shrink-0 text-right font-semibold <%= local_assigns[:muted] ? "text-gray-500" : "text-gray-900" %> tabular-nums"><%= number_to_currency(item.amount_cents / 100.0) %></span>
+  <% if show_badge %>
+    <span class="flex-shrink-0"><%= render "manage/payout_batches/item_state_badge", item: item, batch: batch, waiting_on_balance: local_assigns[:waiting_on_balance] %></span>
+  <% end %>
+<% end %>
+
+<% if contributions.any? %>
+  <details class="group">
+    <summary class="px-4 sm:px-5 py-2.5 flex items-center gap-3 cursor-pointer list-none hover:bg-gray-50">
+      <svg class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-90 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+      <%= line %>
+    </summary>
+    <% if item.error.present? %>
+      <div class="px-5 pb-2 pl-11 text-xs text-red-600"><%= item.error %></div>
+    <% end %>
+    <div class="bg-gray-50 border-t border-gray-100 px-4 sm:px-5 py-1.5 pl-10 sm:pl-11">
+      <% contributions.each do |c| %>
+        <% source_path = payout_contribution_source_path(c) %>
+        <% worksheet = c.worksheet_entries %>
+        <div class="py-1.5 text-sm">
+          <div class="flex items-center justify-between gap-4">
+            <% if worksheet.any? %>
+              <%# Trace tips/cash-tips back to the days they came from. %>
+              <details class="group/ws min-w-0">
+                <summary class="flex items-center gap-1.5 min-w-0 cursor-pointer list-none <%= c.excluded_from_payout ? "text-gray-400" : "text-gray-600" %> hover:text-pink-600">
+                  <svg class="w-3.5 h-3.5 flex-shrink-0 text-gray-300 transition-transform group-open/ws:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  <span class="truncate"><%= c.label %></span>
+                  <span class="text-[11px] text-gray-400 flex-shrink-0"><%= pluralize(worksheet.size, "day") %></span>
+                </summary>
+                <div class="mt-1 ml-5 space-y-0.5">
+                  <% worksheet.each do |w| %>
+                    <div class="flex items-center justify-between gap-4 text-xs text-gray-500">
+                      <span><%= w["date"].present? ? l(Date.parse(w["date"]), format: :long) : "No date" %></span>
+                      <span class="tabular-nums"><%= number_to_currency(w["amount_cents"].to_i / 100.0) %></span>
+                    </div>
+                  <% end %>
+                </div>
+              </details>
+            <% elsif source_path %>
+              <%# Trace back to what created this payment (show, advance, contract, course). %>
+              <%= link_to source_path, class: "group/trace flex items-center gap-1.5 min-w-0 text-gray-600 hover:text-pink-600" do %>
+                <span class="truncate group-hover/trace:underline"><%= c.label %></span>
+                <svg class="w-3.5 h-3.5 flex-shrink-0 text-gray-300 group-hover/trace:text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              <% end %>
+            <% else %>
+              <span class="<%= c.excluded_from_payout ? "text-gray-400" : "text-gray-600" %> truncate"><%= c.label %></span>
+            <% end %>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <% if c.excluded_from_payout %>
+                <span class="text-[10px] font-medium uppercase tracking-wide text-gray-400 bg-gray-100 rounded px-1.5 py-0.5">Recorded · not paid</span>
+                <span class="text-gray-400 tabular-nums"><%= number_to_currency(c.amount_cents / 100.0) %></span>
+              <% else %>
+                <span class="text-gray-800 tabular-nums"><%= number_to_currency(c.amount_cents / 100.0) %></span>
+              <% end %>
+              <%= render "manage/payout_batches/line_menu", batch: batch, contribution: c, item: item %>
+            </div>
+          </div>
+          <% if c.moved_from_batch %>
+            <div class="text-[11px] text-gray-400">
+              from <%= link_to "#{c.moved_from_batch.kind_label} · #{c.moved_from_batch.created_at.strftime('%b %-d, %Y')}", manage_payout_batch_path(c.moved_from_batch), class: "underline hover:text-gray-600" %>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </details>
+<% else %>
+  <%# No chevron, but the same left edge as the rows that have one. %>
+  <div class="px-4 sm:px-5 py-2.5 flex items-center gap-3">
+    <span class="w-4 flex-shrink-0"></span>
+    <%= line %>
+  </div>
+  <% if item.error.present? %>
+    <div class="px-5 pb-2 pl-11 text-xs text-red-600"><%= item.error %></div>
+  <% end %>
+<% end %>

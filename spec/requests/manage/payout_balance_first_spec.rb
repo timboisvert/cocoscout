@@ -73,25 +73,46 @@ RSpec.describe "Manage balance-first payout runs", type: :request do
     expect(batch.reload.pay_order).to eq({})
   end
 
-  # The list follows the saved pay order and says how far the balance reaches
-  # (Tim, 2026-11-22: "it should be in priority order once I set it").
-  it "lists the payees in pay order, marking who the balance covers right now" do
-    list = -> { response.body[response.body.index("data-pay-order-note")..] }
+  # The list follows the saved pay order, numbered, in two groups: who the
+  # balance covers now and who waits (Tim, 2026-11-22: "it should be in
+  # priority order once I set it"; one line per payee, the state said once).
+  it "lists the payees in pay order, grouped by who the balance covers right now" do
+    covered = -> { response.body[response.body.index("data-balance-covers")...response.body.index("data-balance-left")] }
+    waiting = -> { response.body[response.body.index("data-balance-waits")..] }
     get manage_payout_batch_path(batch)
-    expect(list.call).to include("In pay order. Your CocoScout balance covers", "1 of the 2", "($50.00)")
-    expect(list.call.index("Sam Staff")).to be < list.call.index("Pat Performer")
-    expect(list.call[list.call.index("Sam Staff")..list.call.index("Pat Performer")]).to include("Covered by your balance")
-    expect(list.call[list.call.index("Pat Performer")..]).to include("Waits for more balance or the bank")
+    expect(covered.call).to include("Your CocoScout balance covers these now", "1 payee", "$50.00", "Sam Staff")
+    expect(response.body).to include("$10.00 is left in your CocoScout balance after these, less than any payee below needs.")
+    expect(waiting.call).to include("Waits for more balance or your bank", "Pat Performer")
+    expect(response.body).not_to include("Ready to pay</span>")
 
     patch manage_pay_order_payout_batch_path(batch), params: { groups: %w[performer staffing contractor] }
     get manage_payout_batch_path(batch)
-    expect(list.call.index("Pat Performer")).to be < list.call.index("Sam Staff")
-    expect(list.call[list.call.index("Pat Performer")..list.call.index("Sam Staff")]).to include("Covered by your balance")
-    expect(list.call).to include("($30.00)")
+    expect(covered.call).to include("Pat Performer", "$30.00")
+    expect(waiting.call).to include("Sam Staff")
 
     post manage_fund_payout_batch_path(batch)
     get manage_payout_batch_path(batch)
-    expect(response.body[response.body.index("Sam Staff")..]).to include("Waiting on balance")
+    expect(waiting.call).to include("Sam Staff")
+    expect(response.body[response.body.index("Paid <span")..]).to include("Pat Performer")
+  end
+
+  # The balance skips a payee it can't cover and pays smaller ones after, so
+  # the numbers say where each payee sits in the order.
+  it "numbers payees by pay order when the balance skips one it can't cover" do
+    quinn = create(:person, name: "Quinn Player", stripe_account_id: "acct_q", payouts_enabled: true)
+    item = batch.items.create!(payee: quinn, amount_cents: 500, status: "pending")
+    PayoutContribution.create!(payout_batch: batch, payout_batch_item: item, payee: quinn, amount_cents: 500, label: "Pay", category: "performer")
+    batch.recalculate_total!
+    patch manage_pay_order_payout_batch_path(batch),
+          params: { groups: %w[staffing contractor performer], payees: [ "Person:#{performer.id}", "Person:#{quinn.id}" ] }
+
+    get manage_payout_batch_path(batch)
+    ranks = response.body.scan(/data-pay-rank>(\d+)</).flatten
+    expect(ranks).to eq(%w[1 3 2])
+    covers = response.body[response.body.index("data-balance-covers")...response.body.index("data-balance-left")]
+    expect(covers).to include("Sam Staff", "Quinn Player", "2 payees", "$55.00")
+    expect(response.body).to include("$5.00 is left in your CocoScout balance after these")
+    expect(response.body[response.body.index("data-balance-waits")..]).to include("Pat Performer")
   end
 
   it "shows a waiting run, and has the bank pay the rest on request" do
