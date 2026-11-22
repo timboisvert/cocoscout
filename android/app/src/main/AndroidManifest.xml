@@ -65,6 +65,9 @@
                 <data android:pathPrefix="/profile/" />
                 <data android:pathPrefix="/claim/" />
                 <data android:pathPrefix="/vacancy/" />
+                <!-- Manage, from 1.4 (Tim, 2026-11-22): a manager's emailed link opens here. -->
+                <data android:path="/manage" />
+                <data android:pathPrefix="/manage/" />
             </intent-filter>
         </activity>
 

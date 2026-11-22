@@ -296,8 +296,7 @@ RSpec.describe "The iOS app's web side", type: :request do
     json = JSON.parse(response.body)
     details = json.dig("applinks", "details").sole
     expect(details["appIDs"]).to eq([ "3Y9EQJP24Y.com.cocoscout.app" ])
-    expect(details["components"].map { |c| c["/"] }).to include("/my/*", "/door/*", "/claim/*", "/vacancy/*")
-    expect(details["components"].map { |c| c["/"] }).not_to include("/manage/*")
+    expect(details["components"].map { |c| c["/"] }).to include("/my/*", "/door/*", "/claim/*", "/vacancy/*", "/manage", "/manage/*")
     expect(json.dig("webcredentials", "apps")).to eq([ "3Y9EQJP24Y.com.cocoscout.app" ])
   end
 
@@ -317,7 +316,10 @@ RSpec.describe "The iOS app's web side", type: :request do
     rules = JSON.parse(Rails.public_path.join("hotwire-native/path-configuration.json").read)["rules"]
     open_in = rules.select { |rule| rule["properties"]["open_in"] }.to_h { |rule| [ rule["properties"]["open_in"], rule["patterns"] ] }
 
-    expect(open_in["safari"]).to include("^/manage")
+    # V1 shows Manage in its own web view, never back out to Safari: Manage is a
+    # claimed link from 1.4, so Safari would hand it straight back to the app.
+    expect(open_in["safari"]).to include("^/superadmin")
+    expect(open_in["safari"]).not_to include("^/manage")
     expect(open_in["document"].any? { |pattern| Regexp.new(pattern).match?("/my/tax-forms/12/w9/copy") }).to be(true)
     expect(rules.flat_map { |rule| rule["patterns"] }.any? { |pattern| Regexp.new(pattern).match?("/my/signups/ABC12/form") }).to be(true)
 
