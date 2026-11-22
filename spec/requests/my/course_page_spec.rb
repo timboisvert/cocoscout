@@ -26,7 +26,7 @@ RSpec.describe "Course page", type: :request do
 
     expect(response.body).to include("Improv 101", "Stars &amp; Garters", "Starts Tuesday, November 3 · 7:00 – 9:00 PM", "2 sessions",
                                      "The Annex", "Directions", "$108.00", "incl. sales tax 8%", ">Course<", "$100.00", ">Sales tax 8%<", "$8.00",
-                                     "Only 3 spots left", "Create your account to register", "Already have one?", "Class registration by CocoScout")
+                                     "Only 3 spots left", "Sign in or create an account to register", "Class registration by CocoScout")
     expect(response.body).not_to include("Registering as", "google.com/maps?q=")
   end
 

@@ -25,11 +25,14 @@ RSpec.describe NativeAppVersion do
     expect(described_class.production_mode?(browser)).to be(true)
   end
 
-  it "keeps V1's page rules sending Manage to the browser, and generation 2's keeping it in the app" do
+  # V1 sent all of Manage to the browser until 1.4 claimed /manage links (Tim,
+  # 2026-11-22); since then both keep Manage in the app and send billing out.
+  it "keeps Manage in the app for V1 and generation 2, and sends billing to the browser" do
     v1 = JSON.parse(Rails.public_path.join("hotwire-native/path-configuration.json").read)
     v2 = JSON.parse(Rails.public_path.join("hotwire-native/nav-2/path-configuration.json").read)
     safari = ->(config) { config["rules"].select { |r| r.dig("properties", "open_in") == "safari" }.flat_map { |r| r["patterns"] } }
-    expect(safari.(v1)).to include("^/manage")
+    expect(safari.(v1)).not_to include("^/manage")
+    expect(safari.(v1)).to include("^/manage/billing", "^/manage/organizations/[^/]+/section/billing")
     expect(safari.(v2)).not_to include("^/manage")
     expect(safari.(v2)).to include("^/manage/billing")
     # Superadmin opens in the app from generation 2 (Tim, 2026-11-14); V1 keeps sending it out.

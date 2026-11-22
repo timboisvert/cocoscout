@@ -15,11 +15,16 @@ class AppleAppSiteAssociationsController < ApplicationController
 
   APP_ID = "3Y9EQJP24Y.com.cocoscout.app"
   PATHS = %w[/my /my/* /door /door/* /profile /profile/* /claim/* /vacancy/* /manage /manage/*].freeze
+  # Pro isn't sold in the apps, so billing opens the website (path
+  # configuration "open_in": "safari"). Unclaimed here, so handing it to
+  # Safari can't land it back in the app. Apple takes the first component that
+  # matches, so these go first.
+  EXCLUDED = %w[/manage/billing /manage/billing/* /manage/organizations/*/section/billing].freeze
 
   def show
     expires_in 1.hour, public: true
     render json: {
-      applinks: { details: [ { appIDs: [ APP_ID ], components: PATHS.map { |path| { "/" => path } } } ] },
+      applinks: { details: [ { appIDs: [ APP_ID ], components: EXCLUDED.map { |path| { "/" => path, "exclude" => true } } + PATHS.map { |path| { "/" => path } } } ] },
       webcredentials: { apps: [ APP_ID ] }
     }
   end

@@ -297,6 +297,9 @@ RSpec.describe "The iOS app's web side", type: :request do
     details = json.dig("applinks", "details").sole
     expect(details["appIDs"]).to eq([ "3Y9EQJP24Y.com.cocoscout.app" ])
     expect(details["components"].map { |c| c["/"] }).to include("/my/*", "/door/*", "/claim/*", "/vacancy/*", "/manage", "/manage/*")
+    # Billing opens the website, so it's excluded ahead of /manage/*.
+    excluded = details["components"].take_while { |c| c["exclude"] }.map { |c| c["/"] }
+    expect(excluded).to include("/manage/billing", "/manage/organizations/*/section/billing")
     expect(json.dig("webcredentials", "apps")).to eq([ "3Y9EQJP24Y.com.cocoscout.app" ])
   end
 

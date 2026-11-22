@@ -18,9 +18,10 @@ RSpec.describe "The apps' page rules" do
 
   # Changed once on purpose (Tim, 2026-11-22): 1.4 claims /manage links, so V1
   # shows Manage in its own web view instead of handing it to Safari, which
-  # would send it straight back to the app.
+  # would send it straight back to the app. Billing still opens the website,
+  # as in generation 2, since Pro isn't sold in the apps.
   it "never changes V1's rules" do
-    expect(Digest::MD5.hexdigest(root.join("path-configuration.json").read)).to eq("b7e7496c54082279a5668d572780b4cd")
+    expect(Digest::MD5.hexdigest(root.join("path-configuration.json").read)).to eq("648307dd42523cdc4b9429c8721fa712")
     expect(v1["settings"]).to eq({})
   end
 
