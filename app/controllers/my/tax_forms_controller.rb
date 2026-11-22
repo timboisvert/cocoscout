@@ -129,7 +129,8 @@ module My
       @person = @member&.person
       @person ||= @organization && Person.where(id: person_ids).find do |person|
         W9Request.exists?(organization: @organization, person: person) ||
-          PayoutLedgerEntry.where(organization: @organization, payee: person, entry_type: "payout").exists?
+          PayoutLedgerEntry.where(organization: @organization, payee: person, entry_type: "payout").exists? ||
+          Contractor.exists?(organization: @organization, person_id: person.id)
       end
       return if @person
 

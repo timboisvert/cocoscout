@@ -75,6 +75,24 @@ RSpec.describe "W-9s for performers and contract people", type: :request do
     expect { PerformerW9SweepJob.perform_now(now: 8.days.from_now) }.not_to have_enqueued_mail(StaffTaxFormMailer, :performer_w9_request)
   end
 
+  it "includes a contractor paid by hand: requested, shown their year, and pointed to it from My Contracts and My Payments" do
+    contractor = create(:contractor, organization: org, name: "Thea Fox Productions", email: performer.email_address, person: person)
+    contract = create(:contract, :active, organization: org, contractor: contractor, contractor_name: "Thea Fox Productions")
+    contract.contract_payments.create!(description: "Mar 6 show", amount: 1_600, direction: "outgoing", due_date: Date.current.beginning_of_year + 2.months)
+            .pay_offline!(method: "check", paid_on: Date.current.beginning_of_year + 2.months)
+
+    expect { PerformerW9SweepJob.perform_now }.to change(W9Request, :count).by(1)
+    sign_in(performer)
+    get my_tax_year_path(org.id)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("$1,600")
+
+    get my_contracts_path
+    expect(response.body).to include("data-my-tax-years", "Stars &amp; Garters", "$1,600 paid to you in #{year}", "W-9 requested", my_tax_year_path(org.id))
+    get my_payments_path
+    expect(response.body).to include("data-my-tax-years", "Taxes with the organizations that pay you")
+  end
+
   it "turns away someone the organization has never paid" do
     sign_in(performer)
     get my_tax_year_path(org.id)

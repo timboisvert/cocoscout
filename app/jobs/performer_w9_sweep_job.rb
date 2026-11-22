@@ -13,7 +13,13 @@ class PerformerW9SweepJob < ApplicationJob
   def perform(now: Time.current)
     year = now.year
     year_range = now.beginning_of_year..now
-    org_ids = PayoutLedgerEntry.where(entry_type: "payout", payee_type: "Person", occurred_at: year_range).distinct.pluck(:organization_id)
+    # Everyone paid personally this year: through a payout run (ledger), or a
+    # contract payment paid by hand, which leaves no ledger entry.
+    org_ids = PayoutLedgerEntry.where(entry_type: "payout", payee_type: "Person", occurred_at: year_range).distinct.pluck(:organization_id) |
+              Contract.joins(:contract_payments)
+                      .where(contract_payments: { direction: "outgoing", status: "paid", payment_method: ContractPayment::OFFLINE_PAYOUT_METHODS,
+                                                  paid_date: year_range.begin.to_date..year_range.end.to_date })
+                      .distinct.pluck(:organization_id)
     Organization.where(id: org_ids).find_each do |organization|
       sweep(organization, year, now)
     rescue StandardError => e

@@ -13,6 +13,10 @@
           actions: [ { text: "Connect a bank account", path: my_payments_setup_path } ] %>
   <% end %>
 
+  <% if @tax_years.any? %>
+    <div class="mb-6"><%= render "shared/my_tax_years", rows: @tax_years, title: "Taxes" %></div>
+  <% end %>
+
   <% if @contracts.any? %>
     <p class="text-sm text-gray-500 mb-3"><%= pluralize(@contracts.size, "contract") %></p>
 

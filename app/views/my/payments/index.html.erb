@@ -201,6 +201,8 @@
         </div>
       </div>
 
+      <%= render "shared/my_tax_years", rows: @tax_years, title: "Taxes with the organizations that pay you" %>
+
       <% if @tax_memberships.any? %>
         <div class="bg-white rounded-lg border border-gray-200 p-5">
           <h3 class="font-semibold text-gray-900 mb-1">Tax documents</h3>
