@@ -37,7 +37,7 @@
             <p class="text-sm text-amber-700 mt-3">They told us the IRS has put them on backup withholding. Talk to your accountant before paying them.</p>
           <% end %>
         <% elsif member.w9_status == :requested %>
-          <p class="text-sm text-gray-600 mt-0.5">Asked on <%= member.w9_requested_at.strftime("%B %-d, %Y") %>. We remind them weekly until they fill it in.</p>
+          <p class="text-sm text-gray-600 mt-0.5">Requested on <%= member.w9_requested_at.strftime("%B %-d, %Y") %>. We remind them weekly until they fill it in.</p>
         <% elsif member.w9_status == :exempt %>
           <p class="text-sm text-gray-600 mt-0.5">Marked as not needing a W-9.</p>
         <% elsif member.w9_status == :not_required %>
@@ -63,7 +63,7 @@
         <% if member.needs_w9? && StaffW9Requester.requestable?(member) %>
           <% w9_preview = StaffW9Requester.preview(staff_member: member) %>
           <%= render "shared/button",
-                text: (member.w9_requested_at ? "Resend W-9 request" : "Ask for their W-9"),
+                text: (member.w9_requested_at ? "Resend W-9 request" : "Request their W-9"),
                 variant: "primary", size: "small", icon: "paper-airplane", type: :button,
                 data: {
                   action: "click->invite-preview#open",

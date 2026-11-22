@@ -85,7 +85,7 @@ module Manage
           skipped << member.display_name
         end
 
-        notice = sent.positive? ? "Asked #{helpers.pluralize(sent, 'person')} for their W-9." : "Nobody new to ask."
+        notice = sent.positive? ? "Requested a W-9 from #{helpers.pluralize(sent, 'person')}." : "Nobody new to request one from."
         if skipped.any?
           notice += " #{skipped.to_sentence} #{skipped.one? ? "hasn't" : "haven't"} set up an account yet — they'll be asked during onboarding."
         end
@@ -97,7 +97,7 @@ module Manage
       def request_w9
         StaffW9Requester.call(staff_member: @staff_member, sender: Current.user,
                               subject: params[:email_subject], body: params[:email_body])
-        redirect_to return_path, notice: "Asked #{@staff_member.display_name} for their W-9 — we emailed and messaged them."
+        redirect_to return_path, notice: "Requested a W-9 from #{@staff_member.display_name}. They have been emailed and messaged."
       rescue StaffW9Requester::Error => e
         redirect_to return_path, alert: e.message
       end

@@ -48,7 +48,7 @@
 
   <p class="text-sm text-gray-600 mb-3">
     Due <span class="font-medium text-gray-900"><%= due_date.strftime("%B %-d, %Y") %></span> to each contractor and to the IRS.
-    Threshold: <span class="font-medium text-gray-900">$<%= threshold_cents / 100 %></span> paid in the year.
+    Threshold: <span class="font-medium text-gray-900"><%= number_to_currency(threshold_cents / 100, precision: 0) %></span> paid in the year.
     CocoScout doesn't file for you yet — export the IRIS CSV and upload it to <a href="https://www.irs.gov/filing/e-file-forms-1099-with-iris" target="_blank" rel="noopener" class="text-pink-600 hover:text-pink-700">IRS IRIS</a>,
     then come back and mark them filed.
   </p>

@@ -15,8 +15,17 @@
       <span class="inline-flex items-center px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[11px] font-medium"><%= people.size %></span>
     </div>
     <p class="text-sm text-gray-600 mb-3">Everyone you've paid personally in <%= year %> who isn't on your staff. We request a W-9 by email and notification once someone has been paid <%= money.(request_at_cents) %>, and remind them each week until it's in.</p>
-    <div class="border border-gray-200 rounded-lg overflow-hidden bg-white divide-y divide-gray-100">
-      <% people.each do |person| %>
+    <%
+      # Everyone past the line, or with a W-9 or a request, shows; the rest
+      # (often most of the list) fold under one row (found testing 1.4,
+      # 2026-11-22: 134 people at Stars & Garters).
+      shown, below = people.partition { |p| w9s[p.id] || requests[p.id] || paid[p.id].net_cents >= request_at_cents }
+    %>
+    <% [ [ shown, nil ], [ below, "#{pluralize(below.size, 'more person', plural: 'more people')} paid less than #{money.(request_at_cents)}" ] ].each do |group, fold| %>
+      <% next if group.empty? %>
+      <% if fold %><details class="mt-2 group" data-payee-w9s-below><summary class="cursor-pointer select-none text-sm font-medium text-pink-600 hover:text-pink-700 py-1"><%= fold %></summary><% end %>
+    <div class="border border-gray-200 rounded-lg overflow-hidden bg-white divide-y divide-gray-100<%= ' mt-1' if fold %>">
+      <% group.each do |person| %>
         <%
           w9 = w9s[person.id]
           request = requests[person.id]
@@ -42,5 +51,7 @@
         </div>
       <% end %>
     </div>
+      <% if fold %></details><% end %>
+    <% end %>
   </div>
 <% end %>

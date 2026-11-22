@@ -67,7 +67,7 @@
         </div>
         <% if requires_w9 && @requestable_missing.any? %>
           <% cid = "request-all-w9s" %>
-          <%= render "shared/button", text: "Ask everyone missing one", variant: "primary", size: "small", type: :button,
+          <%= render "shared/button", text: "Request from everyone missing one", variant: "primary", size: "small", type: :button,
                 data: { controller: "modal", action: "click->modal#open", modal_id: cid } %>
           <%= render "manage/staffing/taxes/request_w9s_modal", id: cid, members: @requestable_missing, draft: @w9_draft %>
         <% end %>

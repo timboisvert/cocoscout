@@ -36,7 +36,7 @@ RSpec.describe "Manage::Staffing::Taxes", type: :request do
     get manage_staffing_taxes_path
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("To do").and include("Sam Staffer").and include("W-9 needed")
-    expect(response.body).to include("Ask everyone missing one")
+    expect(response.body).to include("Request from everyone missing one")
   end
 
   it "shows who'll be asked and the draft before anything is sent" do
@@ -61,7 +61,7 @@ RSpec.describe "Manage::Staffing::Taxes", type: :request do
       .with(member, to: "sam@example.com", subject: "W-9 for Sam", body: "<p>Hi Sam, one form please.</p>")
 
     expect(response).to redirect_to(manage_staffing_taxes_path)
-    expect(flash[:notice]).to include("Asked 1 person").and include("Nia Newbie")
+    expect(flash[:notice]).to include("Requested a W-9 from 1 person").and include("Nia Newbie")
     expect(member.reload.w9_requested_at).to be_present
     expect(unclaimed.reload.w9_requested_at).to be_nil
   end
@@ -109,7 +109,7 @@ RSpec.describe "Manage::Staffing::Taxes", type: :request do
 
     it "adds a Taxes tab to the staff page, and its exempt toggle lands back on it" do
       get manage_edit_staffing_staff_path(member)
-      expect(response.body).to include('data-panel="taxes"').and include("Ask for their W-9")
+      expect(response.body).to include('data-panel="taxes"').and include("Request their W-9")
 
       patch manage_update_staffing_staff_path(member), params: { tax_form_exempt: "1", return_tab: "taxes" }
       expect(response).to redirect_to(manage_edit_staffing_staff_path(member, anchor: "taxes"))

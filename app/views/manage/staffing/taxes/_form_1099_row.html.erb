@@ -30,18 +30,18 @@
   <div class="flex-1 min-w-0">
     <div class="text-sm font-medium text-gray-900 truncate"><%= member ? member.display_name : person.name %></div>
     <div class="text-[11px] text-gray-500 truncate mt-0.5">
-      Paid <span class="font-medium text-gray-700 tabular-nums">$<%= format("%.2f", amount_cents / 100.0) %></span>
+      Paid <span class="font-medium text-gray-700 tabular-nums"><%= number_to_currency(amount_cents / 100.0) %></span>
       <% if earnings && earnings.reimbursement_cents.positive? %>
-        · <span title="Reimbursements aren't 1099 income">$<%= format("%.2f", earnings.reimbursement_cents / 100.0) %> reimbursed (not on 1099)</span>
+        · <span title="Reimbursements aren't 1099 income"><%= number_to_currency(earnings.reimbursement_cents / 100.0) %> reimbursed (not on 1099)</span>
       <% end %>
       <% if form&.adjustment_cents.to_i.nonzero? %>
-        · <span class="text-amber-700">$<%= format("%.2f", form.adjustment_cents.abs / 100.0) %> adjustment</span>
+        · <span class="text-amber-700"><%= number_to_currency(form.adjustment_cents.abs / 100.0) %> adjustment</span>
       <% end %>
       <% unless w9_received %>
         · <span class="text-amber-700">no W-9</span>
       <% end %>
       <% if amount_cents < threshold_cents && form.nil? %>
-        · <span class="text-gray-500">below $<%= threshold_cents / 100 %> threshold</span>
+        · <span class="text-gray-500">below <%= number_to_currency(threshold_cents / 100, precision: 0) %> threshold</span>
       <% end %>
     </div>
   </div>
