@@ -58,6 +58,12 @@ module Tax
         r.reimbursement_cents += reimbursement_cents
       end
 
+      each_offline_contract_payment do |person_id, cents|
+        r = results[person_id]
+        r.paid_cents += cents
+        r.offline_cents += cents
+      end
+
       results
     end
 
@@ -124,6 +130,25 @@ module Tax
         next if wages.zero? && reimbursement.zero?
 
         yield entry.person_id, wages, reimbursement
+      end
+    end
+
+    # Contract payments the organization paid a contractor by hand (cash,
+    # check, another way): ContractPayment#pay_offline! posts nothing to the
+    # ledger, so they're read from the payments themselves (Tim, 2026-11-22:
+    # contractors are in the 1099s). Paid to the contractor's person only;
+    # a contract that pays into the contractor's connected organization is
+    # that organization's money and isn't counted.
+    def each_offline_contract_payment
+      payments = ContractPayment.joins(:contract).where(contracts: { organization_id: @organization.id })
+                                .where(direction: "outgoing", status: "paid", payment_method: ContractPayment::OFFLINE_PAYOUT_METHODS,
+                                       paid_date: year_range.begin.to_date..year_range.end.to_date)
+                                .includes(contract: { contractor: :person })
+      payments.each do |payment|
+        person = payment.contract.contractor&.person
+        next if person.nil? || ContractConnections.pay_target(payment.contract)
+
+        yield person.id, (payment.amount.to_d * 100).round.to_i
       end
     end
 

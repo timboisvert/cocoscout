@@ -31,6 +31,20 @@ RSpec.describe Tax::YearEarnings, type: :service do
     expect(described_class.for(org, tax_year)[person.id].paid_cents).to eq(180_000)
   end
 
+  it "counts a contract payment paid to the contractor by hand (Tim, 2026-11-22)" do
+    contractor = create(:contractor, organization: org, name: "Carded LLC", person: person)
+    contract = create(:contract, :active, organization: org, contractor: contractor, contractor_name: "Carded LLC")
+    paid = contract.contract_payments.create!(description: "Apr 2 show", amount: 700, direction: "outgoing", due_date: Date.new(2025, 4, 2))
+    paid.pay_offline!(method: "check", paid_on: Date.new(2025, 4, 3))
+    contract.contract_payments.create!(description: "Not paid", amount: 300, direction: "outgoing", due_date: Date.new(2025, 5, 2))
+    contract.contract_payments.create!(description: "They paid us", amount: 900, direction: "incoming", due_date: Date.new(2025, 5, 2),
+                                       status: "paid", payment_method: "check", paid_date: Date.new(2025, 5, 3))
+
+    result = described_class.for(org, tax_year)[person.id]
+    expect(result.paid_cents).to eq(700_00)
+    expect(result.offline_cents).to eq(700_00)
+  end
+
   it "counts show pay marked paid another way, and leaves out money paid to an organization" do
     production = create(:production, organization: org)
     show = create(:show, production: production, date_and_time: Time.zone.local(2025, 4, 1, 20))
