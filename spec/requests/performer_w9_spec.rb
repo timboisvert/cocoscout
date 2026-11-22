@@ -60,7 +60,7 @@ RSpec.describe "W-9s for performers and contract people", type: :request do
 
     get my_tax_year_path(org.id)
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("$1,640", "W-9 requested", "1099 line", "$2,000", "Fill in your W-9",
+    expect(response.body).to include("$1,640", "W-9 requested", "1099-NEC", "$2,000", "Fill in your W-9",
                                      "https://www.irs.gov/forms-pubs/about-form-w-9", "What a 1099-NEC is")
 
     get my_w9_path(org.id)

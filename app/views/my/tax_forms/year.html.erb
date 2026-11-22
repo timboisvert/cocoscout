@@ -24,18 +24,18 @@
 <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
   <div class="lg:col-span-2 space-y-6">
     <section class="bg-white border border-gray-200 rounded-lg overflow-hidden" data-tax-year>
-      <%= render "shared/section_heading", padding: "px-4 py-3", title: "Paid to you in #{@tax_year}" %>
+      <%= render "shared/section_heading", padding: "px-4 py-3", title: "What #{@organization.name} has paid you in #{@tax_year}" %>
       <div class="px-4 py-5 space-y-5">
         <div>
           <p class="text-3xl font-bold text-gray-900 tabular-nums"><%= money.(@paid_cents) %></p>
-          <p class="text-sm text-gray-600 mt-1">What <%= @organization.name %> has paid you so far this year, counted by the day the money was sent. Reimbursements aren't included.</p>
+          <p class="text-sm text-gray-600 mt-1">Each payment counts on the day it was sent to you. Reimbursements aren't included, because they pay you back for costs rather than pay you for work.</p>
         </div>
 
         <%# The bar: what's been paid, against the W-9 request line and the 1099 line. %>
-        <div class="pt-6 pb-8" role="img" aria-label="<%= money.(@paid_cents) %> paid, against <%= money.(@request_at_cents) %> for a W-9 request and <%= money.(@threshold_cents) %> for a 1099">
+        <div class="pt-6 pb-8" role="img" aria-label="<%= money.(@paid_cents) %> paid so far. A W-9 is requested at <%= money.(@request_at_cents) %>, and a 1099-NEC is sent at <%= money.(@threshold_cents) %>.">
           <div class="relative h-4 rounded-full bg-gray-100">
             <div class="absolute inset-y-0 left-0 rounded-full bg-pink-500" style="width: <%= pct.(@paid_cents) %>%"></div>
-            <% [ [ @request_at_cents, "W-9 requested" ], [ @threshold_cents, "1099 line" ] ].each do |cents, label| %>
+            <% [ [ @request_at_cents, "W-9 requested" ], [ @threshold_cents, "1099-NEC" ] ].each do |cents, label| %>
               <div class="absolute -top-6 -bottom-8 flex flex-col items-center" style="left: <%= pct.(cents) %>%; transform: translateX(-50%)">
                 <span class="text-[11px] font-medium text-gray-600 whitespace-nowrap"><%= label %></span>
                 <span class="flex-1 w-px bg-gray-400"></span>
@@ -47,11 +47,11 @@
 
         <p class="text-sm text-gray-700">
           <% if over_line %>
-            You've been paid more than <%= money.(@threshold_cents) %> this year, so <%= @organization.name %> will send you a Form 1099-NEC for <%= @tax_year %> by January 31, <%= @tax_year + 1 %>.
+            You've been paid more than <%= money.(@threshold_cents) %> this year, so <%= @organization.name %> will send you a Form 1099-NEC for <%= @tax_year %> by January 31, <%= @tax_year + 1 %>, and report the same amount to the IRS.
           <% elsif @paid_cents >= @request_at_cents %>
-            You're close to <%= money.(@threshold_cents) %>, the amount that means a Form 1099-NEC. <%= @organization.name %> requests a W-9 now so it has one if you reach it.
+            You're <%= money.(@threshold_cents - @paid_cents) %> away from <%= money.(@threshold_cents) %>. Once <%= @organization.name %> has paid you that much this year, it has to send you a Form 1099-NEC and report the payments to the IRS. That's why it has requested your W-9 now: so it has what it needs if you get there.
           <% else %>
-            Once <%= @organization.name %> has paid you <%= money.(@threshold_cents) %> in a year, it sends you a Form 1099-NEC for that year.
+            If <%= @organization.name %> pays you <%= money.(@threshold_cents) %> or more this year, it will send you a Form 1099-NEC and report the payments to the IRS. You're <%= money.(@threshold_cents - @paid_cents) %> away.
           <% end %>
         </p>
       </div>
