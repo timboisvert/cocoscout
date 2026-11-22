@@ -29,7 +29,8 @@
         on_way_cents = summary.on_its_way_cents
         still_groups = summary.still_to_come_groups
         still_cents = summary.still_to_come_cents
-        waiting_cents = still_groups.flat_map(&:lines).select { |l| l.tag.present? }.sum(&:cents)
+        waiting_cents = still_groups.reject { |g| g.kind == :contract }.flat_map(&:lines).select { |l| l.tag.present? }.sum(&:cents)
+        contract_cents = still_groups.select { |g| g.kind == :contract }.sum(&:total_cents)
         past = summary.past_payments
         next_expected = on_way_payments.filter_map(&:expected_on).min
         group_titles = { on_its_way: "On its way", queued: "Approved", owed: "Approved", waiting: "Waiting for approval" }
@@ -50,7 +51,7 @@
             <div class="text-xs font-semibold uppercase tracking-wide text-gray-500">Still to be paid</div>
             <div class="text-2xl font-bold tabular-nums mt-1 <%= still_cents.positive? ? 'text-gray-900' : 'text-gray-400' %>"><%= number_to_currency(still_cents / 100.0) %></div>
             <div class="text-xs text-gray-500 mt-0.5">
-              <% if waiting_cents.positive? %>incl. <%= number_to_currency(waiting_cents / 100.0) %> waiting for approval<% elsif still_cents.positive? %>approved<% else %>nothing waiting<% end %>
+              <% if waiting_cents.positive? %>incl. <%= number_to_currency(waiting_cents / 100.0) %> waiting for approval<% elsif contract_cents.positive? %>incl. <%= number_to_currency(contract_cents / 100.0) %> under your contracts<% elsif still_cents.positive? %>approved<% else %>nothing waiting<% end %>
             </div>
           </div>
         </div>
@@ -90,12 +91,20 @@
           waiting for approval. Every group is its line items. %>
       <section>
         <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Still to be paid</h2>
-        <% if !@person.can_receive_payouts? && still_cents.positive? %>
+        <% ready_cents = still_cents - contract_cents %>
+        <% if !@person.can_receive_payouts? && ready_cents.positive? %>
           <%# The money is real and waiting: say exactly what unlocks it. %>
           <%= render "shared/alert_panel",
                 eyebrow: "Ready for you",
-                headline: "#{number_to_currency(still_cents / 100.0)} is waiting on your bank",
+                headline: "#{number_to_currency(ready_cents / 100.0)} is waiting on your bank",
                 body: "Add your bank and it goes out with the next payout run. It reaches your bank about two business days later.",
+                actions: [ { text: "Add your bank", path: my_payments_connect_bank_path, method: :post, form: { data: { turbo: false } } } ] %>
+        <% elsif !@person.can_receive_payouts? && contract_cents.positive? %>
+          <%# Contract payments still ahead of their dates: the bank has to be there before they're sent. %>
+          <%= render "shared/alert_panel",
+                eyebrow: "Before your contract pays you",
+                headline: "Add your bank so your contract payments can be sent",
+                body: "Each one goes out once it's due and added to a payout run, straight to the bank you add here.",
                 actions: [ { text: "Add your bank", path: my_payments_connect_bank_path, method: :post, form: { data: { turbo: false } } } ] %>
         <% end %>
         <% if still_groups.any? %>
@@ -159,7 +168,8 @@
                     </div>
                     <div class="flex items-center gap-2 flex-shrink-0">
                       <span class="text-sm font-semibold text-gray-900 tabular-nums"><%= number_to_currency((payment.kind == "offset" ? payment.offset_cents : payment.cents) / 100.0) %></span>
-                      <% if opens %>
+                      <% if payment.kind == "contract" %>
+                      <% elsif opens %>
                         <svg class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                       <% else %>
                         <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>

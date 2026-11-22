@@ -79,7 +79,7 @@
         <% if into_balance %>
           Payments go into <%= into_balance.words.delete_prefix("Paid into ") %>'s balance on CocoScout.
         <% elsif payee %>
-          Payments go to the bank you connected on CocoScout.<%= " Pay sent by check or cash shows here once #{org_name} records it." if any_by_hand %>
+          Payments sent through CocoScout go to your bank account.<%= " Pay handed to you by check or cash shows here once #{org_name} records it." if any_by_hand %>
         <% else %>
           Payments go to <%= who %>. You're on this contract to see its dates, ticket sales, and terms.
         <% end %>
