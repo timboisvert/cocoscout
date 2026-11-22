@@ -397,6 +397,8 @@ Rails.application.routes.draw do
   # Pilot user setup (superadmins only)
 
   # Respond to an audition request
+  # Writing into a contract's thread, from either side of the contract.
+  post "/contracts/:contract_id/thread", to: "contract_threads#create", as: "contract_thread"
   get "/a/:token", to: "my/submit_audition_request#entry", as: "submit_audition_request"
 
   # Short URL for sign-up forms

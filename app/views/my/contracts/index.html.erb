@@ -244,6 +244,11 @@
             </div>
           <% end %>
 
+          <%# Messages with everyone on the contract (ContractThread), once it's signed. %>
+          <% if !contract.status_draft? && ContractThread.can_post?(Current.user, contract) %>
+            <div class="border-t border-gray-100 px-5 py-4"><%= render "shared/contract_thread", contract: contract %></div>
+          <% end %>
+
           <%# Signed PDF, right on the card once it's ready. %>
           <% if (pdf_doc = contract.signed_pdf_document) %>
             <div class="border-t border-gray-100 px-5 py-3 flex justify-end">

@@ -322,6 +322,12 @@
         <div data-tabs-target="panel" class="sm:!block max-lg:order-1"><%= render "signature_panel" %></div>
       <% end %>
 
+      <%# Messages about this contract, with everyone on it (ContractThread). %>
+      <% unless @contract.status_draft? %>
+        <% phone_sections << { label: "Messages", index: (panel_index += 1), show: (true) } %>
+        <div data-tabs-target="panel" class="sm:!block max-lg:order-2"><%= render "shared/contract_thread", contract: @contract %></div>
+      <% end %>
+
       <%# Financial Summary — the gross picture first (what the deal made vs
           cost us, ticket revenue included), then plain payment cash-flow. %>
       <% money ||= @contract.money_display %>
