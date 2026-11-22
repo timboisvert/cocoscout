@@ -31,7 +31,8 @@
         <%= request.allow_replace? ? "They can replace what was already here." : "They can't replace what was already here." %>
       </p>
       <div class="mt-4 h-2 rounded-full bg-gray-100 overflow-hidden" role="img" aria-label="<%= counts.done %> of <%= counts.total %> received">
-        <div class="h-2 bg-pink-500" style="width: <%= counts.total.zero? ? 0 : (counts.done * 100.0 / counts.total).round(1) %>%"></div>
+        <%# Green once every item is in, optional ones too (Tim, 2026-11-22). %>
+        <div class="h-2 <%= counts.all_in? ? 'bg-green-500' : 'bg-pink-500' %>" data-asset-progress-bar style="width: <%= counts.total.zero? ? 0 : (counts.done * 100.0 / counts.total).round(1) %>%"></div>
       </div>
     </div>
 

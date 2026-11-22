@@ -109,6 +109,20 @@ RSpec.describe "Visual asset requests", type: :request do
       expect(sheet).not_to include("Already here")
     end
 
+    # The bar turns green once every item is in, optional ones too (Tim, 2026-11-22).
+    it "draws the progress bar pink until every item is in, then green" do
+      post manage_request_production_visual_asset_path(production), params: { commit_action: "copy", allow_replace: "1" }
+      bar = -> { response.body[/<div class="h-2 ([^"]+)" data-asset-progress-bar/, 1] }
+
+      get edit_manage_production_path(production, tab: 1)
+      expect(bar.call).to eq("bg-pink-500")
+
+      allow_any_instance_of(ProductionAssets).to receive(:counts)
+        .and_return(ProductionAssets::Counts.new(done: 5, total: 5, missing_required: [], missing_optional: []))
+      get edit_manage_production_path(production, tab: 1)
+      expect(bar.call).to eq("bg-green-500")
+    end
+
     it "uploads a file that meets the specification, and refuses one that doesn't" do
       post manage_upload_production_visual_asset_path(production), params: { spec_id: instagram.id, file: asset_image(1080, 1350, name: "ig.png") }
       expect(response).to have_http_status(:unprocessable_content)

@@ -77,6 +77,9 @@ class ProductionAssets
 
   Counts = Data.define(:done, :total, :missing_required, :missing_optional) do
     def complete? = missing_required.empty?
+
+    # Every item on the list is in, optional ones too.
+    def all_in? = total.positive? && done == total
   end
 
   attr_reader :production
