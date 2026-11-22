@@ -95,7 +95,7 @@
             <div class="text-sm text-gray-500">
               <% if @audition_cycle.include_availability_section %>
                 <% selected_count = (@audition_cycle.availability_show_ids || []).size %>
-                Asking about <%= selected_count.zero? ? "all upcoming shows" : pluralize(selected_count, "show") %><%= " (required)" if @audition_cycle.require_all_availability %>
+                Requesting availability for <%= selected_count.zero? ? "all upcoming shows" : pluralize(selected_count, "show") %><%= " (required)" if @audition_cycle.require_all_availability %>
               <% else %>
                 Off
               <% end %>
@@ -114,7 +114,7 @@
               <div class="text-sm font-medium text-gray-900">Audition Session Availability</div>
               <div class="text-sm text-gray-500">
                 <% if @audition_cycle.include_audition_availability_section %>
-                  Asking which audition times work for them<%= " (required)" if @audition_cycle.require_all_audition_availability %>
+                  Having them choose the audition times that work for them<%= " (required)" if @audition_cycle.require_all_audition_availability %>
                 <% else %>
                   Off
                 <% end %>
@@ -146,7 +146,7 @@
                   <div class="flex items-center justify-between">
                     <div class="flex-1 mr-4">
                       <p class="font-medium text-gray-900">Show & Event Availability</p>
-                      <p class="text-sm text-gray-500 mt-1">Ask if they're available for upcoming shows and events</p>
+                      <p class="text-sm text-gray-500 mt-1">Request their availability for upcoming shows and events</p>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
                       <input type="hidden" name="audition_cycle[include_availability_section]" value="0">
@@ -160,7 +160,7 @@
                   </div>
 
                   <div data-availability-wizard-target="showAvailabilitySection" class="<%= 'hidden' unless @audition_cycle.include_availability_section %> mt-4 pt-4 border-t border-gray-200">
-                    <p class="text-sm font-medium text-gray-700 mb-2">Select shows & events to ask about:</p>
+                    <p class="text-sm font-medium text-gray-700 mb-2">Select shows & events to include:</p>
                     <% if @shows.any? %>
                       <%
                         selected_show_ids = (@audition_cycle.availability_show_ids || []).map { |id| id.to_i }
@@ -208,7 +208,7 @@
                     <div class="flex items-center justify-between">
                       <div class="flex-1 mr-4">
                         <p class="font-medium text-gray-900">Audition Session Availability</p>
-                        <p class="text-sm text-gray-500 mt-1">Ask which audition times work for them</p>
+                        <p class="text-sm text-gray-500 mt-1">Have them choose the audition times that work for them</p>
                       </div>
                       <label class="relative inline-flex items-center cursor-pointer">
                         <input type="hidden" name="audition_cycle[include_audition_availability_section]" value="0">

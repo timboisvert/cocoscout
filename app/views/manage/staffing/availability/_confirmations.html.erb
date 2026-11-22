@@ -25,7 +25,7 @@
     </ul>
     <% if nudgeable.any? %>
       <div class="px-4 py-3 border-t border-gray-200">
-        <%= render "shared/button", text: "Ask them to confirm", variant: "primary", size: "small", type: :button, classes: "w-full",
+        <%= render "shared/button", text: "Request confirmation", variant: "primary", size: "small", type: :button, classes: "w-full",
               data: { controller: "modal", action: "click->modal#open", modal_id: nudge_cid } %>
       </div>
     <% end %>
@@ -39,7 +39,7 @@
     <div class="flex min-h-full items-start justify-center p-4 py-12" data-action="click->modal#closeOnBackdrop">
       <div class="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl overflow-hidden" data-action="click->modal#stopPropagation">
         <div class="flex items-center justify-between gap-3 bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
-          <h3 class="text-lg font-semibold text-white">Ask staff to confirm their availability</h3>
+          <h3 class="text-lg font-semibold text-white">Request that staff confirm their availability</h3>
           <button type="button" data-action="click->modal#close"
                   class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>

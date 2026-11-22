@@ -10,12 +10,12 @@
 #     required has been added.
 class VisualAssetTemplates
   BASE_VARIABLES = [
-    { "name" => "organization_name", "description" => "The organization asking" },
+    { "name" => "organization_name", "description" => "The organization requesting" },
     { "name" => "production_name", "description" => "The production" }
   ].freeze
 
   TEMPLATES = [
-    { key: "visual_assets_request", name: "Images and details requested (to the people asked)", channel: "email",
+    { key: "visual_assets_request", name: "Images and details requested (to the people it's sent to)", channel: "email",
       subject: "{{subject}}",
       body: %({{message_html}}<p><strong>What we need</strong></p>{{list_html}}) +
             %(<p><a href="{{upload_url}}" class="button">Upload your images</a></p>) +

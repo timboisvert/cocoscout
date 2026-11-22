@@ -93,7 +93,7 @@ RSpec.describe "Manage::Staffing shift vacancies", type: :request do
     expect(enqueued_jobs.count { |j| j["job_class"] == "ActionMailer::MailDeliveryJob" && j["arguments"].first == "ShiftVacancyInvitationMailer" }).to eq(2)
 
     get manage_staffing_vacancy_path(vacancy)
-    expect(response.body).to include("Asked so far", "Unanswered", "Ask more people")
+    expect(response.body).to include("Invited so far", "Unanswered", "Invite more people")
     doc = Nokogiri::HTML(response.body)
     params = JSON.parse(doc.at_css("[data-people-picker='vacancy-picker']")["data-people-picker-params-value"])
     expect(params["invited"]).to contain_exactly(priya.id, lee.id)

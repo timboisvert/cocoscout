@@ -8,7 +8,7 @@
   <%= render partial: "shared/top_menu", locals: { breadcrumbs: (@pro ? [ [ "Mailing lists", manage_mailing_lists_path ] ] : []), text: (@pro ? "Shared with you" : "Mailing lists"), links: [] } %>
 
   <p class="text-sm text-gray-600 mb-5 max-w-3xl">
-    <%= @lists.map { |list| list.organization.name }.uniq.to_sentence %> <%= @lists.map(&:organization_id).uniq.one? ? "shares" : "share" %> the people who asked to hear about your shows.
+    <%= @lists.map { |list| list.organization.name }.uniq.to_sentence %> <%= @lists.map(&:organization_id).uniq.one? ? "shares" : "share" %> the people who signed up to hear about your shows.
     You can download a list or copy the addresses.
     <% if @pro %>They are also on your own mailing lists, where you can email them.<% end %>
   </p>

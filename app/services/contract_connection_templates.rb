@@ -50,7 +50,7 @@ class ContractConnectionTemplates
       body: %(<p>{{contractor_name}} is still waiting on the connection for {{production_name}}.</p><p><a href="{{contract_url}}">Open the contract</a></p>) },
     { key: "contract_connection_connected_by_earlier_yes", name: "A later contract connected under an earlier yes (to the organization)",
       subject: "{{contractor_name}} connected the contract for {{production_name}} to {{linked_organization_name}}",
-      body: %(<p>{{contractor_name}} connected the contract for {{production_name}} to {{linked_organization_name}}. You weren't asked this time, because {{organization_name}} chose to connect later contracts with {{contractor_name}}. You can change that choice, or unlink this contract, on the contract's page.</p><p><a href="{{contract_url}}">Open the contract</a></p>) },
+      body: %(<p>{{contractor_name}} connected the contract for {{production_name}} to {{linked_organization_name}}. No approval was requested from you this time, because {{organization_name}} chose to connect later contracts with {{contractor_name}}. You can change that choice, or unlink this contract, on the contract's page.</p><p><a href="{{contract_url}}">Open the contract</a></p>) },
     { key: "contract_connection_accepted", name: "A connection accepted (to the contractor)",
       subject: "{{organization_name}} connected your contract. Their dates are in {{linked_production_name}}.",
       body: %(<p>{{organization_name}} connected your contract for {{production_name}}. Their dates are in {{linked_production_name}}, in {{linked_organization_name}}.</p><p><a href="{{contracts_url}}">Open My Contracts</a></p>) },

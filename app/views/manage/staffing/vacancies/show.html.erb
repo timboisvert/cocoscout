@@ -23,7 +23,7 @@
   todo_dot = "bg-gray-200 ring-white"
   steps = [
     [ "Can't make it", "#{dropper.name} dropped it", true, step == :dropped ],
-    [ "Asked around", (@invitations.any? ? pluralize(@invitations.size, "person") + " asked" : "Nobody asked yet"), @invitations.any? || step == :covered, step == :invited ],
+    [ "Invited", (@invitations.any? ? pluralize(@invitations.size, "person") + " invited" : "Nobody invited yet"), @invitations.any? || step == :covered, step == :invited ],
     [ (step == :closed ? (vacancy.cancelled? ? "Back on" : "Not filling it") : "Covered"),
       (step == :covered ? "#{vacancy.filled_by&.name} has it" : (step == :closed ? "Closed" : "Nobody yet")),
       step.in?(%i[covered closed]), step.in?(%i[covered closed]) ]
@@ -131,7 +131,7 @@
 
     <% if @invitations.any? %>
       <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Asked so far", intro: "First to claim gets it." %>
+        <%= render "shared/section_heading", padding: "px-4 py-3", title: "Invited so far", intro: "First to claim gets it." %>
         <div class="p-4">
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3" data-vacancy-invitations>
             <% @invitations.each do |invitation| %>
@@ -157,13 +157,13 @@
 
     <%# Ask people %>
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-6">
-      <%= render "shared/section_heading", title: @invitations.any? ? "Ask more people" : "Ask people to cover it" %>
+      <%= render "shared/section_heading", title: @invitations.any? ? "Invite more people" : "Invite people to cover it" %>
       <div class="p-5 sm:p-6">
         <% if @candidates.rows.any?(&:pickable?) %>
           <% quick = @candidates.free.map { |r| v = r.person.safe_headshot_variant(:thumb); { key: "Person_#{r.person.id}", name: r.person.name, initials: r.person.initials, headshotUrl: (v ? url_for(v) : nil) } } %>
           <%= form_with url: manage_send_invitations_staffing_vacancy_path(vacancy), method: :post, class: "space-y-6", id: "send-shift-invitations" do %>
             <div>
-              <label class="block font-semibold mb-2 text-sm">Who to ask</label>
+              <label class="block font-semibold mb-2 text-sm">Who to invite</label>
               <%= render "manage/staffing/vacancies/invitee_picks", shift: shift, vacancy: vacancy, quick: quick, invited_ids: @invitations.map(&:person_id) %>
             </div>
             <div>
@@ -188,7 +188,7 @@
           <% end %>
         <% else %>
           <% others = @candidates.rows.count { |r| !r.dropped && !r.excluded } %>
-          <p class="text-sm text-gray-500"><%= others.zero? ? "No one else is qualified for #{shift.house_role.name}. Add qualifications on Manage roles, or assign someone directly." : "Everyone else qualified for #{shift.house_role.name} is on the shift or has been asked already." %></p>
+          <p class="text-sm text-gray-500"><%= others.zero? ? "No one else is qualified for #{shift.house_role.name}. Add qualifications on Manage roles, or assign someone directly." : "Everyone else qualified for #{shift.house_role.name} is on the shift or has been invited already." %></p>
         <% end %>
       </div>
     </div>

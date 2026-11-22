@@ -12,7 +12,7 @@
 <% search_key = [ person.name, person.email, member.personal_email, member.title ].compact.join(" ").downcase %>
 <%
   status_badge = if inactive
-    { text: "Inactive", color: "gray", title: "Marked inactive — kept in your records, but not scheduled, paid, or asked for availability." }
+    { text: "Inactive", color: "gray", title: "Marked inactive — kept in your records, but not scheduled, paid, or sent availability requests." }
   else
     case member.onboarding_status
     when :no_account   then { text: "No account", color: "gray",  title: "No CocoScout account yet — they need to accept the invite and sign up." }

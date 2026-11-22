@@ -44,7 +44,7 @@
       <div>
         <%= f.label :email_mailing_address, "Mailing address", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
         <%= f.text_field :email_mailing_address, class: follower_input_class, placeholder: @organization.email_postal_address || "Street, city, state, ZIP" %>
-        <p class="text-xs text-gray-500 mt-1.5">The law asks for one in every marketing email. <%= @organization.email_mailing_address.blank? && @organization.email_postal_address ? "Until you set one, it's the address on your invoices." : "" %></p>
+        <p class="text-xs text-gray-500 mt-1.5">The law requires one in every marketing email. <%= @organization.email_mailing_address.blank? && @organization.email_postal_address ? "Until you set one, it's the address on your invoices." : "" %></p>
       </div>
       <div>
         <span class="block text-sm font-medium text-gray-700 mb-1">Replies go to</span>
@@ -67,7 +67,7 @@
         </div>
         <div class="px-5 py-3 bg-gray-50 text-[10.5px] text-gray-500 text-center leading-relaxed">
           <% if @organization.email_footer_line.present? %><%= @organization.email_footer_line %><br><% end %>
-          You're getting this because you asked to hear from <%= @organization.name %>.<br>
+          You're getting this because you signed up to hear from <%= @organization.name %>.<br>
           <%= @organization.email_postal_address || "[Your mailing address]" %><br>
           <span class="underline">Unsubscribe</span> · Sent with CocoScout
         </div>

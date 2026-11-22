@@ -57,7 +57,7 @@
         <% if replaceable %>
           <%= render "shared/button", text: "Replace", variant: "secondary", size: "small", type: :button, data: { action: "click->asset-upload#pick" } %>
         <% else %>
-          <p class="text-xs text-gray-500">Ask <%= organization.name %> if this needs to change.</p>
+          <p class="text-xs text-gray-500">Request a change from <%= organization.name %> if this needs to change.</p>
         <% end %>
       </div>
     <% end %>

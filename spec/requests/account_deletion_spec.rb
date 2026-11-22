@@ -32,7 +32,7 @@ RSpec.describe "Deleting my account", type: :request do
 
     mails = ActionMailer::Base.deliveries
     expect(mails.flat_map(&:to)).to match_array(User::SUPERADMIN_EMAILS)
-    expect(mails.first.subject).to eq("Ida Performer asked to delete their CocoScout account")
+    expect(mails.first.subject).to eq("Ida Performer requested deleting their CocoScout account")
     expect(mails.first.html_part.decoded).to include("ida@example.com", "the iPhone app", "/superadmin/people/#{person.id}")
 
     get account_path, headers: in_app
@@ -56,6 +56,6 @@ RSpec.describe "Deleting my account", type: :request do
     post handle_signin_path, params: { email_address: admin.email_address, password: password }
 
     get person_detail_path(person)
-    expect(response.body).to include("Asked to be deleted", "Since October 12, 2026", "by November 11")
+    expect(response.body).to include("Requested deletion", "Since October 12, 2026", "by November 11")
   end
 end

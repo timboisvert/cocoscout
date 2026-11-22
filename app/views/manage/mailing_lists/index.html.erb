@@ -4,7 +4,7 @@
   <%= render "shared/notice", notice: notice, alert: alert %>
   <%= render "shared/module_header",
         title: "Mailing lists",
-        description: "<p>Everyone who asked to hear from you, by list. Ticket buyers join at checkout; add anyone else by hand. A list for one of your contractors is shared with the people on that contract.</p>",
+        description: "<p>Everyone who signed up to hear from you, by list. Ticket buyers join at checkout; add anyone else by hand. A list for one of your contractors is shared with the people on that contract.</p>",
         actions: [
           { icon: "mail", text: "New email", description: "Write and send to a list", path: manage_new_follower_email_path },
           { icon: "user-plus", text: "Add people", description: "One at a time or many", path: manage_mailing_list_path(@main_list, add: 1) },

@@ -71,7 +71,7 @@ RSpec.describe "Manage::Staffing::Taxes", type: :request do
       post manage_request_w9s_staffing_taxes_path, params: { email_subject: "x", email_body: "y" }
     }.not_to have_enqueued_mail(StaffTaxFormMailer, :w9_request)
 
-    expect(flash[:alert]).to eq("Tick at least one person to ask.")
+    expect(flash[:alert]).to eq("Tick at least one person.")
     expect(member.reload.w9_requested_at).to be_nil
   end
 

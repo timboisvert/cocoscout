@@ -27,7 +27,7 @@
   answers = group.kind == "check" ? [] : [
     [ "record", "Record it, every time", "Money #{group.direction == 'in' ? 'in from' : 'out to'} this payee is always the same kind of thing." ],
     [ "ignore", "Ignore it, every time", "A transfer between your own accounts, or not the organization's money." ],
-    [ "varies", "It varies, no rule", "Leave these to record one by one. We won't ask about this payee again." ]
+    [ "varies", "It varies, no rule", "Leave these to record one by one. This payee won't come up again." ]
   ]
 %>
 <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start" data-controller="bank-sort">
@@ -131,7 +131,7 @@
           <%= render "shared/button", text: "Ignore every check", variant: "secondary", size: "medium", type: :submit, name: "answer", value: "ignore_all" %>
           <%= render "shared/button", text: "Leave them, go on", variant: "primary", size: "medium", type: :submit, name: "answer", value: "skip" %>
         <% else %>
-          <%= render "shared/button", text: "Skip, ask me later", variant: "secondary", size: "medium", type: :submit, name: "answer", value: "skip", data: { bank_sort_target: "skip" } %>
+          <%= render "shared/button", text: "Skip for now", variant: "secondary", size: "medium", type: :submit, name: "answer", value: "skip", data: { bank_sort_target: "skip" } %>
           <%= render "shared/button", text: "Save the rule, #{pluralize(group.open.size, 'line')}, and go on", variant: "primary", size: "medium", type: :submit, data: { bank_sort_target: "submit", bank_sort_base_param: group.open.size, bank_sort_record_text_param: "Save the rule, {lines}, and go on", bank_sort_ignore_text_param: "Save the rule, {lines}, and go on", bank_sort_varies_text_param: "No rule, go on" } %>
         <% end %>
       </div>

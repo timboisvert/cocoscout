@@ -124,7 +124,7 @@ module Manage
         production.update!(payout_calculation_mode: "each_show", pays_performers: true)
         payout ||= show.create_show_payout!(status: "awaiting_payout")
         payout.update!(payout_scheme: scheme, override_rules: nil) unless locked
-        notice = "#{show.display_name} uses #{scheme.name}. You'll be asked for each #{production.name} show."
+        notice = "#{show.display_name} uses #{scheme.name}. You'll choose one for each #{production.name} show."
       else
         production.update!(payout_calculation_mode: "production", pays_performers: true)
         scheme.make_production_scheme!(production)

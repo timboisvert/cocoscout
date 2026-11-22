@@ -10,7 +10,7 @@ class FollowerTemplates
   TEMPLATES = [
     { key: "follower_email_footer", name: "Follower email: why they got it", channel: "email",
       subject: "Why you got this",
-      body: "<p>You're getting this because you asked to hear from {{organization_name}}.</p>",
+      body: "<p>You're getting this because you signed up to hear from {{organization_name}}.</p>",
       variables: [ { "name" => "organization_name", "description" => "The organization sending it" } ] },
     { key: "follower_email_test_note", name: "Follower email: test send note", channel: "email",
       subject: "[Test] {{subject}}",

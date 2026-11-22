@@ -26,7 +26,7 @@
       <div data-tap-to-pay-setup-target="notSetUp" class="hidden">
         <%= render "shared/button", text: "Set up Tap to Pay", variant: "primary", size: "large", type: :button,
               classes: "w-full justify-center", data: { action: "click->bridge--tap-to-pay#enable" } %>
-        <p class="mt-2 text-xs text-gray-500">This phone gets ready to take taps for <%= @organizations.map(&:name).to_sentence %>. It asks for your location, which card networks require for every payment.</p>
+        <p class="mt-2 text-xs text-gray-500">This phone gets ready to take taps for <%= @organizations.map(&:name).to_sentence %>. It requests your location, which card networks require for every payment.</p>
       </div>
 
       <div data-tap-to-pay-setup-target="preparing" class="hidden" role="status" aria-live="polite">
@@ -49,7 +49,7 @@
       </div>
 
       <div data-tap-to-pay-setup-target="needsAdmin" class="hidden rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        Tap to Pay isn't ready for your organization yet. Ask your organization's manager to contact CocoScout.
+        Tap to Pay isn't ready for your organization yet. Your organization's manager can contact CocoScout to set it up.
       </div>
 
       <div data-tap-to-pay-setup-target="failed" class="hidden">
@@ -64,7 +64,7 @@
 
   <div class="mt-3 rounded-2xl border border-gray-200 bg-white px-5 py-4">
     <h2 class="text-base font-semibold text-gray-900">How to take a tap</h2>
-    <p class="mt-1 text-sm text-gray-600">Where the buyer holds their card, phone or watch, and what happens when a card asks for a PIN.</p>
+    <p class="mt-1 text-sm text-gray-600">Where the buyer holds their card, phone or watch, and what happens when a card requires a PIN.</p>
     <div class="mt-3">
       <%= render "shared/button", text: "See how", variant: "secondary", size: "medium", type: :button,
             classes: "w-full justify-center", data: { action: "click->bridge--tap-to-pay#howToTap" } %>

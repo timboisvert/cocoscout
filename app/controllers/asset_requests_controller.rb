@@ -50,7 +50,7 @@ class AssetRequestsController < ApplicationController
   end
 
   def closed_message
-    "This link has been turned off, so it no longer takes uploads. Ask #{@production.organization.name} for a new link."
+    "This link has been turned off, so it no longer takes uploads. Request a new link from #{@production.organization.name}."
   end
 
   def asset_production = @production

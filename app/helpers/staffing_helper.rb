@@ -32,9 +32,9 @@ module StaffingHelper
     when :not_required
       { text: "W-9 off", color: :gray, title: "Your organization doesn't collect W-9s." }
     when :requested
-      { text: "W-9 requested", color: :amber, title: "Asked #{time_ago_in_words(member.w9_requested_at)} ago — waiting on them." }
+      { text: "W-9 requested", color: :amber, title: "Requested #{time_ago_in_words(member.w9_requested_at)} ago, waiting on them." }
     else
-      { text: "W-9 needed", color: :amber, title: "Nobody has asked for their W-9 yet." }
+      { text: "W-9 needed", color: :amber, title: "Nobody has requested their W-9 yet." }
     end
     return nil if compact && %i[received exempt not_required].include?(member.w9_status)
 

@@ -43,7 +43,7 @@ RSpec.describe "Staffing availability for managers", type: :request do
       expect(response.body).to include(manage_staffing_availability_day_path(date: day.iso8601))
       expect(response.body).to include("1 of 3")          # only Ada has confirmed
       expect(response.body).to include("Pat Part").and include("Otto Off")
-      expect(response.body).to include("Ask them to confirm")
+      expect(response.body).to include("Request confirmation")
     end
 
     it "narrows to one role" do
@@ -90,7 +90,7 @@ RSpec.describe "Staffing availability for managers", type: :request do
           email_subject: "Check your week, {{first_name}}", email_body: "<p>Hi {{first_name}}</p>"
         }
       }.to have_enqueued_job(StaffAvailabilityNudgeJob)
-      expect(flash[:notice]).to include("Asking 1 person")
+      expect(flash[:notice]).to include("Requested that 1 person confirm")
 
       expect {
         perform_enqueued_jobs(only: StaffAvailabilityNudgeJob)
@@ -100,7 +100,7 @@ RSpec.describe "Staffing availability for managers", type: :request do
 
     it "asks nobody when nobody's ticked" do
       post manage_staffing_availability_nudge_path, params: { email_subject: "x", email_body: "y" }
-      expect(flash[:alert]).to eq("Tick at least one person to ask.")
+      expect(flash[:alert]).to eq("Tick at least one person.")
     end
   end
 
@@ -116,7 +116,7 @@ RSpec.describe "Staffing availability for managers", type: :request do
       StaffAvailabilityWriter.new(part_member.person).confirm!
       StaffAvailabilityWriter.new(part_member.person).set_weekdays!([ 0 ], state: "off")
       get manage_edit_staffing_staff_path(part_member)
-      expect(response.body).to include("Not confirmed since").and include("Ask them to confirm")
+      expect(response.body).to include("Not confirmed since").and include("Request confirmation")
     end
 
     it "pages its calendar and comes back to the tab" do

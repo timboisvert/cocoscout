@@ -92,7 +92,7 @@ RSpec.describe "Staffing W-9 uploads", type: :request do
       expect(response).to redirect_to(manage_tax_info_staffing_staff_wizard_path)
 
       get manage_tax_info_staffing_staff_wizard_path
-      expect(response.body).to include("Ask them to fill it out while onboarding")
+      expect(response.body).to include("Request it during onboarding")
         .and include("I already have their W-9").and include("They don&#39;t need one")
     end
 

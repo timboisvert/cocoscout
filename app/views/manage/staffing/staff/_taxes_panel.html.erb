@@ -45,7 +45,7 @@
         <% elsif person.user.nil? %>
           <p class="text-sm text-gray-600 mt-0.5">They'll fill it in during onboarding, once they've set up their account.</p>
         <% else %>
-          <p class="text-sm text-gray-600 mt-0.5">Not asked yet.</p>
+          <p class="text-sm text-gray-600 mt-0.5">Not requested yet.</p>
         <% end %>
       </div>
       <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0 <%= pill[:classes] %>" title="<%= pill[:title] %>"><%= pill[:text] %></span>
@@ -68,7 +68,7 @@
                 data: {
                   action: "click->invite-preview#open",
                   "invite-path": manage_request_w9_staffing_tax_path(member, from: "staff"),
-                  "modal-title": "Ask for a W-9",
+                  "modal-title": "Request a W-9",
                   "to-name": person.name,
                   "to-email": w9_preview[:to_email],
                   "email-subject": w9_preview[:subject],

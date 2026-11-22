@@ -221,7 +221,7 @@ RSpec.describe "Contract connections", type: :request do
       get manage_contract_path(contract)
 
       expect(response.body).to include("requests to connect this contract").and include("also runs an organization on CocoScout, called The Holly Problem")
-        .and include("So my team can see sales.").and include("Later contracts with").and include("Ask us each time")
+        .and include("So my team can see sales.").and include("Later contracts with").and include("Check with us each time")
     end
 
     it "lets the organization go back to its own images on its ticket page, and to theirs again" do

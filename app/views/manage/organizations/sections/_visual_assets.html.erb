@@ -8,7 +8,7 @@
   check = "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
   groups = [
     { kind: "image", title: "Images", intro: "The images you expect every production to have. When you request them, people see this list, in this order. Drag to reorder.", add: "Add an image" },
-    { kind: "text", title: "Written items", intro: "Words you need for every production, asked for on the same page as the images.", add: "Add a written item" }
+    { kind: "text", title: "Written items", intro: "Words you need for every production, requested on the same page as the images.", add: "Add a written item" }
   ]
 %>
 <div class="space-y-6">
@@ -61,7 +61,7 @@
           <% if spec.removable? %>
             <%= render "shared/confirm_modal", id: remove_cid,
                   title: "Remove #{spec.name}?",
-                  message: spec.image? ? "Productions stop being asked for it. Any #{spec.name} a production already has stays with it, under its additional files." : "Productions stop being asked for it. Words a production already has for it are kept.",
+                  message: spec.image? ? "Productions are no longer requested to send it. Any #{spec.name} a production already has stays with it, under its additional files." : "Productions are no longer requested to send it. Words a production already has for it are kept.",
                   confirm_text: "Remove",
                   url: manage_asset_spec_path(spec), method: :delete %>
           <% end %>

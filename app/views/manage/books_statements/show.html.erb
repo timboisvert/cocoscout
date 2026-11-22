@@ -97,7 +97,7 @@
                   <% if download.ready? %>
                     <%= link_to "Download", manage_money_file_path(download.file.attachment, download: 1), class: "text-pink-600 hover:text-pink-700 whitespace-nowrap", data: { turbo: false } %>
                   <% elsif download.failed? %>
-                    <span class="text-xs text-red-700 text-right">Couldn't be made. Ask for it again.</span>
+                    <span class="text-xs text-red-700 text-right">Couldn't be made. Request it again.</span>
                   <% else %>
                     <span class="text-xs text-gray-500 whitespace-nowrap">Being put together</span>
                   <% end %>

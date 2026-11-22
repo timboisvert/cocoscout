@@ -154,7 +154,7 @@
             <% if outside %>
               <div>
                 <label for="top_up_reason" class="block text-sm font-medium text-gray-700 mb-1.5">Why you're refunding anyway</label>
-                <%= text_field_tag :reason, nil, id: "top_up_reason", required: true, placeholder: "The show was moved; they asked by email", class: input_class %>
+                <%= text_field_tag :reason, nil, id: "top_up_reason", required: true, placeholder: "The show was moved; they requested it by email", class: input_class %>
               </div>
             <% end %>
             <% if message_field %>
@@ -191,10 +191,10 @@
           <div>
             <% if outside %>
               <label for="reason" class="block text-sm font-medium text-gray-700 mb-1.5">Why you're refunding anyway</label>
-              <%= text_field_tag :reason, nil, required: true, placeholder: "The show was moved; they asked by email", class: input_class %>
+              <%= text_field_tag :reason, nil, required: true, placeholder: "The show was moved; they requested it by email", class: input_class %>
             <% else %>
               <label for="reason" class="block text-sm font-medium text-gray-700 mb-1.5">Note for your records <span class="font-normal text-gray-500">(optional)</span></label>
-              <%= text_field_tag :reason, nil, placeholder: "Can't make it; asked by email", class: input_class %>
+              <%= text_field_tag :reason, nil, placeholder: "Can't make it; requested by email", class: input_class %>
             <% end %>
           </div>
           <% if comp && @order.buyer_email.present? %>

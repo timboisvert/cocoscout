@@ -191,7 +191,7 @@
           %>
           <div class="border border-pink-200 rounded-lg overflow-hidden bg-white" data-follows-contract>
             <%= render "shared/section_heading", padding: "px-4 py-3", title: "Booked at #{booked_at}",
-                  intro: "This date follows your contract with #{booked_at}, so its time and place are set by them. If they move or cancel it, it will change here too, and you'll be asked to let your cast know.#{booking_words} If you need a different time, you can request a change from My Contracts." %>
+                  intro: "This date follows your contract with #{booked_at}, so its time and place are set by them. If they move or cancel it, it will change here too, and you'll be prompted to let your cast know.#{booking_words} If you need a different time, you can request a change from My Contracts." %>
             <div class="p-4">
               <%= render "shared/button", text: "Edit #{sanitize(@show.event_type.titleize)}", path: manage_edit_show_path(@production, @show), variant: "primary", size: "small" %>
             </div>

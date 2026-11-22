@@ -22,7 +22,7 @@
               concat hidden_field_tag(:person_id, @person.id, id: nil)
               concat tag.label("List", for: "add_to_list", class: "block text-sm font-medium text-gray-700 mb-1.5")
               concat select_tag(:mailing_list_id, options_for_select(follow_lists.map { |l| [ l.name, l.id ] }), id: "add_to_list", class: follower_input_class)
-              concat tag.p("They get your emails to that list, with an unsubscribe link in each. Add only someone who asked to hear from you.", class: "text-xs text-gray-500 mt-2")
+              concat tag.p("They get your emails to that list, with an unsubscribe link in each. Add only someone who wants to hear from you.", class: "text-xs text-gray-500 mt-2")
             end
           },
           footer: capture {

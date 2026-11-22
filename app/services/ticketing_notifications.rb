@@ -37,7 +37,7 @@ class TicketingNotifications
     Kind.new("sold_out", "Milestones", "Sold out", "A show or a ticket type sells out.", true),
     Kind.new("refund_issued", "Money", "Refund given", "Who refunded what, so everyone on the team knows.", false),
     Kind.new("refund_problem", "Money", "Refund problem", "A refund didn't go through, or is waiting on money.", true),
-    Kind.new("dispute", "Money", "Disputed charge", "A buyer asked their bank for their money back.", true),
+    Kind.new("dispute", "Money", "Disputed charge", "A buyer requested their money back from their bank.", true),
     Kind.new("withdrawal", "Money", "Withdrawals", "Money sent to your bank, or a withdrawal that didn't go through.", true),
     Kind.new("cancellation_done", "Money", "Show cancellation done", "Every buyer of a canceled show has been refunded (or which ones couldn't be).", true)
   ].freeze

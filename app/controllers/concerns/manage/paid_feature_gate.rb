@@ -203,7 +203,7 @@ module Manage
           { title: "Reusable agreement templates", body: "Write your terms once with merge fields for production, performer, and date, and reuse them across every production." },
           { title: "Online e-signatures", body: "Performers review and sign in-app; each signature is snapshotted with a timestamp for your records." },
           { title: "Manual or automatic sending", body: "Send on your schedule, or have the agreement go out the moment someone is added to a talent pool." },
-          { title: "Signed / awaiting / not-sent roster", body: "See at a glance who has signed, who's been asked, and who still needs it — and resend in a click." }
+          { title: "Signed / awaiting / not-sent roster", body: "See at a glance who has signed, who's been sent it, and who still needs it — and resend in a click." }
         ],
         outcome: "Cast with confidence, knowing everyone has agreed to your terms in writing."
       },
@@ -212,7 +212,7 @@ module Manage
         icon: "mail",
         headline: "Fill the next show from the last one",
         subhead: "Ticket buyers join your list at checkout, and every email shows what it sold.",
-        description: "Mailing Lists keeps everyone who asked to hear from you in one place: ticket buyers from checkout, and anyone you add. Email them in your own look, pick people by what they've bought, and share a producer's followers with them.",
+        description: "Mailing Lists keeps everyone who signed up to hear from you in one place: ticket buyers from checkout, and anyone you add. Email them in your own look, pick people by what they've bought, and share a producer's followers with them.",
         capabilities: [
           { title: "Lists that fill themselves", body: "A box at checkout adds buyers to your list, and to a producer's list on their shows." },
           { title: "Segments from real sales", body: "Regulars, people who haven't been back, a producer's crowd who've never seen your shows: kept current by themselves." },
@@ -296,9 +296,9 @@ module Manage
       return if level == "view" && (request.get? || request.head?)
 
       notice = if level == "none"
-        "That part of CocoScout isn't open to you. Ask one of your organization's managers."
+        "That part of CocoScout isn't open to you. One of your organization's managers can give you access."
       else
-        "You can look at that but not change it. Ask one of your organization's managers."
+        "You can look at that but not change it. One of your organization's managers can change it, or give you access."
       end
       respond_to do |format|
         format.json { render json: { error: "forbidden", module: mod, level: level }, status: :forbidden }

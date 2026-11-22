@@ -64,7 +64,7 @@ module Manage
       # their onboarding invite covers it.
       def request_w9s
         ids = Array(params[:staff_member_ids]).map(&:to_i)
-        return redirect_to(manage_staffing_taxes_path, alert: "Tick at least one person to ask.") if ids.empty?
+        return redirect_to(manage_staffing_taxes_path, alert: "Tick at least one person.") if ids.empty?
 
         targets = Current.organization.organization_staff_members.active
                          .includes(:w9_submissions, organization: :tax_setting, person: :user)
@@ -87,7 +87,7 @@ module Manage
 
         notice = sent.positive? ? "Requested a W-9 from #{helpers.pluralize(sent, 'person')}." : "Nobody new to request one from."
         if skipped.any?
-          notice += " #{skipped.to_sentence} #{skipped.one? ? "hasn't" : "haven't"} set up an account yet — they'll be asked during onboarding."
+          notice += " #{skipped.to_sentence} #{skipped.one? ? "hasn't" : "haven't"} set up an account yet — it will be requested during onboarding."
         end
         redirect_to manage_staffing_taxes_path, notice: notice
       end

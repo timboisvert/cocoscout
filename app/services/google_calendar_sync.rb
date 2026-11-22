@@ -91,7 +91,7 @@ class GoogleCalendarSync
   rescue GoogleCalendarApi::NotFound
     integration.record_error!("The calendar CocoScout made is gone from Google. Disconnect, then connect again to make a new one.")
   rescue GoogleCalendarApi::RateLimited
-    integration.record_error!("Google asked CocoScout to slow down. The rest of your dates will be added in a few minutes.")
+    integration.record_error!("Google requested that CocoScout slow down. The rest of your dates will be added in a few minutes.")
     raise
   rescue GoogleCalendarApi::Error => e
     integration.record_error!(e.message)

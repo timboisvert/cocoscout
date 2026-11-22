@@ -72,12 +72,12 @@ module Manage
         members = Current.organization.organization_staff_members.active.where(id: ids)
                          .includes(person: :user).select { |m| StaffAvailabilityNudger.requestable?(m) }
         if members.empty?
-          return redirect_to(return_path, alert: "Tick at least one person to ask.")
+          return redirect_to(return_path, alert: "Tick at least one person.")
         end
 
         StaffAvailabilityNudgeJob.perform_later(Current.organization.id, members.map(&:id),
                                                 params[:email_subject], params[:email_body], Current.user.id)
-        redirect_to return_path, notice: "Asking #{helpers.pluralize(members.size, 'person')} to confirm their availability — we're emailing and messaging them now."
+        redirect_to return_path, notice: "Requested that #{helpers.pluralize(members.size, 'person')} confirm their availability. They are being emailed and messaged now."
       end
 
       private

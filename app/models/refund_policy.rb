@@ -25,7 +25,7 @@ class RefundPolicy
   KIND_CHOICES = [
     [ "none", "No refunds", "All sales final. A show you cancel is still refunded in full." ],
     [ "window", "Up to a cutoff", "Refunds until a point before the show." ],
-    [ "case_by_case", "Case by case", "No window: buyers are told to ask you, and every refund is your call." ]
+    [ "case_by_case", "Case by case", "No window: buyers are told to request one from you, and every refund is your call." ]
   ].freeze
   WINDOW_CHOICES = [
     [ "window_0", "Until the show starts" ],
@@ -44,7 +44,7 @@ class RefundPolicy
     [ "window_720", "Up to 30 days before", nil ],
     [ "custom", "Up to a number of days you choose", nil ],
     [ "none", "No refunds", "All sales final. A show you cancel is still refunded in full." ],
-    [ "case_by_case", "Case by case", "No window: buyers are told to ask you, and every refund is your call." ]
+    [ "case_by_case", "Case by case", "No window: buyers are told to request one from you, and every refund is your call." ]
   ].freeze
 
   # The card a stored policy shows as.
@@ -154,7 +154,7 @@ class RefundPolicy
   def words
     lines = case kind
     when "none" then [ "All sales are final: no refunds." ]
-    when "case_by_case" then [ "Refunds are case by case#{": ask #{contact}" if contact.present?}." ]
+    when "case_by_case" then [ "Refunds are case by case#{": request one from #{contact}" if contact.present?}." ]
     else [ "#{short_words}." ]
     end
     lines << (fees ? "Fees are refunded too." : "Fees aren't refunded.") unless kind == "none"

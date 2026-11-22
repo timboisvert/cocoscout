@@ -35,7 +35,7 @@ module AssetUploading
 
     item = asset_assets.item(spec)
     if item.present? && !asset_may_replace?(item)
-      return render(json: { ok: false, message: "#{spec.name} has already been added. Ask #{asset_production.organization.name} if you need to change it." },
+      return render(json: { ok: false, message: "#{spec.name} has already been added. Request a change from #{asset_production.organization.name} if you need one." },
                     status: :unprocessable_content)
     end
 
@@ -57,7 +57,7 @@ module AssetUploading
     words = params[:text].to_s
     item = asset_assets.item(spec)
     if item.present? && words.strip != item.text.to_s && !asset_may_replace?(item)
-      return render(json: { ok: false, message: "#{spec.name} has already been added. Ask #{asset_production.organization.name} if you need to change it." },
+      return render(json: { ok: false, message: "#{spec.name} has already been added. Request a change from #{asset_production.organization.name} if you need one." },
                     status: :unprocessable_content)
     end
 

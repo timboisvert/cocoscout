@@ -206,7 +206,7 @@ class TicketingNotificationContent
   def self.dispute(order, opened:, amount_cents:)
     show_vars(order.ticket_listing).merge(
       headline: opened ? "Disputed charge" : "Dispute won",
-      explanation: opened ? "The buyer asked their bank for their money back. The amount and Stripe's $15 fee came out of your balance. Respond in Stripe; the check-in times on the order are good evidence." :
+      explanation: opened ? "The buyer requested their money back from their bank. The amount and Stripe's $15 fee came out of your balance. Respond in Stripe; the check-in times on the order are good evidence." :
                             "The bank sided with you. The money and the dispute fee are back in your balance.",
       buyer_name: h(order.buyer_name.presence || "A buyer"), amount: money(amount_cents), order_code: order.code,
       order_url: routes.manage_ticket_order_url(order.id, **url_options)

@@ -14,7 +14,7 @@ module Manage
         { icon: "ticket", text: "By show", description: "Ticket money, show by show", path: manage_money_books_section_path(section: "shows") },
         { icon: "check", text: "Checks", description: "The books against the records behind them", path: manage_money_books_section_path(section: "checks"), badge: Array(mismatches).size },
         { icon: "chart-bar", text: "Statements", description: "Profit and loss, balance sheet, cash flow", path: manage_money_statements_path },
-        { icon: "banknotes", text: "Taxes", description: "A year, the way the forms ask", path: manage_money_taxes_path },
+        { icon: "banknotes", text: "Taxes", description: "A year, the way the forms lay it out", path: manage_money_taxes_path },
         { icon: "dollar-sign", text: "Bank", description: "Check the books against your bank statement", path: manage_money_bank_path }
       ]
     end

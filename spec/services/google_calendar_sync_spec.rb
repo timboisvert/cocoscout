@@ -338,7 +338,7 @@ RSpec.describe GoogleCalendarSync do
 
       expect { sync.sync_all! }.to raise_error(GoogleCalendarApi::RateLimited)
 
-      expect(integration.reload.last_error).to eq("Google asked CocoScout to slow down. The rest of your dates will be added in a few minutes.")
+      expect(integration.reload.last_error).to eq("Google requested that CocoScout slow down. The rest of your dates will be added in a few minutes.")
     end
 
     it "gives each event an id of its own, and writes over one Google already has" do

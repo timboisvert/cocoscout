@@ -34,7 +34,7 @@ module My
       @request = @production && AssetRequest.current_for(@production)
       return if @request&.open?
 
-      message = "#{@contract.organization.name} isn't asking for images or details for this show right now."
+      message = "#{@contract.organization.name} isn't requesting images or details for this show right now."
       if request.format.json? || request.xhr? || !request.get?
         render json: { ok: false, message: message }, status: :gone
       else

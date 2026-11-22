@@ -15,7 +15,7 @@ RSpec.describe RefundPolicy do
     expect(described_class.new(kind: "window", hours: 72).short_words).to eq("Refunds up to 3 days before the show")
     expect(described_class.new(kind: "none").words).to eq("All sales are final: no refunds. If a show is canceled, you get everything back.")
     expect(described_class.new(kind: "case_by_case", contact: "box@sg.example", note: "Exchanges welcome.").words)
-      .to eq("Refunds are case by case: ask box@sg.example. Fees aren't refunded. If a show is canceled, you get everything back. Exchanges welcome.")
+      .to eq("Refunds are case by case: request one from box@sg.example. Fees aren't refunded. If a show is canceled, you get everything back. Exchanges welcome.")
   end
 
   it "ends a window that many hours before the show" do

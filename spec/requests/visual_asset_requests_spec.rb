@@ -97,12 +97,12 @@ RSpec.describe "Visual asset requests", type: :request do
       expect(response.body).to include("The Lantern Room requests the visual assets and written details listed below for Late Bloomers.")
       expect(response.body).not_to include("ready to announce")
 
-      # What they will be asked for: the images, then the written items,
+      # What is being requested: the images, then the written items,
       # and what's here says "Received" (Tim, 2026-11-19).
       production.update!(wide_image: fixture_file_upload("test_image.png", "image/png"))
       org.asset_specs.find_by(builtin: "description").update_column(:position, -10)
       get edit_manage_production_path(production, tab: 1)
-      sheet = response.body[response.body.index("What they will be asked for")..]
+      sheet = response.body[response.body.index("What is being requested")..]
       expect(sheet.index("Instagram square")).to be < sheet.index("Show description")
       expect(sheet).to include("Received")
       expect(sheet).not_to include("Already uploaded")
@@ -305,7 +305,7 @@ RSpec.describe "Visual asset requests", type: :request do
       wide = org.asset_specs.find_by(builtin: "wide")
       production.update!(wide_image: fixture_file_upload("test_image.png", "image/png"))
       post asset_request_upload_path(token: request_record.token), params: { spec_id: wide.id, file: asset_image(1280, 720) }
-      expect(response.parsed_body["message"]).to eq("Wide image has already been added. Ask The Lantern Room if you need to change it.")
+      expect(response.parsed_body["message"]).to eq("Wide image has already been added. Request a change from The Lantern Room if you need one.")
 
       post asset_request_upload_path(token: request_record.token), params: { spec_id: instagram.id, file: asset_image(1080, 1080) }
       post asset_request_upload_path(token: request_record.token), params: { spec_id: instagram.id, file: asset_image(1200, 1200) }

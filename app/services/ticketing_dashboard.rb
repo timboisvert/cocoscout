@@ -155,7 +155,7 @@ class TicketingDashboard
     disputed = OrgCashEntry.where(organization_id: @organization.id, entry_type: "ticket_dispute").where(amount_cents: ...0)
     if disputed.exists?
       list << Alert.new(eyebrow: "Disputes", headline: "#{disputed.count} disputed #{disputed.count == 1 ? 'charge' : 'charges'}",
-                        body: "A buyer asked their bank for the money back. Respond in Stripe; check-in times on the order are good evidence.",
+                        body: "A buyer requested the money back from their bank. Respond in Stripe; check-in times on the order are good evidence.",
                         actions: [ { text: "See orders", path: routes.manage_ticket_orders_path } ], tone: :amber)
     end
     count = drafts_soon.count

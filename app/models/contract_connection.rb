@@ -75,7 +75,7 @@ class ContractConnection < ApplicationRecord
     when "production"
       "#{seller} has agreed to connect later contracts for #{contract.production&.name || 'this production'}. You can connect each one from My Contracts without waiting for approval."
     when "all" then "#{seller} has agreed to connect every later contract with you. You can connect each one from My Contracts without waiting for approval."
-    else "#{seller} will be asked again for each later contract."
+    else "#{seller} will get a request for each later contract."
     end
   end
 

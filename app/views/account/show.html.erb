@@ -130,7 +130,7 @@
       <div class="<%= row_class %>">
         <div class="min-w-0">
           <div class="text-sm font-medium text-gray-900">Deleting your account</div>
-          <div class="text-sm text-gray-600">You asked on <%= requested_at.strftime("%B %-d") %>. It will be done within 30 days; until then, you can change your mind.</div>
+          <div class="text-sm text-gray-600">You requested this on <%= requested_at.strftime("%B %-d") %>. It will be done within 30 days; until then, you can change your mind.</div>
         </div>
         <%= form_with url: cancel_deletion_account_path, method: :delete, class: "inline" do %>
           <%= render "shared/button", text: "Keep my account", variant: "secondary", size: "small", type: :submit %>

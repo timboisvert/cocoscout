@@ -5,7 +5,7 @@
     <div class="p-6 space-y-5">
       <label class="flex items-start gap-3 text-sm">
         <%= f.check_box :follow_at_checkout, class: check_class %>
-        <span><span class="block font-semibold text-gray-900">Ask ticket buyers to join</span><span class="block text-xs text-gray-500">A box under their email address at checkout. Never at the door.</span></span>
+        <span><span class="block font-semibold text-gray-900">Invite ticket buyers to join</span><span class="block text-xs text-gray-500">A box under their email address at checkout. Never at the door.</span></span>
       </label>
       <label class="flex items-start gap-3 text-sm">
         <%= f.check_box :follow_boxes_ticked, class: check_class %>
@@ -42,7 +42,7 @@
       <label class="flex items-center gap-2.5"><input type="checkbox" class="h-4 w-4 flex-none accent-pink-500" <%= "checked" if @profile.follow_boxes_ticked %> disabled><%= MailingList.main_for!(@organization).box_words %></label>
       <% if example %><label class="flex items-center gap-2.5"><input type="checkbox" class="h-4 w-4 flex-none accent-pink-500" <%= "checked" if @profile.follow_boxes_ticked %> disabled><%= example.box_words %></label><% end %>
     </div>
-    <% unless @profile.follow_at_checkout %><p class="text-xs text-amber-700 mt-3">Switched off: checkout doesn't ask.</p><% end %>
+    <% unless @profile.follow_at_checkout %><p class="text-xs text-amber-700 mt-3">Switched off: checkout doesn't show the box.</p><% end %>
     </div>
   </section>
 </div>

@@ -37,8 +37,8 @@ class BooksTemplates
                          { "name" => "rules_url", "description" => "The bank rules page" } ] },
     { key: "books_download_failed", name: "Books download couldn't be made", channel: "message",
       subject: "{{download}} couldn't be put together",
-      body: %(#{HELLO}<p>{{download}} for {{organization_name}} couldn't be put together, so there is nothing to download. Ask for it again from Statements.</p><p><a href="{{statements_url}}">Open Statements</a></p>),
-      variables: WHO + [ { "name" => "download", "description" => "What was asked for" },
+      body: %(#{HELLO}<p>{{download}} for {{organization_name}} couldn't be put together, so there is nothing to download. Request it again from Statements.</p><p><a href="{{statements_url}}">Open Statements</a></p>),
+      variables: WHO + [ { "name" => "download", "description" => "What was requested" },
                          { "name" => "statements_url", "description" => "The Statements page" } ] },
     # To CocoScout's superadmins, not to the organization: a disagreement is
     # ours to chase. The words are the notification's own page.

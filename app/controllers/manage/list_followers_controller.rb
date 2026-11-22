@@ -17,7 +17,7 @@ module Manage
       intake = FollowerIntake.new(@list)
       if params[:text].present?
         unless params[:permission] == "1"
-          return redirect_to(manage_mailing_list_path(@list), alert: "Confirm these people asked to hear from you before adding them.")
+          return redirect_to(manage_mailing_list_path(@list), alert: "Confirm these people signed up to hear from you before adding them.")
         end
 
         entries = FollowerIntake.parse(params[:text])

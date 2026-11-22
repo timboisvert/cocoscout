@@ -239,7 +239,7 @@ RSpec.describe "Refund policy", type: :request do
         order.update!(buyer_name: "Dana Scully", buyer_email: "dana@example.com")
         TicketOrderSettlement.settle!(order, payment_intent_id: "pi_buyer")
         get tickets_order_path(token: order.token)
-        expect(response.body).to include("Refund policy", "To ask for a refund, reply to your confirmation email.")
+        expect(response.body).to include("Refund policy", "To request a refund, reply to your confirmation email.")
 
         mail = TicketOrderMailer.confirmation(order.reload)
         expect(mail.html_part&.body.to_s.presence || mail.body.to_s).to include("<strong>Refund policy:</strong> Refunds up to 24 hours before the show.")

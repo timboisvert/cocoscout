@@ -63,7 +63,7 @@ RSpec.describe "Mailing lists", type: :request do
     expect(response.body).to include('data-follower-paste-addable="1"', "Already on it", "Unsubscribed: won&#39;t be added", "Bounced before")
 
     post manage_mailing_list_followers_path(list), params: { text: paste }
-    expect(flash[:alert]).to include("asked to hear from you")
+    expect(flash[:alert]).to include("signed up to hear from you")
     post manage_mailing_list_followers_path(list), params: { text: paste, permission: "1" }
     expect(flash[:notice]).to eq("Added 1 person to Dan Feltey's shows.")
     expect(list.followers.reload.pluck(:email)).to contain_exactly("rosa@example.com", "new@example.com")

@@ -45,7 +45,7 @@ RSpec.describe FollowerEmailSendJob do
     expect(mail["List-Unsubscribe-Post"].value).to eq("List-Unsubscribe=One-Click")
     html = mail.html_part ? mail.html_part.body.decoded : mail.body.decoded
     expect(html).to include("Hi Maria!", "Laugh-Along, Live!", "Buy tickets", "utm_campaign=fe-#{email.id}",
-                            "You're getting this because you asked to hear from Stars &amp; Garters.")
+                            "You're getting this because you signed up to hear from Stars &amp; Garters.")
     expect(html).not_to include("cocoscout.png")
     expect(EmailLog.count).to eq(0)
   end

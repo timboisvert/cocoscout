@@ -191,7 +191,7 @@ class TicketingTemplates
       variables: v(:first_name, :inviter_name, :organization_name, :what, :accept_url) },
     { key: "ticket_sales_producer_daily", name: "Ticketing: producer's daily sales", channel: "email",
       subject: "Ticket sales for your shows at {{organization_name}}",
-      body: %(<p>Hi {{first_name}},</p><p>Here's where your shows at {{organization_name}} stand this morning.</p>{{rows}}<p style="margin-top:16px"><a href="{{sales_url}}">See the details</a> · You asked for this note; turn it off there any time.</p>),
+      body: %(<p>Hi {{first_name}},</p><p>Here's where your shows at {{organization_name}} stand this morning.</p>{{rows}}<p style="margin-top:16px"><a href="{{sales_url}}">See the details</a> · You requested this note; turn it off there any time.</p>),
       variables: v(:first_name, :organization_name, :rows, :sales_url) }
   ].freeze
 

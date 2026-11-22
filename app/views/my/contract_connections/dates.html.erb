@@ -120,7 +120,7 @@
                 </div>
                 <div class="text-sm text-gray-500">
                   We'll keep your date and set it to the contract's show time, <%= clock.call(contract_show.date_and_time) %> to <%= clock.call(contract_show.ends_at) %>, in <%= possessive(org) %> room.
-                  Its cast, roles, and notes won't change. If anyone is cast, you'll be asked to let them know about the new time.
+                  Its cast, roles, and notes won't change. If anyone is cast, you'll be prompted to let them know about the new time.
                 </div>
                 <% if has_call.call(show) %>
                   <div class="text-sm text-gray-500 mt-1">
@@ -141,7 +141,7 @@
             <input type="radio" name="pair[<%= contract_show.id %>]" value="separate" <%= "checked" if chosen == "separate" %> class="<%= radio_class %>">
             <div class="ml-3">
               <div class="text-sm font-medium text-gray-900">No, they're two different events</div>
-              <div class="text-sm text-gray-500">We'll leave your <%= "date".pluralize(candidates.size) %> exactly as <%= candidates.one? ? "it is" : "they are" %> and add the contract's <%= clock.call(contract_show.date_and_time) %> show alongside, with nobody cast yet. We won't ask you about this again.</div>
+              <div class="text-sm text-gray-500">We'll leave your <%= "date".pluralize(candidates.size) %> exactly as <%= candidates.one? ? "it is" : "they are" %> and add the contract's <%= clock.call(contract_show.date_and_time) %> show alongside, with nobody cast yet. This won't come up again.</div>
             </div>
           </label>
           <label class="<%= choice_class %>">
@@ -152,7 +152,7 @@
             </div>
           </label>
           <p class="text-xs text-gray-500 pt-1">
-            If you think the contract's time is the one that's wrong, go ahead and connect, and then use Request date/time change on My Contracts to ask <%= org %> to fix it.
+            If you think the contract's time is the one that's wrong, go ahead and connect, and then use Request date/time change on My Contracts to request that <%= org %> fix it.
           </p>
         </div>
       </div>

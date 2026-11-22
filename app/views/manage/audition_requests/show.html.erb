@@ -237,7 +237,7 @@
         <% if @answers&.any? %>
           <%= render "manage/audition_requests/answers", answers: @answers %>
         <% else %>
-          <p class="text-sm text-gray-400 italic">No questions asked</p>
+          <p class="text-sm text-gray-400 italic">This form had no questions</p>
         <% end %>
 
         <% if current_user_can_manage?(@production) && @audition_cycle.active %>

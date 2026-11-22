@@ -19,7 +19,7 @@
     <%= render "shared/section_heading", title: "Boxes on this production's checkout",
           intro: "Each box adds the buyer to one of your mailing lists. Buyers see them when they pay online, in this order. They are never shown at the door." %>
     <% unless profile.follow_at_checkout %>
-      <p class="px-6 py-3 text-sm text-amber-700 border-b border-gray-100">Checkout doesn't ask at the moment: it is switched off for the whole organization in <%= link_to "Mailing list settings", manage_mailing_list_settings_path(section: "checkout"), class: "underline" %>.</p>
+      <p class="px-6 py-3 text-sm text-amber-700 border-b border-gray-100">Checkout doesn't show the box at the moment: it is switched off for the whole organization in <%= link_to "Mailing list settings", manage_mailing_list_settings_path(section: "checkout"), class: "underline" %>.</p>
     <% end %>
     <ul class="divide-y divide-gray-100">
       <% boxes.each do |list| %>

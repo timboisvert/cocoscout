@@ -20,18 +20,18 @@
         <p class="text-xs text-green-700 mt-0.5"><%= at ? "They confirmed it on #{at.strftime('%B %-d, %Y')}." : "Confirmed before we started keeping the date." %></p>
       <% elsif at %>
         <p class="text-sm font-medium text-amber-800">Not confirmed since <%= at.strftime("%B %-d, %Y") %></p>
-        <p class="text-xs text-amber-700 mt-0.5">Something's changed since, or it's been a while — worth asking them to check it.</p>
+        <p class="text-xs text-amber-700 mt-0.5">Something's changed since, or it's been a while — worth requesting that they check it.</p>
       <% else %>
         <p class="text-sm font-medium text-gray-900">Never confirmed</p>
         <p class="text-xs text-gray-500 mt-0.5">They haven't said their availability is up to date yet.</p>
       <% end %>
     </div>
     <% if !confirmed && @availability_nudge %>
-      <%= render "shared/button", text: "Ask them to confirm", variant: "primary", size: "small", icon: "paper-airplane", type: :button,
+      <%= render "shared/button", text: "Request confirmation", variant: "primary", size: "small", icon: "paper-airplane", type: :button,
             data: {
               action: "click->invite-preview#open",
               "invite-path": manage_staffing_availability_nudge_path(staff_member_ids: [ member.id ], from: "staff"),
-              "modal-title": "Ask them to confirm their availability",
+              "modal-title": "Request that they confirm their availability",
               "to-name": @availability_nudge[:to_name],
               "to-email": @availability_nudge[:to_email],
               "email-subject": @availability_nudge[:subject],

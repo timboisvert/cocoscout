@@ -42,7 +42,7 @@ module Manage
                        .where(id: ids).distinct.to_a
         people.select! { |person| @vacancy.can_invite?(person) }
         if people.empty?
-          redirect_to manage_staffing_vacancy_path(@vacancy), alert: "Choose at least one person to ask." and return
+          redirect_to manage_staffing_vacancy_path(@vacancy), alert: "Choose at least one person to invite." and return
         end
 
         draft = params[:email_draft] || {}
@@ -60,7 +60,7 @@ module Manage
         @vacancy.mark_finding_replacement!
 
         redirect_to manage_staffing_vacancy_path(@vacancy),
-                    notice: "Asked #{people.size == 1 ? people.first.name : helpers.pluralize(people.size, 'person')} to cover the shift."
+                    notice: "Invited #{people.size == 1 ? people.first.name : helpers.pluralize(people.size, 'person')} to cover the shift."
       end
 
       # Not filling it: the hole closes and the schedule's red goes.
