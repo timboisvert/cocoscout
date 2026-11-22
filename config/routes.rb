@@ -41,6 +41,10 @@ Rails.application.routes.draw do
   get "/new/for-performers", to: redirect("/for-performers")
   get "/new/for-producers", to: redirect("/for-producers")
 
+  # SketchFest is over (taken down 2026-11-22); its flyers' QR codes still
+  # point at /sketchfest, so they land on the home page.
+  get "/sketchfest(/*rest)", to: redirect("/")
+
   # Legacy route (can be removed later)
   get "home/index", to: redirect("/")
 

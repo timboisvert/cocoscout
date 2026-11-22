@@ -84,6 +84,15 @@ RSpec.describe "Public marketing site", type: :request do
     end
   end
 
+  describe "GET /sketchfest (taken down)" do
+    it "sends old flyer links to the home page" do
+      get "/sketchfest"
+      expect(response).to redirect_to("/")
+      get "/sketchfest/qr"
+      expect(response).to redirect_to("/")
+    end
+  end
+
   describe "GET /mics (Find a Mic identity + CocoScout bridge)" do
     it "reads as its own site and bridges back to CocoScout in the footer" do
       get mics_home_path
