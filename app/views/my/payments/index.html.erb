@@ -33,6 +33,7 @@
         past = summary.past_payments
         next_expected = on_way_payments.filter_map(&:expected_on).min
         group_titles = { on_its_way: "On its way", queued: "Approved", owed: "Approved", waiting: "Waiting for approval" }
+        # A contract's payments not on a payout run yet are titled by the contract (Tim, 2026-11-22).
       %>
       <%# Two numbers: on its way, and still to be paid. A tile wears its
           color only while it holds money. %>
@@ -101,12 +102,17 @@
           <div class="space-y-3">
             <% still_groups.each do |group| %>
               <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <% if group.kind == :contract %>
+                  <%= render "my/payments/group_header", tone: :approved, title: group.when_text,
+                        sub: "With #{group.org}. Each payment goes out once #{group.org} adds it to a payout run.", cents: group.total_cents %>
+                <% else %>
                 <%
                   sub = [ group.org, group.when_text ].compact.join(" · ").presence
                   sub ||= group.kind == :waiting ? "Your manager approves hours before they go out." : "Goes out once it's added to a payout run."
                 %>
                 <%= render "my/payments/group_header", tone: group.kind == :waiting ? :waiting : :approved,
                       title: group_titles[group.kind], sub: sub, cents: group.total_cents %>
+                <% end %>
                 <%= render "my/payments/lines", lines: group.lines %>
               </div>
             <% end %>
@@ -160,7 +166,18 @@
                       <% end %>
                     </div>
                   <% end %>
-                  <% if opens %>
+                  <% if payment.kind == "contract" %>
+                    <%# Paid by hand under a contract: no receipt page, the line says it all. %>
+                    <div data-contract-paid-by-hand>
+                      <div class="<%= row_class.sub('hover:bg-gray-50 ', '') %>"><%= row %></div>
+                      <% if (contract = payment.lines.first&.contract) %>
+                        <div class="px-5 -mt-1.5 pb-3">
+                          <%= link_to "Contract · #{contract.production_name.presence || contract.contractor_name}", my_contracts_path,
+                                class: "inline-flex items-center rounded-full bg-pink-100 px-2 py-0.5 text-[11px] font-medium text-pink-800 hover:bg-pink-200" %>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% elsif opens %>
                     <details class="group">
                       <summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer <%= row_class %>"><%= row %></summary>
                       <div class="bg-gray-50/60 border-t border-gray-100">

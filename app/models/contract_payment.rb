@@ -317,6 +317,47 @@ class ContractPayment < ApplicationRecord
     last_night ? last_night > Time.current : (due_date.present? && due_date > Date.current)
   end
 
+  # Where an outgoing payment stands, said to the person it pays (Tim,
+  # 2026-11-22), the same on My Contracts and My Payments: key, words, and a
+  # tone for its chip. Nil for an incoming or cancelled payment.
+  PayeeStage = Data.define(:key, :words, :tone) do
+    def paid? = %i[deposited sent by_hand paid into_balance].include?(key)
+    def on_its_way? = key == :on_its_way
+  end
+
+  def payee_stage(today = Date.current)
+    return nil unless direction_outgoing? && !status_cancelled?
+
+    day = ->(date) { date&.strftime("%b %-d") }
+    item = payout_contribution&.payout_batch_item
+    return PayeeStage.new(:returned, "Returned by the bank", :returned) if item&.returned?
+
+    if status_paid?
+      if payment_method.in?(OFFLINE_PAYOUT_METHODS)
+        how = { "check" => "check", "cash" => "cash", "other" => "another way" }.fetch(payment_method, payment_method.titleize)
+        return PayeeStage.new(:by_hand, [ "Paid by #{how}", day.(paid_date) ].compact.join(" "), :neutral)
+      end
+      return PayeeStage.new(:into_balance, "Paid into #{item.payee.name}", :balance) if item&.payee.is_a?(Organization)
+
+      case item&.deposit_stage(today)
+      when :deposited then return PayeeStage.new(:deposited, "Deposited #{day.(item.deposited_at)}", :deposited)
+      when :on_its_way then return PayeeStage.new(:on_its_way, "On its way, about #{day.(item.expected_deposit_date)}", :on_its_way)
+      when :sent then return PayeeStage.new(:sent, "Sent #{day.(item.paid_at)}", :deposited)
+      end
+      return PayeeStage.new(:paid, [ "Paid", day.(paid_date) ].compact.join(" "), :deposited)
+    end
+
+    if item
+      batch = item.payout_batch
+      return PayeeStage.new(:on_its_way, "On its way", :on_its_way) unless batch.open?
+
+      return PayeeStage.new(:on_run, [ "On the", day.(batch.payday), "payout run" ].compact.join(" "), :approved)
+    end
+    return PayeeStage.new(:after_show, "After the show", :neutral) if settles_after_show? || awaiting_amount?
+
+    PayeeStage.new(:due, due_date ? "Due #{day.(due_date)}" : "Scheduled", :neutral)
+  end
+
   # Whether this payment has been added to a payout run.
   def in_payout_run?
     payout_contribution.present?

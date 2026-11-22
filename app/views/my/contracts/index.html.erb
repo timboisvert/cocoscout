@@ -51,9 +51,6 @@
           # The contractor signs, pays and is paid; anyone else on the contract
           # (a contract person) reads the same card without the money to-dos.
           payee = @payee_contract_ids.include?(contract.id)
-          outgoing = contract.contract_payments.select(&:direction_outgoing?)
-          received_total = outgoing.select(&:status_paid?).sum { |p| p.amount.to_f }
-          pending_total  = outgoing.reject(&:status_paid?).sum { |p| p.amount.to_f }
           to_pay = payee ? contract.contract_payments.select(&:collectable_online?).sort_by(&:due_date) : []
           # The bill that matters is what's already due. Money still ahead of
           # its date is a schedule, not a to-do — it folds away below.
@@ -126,19 +123,18 @@
               </div>
             <% end %>
 
-            <%# Money at a glance — only what's real (no misleading "none scheduled"). %>
-            <% if received_total > 0 || pending_total > 0 || to_pay.any? %>
+            <%# Money owed to the organization that's due now or scheduled; what the
+                contract pays is listed payment by payment below. %>
+            <% if due_now_total > 0 || scheduled_total > 0 %>
               <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                <% if received_total > 0 %><span><span class="text-gray-500">Received</span> <span class="font-semibold text-green-600"><%= number_to_currency(received_total) %></span></span><% end %>
-                <% if pending_total > 0 %><span><span class="text-gray-500"><%= payee ? "Coming to you" : "Coming to #{contract.contractor_name}" %></span> <span class="font-semibold text-gray-900"><%= number_to_currency(pending_total) %></span></span><% end %>
                 <% if due_now_total > 0 %><span><span class="text-gray-500">Due now</span> <span class="font-semibold text-amber-600"><%= number_to_currency(due_now_total) %></span></span><% end %>
                 <% if scheduled_total > 0 %><span><span class="text-gray-500">Scheduled</span> <span class="font-semibold text-gray-900"><%= number_to_currency(scheduled_total) %></span></span><% end %>
               </div>
             <% end %>
-            <% unless payee %>
-              <p class="mt-2 text-xs text-gray-500" data-contract-payee>Payments go to <%= contract.contractor_name %>. You're on this contract to see its dates, ticket sales, and terms.</p>
-            <% end %>
           </div>
+
+          <%# Every payment, with where it stands (Tim, 2026-11-22). %>
+          <%= render "my/contracts/payments", contract: contract, payee: payee %>
 
           <%# Everything you need to DO on this contract, contained in one strip. %>
           <% if has_action || asks_dates || date_requests.any? || connection_row || asset_request %>
@@ -261,7 +257,7 @@
             </div>
           <% end %>
 
-          <%= render "my/contracts/contract_summary_modal", contract: contract %>
+          <%= render "my/contracts/contract_summary_modal", contract: contract, payee: payee %>
         </div>
             <% end %>
           </div>
