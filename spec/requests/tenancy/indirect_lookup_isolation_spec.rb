@@ -123,26 +123,16 @@ RSpec.describe "Cross-org isolation: indirect lookups (manage)", type: :request 
 
     it "won't write my person's availability onto a foreign org's show" do
       expect {
-        patch manage_update_availability_contacts_person_path(my_person),
+        patch update_availability_manage_person_path(my_person),
               params: { "availability_#{victim_show.id}" => "available" }
       }.not_to change(ShowAvailability, :count)
     end
 
     it "won't write my group's availability onto a foreign org's show" do
       expect {
-        patch manage_update_availability_contacts_group_path(my_group),
+        patch update_availability_manage_group_path(my_group),
               params: { "availability_#{victim_show.id}" => "available" }
       }.not_to change(ShowAvailability, :count)
-    end
-  end
-
-  describe "casting availability grid" do
-    it "404s writing a foreign org's person onto my show's availability" do
-      expect {
-        patch manage_update_show_availability_casting_availability_path(production, my_show),
-              params: { "availability_Person_#{victim_person.id}" => "available" }
-      }.not_to change(ShowAvailability, :count)
-      expect(response).to have_http_status(:not_found)
     end
   end
 
@@ -168,14 +158,6 @@ RSpec.describe "Cross-org isolation: indirect lookups (manage)", type: :request 
         post manage_create_money_production_advance_path(production),
              params: { person_advance: { person_id: victim_person.id, original_amount: "50" } }
       }.not_to change(PersonAdvance, :count)
-      expect(response).to have_http_status(:not_found)
-    end
-
-    it "404s recording a waiver on a foreign org's show" do
-      expect {
-        post manage_create_money_advance_waiver_path(production),
-             params: { show_advance_waiver: { show_id: victim_show.id, person_id: my_person.id, reason: "performer_declined" } }
-      }.not_to change(ShowAdvanceWaiver, :count)
       expect(response).to have_http_status(:not_found)
     end
 

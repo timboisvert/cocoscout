@@ -132,10 +132,6 @@ RSpec.describe "Production team viewers", type: :request do
     location = create(:location, organization: org)
     sign_in(viewer)
 
-    post manage_casting_show_finalize_path(production, show)
-    expect(response).to redirect_to(manage_path)
-    expect(show.reload.casting_finalized?).to be(false)
-
     patch manage_update_casting_settings_path(production), params: { production: { name: "Changed" } }
     expect(response).to redirect_to(manage_path)
 

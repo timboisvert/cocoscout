@@ -12,10 +12,6 @@ module Manage
         redirect_to manage_staffing_index_path
       end
 
-      def new
-        redirect_to manage_staffing_index_path
-      end
-
       # Full-page staff editor (roomy — replaces the old cramped modal).
       def edit
         @house_roles = Current.organization.house_roles.active.ordered

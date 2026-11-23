@@ -4,7 +4,7 @@ module Manage
   module Staffing
     class HouseRolesController < Manage::ManageController
       before_action :ensure_org_owner_or_manager
-      before_action :set_house_role, only: %i[edit update destroy]
+      before_action :set_house_role, only: %i[ update destroy ]
 
       def index
         @house_roles = Current.organization.house_roles.ordered
@@ -17,17 +17,6 @@ module Manage
       # page. Add/remove here re-renders the frame in place.
       def editor
         @house_roles = Current.organization.house_roles.active.ordered
-      end
-
-      # new/edit aren't used in the normal flow — the modal on the index page
-      # handles both. Redirect direct navigation to the index so we don't have
-      # to maintain duplicate full-page form views.
-      def new
-        redirect_to manage_staffing_house_roles_path
-      end
-
-      def edit
-        redirect_to manage_staffing_house_roles_path
       end
 
       def create

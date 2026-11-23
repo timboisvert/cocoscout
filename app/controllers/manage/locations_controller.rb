@@ -2,7 +2,7 @@
 
 module Manage
   class LocationsController < Manage::ManageController
-    before_action :set_location, only: %i[show edit update destroy cannot_delete archive restore]
+    before_action :set_location, only: %i[ show update destroy cannot_delete archive restore ]
     before_action :ensure_user_is_global_manager, except: %i[index show]
 
     def index
@@ -14,14 +14,6 @@ module Manage
       @spaces = @location.location_spaces.by_name
       @is_owner = Current.organization.owned_by?(Current.user)
       @role = Current.user.organization_roles.find_by(organization: Current.organization)&.company_role
-    end
-
-    def new
-      redirect_to section_manage_organization_path(Current.organization, section: "locations")
-    end
-
-    def edit
-      redirect_to section_manage_organization_path(Current.organization, section: "locations")
     end
 
     def create

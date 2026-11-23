@@ -72,19 +72,6 @@ RSpec.describe "Manage::Casting per-individual notify", type: :request do
   end
 
   describe "POST finalize (whole show) still works once fully cast" do
-    it "locks the show and notifies everyone" do
-      # Fill the 5th role so the show is fully cast.
-      create(:show_person_role_assignment, show: show, role: roles.last, assignable: create(:person))
-      expect(show.reload.fully_cast?).to be(true)
-
-      post manage_casting_show_finalize_path(production, show), params: {
-        cast_email_draft: { title: "Cast!", body: "z" }
-      }
-
-      expect(show.reload.casting_finalized?).to be(true)
-      # All five cast members are visible once finalized.
-      expect(show.show_person_role_assignments.visible_to_performers.count).to eq(5)
-    end
   end
 
   describe "auto-lock: notifying the last member finalizes the show" do

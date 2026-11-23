@@ -67,12 +67,6 @@ module Manage
       end
     end
 
-    def mark_non_revenue
-      @show_financials.update!(non_revenue_override: true, data_confirmed: true)
-      redirect_to manage_money_show_financials_path(@show),
-                  notice: "#{@show.display_name} marked as non-revenue event."
-    end
-
     def unmark_non_revenue
       @show_financials.update!(non_revenue_override: false)
       redirect_to manage_money_show_financials_path(@show),
@@ -98,10 +92,6 @@ module Manage
       # The sources the worksheet's per-line picker offers. Archived ones are
       # left out of the picker but keep labelling the lines already using them.
       @ticket_sources = Current.organization.ticket_sources.hand_made.active.ordered.to_a
-    end
-
-    def require_manage_permission
-      authorize_production_action!(:manage)
     end
 
     def handle_cleared_sections

@@ -4,7 +4,6 @@ module Manage
   class AdvancesController < ManageController
     before_action :set_production
     before_action :set_advance, only: %i[show update destroy write_off mark_paid unmark_paid]
-    before_action :set_waiver, only: %i[destroy_waiver]
 
     def index
       if @production
@@ -109,32 +108,6 @@ module Manage
       end
     end
 
-    # Waivers - for recording why someone didn't get an advance
-    def create_waiver
-      # Scoped like set_waiver: a raw show_id wrote a waiver onto another org's show.
-      @waiver = ShowAdvanceWaiver.new(waiver_params.merge(
-        show: @production.shows.find(waiver_params[:show_id]),
-        person: Current.organization.people.find(waiver_params[:person_id])
-      ))
-      @waiver.waived_by = Current.user
-
-      if @waiver.save
-        respond_to do |format|
-          format.html { redirect_back fallback_location: manage_money_production_advances_path(@production), notice: "Waiver recorded." }
-          format.turbo_stream { render turbo_stream: turbo_stream.remove("advance_eligible_#{@waiver.show_id}_#{@waiver.person_id}") }
-        end
-      else
-        redirect_back fallback_location: manage_money_production_advances_path(@production),
-                      alert: @waiver.errors.full_messages.join(", ")
-      end
-    end
-
-    def destroy_waiver
-      @waiver.destroy
-      redirect_back fallback_location: manage_money_production_advances_path(@production),
-                    notice: "Waiver removed."
-    end
-
     private
 
     def set_production
@@ -149,22 +122,12 @@ module Manage
       @advance = @production.person_advances.find(params[:id])
     end
 
-    def set_waiver
-      # Scoped through the production's shows — a bare find let a manager
-      # delete another org's waiver (changing what a performer is owed).
-      @waiver = ShowAdvanceWaiver.joins(:show).where(shows: { production_id: @production.id }).find(params[:id])
-    end
-
     def advance_params
       params.require(:person_advance).permit(:person_id, :show_id, :original_amount, :advance_type, :notes)
     end
 
     def advance_update_params
       params.require(:person_advance).permit(:notes)
-    end
-
-    def waiver_params
-      params.require(:show_advance_waiver).permit(:show_id, :person_id, :reason, :notes)
     end
 
     def fetch_production_people

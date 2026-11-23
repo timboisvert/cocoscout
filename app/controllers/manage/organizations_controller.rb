@@ -2,10 +2,10 @@
 
 module Manage
   class OrganizationsController < Manage::ManageController
-    before_action :set_organization, only: %i[show edit update destroy transfer_ownership remove_logo confirm_delete time_zone change_time_zone]
-    skip_before_action :show_manage_sidebar, only: %i[new create index edit]
+    before_action :set_organization, only: %i[ show update destroy transfer_ownership remove_logo confirm_delete time_zone change_time_zone ]
+    skip_before_action :show_manage_sidebar, only: %i[ new create index ]
     before_action :ensure_user_is_owner, only: %i[destroy transfer_ownership confirm_delete]
-    before_action :ensure_user_can_manage, only: %i[show edit update remove_logo time_zone change_time_zone]
+    before_action :ensure_user_can_manage, only: %i[ show update remove_logo time_zone change_time_zone ]
 
     def index
       # Management screen - list all organizations with management options
@@ -50,8 +50,6 @@ module Manage
     def new
       @organization = Organization.new
     end
-
-    def edit; end
 
     def create
       @organization = Organization.new(organization_params)

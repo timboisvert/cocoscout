@@ -3,18 +3,7 @@
 module Manage
   class SignUpFormsController < Manage::ManageController
     before_action :set_production, except: [ :org_index ]
-    before_action :set_sign_up_form, only: %i[
-      show edit update destroy settings update_settings
-      confirm_slot_changes apply_slot_changes
-      confirm_event_changes apply_event_changes
-      create_slot update_slot destroy_slot reorder_slots generate_slots toggle_slot_hold
-      holdouts create_holdout destroy_holdout
-      create_question update_question destroy_question reorder_questions
-      register register_to_queue cancel_registration move_registration
-      preview print_list toggle_active archive unarchive
-      assign assign_registration unassign_registration auto_assign_queue auto_assign_one
-      transfer
-    ]
+    before_action :set_sign_up_form, only: %i[ show edit update destroy settings update_settings confirm_slot_changes apply_slot_changes confirm_event_changes apply_event_changes create_question update_question destroy_question reorder_questions register register_to_queue cancel_registration move_registration preview print_list toggle_active archive unarchive assign assign_registration unassign_registration auto_assign_queue auto_assign_one transfer ]
     # Production team viewers look; managers change things (Tim, 2026-10-17).
     before_action :ensure_user_is_manager, except: %i[org_index index archived show preview print_list]
 
@@ -117,12 +106,6 @@ module Manage
         # For single_event, get the single instance
         @current_instance = @sign_up_form.sign_up_form_instances.first
       end
-    end
-
-    def new
-      @sign_up_form = @production.sign_up_forms.new
-      @shows = available_shows
-      @question = Question.new
     end
 
     def create
@@ -407,100 +390,6 @@ module Manage
         # Also save closes_hours_before for backward compatibility
         params[:sign_up_form][:closes_hours_before] = total_hours.abs
       end
-    end
-
-    def create_slot
-      next_position = (@sign_up_form.sign_up_slots.maximum(:position) || 0) + 1
-      @slot = @sign_up_form.sign_up_slots.new(slot_params.merge(position: next_position))
-
-      if @slot.save
-        redirect_to manage_edit_signups_form_path(@production, @sign_up_form, tab: 2),
-                    notice: "Slot added successfully"
-      else
-        redirect_to manage_edit_signups_form_path(@production, @sign_up_form, tab: 2),
-                    alert: @slot.errors.full_messages.join(", ")
-      end
-    end
-
-    def update_slot
-      @slot = @sign_up_form.sign_up_slots.find(params[:slot_id])
-      if @slot.update(slot_params)
-        redirect_to manage_edit_signups_form_path(@production, @sign_up_form, tab: 2),
-                    notice: "Slot updated successfully"
-      else
-        redirect_to manage_edit_signups_form_path(@production, @sign_up_form, tab: 2),
-                    alert: @slot.errors.full_messages.join(", ")
-      end
-    end
-
-    def destroy_slot
-      @slot = @sign_up_form.sign_up_slots.find(params[:slot_id])
-      @slot.destroy
-      redirect_to manage_edit_signups_form_path(@production, @sign_up_form, tab: 2),
-                  notice: "Slot deleted"
-    end
-
-    def reorder_slots
-      ids = params[:ids]
-      ids.each_with_index do |id, index|
-        @sign_up_form.sign_up_slots.find(id).update(position: index + 1)
-      end
-      @sign_up_form.apply_holdouts!
-      head :ok
-    end
-
-    def generate_slots
-      count = params[:count].to_i
-      count = 10 if count <= 0 || count > 100
-      prefix = params[:prefix].presence || "Slot"
-
-      starting_position = (@sign_up_form.sign_up_slots.maximum(:position) || 0) + 1
-
-      count.times do |i|
-        @sign_up_form.sign_up_slots.create!(
-          position: starting_position + i,
-          name: "#{prefix} #{starting_position + i}",
-          capacity: (params[:capacity].presence || 1).to_i
-        )
-      end
-
-      @sign_up_form.apply_holdouts!
-      redirect_to manage_edit_signups_form_path(@production, @sign_up_form, tab: 2),
-                  notice: "#{count} slots generated"
-    end
-
-    def toggle_slot_hold
-      @slot = @sign_up_form.sign_up_slots.find(params[:slot_id])
-      if @slot.is_held?
-        @slot.release!
-      else
-        @slot.hold!(reason: params[:reason])
-      end
-      redirect_to manage_edit_signups_form_path(@production, @sign_up_form, tab: 2)
-    end
-
-    # Holdouts management
-    def holdouts
-      @holdouts = @sign_up_form.sign_up_form_holdouts
-    end
-
-    def create_holdout
-      @holdout = @sign_up_form.sign_up_form_holdouts.new(holdout_params)
-
-      if @holdout.save
-        redirect_to manage_edit_signups_form_path(@production, @sign_up_form, tab: 2),
-                    notice: "Holdout rule added"
-      else
-        redirect_to manage_edit_signups_form_path(@production, @sign_up_form, tab: 2),
-                    alert: @holdout.errors.full_messages.join(", ")
-      end
-    end
-
-    def destroy_holdout
-      @holdout = @sign_up_form.sign_up_form_holdouts.find(params[:holdout_id])
-      @holdout.destroy
-      redirect_to manage_edit_signups_form_path(@production, @sign_up_form, tab: 2),
-                  notice: "Holdout rule removed"
     end
 
     def create_question
@@ -875,14 +764,6 @@ module Manage
       )
     end
 
-    def slot_params
-      params.require(:slot).permit(:name, :capacity, :is_held, :held_reason)
-    end
-
-    def holdout_params
-      params.require(:holdout).permit(:holdout_type, :holdout_value, :reason)
-    end
-
     def question_params
       params.require(:question).permit(
         :text, :question_type, :required,
@@ -929,34 +810,6 @@ module Manage
         @sign_up_form.opens_at = nil
         @sign_up_form.closes_at = nil
       end
-    end
-
-    def build_preview_slots
-      # Build what the new slot layout would look like
-      preview = []
-      case @sign_up_form.slot_generation_mode
-      when "numbered"
-        @sign_up_form.slot_count.times do |i|
-          preview << OpenStruct.new(
-            position: i + 1,
-            name: (i + 1).to_s,
-            capacity: @sign_up_form.slot_capacity,
-            is_held: should_slot_be_held?(i + 1)
-          )
-        end
-      when "time_based"
-        start_time = Time.parse(@sign_up_form.slot_start_time) rescue Time.current
-        @sign_up_form.slot_count.times do |i|
-          slot_time = start_time + (i * @sign_up_form.slot_interval_minutes.to_i.minutes)
-          preview << OpenStruct.new(
-            position: i + 1,
-            name: slot_time.strftime("%l:%M %p").strip,
-            capacity: @sign_up_form.slot_capacity,
-            is_held: should_slot_be_held?(i + 1)
-          )
-        end
-      end
-      preview
     end
 
     def should_slot_be_held?(position)

@@ -340,7 +340,6 @@ Rails.application.routes.draw do
     post   "/messages/:message_id/subscriptions/:id/mark_unread", to: "superadmin#subscription_mark_unread", as: "subscription_mark_unread"
 
     # Rake Tasks
-    get    "/tasks",            to: "superadmin#tasks",               as: "tasks_monitor"
 
     # Promo Codes (Feature Credits)
     get    "/promo_codes",       to: "superadmin#promo_codes",         as: "promo_codes"
@@ -384,7 +383,6 @@ Rails.application.routes.draw do
     get    "/finances/courses/:course_offering_id", to: "superadmin#finances_course_detail", as: "finances_course_detail"
     post   "/finances/courses/:course_offering_id/pay", to: "superadmin#finances_record_payment", as: "finances_record_payment"
     delete "/finances/payments/:id", to: "superadmin#finances_delete_payment", as: "finances_delete_payment"
-    post   "/finances/payments/:id/mark_paid", to: "superadmin#finances_mark_payment_paid", as: "finances_mark_payment_paid"
 
     # Mics Finder moderation queues.
     get  "/mics",                             to: "superadmin/mics#index",              as: "mics_index"
@@ -591,7 +589,6 @@ Rails.application.routes.draw do
       resources :production_messages, only: [ :create ]
     end
     get    "/productions/:production_id/messages", to: "messages#index", as: "production_messages_index"
-    get    "/productions/:production_id/emails/:id", to: "productions#email", as: "production_email"
     delete "/productions/:id/leave",        to: "productions#leave",        as: "leave_production"
 
     post   "/direct_messages",              to: "direct_messages#create",   as: "direct_messages"
@@ -740,7 +737,6 @@ Rails.application.routes.draw do
   # Dismissible intro guides (shared/_intro_guide) — root-level because they
   # render on both the manage side and the talent dashboard.
   post "/guides/:key/dismiss", to: "guides#dismiss", as: "guide_dismiss", constraints: { key: /[a-z_]+/ }
-  post "/guides/:key/restore", to: "guides#restore", as: "guide_restore", constraints: { key: /[a-z_]+/ }
 
   namespace :manage do
     # A production team's view of its ticket sales (not under /manage/ticketing:
@@ -855,10 +851,8 @@ Rails.application.routes.draw do
     post "/shows/:production_id/:id/link_show", to: "shows#link_show", as: "link_show"
     delete "/shows/:production_id/:id/unlink_show", to: "shows#unlink_show", as: "unlink_show"
     delete "/shows/:production_id/:id/delete_linkage", to: "shows#delete_linkage", as: "delete_linkage_show"
-    post "/shows/:production_id/:id/toggle_signup_based_casting", to: "shows#toggle_signup_based_casting", as: "toggle_signup_based_casting_show"
     patch "/shows/:production_id/:id/add_to_series", to: "shows#add_to_series", as: "add_to_series_show"
     post "/shows/:production_id/:id/link_into_series", to: "shows#link_into_series", as: "link_into_series_show"
-    post "/shows/:production_id/:id/toggle_attendance", to: "shows#toggle_attendance", as: "toggle_attendance_show"
     post "/shows/:production_id/:id/turn_casting_on", to: "shows#turn_casting_on", as: "turn_casting_on_show"
     get  "/shows/:production_id/:id/attendance", to: "shows#attendance", as: "attendance_show"
     patch "/shows/:production_id/:id/update_attendance", to: "shows#update_attendance", as: "update_attendance_show"
@@ -884,10 +878,6 @@ Rails.application.routes.draw do
     post "/shows/:production_id/:show_id/roles/:id/execute_slot_change", to: "show_roles#execute_slot_change", as: "execute_slot_change_show_role"
 
     # Visual Assets (production-level)
-    get  "/shows/:production_id/visual_assets/new_poster", to: "visual_assets#new_poster", as: "new_poster_production_visual_asset"
-    post "/shows/:production_id/visual_assets/create_poster", to: "visual_assets#create_poster", as: "create_poster_production_visual_asset"
-    get  "/shows/:production_id/visual_assets/:id/edit_poster", to: "visual_assets#edit_poster", as: "edit_poster_production_visual_asset"
-    patch "/shows/:production_id/visual_assets/:id/update_poster", to: "visual_assets#update_poster", as: "update_poster_production_visual_asset"
     delete "/shows/:production_id/visual_assets/:id/destroy_poster", to: "visual_assets#destroy_poster", as: "destroy_poster_production_visual_asset"
     patch "/shows/:production_id/visual_assets/:id/set_primary_poster", to: "visual_assets#set_primary_poster", as: "set_primary_poster_production_visual_asset"
     patch  "/shows/:production_id/visual_assets/wide_image", to: "visual_assets#update_wide_image", as: "wide_image_production_visual_asset"
@@ -923,7 +913,6 @@ Rails.application.routes.draw do
     # Sign-ups > Forms - production-level (new URL pattern: /manage/signups/forms/:production_id)
     get  "/signups/forms/:production_id", to: "sign_up_forms#index", as: "signups_forms"
     get  "/signups/forms/:production_id/archived", to: "sign_up_forms#archived", as: "signups_forms_archived"
-    get  "/signups/forms/:production_id/new", to: "sign_up_forms#new", as: "new_signups_form"
     post "/signups/forms/:production_id", to: "sign_up_forms#create", as: "create_signups_form"
 
     # Sign-ups > Forms > Wizard (must come before :id routes)
@@ -960,15 +949,6 @@ Rails.application.routes.draw do
     patch "/signups/forms/:production_id/:id/apply_slot_changes", to: "sign_up_forms#apply_slot_changes", as: "apply_slot_changes_signups_form"
     get "/signups/forms/:production_id/:id/confirm_event_changes", to: "sign_up_forms#confirm_event_changes", as: "confirm_event_changes_signups_form"
     patch "/signups/forms/:production_id/:id/apply_event_changes", to: "sign_up_forms#apply_event_changes", as: "apply_event_changes_signups_form"
-    post "/signups/forms/:production_id/:id/create_slot", to: "sign_up_forms#create_slot", as: "create_slot_signups_form"
-    patch "/signups/forms/:production_id/:id/update_slot/:slot_id", to: "sign_up_forms#update_slot", as: "update_slot_signups_form"
-    delete "/signups/forms/:production_id/:id/destroy_slot/:slot_id", to: "sign_up_forms#destroy_slot", as: "destroy_slot_signups_form"
-    post "/signups/forms/:production_id/:id/reorder_slots", to: "sign_up_forms#reorder_slots", as: "reorder_slots_signups_form"
-    post "/signups/forms/:production_id/:id/generate_slots", to: "sign_up_forms#generate_slots", as: "generate_slots_signups_form"
-    patch "/signups/forms/:production_id/:id/toggle_slot_hold/:slot_id", to: "sign_up_forms#toggle_slot_hold", as: "toggle_slot_hold_signups_form"
-    get  "/signups/forms/:production_id/:id/holdouts", to: "sign_up_forms#holdouts", as: "holdouts_signups_form"
-    post "/signups/forms/:production_id/:id/create_holdout", to: "sign_up_forms#create_holdout", as: "create_holdout_signups_form"
-    delete "/signups/forms/:production_id/:id/destroy_holdout/:holdout_id", to: "sign_up_forms#destroy_holdout", as: "destroy_holdout_signups_form"
     post "/signups/forms/:production_id/:id/create_question", to: "sign_up_forms#create_question", as: "create_question_signups_form"
     patch "/signups/forms/:production_id/:id/update_question/:question_id", to: "sign_up_forms#update_question", as: "update_question_signups_form"
     delete "/signups/forms/:production_id/:id/destroy_question/:question_id", to: "sign_up_forms#destroy_question", as: "destroy_question_signups_form"
@@ -1029,8 +1009,6 @@ Rails.application.routes.draw do
     get "/signups/auditions/:production_id/:id/delete_confirm", to: "audition_cycles#delete_confirm", as: "delete_confirm_signups_auditions_cycle"
     patch "/signups/auditions/:production_id/:id/toggle_voting", to: "audition_cycles#toggle_voting", as: "toggle_voting_signups_auditions_cycle"
     get "/signups/auditions/:production_id/:id/settings", to: "auditions#settings", as: "settings_signups_auditions_cycle"
-    patch "/signups/auditions/:production_id/:id/update_reviewers", to: "auditions#update_reviewers", as: "update_reviewers_signups_auditions_cycle"
-    patch "/signups/auditions/:production_id/:id/finalize_invitations", to: "auditions#finalize_invitations", as: "finalize_invitations_signups_auditions_cycle"
     get  "/signups/auditions/:production_id/:id/casting", to: "auditions#casting", as: "casting_signups_auditions_cycle"
     get  "/signups/auditions/:production_id/:id/casting/select", to: "auditions#casting_select", as: "casting_select_signups_auditions_cycle"
     post "/signups/auditions/:production_id/:id/add_to_cast_assignment", to: "auditions#add_to_cast_assignment", as: "add_to_cast_assignment_signups_auditions_cycle"
@@ -1044,7 +1022,6 @@ Rails.application.routes.draw do
     # Sign-ups > Auditions > Requests
     get  "/signups/auditions/:production_id/:cycle_id/requests", to: "audition_requests#index", as: "signups_auditions_cycle_requests"
     get  "/signups/auditions/:production_id/:cycle_id/requests/archived", to: "audition_requests#archived", as: "archived_signups_auditions_cycle_requests"
-    get  "/signups/auditions/:production_id/:cycle_id/requests/new", to: "audition_requests#new", as: "new_signups_auditions_cycle_request"
     post "/signups/auditions/:production_id/:cycle_id/requests", to: "audition_requests#create", as: "create_signups_auditions_cycle_request"
     post "/signups/auditions/:production_id/:cycle_id/requests/confirm_bulk_archive", to: "audition_requests#confirm_bulk_archive", as: "confirm_bulk_archive_signups_auditions_cycle_requests"
     post "/signups/auditions/:production_id/:cycle_id/requests/bulk_archive", to: "audition_requests#bulk_archive", as: "bulk_archive_signups_auditions_cycle_requests"
@@ -1059,11 +1036,9 @@ Rails.application.routes.draw do
     patch "/signups/auditions/:production_id/:cycle_id/requests/:id/update_audition_session_availability", to: "audition_requests#update_audition_session_availability", as: "update_session_availability_signups_auditions_cycle_request"
     patch "/signups/auditions/:production_id/:cycle_id/requests/:id/update_show_availability", to: "audition_requests#update_show_availability", as: "update_show_availability_signups_auditions_cycle_request"
     post "/signups/auditions/:production_id/:cycle_id/requests/:id/cast_vote", to: "audition_requests#cast_vote", as: "cast_vote_signups_auditions_cycle_request"
-    get  "/signups/auditions/:production_id/:cycle_id/requests/:id/votes", to: "audition_requests#votes", as: "votes_signups_auditions_cycle_request"
 
     # Sign-ups > Auditions > Sessions
     get  "/signups/auditions/:production_id/:cycle_id/sessions", to: "audition_sessions#index", as: "signups_auditions_cycle_sessions"
-    get  "/signups/auditions/:production_id/:cycle_id/sessions/summary", to: "audition_sessions#summary", as: "signups_auditions_cycle_sessions_summary"
     get  "/signups/auditions/:production_id/:cycle_id/sessions/new", to: "audition_sessions#new", as: "new_signups_auditions_cycle_session"
     post "/signups/auditions/:production_id/:cycle_id/sessions/generate", to: "audition_sessions#generate", as: "generate_signups_auditions_cycle_sessions"
     post "/signups/auditions/:production_id/:cycle_id/sessions", to: "audition_sessions#create", as: "create_signups_auditions_cycle_session"
@@ -1095,7 +1070,6 @@ Rails.application.routes.draw do
     post "/casting/tables/new/members",  to: "casting_table_wizard#save_members", as: "casting_tables_save_members"
     get  "/casting/tables/new/review",   to: "casting_table_wizard#review", as: "casting_tables_review"
     post "/casting/tables/new/create",   to: "casting_table_wizard#create_table", as: "casting_tables_create"
-    delete "/casting/tables/new/cancel", to: "casting_table_wizard#cancel", as: "casting_tables_cancel"
 
     # Casting Table (individual)
     get "/casting/tables/:id",           to: "casting_tables#show", as: "casting_table"
@@ -1107,7 +1081,6 @@ Rails.application.routes.draw do
     delete "/casting/tables/:id/unassign", to: "casting_tables#unassign", as: "casting_table_unassign"
     get   "/casting/tables/:id/summary",   to: "casting_tables#summary", as: "casting_table_summary"
     post  "/casting/tables/:id/finalize",  to: "casting_tables#finalize", as: "casting_table_finalize"
-    post  "/casting/tables/:id/unfinalize", to: "casting_tables#unfinalize", as: "casting_table_unfinalize"
     post  "/casting/tables/:id/resend_notifications", to: "casting_tables#resend_notifications", as: "casting_table_resend_notifications"
 
     # Casting Table - Edit Members (separate tab)
@@ -1178,7 +1151,6 @@ Rails.application.routes.draw do
     # Casting > Availability (new URL pattern: /manage/casting/:production_id/availability)
     get  "/casting/:production_id/availability", to: "casting_availability#index", as: "casting_availability"
     get  "/casting/:production_id/availability/:id/show_modal", to: "casting_availability#show_modal", as: "show_modal_casting_availability"
-    patch "/casting/:production_id/availability/:id/update_show_availability", to: "casting_availability#update_show_availability", as: "update_show_availability_casting_availability"
 
     # Casting > Roles
     post "/casting/:production_id/roles", to: "roles#create", as: "create_casting_role"
@@ -1193,10 +1165,8 @@ Rails.application.routes.draw do
     post "/casting/:production_id/talent-pools/add_global_person", to: "talent_pools#add_global_person", as: "casting_talent_pool_add_global_person"
     post "/casting/:production_id/talent-pools/invite_to_pool", to: "talent_pools#invite_to_pool", as: "casting_talent_pool_invite_to_pool"
     post "/casting/:production_id/talent-pools/revoke_invitation", to: "talent_pools#revoke_invitation", as: "casting_talent_pool_revoke_invitation"
-    get  "/casting/:production_id/talent-pools/confirm-remove-person/:person_id", to: "talent_pools#confirm_remove_person", as: "casting_talent_pool_confirm_remove_person"
     post "/casting/:production_id/talent-pools/remove_person", to: "talent_pools#remove_person", as: "casting_talent_pool_remove_person"
     post "/casting/:production_id/talent-pools/add_group", to: "talent_pools#add_group", as: "casting_talent_pool_add_group"
-    get  "/casting/:production_id/talent-pools/confirm-remove-group/:group_id", to: "talent_pools#confirm_remove_group", as: "casting_talent_pool_confirm_remove_group"
     post "/casting/:production_id/talent-pools/remove_group", to: "talent_pools#remove_group", as: "casting_talent_pool_remove_group"
     get  "/casting/:production_id/talent-pools/upcoming_assignments/:id", to: "talent_pools#upcoming_assignments", as: "casting_talent_pool_upcoming_assignments"
     patch "/casting/:production_id/talent-pools/update_shares", to: "talent_pools#update_shares", as: "casting_talent_pool_update_shares"
@@ -1210,7 +1180,6 @@ Rails.application.routes.draw do
     post "/casting/:production_id/:show_id/remove_person_from_role", to: "casting#remove_person_from_role", as: "casting_show_remove_person"
     post "/casting/:production_id/:show_id/replace_assignment", to: "casting#replace_assignment", as: "casting_show_replace_assignment"
     post "/casting/:production_id/:show_id/create_vacancy", to: "casting#create_vacancy", as: "casting_show_create_vacancy"
-    post "/casting/:production_id/:show_id/finalize", to: "casting#finalize_casting", as: "casting_show_finalize"
     post "/casting/:production_id/:show_id/notify", to: "casting#notify_cast", as: "casting_show_notify"
     patch "/casting/:production_id/:show_id/reopen", to: "casting#reopen_casting", as: "casting_show_reopen"
     post "/casting/:production_id/:show_id/copy_cast_to_linked", to: "casting#copy_cast_to_linked", as: "casting_show_copy_to_linked"
@@ -1237,30 +1206,16 @@ Rails.application.routes.draw do
 
     # Contacts - unified people and groups listing
     get "/contacts",          to: "directory#index", as: "contacts"
-    patch "/contacts/group/:id/update_availability", to: "directory#update_group_availability",
-                                                      as: "update_group_availability"
 
     # Contacts - people (new URL pattern: /manage/contacts/people/:id)
-    get  "/contacts/people/new", to: "people#new", as: "new_contacts_person"
-    post "/contacts/people", to: "people#create", as: "create_contacts_person"
-    get  "/contacts/people/search_for_invite", to: "people#search_for_invite", as: "search_for_invite_contacts_people"
-    get  "/contacts/people/check_email", to: "people#check_email", as: "check_email_contacts_people"
-    get  "/contacts/people/:id", to: "people#show", as: "contacts_person"
+    get "/contacts/people/:id", to: "people#show", as: "contacts_person"
     patch "/contacts/people/:id", to: "people#update", as: "update_contacts_person"
-    post "/contacts/people/:id/add_to_cast", to: "people#add_to_cast", as: "add_to_cast_contacts_person"
-    post "/contacts/people/:id/remove_from_cast", to: "people#remove_from_cast", as: "remove_from_cast_contacts_person"
-    post "/contacts/people/:id/remove_from_organization", to: "people#remove_from_organization", as: "remove_from_organization_contacts_person"
-    patch "/contacts/people/:id/update_availability", to: "people#update_availability", as: "update_availability_contacts_person"
-    get  "/contacts/people/:id/availability_modal", to: "people#availability_modal", as: "availability_modal_contacts_person"
 
     # Contacts - groups (new URL pattern: /manage/contacts/groups/:id)
-    get  "/contacts/groups/:id", to: "groups#show", as: "contacts_group"
+    get "/contacts/groups/:id", to: "groups#show", as: "contacts_group"
     delete "/contacts/groups/:id", to: "groups#destroy", as: "destroy_contacts_group"
-    post "/contacts/groups/:id/remove_from_organization", to: "groups#remove_from_organization", as: "remove_from_organization_contacts_group"
-    patch "/contacts/groups/:id/update_availability", to: "groups#update_availability", as: "update_availability_contacts_group"
-    get "/contacts/groups/:id/availability_modal", to: "groups#availability_modal", as: "availability_modal_contacts_group"
 
-    resources :organizations do
+    resources :organizations, except: %i[edit] do
       collection do
         get :setup_guide
       end
@@ -1341,14 +1296,11 @@ Rails.application.routes.draw do
       collection do
         get :search
         post :invite
-        post :check_profiles
         delete :revoke_invite
         delete :remove_member
       end
       member do
         get :permissions
-        patch :update_production_permission
-        patch :update_global_role
         patch :update_access
       end
     end
@@ -1368,7 +1320,6 @@ Rails.application.routes.draw do
     resources :people, except: %i[destroy edit] do
       collection do
         get :search_for_invite
-        get :check_email
       end
       member do
         # Used when adding a person to a cast from a person (or person-like) page
@@ -1391,10 +1342,9 @@ Rails.application.routes.draw do
 
     # Email logs are accessed through contacts (people/groups)
     scope "/contacts" do
-      get "/emails/:id", to: "email_logs#show", as: "contacts_email"
     end
 
-    resources :locations do
+    resources :locations, except: %i[new edit] do
       member do
         get :cannot_delete
         patch :archive
@@ -1429,7 +1379,7 @@ Rails.application.routes.draw do
       # Production documents & handbooks (rich text, per-audience sharing).
       # `share` = who can see it (visibility); `productions` = which productions
       # it belongs to (ownership) — two separate concerns.
-      resources :documents do
+      resources :documents, except: %i[new] do
         member do
           patch :share
           patch :productions
@@ -1439,45 +1389,11 @@ Rails.application.routes.draw do
 
       resources :shows, except: [ :new, :create ] do
         collection do
-          get :calendar
           get :recurring_series, to: "shows#recurring_series"
           post :preview_extend_series, to: "shows#preview_extend_series"
           post :extend_series, to: "shows#extend_series"
           post :preview_reschedule, to: "shows#preview_reschedule"
           post :reschedule_future, to: "shows#reschedule_future"
-        end
-        member do
-          get   :cancel, action: :cancel
-          patch :cancel_show
-          delete :delete_show
-          patch :uncancel
-          post :link_show
-          delete :unlink_show
-          delete :delete_linkage
-          post :toggle_signup_based_casting
-          post :toggle_attendance
-          get :attendance
-          patch :update_attendance
-          post :create_walkin
-          patch :transfer
-        end
-
-        # Show-specific custom roles
-        resources :show_roles, only: [ :index, :create, :update, :destroy ] do
-          collection do
-            post :reorder
-            post :copy_from_production
-            get :talent_pool_members
-            get :check_assignments
-            post :clear_assignments
-            post :toggle_custom_roles
-            get :migration_preview
-            post :execute_migration
-          end
-          member do
-            get :slot_change_preview
-            post :execute_slot_change
-          end
         end
       end
 
@@ -1504,7 +1420,6 @@ Rails.application.routes.draw do
     patch "ticketing/settings/page/colors",       to: "ticketing_settings#update_page_colors", as: "ticketing_settings_page_colors"
     patch "ticketing/settings/tax",               to: "ticketing_settings#update_tax",   as: "ticketing_settings_tax"
     patch "ticketing/settings/refunds",           to: "ticketing_settings#update_refunds", as: "ticketing_settings_refunds"
-    post  "ticketing/settings/open",              to: "ticketing_settings#open_box_office", as: "ticketing_open_box_office"
     patch "ticketing/settings/notifications",     to: "ticketing_settings#update_notifications", as: "ticketing_settings_notifications"
     patch "ticketing/settings/sharing",           to: "ticketing_settings#update_sharing", as: "ticketing_settings_sharing"
     patch "ticketing/settings/comps",             to: "ticketing_settings#update_comps",   as: "ticketing_settings_comps"
@@ -1654,9 +1569,7 @@ Rails.application.routes.draw do
     post  "staffing/scheduling/service-shifts",   to: "staffing#add_service_shifts",           as: "add_staffing_service_shifts"
     get  "staffing/house_roles",                  to: "staffing/house_roles#index",      as: "staffing_house_roles"
     get  "staffing/house_roles/editor",           to: "staffing/house_roles#editor",     as: "staffing_house_roles_editor"
-    get  "staffing/house_roles/new",              to: "staffing/house_roles#new",        as: "new_staffing_house_role"
     post "staffing/house_roles",                  to: "staffing/house_roles#create",     as: "create_staffing_house_role"
-    get  "staffing/house_roles/:id/edit",         to: "staffing/house_roles#edit",       as: "edit_staffing_house_role"
     patch  "staffing/house_roles/:id",            to: "staffing/house_roles#update",     as: "update_staffing_house_role"
     delete "staffing/house_roles/:id",            to: "staffing/house_roles#destroy",    as: "destroy_staffing_house_role"
 
@@ -1674,7 +1587,6 @@ Rails.application.routes.draw do
     get    "staffing/agreement-templates/:id/edit",    to: "staffing/agreement_templates#edit",    as: "edit_staffing_agreement_template"
     patch  "staffing/agreement-templates/:id",    to: "staffing/agreement_templates#update",  as: "staffing_agreement_template"
     delete "staffing/agreement-templates/:id",    to: "staffing/agreement_templates#destroy"
-    get    "staffing/agreement-templates/:id/preview", to: "staffing/agreement_templates#preview", as: "preview_staffing_agreement_template"
 
     get "staffing/staff",                        to: "staffing/staff#index",            as: "staffing_staff"
     # Gusto-style add-staff wizard (the primary "add a staff member" flow).
@@ -1704,7 +1616,6 @@ Rails.application.routes.draw do
     get    "staffing/staff/onboard/send",       to: "staffing/staff_wizard#send_step",    as: "send_staffing_staff_wizard"
     post   "staffing/staff/onboard/send",       to: "staffing/staff_wizard#save_send",    as: "save_send_staffing_staff_wizard"
     delete "staffing/staff/onboard/cancel",     to: "staffing/staff_wizard#cancel",       as: "cancel_staffing_staff_wizard"
-    get  "staffing/staff/new",                    to: "staffing/staff#new",              as: "new_staffing_staff"
     post "staffing/staff",                        to: "staffing/staff#create",           as: "create_staffing_staff"
     get  "staffing/staff/:id/edit",               to: "staffing/staff#edit",             as: "edit_staffing_staff"
     patch  "staffing/staff/:id",                  to: "staffing/staff#update",           as: "update_staffing_staff"
@@ -1738,7 +1649,6 @@ Rails.application.routes.draw do
     delete "staffing/shifts/:id/unassign/:person_id",
                                                   to: "staffing/shifts#unassign",        as: "unassign_staffing_shift"
     post   "staffing/shifts/:id/split",           to: "staffing/shifts#split",           as: "split_staffing_shift"
-    post   "staffing/shifts/:id/merge_with_next", to: "staffing/shifts#merge_with_next", as: "merge_with_next_staffing_shift"
     post   "staffing/shifts/:id/merge",           to: "staffing/shifts#merge",           as: "merge_staffing_shift"
     # A shift someone can't make: where the manager finds cover (ShiftVacancy).
     get    "staffing/vacancies/:id",              to: "staffing/vacancies#show",         as: "staffing_vacancy"
@@ -1794,7 +1704,6 @@ Rails.application.routes.draw do
     get    "money/books/bank/rules/export",  to: "bank_rules#export",  as: "export_money_bank_rules"
     post   "money/books/bank/rules/import",  to: "bank_rules#import",  as: "import_money_bank_rules"
     post   "money/books/bank/rules/apply",   to: "bank_rules#apply",   as: "apply_money_bank_rules"
-    post   "money/books/bank/rules/dismiss", to: "bank_rules#dismiss", as: "dismiss_money_bank_payee"
     post   "money/books/bank/rules",         to: "bank_rules#create"
     get    "money/books/bank/rules/:id/edit", to: "bank_rules#edit",   as: "edit_money_bank_rule"
     patch  "money/books/bank/rules/:id",     to: "bank_rules#update",  as: "money_bank_rule"
@@ -1849,7 +1758,6 @@ Rails.application.routes.draw do
     get "money/financials/:production_id", to: "money_financials#index", as: "money_production_financials"
     # Payout runs: pay everyone with a connected bank at once (Stripe Connect).
     get    "money/payout-runs",              to: "payout_batches#index",            as: "payout_batches"
-    patch  "money/payout-runs/schedule",     to: "payout_batches#update_schedule",  as: "payout_batch_schedule"
     post   "money/payout-runs/funding",      to: "payout_batches#connect_funding",  as: "connect_payout_funding"
     get    "money/payout-runs/funding/return", to: "payout_batches#funding_return", as: "payout_funding_return"
     delete "money/payout-runs/funding",      to: "payout_batches#remove_funding",   as: "remove_payout_funding"
@@ -1920,18 +1828,13 @@ Rails.application.routes.draw do
     post "money/advances/:production_id/:id/mark_paid", to: "advances#mark_paid", as: "mark_paid_money_advance"
     delete "money/advances/:production_id/:id/mark_paid", to: "advances#unmark_paid", as: "unmark_paid_money_advance"
     # Advance waivers
-    post "money/advances/:production_id/waiver", to: "advances#create_waiver", as: "create_money_advance_waiver"
-    delete "money/advances/:production_id/waiver/:id", to: "advances#destroy_waiver", as: "destroy_money_advance_waiver"
 
     # Show financials - the main financial data view for a show
     get "money/shows/:id/financials", to: "show_financials#show", as: "money_show_financials"
     patch "money/shows/:id/financials", to: "show_financials#update", as: "update_money_show_financials"
-    post "money/shows/:id/financials/mark_non_revenue", to: "show_financials#mark_non_revenue", as: "mark_non_revenue_money_show_financials"
     post "money/shows/:id/financials/unmark_non_revenue", to: "show_financials#unmark_non_revenue", as: "unmark_non_revenue_money_show_financials"
 
     # Expense items - receipt management
-    post "money/expense_items/:id/upload_receipt", to: "expense_items#upload_receipt", as: "upload_receipt_expense_item"
-    delete "money/expense_items/:id/remove_receipt", to: "expense_items#remove_receipt", as: "remove_receipt_expense_item"
 
     # Payout calculations (PayoutScheme records — "payout calculations" to users).
     # Creating/editing goes through the wizard; the pages here list, show,
@@ -2019,12 +1922,8 @@ Rails.application.routes.draw do
     delete "/mailing-lists/:id/followers/:follower_id",       to: "list_followers#destroy",         as: "mailing_list_follower"
 
     resources :contractors, path: "money/contractors" do
-      collection do
-        get :search
-      end
       member do
         post :invite
-        post :link_person
         # The add-a-person modal: preview what a person will be sent, then link
         # + send in one confirmed step.
         get  :preview_person
@@ -2050,20 +1949,17 @@ Rails.application.routes.draw do
     # Settings (contract_settings#show); this owns the form pages + mutations.
     # Pathed under "contracts/templates" so it never collides with a contract :id.
     resources :contract_templates, path: "contracts/templates",
-              only: %i[new create edit update destroy] do
-      member { get :preview }
-    end
+              only: %i[new create edit update destroy]
     # Sections are named, never positional — declared last so the specific
     # routes above win.
     get "contracts/settings/:section",     to: "contract_settings#show",           as: "contract_settings_section"
 
-    resources :contracts, path: "contracts" do
+    resources :contracts, path: "contracts", except: %i[new edit] do
       collection do
         get :all
         get :completed
       end
       member do
-        post :activate
         post :reopen
         get :cancel
         post :process_cancel
@@ -2124,7 +2020,7 @@ Rails.application.routes.draw do
       # managed from the Prepare step.
       resources :contract_appendixes, only: %i[create update destroy], path: "appendixes"
       resources :contract_documents, only: %i[create destroy], path: "documents"
-      resources :contract_payments, only: %i[create update destroy], path: "payments" do
+      resources :contract_payments, only: %i[update destroy], path: "payments" do
         member do
           post :mark_paid
           post :pay_offline
@@ -2136,7 +2032,6 @@ Rails.application.routes.draw do
           patch :settlement
         end
       end
-      resources :space_rentals, only: %i[create update destroy], path: "rentals"
       # Native e-signature: revoke an outstanding request. (Sending happens in the
       # wizard's Prepare → Sign → Send steps.)
       resource :signature, only: %i[destroy], controller: "contract_signatures"
@@ -2203,7 +2098,6 @@ Rails.application.routes.draw do
     post "money/shows/:id/payouts/calculate", to: "show_payouts#calculate", as: "calculate_money_show_payout"
     post "money/shows/:id/payouts/add_to_run", to: "show_payouts#add_to_payout_run", as: "add_to_run_money_show_payout"
     post "money/shows/:id/payouts/promote_guest", to: "show_payouts#promote_guest", as: "promote_guest_money_show_payout"
-    post "money/shows/:id/payouts/mark_paid", to: "show_payouts#mark_paid", as: "mark_paid_money_show_payout"
     # Tonight's calculation: customize the amounts (override), pick a different
     # calculation for this show (and optionally its future shows), or go back
     # to the production's own.
@@ -2315,13 +2209,10 @@ Rails.application.routes.draw do
     post "courses/:course_offering_id/payout/calculate",        to: "course_offering_payouts#calculate",               as: "course_offering_payout_calculate"
     post "courses/:course_offering_id/payout/recalculate",      to: "course_offering_payouts#recalculate",             as: "course_offering_payout_recalculate"
     patch "courses/:course_offering_id/payout/revenue_override", to: "course_offering_payouts#update_revenue_override", as: "course_offering_payout_revenue_override"
-    post "courses/:course_offering_id/payout/line_items",       to: "course_offering_payouts#add_line_item",           as: "course_offering_payout_add_line_item"
     post "courses/:course_offering_id/payout/pay_instructors",  to: "course_offering_payouts#pay_instructors",         as: "course_offering_payout_pay_instructors"
     post "courses/:course_offering_id/payout/add_to_run",       to: "course_offering_payouts#add_to_run",              as: "course_offering_payout_add_to_run"
-    delete "courses/:course_offering_id/payout/line_items/:line_item_id", to: "course_offering_payouts#remove_line_item", as: "course_offering_payout_remove_line_item"
     post "courses/:course_offering_id/payout/line_items/:line_item_id/mark_paid", to: "course_offering_payouts#mark_line_item_paid", as: "course_offering_payout_mark_line_item_paid"
 
-    resources :cast_assignment_stages, only: %i[create update destroy]
     # Note: auditions routes are now under signups/auditions
   end
 
@@ -2378,7 +2269,6 @@ Rails.application.routes.draw do
   # Profile routes with ID (for editing specific profiles)
   get    "/profile/:id", to: "profile#show", as: "edit_profile", constraints: { id: /\d+/ }
   patch  "/profile/:id", to: "profile#update", as: "update_profile", constraints: { id: /\d+/ }
-  get    "/profile/:id/change-url", to: "profile#change_url", as: "change_url_profile", constraints: { id: /\d+/ }
   post   "/profile/:id/check-url-availability", to: "profile#check_url_availability", as: "check_url_availability_profile", constraints: { id: /\d+/ }
   patch  "/profile/:id/update-url", to: "profile#update_url", as: "update_url_profile", constraints: { id: /\d+/ }
   get    "/profile/:id/change-email", to: "profile#change_email", as: "change_email_profile", constraints: { id: /\d+/ }
@@ -2401,7 +2291,6 @@ Rails.application.routes.draw do
   patch  "/groups/:id/update_member_notifications", to: "groups#update_member_notifications",
                                                     as: "update_member_notifications_group"
   patch  "/groups/:id/archive",       to: "groups#archive",    as: "archive_group"
-  patch  "/groups/:id/unarchive",     to: "groups#unarchive",  as: "unarchive_group"
 
   # Group invitations
   post "/groups/:group_id/invitations", to: "group_invitations#create", as: "group_invitations"

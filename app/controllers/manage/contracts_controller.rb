@@ -4,7 +4,7 @@ module Manage
   class ContractsController < ManageController
     include CrossOrgPersonLookup
 
-    before_action :set_contract, except: %i[index all new create completed]
+    before_action :set_contract, except: %i[ index all create completed ]
 
     # How long a freshly signed (or activated) contract stays in the hub's
     # "in motion" list before it's just another active contract.
@@ -353,10 +353,6 @@ module Manage
       end
     end
 
-    def new
-      @contract = Current.organization.contracts.build
-    end
-
     def create
       @contract = Current.organization.contracts.build(contract_params)
 
@@ -365,9 +361,6 @@ module Manage
       else
         render :new, status: :unprocessable_content
       end
-    end
-
-    def edit
     end
 
     def update
@@ -390,14 +383,6 @@ module Manage
 
       @contract.destroy
       redirect_to manage_contracts_path, notice: "Contract and all associated data permanently deleted."
-    end
-
-    def activate
-      if @contract.activate!
-        redirect_to manage_contract_path(@contract), notice: "Contract activated. Productions and shows have been created."
-      else
-        redirect_to manage_contract_path(@contract), alert: "Could not activate contract: #{@contract.errors.full_messages.join(', ')}"
-      end
     end
 
     def reopen

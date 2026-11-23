@@ -128,18 +128,6 @@ module Manage
       end
     end
 
-    def open_box_office
-      ticketing_profile.update!(enabled: true)
-      notice = "Your box office is open. Buyers can find your shows at your box office link."
-      # The end of a new organization's onboarding says how to turn on Tap to Pay on iPhone (Apple 3.4).
-      if TapToPay.available_for?(Current.organization)
-        notice += " To take cards at the door on an iPhone, open the CocoScout app and choose Tap to Pay on iPhone in the menu."
-      elsif TapToPay.offered_to?(Current.organization)
-        notice += " To take cards at the door on an iPhone, turn on Tap to Pay on iPhone in Ticketing settings, on the Door tab."
-      end
-      redirect_to manage_ticketing_path, notice: notice
-    end
-
     def update
       attrs = params.require(:ticketing_profile)
                     .permit(:slug, :support_email, :default_fee_mode, :price_display, :cash_tax, :default_max_per_order,

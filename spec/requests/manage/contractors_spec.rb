@@ -25,25 +25,6 @@ RSpec.describe "Manage::Contractors", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Associated person").and include("Add a person")
     end
-
-    it "links an existing CocoScout person via the picker" do
-      person = create(:person, name: "Sam Sound", email: "sam@example.com")
-      org.people << person
-      expect { post link_person_manage_contractor_path(contractor), params: { person_id: person.id } }
-        .to change { contractor.reload.person }.from(nil).to(person)
-      expect(response).to redirect_to(manage_contractor_path(contractor))
-    end
-
-    it "links a brand-new person by email, but leaves inviting as a separate, previewed step" do
-      # Linking just links — no login and no invitation until you send from the
-      # preview modal, so nothing goes out without being seen first.
-      expect {
-        post link_person_manage_contractor_path(contractor), params: { invite_name: "New Person", invite_email: "new@example.com" }
-      }.not_to change(PersonInvitation, :count)
-      person = contractor.reload.person
-      expect(person.email).to eq("new@example.com")
-      expect(person.user).to be_nil
-    end
   end
 
   describe "inviting the associated person to CocoScout" do

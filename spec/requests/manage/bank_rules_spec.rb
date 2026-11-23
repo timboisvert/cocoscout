@@ -115,7 +115,7 @@ RSpec.describe "Manage::BankRules", type: :request do
 
   # The payees without a rule (BankPayees, Tim 2026-11-03): grouped by what
   # the bank says, most lines first; "it varies" takes one off the list.
-  it "lists the payees without a rule, grouped the bank's way, and takes one off for good" do
+  it "lists the payees without a rule, grouped the bank's way" do
     3.times { |i| line(Date.new(2026, 10, 3 + i), -18_250, "FACEBK *UDRM#{i}VHTS2 650-5434800 DE 10/0#{3 + i}") }
     line(Date.new(2026, 10, 9), -4_400, "FACEBK *QUW2CBWZB4 650-5434800 CA 10/09")
     line(Date.new(2026, 10, 4), 41_200, "ORIG CO NAME:ChgTheatres334CR ORIG ID:3630393341 DESC DATE:251004")
@@ -141,10 +141,6 @@ RSpec.describe "Manage::BankRules", type: :request do
     get manage_money_bank_rules_path
     expect(response.body).to include("Payees without a rule", ">5<", "Facebook", "Card purchase", "FACEBK", "Your own accounts", "Transfers between your own accounts", "Jaki Torres Cleaner", "Checks", "Record each one")
     expect(response.body).not_to include("Only Once")
-
-    post manage_dismiss_money_bank_payee_path(key: payees.first.key, direction: "out")
-    expect(org.bank_rule_dismissals.pluck(:phrase, :direction)).to eq([ [ payees.first.key, "out" ] ])
-    expect(BankSort.payees(org).map(&:name)).not_to include("Facebook")
 
     # A rule that fits a payee's lines takes it off the list too, and says how many it catches.
     org.bank_rules.create!(contains: "Online Transfer", direction: "any", action: "ignore")

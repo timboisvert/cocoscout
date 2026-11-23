@@ -28,11 +28,4 @@ class GuidesController < ApplicationController
     Current.user.dismiss_guide!(params[:key])
     redirect_back fallback_location: root_path
   end
-
-  def restore
-    return head :unprocessable_content unless GUIDE_KEYS.include?(params[:key])
-
-    Current.user.activate_guide!(params[:key])
-    redirect_back fallback_location: root_path
-  end
 end

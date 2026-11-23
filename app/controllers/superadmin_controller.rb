@@ -1602,10 +1602,6 @@ class SuperadminController < ApplicationController
   # Rake Tasks
   # =========================================================================
 
-  def tasks
-    @tasks = load_rake_tasks
-  end
-
   # =========================================================================
   # Dev Tools (development only)
   # =========================================================================
@@ -2069,45 +2065,6 @@ class SuperadminController < ApplicationController
     errors
   end
 
-  # Load custom rake tasks from lib/tasks with their descriptions
-  def load_rake_tasks
-    # Parse rake -T output for our custom namespaces only
-    output = `cd #{Rails.root} && bin/rake -T 2>/dev/null`
-
-    # Only include tasks from our custom lib/tasks files
-    custom_namespaces = %w[communications demo routes]
-
-    tasks_by_namespace = Hash.new { |h, k| h[k] = [] }
-
-    output.each_line do |line|
-      next unless line.start_with?("rake ")
-
-      # Remove "rake " prefix and split on "#"
-      line = line.sub(/^rake\s+/, "").strip
-      parts = line.split(/\s+#\s+/, 2)
-      next if parts.length < 2
-
-      task_name = parts[0].strip
-      description = parts[1].strip
-
-      # Parse namespace from task name
-      name_parts = task_name.split(":")
-      namespace = name_parts.first
-
-      # Only include our custom namespaces
-      next unless custom_namespaces.include?(namespace)
-
-      tasks_by_namespace[namespace] << {
-        name: task_name,
-        description: description
-      }
-    end
-
-    # Sort namespaces and tasks within each namespace
-    tasks_by_namespace.transform_values! { |tasks| tasks.sort_by { |t| t[:name] } }
-    tasks_by_namespace.sort.to_h
-  end
-
   public
 
   # ========== Messages Monitor ==========
@@ -2366,13 +2323,6 @@ class SuperadminController < ApplicationController
       redirect_to finances_org_courses_path(org_id: org_id),
         notice: "Payment deleted."
     end
-  end
-
-  def finances_mark_payment_paid
-    payout = OrgPayout.find(params[:id])
-    payout.mark_paid!(user: Current.user)
-
-    redirect_back fallback_location: finances_path, notice: "Payment marked as paid."
   end
 
   private

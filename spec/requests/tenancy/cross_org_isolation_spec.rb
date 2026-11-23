@@ -153,43 +153,6 @@ RSpec.describe "Cross-org isolation (manage)", type: :request do
     end
   end
 
-  describe "email logs (H-1)" do
-    let!(:victim_log) { create(:email_log, organization: victim_org, user: victim_owner) }
-
-    it "404s on a foreign org's email body" do
-      get manage_contacts_email_path(victim_log)
-      expect(response).to have_http_status(:not_found)
-    end
-  end
-
-  describe "casting availability org_* actions (H-2)" do
-    let!(:victim_show) { create(:show, production: victim_production) }
-    let!(:victim_person) { create(:person).tap { |p| victim_org.people << p } }
-
-    it "404s the show modal for a foreign show" do
-      get manage_org_availability_show_modal_path(victim_show)
-      expect(response).to have_http_status(:not_found)
-    end
-
-    it "404s casting a person into a foreign show" do
-      role = create(:role, production: victim_production)
-
-      expect {
-        post manage_org_availability_cast_person_path,
-             params: { show_id: victim_show.id, role_id: role.id, person_id: victim_person.id }
-      }.not_to change(ShowPersonRoleAssignment, :count)
-      expect(response).to have_http_status(:not_found)
-    end
-
-    it "404s forging availability on a foreign show" do
-      expect {
-        post manage_org_availability_set_availability_path,
-             params: { show_id: victim_show.id, person_id: victim_person.id, status: "available" }
-      }.not_to change(ShowAvailability, :count)
-      expect(response).to have_http_status(:not_found)
-    end
-  end
-
   describe "locations (H-3)" do
     let!(:victim_location) { create(:location, organization: victim_org) }
 
@@ -221,40 +184,16 @@ RSpec.describe "Cross-org isolation (manage)", type: :request do
     end
   end
 
-  describe "advance waivers (M-1)" do
-    let!(:victim_show) { create(:show, production: victim_production) }
-    let!(:victim_waiver) do
-      ShowAdvanceWaiver.create!(show: victim_show, person: create(:person), waived_by: victim_owner,
-                                reason: "no_advances_this_show")
-    end
-
-    it "404s deleting a foreign waiver through my production id" do
-      expect {
-        delete manage_destroy_money_advance_waiver_path(production, victim_waiver)
-      }.not_to change(ShowAdvanceWaiver, :count)
-      expect(response).to have_http_status(:not_found)
-    end
-  end
-
   describe "talent pools via people controller (M-2)" do
     let!(:victim_pool) { create(:talent_pool, production: victim_production) }
     let!(:my_person) { create(:person).tap { |p| org.people << p } }
 
     it "404s pushing my person into a foreign org's pool" do
-      post manage_add_to_cast_contacts_person_path(my_person),
+      post add_to_cast_manage_person_path(my_person),
            params: { talent_pool_id: victim_pool.id, person_id: my_person.id }
 
       expect(response).to have_http_status(:not_found)
       expect(victim_pool.people).not_to include(my_person)
-    end
-  end
-
-  describe "directory group availability (M-3)" do
-    let!(:victim_group) { create(:group).tap { |g| victim_org.groups << g } }
-
-    it "404s writing availability for a foreign group" do
-      patch manage_update_group_availability_path(victim_group)
-      expect(response).to have_http_status(:not_found)
     end
   end
 

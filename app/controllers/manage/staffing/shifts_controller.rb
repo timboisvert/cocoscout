@@ -6,7 +6,7 @@ module Manage
       include Manage::SchedulingReturn
 
       before_action :ensure_org_owner_or_manager
-      before_action :set_shift, only: %i[update destroy assign unassign split merge merge_with_next]
+      before_action :set_shift, only: %i[ update destroy assign unassign split merge ]
 
       def create
         @shift = Current.organization.shifts.new(shift_params)
@@ -175,49 +175,6 @@ module Manage
         redirect_to_scheduling notice: "Split into #{segments.size} shifts."
       rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
         redirect_to_scheduling alert: "Couldn't split: #{e.message}"
-      end
-
-      # Merge with the adjacent same-role shift that starts at this one's end.
-      # Combines assignments (dedup by person), then deletes the second shift.
-      def merge_with_next
-        # The next same-role shift that begins where this one ends — regardless of
-        # which show each is anchored to (adjacent shifts for different shows are
-        # exactly what we want to combine).
-        next_shift = Current.organization.shifts
-          .where(house_role_id: @shift.house_role_id)
-          .where(starts_at: @shift.ends_at)
-          .where.not(id: @shift.id)
-          .order(:starts_at)
-          .first
-
-        unless next_shift
-          redirect_to_scheduling(alert: "No adjacent shift to merge with.") and return
-        end
-
-        # Same bookkeeping as #merge. This used to drop the next shift's shows,
-        # so the merged shift silently stopped covering them in Role Call — and
-        # its extra roles went with it.
-        extra_shows = [ @shift, next_shift ].flat_map(&:covered_shows).uniq.reject { |s| s == @shift.source }
-        role_ids, show_ids_by_role = merged_additional_roles([ @shift, next_shift ])
-
-        ActiveRecord::Base.transaction do
-          existing_person_ids = @shift.shift_assignments.pluck(:person_id)
-          next_position = (@shift.shift_assignments.maximum(:position) || 0)
-          next_shift.shift_assignments.order(:position).each do |a|
-            next if existing_person_ids.include?(a.person_id)
-            next_position += 1
-            @shift.shift_assignments.create!(person_id: a.person_id, position: next_position,
-                                             notified_at: a.notified_at, accepted_at: a.accepted_at, declined_at: a.declined_at)
-          end
-          @shift.update!(ends_at: [ next_shift.ends_at, @shift.ends_at ].max)
-          carry_vacancies(next_shift, @shift)
-          next_shift.destroy!
-          @shift.shows = extra_shows if extra_shows.any?
-          @shift.reload.assign_additional_roles!(role_ids, show_ids_by_role)
-        end
-        redirect_to_scheduling notice: "Shifts merged."
-      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
-        redirect_to_scheduling alert: "Couldn't merge: #{e.message}"
       end
 
       private

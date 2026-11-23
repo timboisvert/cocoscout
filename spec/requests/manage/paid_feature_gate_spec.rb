@@ -61,22 +61,15 @@ RSpec.describe "Manage paid-feature gate", type: :request do
 
     # The gate maps controllers, so every controller that touches a Pro
     # module's data has to be in the map — including the small nested ones
-    # (a contract's rentals and appendixes, Money's expenses and receipts).
+    # (a contract's appendixes, Money's expenses).
     it "gates the nested Contracts and Money controllers too" do
       production = create(:production, organization: organization, production_type: "third_party")
       contract = create(:contract, :active, organization: organization, production: production)
-
-      post manage_contract_space_rentals_path(contract), params: { space_rental: { starts_at: 1.week.from_now } }
-      expect(response).to have_http_status(:payment_required)
-      expect(contract.space_rentals.count).to eq(0)
 
       post manage_contract_contract_appendixes_path(contract), params: { contract_appendix: { heading: "Extra", body: "x" } }
       expect(response).to have_http_status(:payment_required)
 
       get manage_money_financials_production_expenses_path(production)
-      expect(response).to have_http_status(:payment_required)
-
-      post manage_upload_receipt_expense_item_path(1), as: :json
       expect(response).to have_http_status(:payment_required)
     end
 

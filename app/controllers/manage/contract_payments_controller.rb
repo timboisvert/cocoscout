@@ -5,16 +5,6 @@ module Manage
     before_action :set_contract
     before_action :set_payment, only: %i[update destroy mark_paid pay_offline add_to_payout_run remove_from_payout_run refresh_in_payout_run settlement combine split]
 
-    def create
-      @payment = @contract.contract_payments.build(payment_params)
-
-      if @payment.save
-        redirect_to manage_contract_path(@contract), notice: "Payment added."
-      else
-        redirect_to manage_contract_path(@contract), alert: "Could not add payment: #{@payment.errors.full_messages.join(', ')}"
-      end
-    end
-
     def update
       if @payment.update(payment_params)
         redirect_back fallback_location: manage_contract_path(@contract), notice: "Payment updated."

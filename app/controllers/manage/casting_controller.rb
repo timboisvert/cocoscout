@@ -6,9 +6,7 @@ module Manage
     before_action :check_production_access, except: [ :org_index ]
     before_action :check_not_third_party, except: [ :org_index ]
     before_action :set_show,
-                  only: %i[show_cast assign_person_to_role assign_guest_to_role remove_person_from_role replace_assignment create_vacancy finalize_casting notify_cast reopen_casting copy_cast_to_linked
-                           reorder_running_order create_running_order_act update_running_order_act destroy_running_order_act running_order_act_options
-                           running_order_reset_preview reset_running_order]
+                  only: %i[ show_cast assign_person_to_role assign_guest_to_role remove_person_from_role replace_assignment create_vacancy notify_cast reopen_casting copy_cast_to_linked reorder_running_order create_running_order_act update_running_order_act destroy_running_order_act running_order_act_options running_order_reset_preview reset_running_order ]
     # Production team viewers look; managers change things (Tim, 2026-10-17).
     before_action :ensure_user_is_manager, except: %i[index org_index show_cast search_people running_order_act_options]
 
@@ -850,64 +848,6 @@ module Manage
       respond_to do |format|
         format.html { redirect_to manage_casting_show_cast_path(@production, @show), alert: e.message }
         format.json { render json: { error: e.message }, status: :unprocessable_content }
-      end
-    end
-
-    def finalize_casting
-      unless @show.fully_cast?
-        redirect_to manage_casting_show_cast_path(@production, @show),
-                    alert: "Cannot finalize casting until all roles are filled."
-        return
-      end
-
-      # For linked shows, gather all shows to finalize together
-      shows_to_finalize = [ @show ]
-      if @show.linked?
-        linked_shows = @show.linked_shows.to_a
-        sync_info = build_linkage_sync_info(@show, linked_shows)
-
-        unless sync_info[:all_in_sync]
-          redirect_to manage_casting_show_cast_path(@production, @show),
-                      alert: "Cannot finalize casting: linked events are not in sync. Please copy cast to linked events first."
-          return
-        end
-
-        # Add linked shows that aren't already finalized
-        linked_shows.each do |linked_show|
-          shows_to_finalize << linked_show unless linked_show.casting_finalized?
-        end
-      end
-
-      # Get email content from form params (rich text uses email_draft nested params)
-      cast_draft_params = params[:cast_email_draft] || {}
-      removed_draft_params = params[:removed_email_draft] || {}
-
-      cast_subject = cast_draft_params[:title].presence || default_cast_email_subject
-      cast_body = cast_draft_params[:body].to_s.presence || default_cast_email_body
-      removed_subject = removed_draft_params[:title].presence || default_removed_email_subject
-      removed_body = removed_draft_params[:body].to_s.presence || default_removed_email_body
-
-      # Notify everyone still unnotified (and anyone removed since last notice),
-      # then lock each show below.
-      deliver_cast_notifications(
-        shows_to_finalize,
-        cast_subject: cast_subject, cast_body: cast_body,
-        removed_subject: removed_subject, removed_body: removed_body
-      )
-
-      # Close open vacancies and mark casting finalized for each show.
-      shows_to_finalize.each do |show|
-        show.role_vacancies.open.update_all(status: :filled, filled_at: Time.current)
-        show.finalize_casting!
-      end
-
-      finalized_count = shows_to_finalize.count
-      if finalized_count > 1
-        redirect_to manage_casting_show_cast_path(@production, @show),
-                    notice: "Casting finalized for #{finalized_count} linked events and notifications sent!"
-      else
-        redirect_to manage_casting_show_cast_path(@production, @show),
-                    notice: "Casting finalized and notifications sent!"
       end
     end
 

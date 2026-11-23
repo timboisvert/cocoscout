@@ -201,11 +201,6 @@ module Manage
       render :review, status: :unprocessable_content
     end
 
-    def cancel
-      clear_wizard_state
-      redirect_to manage_casting_tables_path, notice: "Casting table creation cancelled"
-    end
-
     private
 
     def load_wizard_state

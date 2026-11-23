@@ -22,15 +22,11 @@ RSpec.describe "Profile intro guide", type: :request do
     expect(response.body).to include("Welcome to your profile")
   end
 
-  it "hides the guide once dismissed, with a way back" do
+  it "hides the guide once dismissed" do
     post guide_dismiss_path("profile_intro")
     get profile_path
 
     expect(response.body).not_to include('data-intro-guide="profile_intro"')
     expect(response.body).not_to include("Show it on the page", "data-intro-guide-help") # closed means gone, no "?" circle
-
-    post guide_restore_path("profile_intro")
-    get profile_path
-    expect(response.body).to include('data-intro-guide="profile_intro"')
   end
 end

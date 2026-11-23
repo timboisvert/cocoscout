@@ -66,25 +66,6 @@ module Manage
       @talent_pool_people = @production.effective_talent_pool&.people&.order(:name) || []
     end
 
-    # PATCH /auditions/update_reviewers
-    def update_reviewers
-      reviewer_access_type = params[:reviewer_access_type]
-      person_ids = params[:person_ids] || []
-
-      @audition_cycle.update!(reviewer_access_type: reviewer_access_type)
-
-      # Update reviewers
-      @audition_cycle.audition_reviewers.destroy_all
-      if reviewer_access_type == "specific"
-        person_ids.each do |person_id|
-          @audition_cycle.audition_reviewers.create!(person_id: person_id) if person_id.present?
-        end
-      end
-
-      redirect_to manage_settings_signups_auditions_cycle_path(@production, @audition_cycle),
-                  notice: "Audition review team updated successfully."
-    end
-
     # GET /auditions/casting
     def casting
       redirect_to_archived_summary if @audition_cycle && !@audition_cycle.active
@@ -155,14 +136,6 @@ module Manage
       @cast_assignment_stages = @audition_cycle.cast_assignment_stages.active.includes(:assignable, :talent_pool)
       exclude_cleared_auditionees!
       @current_talent_pool_members = @talent_pool.talent_pool_memberships.includes(:member).map(&:member).compact.sort_by { |m| m.name.to_s }
-    end
-
-    # PATCH /auditions/finalize_invitations
-    def finalize_invitations
-      audition_cycle = @production.audition_cycle
-      audition_cycle.update(finalize_audition_invitations: params[:finalize])
-      redirect_to manage_signups_auditions_cycle_requests_path(@production, audition_cycle),
-                  notice: "Audition invitations #{params[:finalize] == 'true' ? 'finalized' : 'unfinalized'}"
     end
 
     # GET /auditions/schedule_auditions
@@ -969,13 +942,6 @@ module Manage
       })
     end
 
-    def generate_default_invitation_email(person, production, _audition_cycle)
-      ContentTemplateService.render_body("audition_invitation", {
-        recipient_name: person.name,
-        production_name: production.name
-      })
-    end
-
     def generate_default_not_invited_email(person, production)
       ContentTemplateService.render_body("audition_not_invited", {
         recipient_name: person.name,
@@ -1037,11 +1003,6 @@ module Manage
         # Direct route for audition show (if needed)
         @audition = Audition.joins(:audition_session).where(audition_sessions: { audition_cycle_id: @audition_cycle.id }).find(params.expect(:id))
       end
-    end
-
-    # Only allow a list of trusted parameters through.
-    def audition_params
-      params.expect(audition: %i[audition_session_id audition_request_id])
     end
 
     def redirect_to_archived_summary

@@ -272,19 +272,6 @@ module Manage
       end
     end
 
-    def confirm_remove_person
-      @person = Person.find_by(id: params[:person_id]) || # rubocop:disable CocoScout/UnscopedFind -- removal is scoped to @talent_pool below; global find only for display
-                Current.organization.people.find(params[:person_id])
-      @upcoming_assignments = ShowPersonRoleAssignment.joins(:show)
-                                                       .includes(:show, :role)
-                                                       .where(shows: { production_id: @production.id })
-                                                       .where(assignable_type: "Person", assignable_id: @person.id)
-                                                       .where("shows.date_and_time >= ?", Time.current)
-                                                       .order("shows.date_and_time ASC")
-      @member_type = "person"
-      render :confirm_remove_member
-    end
-
     def remove_person
       # Resolve the person globally rather than through Current.organization.people:
       # a pooled member may not carry the org HABTM link (e.g. merged into a
@@ -319,19 +306,6 @@ module Manage
       group = Current.organization.groups.find(params[:group_id])
       @talent_pool.groups << group unless @talent_pool.groups.exists?(group.id)
       render partial: "manage/talent_pools/talent_pool_members_list", locals: { talent_pool: @talent_pool }
-    end
-
-    def confirm_remove_group
-      @group = Group.find_by(id: params[:group_id]) || # rubocop:disable CocoScout/UnscopedFind -- removal is scoped to @talent_pool below; global find only for display
-               Current.organization.groups.find(params[:group_id])
-      @upcoming_assignments = ShowPersonRoleAssignment.joins(:show)
-                                                       .includes(:show, :role)
-                                                       .where(shows: { production_id: @production.id })
-                                                       .where(assignable_type: "Group", assignable_id: @group.id)
-                                                       .where("shows.date_and_time >= ?", Time.current)
-                                                       .order("shows.date_and_time ASC")
-      @member_type = "group"
-      render :confirm_remove_member
     end
 
     def remove_group

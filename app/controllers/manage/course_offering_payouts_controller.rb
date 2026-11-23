@@ -134,49 +134,6 @@ module Manage
         notice: "Payout recalculated successfully."
     end
 
-    def add_line_item
-      amount_cents = (params[:amount].to_f * 100).round
-
-      if amount_cents <= 0
-        redirect_to manage_course_offering_payout_path(@course_offering),
-          alert: "Amount must be greater than zero."
-        return
-      end
-
-      @payout.line_items.create!(
-        amount_cents: amount_cents,
-        label: params[:label].presence || "Payment",
-        calculation_details: { type: "manual" }
-      )
-
-      @payout.update!(
-        total_payout_cents: @payout.line_items.sum(:amount_cents),
-        status: "calculated"
-      )
-
-      redirect_to manage_course_offering_payout_path(@course_offering),
-        notice: "Payment added."
-    end
-
-    def remove_line_item
-      line_item = @payout.line_items.find(params[:line_item_id])
-
-      if line_item.paid?
-        redirect_to manage_course_offering_payout_path(@course_offering),
-          alert: "Cannot remove a line item that has already been marked as paid."
-        return
-      end
-
-      line_item.destroy!
-
-      @payout.update!(
-        total_payout_cents: @payout.line_items.sum(:amount_cents)
-      )
-
-      redirect_to manage_course_offering_payout_path(@course_offering),
-        notice: "Payment removed."
-    end
-
     # Offline fallback: record that an instructor was paid another way (cash/check/
     # Zelle/etc.) when they can't be paid through a Stripe run. Settles the payout
     # once every line is paid, so the course leaves "awaiting payout".

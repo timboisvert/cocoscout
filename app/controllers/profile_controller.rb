@@ -176,10 +176,6 @@ class ProfileController < ApplicationController
     end
   end
 
-  def change_url
-    # Show form to change public_key
-  end
-
   def check_url_availability
     proposed_key = params[:public_key]
     result = PublicKeyService.validate(proposed_key, entity_type: :person, exclude_entity: @person)

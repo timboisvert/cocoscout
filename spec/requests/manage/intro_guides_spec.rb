@@ -16,7 +16,7 @@ RSpec.describe "Intro guides", type: :request do
     post handle_signin_path, params: { email_address: owner.email_address, password: password }
   end
 
-  it "shows the casting guide by default and hides it after dismissal, with a way back" do
+  it "shows the casting guide by default and hides it after dismissal" do
     get manage_casting_path
     expect(response.body).to include('data-intro-guide="casting_intro"')
 
@@ -26,10 +26,6 @@ RSpec.describe "Intro guides", type: :request do
     get manage_casting_path
     expect(response.body).not_to include('data-intro-guide="casting_intro"')
     expect(response.body).not_to include("Show it on the page", "data-intro-guide-help") # closed means gone, no "?" circle
-
-    post guide_restore_path("casting_intro")
-    get manage_casting_path
-    expect(response.body).to include('data-intro-guide="casting_intro"')
   end
 
   it "shows the auditions guide on the auditions index" do

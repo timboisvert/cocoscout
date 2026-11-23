@@ -3,10 +3,7 @@
 module Manage
   class CastingTablesController < Manage::ManageController
     before_action :ensure_user_is_manager, except: [ :index, :show ]
-    before_action :set_casting_table, only: [
-      :show, :update, :cell, :assign, :unassign, :summary, :finalize, :unfinalize, :resend_notifications,
-      :edit_events, :edit_members, :add_event, :remove_event, :add_member, :remove_member, :destroy
-    ]
+    before_action :set_casting_table, only: [ :show, :update, :cell, :assign, :unassign, :summary, :finalize, :resend_notifications, :edit_events, :edit_members, :add_event, :remove_event, :add_member, :remove_member, :destroy ]
 
     def index
       @casting_tables = Current.organization.casting_tables
@@ -254,19 +251,6 @@ module Manage
         end
       else
         redirect_to manage_casting_table_summary_path(@casting_table), alert: "Error finalizing casting table"
-      end
-    end
-
-    def unfinalize
-      unless @casting_table.finalized?
-        redirect_to manage_casting_table_path(@casting_table), alert: "This casting table is not finalized"
-        return
-      end
-
-      if @casting_table.unfinalize!
-        redirect_to manage_casting_table_summary_path(@casting_table), notice: "Casting table reverted to draft. You can now re-finalize and send notifications."
-      else
-        redirect_to manage_casting_table_path(@casting_table), alert: "Error unfinalizing casting table"
       end
     end
 

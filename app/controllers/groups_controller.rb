@@ -7,12 +7,11 @@ class GroupsController < ApplicationController
   layout -> { %w[new index].include?(action_name) ? resolve_layout : "profile" }
 
   before_action :set_group,
-                only: %i[edit settings update archive unarchive set_primary_headshot check_url_availability update_url
-                         update_visibility update_member_role remove_member update_member_notifications]
+                only: %i[ edit settings update archive set_primary_headshot check_url_availability update_url update_visibility update_member_role remove_member update_member_notifications ]
   before_action :check_group_access,
                 only: %i[edit settings update check_url_availability update_url update_visibility]
   before_action :check_owner_access,
-                only: %i[archive unarchive update_member_role remove_member update_member_notifications]
+                only: %i[ archive update_member_role remove_member update_member_notifications ]
   skip_before_action :track_my_dashboard
   skip_before_action :show_my_sidebar
 
@@ -120,14 +119,6 @@ class GroupsController < ApplicationController
       redirect_to profile_path, notice: "Group archived successfully."
     else
       redirect_to edit_group_path(@group), alert: "Could not archive group."
-    end
-  end
-
-  def unarchive
-    if @group.update(archived_at: nil)
-      redirect_to edit_group_path(@group), notice: "Group unarchived successfully."
-    else
-      redirect_to edit_group_path(@group), alert: "Could not unarchive group."
     end
   end
 

@@ -173,17 +173,5 @@ RSpec.describe "Manage::Staffing 'also covers' scoped to shows", type: :request 
       # Tech was only ever on the early show's shift — it doesn't spread to 9pm.
       expect(merged.additional_role_scopes).to eq(tech.id => [ early.id ])
     end
-
-    it "keeps both shows when merging with the next shift" do
-      single.update!(ends_at: other.starts_at)
-      other.assign_additional_roles!([ tech.id ])
-
-      post manage_merge_with_next_staffing_shift_path(single)
-
-      merged = single.reload
-      # This used to drop the next shift's show entirely.
-      expect(merged.covered_shows).to contain_exactly(early, middle)
-      expect(merged.additional_role_scopes).to eq(tech.id => [ middle.id ])
-    end
   end
 end

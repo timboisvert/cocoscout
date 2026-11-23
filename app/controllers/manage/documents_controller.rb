@@ -22,10 +22,6 @@ module Manage
     def show
     end
 
-    def new
-      @document = @production.documents.new
-    end
-
     def create
       @document = @production.documents.new(document_params)
       @document.position = (@production.documents.maximum(:position) || 0) + 1

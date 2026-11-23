@@ -4,7 +4,7 @@ module Manage
   class ShowsController < Manage::ManageController
     before_action :set_production, except: [ :org_index, :org_calendar ]
     before_action :check_production_access, except: [ :org_index, :org_calendar ]
-    before_action :set_show, only: %i[show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show transfer transfer_select transfer_preview toggle_signup_based_casting toggle_attendance turn_casting_on attendance update_attendance create_walkin add_to_series link_into_series confirm_time_change apply_time_change upload_poster]
+    before_action :set_show, only: %i[ show edit update destroy cancel cancel_show delete_show uncancel link_show unlink_show transfer transfer_select transfer_preview turn_casting_on attendance update_attendance create_walkin add_to_series link_into_series confirm_time_change apply_time_change upload_poster ]
     before_action :ensure_user_is_manager, except: %i[index show recurring_series org_index org_calendar]
 
     # Org-level shows index (moved from org_shows_controller)
@@ -1228,32 +1228,6 @@ module Manage
       end
     end
 
-    def toggle_signup_based_casting
-      enabled = params[:enabled] == "true" || params[:enabled] == true
-
-      if enabled
-        result = @show.enable_signup_based_casting!
-        if result[:success]
-          flash[:notice] = "Sign-up based casting enabled. #{result[:synced_count]} attendee(s) synced from sign-ups."
-        else
-          flash[:alert] = result[:error] || "Failed to enable sign-up based casting"
-        end
-      else
-        result = @show.disable_signup_based_casting!
-        if result[:success]
-          flash[:notice] = "Sign-up based casting disabled."
-        else
-          flash[:alert] = result[:error] || "Failed to disable sign-up based casting"
-        end
-      end
-
-      respond_to do |format|
-        format.html { redirect_to manage_edit_show_path(@production, @show) }
-        format.turbo_stream { redirect_to manage_edit_show_path(@production, @show) }
-        format.json { render json: { success: result[:success], enabled: enabled } }
-      end
-    end
-
     # Add a show to an existing recurring series
     def add_to_series
       recurrence_group_id = params[:recurrence_group_id]
@@ -1308,17 +1282,6 @@ module Manage
       redirect_to manage_show_path(@production, @show),
                   notice: "Linked #{shows.length} #{@show.event_type.downcase.pluralize} into a recurring series.",
                   status: :see_other
-    end
-
-    def toggle_attendance
-      enabled = params[:enabled] == "true" || params[:enabled] == true
-      @show.update!(attendance_enabled: enabled)
-
-      respond_to do |format|
-        format.html { redirect_to manage_edit_show_path(@production, @show) }
-        format.turbo_stream { redirect_to manage_edit_show_path(@production, @show) }
-        format.json { render json: { success: true, enabled: enabled } }
-      end
     end
 
     # "Turn casting on", from the one line a casting-off date's page shows

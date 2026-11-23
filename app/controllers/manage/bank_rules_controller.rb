@@ -65,14 +65,6 @@ module Manage
       run(params[:id].present? ? Current.organization.bank_rules.find(params[:id]) : nil, nil)
     end
 
-    # A payee the person doesn't want a rule for: not offered again.
-    def dismiss
-      Current.organization.bank_rule_dismissals.find_or_create_by!(phrase: params[:key].to_s, direction: params[:direction].presence_in(BankRule::DIRECTIONS) || "any") do |d|
-        d.dismissed_by = Current.user
-      end
-      redirect_to manage_money_bank_rules_path, notice: "Not offered again. Its lines stay on the bank page to deal with one by one."
-    end
-
     def export
       org = Current.organization
       send_data BankRulesFile.export(org), filename: BankRulesFile.filename(org), type: "application/json"

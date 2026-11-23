@@ -250,21 +250,6 @@ RSpec.describe "Manage::CastingTables on act-based shows", type: :request do
   end
 
   describe "unfinalizing" do
-    it "reopens the shows' casting" do
-      assign!(role_named("Magic", ordinal: 1))
-      assign!(role_named("Variety"), bo)
-      assign!(role_named("Magic", ordinal: 2), bo, force: true)
-      assign!(role_named("MC"), ada, force: true)
-
-      post manage_casting_table_finalize_path(table)
-      expect(show.reload.casting_finalized_at).to be_present
-
-      post manage_casting_table_unfinalize_path(table)
-
-      # This used to be guarded on a column that doesn't exist, so it never ran.
-      expect(show.reload.casting_finalized_at).to be_nil
-      expect(table.reload).to be_draft
-    end
   end
 
   describe "the model guard" do

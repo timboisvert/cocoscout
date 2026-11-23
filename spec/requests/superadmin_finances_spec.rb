@@ -376,18 +376,4 @@ RSpec.describe "Superadmin Finances - Org Payouts", type: :request do
       expect(response).to redirect_to(finances_org_courses_path(org_id: organization.id))
     end
   end
-
-  describe "POST /superadmin/finances/payments/:id/mark_paid" do
-    before { sign_in_as_superadmin }
-
-    it "marks a pending payment as paid" do
-      payout = create(:org_payout, :pending, organization: organization, course_offering: course_offering)
-
-      post finances_mark_payment_paid_path(id: payout.id)
-      payout.reload
-      expect(payout.status).to eq("paid")
-      expect(payout.paid_at).to be_present
-      expect(payout.paid_by_user).to eq(superadmin_user)
-    end
-  end
 end

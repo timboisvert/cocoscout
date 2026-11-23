@@ -35,22 +35,6 @@ module Manage
                        connected_ids: PersonSearch.connected_ids(Current.organization, people) }
     end
 
-    def check_profiles
-      email = params[:email]&.strip&.downcase
-      return render json: { profiles: [] } if email.blank?
-
-      profiles = Person.where(email: email).map do |p|
-        {
-          id: p.id,
-          name: p.name,
-          organizations: p.organizations.pluck(:name),
-          already_in_org: p.organizations.include?(Current.organization)
-        }
-      end
-
-      render json: { profiles: profiles }
-    end
-
     def invite
       person = params[:team_invitation][:person_id].present? ? Person.find_by(id: params[:team_invitation][:person_id]) : nil # rubocop:disable CocoScout/UnscopedFind -- invite flow: gated by person.user check; adds to org intentionally
 
@@ -186,52 +170,6 @@ module Manage
       end
     end
 
-    def update_production_permission
-      user = Current.organization.users.find(params[:id])
-      production = Current.organization.productions.find(params[:production_id])
-      role = params[:role]
-
-      if role.blank? || role == "default"
-        # Remove production-specific permission to use default role
-        permission = ProductionPermission.find_by(user: user, production: production)
-        permission&.destroy
-        message = "Using global role for #{production.name}"
-      elsif %w[manager viewer].include?(role)
-        # Set or update production-specific permission
-        permission = ProductionPermission.find_or_initialize_by(user: user, production: production)
-        permission.role = role
-        if permission.save
-          message = "Role updated for #{production.name}"
-        else
-          respond_to do |format|
-            format.json do
-              render json: { success: false, error: permission.errors.full_messages.join(", ") },
-                     status: :unprocessable_content
-            end
-            format.html do
-              redirect_to section_manage_organization_path(Current.organization, section: "team"),
-                          alert: "Could not update role"
-            end
-          end
-          return
-        end
-      else
-        respond_to do |format|
-          format.json { render json: { success: false }, status: :unprocessable_content }
-          format.html do
-            redirect_to section_manage_organization_path(Current.organization, section: "team"), alert: "Invalid role"
-          end
-        end
-        return
-      end
-
-      expire_team_cache
-      respond_to do |format|
-        format.json { render json: { success: true } }
-        format.html { redirect_to section_manage_organization_path(Current.organization, section: "team"), notice: message }
-      end
-    end
-
     # Access by module (OrganizationAccess): a template, or Custom with a
     # grid of grants[module] = none|view|manage. Managers carry no grid.
     def update_access
@@ -246,37 +184,6 @@ module Manage
       organization_role.apply_access!(template: template, grants: params[:grants]&.to_unsafe_h)
       expire_team_cache
       render json: { success: true, label: organization_role.access_label, template: organization_role.access_template || "manager" }
-    end
-
-    def update_global_role
-      user = Current.organization.users.find(params[:id])
-      role = params[:global_role]
-      organization_role = OrganizationRole.find_by(user: user, organization: Current.organization)
-
-      if organization_role && %w[manager viewer none].include?(role)
-        organization_role.update(company_role: role)
-        expire_team_cache
-        role_display = case role
-        when "manager" then "Manager"
-        when "viewer" then "Viewer"
-        when "none" then "None"
-        end
-        respond_to do |format|
-          format.json { render json: { success: true } }
-          format.html do
-            redirect_to section_manage_organization_path(Current.organization, section: "team"),
-                        notice: "Global role updated to #{role_display}"
-          end
-        end
-      else
-        respond_to do |format|
-          format.json { render json: { success: false }, status: :unprocessable_content }
-          format.html do
-            redirect_to section_manage_organization_path(Current.organization, section: "team"),
-                        alert: "Could not update global role"
-          end
-        end
-      end
     end
 
     private

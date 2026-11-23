@@ -6,7 +6,7 @@ module Manage
   # pages and mutations, redirecting back to that tab. Mirrors
   # AgreementTemplatesController.
   class ContractTemplatesController < ManageController
-    before_action :set_contract_template, only: %i[edit update destroy preview]
+    before_action :set_contract_template, only: %i[ edit update destroy ]
 
     def new
       @contract_template = Current.organization.contract_templates.build
@@ -42,19 +42,6 @@ module Manage
         @contract_template.destroy
         redirect_to templates_section_path, notice: "Contract template deleted."
       end
-    end
-
-    def preview
-      # The schedule grid and services are generated per contract, not per template,
-      # so render_preview shows representative samples where those tokens sit.
-      @rendered_content = @contract_template.render_preview(
-        contractor_name: "Local Comedy Troupe",
-        organization_name: Current.organization.name,
-        production_name: "Example Production",
-        contract_start_date: Date.current.strftime("%B %-d, %Y"),
-        contract_end_date: (Date.current + 3.months).strftime("%B %-d, %Y"),
-        current_date: Date.current.strftime("%B %-d, %Y")
-      )
     end
 
     private

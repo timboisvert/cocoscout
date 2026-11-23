@@ -50,7 +50,7 @@ RSpec.describe "Producer setup", type: :request do
       expect(response.body).to include("Welcome to running your production on CocoScout")
     end
 
-    it "hides the what's-next panel once dismissed, with a way back" do
+    it "hides the what's-next panel once dismissed" do
       sign_up
       complete_setup
 
@@ -58,10 +58,6 @@ RSpec.describe "Producer setup", type: :request do
       get manage_path
       expect(response.body).not_to include("data-intro-guide=\"production_next_steps\"")
       expect(response.body).not_to include("Show it on the page", "data-intro-guide-help") # closed means gone, no "?" circle
-
-      post guide_restore_path("production_next_steps")
-      get manage_path
-      expect(response.body).to include("data-intro-guide=\"production_next_steps\"")
     end
 
     it "makes the creator a manager and a member of the org" do

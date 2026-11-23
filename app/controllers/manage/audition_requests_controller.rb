@@ -5,8 +5,8 @@ module Manage
     before_action :set_production
     before_action :check_production_access
     before_action :set_audition_cycle
-    before_action :set_audition_request, only: %i[show edit_answers edit_video update destroy update_audition_session_availability update_show_availability cast_vote votes archive unarchive decide]
-    before_action :ensure_user_is_manager, except: %i[index show cast_vote votes archived]
+    before_action :set_audition_request, only: %i[ show edit_answers edit_video update destroy update_audition_session_availability update_show_availability cast_vote archive unarchive decide ]
+    before_action :ensure_user_is_manager, except: %i[ index show cast_vote archived ]
     before_action :ensure_audition_cycle_active, only: %i[edit_answers edit_video update update_audition_session_availability update_show_availability cast_vote decide]
 
     def index
@@ -87,10 +87,6 @@ module Manage
           @audition_availability[session_availability.audition_session_id.to_s] = session_availability.status.to_s
         end
       end
-    end
-
-    def new
-      @audition_request = @audition_cycle.audition_requests.new
     end
 
     def create
@@ -227,10 +223,6 @@ module Manage
           format.json { render json: { success: false, errors: vote.errors.full_messages }, status: :unprocessable_content }
         end
       end
-    end
-
-    def votes
-      @votes = @audition_request.audition_request_votes.includes(user: :default_person).order(created_at: :desc)
     end
 
     def update_audition_session_availability

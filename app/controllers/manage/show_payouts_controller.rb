@@ -3,18 +3,7 @@
 module Manage
   class ShowPayoutsController < Manage::ManageController
     before_action :set_production
-    before_action :set_show_payout, only: [
-      :show, :update,
-      :calculate, :mark_paid, :reopen, :add_to_payout_run, :remove_from_run,
-      :save_override, :clear_override,
-      :apply_choice, :use_default,
-      :mark_line_item_paid, :unmark_line_item_paid,
-      :mark_all_offline, :send_payment_reminders,
-      :close_as_non_paying,
-      :add_line_item, :remove_line_item, :add_missing_cast,
-      :issue_advances, :reset_calculation,
-      :promote_guest
-    ]
+    before_action :set_show_payout, only: [ :show, :update, :calculate, :reopen, :add_to_payout_run, :remove_from_run, :save_override, :clear_override, :apply_choice, :use_default, :mark_line_item_paid, :unmark_line_item_paid, :mark_all_offline, :send_payment_reminders, :close_as_non_paying, :add_line_item, :remove_line_item, :add_missing_cast, :issue_advances, :reset_calculation, :promote_guest ]
 
     def show
       @is_third_party = @production.third_party?
@@ -202,15 +191,6 @@ module Manage
 
       redirect_to manage_money_show_payout_path(@show),
                   notice: "Calculation reset. You can now issue advances or recalculate when ready."
-    end
-    def mark_paid
-      if @show_payout.mark_paid!
-        redirect_to manage_money_show_payout_path(@show),
-                    notice: "Payout marked as paid."
-      else
-        redirect_to manage_money_show_payout_path(@show),
-                    alert: "Could not mark as paid."
-      end
     end
 
     # This event's customization, posted from the Customize modal: either one
@@ -836,25 +816,6 @@ module Manage
 
     def show_date
       @show.date_and_time&.to_date || Date.current
-    end
-
-    # Convert indexed hash params (from dynamic form) to arrays of hashes
-    # e.g., { "0" => { "description" => "X", "amount" => "10" }, "1" => ... }
-    # becomes [{ "description" => "X", "amount" => 10.0 }, ...]
-    def convert_line_items_to_arrays(attrs)
-      %w[other_revenue_details expense_details].each do |field|
-        if attrs[field].is_a?(Hash) || attrs[field].is_a?(ActionController::Parameters)
-          items = attrs[field].values.map do |item|
-            next if item["description"].blank? && item["amount"].blank?
-            { "description" => item["description"].to_s, "amount" => item["amount"].to_f }
-          end.compact
-          attrs[field] = items.presence
-        elsif attrs[field].blank?
-          # Keep nil/empty as is - don't overwrite with empty array
-          attrs.delete(field)
-        end
-      end
-      attrs
     end
   end
 end

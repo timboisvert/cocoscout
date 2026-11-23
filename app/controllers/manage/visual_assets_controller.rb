@@ -6,35 +6,10 @@ module Manage
 
     before_action :set_production
     before_action :check_production_access
-    before_action :set_poster, only: %i[edit_poster update_poster destroy_poster set_primary_poster]
+    before_action :set_poster, only: %i[ destroy_poster set_primary_poster ]
     # Anyone who can see the tab can download what's on it, as with each
     # row's Download original.
     before_action :ensure_user_is_manager, except: :download_originals
-
-    def new_poster
-      redirect_to edit_manage_production_path(@production, tab: 1)
-    end
-
-    def create_poster
-      @poster = @production.posters.new(poster_params)
-      if @poster.save
-        redirect_to edit_manage_production_path(@production, tab: 1), notice: "Poster was successfully created"
-      else
-        redirect_to edit_manage_production_path(@production, tab: 1), alert: "Could not create poster"
-      end
-    end
-
-    def edit_poster
-      redirect_to edit_manage_production_path(@production, tab: 1)
-    end
-
-    def update_poster
-      if @poster.update(poster_params)
-        redirect_to edit_manage_production_path(@production, tab: 1), notice: "Poster was successfully updated"
-      else
-        redirect_to edit_manage_production_path(@production, tab: 1), alert: "Could not update poster"
-      end
-    end
 
     def destroy_poster
       @poster.destroy
@@ -231,10 +206,6 @@ module Manage
 
     def set_poster
       @poster = @production.posters.find(params[:id])
-    end
-
-    def poster_params
-      params.require(:poster).permit(:name, :image)
     end
   end
 end

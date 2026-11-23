@@ -5,7 +5,6 @@ module Manage
     before_action :set_production, except: [ :org_index, :org_person_modal, :org_show_modal, :org_cast_person, :org_sign_up_person, :org_register_person, :org_pre_register, :org_pre_register_all, :org_set_availability ]
     before_action :check_not_course, except: [ :org_index, :org_person_modal, :org_show_modal, :org_cast_person, :org_sign_up_person, :org_register_person, :org_pre_register, :org_pre_register_all, :org_set_availability ]
     # Production team viewers look; managers change things (Tim, 2026-10-17).
-    before_action :ensure_user_is_manager, only: %i[update_show_availability]
     before_action :ensure_manager_for_show, only: %i[org_cast_person org_sign_up_person org_register_person org_pre_register org_pre_register_all org_set_availability]
 
     def index
@@ -107,42 +106,6 @@ module Manage
         cast_members: @cast_members,
         availabilities: @availabilities
       }
-    end
-
-    def update_show_availability
-      @show = @production.shows.find(params[:id])
-
-      # Update availabilities for each person and group
-      params.each do |key, value|
-        # Match pattern: availability_Person_123 or availability_Group_456
-        next unless key.match?(/^availability_(Person|Group)_(\d+)$/)
-
-        matches = key.match(/^availability_(Person|Group)_(\d+)$/)
-        entity_type = matches[1]
-        entity_id = matches[2].to_i
-
-        # Find the entity (Person or Group) — in this org, not any org's
-        entity = if entity_type == "Person"
-                   Current.organization.people.find(entity_id)
-        else
-                   Current.organization.groups.find(entity_id)
-        end
-
-        availability = entity.show_availabilities.find_or_initialize_by(show: @show)
-
-        if value == "available"
-          availability.available!
-        elsif value == "unavailable"
-          availability.unavailable!
-        end
-
-        availability.save
-      end
-
-      respond_to do |format|
-        format.html { redirect_to manage_casting_availability_path(@production), notice: "Availability updated" }
-        format.json { render json: { success: true } }
-      end
     end
 
     def org_index
@@ -705,11 +668,6 @@ module Manage
     def find_sign_up_form_for_show(show)
       # Find a sign-up form via the form instance linked to this show
       SignUpFormInstance.where(show: show).first&.sign_up_form
-    end
-
-    def role_fully_filled?(role, show)
-      current_count = ShowPersonRoleAssignment.where(show: show, role: role).count
-      current_count >= (role.quantity || 1)
     end
 
     def sign_up_form_open?(sign_up_form, show)

@@ -4,8 +4,6 @@ require "ostruct"
 
 module Manage
   class DirectoryController < Manage::ManageController
-    before_action :ensure_user_is_global_manager, only: %i[update_group_availability]
-
     def index
       # Get filter params (prioritize params, fall back to session, then defaults)
       @sort = params[:sort] || session[:directory_sort] || "name_asc"
@@ -143,51 +141,6 @@ module Manage
       respond_to do |format|
         format.html # Normal page load
         format.turbo_stream # Infinite scroll requests
-      end
-    end
-
-    def update_group_availability
-      # Both lookups org-scoped — bare finds let a manager write availability
-      # joining any group to any org's shows.
-      @group = Current.organization.groups.find(params[:id])
-      updated_count = 0
-
-      # Loop through all parameters looking for availability_Group_* keys
-      params.each do |key, value|
-        next unless key.start_with?("availability_Group_")
-
-        show_id = key.split("_").last.to_i
-        show = Show.joins(:production)
-                   .where(productions: { organization_id: Current.organization.id })
-                   .find(show_id)
-        availability = @group.show_availabilities.find_or_initialize_by(show: show)
-
-        # Only update if the status has changed
-        new_status = value
-        current_status = if availability.available?
-                           "available"
-        elsif availability.unavailable?
-                           "unavailable"
-        end
-
-        next unless new_status != current_status
-
-        case new_status
-        when "available"
-          availability.available!
-        when "unavailable"
-          availability.unavailable!
-        end
-
-        availability.save
-        updated_count += 1
-      end
-
-      if updated_count.positive?
-        redirect_to manage_group_path(@group, tab: 2),
-                    notice: "Availability updated for #{updated_count} #{'show'.pluralize(updated_count)}"
-      else
-        redirect_to manage_group_path(@group, tab: 2), alert: "No availability changes were made"
       end
     end
 

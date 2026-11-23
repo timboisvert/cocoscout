@@ -38,27 +38,6 @@ module Manage
       load_talent_pools
     end
 
-    # AJAX endpoint to check if an email has existing profiles
-    def check_email
-      email = params[:email]&.strip&.downcase
-      return render json: { profiles: [] } if email.blank?
-
-      # Find all profiles with this email
-      profiles = Person.where(email: email).includes(:user, :organizations)
-
-      profiles_data = profiles.map do |person|
-        {
-          id: person.id,
-          name: person.name,
-          email: person.email,
-          has_user: person.user.present?,
-          already_in_org: person.organizations.include?(Current.organization)
-        }
-      end
-
-      render json: { profiles: profiles_data }
-    end
-
     def create
       email = person_params[:email]&.strip&.downcase
 

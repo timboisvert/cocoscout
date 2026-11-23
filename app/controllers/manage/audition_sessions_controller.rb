@@ -6,7 +6,7 @@ module Manage
     before_action :set_production
     before_action :check_production_access
     before_action :set_audition_session_and_audition_and_audition_request, only: %i[show edit update destroy]
-    before_action :ensure_user_is_manager, except: %i[show summary]
+    before_action :ensure_user_is_manager, except: %i[ show ]
 
     def index
       @audition_sessions = @audition_cycle.audition_sessions
@@ -82,10 +82,6 @@ module Manage
       @audition_session.destroy!
       redirect_to manage_signups_auditions_cycle_sessions_path(@production, @audition_cycle),
                   notice: "Audition session was successfully canceled", status: :see_other
-    end
-
-    def summary
-      @audition_sessions = @audition_cycle.audition_sessions
     end
 
     # Bulk-generate N consecutive sessions starting at `start_at`, each

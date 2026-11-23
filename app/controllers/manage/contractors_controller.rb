@@ -3,7 +3,7 @@
 module Manage
   class ContractorsController < ManageController
     include CrossOrgPersonLookup
-    before_action :set_contractor, only: [ :show, :edit, :update, :destroy, :invite, :link_person, :preview_person, :add_person ]
+    before_action :set_contractor, only: [ :show, :edit, :update, :destroy, :invite, :preview_person, :add_person ]
 
     def index
       @query = params[:q].to_s.strip
@@ -151,44 +151,6 @@ module Manage
         notice = "#{person.name} was added and invited to CocoScout."
       end
       redirect_to manage_contractor_path(@contractor), notice: notice
-    end
-
-    # Link the contractor to a Person: an existing CocoScout person (person_id) or
-    # a brand-new invite (invite_name + invite_email). The reusable search-or-
-    # invite picker posts here.
-    def link_person
-      person = link_or_invite_person!(@contractor)
-      if person
-        redirect_to manage_contractor_path(@contractor),
-                    notice: "#{person.name} is now associated with this contractor."
-      elsif @person_link_error
-        redirect_to manage_contractor_path(@contractor),
-                    alert: "Couldn't link a person: #{@person_link_error}"
-      else
-        redirect_to manage_contractor_path(@contractor),
-                    alert: "Pick a person to link, or enter a name and email to invite someone new."
-      end
-    end
-
-    # JSON endpoint for autocomplete/search
-    def search
-      query = params[:q].to_s.strip
-      contractors = Current.organization.contractors.alphabetical
-
-      if query.present?
-        contractors = contractors.where("LOWER(name) LIKE ?", "%#{query.downcase}%")
-      end
-
-      render json: contractors.limit(10).map { |c|
-        {
-          id: c.id,
-          name: c.name,
-          email: c.email,
-          phone: c.phone,
-          address: c.address,
-          contracts_count: c.contracts.count
-        }
-      }
     end
 
     private
