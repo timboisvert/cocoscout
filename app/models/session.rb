@@ -19,7 +19,8 @@ class Session < ApplicationRecord
     "password" => "with a password",
     "code" => "with an emailed code",
     "reset_link" => "with a password link",
-    "invitation" => "with an invitation"
+    "invitation" => "with an invitation",
+    "passkey" => "with a passkey"
   }.freeze
 
   def sign_in_method_words

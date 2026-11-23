@@ -38,8 +38,7 @@
   <% end %>
 
   <%# Sign-in methods: every way into this account, one row each: the emailed
-      code (always available), the password, Apple, and Google. Passkeys get
-      their row when they arrive (the sign-in plan). %>
+      code (always available), the password, Apple, Google, and each passkey. %>
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6">
     <%= render "shared/section_heading", title: "Sign-in methods", intro: "Every method opens the same account.",
           padding: "px-4 py-3 sm:px-6 sm:py-4" %>
@@ -93,6 +92,48 @@
                     path: sign_in_provider_path(provider), method: :post, form: { data: { turbo: false } } %>
             <% end %>
           <% end %>
+        </div>
+      <% end %>
+      <%# Passkeys (sign-in plan phase 4): one row each, then Add a passkey.
+          In a browser the page makes it (passkey_add_controller.js); in the
+          app, the app's own sheet (bridge/passkey_controller.js). Either
+          shows its row only once it knows it can, so a browser without
+          passkeys, or an app build without them, shows nothing to tap. %>
+      <% passkeys = Current.user.passkeys.order(:created_at).to_a %>
+      <% passkeys.each do |passkey| %>
+        <div class="<%= row_class %>" data-sign-in-method="passkey">
+          <div class="min-w-0">
+            <div class="text-sm font-medium text-gray-900">Passkey</div>
+            <div class="text-sm text-gray-600">
+              <%= passkey.shown_name %>. Added <%= passkey.created_at.strftime("%B %-d, %Y") %><%= passkey.last_used_at && passkey.last_used_at.to_date > passkey.created_at.to_date ? ", last used #{passkey.last_used_at.strftime('%B %-d, %Y')}" : "" %>.
+            </div>
+          </div>
+          <% unless impersonating? %>
+            <% modal_id = "remove-passkey-#{passkey.id}" %>
+            <%= render "shared/button", text: "Remove", variant: "secondary", size: "small", type: :button,
+                  data: { controller: "modal", action: "click->modal#open", modal_id: modal_id } %>
+            <%= render "shared/confirm_modal", id: modal_id, title: "Remove this passkey?",
+                  message: "#{passkey.shown_name} will no longer sign you in. Your email code always works#{Current.user.password_chosen? ? ', and so does your password' : ''}.",
+                  confirm_text: "Remove", url: passkey_account_path(passkey), method: :delete %>
+          <% end %>
+        </div>
+      <% end %>
+      <% unless impersonating? %>
+        <% adder = turbo_native_app? ?
+             { controller: "bridge--passkey", action: "click->bridge--passkey#add" } :
+             { controller: "passkey-add", action: "click->passkey-add#add",
+               passkey_add_options_url_value: passkey_options_account_path, passkey_add_create_url_value: passkeys_account_path } %>
+        <div class="<%= row_class %> hidden" data-sign-in-method="add-passkey" data-controller="<%= adder[:controller] %>"
+             <%= tag.attributes(adder.except(:controller, :action).transform_keys { |key| "data-#{key.to_s.dasherize}" }) %>>
+          <div class="min-w-0">
+            <div class="text-sm font-medium text-gray-900"><%= passkeys.any? ? "Another passkey" : "Passkey" %></div>
+            <div class="text-sm text-gray-600">
+              <%= passkeys.any? ? "For a device or password manager that doesn't have yours." : "Not added. Add one and your face, fingerprint, or screen lock signs you in, with no code to wait for." %>
+            </div>
+            <div class="mt-1 hidden text-sm text-pink-700" data-<%= adder[:controller] %>-target="error" role="alert"></div>
+          </div>
+          <%= render "shared/button", text: "Add a passkey", variant: "secondary", size: "small", type: :button,
+                data: { action: adder[:action], "#{adder[:controller]}-target": "button" } %>
         </div>
       <% end %>
     </div>

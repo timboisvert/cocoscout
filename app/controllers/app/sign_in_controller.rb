@@ -21,6 +21,7 @@ module App
   # Hide My Email). Which step is open rides in session[:app_sign_in].
   class SignInController < ApplicationController
     include SignInCompletion
+    include PasskeyChallenges
 
     allow_unauthenticated_access
     skip_forgery_protection
@@ -28,7 +29,7 @@ module App
     skip_before_action :show_my_sidebar
     before_action :require_app_request
 
-    rate_limit to: 20, within: 3.minutes, only: %i[identify password code connect add_email provider exchange],
+    rate_limit to: 20, within: 3.minutes, only: %i[identify password code connect add_email provider exchange passkey],
                name: "app_sign_in", with: -> { refuse(:too_many, "Too many tries. Please wait a few minutes and try again.", :too_many_requests) }
     rate_limit to: 10, within: 10.minutes, only: :send_code, name: "app_sign_in_codes",
                with: -> { refuse(:too_many, "Too many codes requested. Please wait a few minutes and try again.", :too_many_requests) }
@@ -49,6 +50,24 @@ module App
       value = SecureRandom.urlsafe_base64(24)
       session[:app_sign_in_nonce] = value
       render json: { nonce: value, google_client_id: (SignIn::Providers.google_client_id if SignIn::Providers.configured?("google")) }.compact
+    end
+
+    # GET /app/sign_in/passkey_options: for the phone's passkey sheet (Face
+    # ID, fingerprint), naming no account, so it offers every passkey it holds
+    # for cocoscout.com.
+    def passkey_options
+      render json: keep_passkey_challenge(:app_passkey_sign_in, SignIn::Passkeys.authentication_options(relying_party: passkey_relying_party))
+    end
+
+    # POST /app/sign_in/passkey { credential }: what the sheet signed. A
+    # passkey is only ever made by someone signed in, so it signs in at once.
+    def passkey
+      used = SignIn::Passkeys.authenticate(params.require(:credential), challenge: take_passkey_challenge(:app_passkey_sign_in),
+                                                                        relying_party: passkey_relying_party)
+      signed_in(used.user, method: "passkey")
+    rescue SignIn::Passkeys::Invalid, ActionController::ParameterMissing => e
+      Rails.logger.warn("[app_sign_in] passkey refused: #{e.message}")
+      refuse(:passkey, "That passkey didn't work. Try again, or continue with your email address.")
     end
 
     # POST /app/sign_in/start_over
@@ -286,7 +305,8 @@ module App
 
     # Signed in: where to land, and who just signed in and how, which the
     # phone keeps so its next sign-in screen can say "Welcome back, Sam" and
-    # Continue the same way (a saved password, Apple, Google, or a code).
+    # Continue the same way (a passkey, a saved password, Apple, Google, or a
+    # code).
     # Only ever sent to the person who just proved who they are.
     def signed_in_reply(user, method:, landing:)
       first_name = user.person&.name.to_s.split.first

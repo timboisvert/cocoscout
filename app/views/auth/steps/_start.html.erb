@@ -34,6 +34,7 @@
         signup_token: @signup_token,
         email_value: @email_address,
         error: @email_error,
-        autofocus: !auth_native_app? %>
+        autofocus: !auth_native_app?,
+        passkeys: !auth_native_app? %>
   <%= render "sign_in/providers/buttons", providers: SignIn::Providers.shown(cookies: cookies, user_agent: request.user_agent) %>
 <% end %>

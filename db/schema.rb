@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_23_030000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_23_040100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -2419,6 +2419,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_030000) do
     t.bigint "organization_id", null: false
     t.index ["organization_id", "person_id"], name: "index_organizations_people_on_organization_id_and_person_id"
     t.index ["person_id", "organization_id"], name: "index_organizations_people_on_person_id_and_organization_id"
+  end
+
+  create_table "passkeys", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "external_id", null: false
+    t.text "public_key", null: false
+    t.bigint "sign_count", default: 0, null: false
+    t.string "name"
+    t.string "transports", default: [], null: false, array: true
+    t.datetime "last_used_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["external_id"], name: "index_passkeys_on_external_id", unique: true
+    t.index ["user_id"], name: "index_passkeys_on_user_id"
   end
 
   create_table "payout_batch_items", force: :cascade do |t|
@@ -5106,11 +5120,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_030000) do
     t.string "last_mode"
     t.datetime "email_verified_at"
     t.datetime "password_set_at"
+    t.string "webauthn_id"
     t.index ["default_person_id"], name: "index_users_on_default_person_id"
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
     t.index ["invitation_token"], name: "index_users_on_invitation_token", unique: true
     t.index ["last_seen_at"], name: "index_users_on_last_seen_at"
     t.index ["person_id"], name: "index_users_on_person_id"
+    t.index ["webauthn_id"], name: "index_users_on_webauthn_id", unique: true
   end
 
   create_table "venues", force: :cascade do |t|
@@ -5465,6 +5481,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_030000) do
   add_foreign_key "organizations", "users", column: "books_categories_set_up_by_id"
   add_foreign_key "organizations", "users", column: "books_locked_by_id"
   add_foreign_key "organizations", "users", column: "owner_id"
+  add_foreign_key "passkeys", "users"
   add_foreign_key "payout_batch_items", "payout_batches"
   add_foreign_key "payout_batches", "organizations"
   add_foreign_key "payout_batches", "users", column: "closed_out_by_id"

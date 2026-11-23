@@ -25,6 +25,15 @@ class PlatformTemplates
                    { "name" => "provider_email", "description" => "The Apple or Google address, or \"a private Apple address\"" },
                    { "name" => "password_line", "description" => "Whether their password still works" },
                    { "name" => "account_url", "description" => "Their Account page" } ] },
+    # A passkey now signs someone in (SignIn::Passkeys, PasskeysController):
+    # an email and a notification, as for Apple or Google.
+    { key: "auth_passkey_added", name: "Passkey added", channel: "both", category: "auth",
+      subject: "A passkey now signs you in to CocoScout",
+      push_body: "A passkey now signs you in to CocoScout.",
+      body: %(<p>Hi {{first_name}},</p><p>A passkey ({{passkey_name}}) was added to your CocoScout account, so your face, fingerprint, or screen lock signs you in. Your email code always works too.</p><p>If you didn't add it, sign in with a code, remove it on your <a href="{{account_url}}">Account page</a>, and write to support@cocoscout.com.</p>),
+      variables: [ { "name" => "first_name", "description" => "Their first name" },
+                   { "name" => "passkey_name", "description" => "Where the passkey is kept, e.g. iCloud Keychain" },
+                   { "name" => "account_url", "description" => "Their Account page" } ] },
     { key: "payee_bank_setup_link", name: "Bank setup link for a payee", channel: "email",
       subject: "{{organization_name}} wants to pay you through CocoScout",
       body: %(<p>Hi {{first_name}},</p><p>{{organization_name}} pays people through CocoScout, straight to their bank. Connect yours here. It takes a few minutes, and you don't need a CocoScout account.</p><p><a href="{{setup_url}}">Connect your bank</a></p><p>This link is just for you, so please don't forward it. It works for 30 days. If you weren't expecting it, you can ignore this email.</p>),

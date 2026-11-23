@@ -19,12 +19,18 @@
     email_value   prefill
     autofocus     default false
     error         true to draw the pink border
+    passkeys      true on /signin itself: the email field's autofill also
+                  offers the passkeys this browser holds for CocoScout
+                  (passkey_autofill_controller.js)
 %>
 <%
   signup_token = local_assigns[:signup_token] || SignupFormToken.generate
   submit_text  = local_assigns[:submit_text] || "Continue"
 %>
-<%= form_with url: handle_signin_path, class: "space-y-4" do |form| %>
+<% passkeys = local_assigns[:passkeys] || false %>
+<%= form_with url: handle_signin_path, class: "space-y-4",
+      data: (passkeys ? { controller: "passkey-autofill", passkey_autofill_options_url_value: sign_in_passkey_options_path,
+                          passkey_autofill_sign_in_url_value: sign_in_passkey_path } : {}) do |form| %>
   <%= hidden_field_tag :step, "start", id: nil %>
   <%= hidden_field_tag :signup_token, signup_token, id: nil %>
   <div style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden" aria-hidden="true">
@@ -37,11 +43,14 @@
     <%= form.email_field :email_address,
         required: true,
         autofocus: local_assigns[:autofocus] || false,
-        autocomplete: "username",
+        autocomplete: passkeys ? "username webauthn" : "username",
         autocapitalize: "none",
         placeholder: "you@example.com",
         value: local_assigns[:email_value],
         class: auth_input_class(error: local_assigns[:error] || false) %>
+    <% if passkeys %>
+      <p class="mt-1.5 hidden text-sm text-pink-700" data-passkey-autofill-target="error" role="alert"></p>
+    <% end %>
   </div>
 
   <div style="height:0;overflow:hidden;opacity:0" aria-hidden="true">

@@ -22,6 +22,7 @@ class User < ApplicationRecord
   has_many :sign_in_codes, dependent: :delete_all
   # Apple and Google connected as ways in. Destroying one revokes it with Apple.
   has_many :user_identities, dependent: :destroy
+  has_many :passkeys, dependent: :destroy
   before_save :stamp_password_set_at, if: :will_save_change_to_password_digest?
 
   has_many :sessions, dependent: :destroy
@@ -137,6 +138,16 @@ class User < ApplicationRecord
   # guess, so a right password always signs in whatever this says.
   def password_chosen?
     password_set_at.present?
+  end
+
+  # The account's WebAuthn user handle, which every passkey for it carries:
+  # random, made the first time a passkey is, so no passkey holds the
+  # account's database id or email.
+  def webauthn_handle
+    webauthn_id.presence || begin
+      update_column(:webauthn_id, WebAuthn.generate_user_id)
+      webauthn_id
+    end
   end
 
   # Has this person ever got into their account? False for someone an

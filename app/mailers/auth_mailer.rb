@@ -33,8 +33,9 @@ class AuthMailer < ApplicationMailer
     end
   end
 
-  # Apple or Google now signs them in (SignIn::Connect). The words come
-  # rendered from the auth_method_connected template.
+  # Apple, Google, or a passkey now signs them in (SignIn::Connect,
+  # SignIn::Passkeys). The words come rendered from the auth_method_connected
+  # or auth_passkey_added template.
   def method_connected(user, subject:, body:)
     @user = user
     @person = user.person # For recipient entity tracking

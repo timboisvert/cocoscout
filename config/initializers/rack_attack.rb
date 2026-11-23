@@ -32,7 +32,9 @@ class Rack::Attack
   # Continue with Apple or Google: each start leaves for the provider, so a
   # person only makes a few (SignIn::ProvidersController).
   throttle("auth/providers/ip", limit: 20, period: 1.minute) do |req|
-    req.ip if req.path.start_with?("/auth/")
+    # Not passkeys: /signin fetches their options on every visit, and a
+    # passkey can't be guessed (SignIn::PasskeysController limits itself).
+    req.ip if req.path.start_with?("/auth/") && !req.path.start_with?("/auth/passkey")
   end
 
   # The organization join link (/join/:token) checks an existing account's

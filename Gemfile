@@ -35,6 +35,8 @@ gem "tailwindcss-rails"
 gem "thruster", require: false
 gem "turbo-rails"
 gem "tzinfo-data", platforms: %i[windows jruby]
+# Passkeys (sign-in plan phase 4): WebAuthn registration and sign-in checks.
+gem "webauthn", "~> 3.5"
 gem "redis"
 gem "rpush"
 

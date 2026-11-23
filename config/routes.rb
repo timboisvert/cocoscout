@@ -74,7 +74,14 @@ Rails.application.routes.draw do
     post "exchange",   action: :exchange,   as: "exchange"
     post "connect",    action: :connect,    as: "connect"
     post "add_email",  action: :add_email,  as: "add_email"
+    get  "passkey_options", action: :passkey_options, as: "passkey_options"
+    post "passkey",    action: :passkey,    as: "passkey"
   end
+
+  # The apps make a passkey for the account they're signed in to
+  # (App::PasskeysController).
+  get  "/app/passkeys/options", to: "app/passkeys#options", as: "app_passkey_options"
+  post "/app/passkeys",         to: "app/passkeys#create",  as: "app_passkeys"
 
   # The app's first screen when signed out (WelcomeController).
   get   "/welcome",       to: "welcome#show",         as: "welcome"
@@ -112,6 +119,9 @@ Rails.application.routes.draw do
   get    "/auth/app/:provider",       to: "sign_in/providers#app_start",           as: "app_sign_in_provider_start", constraints: { provider: /apple|google/ }
   get    "/auth/continue",            to: "sign_in/providers#continue",            as: "sign_in_provider_continue"
   post   "/auth/continue",            to: "sign_in/providers#handle_continue"
+  # Passkeys on /signin's email field (SignIn::PasskeysController).
+  get    "/auth/passkey/options",     to: "sign_in/passkeys#options",              as: "sign_in_passkey_options"
+  post   "/auth/passkey",             to: "sign_in/passkeys#create",               as: "sign_in_passkey"
   post   "/auth/:provider",           to: "sign_in/providers#start",               as: "sign_in_provider", constraints: { provider: /apple|google/ }
   delete "/auth/:provider",           to: "sign_in/providers#disconnect",          as: "disconnect_sign_in_provider", constraints: { provider: /apple|google/ }
   get   "/password",      to: "auth#password",        as: "password"
@@ -291,6 +301,9 @@ Rails.application.routes.draw do
   delete "/account/sessions",             to: "account#sign_out_elsewhere",  as: "sign_out_elsewhere_account"
   post   "/account/deletion",             to: "account#request_deletion",    as: "request_deletion_account"
   delete "/account/deletion",             to: "account#cancel_deletion",     as: "cancel_deletion_account"
+  post   "/account/passkeys/options",     to: "account_passkeys#options",    as: "passkey_options_account"
+  post   "/account/passkeys",             to: "account_passkeys#create",     as: "passkeys_account"
+  delete "/account/passkeys/:id",         to: "account_passkeys#destroy",    as: "passkey_account"
 
   # Superadmin
   scope "/superadmin" do
