@@ -217,7 +217,7 @@ private fun Landing(activity: MainActivity, width: Dp) {
                         }
                         waiting?.let { WaitingNote(it) }
                         flow.error?.let { Banner(it, error = true) }
-                        PrimaryButton("Continue", fingerprint = known.method == "password") { flow.continueAsKnown(activity) }
+                        PrimaryButton("Continue", fingerprint = known.method in setOf("password", "passkey")) { flow.continueAsKnown(activity) }
                         LinkButton("Use a different email") { flow.useDifferentEmail(activity) }
                     } else if (waiting != null) {
                         WaitingNote(waiting)

@@ -14,6 +14,7 @@ import com.cocoscout.app.door.TapToPayOverlay
 import com.cocoscout.app.door.TapToPaySetup
 import com.cocoscout.app.menu.MenuOverlay
 import com.cocoscout.app.signin.SignInFlow
+import com.cocoscout.app.signin.PasskeyOfferOverlay
 import com.cocoscout.app.signin.SignInOverlay
 import dev.hotwire.navigation.activities.HotwireActivity
 import dev.hotwire.navigation.navigator.Navigator
@@ -56,6 +57,7 @@ class MainActivity : HotwireActivity() {
             MenuOverlay()
             TapToPayOverlay()
             SignInOverlay()
+            PasskeyOfferOverlay()
         }
 
         AppShell.attach(this)

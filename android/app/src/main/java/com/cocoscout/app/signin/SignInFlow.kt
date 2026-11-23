@@ -14,6 +14,7 @@ import com.cocoscout.app.routing.BrowserTab
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
 import java.security.MessageDigest
 import java.security.SecureRandom
 
@@ -55,6 +56,9 @@ object SignInFlow {
     var known by mutableStateOf<KnownAccount?>(null)
     /** A link that came in while signed out, waiting for sign-in, in words. */
     var waiting by mutableStateOf<String?>(null)
+    /** Who just signed in here and how, for the offer to make a passkey (PasskeyOffer). */
+    var justSignedIn: KnownAccount? = null
+        private set
 
     private val json = Json { ignoreUnknownKeys = true }
     private const val PREFS = "sign_in"
@@ -96,9 +100,11 @@ object SignInFlow {
             savedOffered = true
             activity.lifecycleScope.launch {
                 val nonce = SignInClient.get(activity, "nonce")
-                when (val picked = Credentials.offerSaved(activity, nonce.nonce, nonce.googleClientId)) {
+                val passkeys = passkeyOptions(activity)
+                when (val picked = Credentials.offerSaved(activity, nonce.nonce, nonce.googleClientId, passkeys)) {
                     is Credentials.Picked.Password -> signIn(activity, picked.email, picked.password)
                     is Credentials.Picked.Google -> run(activity, "provider", mapOf("provider" to "google", "id_token" to picked.idToken))
+                    is Credentials.Picked.Passkey -> signInWithPasskey(activity, picked.json)
                     null -> Unit
                 }
             }
@@ -107,9 +113,9 @@ object SignInFlow {
 
     /**
      * Welcome back's Continue: the same way in as last time. Google opens its
-     * sheet; a saved password comes from the phone's password manager with a
-     * fingerprint; otherwise the address goes in, and the server asks for the
-     * password or sends a code.
+     * sheet; a passkey or a saved password comes from the phone's password
+     * manager with a fingerprint; otherwise the address goes in, and the
+     * server asks for the password or sends a code.
      */
     fun continueAsKnown(activity: MainActivity) {
         val account = known ?: return
@@ -118,13 +124,38 @@ object SignInFlow {
         error = null
         if (account.method == "google") return continueWithGoogle(activity)
         activity.lifecycleScope.launch {
-            val saved = Credentials.savedPassword(activity)
-            if (saved != null && saved.email.equals(account.email, ignoreCase = true)) {
-                signIn(activity, saved.email, saved.password)
-            } else {
-                run(activity, "identify", mapOf("email" to account.email))
+            when (val saved = Credentials.savedSignIn(activity, passkeyOptions(activity))) {
+                is Credentials.Picked.Passkey -> signInWithPasskey(activity, saved.json)
+                is Credentials.Picked.Password ->
+                    if (saved.email.equals(account.email, ignoreCase = true)) signIn(activity, saved.email, saved.password)
+                    else run(activity, "identify", mapOf("email" to account.email))
+                else -> run(activity, "identify", mapOf("email" to account.email))
             }
         }
+    }
+
+    /** The options for a passkey sheet that names no account, or null when there are none to have. */
+    private suspend fun passkeyOptions(activity: MainActivity): String? =
+        SignInClient.text(activity, "/app/sign_in/passkey_options")?.takeIf { "\"challenge\"" in it }
+
+    private fun signInWithPasskey(activity: MainActivity, credential: String) {
+        if (busy) return
+        busy = true
+        error = null
+        activity.lifecycleScope.launch {
+            val body = buildJsonObject { put("credential", json.parseToJsonElement(credential)) }
+            val reply = SignInClient.postJson(activity, "passkey", body)
+            busy = false
+            show(activity, reply)
+        }
+    }
+
+    /** After making a passkey: Welcome back's Continue opens it next time. */
+    fun rememberMethod(context: Context, account: KnownAccount, method: String) {
+        val updated = account.copy(method = method)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KNOWN_KEY, json.encodeToString(KnownAccount.serializer(), updated)).apply()
+        known = updated
     }
 
     fun useDifferentEmail(activity: MainActivity) {
@@ -251,6 +282,7 @@ object SignInFlow {
                     activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                         .putString(KNOWN_KEY, json.encodeToString(KnownAccount.serializer(), account)).apply()
                     known = account
+                    justSignedIn = account
                 }
                 reply.landing?.let { AppShell.didSignIn(it) }
             }

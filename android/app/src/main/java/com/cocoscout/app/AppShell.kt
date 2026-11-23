@@ -248,11 +248,20 @@ object AppShell {
         val navigator = activity?.currentNavigator ?: return
         val after = pathAfterSignIn
         pathAfterSignIn = null
-        android.os.Handler(android.os.Looper.getMainLooper()).post {
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        handler.post {
             // In place of the start page, so there's no back to it.
             navigator.reset {
                 navigator.route(AppConfig.url(landing), VisitOptions(action = VisitAction.REPLACE))
                 after?.let { pendingPath = it }
+            }
+        }
+        // A code or password sign-in: offer the fingerprint for next time,
+        // once the first page is up (PasskeyOffer).
+        val account = com.cocoscout.app.signin.SignInFlow.justSignedIn
+        activity?.let { context ->
+            if (com.cocoscout.app.signin.PasskeyOffer.shouldOffer(context, account)) {
+                handler.postDelayed({ com.cocoscout.app.signin.PasskeyOffer.showing = account }, 1200)
             }
         }
     }

@@ -32,7 +32,7 @@ data class SignInReply(
     val message: String? = null,
     val nonce: String? = null,
     @SerialName("google_client_id") val googleClientId: String? = null,
-    /** With "signed_in": how they signed in ("password", "code", "apple", "google"). */
+    /** With "signed_in": how they signed in ("password", "code", "passkey", "apple", "google"). */
     val method: String? = null
 )
 
@@ -50,8 +50,25 @@ object SignInClient {
 
     suspend fun get(context: Context, step: String): SignInReply = send(context, step, null)
 
-    private suspend fun send(context: Context, step: String, body: String?): SignInReply = withContext(Dispatchers.IO) {
-        val url = AppConfig.url("/app/sign_in/$step")
+    /** A step whose body isn't plain strings: a passkey's answer under "credential". */
+    suspend fun postJson(context: Context, step: String, body: JsonObject): SignInReply = send(context, step, body.toString())
+
+    /**
+     * Any of the app's JSON steps as text, at a full path: the passkey
+     * options, and making a passkey (App::PasskeysController). GET without a
+     * body. null when the server can't be reached or doesn't answer with JSON.
+     */
+    suspend fun text(context: Context, path: String, body: String? = null): String? =
+        request(context, path, body)?.takeIf { it.trimStart().startsWith("{") }
+
+    private suspend fun send(context: Context, step: String, body: String?): SignInReply {
+        val text = request(context, "/app/sign_in/$step", body)
+        return text?.let { runCatching { json.decodeFromString(SignInReply.serializer(), it) }.getOrNull() }
+            ?: SignInReply(status = "error", error = "network", message = "CocoScout couldn't be reached. Check your connection and try again.")
+    }
+
+    private suspend fun request(context: Context, path: String, body: String?): String? = withContext(Dispatchers.IO) {
+        val url = AppConfig.url(path)
         val cookies = CookieManager.getInstance()
         runCatching {
             val connection = URL(url).openConnection() as HttpURLConnection
@@ -78,9 +95,7 @@ object SignInClient {
             val stream = if (code >= 400) connection.errorStream else connection.inputStream
             val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
             connection.disconnect()
-            json.decodeFromString(SignInReply.serializer(), text)
-        }.getOrElse {
-            SignInReply(status = "error", error = "network", message = "CocoScout couldn't be reached. Check your connection and try again.")
-        }
+            text
+        }.getOrNull()
     }
 }
