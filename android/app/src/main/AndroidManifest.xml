@@ -17,6 +17,17 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-feature android:name="android.hardware.nfc" android:required="false" />
+    <!-- Play counts a portrait-locked screen as requiring a portrait screen,
+         and Stripe's ACCESS_WIFI_STATE as requiring Wi-Fi, and refuses a
+         review that shuts tablets, desktops, and Android XR out over them
+         (1.4, 2026-11-23). Neither is needed: the app stays portrait wherever
+         it can, and a phone on cellular data works the same. -->
+    <uses-feature android:name="android.hardware.screen.portrait" android:required="false" />
+    <uses-feature android:name="android.hardware.wifi" android:required="false" />
+    <!-- Stripe's Bluetooth permissions (for card readers we don't use: Tap to
+         Pay is the phone itself) count as requiring Bluetooth the same way. -->
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
+    <uses-feature android:name="android.hardware.location" android:required="false" />
 
     <application
         android:name=".CocoScoutApplication"
