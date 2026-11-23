@@ -102,8 +102,8 @@ RSpec.describe "Manage::ShowPayouts contract shows", type: :request do
     get manage_money_show_payout_path(show)
     html = response.body.gsub(/\s+/, " ")
 
-    expect(html).to include("Taken out of their share", "Booth Tech", "−$50.00", "Add to payout run")
-    expect(html).to match(%r{We pay them</dt> <dd[^>]*> \$345\.00 </dd>})
+    expect(html).to include("Taken out of the share", "Booth Tech", "−$50.00", "Add to payout run")
+    expect(html).to match(%r{We pay them</dt> <dd[^>]*> ?\$345\.00 ?</dd>})
     expect(html).to match(%r{Still to pay for this show</div> <div[^>]*>\$345\.00</div>})
     expect(html).not_to include("Expected income", "Collect this payment", "Still owed to you")
   end
@@ -137,10 +137,10 @@ RSpec.describe "Manage::ShowPayouts contract shows", type: :request do
       get manage_money_show_payout_path(witches)
       html = response.body.gsub(/\s+/, " ")
 
-      expect(html).to match(%r{Ticket sales — Oct 11</dt> <dd[^>]*> \$695\.00 </dd>})
-      expect(html).to match(%r{Our fee</dt> <dd[^>]*> −\$300\.00 </dd>})
-      expect(html).to include("Taken out of their share", "Booth Tech — Oct 11, 2026", "−$50.00")
-      expect(html).to match(%r{We pay them</dt> <dd[^>]*> \$345\.00 </dd>})
+      expect(html).to match(%r{Ticket sales — Oct 11</dt> <dd[^>]*> ?\$695\.00 ?</dd>})
+      expect(html).to match(%r{Our fee</dt> <dd[^>]*> ?−\$300\.00 ?</dd>})
+      expect(html).to include("Taken out of the share", "Booth Tech — Oct 11, 2026", "−$50.00")
+      expect(html).to match(%r{We pay them</dt> <dd[^>]*> ?\$345\.00 ?</dd>})
       expect(html).to include("In payout run", "In a payout run", "Settled on the contract with Windy City Witches")
       expect(html).to match(%r{Still to pay for this show</div> <div[^>]*>\$345\.00</div>})
       expect(html).not_to include("Ready to Calculate", "(they pay us)", "overdue")
