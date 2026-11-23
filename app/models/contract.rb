@@ -1039,20 +1039,38 @@ class Contract < ApplicationRecord
     # for now (a shortfall), and is still the week's one settlement: its
     # booth tech rides it, never a row to collect on its own (Tim, 2026-11-13).
     open_settlements = (open_settlements + rest.select { |p| shortfall_in_progress?(p) }).sort_by(&:due_date)
+    # The run each settlement went out on: a paid one by its contribution, a
+    # wash (settled by offset, so it left the run) by the run its reference
+    # names, "offset against services (run #29)".
     run_hosts = settlements.each_with_object({}) do |s, h|
-      batch_id = s.payout_contribution&.payout_batch_id
+      batch_id = s.payout_contribution&.payout_batch_id ||
+                 (s.payment_method == "offset" && s.reference_number.to_s[/\(run #(\d+)\)/, 1]&.to_i)
       h[batch_id] ||= s if batch_id
     end
+    by_id = settlements.index_by(&:id)
 
     attached = Hash.new { |h, k| h[k] = [] }
+    # Shares settled together with a host by one offset (before runs had
+    # numbers, a wash named its shares: "offset against shares #459, #460,
+    # #461"). The charges ride the last of them; the others are listed with it.
+    co_shares = Hash.new { |h, k| h[k] = [] }
     orphans = []
     deductible.each do |charge|
       host =
         if charge.status_paid?
           # It belongs to the settlement it rode out on: the run its reference
-          # names, else (a wash, whose share left the run) by date.
+          # names, or the shares it names, else by date. Never simply the
+          # first share after it: that piled every charge of a run onto one
+          # $14 share, "We paid them −$202.00" (contract 92, 2026-11-22).
           batch_id = charge.reference_number.to_s[/\A(?:payout|offset)_run_(\d+)\z/, 1]&.to_i
-          run_hosts[batch_id] || settlements.detect { |s| s.due_date >= charge.due_date } || settlements.last
+          named = charge.reference_number.to_s[/\Aoffset against shares (#\d+(?:, #\d+)*)\z/, 1]
+                        .to_s.scan(/\d+/).filter_map { |id| by_id[id.to_i] }.sort_by(&:due_date)
+          if named.any?
+            co_shares[named.last.id] |= named[0...-1]
+            named.last
+          else
+            run_hosts[batch_id] || settlements.detect { |s| s.due_date >= charge.due_date } || settlements.last
+          end
         else
           # Still owed: it nets against the first open settlement due on or
           # after it (the same cutoff the run applies). None ahead means it
@@ -1064,7 +1082,8 @@ class Contract < ApplicationRecord
 
     (rest + orphans).sort_by(&:due_date).map do |payment|
       charges = attached[payment.id].sort_by(&:due_date)
-      { payment: payment, deductions: charges, deduction_total: charges.sum { |c| c.amount.to_f } }
+      { payment: payment, deductions: charges, deduction_total: charges.sum { |c| c.amount.to_f },
+        co_shares: co_shares.fetch(payment.id, []) }
     end
   end
 
@@ -1648,18 +1667,6 @@ class Contract < ApplicationRecord
   # Financial summary
   def total_incoming
     contract_payments.where(direction: "incoming", status: "paid").sum(:amount)
-  end
-
-  # The part of total_incoming they actually paid us: on a pay link, or
-  # recorded by hand. The rest was settled without money arriving, by coming
-  # out of their share on a payout run; the contract page says which is which
-  # (Tim, 2026-11-08: a deducted Booth Tech charge isn't a payment received).
-  def total_payments_arrived
-    contract_payments.direction_incoming.status_paid.money_arrived.sum(:amount)
-  end
-
-  def total_deducted_from_payouts
-    total_incoming - total_payments_arrived
   end
 
   def total_outgoing

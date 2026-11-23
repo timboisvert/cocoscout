@@ -6,6 +6,7 @@
 
   Locals:
     contract: Contract
+    narrow: true in a side column (one column for ticketing and services)
 %>
 <%
   tiers = contract.draft_ticketing["tiers"] || []
@@ -57,7 +58,8 @@
     <% end %>
 
     <% if show_ticketing || show_services %>
-      <div class="mt-4 grid grid-cols-1 <%= 'md:grid-cols-2' if show_ticketing && show_services %> gap-4">
+      <%# In the contract page's side column there's no room for two. %>
+      <div class="mt-4 grid grid-cols-1 <%= 'md:grid-cols-2' if show_ticketing && show_services && !local_assigns[:narrow] %> gap-4">
         <%# Ticketing — only meaningful when we're the ones selling %>
         <% if show_ticketing %>
           <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">

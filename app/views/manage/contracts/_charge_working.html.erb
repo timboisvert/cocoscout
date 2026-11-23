@@ -1,0 +1,42 @@
+<%#
+  How one charge was settled, piece by piece: what it was, what came out of
+  which share and when, and what's still owed. A rehearsal a share only
+  partly covered reads "Rehearsal $60.00 / Oct 25 — from the Oct 22 share
+  −$12.00 / Nov 20 — from the Nov 19 share −$24.00 / Still owed $24.00".
+
+  Locals: charge (ContractDatesAndMoney::Charge), money, contract
+%>
+<%
+  share_word = contract.revenue_share? || contract.ticket_revenue_minus_fee? ? "share" : "payment"
+  owing = charge.pieces.select { |p| p.status_pending? && !p.deduct_from_payout? }
+  waiting = charge.pieces.select { |p| p.status_pending? && p.deduct_from_payout? }
+%>
+<dl class="grid grid-cols-[minmax(0,1fr)_max-content] gap-x-6 gap-y-1 text-sm max-w-xl">
+  <dt class="text-gray-900"><%= charge.name %></dt>
+  <dd class="text-right tabular-nums text-gray-900"><%= number_to_currency(charge.total) %></dd>
+  <% charge.pieces.each do |piece| %>
+    <% amount = ContractDatesAndMoney.piece_amount(piece) %>
+    <% if piece.status_paid? && piece.payment_method == "payout_deduction" %>
+      <% host = money.host_for(piece) %>
+      <dt class="text-purple-700"><%= piece.paid_date&.strftime("%b %-d") %> — from <%= host ? "the #{host.show&.date_and_time&.strftime('%b %-d') || host.due_date.strftime('%b %-d')} #{share_word}" : "a #{share_word}" %></dt>
+      <dd class="text-right tabular-nums text-gray-900">−<%= number_to_currency(amount) %></dd>
+    <% elsif piece.set_to_zero? %>
+      <dt class="text-gray-700"><%= piece.paid_date&.strftime("%b %-d") %> — set to $0<% if piece.amount_change_note.present? %>: “<%= piece.amount_change_note %>”<% end %></dt>
+      <dd class="text-right tabular-nums text-gray-900">−<%= number_to_currency(amount) %></dd>
+    <% elsif piece.status_paid? %>
+      <dt class="text-gray-700"><%= piece.paid_date&.strftime("%b %-d") %> — <%= (piece.received_via_label || "paid").downcase %></dt>
+      <dd class="text-right tabular-nums text-gray-900">−<%= number_to_currency(amount) %></dd>
+    <% end %>
+  <% end %>
+  <% if waiting.any? %>
+    <dt class="text-gray-700">Comes out of the next <%= share_word %></dt>
+    <dd class="text-right tabular-nums text-gray-900"><%= number_to_currency(waiting.sum { |p| p.amount.to_f }) %></dd>
+  <% end %>
+  <% if owing.any? %>
+    <dt class="font-semibold text-gray-900 border-t border-gray-200 pt-1">Still owed</dt>
+    <dd class="text-right tabular-nums font-semibold text-gray-900 border-t border-gray-200 pt-1"><%= number_to_currency(owing.sum { |p| p.amount.to_f }) %></dd>
+  <% end %>
+</dl>
+<% if owing.any? { |p| money.owed.include?(p) } %>
+  <p class="text-xs text-gray-600"><a href="#still-owed" class="text-pink-600 hover:text-pink-700">Collect it, or change the amount, in Still owed below.</a></p>
+<% end %>

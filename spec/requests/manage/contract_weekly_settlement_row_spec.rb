@@ -146,7 +146,7 @@ RSpec.describe "Manage::Contracts weekly settlement rows", type: :request do
         expect(html).to match(%r{Our fee — Nov #{day}</dt> <dd[^>]*> −\$250\.00 </dd>})
         expect(html).to match(%r{Booth Tech — Nov #{day}, 2026</dt> <dd[^>]*>−\$50\.00</dd>})
       end
-      expect(html).to match(%r{We pay them</dt> <dd[^>]*> \$180\.00 </dd>})
+      expect(html).to match(%r{We pay them</dt> <dd[^>]*> ?\$180\.00 ?</dd>})
       expect(html).not_to include("−$70.00")
     end
 
@@ -245,16 +245,16 @@ RSpec.describe "Manage::Contracts weekly settlement rows", type: :request do
   describe "the page's sections on a phone" do
     before { post handle_signin_path, params: { email_address: owner.email_address, password: password } }
 
-    it "lists the cards in the sheet, Payments first and showing" do
+    it "lists the cards in the sheet, Dates and money first and showing" do
       get manage_contract_path(contract)
 
       doc = Nokogiri::HTML(response.body)
       wrapper = doc.at_css("[data-contract-sections]")
       names = wrapper.css("#contract-sections-sheet [data-section-name]").map { |n| n.text.squish }
-      expect(names.first(3)).to eq([ "Payments", "Dates", "Terms and services" ])
+      expect(names.first(3)).to eq([ "Dates and money", "Messages", "Who's on it" ])
       panels = wrapper.css("[data-tabs-target='panel']")
       expect(wrapper.css("[data-tabs-target='sectionItem']").map { |b| b["data-index"].to_i }).to all(be < panels.size)
-      expect(panels[wrapper["data-tabs-initial-tab-value"].to_i].text).to include("Payments")
+      expect(panels[wrapper["data-tabs-initial-tab-value"].to_i].text).to include("Dates and money")
       expect(panels.map { |panel| panel["class"] }).to all(include("sm:!block"))
     end
   end

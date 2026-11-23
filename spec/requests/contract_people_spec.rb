@@ -317,7 +317,7 @@ RSpec.describe "Contract people", type: :request do
     expect(response.body).to include("with Priya Nair")
 
     get manage_contract_path(contract)
-    expect(CGI.unescapeHTML(response.body)).to include("On this contract", "Priya Nair", "Change who's on it", amend_people_manage_contract_path(contract))
+    expect(CGI.unescapeHTML(response.body)).to include("Also on it", "Priya Nair", "Change who's on it", amend_people_manage_contract_path(contract))
 
     # The production's Team tab says the contractor's side isn't on it, and where they are.
     get edit_manage_production_path(production)
@@ -378,15 +378,17 @@ RSpec.describe "Contract people", type: :request do
     expect(response).to redirect_to(my_shows_path)
   end
 
-  it "orders a contract for a phone: money and what to do next before payments, details and terms last (V1.1 plan §4)" do
+  # Design B (Tim, 2026-11-22): on a phone, dates and money first, then
+  # messages and who to reach, documents, and the deal last.
+  it "orders a contract for a phone: dates and money first, who to reach next, the deal last" do
     sign_in(owner)
     get manage_contract_path(contract)
     doc = Nokogiri::HTML(response.body)
     order_of = ->(title) { doc.css("h2, h3").find { |h| h.text.squish == title }&.ancestors("div")&.find { |d| d["class"].to_s.match?(/max-lg:order-\d+/) }&.[]("class")&.[](/max-lg:order-(\d+)/, 1).to_i }
-    expect(order_of.("Financial Summary")).to be < order_of.("Payments")
-    expect(order_of.("Payments")).to be < order_of.("Space Bookings")
-    expect(order_of.("Space Bookings")).to be < order_of.("Documents")
-    expect(order_of.("Documents")).to be < order_of.("Contractor Information")
+    expect(order_of.("Dates and money")).to be < order_of.("Messages")
+    expect(order_of.("Messages")).to be < order_of.("Who's on it")
+    expect(order_of.("Who's on it")).to be < order_of.("Documents")
+    expect(order_of.("Documents")).to be < order_of.("Contract Terms")
     expect(doc.css(".max-lg\\:contents").size).to eq(2)
   end
 end

@@ -146,4 +146,49 @@ RSpec.describe "Contract#payment_schedule_groups", type: :model do
       expect(groups.find { |g| g[:payment] == share }[:deductions]).to eq([ aug ])
     end
   end
+
+  # Contract 92 (Tim, 2026-11-22): every charge a run settled piled onto the
+  # first share after it, so a $14.00 share read "We paid them −$202.00".
+  # Each charge belongs to the settlement whose run took it.
+  describe "charges settled by offset" do
+    def share(due, amount, reference)
+      contract.contract_payments.create!(description: "#{due.strftime('%b %-d')} — 40% to them", amount: amount, direction: "outgoing",
+                                         due_date: due, status: "paid", paid_date: due + 2, payment_method: "offset",
+                                         reference_number: reference)
+    end
+
+    def charge(due, amount, reference, description: "Rehearsal — #{due.strftime('%b %-d, %Y')}")
+      contract.contract_payments.create!(description: description, amount: amount, direction: "incoming", due_date: due,
+                                         settlement_method: "payout_deduction", status: "paid", paid_date: due,
+                                         payment_method: "payout_deduction", reference_number: reference)
+    end
+
+    it "puts each charge under the share whose run took it, not the first share after it" do
+      first = share(Date.new(2026, 9, 17), 14, "offset against rehearsal fees")
+      oct8 = share(Date.new(2026, 10, 8), 18, "offset against services (run #29)")
+      oct22 = share(Date.new(2026, 10, 22), 60, "offset against services (run #32)")
+      aug26 = charge(Date.new(2026, 8, 26), 6, "offset_run_29", description: "Rehearsal balance — Aug 26, 2026")
+      sep6 = charge(Date.new(2026, 9, 6), 12, "offset_run_29")
+      sep6_rest = charge(Date.new(2026, 9, 6), 48, "offset_run_32", description: "Rehearsal balance — Sep 6, 2026")
+
+      groups = contract.payment_schedule_groups.index_by { |g| g[:payment] }
+      expect(groups[first][:deductions]).to be_empty
+      expect(groups[oct8][:deductions]).to contain_exactly(aug26, sep6)
+      expect(groups[oct22][:deductions]).to contain_exactly(sep6_rest)
+    end
+
+    it "carries shares one offset settled together with the last of them" do
+      s1 = share(Date.new(2026, 9, 17), 14, "offset against rehearsal fees")
+      s2 = share(Date.new(2026, 9, 24), 20, "offset against rehearsal fees")
+      s3 = share(Date.new(2026, 10, 1), 80, "offset against rehearsal fees")
+      named = "offset against shares ##{s1.id}, ##{s2.id}, ##{s3.id}"
+      aug23 = charge(Date.new(2026, 8, 23), 60, named)
+      aug26 = charge(Date.new(2026, 8, 26), 54, named)
+
+      groups = contract.payment_schedule_groups.index_by { |g| g[:payment] }
+      expect(groups[s3][:deductions]).to contain_exactly(aug23, aug26)
+      expect(groups[s3][:co_shares]).to eq([ s1, s2 ])
+      expect(groups[s1][:deductions]).to be_empty
+    end
+  end
 end

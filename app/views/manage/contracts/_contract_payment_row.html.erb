@@ -18,6 +18,10 @@
     - deductions: charges that settle by being netted out of THIS payment
       (see Contract#payment_schedule_groups). They're folded in here rather
       than listed as peers, because they're not money anyone has to collect.
+    - co_shares: other shares settled together with this one by one offset,
+      listed in its working (Contract#payment_schedule_groups)
+    - hide_date: true inside a date's row on the contract page, which already
+      shows the date (manage/contracts/_money_row)
 %>
 <%# A week (or month, or run) still being played or settled, and a night's
     settlement that faces us for now: one row that says where it stands so
@@ -31,6 +35,9 @@
   show_actions = local_assigns.fetch(:show_actions) { local_assigns.fetch(:show_mark_received, true) }
   deductions = local_assigns.fetch(:deductions, [])
   deduction_total = deductions.sum { |d| d.amount.to_f }
+  co_shares = local_assigns.fetch(:co_shares, nil) || []
+  co_share_total = co_shares.sum { |s| s.amount.to_f }
+  hide_date = local_assigns.fetch(:hide_date, false)
   contract = payment.contract
   contractor = contract.contractor
   # Already in a payout run: the money's on its way, so not "overdue".
@@ -141,7 +148,7 @@
   # night by night when it covers more than one.
   held_back_nights = held_back_fee ? contract.fee_by_night(contract.settlement_shows_for(payment), total: held_back_fee) : nil
   held_back_nights = nil unless held_back_nights&.many?
-  itemized = deductions.any? || folded_items.any? || fee_working.present?
+  itemized = deductions.any? || folded_items.any? || fee_working.present? || co_shares.any?
   moved_label =
     if is_incoming
       payment.status_paid? ? "They paid us" : "They pay us"
@@ -167,11 +174,13 @@
     <%# Left Section: Date & Payment Details %>
     <div class="w-full md:w-1/2 flex items-center gap-4">
       <%# Date Box %>
+      <% unless hide_date %>
       <div class="flex-shrink-0 w-14 text-center">
         <div class="text-xs font-semibold <%= is_late ? 'text-pink-600' : 'text-pink-600' %> uppercase"><%= payment.due_date.strftime("%b") %></div>
         <div class="text-2xl font-bold <%= is_late ? 'text-pink-700' : 'text-gray-900' %>"><%= payment.due_date.strftime("%-d") %></div>
         <div class="text-xs <%= is_late ? 'text-pink-500' : 'text-gray-500' %>"><%= payment.due_date.strftime("%a") %></div>
       </div>
+      <% end %>
 
       <%# Payment Details %>
       <div class="flex-1 min-w-0">
@@ -182,10 +191,14 @@
             </span>
           <% end %>
           <span class="font-medium text-gray-900">
-            <%= link_to (contract.production_name.presence || contract.contractor_name), payment_link, class: "hover:text-pink-600" %>
+            <%# Inside a date's row the contract is already the page: the
+                payment's own name is the title. %>
+            <%= link_to (hide_date ? payment.display_name : (contract.production_name.presence || contract.contractor_name)), payment_link, class: "hover:text-pink-600" %>
           </span>
         </div>
-        <% if itemized %>
+        <% if hide_date %>
+          <div class="text-sm text-gray-600"><%= is_incoming ? "#{contract.contractor_name} pays #{Current.organization.name}" : "#{Current.organization.name} pays #{contract.contractor_name}" %></div>
+        <% elsif itemized %>
           <%# What it's for is the first line of the list below. %>
           <% if contract.production_name.present? %>
             <div class="text-sm text-gray-600"><%= contract.contractor_name %></div>
@@ -250,7 +263,7 @@
           </div>
         <% elsif settled_by_offset %>
           <div class="text-xs text-purple-700">
-            Went toward what they owed — no money moved
+            <%= hide_date ? "No money moved" : "Went toward what they owed — no money moved" %>
           </div>
         <% elsif is_late %>
           <div class="text-xs text-pink-600">
@@ -271,7 +284,7 @@
         <div class="flex items-center gap-2">
           <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
             <%= icon("check-circle", class: "w-4 h-4 mr-1 inline") %>
-            <%= settled_by_offset ? "Settled" : "Paid" %><%= payment.paid_date ? " #{payment.paid_date.strftime('%b %-d')}" : "" %><%= " · #{payment.offline_payment_method_label}" if payment.offline_payment_method_label %><%= " · Course payout" if payment.payment_method == "course_payout" %>
+            <%= settled_by_offset ? "Settled" : (payment.set_to_zero? ? "Set to $0" : "Paid") %><%= payment.paid_date ? " #{payment.paid_date.strftime('%b %-d')}" : "" %><%= " · #{payment.offline_payment_method_label}" if payment.offline_payment_method_label %><%= " · Course payout" if payment.payment_method == "course_payout" %>
           </span>
           <% if show_actions && payment.invoiceable? %>
             <%= link_to "Receipt", pay_contract_invoice_path(token: payment.payment_token!, format: :pdf), target: "_blank", rel: "noopener",
@@ -301,7 +314,7 @@
             <% end %>
           <% end %>
           <%# Amounts settled through a payout run are fixed by the transfer. %>
-          <% if show_actions && !in_run %>
+          <% if show_actions && !in_run && !payment.set_to_zero? %>
             <%= render "shared/button", text: (payment.amount_tbd? ? "Set Amount" : "Edit"),
                   variant: "secondary", size: "xs", icon: "pencil", type: :button,
                   data: { action: "click->payment-modal#open" } %>
@@ -317,8 +330,10 @@
           can_record = is_incoming && !is_deduct && offline_allowed
           can_deduct = is_incoming && !is_deduct && contract.contractor.present? && contract.outgoing_settlement?
           can_edit_amount = !is_incoming && amount_set && !in_run
+          # Less, or $0 with a note, for money they owe us (Tim, 2026-11-22).
+          can_change_amount = is_incoming && payment.amount_changeable?
           menu_any = can_take_out || (!in_run && (can_copy_link || can_record || can_deduct || is_deduct ||
-                                                  combine_candidates.any? || can_split || can_edit_amount || can_pay_offline))
+                                                  combine_candidates.any? || can_split || can_edit_amount || can_change_amount || can_pay_offline))
           menu_item_classes = "w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer bg-transparent border-0 text-left"
         %>
         <div class="flex items-center gap-1.5">
@@ -485,6 +500,11 @@
                     <%= icon("pencil", class: "w-4 h-4 text-gray-400") %> Edit amount
                   </button>
                 <% end %>
+                <% if can_change_amount %>
+                  <button type="button" data-action="click->modal#open" data-modal-id="change-amount-<%= payment.id %>" class="<%= menu_item_classes %>">
+                    <%= icon("pencil", class: "w-4 h-4 text-gray-400") %> Change the amount
+                  </button>
+                <% end %>
                 <% if can_pay_offline %>
                   <button type="button" data-action="click->modal#open" data-modal-id="<%= offline_pay_id %>" class="<%= menu_item_classes %>"
                           title="Record money you sent them outside CocoScout — Zelle, a check, cash.">
@@ -505,7 +525,7 @@
         Services they pay for on the night ride inside an incoming payment
         (one amount, one pay link); charges netted out of a settlement are
         never invoiced, so they're listed here instead of as rows of their own. %>
-    <div class="mt-2 pt-2 border-t <%= is_late ? 'border-pink-200' : 'border-gray-100' %> md:pl-[4.5rem]">
+    <div class="mt-2 pt-2 border-t <%= is_late ? 'border-pink-200' : 'border-gray-100' %> <%= hide_date ? '' : 'md:pl-[4.5rem]' %>">
       <dl class="max-w-xl grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-1 text-sm">
         <% if our_take %>
           <%# Nothing to hand back yet: the fee and the charges are ours
@@ -548,6 +568,11 @@
             No money moves: their share pays down what they owe<%= ", and the rest comes out of their next share" if still_owed.positive? %>.
           </dd>
         <% else %>
+          <%# Shares settled together by one offset come first, oldest first. %>
+          <% co_shares.sort_by(&:due_date).each do |share| %>
+            <dt class="min-w-0 text-gray-600"><%= share.display_name %></dt>
+            <dd class="text-right tabular-nums text-gray-900"><%= number_to_currency(share.amount) %></dd>
+          <% end %>
           <% (folded_items.presence || fee_working || [ [ payment.display_name, payment.amount.to_f ] ]).each do |label, amount| %>
             <dt class="min-w-0 text-gray-600"><%= label %></dt>
             <dd class="text-right tabular-nums <%= awaiting_amount ? 'text-gray-400' : 'text-gray-900' %>">
@@ -555,19 +580,33 @@
             </dd>
           <% end %>
           <% if deductions.any? %>
-            <dt class="col-span-2 pt-1 text-xs font-medium text-purple-700"><%= settled_by_offset ? "Went toward what they owed" : "Taken out of their share" %></dt>
+            <dt class="col-span-2 pt-1 text-xs font-medium text-purple-700"><%= settled_by_offset ? "Went toward what #{contract.contractor_name} owed" : "Taken out of the share" %></dt>
             <% deductions.each do |charge| %>
               <dt class="min-w-0 text-gray-600"><%= charge.description %></dt>
               <dd class="text-right tabular-nums text-gray-900">−<%= number_to_currency(charge.amount) %></dd>
             <% end %>
           <% end %>
+          <%
+            # Nobody pays anyone a negative amount (Tim, 2026-11-22: "We paid
+            # them −$202.00"). A share settled by offset moved no money; one
+            # that left something owed says what's still owed.
+            net_moved = (payment.amount.to_f + co_share_total - deduction_total).round(2)
+            bottom_label, bottom_amount =
+              if awaiting_amount
+                [ moved_label, (deductions.any? ? "TBD − #{number_to_currency(deduction_total)}" : "TBD") ]
+              elsif settled_by_offset && net_moved.abs < 0.005
+                [ "Money that changed hands", number_to_currency(0) ]
+              elsif !is_incoming && net_moved.negative?
+                [ "Still owed after this #{co_shares.any? ? 'settlement' : 'share'}", number_to_currency(net_moved.abs) ]
+              else
+                [ moved_label, number_to_currency(net_moved) ]
+              end
+          %>
           <div class="col-span-2 border-t border-gray-200 my-0.5" aria-hidden="true"></div>
-          <dt class="font-medium text-gray-900"><%= moved_label %></dt>
-          <dd class="text-right tabular-nums font-semibold text-gray-900">
-            <% if awaiting_amount %><%= deductions.any? ? "TBD − #{number_to_currency(deduction_total)}" : "TBD" %><% else %><%= number_to_currency(payment.amount.to_f - deduction_total) %><% end %>
-          </dd>
+          <dt class="font-medium text-gray-900"><%= bottom_label %></dt>
+          <dd class="text-right tabular-nums font-semibold text-gray-900"><%= bottom_amount %></dd>
           <% if settled_by_offset %>
-            <dd class="col-span-2 text-xs text-gray-500">Settled by offset: their share paid down what they owed, so no money moved.</dd>
+            <dd class="col-span-2 text-xs text-gray-500"><%= co_shares.any? ? "The shares" : "The share" %> paid down what <%= contract.contractor_name %> owed, so no money moved.</dd>
           <% end %>
         <% end %>
       </dl>
@@ -592,6 +631,10 @@
 <% end %>
 
 <%# Money we sent them by hand, for a payment no payout run can settle %>
+<% if show_actions && is_incoming && payment.status_pending? && payment.amount_changeable? %>
+  <%= render "manage/contracts/change_amount_modal", payment: payment, contract: contract %>
+<% end %>
+
 <% if show_actions && can_pay_offline %>
   <%= render "manage/contracts/offline_pay_modal", id: offline_pay_id, payment: payment,
         contract: contract, methods: offline_pay_methods, net_amount: net_to_hand_over,

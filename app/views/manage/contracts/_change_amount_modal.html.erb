@@ -1,0 +1,54 @@
+<%#
+  Change what they owe, with a note (Tim, 2026-11-22): less, or $0 when the
+  organization won't collect it at all (ContractPayment#change_amount!). One
+  already set to $0 opens at the amount it was, to put it back.
+
+  Locals: payment, contract
+%>
+<%
+  modal_id = "change-amount-#{payment.id}"
+  current = payment.set_to_zero? ? payment.amount_before_change : payment.amount
+%>
+<div id="<%= modal_id %>" class="hidden fixed inset-0 z-50 overflow-y-auto" data-controller="modal">
+  <div class="flex min-h-full items-center justify-center p-4">
+    <div class="fixed inset-0 bg-gray-500/75" data-action="click->modal#close"></div>
+    <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden" role="dialog" aria-labelledby="<%= modal_id %>-title">
+      <div class="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-pink-500 to-pink-600">
+        <h3 id="<%= modal_id %>-title" class="text-lg font-semibold text-white">Change what <%= contract.contractor_name %> owes</h3>
+        <button type="button" data-action="click->modal#close" class="text-white/80 hover:text-white" aria-label="Close">
+          <%= icon("x", class: "w-5 h-5") %>
+        </button>
+      </div>
+      <%= form_with url: change_amount_manage_contract_contract_payment_path(contract, payment), method: :patch, data: { turbo_action: "replace" } do %>
+        <div class="p-6 space-y-4">
+          <p class="text-sm text-gray-700">
+            <% if payment.set_to_zero? %>
+              This was <%= number_to_currency(payment.amount_before_change) %>, <%= ContractDatesAndMoney.owed_label(payment) %>, and was set to $0. Enter what <%= contract.contractor_name %> owes now.
+            <% else %>
+              <%= contract.contractor_name %> owes <%= number_to_currency(payment.amount) %><% if payment.carried_balance? %>, <%= ContractDatesAndMoney.owed_label(payment) %><% end %>.
+            <% end %>
+          </p>
+          <div>
+            <label for="<%= modal_id %>-amount" class="block text-sm font-medium text-gray-700 mb-1">Amount owed</label>
+            <div class="relative max-w-[12rem]">
+              <span class="absolute left-3 top-2.5 text-gray-500">$</span>
+              <%= number_field_tag :amount, format("%.2f", current.to_f), step: 0.01, min: 0, required: true, id: "#{modal_id}-amount",
+                    class: "block w-full pl-7 pr-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            </div>
+            <p class="text-xs text-gray-600 mt-1.5">At $0.00, <%= Current.organization.name %> won't collect it: it stops being overdue, the pay link stops working, and nothing is owed on it. Any other amount is what the pay link charges.</p>
+          </div>
+          <div>
+            <label for="<%= modal_id %>-note" class="block text-sm font-medium text-gray-700 mb-1">Note <span class="font-normal text-gray-600">(shown on the contract to your managers)</span></label>
+            <%= text_area_tag :note, payment.amount_change_note, rows: 3, id: "#{modal_id}-note",
+                  placeholder: "For example: we're not charging for the last bit of the rehearsal.",
+                  class: "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+          </div>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-2">
+          <%= render "shared/button", text: "Cancel", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+          <%= render "shared/button", text: "Save", variant: "primary", size: "medium", type: :submit %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

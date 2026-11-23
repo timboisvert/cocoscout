@@ -1,0 +1,37 @@
+<%#
+  Messages about this contract (ContractThread) on the organization's
+  contract page: the latest one, the way into the conversation, and Write,
+  which opens the Message window the header's button opens
+  (manage/contracts/_message_modal). The contract person's own page keeps
+  shared/contract_thread with its box in place.
+
+  Locals: contract
+%>
+<% root = ContractThread.root(contract) %>
+<% latest = root && ([ root ] + root.child_messages.not_deleted.to_a).max_by(&:created_at) %>
+<% count = root ? 1 + root.child_messages.not_deleted.count : 0 %>
+<%
+  sender_name = case latest&.sender
+                when User then latest.sender.person&.name
+                when Person then latest.sender.name
+                else contract.organization.name
+                end
+%>
+<div class="border border-gray-200 rounded-xl bg-white" data-contract-thread>
+  <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between gap-2">
+    <h2 class="text-lg font-semibold text-gray-900">Messages</h2>
+    <%= render "shared/button", text: "Write", variant: "secondary", size: "small", type: :button,
+          data: { action: "click->modal#open", modal_id: "contract-message-modal" } %>
+  </div>
+  <div class="px-4 py-3 space-y-3 text-sm">
+    <% if latest %>
+      <div class="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2">
+        <div class="text-xs text-gray-600"><%= sender_name %> · <%= time_ago_in_words(latest.created_at) %> ago</div>
+        <p class="text-gray-800 mt-1"><%= latest.body.to_plain_text.squish.truncate(160) %></p>
+      </div>
+      <%= link_to "Open the conversation (#{pluralize(count, 'message')})", open_my_message_path(root), class: "font-medium text-pink-600 hover:text-pink-700" %>
+    <% else %>
+      <p class="text-gray-600">No messages about this contract yet. A message goes to <%= contract.contractor_name %>, the people on the contract, and the managers at <%= contract.organization.name %>.</p>
+    <% end %>
+  </div>
+</div>

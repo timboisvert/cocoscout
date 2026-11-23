@@ -82,10 +82,13 @@ RSpec.describe "Manage contract payment actions", type: :request do
       html = response.body.gsub(/\s+/, " ")
       expect(html).to include("$207.50")
       expect(html).to include("Aug 9 — 50% to them</dt>")
-      expect(html).to include("Taken out of their share")
+      expect(html).to include("Taken out of the share")
       expect(html).to match(%r{Booth Tech — Aug 9, 2026</dt> <dd[^>]*>−\$50\.00</dd>})
-      expect(html).to match(%r{We pay them</dt> <dd[^>]*> \$207\.50 </dd>})
-      expect(html).not_to include("<details")
+      expect(html).to match(%r{We pay them</dt> <dd[^>]*> ?\$207\.50 ?</dd>})
+      # Its date's row (Dates and money) folds, but opens by itself while
+      # there's something to do: the share is still to be paid.
+      row = Nokogiri::HTML(response.body).css("details[data-money-row]").find { |d| d.text.include?("$207.50") }
+      expect(row["open"]).not_to be_nil
     end
 
     # Contract 92 (Tim, 2026-10-10): an $18 share against $126 of rehearsals
@@ -201,7 +204,7 @@ RSpec.describe "Manage contract payment actions", type: :request do
     it "folds the charge into its settlement instead of offering pay-link actions" do
       service.update!(settlement_method: "payout_deduction")
       get manage_contract_path(contract)
-      expect(response.body).to include("Taken out of their share")
+      expect(response.body).to include("Taken out of the share")
       expect(response.body).not_to include("Copy pay link")
     end
 
@@ -268,8 +271,8 @@ RSpec.describe "Manage contract payment actions", type: :request do
       get manage_contract_path(contract)
       html = response.body.gsub(/\s+/, " ")
       expect(html).to include("Settled #{Date.current.strftime('%b %-d')}")
-      expect(html).to include("Went toward what they owed")
-      expect(html).to include("Settled by offset: their share paid down what they owed")
+      expect(html).to include("Went toward what #{contract.contractor_name} owed")
+      expect(html).to include("The share paid down what #{contract.contractor_name} owed, so no money moved.")
     end
   end
 

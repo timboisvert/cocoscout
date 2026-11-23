@@ -2030,6 +2030,7 @@ Rails.application.routes.draw do
           post :combine
           post :split
           patch :settlement
+          patch :change_amount
         end
       end
       # Native e-signature: revoke an outstanding request. (Sending happens in the

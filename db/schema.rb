@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_23_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_23_020000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -947,6 +947,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_010000) do
     t.boolean "auto_shortfall", default: false, null: false
     t.jsonb "components", default: [], null: false
     t.bigint "correction_of_id"
+    t.text "amount_change_note"
+    t.datetime "amount_changed_at"
+    t.bigint "amount_changed_by_id"
+    t.decimal "amount_before_change", precision: 10, scale: 2
+    t.index ["amount_changed_by_id"], name: "index_contract_payments_on_amount_changed_by_id"
     t.index ["contract_id", "status"], name: "index_contract_payments_on_contract_id_and_status"
     t.index ["contract_id"], name: "index_contract_payments_on_contract_id"
     t.index ["correction_of_id"], name: "index_contract_payments_on_correction_of_id"
@@ -5307,6 +5312,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_010000) do
   add_foreign_key "contract_payments", "contract_payments", column: "correction_of_id", on_delete: :nullify
   add_foreign_key "contract_payments", "contracts"
   add_foreign_key "contract_payments", "shows"
+  add_foreign_key "contract_payments", "users", column: "amount_changed_by_id", on_delete: :nullify
   add_foreign_key "contract_people", "contracts"
   add_foreign_key "contract_people", "people"
   add_foreign_key "contract_people", "users", column: "added_by_id"

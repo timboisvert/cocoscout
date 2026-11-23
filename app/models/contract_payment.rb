@@ -12,6 +12,8 @@ class ContractPayment < ApplicationRecord
   # reopened (ContractSettlementCorrection): the difference, as a payment of
   # its own beside the one that stays as it was paid.
   belongs_to :correction_of, class_name: "ContractPayment", optional: true
+  # Who last changed what's owed by hand (change_amount!).
+  belongs_to :amount_changed_by, class_name: "User", optional: true
   has_many :corrections, class_name: "ContractPayment", foreign_key: :correction_of_id, dependent: :nullify, inverse_of: :correction_of
 
   # Its invoice, once anyone has opened it (Invoice.for!). The invoice
@@ -54,7 +56,9 @@ class ContractPayment < ApplicationRecord
   # Ways a payment is settled without any money arriving: a charge netted out
   # of their share on a payout run, a share that went toward what they owed,
   # a course's settlement paid inside its course payout.
-  NETTED_PAYMENT_METHODS = %w[payout_deduction offset course_payout].freeze
+  NETTED_PAYMENT_METHODS = %w[payout_deduction offset course_payout set_to_zero].freeze
+  # Settled at $0 by a manager: nothing was paid and nothing is owed.
+  SET_TO_ZERO = "set_to_zero"
 
   # Paid with money that actually arrived (a pay link, or recorded by hand),
   # as opposed to settled by netting. A charge deducted from a payout is
@@ -77,7 +81,7 @@ class ContractPayment < ApplicationRecord
   # Whoever paid gets a receipt, however the money arrived: online, or
   # recorded by hand. Netting it out of their payout isn't a payment from them.
   after_commit -> { ContractPaymentReceiptJob.perform_later(id) }, on: :update,
-               if: -> { saved_change_to_status?(to: "paid") && direction_incoming? && payment_method != "payout_deduction" }
+               if: -> { saved_change_to_status?(to: "paid") && direction_incoming? && !payment_method.in?(%w[payout_deduction set_to_zero]) }
   before_destroy -> { invoice&.void!("Removed from the contract") }
 
   scope :upcoming, -> { status_pending.where("due_date >= ?", Date.current).order(:due_date) }
@@ -610,6 +614,7 @@ class ContractPayment < ApplicationRecord
       case payment_method
       when "online" then "Paid online"
       when "payout_deduction" then "Deducted from payout"
+      when SET_TO_ZERO then "Set to $0"
       end
   end
 
@@ -648,6 +653,54 @@ class ContractPayment < ApplicationRecord
       attrs[:amount_tbd] = false
     end
     update!(attrs)
+  end
+
+  # --- Changing what's owed --------------------------------------------------
+  #
+  # A manager changes what they owe us and leaves a note (Tim, 2026-11-22):
+  # less, or $0 when the organization won't collect it at all, like the last
+  # $24.00 of a rehearsal no share was left to cover. At $0 the payment is
+  # settled with nothing paid: no longer overdue, the pay link stops, its
+  # invoice is voided, and the books drop what it would have earned
+  # (BooksOutsidePoster posts nothing for $0). Any other amount is what's
+  # owed from now on. Changing it back from $0 makes it owed again.
+  # Returns false with errors when the amount isn't a number of $0 or more.
+  def change_amount!(amount:, note:, by:)
+    value = BigDecimal(amount.to_s.delete(",$ "), exception: false)
+    if value.nil? || value.negative?
+      errors.add(:amount, "must be $0.00 or more")
+      return false
+    end
+
+    value = value.round(2)
+    transaction do
+      attrs = { amount_change_note: note.to_s.strip.presence, amount_changed_at: Time.current, amount_changed_by: by }
+      # The amount it was before anyone changed it, kept through later changes.
+      attrs[:amount_before_change] = amount_before_change || self.amount
+      if value.zero?
+        attrs.merge!(amount: 0, amount_tbd: false, status: :paid, paid_date: Date.current, payment_method: SET_TO_ZERO, reference_number: nil)
+      else
+        attrs.merge!(amount: value, amount_tbd: false)
+        attrs.merge!(status: :pending, paid_date: nil, payment_method: nil) if set_to_zero?
+      end
+      update!(attrs)
+      invoice&.void!("Set to $0") if value.zero?
+    end
+    true
+  end
+
+  # Settled at $0 by a manager: nothing more is owed.
+  def set_to_zero?
+    status_paid? && payment_method == SET_TO_ZERO
+  end
+
+  # Money they owe us that a manager may change (change_amount!): still owed
+  # and paid directly, or already set to $0. A charge waiting to come out of
+  # their share settles with the share instead.
+  def amount_changeable?
+    return false unless direction_incoming?
+
+    set_to_zero? || (status_pending? && !amount_tbd? && !deduct_from_payout? && !in_payout_run?)
   end
 
   # Display helpers

@@ -1,0 +1,50 @@
+<%#
+  Dates and money (Tim, 2026-11-22, design B on
+  https://claude.ai/artifact/62bco7jZ8dU8ZQU5C7XhvU): every booked date with
+  what it brought in or cost, money on days with nothing booked as rows of
+  its own, and what's still owed in a box underneath. See
+  ContractDatesAndMoney.
+
+  Locals: contract, money (ContractDatesAndMoney), totals (Contract#money_display)
+%>
+<div class="border border-gray-200 rounded-xl bg-white">
+  <div class="px-4 sm:px-5 py-4 border-b border-gray-200 flex flex-col xl:flex-row xl:items-end xl:justify-between gap-3">
+    <div>
+      <h2 class="text-lg font-semibold text-gray-900">Dates and money</h2>
+      <p class="text-sm text-gray-600 mt-1">Each date with its booking and what it brought in or cost. Open a date to see how it was settled.</p>
+    </div>
+    <dl class="flex flex-wrap gap-x-6 gap-y-2 text-sm xl:flex-nowrap xl:flex-shrink-0">
+      <div>
+        <dt class="text-gray-600">Made</dt>
+        <dd class="font-bold text-gray-900 tabular-nums"><%= number_to_currency(totals[:made]) %></dd>
+      </div>
+      <div>
+        <dt class="text-gray-600">Cost</dt>
+        <dd class="font-bold text-gray-900 tabular-nums"><%= number_to_currency(totals[:cost]) %></dd>
+      </div>
+      <div>
+        <dt class="text-gray-600">Net to <%= Current.organization.name %></dt>
+        <dd class="font-bold tabular-nums <%= totals[:net] >= 0 ? 'text-green-700' : 'text-red-700' %>"><%= number_to_currency(totals[:net]) %></dd>
+      </div>
+    </dl>
+  </div>
+  <% if totals[:pending_shows].positive? %>
+    <p class="px-4 sm:px-5 pt-3 text-xs text-amber-700"><%= pluralize(totals[:pending_shows], "show") %> still waiting on ticket sales, so these are the sales so far.</p>
+  <% end %>
+
+  <div class="p-2 sm:p-3">
+    <% if money.rows.empty? && money.owed.empty? %>
+      <p class="px-2 py-6 text-sm text-gray-600 text-center">No dates or payments yet.</p>
+    <% else %>
+      <div class="hidden md:grid grid-cols-[3.5rem_minmax(0,1.1fr)_minmax(0,1.6fr)] gap-3 px-3 pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wide">
+        <span>Date</span><span>Booking</span><span>Money</span>
+      </div>
+      <div class="space-y-1.5">
+        <% money.rows.each do |row| %>
+          <%= render "manage/contracts/money_row", row: row, money: money, contract: contract %>
+        <% end %>
+      </div>
+      <%= render "manage/contracts/owed_box", money: money, contract: contract %>
+    <% end %>
+  </div>
+</div>

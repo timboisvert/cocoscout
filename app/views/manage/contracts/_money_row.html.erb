@@ -1,0 +1,95 @@
+<%#
+  One row of Dates and money: a booked date with its money, or money due on a
+  day with nothing booked. Opening it shows how it was settled — a charge's
+  working, and the payment rows themselves with everything they can do. It
+  opens by itself when one of them needs doing today.
+
+  Locals: row (ContractDatesAndMoney::Row), money, contract
+%>
+<%
+  rental = row.rental
+  show = row.show
+  expandable = row.expanded.any? || row.charges.any?
+  frame = if row.owed? then "border-pink-300 bg-pink-50"
+          elsif row.night? then "border-gray-200 bg-white"
+          else "border-gray-200 bg-gray-50"
+          end
+  tag_name = expandable ? :details : :div
+  time_text =
+    if rental
+      "#{rental.starts_at.strftime('%-l:%M %p')} – #{rental.ends_at.strftime('%-l:%M %p')}"
+    elsif show&.date_and_time
+      show.date_and_time.strftime("%-l:%M %p")
+    end
+  place = rental && [ rental.location_space&.name || "Entire venue", rental.location&.name ].compact.join(" at ")
+  amount_color = ->(line) do
+    case line.tone
+    when :offset then "text-purple-700"
+    when :owed then "text-pink-700"
+    else "text-gray-900"
+    end
+  end
+%>
+<%= content_tag tag_name, id: row.key, class: "group/row rounded-lg border #{frame}", open: (expandable && row.open) || nil, data: { money_row: row.key } do %>
+  <%= content_tag (expandable ? :summary : :div), class: "list-none [&::-webkit-details-marker]:hidden #{'cursor-pointer' if expandable} grid grid-cols-[3.5rem_minmax(0,1fr)] md:grid-cols-[3.5rem_minmax(0,1.1fr)_minmax(0,1.6fr)] gap-x-3 gap-y-2 items-center px-3 py-2.5" do %>
+    <div class="text-center">
+      <div class="text-[11px] font-semibold text-pink-600 uppercase"><%= row.date.strftime("%b") %></div>
+      <div class="text-xl font-bold text-gray-900 leading-tight"><%= row.date.strftime("%-d") %></div>
+      <div class="text-[11px] text-gray-600"><%= row.date.strftime("%a") %></div>
+    </div>
+
+    <div class="min-w-0">
+      <% if row.night? %>
+        <div class="flex items-center gap-2 flex-wrap">
+          <% if show&.event_type %>
+            <%= render "manage/contracts/event_type_badges", event_types: [ show.event_type ] %>
+          <% end %>
+          <span class="text-sm text-gray-900"><%= time_text %></span>
+        </div>
+        <% if place || rental %>
+          <div class="text-xs text-gray-600 mt-0.5">
+            <%= place %><% if rental %> · <%= rental.confirmed? ? "Confirmed" : "Pending" %><% end %>
+          </div>
+        <% end %>
+      <% else %>
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="inline-flex items-center rounded-md bg-white px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-300">Payment</span>
+          <span class="text-sm font-semibold text-gray-900"><%= row.title %></span>
+        </div>
+        <div class="text-xs text-gray-600 mt-0.5"><%= row.subtitle %></div>
+      <% end %>
+    </div>
+
+    <div class="col-span-2 md:col-span-1 md:col-start-3 space-y-1.5 max-md:pl-[4.25rem]">
+      <% row.lines.each do |line| %>
+        <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-start">
+          <p class="text-sm <%= line.owed? ? 'text-pink-800' : (line.tone == :offset ? 'text-purple-800' : 'text-gray-700') %>"><%= line.text %></p>
+          <div class="text-right min-w-[5rem] md:min-w-[6.5rem]">
+            <% if line.amount %>
+              <div class="text-base font-bold tabular-nums <%= amount_color.(line) %>"><%= line.amount %></div>
+            <% end %>
+            <% if line.note %>
+              <div class="text-xs text-gray-600"><%= line.note %></div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+      <% if row.lines.empty? && row.payment&.status_cancelled? %>
+        <p class="text-sm text-gray-600">Cancelled.</p>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if expandable %>
+    <div class="border-t <%= row.owed? ? 'border-pink-200' : 'border-gray-200' %> px-3 pt-2 pb-3 md:pl-[4.75rem] space-y-2">
+      <% row.charges.each do |charge| %>
+        <%= render "manage/contracts/charge_working", charge: charge, money: money, contract: contract %>
+      <% end %>
+      <% row.expanded.each do |payment| %>
+        <% group = money.groups[payment.id] %>
+        <%= render "manage/contracts/contract_payment_row", payment: payment,
+              deductions: group[:deductions], co_shares: group[:co_shares], hide_date: true %>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

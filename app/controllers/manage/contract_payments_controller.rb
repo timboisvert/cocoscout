@@ -3,13 +3,29 @@
 module Manage
   class ContractPaymentsController < ManageController
     before_action :set_contract
-    before_action :set_payment, only: %i[update destroy mark_paid pay_offline add_to_payout_run remove_from_payout_run refresh_in_payout_run settlement combine split]
+    before_action :set_payment, only: %i[update destroy mark_paid pay_offline add_to_payout_run remove_from_payout_run refresh_in_payout_run settlement combine split change_amount]
 
     def update
       if @payment.update(payment_params)
         redirect_back fallback_location: manage_contract_path(@contract), notice: "Payment updated."
       else
         redirect_back fallback_location: manage_contract_path(@contract), alert: "Could not update payment: #{@payment.errors.full_messages.join(', ')}"
+      end
+    end
+
+    # Changes what they owe us, with a note: less, or $0 when the organization
+    # won't collect it (ContractPayment#change_amount!).
+    def change_amount
+      unless @payment.amount_changeable?
+        return redirect_back fallback_location: manage_contract_path(@contract),
+                             alert: "This payment's amount can't be changed here."
+      end
+
+      if @payment.change_amount!(amount: params[:amount], note: params[:note], by: Current.user)
+        notice = @payment.set_to_zero? ? "Set to $0. Nothing more is owed on it." : "Amount changed to #{ActiveSupport::NumberHelper.number_to_currency(@payment.amount)}."
+        redirect_back fallback_location: manage_contract_path(@contract), notice: notice
+      else
+        redirect_back fallback_location: manage_contract_path(@contract), alert: "Could not change the amount: #{@payment.errors.full_messages.to_sentence}"
       end
     end
 

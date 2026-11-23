@@ -1,0 +1,105 @@
+<%#
+  The top of a contract (Tim, 2026-11-22, design B on
+  https://claude.ai/artifact/62bco7jZ8dU8ZQU5C7XhvU): what it is, its status,
+  the deal in one sentence, when and where, and the things to do with it —
+  Message, Amend (or Reopen), and the rest behind a menu. When the contractor
+  still owes what no share is left to cover, a strip under it says so.
+
+  Locals: contract, status_badge, money (ContractDatesAndMoney)
+%>
+<%
+  headline = contract.deal_summary.find { |line| line[:label] == "How the money works" }&.dig(:value)
+  places = @rentals.map { |r| [ r.location_space&.name || "Entire venue", r.location&.name ].compact.join(" at ") }.uniq
+  production = @productions.first
+  pdf_doc = contract.signed_pdf_document
+  can_message = !contract.status_draft?
+  owed_total = money.owed_total
+  owed_one = money.owed_pending.one? ? money.owed_pending.first : nil
+  menu_item = "w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer bg-transparent border-0 text-left"
+%>
+<section class="mb-6 bg-white border border-gray-200 rounded-xl" data-contract-header>
+  <div class="p-5 sm:p-6 flex flex-col lg:flex-row lg:items-start gap-4 lg:justify-between">
+    <div class="min-w-0 flex-1 space-y-1.5">
+      <div class="flex items-center gap-2 flex-wrap">
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight"><%= contract.production_name.presence || contract.contractor_name %></h1>
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <%= status_badge[:bg] %> <%= status_badge[:text] %>">
+          <%= icon(status_badge[:icon], class: "w-3 h-3 mr-1") %><%= status_badge[:label] %>
+        </span>
+      </div>
+      <% if headline %>
+        <p class="text-base text-gray-900 max-w-3xl"><%= headline %></p>
+      <% end %>
+      <p class="text-sm text-gray-600">
+        <%= [ contract.date_range, places.to_sentence.presence ].compact.join(" · ") %>
+        <% if production %>
+          · <%= link_to "Production: #{production.name}", manage_production_shows_path(production), class: "text-pink-600 hover:text-pink-700" %>
+        <% end %>
+      </p>
+    </div>
+
+    <div class="flex items-center gap-2 flex-shrink-0">
+      <% if can_message %>
+        <%= render "shared/button", text: "Message", variant: "primary", size: "small", type: :button,
+              data: { action: "click->modal#open", modal_id: "contract-message-modal" } %>
+      <% end %>
+      <% if contract.status_active? %>
+        <%= render "shared/button", text: "Amend", variant: "secondary", size: "small", icon: "pencil",
+              path: amend_choose_manage_contract_path(contract) %>
+      <% elsif contract.status_completed? %>
+        <%= render "shared/button", text: "Reopen to Amend", variant: "secondary", size: "small", icon: "pencil", type: :button,
+              data: { action: "click->modal#open", modal_id: "reopen-contract-modal" } %>
+      <% end %>
+      <% if pdf_doc || contract.status_active? || contract.status_cancelled? %>
+        <div class="relative" data-controller="dropdown">
+          <button type="button" data-action="click->dropdown#toggle" aria-label="More for this contract"
+                  class="w-9 h-9 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-lg border border-gray-300 hover:border-gray-400 bg-white cursor-pointer">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+          </button>
+          <div data-dropdown-target="menu" class="hidden absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+            <% if pdf_doc %>
+              <%= link_to rails_blob_path(pdf_doc.file, disposition: "inline"), target: "_blank", class: menu_item do %>
+                <%= icon("eye", class: "w-4 h-4 text-gray-400") %> View the signed contract
+              <% end %>
+            <% end %>
+            <% if contract.status_active? %>
+              <%= link_to cancel_manage_contract_path(contract), class: menu_item do %>
+                <%= icon("x-circle", class: "w-4 h-4 text-gray-400") %> Cancel the contract
+              <% end %>
+            <% end %>
+            <% if contract.status_cancelled? %>
+              <button type="button" data-action="click->modal#open" data-modal-id="confirm-delete-contract-<%= contract.id %>" class="<%= menu_item %>">
+                <%= icon("trash", class: "w-4 h-4 text-gray-400") %> Delete forever
+              </button>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <% if owed_total.positive? %>
+    <div class="px-5 sm:px-6 py-3 bg-pink-50 border-t border-pink-200 rounded-b-xl flex flex-col sm:flex-row sm:items-center gap-3">
+      <p class="flex-1 text-sm text-gray-700">
+        <span class="font-semibold text-gray-900"><%= contract.contractor_name %> owes <%= Current.organization.name %> <%= number_to_currency(owed_total) %>.</span>
+        <% if owed_one %>It's <%= ContractDatesAndMoney.owed_label(owed_one) %>.<% end %>
+        <a href="#still-owed" class="font-medium text-pink-600 hover:text-pink-700">See what's owed</a>
+      </p>
+      <% if owed_one %>
+        <%= link_to manage_money_incoming_payment_path(owed_one), class: "self-start sm:self-auto" do %>
+          <%= render "shared/button", text: "Collect", variant: "primary", size: "small", icon: "banknotes" %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+</section>
+
+<% if contract.status_cancelled? %>
+  <%= render "shared/confirm_modal",
+      id: "confirm-delete-contract-#{contract.id}",
+      title: "Delete contract forever?",
+      message: "This deletes the contract with all its payments, documents, and events. It can't be undone.",
+      confirm_text: "Delete Forever",
+      confirm_icon: "trash",
+      url: manage_contract_path(contract),
+      method: :delete %>
+<% end %>

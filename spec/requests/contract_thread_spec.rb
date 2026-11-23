@@ -30,7 +30,7 @@ RSpec.describe "Contract thread", type: :request do
   it "starts the thread from the organization's side, reaches everyone on the contract, and takes replies from their side" do
     sign_in(owner)
     get manage_contract_path(contract)
-    expect(response.body).to include("Messages about this contract", "data-contract-thread")
+    expect(response.body).to include("data-contract-thread", "contract-message-modal", "Message Carded")
 
     post contract_thread_path(contract), params: { body: "Load-in is at 5 on Friday." }, headers: { "HTTP_REFERER" => manage_contract_url(contract) }
     root = ContractThread.root(contract)
