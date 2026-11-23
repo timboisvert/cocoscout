@@ -37,7 +37,7 @@ module SignIn
         identity = @user.user_identities.create!(
           provider: @profile.provider, uid: @profile.uid, email: @profile.email, private_email: @profile.private_email,
           refresh_token: @profile.refresh_token,
-          client_id: @profile.provider == "apple" ? Providers.apple_services_id : Providers.google_client_id,
+          client_id: @profile.client_id.presence || (@profile.provider == "apple" ? Providers.apple_services_id : Providers.google_client_id),
           last_used_at: Time.current
         )
         # The provider, a code, or the password just proved the address.

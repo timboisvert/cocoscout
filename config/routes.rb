@@ -60,6 +60,22 @@ Rails.application.routes.draw do
   # Back into the iOS app from its secure sheet (Stripe bank setup).
   get "/app/return", to: "app_returns#show", as: "app_return"
 
+  # The apps' own sign-in screens (sign-in plan phase 3): JSON steps that
+  # start the web view's session (App::SignInController).
+  scope "/app/sign_in", controller: "app/sign_in", as: "app_sign_in" do
+    get  "nonce",      action: :nonce,      as: "nonce"
+    post "start_over", action: :start_over, as: "start_over"
+    post "identify",   action: :identify,   as: "identify"
+    post "password",   action: :password,   as: "password"
+    post "send_code",  action: :send_code,  as: "send_code"
+    post "code",       action: :code,       as: "code"
+    post "create",     action: :create,     as: "create"
+    post "provider",   action: :provider,   as: "provider"
+    post "exchange",   action: :exchange,   as: "exchange"
+    post "connect",    action: :connect,    as: "connect"
+    post "add_email",  action: :add_email,  as: "add_email"
+  end
+
   # The app's first screen when signed out (WelcomeController).
   get   "/welcome",       to: "welcome#show",         as: "welcome"
 
@@ -93,6 +109,7 @@ Rails.application.routes.draw do
   post   "/auth/apple/callback",      to: "sign_in/providers#apple_callback",      as: "apple_sign_in_callback"
   get    "/auth/apple/return",        to: "sign_in/providers#apple_return",        as: "apple_sign_in_return"
   post   "/auth/apple/notifications", to: "sign_in/providers#apple_notifications", as: "apple_sign_in_notifications"
+  get    "/auth/app/:provider",       to: "sign_in/providers#app_start",           as: "app_sign_in_provider_start", constraints: { provider: /apple|google/ }
   get    "/auth/continue",            to: "sign_in/providers#continue",            as: "sign_in_provider_continue"
   post   "/auth/continue",            to: "sign_in/providers#handle_continue"
   post   "/auth/:provider",           to: "sign_in/providers#start",               as: "sign_in_provider", constraints: { provider: /apple|google/ }

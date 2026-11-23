@@ -14,14 +14,18 @@ module SignIn
   #   result.user  # the account, where there is one
   class Resolve
     # What the provider said, in one shape for both.
-    Profile = Data.define(:provider, :uid, :email, :email_verified, :private_email, :first_name, :last_name, :refresh_token) do
-      def self.from_claims(provider, claims, name: {}, refresh_token: nil)
+    # client_id: which of our ids the provider issued it to (the website's,
+    # or the iPhone app's bundle id for Apple), kept to revoke it later.
+    Profile = Data.define(:provider, :uid, :email, :email_verified, :private_email, :first_name, :last_name, :refresh_token, :client_id) do
+      def initialize(client_id: nil, **rest) = super
+
+      def self.from_claims(provider, claims, name: {}, refresh_token: nil, client_id: nil)
         new(provider: provider.to_s, uid: claims["sub"].to_s, email: claims["email"].to_s.strip.downcase.presence,
             email_verified: ActiveModel::Type::Boolean.new.cast(claims["email_verified"]) == true,
             private_email: ActiveModel::Type::Boolean.new.cast(claims["is_private_email"]) == true,
             first_name: (name["first_name"].presence || claims["given_name"]).to_s.squish.presence,
             last_name: (name["last_name"].presence || claims["family_name"]).to_s.squish.presence,
-            refresh_token: refresh_token.presence)
+            refresh_token: refresh_token.presence, client_id: client_id.presence)
       end
 
       # An address we can find and keep an account under: confirmed by the

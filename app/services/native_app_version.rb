@@ -38,6 +38,13 @@ module NativeAppVersion
     user_agent.to_s.include?("CocoMenu/bar")
   end
 
+  # Builds with the app's own sign-in screens (sign-in plan phase 3) say
+  # "CocoAuth/1": they post to App::SignInController and show their own
+  # Welcome when signed out.
+  def native_sign_in?(user_agent)
+    user_agent.to_s.include?("CocoAuth/1")
+  end
+
   # Production mode and the generation-2 menu: everywhere on the web, and in
   # app builds that draw it.
   def production_mode?(user_agent)

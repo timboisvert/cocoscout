@@ -30,14 +30,18 @@ module SignIn
     end
 
     # => { id_token:, refresh_token: (Apple; kept to revoke later) }
-    def exchange(provider, code:, redirect_uri:)
+    # A code from the iPhone app's own Sign in with Apple sheet belongs to the
+    # app's bundle id and has no redirect address: pass client_id and no
+    # redirect_uri.
+    def exchange(provider, code:, redirect_uri:, client_id: nil)
       body = case provider.to_s
       when "google"
                post_form(GOOGLE_TOKEN, client_id: Providers.google_client_id, client_secret: Providers.google_client_secret,
                                        code: code, redirect_uri: redirect_uri, grant_type: "authorization_code")
       when "apple"
-               post_form(APPLE_TOKEN, client_id: Providers.apple_services_id, client_secret: apple_client_secret,
-                                      code: code, redirect_uri: redirect_uri, grant_type: "authorization_code")
+               client = client_id.presence || Providers.apple_services_id
+               post_form(APPLE_TOKEN, { client_id: client, client_secret: apple_client_secret(client),
+                                        code: code, redirect_uri: redirect_uri, grant_type: "authorization_code" }.compact)
       else raise Error, "unknown provider"
       end
       raise Error, "no id token" if body["id_token"].blank?
@@ -50,7 +54,8 @@ module SignIn
     def revoke_apple(refresh_token, client_id: nil)
       return false if refresh_token.blank?
 
-      post_form(APPLE_REVOKE, client_id: client_id.presence || Providers.apple_services_id, client_secret: apple_client_secret,
+      client = client_id.presence || Providers.apple_services_id
+      post_form(APPLE_REVOKE, client_id: client, client_secret: apple_client_secret(client),
                               token: refresh_token, token_type_hint: "refresh_token")
       true
     rescue Error, StandardError => e
@@ -58,13 +63,14 @@ module SignIn
       false
     end
 
-    # Apple's "client secret" is a short-lived token signed with our key.
-    def apple_client_secret
+    # Apple's "client secret" is a short-lived token signed with our key, for
+    # the website's Services ID or the app's bundle id.
+    def apple_client_secret(client_id = Providers.apple_services_id)
       key = Providers.apple_private_key
       raise Error, "Apple key missing" unless key
 
       now = Time.current.to_i
-      JWT.encode({ iss: Providers.apple_team_id, iat: now, exp: now + 300, aud: "https://appleid.apple.com", sub: Providers.apple_services_id },
+      JWT.encode({ iss: Providers.apple_team_id, iat: now, exp: now + 300, aud: "https://appleid.apple.com", sub: client_id },
                  key, "ES256", { kid: Providers.apple_key_id })
     end
 

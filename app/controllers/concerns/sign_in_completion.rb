@@ -9,6 +9,13 @@ module SignInCompletion
   private
 
   def finish_sign_in(user, method:)
+    redirect_to open_session_for(user, method: method)
+  end
+
+  # Everything finish_sign_in does but the redirect, for the app's own sign-in
+  # screens (App::SignInController), which answer with JSON. Returns where to
+  # land.
+  def open_session_for(user, method:)
     if user.person.nil?
       person = Person.find_by(email: user.email_address, user_id: nil)
       if person
@@ -24,7 +31,8 @@ module SignInCompletion
 
     session.delete(:sign_in)
     session.delete(:provider_pending)
+    session.delete(:app_sign_in)
     start_new_session_for user, sign_in_method: method
-    redirect_to post_authentication_landing_path(user)
+    post_authentication_landing_path(user)
   end
 end

@@ -18,20 +18,30 @@ module SignIn
   # Apple returns by a cross-site POST, which our Lax session cookie doesn't
   # ride on, so apple_callback only parks what came back for two minutes and
   # sends the browser to apple_return, a GET that has the session.
+  #
+  # The apps' own sign-in screens (phase 3) use this too where a provider has
+  # to run in a browser tab: Google on the iPhone (the system's sign-in
+  # sheet) and Apple on Android (a Custom Tab). The app opens app_start with
+  # a challenge made from a secret only it holds. The return signs nobody in
+  # inside that tab: it parks who the provider said this is under a one-time
+  # code for two minutes and sends the tab to cocoscout://auth?code=…, and the
+  # app trades the code and its secret at App::SignInController#exchange.
   class ProvidersController < ApplicationController
     include SignInCompletion
 
-    allow_unauthenticated_access only: %i[start google_callback apple_callback apple_return apple_notifications continue handle_continue]
+    allow_unauthenticated_access only: %i[start app_start google_callback apple_callback apple_return apple_notifications continue handle_continue]
     skip_forgery_protection only: %i[apple_callback apple_notifications]
     skip_before_action :track_my_dashboard
     skip_before_action :show_my_sidebar
-    rate_limit to: 30, within: 5.minutes, only: %i[start handle_continue], name: "sign_in_providers", with: lambda {
+    rate_limit to: 30, within: 5.minutes, only: %i[start app_start handle_continue], name: "sign_in_providers", with: lambda {
       redirect_to signin_path, alert: "Too many tries. Please wait a few minutes and try again."
     }
 
     FLOW_LASTS = 10.minutes
     PENDING_LASTS = 15.minutes
     APPLE_PARKED_FOR = 2.minutes
+    APP_HANDOFF_LASTS = 2.minutes
+    APP_RETURN = "cocoscout://auth"
 
     # POST /auth/:provider
     def start
@@ -48,6 +58,22 @@ module SignIn
       nonce = SecureRandom.urlsafe_base64(24)
       session[:provider_flow] = { "provider" => provider, "state" => state, "nonce" => nonce,
                                   "intent" => connecting ? "connect" : "sign_in", "at" => Time.current.to_i }
+      redirect_to SignIn::OAuth.authorize_url(provider, redirect_uri: callback_url(provider), state: state, nonce: nonce),
+                  allow_other_host: true
+    end
+
+    # GET /auth/app/:provider?challenge=… (from the app's sign-in sheet or tab)
+    def app_start
+      provider = params[:provider].to_s
+      challenge = params[:challenge].to_s
+      unless SignIn::Providers.live? && SignIn::Providers.configured?(provider) && challenge.match?(/\A[\w-]{32,128}\z/)
+        return redirect_to("#{APP_RETURN}?error=unavailable", allow_other_host: true)
+      end
+
+      state = SecureRandom.urlsafe_base64(24)
+      nonce = SecureRandom.urlsafe_base64(24)
+      session[:provider_flow] = { "provider" => provider, "state" => state, "nonce" => nonce, "intent" => "app",
+                                  "app_challenge" => challenge, "at" => Time.current.to_i }
       redirect_to SignIn::OAuth.authorize_url(provider, redirect_uri: callback_url(provider), state: state, nonce: nonce),
                   allow_other_host: true
     end
@@ -135,6 +161,8 @@ module SignIn
       unless valid_flow?(flow, provider, state)
         return redirect_to(signin_path, alert: "That sign-in didn't finish. Please try again.")
       end
+      return hand_to_app(provider, flow, code: code, error: error, apple_user: apple_user) if flow["intent"] == "app"
+
       back = flow["intent"] == "connect" ? account_path : signin_path
       return redirect_to(back, notice: "Signing in with #{name} was canceled.") if error.present? || code.blank?
 
@@ -153,6 +181,24 @@ module SignIn
     rescue SignIn::OAuth::Error, SignIn::IdToken::Invalid => e
       Rails.logger.warn("[sign_in] #{provider} return failed: #{e.class}: #{e.message}")
       redirect_to signin_path, alert: "#{name} couldn't confirm that sign-in. Try again, or continue with your email address."
+    end
+
+    # The app's tab: who the provider said this is waits under a one-time code
+    # for the app, which proves it started this with the secret behind the
+    # challenge (App::SignInController#exchange).
+    def hand_to_app(provider, flow, code:, error:, apple_user:)
+      return redirect_to("#{APP_RETURN}?error=canceled", allow_other_host: true) if error.present? || code.blank?
+
+      tokens = SignIn::OAuth.exchange(provider, code: code, redirect_uri: callback_url(provider))
+      claims = SignIn::IdToken.verify(provider, tokens[:id_token], nonce: flow["nonce"])
+      profile = SignIn::Resolve::Profile.from_claims(provider, claims, name: apple_name(apple_user), refresh_token: tokens[:refresh_token])
+      handoff = SecureRandom.urlsafe_base64(32)
+      Rails.cache.write("sign_in/app_handoff/#{handoff}", { "profile" => profile.to_session, "challenge" => flow["app_challenge"] },
+                        expires_in: APP_HANDOFF_LASTS)
+      redirect_to "#{APP_RETURN}?code=#{handoff}", allow_other_host: true
+    rescue SignIn::OAuth::Error, SignIn::IdToken::Invalid => e
+      Rails.logger.warn("[sign_in] #{provider} app return failed: #{e.class}: #{e.message}")
+      redirect_to "#{APP_RETURN}?error=failed", allow_other_host: true
     end
 
     def valid_flow?(flow, provider, state)
