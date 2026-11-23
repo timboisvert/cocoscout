@@ -817,7 +817,7 @@ module Manage
 
     # Step 1: Amend Bookings
     def amend_bookings
-      @existing_rentals = @contract.space_rentals.includes(:location, :location_space).order(:starts_at)
+      @existing_rentals = @contract.space_rentals.includes(:location, :location_space, :shows).order(:starts_at)
       # Archived locations are out of the picker, except the ones this
       # contract's dates already use.
       @locations = Current.organization.locations
@@ -874,7 +874,7 @@ module Manage
     # Step 2: Review Events (full list with changes)
     def amend_events
       @amend_data = @contract.amend_data
-      @existing_rentals = @contract.space_rentals.includes(:location, :location_space).order(:starts_at)
+      @existing_rentals = @contract.space_rentals.includes(:location, :location_space, :shows).order(:starts_at)
 
       @new_bookings = @amend_data["new_bookings"] || []
       @removed_rental_ids = @amend_data["removed_rental_ids"] || []
@@ -1729,9 +1729,14 @@ module Manage
           space_name: rental.location_space&.name,
           duration: ((times[:ends_at] - times[:starts_at]) / 1.hour).round(1),
           event_starts_at: (show_start if separate),
-          event_ends_at: (show_end if separate)
+          event_ends_at: (show_end if separate),
+          event_types: rental.shows.map(&:event_type).compact.uniq
         }
       end
+
+      # A new night with no type picked becomes the contract's own type when
+      # applied (create_amended_booking!), so it says that here.
+      default_event_type = (@contract.draft_data["production"] || {})["event_type"].presence || "show"
 
       # Add new bookings, carrying the alternate show time set on the bookings step.
       new_bookings.each do |booking|
@@ -1749,7 +1754,7 @@ module Manage
           location_name: location&.name,
           space_name: space&.name,
           duration: duration,
-          event_type: booking["event_type"].presence,
+          event_types: [ booking["event_type"].presence || default_event_type ],
           event_starts_at: event_starts_at,
           event_ends_at: event_ends_at
         }

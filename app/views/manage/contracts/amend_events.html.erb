@@ -75,9 +75,10 @@
                   <% end %>
                   <% if event[:type] == :new %>
                     <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">New</span>
-                    <% if event[:event_type].present? %>
-                      <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700"><%= EventTypes.labels[event[:event_type]] || event[:event_type].titleize %></span>
-                    <% end %>
+                  <% end %>
+                  <%# The kind of event each night is (Tim, 2026-11-22). %>
+                  <% Array(event[:event_types]).each do |event_type| %>
+                    <span class="ml-1 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes(event_type) %>"><%= event_type_label(event_type) %></span>
                   <% end %>
                 </div>
                 <div class="text-sm text-gray-500">
@@ -127,6 +128,9 @@
               <div>
                 <div class="font-medium text-gray-900">
                   <%= rental.space_name %>
+                  <% rental.shows.map(&:event_type).compact.uniq.each do |event_type| %>
+                    <span class="ml-1 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes(event_type) %>"><%= event_type_label(event_type) %></span>
+                  <% end %>
                 </div>
                 <div class="text-sm text-gray-500">
                   <%= rental.starts_at.strftime("%l:%M %p").strip %> - <%= rental.ends_at.strftime("%l:%M %p").strip %>
