@@ -2573,12 +2573,21 @@ class Contract < ApplicationRecord
     end
 
     payments = (document_payments rescue [])
+    # Before signing, the rated dates' charges (a rehearsal at $25 an hour)
+    # aren't payments yet; signing bills them (Tim, 2026-11-23).
+    if status_draft?
+      payments = (payments + draft_event_rate_charges).each_with_index.sort_by { |p, i| [ p["due_date"].to_s, i ] }.map(&:first)
+    end
     if payments.any?
       out << "<h4>Payment schedule</h4><table><thead><tr><th>Item</th><th>Direction</th><th>Amount</th><th>Due</th></tr></thead><tbody>"
       payments.each do |p|
         direction = p["direction"] == "outgoing" ? "We pay them" : "They pay us"
         amount = p["amount_tbd"] ? "TBD" : deal_money(p["amount"])
-        due = p["due_date"].present? ? esc.(p["due_date"]) : "—"
+        due =
+          if p["settlement"] == "payout_deduction" then "Taken out of the next payment to #{esc.(contractor_name)}"
+          elsif p["due_date"].present? then esc.(p["due_date"])
+          else "—"
+          end
         out << %(<tr><td>#{esc.(p["description"].presence || "Payment")}</td><td>#{direction}</td><td>#{amount}</td><td>#{due}</td></tr>)
       end
       out << "</tbody></table>"
@@ -2681,6 +2690,8 @@ class Contract < ApplicationRecord
     out << "</tbody></table>"
     # The minimum guarantee, per show or for the run, in words under the grid.
     out << %(<p><strong>Minimum guarantee.</strong> #{esc.(guarantee_sentences)}</p>) if guarantee_sentences
+    # How the rated dates' charges in the Rent column are paid (Tim, 2026-11-23).
+    draft_event_rate_sentences.each { |sentence| out << %(<p>#{esc.(sentence)}</p>) }
     out << license_payment_schedule_html
     out
   end
@@ -2832,7 +2843,7 @@ class Contract < ApplicationRecord
 
     terms = date_terms_for_booking(booking["starts_at"])
     cost = if hourly_rated?(event_type)
-      hourly_date_cost(event_type, terms, booking_hours(booking))
+      hourly_date_cost(event_type, terms, event_rate_hours(booking))
     else
       terms.key?("amount") ? terms["amount"].to_f : rate["amount"].to_f
     end

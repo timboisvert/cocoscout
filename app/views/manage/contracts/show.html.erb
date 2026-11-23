@@ -83,7 +83,11 @@
     <div class="lg:col-span-2 space-y-6 max-lg:space-y-0 max-lg:contents">
       <% phone_sections << { label: "Dates and money", index: (panel_index += 1), show: true } %>
       <div data-tabs-target="panel" class="sm:!block max-lg:order-1">
-        <%= render "dates_and_money", contract: @contract, money: money, totals: @contract.money_display %>
+        <% if @contract.status_draft? %>
+          <%= render "draft_dates_and_money", contract: @contract %>
+        <% else %>
+          <%= render "dates_and_money", contract: @contract, money: money, totals: @contract.money_display %>
+        <% end %>
       </div>
 
       <%# Course Offering Payouts - show if contract has course offerings with payouts %>

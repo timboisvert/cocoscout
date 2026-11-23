@@ -168,7 +168,10 @@
     <%# Payments this contract will create %>
     <div class="border border-gray-200 rounded-lg p-4">
       <div class="flex items-center justify-between mb-3">
-        <% billed_payments = @contract.billed_draft_payments %>
+        <%# The deal's payments, and what each date with its own rate (a
+            rehearsal at $25 an hour) will be charged when it's signed. %>
+        <% billed_payments = (@contract.billed_draft_payments + @contract.draft_event_rate_charges)
+                               .each_with_index.sort_by { |p, i| [ p["due_date"].to_s, i ] }.map(&:first) %>
         <h3 class="font-medium text-gray-900">Payments (<%= billed_payments.count %>)</h3>
         <%= link_to manage_payments_contract_wizard_path(@contract), class: "text-sm text-pink-600 hover:text-pink-700" do %>
           Edit
@@ -186,7 +189,11 @@
                 ·
                 <%= payment["description"].presence || "Payment" %>
                 <span class="text-xs text-gray-500">
-                  (due <%= Date.parse(payment["due_date"]).strftime("%b %d, %Y") rescue payment["due_date"] %>)
+                  <% if payment["settlement"] == "payout_deduction" %>
+                    (comes out of the next payment to <%= @contract.contractor_name %>)
+                  <% else %>
+                    (due <%= Date.parse(payment["due_date"]).strftime("%b %d, %Y") rescue payment["due_date"] %>)
+                  <% end %>
                 </span>
               </span>
               <span class="font-medium flex-shrink-0 <%= payment["amount_tbd"] ? 'text-gray-400' : (incoming ? 'text-green-600' : 'text-red-600') %>">

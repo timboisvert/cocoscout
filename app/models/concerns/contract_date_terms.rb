@@ -68,6 +68,16 @@ module ContractDateTerms
     booking["duration"].to_f.positive? ? booking["duration"].to_f : nil
   end
 
+  # The hours a date with an hourly rate is charged for: the event's own
+  # hours when it runs at its own time inside the booking, as signing bills
+  # them (SpaceRental#effective_duration_minutes), else the booking's.
+  def event_rate_hours(booking)
+    own = booking_show_times(booking)
+    return ((own[:ends_at] - own[:starts_at]) / 3600.0).round(2) if own&.dig(:ends_at)
+
+    booking_hours(booking)
+  end
+
   # What an hourly date costs: its own price for the whole date, or its hours
   # at its own rate or the deal's.
   def hourly_date_cost(event_type, terms, hours)
@@ -185,6 +195,62 @@ module ContractDateTerms
   # payment; one upfront payment for every date adds the dates up.
   def billed_draft_payments
     apply_date_terms_to_draft_payments(draft_payments)
+  end
+
+  # What the dates with their own rate will be charged (Tim, 2026-11-23: the
+  # review's Payments had "no mention of the fee for the rehearsals"). Those
+  # charges are billed from the shows when the contract is signed
+  # (#event_rate_service_lines, #bill_services!), so the draft's payments
+  # never had them. Shaped like draft payments, one per date, with the
+  # date's own price from Review the dates; a $0 date bills nothing, as at
+  # signing. "settlement" is "payout_deduction" when it comes out of what we
+  # pay them.
+  def draft_event_rate_charges
+    draft_bookings.filter_map do |booking|
+      event_type = booking["event_type"].presence || default_event_type
+      rate = event_rate_for_type(event_type)
+      next unless rate
+
+      starts_at = parse_term_time(booking["starts_at"])
+      next unless starts_at
+
+      terms = date_terms_for_booking(booking["starts_at"])
+      amount =
+        if rate["unit"] == "hourly"
+          hourly_date_cost(event_type, terms, event_rate_hours(booking))
+        else
+          (terms.key?("amount") ? terms["amount"] : rate["amount"]).to_f.round(2)
+        end
+      next unless amount.positive?
+
+      direction = rate["direction"].presence || "incoming"
+      deducted = direction == "incoming" && rate["settlement"] == "payout_deduction" && can_net_services_from_payout?
+      { "description" => "#{EventTypes.labels[event_type] || event_type.to_s.titleize} — #{starts_at.strftime('%b %-d, %Y')}",
+        "amount" => amount, "due_date" => starts_at.to_date.iso8601, "direction" => direction,
+        "settlement" => deducted ? "payout_deduction" : "direct", "event_rate" => true }
+    end.sort_by { |c| c["due_date"] }
+  end
+
+  # One sentence per kind of rated date for the signed document, saying how
+  # its charges are paid: "Rehearsal charges ($1,100.00 in all) are taken out
+  # of the next payment to Abyssal Zone Collective." Drafts only: once signed,
+  # the charges are payment rows of their own.
+  def draft_event_rate_sentences
+    return [] unless status_draft?
+
+    draft_event_rate_charges.group_by { |c| [ c["description"].to_s.split(" — ").first, c["settlement"], c["direction"] ] }
+                            .map do |(name, settlement, direction), charges|
+      total = ActiveSupport::NumberHelper.number_to_currency(charges.sum { |c| c["amount"].to_f })
+      how =
+        if settlement == "payout_deduction"
+          "are taken out of the next payment to #{contractor_name}"
+        elsif direction == "outgoing"
+          "are paid to #{contractor_name} on the day of each #{name.downcase}"
+        else
+          "are due on the day of each #{name.downcase}"
+        end
+      "#{name} charges (#{total} in all) #{how}."
+    end
   end
 
   # own: { Date => that date's fee }, shares: { Date => our share }, from
