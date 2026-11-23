@@ -6,10 +6,6 @@
 # never edited: changing it retires this one and starts a new one, so every
 # past sale still shows the rate it was charged at.
 class TaxRate < ApplicationRecord
-  # Never read or written (Tim, 2026-11-22). Step 1 of 3: ignored here, then a
-  # migration drops them, then this line goes.
-  self.ignored_columns += %w[applies_to_fees registration_number effective_to]
-
   KINDS = %w[sales amusement other].freeze
   REMITTERS = %w[organization].freeze
 
