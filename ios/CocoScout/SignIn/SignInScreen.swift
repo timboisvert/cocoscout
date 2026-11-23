@@ -127,7 +127,8 @@ private struct WelcomeBackCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(known.firstName.map { "Welcome back, \($0)" } ?? "Welcome back")
+                // A name saved before the server stopped sending addresses as names isn't one.
+                Text(known.firstName.flatMap { $0.contains("@") ? nil : $0 }.map { "Welcome back, \($0)" } ?? "Welcome back")
                     .font(Font(AppConfig.coustard(26)))
                     .foregroundStyle(Tailwind.gray900)
                 Text(verbatim: known.email)
@@ -140,7 +141,7 @@ private struct WelcomeBackCard: View {
                 WaitingNote(text: waiting)
             }
             if let error = model.error { Banner(text: error, error: true) }
-            PrimaryButton(title: "Continue", faceID: known.method == "password") { model.continueAsKnown() }
+            PrimaryButton(title: "Continue", faceID: ["password", "passkey"].contains(known.method)) { model.continueAsKnown() }
             Button("Use a different email") { model.useDifferentEmail() }
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(Tailwind.pink600)

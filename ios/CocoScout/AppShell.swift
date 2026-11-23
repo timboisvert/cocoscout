@@ -268,11 +268,22 @@ final class AppShell {
     /// to rebuild the screen a second time. A link that came in while signed
     /// out opens on top.
     func didSignIn(landing: URL) {
+        let account = signInScreen?.model.justSignedIn
         load(url: landing, signedIn: true)
         hideSignIn()
         if let path = pendingPath {
             pendingPath = nil
             open(path: path)
+        }
+        // A code or password sign-in: offer Face ID for next time, once the
+        // first page is up (PasskeyOffer).
+        if let account, PasskeyOffer.shouldOffer(after: account) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+                guard let self, self.signInScreen == nil else { return }
+                var offer: UIViewController?
+                offer = PasskeyOffer.controller(for: account) { offer?.dismiss(animated: false) }
+                if let offer { self.topViewController().present(offer, animated: false) }
+            }
         }
     }
 

@@ -9,7 +9,7 @@ import SwiftUI
 struct KnownAccount: Codable, Equatable {
     let email: String
     let firstName: String?
-    /// "password", "code", "apple", or "google".
+    /// "password", "code", "passkey", "apple", or "google".
     let method: String
 
     private static let key = "SignIn.knownAccount"
@@ -76,6 +76,10 @@ final class SignInModel: ObservableObject {
     /// so the button works on the first tap.
     @Published private(set) var appleNonce: String?
 
+    /// Who just signed in here and how, for AppShell's offer to make a
+    /// passkey (PasskeyOffer) once the first page is up.
+    private(set) var justSignedIn: KnownAccount?
+
     /// Signed in: the page to load in the web view.
     let onSignedIn: (URL) -> Void
 
@@ -85,21 +89,19 @@ final class SignInModel: ObservableObject {
 
     // MARK: The landing
 
-    /// Get started, or a link's "Sign in to see it": the email sheet.
+    /// Get started, or a link's "Sign in to see it": the email sheet, with
+    /// iOS offering any passkey or saved password over it.
     func getStarted() {
         error = nil
         notice = nil
         withSheet(.email)
-        SavedPasswords.shared.request(automatic: true) { [weak self] picked in
-            guard let self, let picked else { return }
-            self.signIn(email: picked.email, password: picked.password)
-        }
+        offerSaved(automatic: true) { _ in }
     }
 
-    /// Welcome back's Continue: the same way in as last time. A saved
-    /// password goes through iOS's own sheet and Face ID; Apple and Google
-    /// open theirs; otherwise the address goes in as typed, and the server
-    /// asks for the password or sends a code.
+    /// Welcome back's Continue: the same way in as last time. A passkey or a
+    /// saved password goes through iOS's own sheet and Face ID; Apple and
+    /// Google open theirs; otherwise the address goes in as typed, and the
+    /// server asks for the password or sends a code.
     func continueAsKnown() {
         guard let known, !busy else { return }
         email = known.email
@@ -110,12 +112,29 @@ final class SignInModel: ObservableObject {
         case "google":
             continueWithGoogle()
         default:
-            SavedPasswords.shared.request(automatic: false) { [weak self] picked in
+            offerSaved(automatic: false, account: known.email) { [weak self] used in
+                if !used { self?.run("identify", ["email": known.email]) }
+            }
+        }
+    }
+
+    /// iOS's sheet with this phone's passkeys and saved passwords for
+    /// cocoscout.com. A saved password for another address than Welcome
+    /// back's doesn't count. `done` says whether one was used.
+    private func offerSaved(automatic: Bool, account: String? = nil, done: @escaping (Bool) -> Void) {
+        Task {
+            let options = await SignInClient.json("/app/sign_in/passkey_options")
+            SavedSignIns.shared.request(automatic: automatic, passkeyOptions: options) { [weak self] picked in
                 guard let self else { return }
-                if let picked, picked.email.caseInsensitiveCompare(known.email) == .orderedSame {
-                    self.signIn(email: picked.email, password: picked.password)
-                } else {
-                    self.run("identify", ["email": known.email])
+                switch picked {
+                case .passkey(let credential):
+                    self.run("passkey", ["credential": credential])
+                    done(true)
+                case .password(let address, let saved) where account == nil || address.caseInsensitiveCompare(account ?? "") == .orderedSame:
+                    self.signIn(email: address, password: saved)
+                    done(true)
+                default:
+                    done(false)
                 }
             }
         }
@@ -250,7 +269,7 @@ final class SignInModel: ObservableObject {
 
     // MARK: Talking to the server
 
-    private func run(_ step: String, _ body: [String: String] = [:], quietly: Bool = false) {
+    private func run(_ step: String, _ body: [String: Any] = [:], quietly: Bool = false) {
         guard !busy || quietly else { return }
         if !quietly {
             busy = true
@@ -271,6 +290,7 @@ final class SignInModel: ObservableObject {
                 let account = KnownAccount(email: address, firstName: reply.firstName, method: method)
                 account.save()
                 known = account
+                justSignedIn = account
             }
             if let landing = reply.landing.flatMap(URL.init(string:)) {
                 onSignedIn(landing)

@@ -65,7 +65,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         let components: [BridgeComponent.Type] = [FormComponent.self, MenuComponent.self, DoorScannerComponent.self, PushComponent.self,
                                                   TapToPayComponent.self,
                                                   // The Section row's menu (1.3). Older installs keep the page's sheet.
-                                                  SectionsComponent.self]
+                                                  SectionsComponent.self,
+                                                  // Add a passkey on the Account page (sign-in plan phase 4).
+                                                  PasskeyComponent.self]
         Hotwire.registerBridgeComponents(components)
         Hotwire.registerRouteDecisionHandlers([
             OpenInSafariRouteDecisionHandler(),

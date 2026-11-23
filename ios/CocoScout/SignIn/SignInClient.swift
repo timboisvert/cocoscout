@@ -18,7 +18,7 @@ struct SignInReply: Decodable {
     let error: String?
     let message: String?
     let nonce: String?
-    /// With "signed_in": how they signed in ("password", "code", "apple", "google").
+    /// With "signed_in": how they signed in ("password", "code", "passkey", "apple", "google").
     var method: String? = nil
 }
 
@@ -27,7 +27,7 @@ struct SignInReply: Decodable {
 /// session a step starts is the web view's own (the sign-in plan's handoff).
 /// No link ever signs anyone in.
 enum SignInClient {
-    static func post(_ step: String, _ body: [String: String] = [:]) async -> SignInReply {
+    static func post(_ step: String, _ body: [String: Any] = [:]) async -> SignInReply {
         var request = URLRequest(url: AppConfig.url("/app/sign_in/\(step)"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -39,7 +39,24 @@ enum SignInClient {
         await send(URLRequest(url: AppConfig.url("/app/sign_in/\(step)")))
     }
 
-    private static func send(_ original: URLRequest) async -> SignInReply {
+    /// Any of the app's JSON steps as a dictionary: the passkey options, and
+    /// making a passkey (App::PasskeysController). GET without a body. nil
+    /// when the server can't be reached or doesn't answer with JSON.
+    static func json(_ path: String, body: [String: Any]? = nil) async -> [String: Any]? {
+        var request = URLRequest(url: AppConfig.url(path))
+        if let body {
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        }
+        guard let data = await raw(request) else { return nil }
+        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+    }
+
+    /// As the web view: its cookies and user agent out, and whatever the
+    /// server set (the session, the sign-in step) back into its store before
+    /// anything else loads.
+    private static func raw(_ original: URLRequest) async -> Data? {
         var request = original
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 30
@@ -51,13 +68,16 @@ enum SignInClient {
         }
         configuration.httpAdditionalHeaders = ["User-Agent": Hotwire.config.userAgent]
 
+        guard let (data, _) = try? await URLSession(configuration: configuration).data(for: request) else { return nil }
+        for cookie in configuration.httpCookieStorage?.cookies ?? [] {
+            await store.setCookie(cookie)
+        }
+        return data
+    }
+
+    private static func send(_ request: URLRequest) async -> SignInReply {
         do {
-            let (data, _) = try await URLSession(configuration: configuration).data(for: request)
-            // Whatever the server set (the session, the sign-in step) goes
-            // back into the web view's store before anything else loads.
-            for cookie in configuration.httpCookieStorage?.cookies ?? [] {
-                await store.setCookie(cookie)
-            }
+            guard let data = await raw(request) else { throw URLError(.cannotConnectToHost) }
             let decoder = JSONDecoder()
             decoder.keyDecodingStrategy = .convertFromSnakeCase
             return try decoder.decode(SignInReply.self, from: data)
