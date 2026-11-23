@@ -1,4 +1,5 @@
 import HotwireNative
+import SafariServices
 import UIKit
 import UserNotifications
 import WebKit
@@ -79,9 +80,19 @@ final class AppShell {
 
     func open(path: String) {
         // Signed out, the sign-in screens are over everything: the page opens
-        // once someone has signed in (didSignIn).
+        // once someone has signed in (didSignIn), and the landing says what's
+        // waiting. The two links that never need an account (claiming an open
+        // role, and "can't make it") open in a browser sheet over it instead.
         guard loadedSignedIn == true else {
+            if loadedSignedIn == false, Self.worksSignedOut(path) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                    guard let self else { return }
+                    self.topViewController().present(SFSafariViewController(url: AppConfig.url(path)), animated: true)
+                }
+                return
+            }
             pendingPath = path
+            signInScreen?.model.waiting = Self.waitingWords(for: path)
             return
         }
         tabBarController.dismiss(animated: false)
@@ -236,6 +247,7 @@ final class AppShell {
     private func showSignIn() {
         guard signInScreen == nil else { return }
         let screen = SignInViewController { [weak self] landing in self?.didSignIn(landing: landing) }
+        screen.model.waiting = pendingPath.map(Self.waitingWords(for:))
         signInScreen = screen
         DispatchQueue.main.async { [weak self] in
             guard let self, self.signInScreen === screen else { return }
@@ -279,6 +291,23 @@ final class AppShell {
         let signingIn = ["/welcome", "/signin", "/signup", "/signout", "/password", "/reset"]
         guard !home.contains(path), !signingIn.contains(where: { path.hasPrefix($0) }) else { return nil }
         return url.query.map { "\(path)?\($0)" } ?? path
+    }
+
+    /// Links whose pages work without an account (ClaimVacancyController,
+    /// VacancyController): the link itself says who it's for.
+    static func worksSignedOut(_ path: String) -> Bool {
+        path.hasPrefix("/claim/") || path.hasPrefix("/vacancy/")
+    }
+
+    /// What a link that came in while signed out is waiting to show, for the
+    /// landing: "A message is waiting for you".
+    static func waitingWords(for path: String) -> String {
+        if path.contains("/messages") { return "A message is waiting for you" }
+        if path.hasPrefix("/door") { return "The door is waiting for you" }
+        if path.hasPrefix("/manage") { return "Your organization is waiting for you" }
+        if path.hasPrefix("/my/payments") { return "Your payments are waiting for you" }
+        if path.hasPrefix("/my") { return "Your shows are waiting for you" }
+        return "The page you opened is waiting for you"
     }
 
     static func badgeText(_ count: Int) -> String? {

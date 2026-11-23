@@ -1,15 +1,44 @@
 import Combine
 import CryptoKit
 import Foundation
+import SwiftUI
 
-/// Which screen of the sign-in steps is showing, and what's typed into it.
-/// The server decides every next step (App::SignInController); this only
-/// shows the one it names.
+/// Who last signed in on this phone, kept on the phone only, so the next
+/// sign-in screen can say "Welcome back, Sam" and Continue the same way. The
+/// server sends it with a successful sign-in (App::SignInController).
+struct KnownAccount: Codable, Equatable {
+    let email: String
+    let firstName: String?
+    /// "password", "code", "apple", or "google".
+    let method: String
+
+    private static let key = "SignIn.knownAccount"
+
+    static func load() -> KnownAccount? {
+        guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
+        return try? JSONDecoder().decode(KnownAccount.self, from: data)
+    }
+
+    func save() {
+        if let data = try? JSONEncoder().encode(self) { UserDefaults.standard.set(data, forKey: Self.key) }
+    }
+
+    static func forget() {
+        UserDefaults.standard.removeObject(forKey: key)
+    }
+}
+
+/// The sign-in screens (sign-in plan phase 3, redesigned for the phone on
+/// https://claude.ai/artifact/X1sA6FoXBSPJseGxFzdExn): a pink landing, and
+/// the steps on a white sheet that rises over it. The server decides every
+/// next step (App::SignInController); this only shows the one it names.
 @MainActor
 final class SignInModel: ObservableObject {
     enum Screen: Equatable {
+        /// The landing, with no sheet up.
+        case landing
         /// The email address, with Apple and Google below it.
-        case start
+        case email
         case password
         case code
         /// A new person's name, once a code has confirmed their address.
@@ -18,9 +47,13 @@ final class SignInModel: ObservableObject {
         case connect
         /// Apple's Hide My Email: the address organizations know them by.
         case addEmail
+
+        /// The sheet sits low, with Coco peeking over it; the steps that
+        /// need more room raise it near the top, and she steps off.
+        var sheetIsLow: Bool { self == .email || self == .addEmail }
     }
 
-    @Published var screen: Screen = .start
+    @Published var screen: Screen = .landing
     @Published var email = ""
     @Published var password = ""
     @Published var code = ""
@@ -34,8 +67,13 @@ final class SignInModel: ObservableObject {
     @Published var provider: String?
     @Published var codeLifetime = "10 minutes"
     @Published var superadmin = false
-    /// The nonce Apple's sheet signs into its token, asked for when the
-    /// screen opens so the button works on the first tap.
+    /// Who last signed in here: the landing welcomes them back.
+    @Published var known: KnownAccount? = KnownAccount.load()
+    /// A link that came in while signed out, waiting for sign-in, in words:
+    /// "A message is waiting for you".
+    @Published var waiting: String?
+    /// The nonce Apple's sheet signs into its token, asked for ahead of time
+    /// so the button works on the first tap.
     @Published private(set) var appleNonce: String?
 
     /// Signed in: the page to load in the web view.
@@ -43,6 +81,62 @@ final class SignInModel: ObservableObject {
 
     init(onSignedIn: @escaping (URL) -> Void) {
         self.onSignedIn = onSignedIn
+    }
+
+    // MARK: The landing
+
+    /// Get started, or a link's "Sign in to see it": the email sheet.
+    func getStarted() {
+        error = nil
+        notice = nil
+        withSheet(.email)
+        SavedPasswords.shared.request(automatic: true) { [weak self] picked in
+            guard let self, let picked else { return }
+            self.signIn(email: picked.email, password: picked.password)
+        }
+    }
+
+    /// Welcome back's Continue: the same way in as last time. A saved
+    /// password goes through iOS's own sheet and Face ID; Apple and Google
+    /// open theirs; otherwise the address goes in as typed, and the server
+    /// asks for the password or sends a code.
+    func continueAsKnown() {
+        guard let known, !busy else { return }
+        email = known.email
+        error = nil
+        switch known.method {
+        case "apple":
+            startApple()
+        case "google":
+            continueWithGoogle()
+        default:
+            SavedPasswords.shared.request(automatic: false) { [weak self] picked in
+                guard let self else { return }
+                if let picked, picked.email.caseInsensitiveCompare(known.email) == .orderedSame {
+                    self.signIn(email: picked.email, password: picked.password)
+                } else {
+                    self.run("identify", ["email": known.email])
+                }
+            }
+        }
+    }
+
+    /// Use a different email: forget who was here, and start fresh.
+    func useDifferentEmail() {
+        KnownAccount.forget()
+        known = nil
+        email = ""
+        getStarted()
+    }
+
+    /// Closing the sheet from the email step goes back to the landing.
+    func closeSheet() {
+        error = nil
+        notice = nil
+        password = ""
+        code = ""
+        withSheet(.landing)
+        run("start_over", quietly: true)
     }
 
     // MARK: Steps
@@ -53,7 +147,7 @@ final class SignInModel: ObservableObject {
         run("identify", ["email": address])
     }
 
-    /// A password iCloud Keychain offered on opening: both at once.
+    /// A password iCloud Keychain filled in: both at once.
     func signIn(email address: String, password saved: String) {
         email = address
         run("identify", ["email": address, "password": saved])
@@ -80,6 +174,7 @@ final class SignInModel: ObservableObject {
         run("add_email", ["email": email.trimmingCharacters(in: .whitespacesAndNewlines)])
     }
 
+    /// Back from a step: to the email step, fresh.
     func startOver() {
         password = ""
         code = ""
@@ -101,14 +196,33 @@ final class SignInModel: ObservableObject {
         appleNonce.map { SHA256.hash(data: Data($0.utf8)).map { String(format: "%02x", $0) }.joined() }
     }
 
+    /// Apple's sheet opened from code (Welcome back's Continue), not its button.
+    func startApple() {
+        guard let digest = appleNonceDigest else {
+            prepareApple()
+            error = "Apple isn't ready yet. Try again in a moment."
+            return
+        }
+        AppleSignIn.shared.request(nonceDigest: digest) { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success(let credential):
+                self.finishApple(token: credential.token, authorizationCode: credential.code,
+                                 firstName: credential.firstName, lastName: credential.lastName)
+            case .failure:
+                self.appleFailed()
+            }
+        }
+    }
+
     func finishApple(token: String, authorizationCode: String?, firstName: String?, lastName: String?) {
-        // Used once: the next try asks for a fresh one.
         appleNonce = nil
         var body = ["provider": "apple", "id_token": token]
         body["authorization_code"] = authorizationCode
         body["first_name"] = firstName
         body["last_name"] = lastName
         run("provider", body)
+        prepareApple()
     }
 
     func appleFailed() {
@@ -122,14 +236,13 @@ final class SignInModel: ObservableObject {
         error = nil
         GoogleSheet.shared.signIn { [weak self] result in
             guard let self else { return }
+            self.busy = false
             switch result {
             case .code(let code, let secret):
-                self.busy = false
                 self.run("exchange", ["code": code, "secret": secret])
             case .canceled:
-                self.busy = false
+                break
             case .failed:
-                self.busy = false
                 self.error = "Google couldn't confirm that sign-in. Try again, or continue with your email address."
             }
         }
@@ -137,12 +250,15 @@ final class SignInModel: ObservableObject {
 
     // MARK: Talking to the server
 
-    private func run(_ step: String, _ body: [String: String] = [:]) {
-        guard !busy else { return }
-        busy = true
-        error = nil
+    private func run(_ step: String, _ body: [String: String] = [:], quietly: Bool = false) {
+        guard !busy || quietly else { return }
+        if !quietly {
+            busy = true
+            error = nil
+        }
         Task {
             let reply = await SignInClient.post(step, body)
+            if quietly { return }
             busy = false
             show(reply)
         }
@@ -151,6 +267,11 @@ final class SignInModel: ObservableObject {
     private func show(_ reply: SignInReply) {
         switch reply.status {
         case "signed_in":
+            if let address = reply.email, let method = reply.method {
+                let account = KnownAccount(email: address, firstName: reply.firstName, method: method)
+                account.save()
+                known = account
+            }
             if let landing = reply.landing.flatMap(URL.init(string:)) {
                 onSignedIn(landing)
             }
@@ -168,17 +289,22 @@ final class SignInModel: ObservableObject {
             case "create": .create
             case "connect": .connect
             case "add_email": .addEmail
-            default: .start
+            default: .email
             }
             if next != screen {
                 password = ""
                 code = ""
             }
             if next == .addEmail { email = "" }
-            screen = next
+            withSheet(next)
         default:
             error = reply.message ?? "That didn't work. Please try again."
             if reply.error == "wrong" || reply.error == "expired" || reply.error == "locked" { code = "" }
         }
+    }
+
+    /// Screen changes animate: the sheet rises, steps slide.
+    private func withSheet(_ next: Screen) {
+        withAnimation(.spring(duration: 0.4)) { screen = next }
     }
 }

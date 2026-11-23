@@ -152,7 +152,7 @@ module App
       AuthMailer.signup(user).deliver_later
       session.delete(:app_sign_in)
       start_new_session_for user, sign_in_method: method
-      render json: { status: "signed_in", landing: absolute(post_authentication_landing_path(user, new_signup: true)) }
+      render json: signed_in_reply(user, method: method, landing: post_authentication_landing_path(user, new_signup: true))
     rescue ActiveRecord::RecordInvalid, SignIn::Connect::Taken => e
       Rails.logger.warn("[app_sign_in] account not created: #{e.class}")
       refuse(:name, "That name didn't work. Check it and try again.")
@@ -281,7 +281,19 @@ module App
 
     def signed_in(user, method:)
       landing = open_session_for(user, method: method)
-      render json: { status: "signed_in", landing: absolute(landing) }
+      render json: signed_in_reply(user, method: method, landing: landing)
+    end
+
+    # Signed in: where to land, and who just signed in and how, which the
+    # phone keeps so its next sign-in screen can say "Welcome back, Sam" and
+    # Continue the same way (a saved password, Apple, Google, or a code).
+    # Only ever sent to the person who just proved who they are.
+    def signed_in_reply(user, method:, landing:)
+      first_name = user.person&.name.to_s.split.first
+      # A profile still named after its address has no first name to greet.
+      first_name = nil if first_name.to_s.include?("@")
+      { status: "signed_in", landing: absolute(landing), email: user.email_address,
+        first_name: first_name.presence, method: method.to_s }.compact
     end
 
     # The screen to show next, with what it needs.

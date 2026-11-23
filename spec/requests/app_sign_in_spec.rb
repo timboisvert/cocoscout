@@ -53,7 +53,7 @@ RSpec.describe "The apps' sign-in screens", type: :request do
     expect(app_post(app_sign_in_password_path, password: "nope")).to include("status" => "error", "error" => "password")
 
     body = app_post(app_sign_in_password_path, password: "Password123!")
-    expect(body["status"]).to eq("signed_in")
+    expect(body).to include("status" => "signed_in", "email" => "sam@example.com", "method" => "password")
     expect(body["landing"]).to start_with("http://www.example.com/")
     expect(response.headers["Set-Cookie"].to_s).to include("session_id=")
     expect(user.sessions.last.sign_in_method).to eq("password")

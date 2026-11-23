@@ -18,6 +18,8 @@ struct SignInReply: Decodable {
     let error: String?
     let message: String?
     let nonce: String?
+    /// With "signed_in": how they signed in ("password", "code", "apple", "google").
+    var method: String? = nil
 }
 
 /// Talks to the server's sign-in steps as the web view: with its cookies and
