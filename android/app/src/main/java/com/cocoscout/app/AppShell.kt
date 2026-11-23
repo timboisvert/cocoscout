@@ -169,9 +169,17 @@ object AppShell {
 
     /** A page on top of whatever's showing (a link back from Stripe, a tapped notification). */
     fun open(path: String) {
-        // Signed out, the sign-in screens are over everything: it opens after sign-in.
+        // Signed out, the sign-in screens are over everything: it opens after
+        // sign-in, and the landing says what's waiting. The two links that never
+        // need an account (claiming an open role, "can't make it") open in a
+        // browser tab over it instead.
         if (!_state.value.signedIn && !_signInHandedOff.value) {
+            if (worksSignedOut(path)) {
+                activity?.let { com.cocoscout.app.routing.BrowserTab.open(it, AppConfig.url(path)) }
+                return
+            }
             pathAfterSignIn = path
+            com.cocoscout.app.signin.SignInFlow.waiting = waitingWords(path)
             return
         }
         val navigator = activity?.currentNavigator
@@ -233,6 +241,7 @@ object AppShell {
      * while signed out, on top.
      */
     fun didSignIn(landing: String) {
+        com.cocoscout.app.signin.SignInFlow.waiting = null
         handedOffAt = System.currentTimeMillis()
         _signInHandedOff.value = true
         shownSignedIn = true
@@ -285,6 +294,19 @@ object AppShell {
         val signingIn = listOf("/welcome", "/signin", "/signup", "/signout", "/password", "/reset")
         if (path in home || signingIn.any { path.startsWith(it) }) return null
         return uri.query?.let { "$path?$it" } ?: path
+    }
+
+    /** Links whose pages work without an account (ClaimVacancyController, VacancyController). */
+    fun worksSignedOut(path: String): Boolean = path.startsWith("/claim/") || path.startsWith("/vacancy/")
+
+    /** What a link that came in while signed out is waiting to show, for the landing. */
+    fun waitingWords(path: String): String = when {
+        "/messages" in path -> "A message is waiting for you"
+        path.startsWith("/door") -> "The door is waiting for you"
+        path.startsWith("/manage") -> "Your organization is waiting for you"
+        path.startsWith("/my/payments") -> "Your payments are waiting for you"
+        path.startsWith("/my") -> "Your shows are waiting for you"
+        else -> "The page you opened is waiting for you"
     }
 
     fun badgeText(count: Int): String? = when {

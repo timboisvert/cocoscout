@@ -1,28 +1,43 @@
 package com.cocoscout.app.signin
 
+import android.content.Context
 import android.net.Uri
 import android.util.Base64
-import com.cocoscout.app.MainActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import com.cocoscout.app.AppConfig
 import com.cocoscout.app.AppShell
+import com.cocoscout.app.MainActivity
 import com.cocoscout.app.routing.BrowserTab
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import java.security.MessageDigest
 import java.security.SecureRandom
 
+/** Who last signed in on this phone, kept on the phone only (the iPhone's KnownAccount). */
+@Serializable
+data class KnownAccount(val email: String, val firstName: String? = null, val method: String)
+
 /**
- * Which screen of the sign-in steps is showing, and what's typed into it.
- * The server decides every next step (App::SignInController); this only shows
- * the one it names. Mirrors ios/CocoScout/SignIn/SignInModel.swift.
+ * The sign-in screens, redesigned for the phone (direction A on
+ * https://claude.ai/artifact/X1sA6FoXBSPJseGxFzdExn): a pink landing, and the
+ * steps on a white sheet that rises over it. The server decides every next
+ * step (App::SignInController); this only shows the one it names. Mirrors
+ * ios/CocoScout/SignIn/SignInModel.swift, with Google as the only provider:
+ * every account has a real address, so a code always gets someone in.
  */
 object SignInFlow {
-    enum class Screen { Start, Password, Code, Create, Connect, AddEmail }
+    enum class Screen {
+        Landing, Email, Password, Code, Create, Connect, AddEmail;
 
-    var screen by mutableStateOf(Screen.Start)
+        /** The sheet sits low with Coco peeking over it; the rest raise it near the top. */
+        val sheetIsLow: Boolean get() = this == Email || this == AddEmail
+    }
+
+    var screen by mutableStateOf(Screen.Landing)
     var email by mutableStateOf("")
     var password by mutableStateOf("")
     var code by mutableStateOf("")
@@ -36,14 +51,29 @@ object SignInFlow {
     var provider by mutableStateOf<String?>(null)
     var codeLifetime by mutableStateOf("10 minutes")
     var superadmin by mutableStateOf(false)
+    /** Who last signed in here: the landing welcomes them back. */
+    var known by mutableStateOf<KnownAccount?>(null)
+    /** A link that came in while signed out, waiting for sign-in, in words. */
+    var waiting by mutableStateOf<String?>(null)
 
+    private val json = Json { ignoreUnknownKeys = true }
+    private const val PREFS = "sign_in"
+    private const val KNOWN_KEY = "known_account"
+    private var loaded = false
     /** The secret behind a Custom Tab's challenge (Apple), until it comes back. */
     private var tabSecret: String? = null
     private var savedOffered = false
 
-    /** Fresh for the next person: the screen comes back after signing out. */
+    fun load(context: Context) {
+        if (loaded) return
+        loaded = true
+        known = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KNOWN_KEY, null)
+            ?.let { runCatching { json.decodeFromString(KnownAccount.serializer(), it) }.getOrNull() }
+    }
+
+    /** Fresh for the next person after signing out; Welcome back stays. */
     fun reset() {
-        screen = Screen.Start
+        screen = Screen.Landing
         email = ""
         password = ""
         code = ""
@@ -55,12 +85,76 @@ object SignInFlow {
         busy = false
     }
 
+    // The landing
+
+    /** Get started, or a link's "Sign in to see it": the email sheet, with any saved sign-in offered. */
+    fun getStarted(activity: MainActivity) {
+        error = null
+        notice = null
+        screen = Screen.Email
+        if (!savedOffered) {
+            savedOffered = true
+            activity.lifecycleScope.launch {
+                val nonce = SignInClient.get(activity, "nonce")
+                when (val picked = Credentials.offerSaved(activity, nonce.nonce, nonce.googleClientId)) {
+                    is Credentials.Picked.Password -> signIn(activity, picked.email, picked.password)
+                    is Credentials.Picked.Google -> run(activity, "provider", mapOf("provider" to "google", "id_token" to picked.idToken))
+                    null -> Unit
+                }
+            }
+        }
+    }
+
+    /**
+     * Welcome back's Continue: the same way in as last time. Google opens its
+     * sheet; a saved password comes from the phone's password manager with a
+     * fingerprint; otherwise the address goes in, and the server asks for the
+     * password or sends a code.
+     */
+    fun continueAsKnown(activity: MainActivity) {
+        val account = known ?: return
+        if (busy) return
+        email = account.email
+        error = null
+        if (account.method == "google") return continueWithGoogle(activity)
+        activity.lifecycleScope.launch {
+            val saved = Credentials.savedPassword(activity)
+            if (saved != null && saved.email.equals(account.email, ignoreCase = true)) {
+                signIn(activity, saved.email, saved.password)
+            } else {
+                run(activity, "identify", mapOf("email" to account.email))
+            }
+        }
+    }
+
+    fun useDifferentEmail(activity: MainActivity) {
+        activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KNOWN_KEY).apply()
+        known = null
+        email = ""
+        getStarted(activity)
+    }
+
+    /** Closing the email sheet goes back to the landing. */
+    fun closeSheet(activity: MainActivity) {
+        error = null
+        notice = null
+        password = ""
+        code = ""
+        screen = Screen.Landing
+        activity.lifecycleScope.launch { SignInClient.post(activity, "start_over") }
+    }
+
     // Steps
 
     fun continueWithEmail(activity: MainActivity) {
         val address = email.trim()
         if (address.isEmpty()) return
         run(activity, "identify", mapOf("email" to address))
+    }
+
+    private fun signIn(activity: MainActivity, address: String, saved: String) {
+        email = address
+        run(activity, "identify", mapOf("email" to address, "password" to saved))
     }
 
     fun submitPassword(activity: MainActivity) {
@@ -81,30 +175,14 @@ object SignInFlow {
 
     fun addEmail(activity: MainActivity) = run(activity, "add_email", mapOf("email" to email.trim()))
 
+    /** Back from a step: to the email step, fresh. */
     fun startOver(activity: MainActivity) {
         password = ""
         code = ""
         run(activity, "start_over")
     }
 
-    // Saved passwords and Google, through Credential Manager
-
-    /** Once per launch, on opening: a saved password or a Google account already used here. */
-    fun offerSaved(activity: MainActivity) {
-        if (savedOffered) return
-        savedOffered = true
-        activity.lifecycleScope.launch {
-            val nonce = SignInClient.get(activity, "nonce")
-            when (val picked = Credentials.offerSaved(activity, nonce.nonce, nonce.googleClientId)) {
-                is Credentials.Picked.Password -> {
-                    email = picked.email
-                    run(activity, "identify", mapOf("email" to picked.email, "password" to picked.password))
-                }
-                is Credentials.Picked.Google -> run(activity, "provider", mapOf("provider" to "google", "id_token" to picked.idToken))
-                null -> Unit
-            }
-        }
-    }
+    // Google, through Credential Manager
 
     fun continueWithGoogle(activity: MainActivity) {
         if (busy) return
@@ -124,13 +202,10 @@ object SignInFlow {
         }
     }
 
-    // Apple, in a Custom Tab
+    // Apple, in a Custom Tab. Android's screens don't offer it (Tim,
+    // 2026-11-22: Google only on Android), and nothing calls this today; the
+    // way back from the tab stays for a later choice.
 
-    /**
-     * Apple has no sheet on Android: it runs in a Custom Tab at
-     * /auth/app/apple with a challenge made from a secret only the app holds,
-     * and comes back to cocoscout://auth?code=… (returnFromTab).
-     */
     fun continueWithApple(activity: MainActivity) {
         if (busy) return
         error = null
@@ -149,7 +224,7 @@ object SignInFlow {
         when {
             code != null -> run(activity, "exchange", mapOf("code" to code, "secret" to secret))
             uri.getQueryParameter("error") == "canceled" -> Unit
-            else -> error = "Apple couldn't confirm that sign-in. Try again, or continue with your email address."
+            else -> error = "That sign-in didn't finish. Try again, or continue with your email address."
         }
     }
 
@@ -162,13 +237,23 @@ object SignInFlow {
         activity.lifecycleScope.launch {
             val reply = SignInClient.post(activity, step, body)
             busy = false
-            show(reply)
+            show(activity, reply)
         }
     }
 
-    private fun show(reply: SignInReply) {
+    private fun show(activity: MainActivity, reply: SignInReply) {
         when (reply.status) {
-            "signed_in" -> reply.landing?.let { AppShell.didSignIn(it) }
+            "signed_in" -> {
+                val address = reply.email
+                val method = reply.method
+                if (address != null && method != null) {
+                    val account = KnownAccount(address, reply.firstName, method)
+                    activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                        .putString(KNOWN_KEY, json.encodeToString(KnownAccount.serializer(), account)).apply()
+                    known = account
+                }
+                reply.landing?.let { AppShell.didSignIn(it) }
+            }
             "step" -> {
                 notice = reply.notice
                 reply.email?.let { email = it }
@@ -183,7 +268,7 @@ object SignInFlow {
                     "create" -> Screen.Create
                     "connect" -> Screen.Connect
                     "add_email" -> Screen.AddEmail
-                    else -> Screen.Start
+                    else -> Screen.Email
                 }
                 if (next != screen) {
                     password = ""

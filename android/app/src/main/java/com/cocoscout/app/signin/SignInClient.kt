@@ -31,7 +31,9 @@ data class SignInReply(
     val error: String? = null,
     val message: String? = null,
     val nonce: String? = null,
-    @SerialName("google_client_id") val googleClientId: String? = null
+    @SerialName("google_client_id") val googleClientId: String? = null,
+    /** With "signed_in": how they signed in ("password", "code", "apple", "google"). */
+    val method: String? = null
 )
 
 /**

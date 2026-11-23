@@ -58,6 +58,14 @@ object Credentials {
         }
     }
 
+    /** Welcome back's Continue: a password saved for CocoScout, if there's one. */
+    suspend fun savedPassword(activity: Activity): Picked.Password? = try {
+        val credential = CredentialManager.create(activity).getCredential(activity, GetCredentialRequest(listOf(GetPasswordOption()))).credential
+        (credential as? PasswordCredential)?.let { Picked.Password(it.id, it.password) }
+    } catch (_: GetCredentialException) {
+        null
+    }
+
     /** Continue with Google: every Google account on the phone, or adding one. */
     suspend fun google(activity: Activity, nonce: String, clientId: String): Result {
         val option = GetSignInWithGoogleOption.Builder(clientId).setNonce(nonce).build()
