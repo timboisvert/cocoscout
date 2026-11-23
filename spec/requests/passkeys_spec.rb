@@ -83,6 +83,34 @@ RSpec.describe "Passkeys", type: :request do
       expect(response.body).to include("Made on a device")
       expect(response.body).to include("Add a passkey")
     end
+
+    # The app's row is drawn from the user agent's component list, never left
+    # for the page to reveal: a link opened into a running app connected the
+    # page before the app had registered its components, and the row stayed hidden.
+    def account_row_for(user_agent)
+      get account_path, headers: { "User-Agent" => user_agent }
+      Nokogiri::HTML(response.body).at_css("[data-sign-in-method=add-passkey]")
+    end
+
+    it "draws Add a passkey, shown, for an app build that has passkeys" do
+      sign_in
+      row = account_row_for("CocoScout/1.4 (11; nav 2) CocoMenu/bar CocoAuth/1 Hotwire Native Android; Turbo Native Android; bridge-components: [form menu passkey]; Mozilla/5.0")
+      expect(row).to be_present
+      expect(row["class"].split).not_to include("hidden")
+      expect(row["data-controller"]).to eq("bridge--passkey")
+    end
+
+    it "leaves it out for an app build without passkeys" do
+      sign_in
+      expect(account_row_for("CocoScout/1.2 (10; nav 2) CocoMenu/bar Hotwire Native Android; Turbo Native Android; bridge-components: [form menu]; Mozilla/5.0")).to be_nil
+    end
+
+    it "draws it hidden in a browser, for the page to show once it can make one" do
+      sign_in
+      row = account_row_for("Mozilla/5.0 (Macintosh) Safari/605.1.15")
+      expect(row["class"].split).to include("hidden")
+      expect(row["data-controller"]).to eq("passkey-add")
+    end
   end
 
   describe "signing in with one on the website" do

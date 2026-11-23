@@ -3,16 +3,12 @@ import { BridgeComponent } from "@hotwired/hotwire-native-bridge"
 // Bridge Component: Add a passkey on the Account page, in the app
 // (Bridge/PasskeyComponent.swift, bridge/PasskeyComponent.kt). The app's own
 // sheet makes it (Face ID, a fingerprint) through App::PasskeysController,
-// then the page reloads to list it. The row stays hidden in a build without
-// passkeys, so there's never a button that does nothing.
+// then the page reloads to list it. The server draws the row only for builds
+// that list "passkey" in their user agent (account/show.html.erb), so there's
+// never a button that does nothing.
 export default class extends BridgeComponent {
   static component = "passkey"
   static targets = ["button", "error"]
-
-  connect() {
-    super.connect()
-    if (this.enabled) this.element.classList.remove("hidden")
-  }
 
   add(event) {
     event.preventDefault()

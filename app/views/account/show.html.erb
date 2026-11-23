@@ -118,12 +118,17 @@
           <% end %>
         </div>
       <% end %>
-      <% unless impersonating? %>
+      <%# In the app the server decides from the user agent's component list
+          (native_bridge_component?), as Tap to Pay does: the page's own check
+          can run before the app has registered its components, which hid the
+          row on a link opened into a running app. In a browser the page shows
+          it once it knows the browser can make one (passkey_add_controller.js). %>
+      <% if !impersonating? && (!turbo_native_app? || native_bridge_component?("passkey")) %>
         <% adder = turbo_native_app? ?
              { controller: "bridge--passkey", action: "click->bridge--passkey#add" } :
              { controller: "passkey-add", action: "click->passkey-add#add",
                passkey_add_options_url_value: passkey_options_account_path, passkey_add_create_url_value: passkeys_account_path } %>
-        <div class="<%= row_class %> hidden" data-sign-in-method="add-passkey" data-controller="<%= adder[:controller] %>"
+        <div class="<%= row_class %><%= " hidden" unless turbo_native_app? %>" data-sign-in-method="add-passkey" data-controller="<%= adder[:controller] %>"
              <%= tag.attributes(adder.except(:controller, :action).transform_keys { |key| "data-#{key.to_s.dasherize}" }) %>>
           <div class="min-w-0">
             <div class="text-sm font-medium text-gray-900"><%= passkeys.any? ? "Another passkey" : "Passkey" %></div>
