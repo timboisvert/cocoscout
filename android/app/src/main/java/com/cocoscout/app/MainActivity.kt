@@ -10,17 +10,22 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
+import androidx.lifecycle.lifecycleScope
 import com.cocoscout.app.door.TapToPayOverlay
 import com.cocoscout.app.door.TapToPaySetup
 import com.cocoscout.app.menu.MenuOverlay
 import com.cocoscout.app.signin.SignInFlow
 import com.cocoscout.app.signin.PasskeyOfferOverlay
+import com.cocoscout.app.signin.SignInBackdrop
 import com.cocoscout.app.signin.SignInOverlay
 import dev.hotwire.navigation.activities.HotwireActivity
 import dev.hotwire.navigation.navigator.Navigator
 import dev.hotwire.navigation.navigator.NavigatorConfiguration
 import dev.hotwire.navigation.util.applyDefaultImeWindowInsets
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 
 /**
  * The app's frame around the web pages: one screen, no tab bar, and Coco in
@@ -54,6 +59,7 @@ class MainActivity : HotwireActivity() {
         }
 
         findViewById<ComposeView>(R.id.overlays).setContent {
+            SignInBackdrop()
             MenuOverlay()
             TapToPayOverlay()
             SignInOverlay()
@@ -62,6 +68,16 @@ class MainActivity : HotwireActivity() {
 
         AppShell.attach(this)
         openLinkFrom(intent)
+
+        // The window opens pink (the theme) and stays pink while nobody's
+        // signed in, under the sign-in backdrop (SignInBackdrop), so nothing
+        // white shows before the sign-in screens draw (1.4.1). Signed in,
+        // white behind the pages.
+        lifecycleScope.launch {
+            combine(AppShell.state, AppShell.signInHandedOff) { shell, handedOff -> shell.signedIn || handedOff }
+                .distinctUntilChanged()
+                .collect { signedIn -> window.setBackgroundDrawableResource(if (signedIn) R.color.white else R.color.pink) }
+        }
     }
 
     /** Back in front: Tap to Pay warms up again, so a sale's tap screen opens at once. */

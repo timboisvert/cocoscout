@@ -1,11 +1,19 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Light only, like the iOS app (Tim, 2026-10-12). -->
     <style name="Theme.CocoScout" parent="Theme.Material3.Light.NoActionBar">
         <item name="colorPrimary">@color/pink</item>
         <item name="colorOnPrimary">@color/white</item>
         <item name="colorSurface">@color/white</item>
         <item name="android:colorBackground">@color/white</item>
-        <item name="android:windowBackground">@color/white</item>
+        <!-- Opening the app shows pink, never white: the system splash
+             (Android 12 and later) is plain pink with no icon, and the window
+             stays pink until someone is signed in (MainActivity), so the
+             pink landing draws straight onto it (Tim, 2026-11-23, for
+             1.4.1). Android's splash can only be a color and one centered
+             icon, so the wordmark and Coco arrive with the landing itself. -->
+        <item name="android:windowBackground">@color/pink</item>
+        <item name="android:windowSplashScreenBackground" tools:targetApi="31">@color/pink</item>
+        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
         <item name="toolbarStyle">@style/Widget.CocoScout.Toolbar</item>

@@ -39,50 +39,66 @@ struct SignInScreen: View {
 
 // MARK: The landing
 
-/// First time: the wordmark, the tagline, the hero Coco, and Get started.
-/// Coming back, or a link waiting: the wordmark stays, and Coco rises out of
-/// the card at the card's width.
+/// The launch screen, with what to do on top (Tim, 2026-11-23, for 1.4.1):
+/// the wordmark, the tagline, and the hero Coco are the launch screen itself
+/// (LaunchBackdropView), so opening the app never shows anything between it
+/// and this. First time, Get started rises onto it. Coming back, or a link
+/// waiting, the card rises and Coco settles from the hero to the card's width,
+/// head and shoulders over its top edge (Coco always rises out of the top of
+/// something).
 private struct Landing: View {
     @ObservedObject var model: SignInModel
     let width: CGFloat
+    @State private var shown = false
+    @Namespace private var cocoSpace
 
     var body: some View {
         let hasCard = model.known != nil || model.waiting != nil
         ZStack(alignment: .bottom) {
-            VStack(spacing: 8) {
-                Text("CocoScout")
-                    .font(Font(AppConfig.coustard(hasCard ? 46 : 52)))
-                    .accessibilityAddTraits(.isHeader)
-                Text("The platform for live entertainment production")
-                    .font(.system(size: hasCard ? 16 : 19, weight: .medium))
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 290)
-            }
-            .foregroundStyle(.white)
-            .padding(.top, hasCard ? 40 : 64)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            LaunchBackdropView(showsCoco: !hasCard).ignoresSafeArea()
 
             if hasCard {
-                CardCoco(width: width - 40) {
-                    if let known = model.known {
-                        WelcomeBackCard(model: model, known: known)
-                    } else if let waiting = model.waiting {
-                        WaitingCard(model: model, waiting: waiting)
+                // Coco where the launch screen has her (LaunchScreen.storyboard:
+                // 108% of the screen's width, her feet 40 points below its
+                // bottom), until she settles behind the card.
+                GeometryReader { screen in
+                    if !shown {
+                        let heroWidth = screen.size.width * 1.08
+                        let heroHeight = heroWidth * 768 / 721
+                        coco
+                            .frame(width: heroWidth, height: heroHeight)
+                            .matchedGeometryEffect(id: "coco", in: cocoSpace)
+                            .position(x: screen.size.width / 2, y: screen.size.height + 40 - heroHeight / 2)
+                            // One Coco that moves, not two that crossfade.
+                            .transition(.identity)
                     }
+                }
+                .ignoresSafeArea()
+
+                let cardWidth = width - 40
+                let imageHeight = cardWidth * 768 / 721
+                let showing = cardWidth * 260 / 350
+                VStack(spacing: -(imageHeight - showing)) {
+                    if shown {
+                        coco
+                            .frame(width: cardWidth, height: imageHeight)
+                            .matchedGeometryEffect(id: "coco", in: cocoSpace)
+                            .transition(.identity)
+                    }
+                    Group {
+                        if let known = model.known {
+                            WelcomeBackCard(model: model, known: known)
+                        } else if let waiting = model.waiting {
+                            WaitingCard(model: model, waiting: waiting)
+                        }
+                    }
+                    .background(RoundedRectangle(cornerRadius: 22).fill(.white).shadow(color: .black.opacity(0.22), radius: 18, y: 10))
+                    .opacity(shown ? 1 : 0)
+                    .offset(y: shown ? 0 : 24)
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 8)
             } else {
-                // The hero: a touch wider than the screen, anchored to its bottom.
-                Image("LaunchLogo")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: width * 1.08)
-                    // Laid out at the screen's width, so the overflow falls evenly off both sides.
-                    .frame(width: width)
-                    .offset(y: 40)
-                    .ignoresSafeArea(edges: .bottom)
-                    .accessibilityLabel("Coco, the CocoScout cat")
                 Button { model.getStarted() } label: {
                     Text("Get started")
                         .font(.system(size: 18, weight: .semibold))
@@ -94,29 +110,20 @@ private struct Landing: View {
                 .buttonStyle(.plain)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 12)
+                .opacity(shown ? 1 : 0)
+                .offset(y: shown ? 0 : 24)
             }
         }
-    }
-}
-
-/// Coco at the card's width, head and shoulders over its top edge, the rest
-/// behind it.
-private struct CardCoco<Card: View>: View {
-    let width: CGFloat
-    @ViewBuilder let card: Card
-
-    var body: some View {
-        let imageHeight = width * 768 / 721
-        let showing = width * 260 / 350
-        VStack(spacing: -(imageHeight - showing)) {
-            Image("LaunchLogo")
-                .resizable()
-                .scaledToFit()
-                .frame(width: width)
-                .accessibilityHidden(true)
-            card
-                .background(RoundedRectangle(cornerRadius: 22).fill(.white).shadow(color: .black.opacity(0.22), radius: 18, y: 10))
+        .onAppear {
+            withAnimation(.spring(duration: 0.5).delay(0.15)) { shown = true }
         }
+    }
+
+    private var coco: some View {
+        Image("LaunchLogo")
+            .resizable()
+            .scaledToFit()
+            .accessibilityLabel("Coco, the CocoScout cat")
     }
 }
 

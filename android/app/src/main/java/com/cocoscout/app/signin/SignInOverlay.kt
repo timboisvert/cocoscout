@@ -1,6 +1,20 @@
 package com.cocoscout.app.signin
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.runtime.SideEffect
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.lerp
+import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -12,6 +26,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -146,6 +161,13 @@ fun SignInOverlay() {
         },
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false, dismissOnClickOutside = false)
     ) {
+        // Straight onto the pink window, as it opens: no dialog fade or
+        // dimming between them (1.4.1).
+        val window = (LocalView.current.parent as? DialogWindowProvider)?.window
+        SideEffect {
+            window?.setDimAmount(0f)
+            window?.setWindowAnimations(0)
+        }
         BoxWithConstraints(Modifier.fillMaxSize().background(Tailwind.Pink500)) {
             val width = maxWidth
             val height = maxHeight
@@ -177,62 +199,81 @@ private fun Modifier.overlapBelow(overlap: Dp) = layout { measurable, constraint
 
 // The landing
 
+/**
+ * The pink screen the app opens on, with what to do on top (Tim, 2026-11-23,
+ * for 1.4.1): the wordmark, the tagline, and the hero Coco come first, as the
+ * iPhone's launch screen does, and nothing about them moves. First time, Get
+ * started rises onto it. Coming back, or a link waiting, the card rises and
+ * Coco settles from the hero to the card's width, head and shoulders over its
+ * top edge (Coco always rises out of the top of something).
+ */
 @Composable
 private fun Landing(activity: MainActivity, width: Dp) {
     val flow = SignInFlow
     val known = flow.known
     val waiting = flow.waiting
     val hasCard = known != null || waiting != null
-    Box(Modifier.fillMaxSize()) {
-        Column(
-            Modifier.fillMaxWidth().statusBarsPadding().padding(top = if (hasCard) 40.dp else 64.dp, start = 32.dp, end = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text("CocoScout", modifier = Modifier.semantics { heading() },
-                style = TextStyle(fontFamily = Coustard, fontSize = if (hasCard) 48.sp else 52.sp, color = Color.White))
-            Text("The platform for live entertainment production", textAlign = TextAlign.Center,
-                fontSize = if (hasCard) 16.sp else 19.sp, fontWeight = FontWeight.Medium, color = Color.White,
-                modifier = Modifier.widthIn290())
-        }
+    val density = LocalDensity.current
+    val shown = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        delay(150)
+        shown.animateTo(1f, spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow))
+    }
+    // Read in composition, not just in a drawing layer: a layer-only change
+    // can go undrawn in the sign-in dialog until the next touch (seen on the
+    // emulator), and the button stayed half faded.
+    val rise = 24.dp
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val boxHeight = constraints.maxHeight.toFloat()
+        LandingTitle()
+        val heroWidth = width * 1.07f
+        // The hero's feet sit 40 below the screen's bottom.
+        val heroGap = with(density) { -40.dp.toPx() }
         if (hasCard) {
             val cardWidth = width - 40.dp
             val imageHeight = cardWidth * COCO_RATIO
             val showing = cardWidth * (260f / 350f)
-            Column(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(start = 20.dp, end = 20.dp, bottom = 16.dp)) {
-                Image(painterResource(R.drawable.coco), contentDescription = null, contentScale = ContentScale.FillWidth,
-                    modifier = Modifier.width(cardWidth).overlapBelow(imageHeight - showing))
-                Column(
-                    Modifier.width(cardWidth)
-                        .shadow(14.dp, RoundedCornerShape(28.dp))
-                        .background(Color.White, RoundedCornerShape(28.dp))
-                        .padding(start = 18.dp, end = 18.dp, top = 20.dp, bottom = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    if (known != null) {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(known.firstName?.let { "Welcome back, $it" } ?: "Welcome back",
-                                style = TextStyle(fontFamily = Coustard, fontSize = 26.sp, lineHeight = 30.sp, color = Tailwind.Gray900))
-                            Text(known.email, fontSize = 15.sp, color = Gray500, maxLines = 1)
-                        }
-                        waiting?.let { WaitingNote(it) }
-                        flow.error?.let { Banner(it, error = true) }
-                        PrimaryButton("Continue", fingerprint = known.method in setOf("password", "passkey")) { flow.continueAsKnown(activity) }
-                        LinkButton("Use a different email") { flow.useDifferentEmail(activity) }
-                    } else if (waiting != null) {
-                        WaitingNote(waiting)
-                        PrimaryButton("Sign in to see it") { flow.getStarted(activity) }
-                        Spacer(Modifier.height(6.dp))
+            var cardTop by remember { mutableStateOf<Float?>(null) }
+            val t = shown.value
+            // Behind the card: from the hero to the card's width, her feet
+            // from below the screen to behind the card.
+            val cardGap = cardTop?.let { boxHeight - it - with(density) { (imageHeight - showing).toPx() } } ?: heroGap
+            val gap = heroGap + (cardGap - heroGap) * t
+            Image(painterResource(R.drawable.coco), contentDescription = "Coco, the CocoScout cat", contentScale = ContentScale.FillWidth,
+                modifier = Modifier.align(Alignment.BottomCenter).requiredWidth(lerp(heroWidth, cardWidth, t))
+                    .offset { IntOffset(0, (-gap).roundToInt()) })
+            Column(
+                Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(start = 20.dp, end = 20.dp, bottom = 16.dp)
+                    .onGloballyPositioned { cardTop = it.positionInRoot().y }
+                    .alpha(t).offset(y = rise * (1 - t))
+                    .width(cardWidth)
+                    .shadow(14.dp, RoundedCornerShape(28.dp))
+                    .background(Color.White, RoundedCornerShape(28.dp))
+                    .padding(start = 18.dp, end = 18.dp, top = 20.dp, bottom = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (known != null) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(known.firstName?.let { "Welcome back, $it" } ?: "Welcome back",
+                            style = TextStyle(fontFamily = Coustard, fontSize = 26.sp, lineHeight = 30.sp, color = Tailwind.Gray900))
+                        Text(known.email, fontSize = 15.sp, color = Gray500, maxLines = 1)
                     }
+                    waiting?.let { WaitingNote(it) }
+                    flow.error?.let { Banner(it, error = true) }
+                    PrimaryButton("Continue", fingerprint = known.method in setOf("password", "passkey")) { flow.continueAsKnown(activity) }
+                    LinkButton("Use a different email") { flow.useDifferentEmail(activity) }
+                } else if (waiting != null) {
+                    WaitingNote(waiting)
+                    PrimaryButton("Sign in to see it") { flow.getStarted(activity) }
+                    Spacer(Modifier.height(6.dp))
                 }
             }
         } else {
-            // The hero: a touch wider than the screen, anchored to its bottom.
-            Image(painterResource(R.drawable.coco), contentDescription = "Coco, the CocoScout cat", contentScale = ContentScale.FillWidth,
-                modifier = Modifier.align(Alignment.BottomCenter).requiredWidth(width * 1.07f).offset(y = 40.dp))
+            HeroCoco(width)
             Button(
                 onClick = { flow.getStarted(activity) },
                 modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(start = 24.dp, end = 24.dp, bottom = 24.dp)
+                    .alpha(shown.value).offset(y = rise * (1 - shown.value))
                     .fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(28.dp),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
@@ -241,6 +282,46 @@ private fun Landing(activity: MainActivity, width: Dp) {
                 Text("Get started", fontSize = 18.sp, fontWeight = FontWeight.Medium)
             }
         }
+    }
+}
+
+/** The wordmark and the tagline, where the app opens with them. */
+@Composable
+private fun BoxScope.LandingTitle() {
+    Column(
+        Modifier.align(Alignment.TopCenter).fillMaxWidth().statusBarsPadding().padding(top = 64.dp, start = 32.dp, end = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text("CocoScout", modifier = Modifier.semantics { heading() },
+            style = TextStyle(fontFamily = Coustard, fontSize = 52.sp, color = Color.White))
+        Text("The platform for live entertainment production", textAlign = TextAlign.Center,
+            fontSize = 19.sp, fontWeight = FontWeight.Medium, color = Color.White,
+            modifier = Modifier.widthIn290())
+    }
+}
+
+/** The hero: a touch wider than the screen, her feet 40 below its bottom. */
+@Composable
+private fun BoxScope.HeroCoco(width: Dp) {
+    Image(painterResource(R.drawable.coco), contentDescription = "Coco, the CocoScout cat", contentScale = ContentScale.FillWidth,
+        modifier = Modifier.align(Alignment.BottomCenter).requiredWidth(width * 1.07f).offset(y = 40.dp))
+}
+
+/**
+ * The pink screen the app opens on, drawn in the app's own window while
+ * nobody's signed in (MainActivity): it's there with the first frame, where
+ * the sign-in screens' dialog window takes a moment longer to appear, and the
+ * landing lands on it exactly (1.4.1).
+ */
+@Composable
+fun SignInBackdrop() {
+    val shell by AppShell.state.collectAsState()
+    val handedOff by AppShell.signInHandedOff.collectAsState()
+    if (shell.signedIn || handedOff) return
+    BoxWithConstraints(Modifier.fillMaxSize().background(Tailwind.Pink500)) {
+        LandingTitle()
+        HeroCoco(maxWidth)
     }
 }
 

@@ -249,10 +249,14 @@ final class AppShell {
         let screen = SignInViewController { [weak self] landing in self?.didSignIn(landing: landing) }
         screen.model.waiting = pendingPath.map(Self.waitingWords(for:))
         signInScreen = screen
+        // The launch screen stays up until the sign-in screen is: presenting
+        // waits a turn, and the white page behind would otherwise show for a
+        // frame between them (Tim, 2026-11-23).
+        let uncover = LaunchBackdrop.cover(tabBarController)
         DispatchQueue.main.async { [weak self] in
-            guard let self, self.signInScreen === screen else { return }
+            guard let self, self.signInScreen === screen else { return uncover() }
             self.tabBarController.dismiss(animated: false) {
-                self.tabBarController.present(screen, animated: false)
+                self.tabBarController.present(screen, animated: false) { uncover() }
             }
         }
     }
