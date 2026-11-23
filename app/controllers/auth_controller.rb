@@ -19,6 +19,7 @@
 # /reset/:token keeps working for links already in inboxes.
 class AuthController < ApplicationController
   include SignupTracking
+  include SignInCompletion
 
   STEPS = %w[start password code create].freeze
   # How long a confirmed address waits for its name before starting over.
@@ -283,23 +284,7 @@ class AuthController < ApplicationController
   # ---- shared pieces -------------------------------------------------------
 
   def complete_sign_in(user, method:)
-    # Make sure we have a person for this user
-    if user.person.nil?
-      person = Person.find_by(email: user.email_address, user_id: nil)
-      if person
-        person.update!(user: user)
-      else
-        user.people.create(email: user.email_address, name: user.email_address.split("@").first)
-      end
-    end
-
-    # The backfill only guessed who chose a password; a password that just
-    # worked was chosen.
-    user.update_column(:password_set_at, Time.current) if method == "password" && user.password_set_at.nil?
-
-    clear_sign_in_state
-    start_new_session_for user, sign_in_method: method
-    redirect_to post_authentication_landing_path(user)
+    finish_sign_in(user, method: method)
   end
 
   # Sets what the view needs for the step in the session, and renders it.

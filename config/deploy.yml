@@ -129,6 +129,14 @@ env:
     # OAuth client. The jobs server needs them too: it writes the events.
     - GOOGLE_CALENDAR_CLIENT_ID
     - GOOGLE_CALENDAR_CLIENT_SECRET
+    # Continue with Apple and Continue with Google (SignIn::Providers). Off for
+    # everyone but superadmins until SIGN_IN_WITH_PROVIDERS is "on".
+    - APPLE_TEAM_ID
+    - APPLE_SERVICES_ID
+    - APPLE_KEY_ID
+    - APPLE_PRIVATE_KEY
+    - GOOGLE_SIGNIN_CLIENT_ID
+    - GOOGLE_SIGNIN_CLIENT_SECRET
     # Square (Organization settings → Integrations): CocoScout's production
     # application and its webhook signature key. No SQUARE_ENVIRONMENT here:
     # only "sandbox" points anywhere but real Square.

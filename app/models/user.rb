@@ -24,6 +24,8 @@ class User < ApplicationRecord
   # (UserIdentity) and the 6-digit codes we email (SignInCode).
   has_many :identities, class_name: "UserIdentity", dependent: :destroy
   has_many :sign_in_codes, dependent: :delete_all
+  # Apple and Google connected as ways in. Destroying one revokes it with Apple.
+  has_many :user_identities, dependent: :destroy
   before_save :stamp_password_set_at, if: :will_save_change_to_password_digest?
 
   has_many :sessions, dependent: :destroy

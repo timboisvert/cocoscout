@@ -86,6 +86,17 @@ Rails.application.routes.draw do
   get   "/start",         to: "start#show",           as: "start"
   post  "/signin",        to: "auth#handle_signin",   as: "handle_signin"
   get   "/signout",       to: "auth#signout",         as: "signout"
+
+  # Continue with Apple and Continue with Google (sign-in plan phase 2;
+  # SignIn::ProvidersController). The fixed paths come before /auth/:provider.
+  get    "/auth/google/callback",     to: "sign_in/providers#google_callback",     as: "google_sign_in_callback"
+  post   "/auth/apple/callback",      to: "sign_in/providers#apple_callback",      as: "apple_sign_in_callback"
+  get    "/auth/apple/return",        to: "sign_in/providers#apple_return",        as: "apple_sign_in_return"
+  post   "/auth/apple/notifications", to: "sign_in/providers#apple_notifications", as: "apple_sign_in_notifications"
+  get    "/auth/continue",            to: "sign_in/providers#continue",            as: "sign_in_provider_continue"
+  post   "/auth/continue",            to: "sign_in/providers#handle_continue"
+  post   "/auth/:provider",           to: "sign_in/providers#start",               as: "sign_in_provider", constraints: { provider: /apple|google/ }
+  delete "/auth/:provider",           to: "sign_in/providers#disconnect",          as: "disconnect_sign_in_provider", constraints: { provider: /apple|google/ }
   get   "/password",      to: "auth#password",        as: "password"
   post  "/password",      to: "auth#handle_password", as: "handle_password"
   get   "/reset/:token",  to: "auth#reset",           as: "reset"

@@ -13,6 +13,18 @@ class PlatformTemplates
       body: %(<p>Your CocoScout code is:</p><p style="font-size:28px;font-weight:bold;letter-spacing:6px;margin:16px 0;">{{code}}</p><p>Enter it on the page that requested it. It works for {{lifetime}}, and only once.</p><p>If you didn't request a code, you can ignore this email. Nobody can get into your account without it.</p>),
       variables: [ { "name" => "code", "description" => "The 6-digit code" },
                    { "name" => "lifetime", "description" => "How long the code works, e.g. 10 minutes" } ] },
+    # Apple or Google now signs someone in (SignIn::Connect): an email and a
+    # notification each time, a deliberate exception to fewer emails (the
+    # sign-in plan, Tim 2026-11-22), so a connection nobody made gets noticed.
+    { key: "auth_method_connected", name: "Apple or Google connected", channel: "both", category: "auth",
+      subject: "{{provider}} now signs you in to CocoScout",
+      push_body: "{{provider}} now signs you in to CocoScout.",
+      body: %(<p>Hi {{first_name}},</p><p>{{provider}} ({{provider_email}}) is now connected to your CocoScout account, so it signs you in with one tap. {{password_line}}</p><p>If you didn't connect it, sign in with a code, disconnect it on your <a href="{{account_url}}">Account page</a>, and write to support@cocoscout.com.</p>),
+      variables: [ { "name" => "first_name", "description" => "Their first name" },
+                   { "name" => "provider", "description" => "Apple or Google" },
+                   { "name" => "provider_email", "description" => "The Apple or Google address, or \"a private Apple address\"" },
+                   { "name" => "password_line", "description" => "Whether their password still works" },
+                   { "name" => "account_url", "description" => "Their Account page" } ] },
     { key: "payee_bank_setup_link", name: "Bank setup link for a payee", channel: "email",
       subject: "{{organization_name}} wants to pay you through CocoScout",
       body: %(<p>Hi {{first_name}},</p><p>{{organization_name}} pays people through CocoScout, straight to their bank. Connect yours here. It takes a few minutes, and you don't need a CocoScout account.</p><p><a href="{{setup_url}}">Connect your bank</a></p><p>This link is just for you, so please don't forward it. It works for 30 days. If you weren't expecting it, you can ignore this email.</p>),
@@ -101,6 +113,7 @@ class PlatformTemplates
 
       template.assign_attributes(name: spec[:name], category: spec[:category] || "payments", channel: spec[:channel], template_type: "structured",
                                  active: true, subject: spec[:subject], body: spec[:body], available_variables: spec[:variables])
+      template.push_body = spec[:push_body] if spec[:push_body]
       template.save!
     end
   end

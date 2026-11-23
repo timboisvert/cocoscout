@@ -33,6 +33,17 @@ class AuthMailer < ApplicationMailer
     end
   end
 
+  # Apple or Google now signs them in (SignIn::Connect). The words come
+  # rendered from the auth_method_connected template.
+  def method_connected(user, subject:, body:)
+    @user = user
+    @person = user.person # For recipient entity tracking
+
+    mail(to: user.email_address, subject: subject) do |format|
+      format.html { render html: body.html_safe, layout: "mailer" }
+    end
+  end
+
   def password(user, token)
     @user = user
     @person = @user.person # For recipient entity tracking

@@ -37,9 +37,9 @@
     </nav>
   <% end %>
 
-  <%# Sign-in methods: every way into this account, one row each. Today the
-      emailed code (always available) and the password; Apple, Google, and
-      passkeys get their rows when they arrive (the sign-in plan). %>
+  <%# Sign-in methods: every way into this account, one row each: the emailed
+      code (always available), the password, Apple, and Google. Passkeys get
+      their row when they arrive (the sign-in plan). %>
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6">
     <%= render "shared/section_heading", title: "Sign-in methods", intro: "Every method opens the same account.",
           padding: "px-4 py-3 sm:px-6 sm:py-4" %>
@@ -64,6 +64,37 @@
         <%= render "shared/button", text: (Current.user.password_chosen? ? "Change" : "Choose a password"),
               path: choose_password_account_path, variant: "secondary", size: "small" %>
       </div>
+      <%# Apple and Google (sign-in plan phase 2): a connected one always shows,
+          so it can be disconnected; Connect shows where the buttons do
+          (SignIn::Providers.shown), never while acting as someone else. %>
+      <% connectable = SignIn::Providers.shown(user: Current.user, cookies: cookies, user_agent: request.user_agent) %>
+      <% identities = Current.user.user_identities.index_by(&:provider) %>
+      <% SignIn::Providers::LIST.each do |provider| %>
+        <% identity = identities[provider] %>
+        <% next unless identity || connectable.include?(provider) %>
+        <% name = SignIn::Providers.name(provider) %>
+        <div class="<%= row_class %>" data-sign-in-method="<%= provider %>">
+          <div class="min-w-0">
+            <div class="text-sm font-medium text-gray-900"><%= name %></div>
+            <div class="text-sm text-gray-600">
+              <%= identity ? "Connected: #{identity.shown_email}." : "Not connected. Connect it and #{name} signs you in with one tap." %>
+            </div>
+          </div>
+          <% unless impersonating? %>
+            <% if identity %>
+              <% modal_id = "disconnect-#{provider}" %>
+              <%= render "shared/button", text: "Disconnect", variant: "secondary", size: "small", type: :button,
+                    data: { controller: "modal", action: "click->modal#open", modal_id: modal_id } %>
+              <%= render "shared/confirm_modal", id: modal_id, title: "Disconnect #{name}?",
+                    message: "#{name} will no longer sign you in. Your email code always works#{Current.user.password_chosen? ? ', and so does your password' : ''}.",
+                    confirm_text: "Disconnect", url: disconnect_sign_in_provider_path(provider), method: :delete %>
+            <% else %>
+              <%= render "shared/button", text: "Connect", variant: "secondary", size: "small",
+                    path: sign_in_provider_path(provider), method: :post, form: { data: { turbo: false } } %>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
     </div>
   </div>
 

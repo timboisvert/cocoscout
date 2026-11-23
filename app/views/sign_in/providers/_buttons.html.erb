@@ -1,0 +1,19 @@
+<%#
+  Continue with Apple and Continue with Google (SignIn::Providers.shown
+  decides which, and in what order), then the "or" before the email field.
+  Each posts to /auth/:provider, which leaves for the provider's own page.
+  Locals: providers (["apple", "google"], in order).
+%>
+<% if providers.any? %>
+  <div class="space-y-3" data-provider-buttons>
+    <% providers.each do |provider| %>
+      <%= render "shared/button", text: "Continue with #{SignIn::Providers.name(provider)}", variant: provider, size: "jumbo", icon: provider,
+            path: sign_in_provider_path(provider), method: :post, form: { data: { turbo: false } }, classes: "!text-base" %>
+    <% end %>
+  </div>
+  <div class="my-5 flex items-center gap-3 text-sm text-slate-500" role="separator">
+    <span class="h-px flex-1 bg-slate-200"></span>
+    <span>or</span>
+    <span class="h-px flex-1 bg-slate-200"></span>
+  </div>
+<% end %>

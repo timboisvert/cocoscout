@@ -18,6 +18,17 @@ class ApplicationController < ActionController::Base
 
   before_action :track_my_dashboard
   before_action :show_my_sidebar
+  before_action :remember_provider_sign_in_preview
+
+  # Until Continue with Apple and Google are on for everyone
+  # (SIGN_IN_WITH_PROVIDERS), a browser a superadmin uses keeps showing them
+  # on its sign-in screen after signing out, to try them on cocoscout.com.
+  def remember_provider_sign_in_preview
+    return if SignIn::Providers.live? || impersonating?
+    return unless Current.user&.superadmin? && cookies.signed[SignIn::Providers::PREVIEW_COOKIE].blank?
+
+    cookies.signed.permanent[SignIn::Providers::PREVIEW_COOKIE] = { value: "1", httponly: true, same_site: :lax }
+  end
 
   # The rest of this request reads and parses times in the organization's
   # zone (TimeZones). Safe to call from a before_action: isolate_time_zone

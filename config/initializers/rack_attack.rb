@@ -25,7 +25,13 @@ class Rack::Attack
   # Auth endpoints: brute-force and bot-signup protection. The iOS app's
   # sign-in checks a password just the same.
   throttle("auth/ip", limit: 10, period: 1.minute) do |req|
-    req.ip if req.post? && [ "/signin", "/signup", "/api/v1/sessions" ].include?(req.path)
+    req.ip if req.post? && [ "/signin", "/signup", "/api/v1/sessions", "/auth/continue" ].include?(req.path)
+  end
+
+  # Continue with Apple or Google: each start leaves for the provider, so a
+  # person only makes a few (SignIn::ProvidersController).
+  throttle("auth/providers/ip", limit: 20, period: 1.minute) do |req|
+    req.ip if req.path.start_with?("/auth/")
   end
 
   # The organization join link (/join/:token) checks an existing account's
@@ -44,7 +50,7 @@ class Rack::Attack
   # signs in from cloud egress ranges; a mistake here shows as a 403 on
   # /signup, not a silent failure.
   AUTH_BLOCKED_RANGES = %w[169.58.0.0/16].map { |cidr| IPAddr.new(cidr) }.freeze
-  AUTH_PATHS = [ "/signin", "/signup" ].freeze
+  AUTH_PATHS = [ "/signin", "/signup", "/auth/continue" ].freeze
 
   blocklist("auth/blocked-ranges") do |req|
     next false unless req.post? && AUTH_PATHS.include?(req.path)
@@ -60,9 +66,10 @@ class Rack::Attack
   # The same script from a pool in some other range would still be capped:
   # signups are counted per /16 (per /48 for IPv6), not per address, and no
   # honest neighborhood of the internet creates ten CocoScout accounts an hour.
-  # An account is created by the sign-in screen's last step (step=create).
+  # An account is created by the sign-in screen's last step (step=create), or
+  # the same step after Apple or Google.
   throttle("signup/net", limit: 10, period: 1.hour) do |req|
-    next unless req.post? && req.path == "/signin" && req.params["step"] == "create"
+    next unless req.post? && %w[/signin /auth/continue].include?(req.path) && req.params["step"] == "create"
 
     begin
       addr = IPAddr.new(req.ip.to_s)

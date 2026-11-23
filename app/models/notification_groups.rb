@@ -40,6 +40,9 @@ module NotificationGroups
     # get no notification when someone signs up for Pro"): a new organization,
     # and an organization starting to pay for Pro. Push and the list, never an
     # email. Only a superadmin sees its switch (Account settings).
+    # A new way into the account (SignIn::Connect; Tim, 2026-11-22): Apple or
+    # Google connected. Its email always goes on its own, so no switch for it.
+    Group.new("account", "Your account", "Apple or Google connected as a way to sign in.", :yours, true, nil, false, true, [], nil),
     Group.new("platform", "New organizations and Pro", "An organization made, and an organization starting to pay for Pro. Superadmins only.", :platform, true, nil, false, true, [], nil)
   ].freeze
 
