@@ -34,7 +34,8 @@ struct MenuPerson: Codable, Equatable {
 /// the top bar of every page (WebViewController), opening the menu. Picking from the
 /// menu replaces the screen (with iOS's cross-fade). The server sends the menu
 /// on every page load (MenuComponent); an empty menu means signed out, and
-/// the app shows just the sign-in screen, without Coco.
+/// the app shows its own sign-in screens over everything (SignInScreen),
+/// without Coco.
 @MainActor
 final class AppShell {
     static let shared = AppShell()
@@ -77,7 +78,9 @@ final class AppShell {
     private var pendingPath: String?
 
     func open(path: String) {
-        guard loadedSignedIn != nil else {
+        // Signed out, the sign-in screens are over everything: the page opens
+        // once someone has signed in (didSignIn).
+        guard loadedSignedIn == true else {
             pendingPath = path
             return
         }
@@ -205,13 +208,59 @@ final class AppShell {
 
     private func rebuild() {
         let signedIn = !menu.isEmpty
+        load(url: AppConfig.url("/start"), signedIn: signedIn)
+        if signedIn {
+            hideSignIn()
+        } else {
+            showSignIn()
+        }
+    }
+
+    private func load(url: URL, signedIn: Bool) {
         loadedSignedIn = signedIn
         // /my sends a signed-out person to sign in; signing in sends the menu.
-        tabBarController.load([HotwireTab(id: signedIn ? "main" : "start", title: "CocoScout", image: nil, url: AppConfig.url("/start"))])
+        tabBarController.load([HotwireTab(id: signedIn ? "main" : "start", title: "CocoScout", image: nil, url: url)])
         if #available(iOS 18.0, *) {
             tabBarController.isTabBarHidden = true
         } else {
             tabBarController.tabBar.isHidden = true
+        }
+    }
+
+    // MARK: Signing in
+
+    private var signInScreen: SignInViewController?
+
+    /// The app's own sign-in screens over everything. Shown after the window
+    /// is up: start() runs before there's a window to present from.
+    private func showSignIn() {
+        guard signInScreen == nil else { return }
+        let screen = SignInViewController { [weak self] landing in self?.didSignIn(landing: landing) }
+        signInScreen = screen
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.signInScreen === screen else { return }
+            self.tabBarController.dismiss(animated: false) {
+                self.tabBarController.present(screen, animated: false)
+            }
+        }
+    }
+
+    private func hideSignIn() {
+        guard let screen = signInScreen else { return }
+        signInScreen = nil
+        screen.dismiss(animated: true)
+    }
+
+    /// The sign-in screens started the web view's session: load where the
+    /// server sent them, signed in, without waiting for the first page's menu
+    /// to rebuild the screen a second time. A link that came in while signed
+    /// out opens on top.
+    func didSignIn(landing: URL) {
+        load(url: landing, signedIn: true)
+        hideSignIn()
+        if let path = pendingPath {
+            pendingPath = nil
+            open(path: path)
         }
     }
 
