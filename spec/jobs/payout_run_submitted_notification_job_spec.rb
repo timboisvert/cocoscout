@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "rails_helper"
-require Rails.root.join("db/migrate/20261027100100_add_payout_run_lifecycle_templates")
+require Rails.root.join("spec/fixtures/migrations/20261027100100_add_payout_run_lifecycle_templates")
 
 # The submitted notice to the organization's chosen people: a Notification
 # for each, an email that really goes, never from a person.

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "rails_helper"
-require Rails.root.join("db/migrate/20260930160000_label_open_runs_as_payouts")
+require Rails.root.join("spec/fixtures/migrations/20260930160000_label_open_runs_as_payouts")
 
 # One payout run for everything: staff pay rides the same open run as show
 # payouts, course money and contract payments. A person paid for both gets one

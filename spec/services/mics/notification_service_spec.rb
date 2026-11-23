@@ -4,7 +4,7 @@ require "rails_helper"
 
 RSpec.describe Mics::NotificationService do
   before(:all) do
-    require Rails.root.join("db", "migrate", "20260603101339_add_mic_queue_notification_templates").to_s
+    require Rails.root.join("spec", "fixtures", "migrations", "20260603101339_add_mic_queue_notification_templates").to_s
     AddMicQueueNotificationTemplates.new.up
   end
 

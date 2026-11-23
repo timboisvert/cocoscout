@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "rails_helper"
-require Rails.root.join("db/migrate/20261118193817_productions_say_whether_people_are_cast")
+require Rails.root.join("spec/fixtures/migrations/20261118193817_productions_say_whether_people_are_cast")
 
 # The answer for productions that already exist is read from what they have
 # (Tim, 2026-11-18), and no date's own casting switch is changed.

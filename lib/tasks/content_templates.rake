@@ -29,10 +29,10 @@ namespace :content_templates do
 
     # The payout run notices to the org's chosen managers (payout_run_submitted
     # and the rest) are owned by
-    # db/migrate/20261027100100_add_payout_run_lifecycle_templates.rb.
+    # a migration (now spec/fixtures/migrations/20261027100100_add_payout_run_lifecycle_templates.rb).
     # NOTE: the payee payout notices (payout_sent_to_payee,
     # payout_sent_to_payee_first_payment, payout_sent_to_payee_no_bank) are
-    # owned by db/migrate/20260805100000_split_payout_payee_templates_and_recategorize.rb
+    # owned by a migration (20260805100000, squashed 2026-11-23)
     # so they ship with the deploy instead of a manual step — the payout job
     # raises when its template is missing and it runs inside the paying path.
 

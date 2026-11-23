@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "rails_helper"
-require Rails.root.join("db/migrate/20261118214309_crew_roles_become_plain_roles")
+require Rails.root.join("spec/fixtures/migrations/20261118214309_crew_roles_become_plain_roles")
 
 # Roles marked Crew before the Performing / Technical choice went become
 # plain roles (Tim, 2026-11-18: "Yes, rewrite them"). Only the mark changes.

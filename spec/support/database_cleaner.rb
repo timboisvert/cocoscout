@@ -136,7 +136,7 @@ def seed_content_templates
       body: "<p>The debit for {{total}} to {{people_count}} was declined.</p><p><a href=\"{{payout_run_url}}\">View</a></p>",
       category: "payments", channel: "both" },
     # The payout run's lifecycle notices to the organization's chosen people
-    # (db/migrate/20261027100100_add_payout_run_lifecycle_templates.rb).
+    # (spec/fixtures/migrations/20261027100100_add_payout_run_lifecycle_templates.rb).
     { key: "payout_run_submitted", name: "Payout Run Submitted",
       subject: "Payout run submitted{{#funded}} and funded{{/funded}} — {{total}} to {{people_count}}",
       body: "<p>Hi {{recipient_name}},</p><p>A {{run_kind}} run was submitted{{#funded}} and funded{{/funded}}: {{total}} to {{people_count}}.</p>" \
