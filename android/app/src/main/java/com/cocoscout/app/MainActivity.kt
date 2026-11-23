@@ -13,6 +13,8 @@ import androidx.core.view.updatePadding
 import com.cocoscout.app.door.TapToPayOverlay
 import com.cocoscout.app.door.TapToPaySetup
 import com.cocoscout.app.menu.MenuOverlay
+import com.cocoscout.app.signin.SignInFlow
+import com.cocoscout.app.signin.SignInOverlay
 import dev.hotwire.navigation.activities.HotwireActivity
 import dev.hotwire.navigation.navigator.Navigator
 import dev.hotwire.navigation.navigator.NavigatorConfiguration
@@ -53,6 +55,7 @@ class MainActivity : HotwireActivity() {
         findViewById<ComposeView>(R.id.overlays).setContent {
             MenuOverlay()
             TapToPayOverlay()
+            SignInOverlay()
         }
 
         AppShell.attach(this)
@@ -108,7 +111,10 @@ class MainActivity : HotwireActivity() {
      */
     private fun openLinkFrom(intent: Intent?) {
         val uri = intent?.data ?: return
-        if (uri.scheme == "cocoscout" && uri.host == "open") {
+        if (uri.scheme == "cocoscout" && uri.host == "auth") {
+            // Back from Continue with Apple's Custom Tab (SignInFlow.continueWithApple).
+            SignInFlow.returnFromTab(this, uri)
+        } else if (uri.scheme == "cocoscout" && uri.host == "open") {
             val path = uri.getQueryParameter("path")?.takeIf { it.startsWith("/") } ?: "/my"
             AppShell.open(path)
         } else if (uri.scheme == "https" && uri.host in setOf("cocoscout.com", "www.cocoscout.com")) {

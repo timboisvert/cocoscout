@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Google's "G", for Continue with Google (the website's shared/button icon). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path android:fillColor="#4285F4" android:pathData="M23.52,12.27c0,-0.85 -0.08,-1.67 -0.22,-2.45H12v4.64h6.46a5.52,5.52 0,0 1,-2.4 3.62v3h3.88c2.27,-2.09 3.58,-5.17 3.58,-8.81z" />
+    <path android:fillColor="#34A853" android:pathData="M12,24c3.24,0 5.96,-1.07 7.94,-2.91l-3.88,-3c-1.07,0.72 -2.45,1.15 -4.06,1.15 -3.13,0 -5.78,-2.11 -6.72,-4.95H1.27v3.1A11.99,11.99 0,0 0,12 24z" />
+    <path android:fillColor="#FBBC05" android:pathData="M5.28,14.29A7.2,7.2 0,0 1,4.9 12c0,-0.8 0.14,-1.57 0.38,-2.29v-3.1H1.27a12,12 0,0 0,0 10.78l4.01,-3.1z" />
+    <path android:fillColor="#EA4335" android:pathData="M12,4.77c1.76,0 3.34,0.61 4.59,1.8l3.44,-3.44C17.95,1.19 15.24,0 12,0 7.31,0 3.26,2.69 1.27,6.61l4.01,3.1C6.22,6.88 8.87,4.77 12,4.77z" />
+</vector>

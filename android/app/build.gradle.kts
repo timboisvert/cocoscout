@@ -136,6 +136,12 @@ dependencies {
     // okhttp-tls has the same API.
     implementation(libs.okhttp.tls)
 
+    // The app's own sign-in screens (signin/): Credential Manager offers saved
+    // passwords and the phone's Google accounts; Google's library reads its ID token.
+    implementation(libs.credentials)
+    implementation(libs.credentials.play.services)
+    implementation(libs.googleid)
+
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.foundation)

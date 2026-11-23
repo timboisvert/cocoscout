@@ -48,6 +48,15 @@
                 <data android:scheme="cocoscout" android:host="open" />
             </intent-filter>
 
+            <!-- Back from Continue with Apple's Custom Tab: cocoscout://auth?code=… (SignIn::ProvidersController#app_start).
+                 It signs nobody in by itself: the code is traded with a secret only this app holds. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="cocoscout" android:host="auth" />
+            </intent-filter>
+
             <!-- cocoscout.com links (emails, texts) open here: the pages the
                  iPhone app claims too. Verified by /.well-known/assetlinks.json. -->
             <intent-filter android:autoVerify="true">

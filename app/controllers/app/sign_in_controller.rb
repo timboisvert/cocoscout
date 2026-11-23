@@ -42,11 +42,13 @@ module App
     }.freeze
 
     # GET /app/sign_in/nonce: the nonce the app's Apple or Google sheet signs
-    # into its ID token, so a token can't be replayed into another session.
+    # into its ID token, so a token can't be replayed into another session,
+    # and the website's Google client id, which Android's Credential Manager
+    # names as the token's audience (kept out of the app's code).
     def nonce
       value = SecureRandom.urlsafe_base64(24)
       session[:app_sign_in_nonce] = value
-      render json: { nonce: value }
+      render json: { nonce: value, google_client_id: (SignIn::Providers.google_client_id if SignIn::Providers.configured?("google")) }.compact
     end
 
     # POST /app/sign_in/start_over

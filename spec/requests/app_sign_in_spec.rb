@@ -104,7 +104,9 @@ RSpec.describe "The apps' sign-in screens", type: :request do
     end
 
     it "checks Google's nonce as given" do
-      nonce = app_get(app_sign_in_nonce_path)["nonce"]
+      reply = app_get(app_sign_in_nonce_path)
+      expect(reply["google_client_id"]).to eq("google-client")
+      nonce = reply["nonce"]
       app_post(app_sign_in_provider_path, provider: "google", id_token: "t")
       expect(SignIn::IdToken).to have_received(:verify).with("google", "t", nonce: nonce)
     end

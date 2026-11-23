@@ -24,7 +24,8 @@ import kotlinx.serialization.json.Json
 /**
  * The menu and who's signed in, as the server last sent them (MenuComponent
  * on every page load), and the moves the menu makes. An empty menu means
- * signed out, and the floating button hides. Mirrors ios/CocoScout/AppShell.swift.
+ * signed out: the app's own sign-in screens cover everything
+ * (signin/SignInOverlay) and Coco hides. Mirrors ios/CocoScout/AppShell.swift.
  */
 object AppShell {
     @Serializable
@@ -62,6 +63,17 @@ object AppShell {
             .putString(NAV_KEY, json.encodeToString(com.cocoscout.app.bridge.NavData.serializer(), cached))
             .apply()
     }
+
+    private val _signInHandedOff = MutableStateFlow(false)
+    /**
+     * The sign-in screens started the web view's session and loaded the
+     * landing page: they stay hidden while that page's menu is on its way,
+     * and come back only when a menu says signed out again.
+     */
+    val signInHandedOff: StateFlow<Boolean> = _signInHandedOff.asStateFlow()
+    private var handedOffAt = 0L
+    /** A link that came in while signed out opens after sign-in. */
+    private var pathAfterSignIn: String? = null
 
     private val _menuOpen = MutableStateFlow(false)
     /** The menu sheet is up: Coco in a page's toolbar opens it (MenuOverlay draws it). */
@@ -127,8 +139,16 @@ object AppShell {
 
     /** page: the address of the page that sent the menu. */
     fun update(menu: List<MenuItem>, person: MenuPerson?, page: String? = null) {
-        _state.value = State(menu, person)
         val signedIn = menu.isNotEmpty()
+        // The page that was showing when the sign-in screens handed off can
+        // still send its signed-out menu: not a sign-out.
+        if (!signedIn && _signInHandedOff.value && System.currentTimeMillis() - handedOffAt < 5_000) return
+        _state.value = State(menu, person)
+        if (signedIn) {
+            _signInHandedOff.value = false
+        } else if (shownSignedIn == true) {
+            com.cocoscout.app.signin.SignInFlow.reset()
+        }
         val justSignedIn = signedIn && shownSignedIn == false
         shownSignedIn = signedIn
         // Just signed in: start afresh on the page the server sent them to
@@ -149,6 +169,11 @@ object AppShell {
 
     /** A page on top of whatever's showing (a link back from Stripe, a tapped notification). */
     fun open(path: String) {
+        // Signed out, the sign-in screens are over everything: it opens after sign-in.
+        if (!_state.value.signedIn && !_signInHandedOff.value) {
+            pathAfterSignIn = path
+            return
+        }
         val navigator = activity?.currentNavigator
         if (navigator == null || !navigator.isReady() || !pageShown) {
             pendingPath = path
@@ -203,6 +228,27 @@ object AppShell {
     }
 
     /**
+     * The sign-in screens started the web view's session: start afresh on the
+     * page the server named (signin/SignInFlow), then any link that came in
+     * while signed out, on top.
+     */
+    fun didSignIn(landing: String) {
+        handedOffAt = System.currentTimeMillis()
+        _signInHandedOff.value = true
+        shownSignedIn = true
+        val navigator = activity?.currentNavigator ?: return
+        val after = pathAfterSignIn
+        pathAfterSignIn = null
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            // In place of the start page, so there's no back to it.
+            navigator.reset {
+                navigator.route(AppConfig.url(landing), VisitOptions(action = VisitAction.REPLACE))
+                after?.let { pendingPath = it }
+            }
+        }
+    }
+
+    /**
      * Ends the session on the server (with the web view's cookies), then
      * starts the app afresh, which lands on the welcome screen like opening
      * the app signed out does.
@@ -224,6 +270,7 @@ object AppShell {
                     connection.disconnect()
                 }
             }
+            _signInHandedOff.value = false
             update(emptyList(), null)
             startOver(null)
         }

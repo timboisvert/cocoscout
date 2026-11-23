@@ -34,3 +34,10 @@
 # relatives out to the top level, and the app died at launch
 # (IllegalAccessError on kotlin.collections, 2026-11-04).
 -keeppackagenames **
+
+# Credential Manager finds its Play services provider by name at runtime
+# (androidx.credentials' own guidance).
+-if class androidx.credentials.CredentialManager
+-keep class androidx.credentials.playservices.** {
+  *;
+}
