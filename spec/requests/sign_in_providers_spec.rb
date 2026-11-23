@@ -41,6 +41,8 @@ RSpec.describe "Signing in with Apple and Google", type: :request do
     get signin_path, headers: { "User-Agent" => "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0)" }
     expect(response.body).to include("Continue with Apple", "Continue with Google")
     expect(response.body.index("Continue with Apple")).to be < response.body.index("Continue with Google")
+    # Email is the main way in; Apple and Google sit below it (Tim, 2026-11-22).
+    expect(response.body.index('name="email_address"')).to be < response.body.index("Continue with Apple")
 
     get signin_path, headers: { "User-Agent" => "Mozilla/5.0 (iPhone) Turbo Native iOS" }
     expect(response.body).not_to include("Continue with Google")

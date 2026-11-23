@@ -30,10 +30,10 @@
 
 <%= render layout: "shared/auth/shell",
       locals: { title: "Sign in or create an account", lede: lede, notices: notices } do %>
-  <%= render "sign_in/providers/buttons", providers: SignIn::Providers.shown(cookies: cookies, user_agent: request.user_agent) %>
   <%= render "shared/auth/email_form",
         signup_token: @signup_token,
         email_value: @email_address,
         error: @email_error,
         autofocus: !auth_native_app? %>
+  <%= render "sign_in/providers/buttons", providers: SignIn::Providers.shown(cookies: cookies, user_agent: request.user_agent) %>
 <% end %>
