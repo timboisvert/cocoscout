@@ -22,6 +22,7 @@
                   <div>
                     <div class="font-medium text-gray-900">
                       <%= rental.space_name %>
+                      <%= render "manage/contracts/event_type_badges", event_types: rental.shows.map(&:event_type) %>
                     </div>
                     <div class="text-sm text-gray-500">
                       <%= rental.starts_at.strftime("%l:%M %p").strip %> - <%= rental.ends_at.strftime("%l:%M %p").strip %>
@@ -48,7 +49,10 @@
                     <span class="text-[9px] leading-tight font-semibold text-pink-600 uppercase"><%= move[:new_starts_at].strftime("%b") %></span>
                   </div>
                   <div>
-                    <div class="font-medium text-gray-900"><%= rental.space_name %></div>
+                    <div class="font-medium text-gray-900">
+                      <%= rental.space_name %>
+                      <%= render "manage/contracts/event_type_badges", event_types: rental.shows.map(&:event_type) %>
+                    </div>
                     <div class="text-sm text-gray-500">
                       <span class="line-through"><%= night_times_words(starts_at: rental.starts_at, ends_at: rental.ends_at, event_starts_at: rental.event_starts_at, event_ends_at: rental.event_ends_at) %></span>
                     </div>
@@ -80,6 +84,7 @@
                   <div>
                     <div class="font-medium text-gray-900">
                       <%= space&.name || location&.name || "Location" %>
+                      <%= render "manage/contracts/event_type_badges", event_types: [ booking["event_type"].presence || @contract.default_event_type ] %>
                     </div>
                     <div class="text-sm text-gray-500">
                       <%= starts_at.strftime("%l:%M %p").strip %> · <%= booking["duration"] || 2 %> hours

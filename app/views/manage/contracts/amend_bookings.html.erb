@@ -42,12 +42,9 @@
                 <span class="text-[9px] leading-tight font-semibold text-pink-600 uppercase"><%= rental.starts_at.strftime("%b") %></span>
               </div>
               <div>
-                <div class="font-medium text-gray-900 flex flex-wrap items-center gap-2">
+                <div class="font-medium text-gray-900">
                   <%= rental.space_name %>
-                  <%# The kind of event each night is (Tim, 2026-11-22), from its show. %>
-                  <% rental.shows.map(&:event_type).compact.uniq.each do |event_type| %>
-                    <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset <%= event_type_badge_classes(event_type) %>"><%= event_type_label(event_type) %></span>
-                  <% end %>
+                  <%= render "manage/contracts/event_type_badges", event_types: rental.shows.map(&:event_type) %>
                 </div>
                 <div class="text-sm text-gray-500">
                   <%= rental.starts_at.strftime("%l:%M %p").strip %> - <%= rental.ends_at.strftime("%l:%M %p").strip %>

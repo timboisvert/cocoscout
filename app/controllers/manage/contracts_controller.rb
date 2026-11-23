@@ -1027,7 +1027,7 @@ module Manage
       @new_bookings = @amend_data["new_bookings"] || []
       @removed_rental_ids = @amend_data["removed_rental_ids"] || []
 
-      @existing_rentals = @contract.space_rentals.includes(:location, :location_space).order(:starts_at)
+      @existing_rentals = @contract.space_rentals.includes(:location, :location_space, :shows).order(:starts_at)
       @existing_payments = @contract.contract_payments.order(:due_date)
 
       @locations = Current.organization.locations.includes(:location_spaces)
@@ -1736,7 +1736,7 @@ module Manage
 
       # A new night with no type picked becomes the contract's own type when
       # applied (create_amended_booking!), so it says that here.
-      default_event_type = (@contract.draft_data["production"] || {})["event_type"].presence || "show"
+      default_event_type = @contract.default_event_type
 
       # Add new bookings, carrying the alternate show time set on the bookings step.
       new_bookings.each do |booking|

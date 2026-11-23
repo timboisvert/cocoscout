@@ -481,10 +481,15 @@ class Contract < ApplicationRecord
   # dropped, nights added) edits those and never the draft, so a document
   # built from the draft would send the original dates out for re-signature.
   # Shaped like draft bookings so the license grid reads either the same way.
+  # The kind of event the contract's nights are unless one names its own.
+  def default_event_type
+    (draft_data["production"] || {})["event_type"].presence || "show"
+  end
+
   def document_bookings
     return draft_bookings if status_draft?
 
-    event_type = (draft_data["production"] || {})["event_type"].presence || "show"
+    event_type = default_event_type
     # Fresh queries, not the cached associations: an amendment being previewed
     # has just rewritten these rows inside a savepoint.
     SpaceRental.where(contract_id: id).order(:starts_at).map do |rental|
@@ -1222,7 +1227,6 @@ class Contract < ApplicationRecord
 
     # The contract's own event type is the fallback; a booking added by this
     # amendment can name its own (a rehearsal alongside the shows).
-    default_event_type = (draft_data["production"] || {})["event_type"].presence || "show"
     new_bookings.each { |booking| create_amended_booking!(booking, default_event_type, force_overlap) }
     # The nights this amendment added take their terms too.
     if amend.key?("date_terms")

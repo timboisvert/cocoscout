@@ -46,6 +46,22 @@ RSpec.describe "Manage::Contracts amend event type", type: :request do
     expect(response.body).to match(%r{ring-inset[^"]*">#{Regexp.escape(EventTypes.labels["show"] || "Show")}</span>})
   end
 
+  it "names each event's type on the confirm step" do
+    rental = create(:space_rental, contract: contract, location: location)
+    create(:show, production: production, space_rental: rental, event_type: "rehearsal",
+                  date_and_time: rental.starts_at)
+    stage_booking!(event_type: "workshop", date: 2.months.from_now.to_date)
+    post save_amend_bookings_manage_contract_path(contract), params: {
+      booking_mode: "multiple", booking_rules_json: contract.reload.amend_data.dig("booking_rules", "rules").to_json,
+      removed_rental_ids: [ rental.id ].to_json
+    }
+
+    get amend_review_manage_contract_path(contract)
+
+    expect(response.body).to match(%r{ring-inset[^"]*">Rehearsal</span>})
+    expect(response.body).to match(%r{ring-inset[^"]*">Workshop</span>})
+  end
+
   def stage_booking!(event_type:, date:)
     post save_amend_bookings_manage_contract_path(contract), params: {
       booking_mode: "multiple",
