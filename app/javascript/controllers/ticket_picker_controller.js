@@ -60,7 +60,7 @@ export default class extends Controller {
     }
 
     // Back from that reload: the same tickets, the same place. Only a cart
-    // kept in the last minute counts, so a later visit starts empty.
+    // kept in the last half minute counts, so a later visit starts empty.
     restoreCart() {
         let kept = null
         try {
@@ -69,7 +69,7 @@ export default class extends Controller {
         } catch (_e) {
             return
         }
-        if (!kept || !kept.quantities || Date.now() - Number(kept.at) > 60000) return
+        if (!kept || !kept.quantities || Date.now() - Number(kept.at) > 30000) return
 
         this.rowTargets.forEach((row) => {
             const n = Number(kept.quantities[row.dataset.tierId] || 0)

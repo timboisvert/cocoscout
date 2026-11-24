@@ -146,11 +146,18 @@ RSpec.describe "A discount code's minimum number of tickets", type: :request do
       expect(shown).to eq(ActiveSupport::NumberHelper.number_to_currency(order.total_cents / 100.0))
     end
 
-    it "keeps the tickets chosen when a code is applied or removed" do
+    # Apply used to send a buyer on a production's page back to its list of
+    # dates: a GET form drops its address's query, and the date was in it.
+    it "keeps the date and the tickets chosen when a code is applied" do
       get event_path
-      doc = Nokogiri::HTML(response.body)
-      expect(doc.at_css("form[data-keep-cart='submit'] input[name='code']")).to be_present
-      expect(doc.at_css("[data-applied-code]")).to be_nil
+      form = Nokogiri::HTML(response.body).at_css("form[data-keep-cart='submit']")
+
+      expect(form.at_css("input[name='code']")).to be_present
+      expect(form["action"]).not_to include("?")
+      expect(form.at_css("input[type='hidden'][name='date']")["value"]).to eq(listing.slug)
+
+      get form["action"], params: { date: listing.slug, code: "nope" }
+      expect(response.body).to include("That code doesn&#39;t work for this show.", "data-controller=\"ticket-picker\"")
     end
 
     it "leaves a ticket type the code doesn't cover at its price" do

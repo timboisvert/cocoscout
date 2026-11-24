@@ -60,7 +60,11 @@ RSpec.describe "Public ticketing", type: :request do
     setup = ProductionTicketing.create!(production: production, page_key: "holly")
     get tickets_event_path(org: "starsandgarters", event: "holly")
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include(tickets_event_path(org: "starsandgarters", event: "holly", date: listing.slug))
+    # The code box goes back to this address and this date (the date rides
+    # as a field: a GET form drops its address's query).
+    code_form = Nokogiri::HTML(response.body).at_css("form[data-keep-cart='submit']")
+    expect(code_form["action"]).to eq(tickets_event_path(org: "starsandgarters", event: "holly"))
+    expect(code_form.at_css("input[name='date']")["value"]).to eq(listing.slug)
     get tickets_box_office_path(org: "starsandgarters")
     expect(response.body).not_to include(tickets_event_path(org: "starsandgarters", event: public_key))
 
