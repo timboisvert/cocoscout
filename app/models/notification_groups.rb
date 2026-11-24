@@ -55,7 +55,8 @@ module NotificationGroups
   TEMPLATES = {
     # Casting and vacancies
     "casting_table_notification" => "casting", "show_canceled" => "casting", "show_moved" => "casting",
-    "vacancy_created" => "casting", "vacancy_filled" => "casting", "vacancy_reclaimed" => "casting",
+    "vacancy_created" => "casting", "vacancy_created_several" => "casting",
+    "vacancy_filled" => "casting", "vacancy_reclaimed" => "casting",
     "vacancy_invitation" => "casting", "request_agreement_signature" => "casting",
     "talent_left_production" => "casting",
     # Sign-ups and auditions

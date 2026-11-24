@@ -12,13 +12,61 @@
     <h1 class="text-2xl font-bold text-gray-900 mb-2">Got It!</h1>
 
     <p class="text-gray-600 mb-6">
-      <% if @is_linked %>
+      <% if @chose_several %>
+        <%# Someone with several acts: what was given up, out of how many. %>
+        <% if @kept.any? %>
+          We acknowledge that you can't make <%= @vacated.size %> of your <%= @unit.pluralize %>.
+        <% else %>
+          We acknowledge that you can't make your <%= pluralize(@vacated.size, @unit) %>.
+        <% end %>
+        <% if @is_linked %>
+          The production team will be notified and will review your casting.
+        <% else %>
+          The production team will be notified and will find <%= @vacated.size == 1 ? "a replacement" : "replacements" %>.
+        <% end %>
+      <% elsif @is_linked %>
         We acknowledge that you can't make these events. The production team will be notified and will review your casting.
       <% else %>
         We acknowledge that you can't make it. The production team will be notified and will find a replacement.
       <% end %>
     </p>
 
+    <% if @chose_several %>
+      <div class="bg-white shadow rounded-lg overflow-hidden mb-6 text-left" data-acts-summary>
+        <div class="p-4 border-b border-gray-200 flex items-center gap-4">
+          <% poster_url = safe_poster_url(@show) %>
+          <% if poster_url %>
+            <div class="w-12 aspect-[3/4] rounded-lg overflow-hidden border border-gray-200 bg-white flex-shrink-0">
+              <%= image_tag poster_url, alt: @show.production.name, class: "w-full h-full object-cover" %>
+            </div>
+          <% end %>
+          <div>
+            <h2 class="font-semibold text-gray-900"><%= @show.production.name %></h2>
+            <p class="text-sm text-gray-600"><%= @show.date_and_time.strftime("%A, %B %-d, %Y at %-l:%M %p") %></p>
+          </div>
+        </div>
+        <div class="p-4" data-cant-make>
+          <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">You can't make</p>
+          <div class="space-y-1.5">
+            <% @vacated.each do |vacancy| %>
+              <p class="text-sm font-medium text-gray-900"><%= role_display_name(vacancy.role, @lineup_numbers, show: @show) %></p>
+            <% end %>
+          </div>
+        </div>
+        <% if @kept.any? %>
+          <div class="p-4 border-t border-gray-100" data-still-performing>
+            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">You're still performing</p>
+            <div class="space-y-1.5">
+              <% @kept.each do |assignment| %>
+                <p class="text-sm font-medium text-gray-900"><%= role_display_name(assignment.role, @lineup_numbers, show: @show) %></p>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% unless @chose_several && @affected_shows.size < 2 %>
     <div class="bg-white shadow rounded-lg overflow-hidden mb-6">
       <div class="p-4 border-b border-gray-200 flex items-center gap-4">
         <% poster_url = safe_poster_url(@show) %>
@@ -54,6 +102,7 @@
         </div>
       <% end %>
     </div>
+    <% end %>
 
     <%= render "shared/button",
         text: "Done",

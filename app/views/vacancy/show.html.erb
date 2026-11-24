@@ -6,7 +6,11 @@
     <div class="text-center mb-8">
       <h1 class="text-2xl font-bold text-gray-900">Can't Make It?</h1>
       <p class="mt-2 text-sm text-gray-600">
-        We're sorry to hear that! Let us know which of your cast assignments you're no longer able to fulfill.
+        <% if @choose_several %>
+          We're sorry to hear that! You have <%= pluralize(@all_assignments.size, @unit) %> in this show.
+        <% else %>
+          We're sorry to hear that! Let us know which of your cast assignments you're no longer able to fulfill.
+        <% end %>
       </p>
     </div>
 
@@ -37,59 +41,92 @@
     <% end %>
 
     <!-- Role Selection Form -->
-    <%= form_with url: vacancy_confirm_path(@show, token: @token), method: :post, class: "space-y-6", data: { controller: "vacancy-form" } do %>
+    <%= form_with url: vacancy_confirm_path(@show, token: @token), method: :post, class: "space-y-6",
+          data: { controller: "vacancy-form", vacancy_form_unit_value: @unit, vacancy_form_units_value: @unit.pluralize } do %>
       <div class="bg-white shadow rounded-lg overflow-hidden">
         <div class="p-4 border-b border-gray-200">
-          <p class="text-sm font-medium text-gray-700">Select the role you can't fulfill:</p>
+          <% if @choose_several %>
+            <p class="text-sm font-medium text-gray-700">Which <%= @unit.pluralize %> can't you make?</p>
+            <p class="text-xs text-gray-500 mt-1">All <%= @all_assignments.size %> are ticked to start. Untick any <%= @unit %> you can still make.</p>
+          <% else %>
+            <p class="text-sm font-medium text-gray-700">Select the role you can't fulfill:</p>
+          <% end %>
         </div>
 
         <div class="divide-y divide-gray-100">
-          <% @all_assignments.each_with_index do |assignment, index| %>
+          <% @all_assignments.each do |assignment| %>
             <%
               assignment_key = "#{assignment.role_id}:#{assignment.assignable_type}:#{assignment.assignable_id}"
-              assignable = assignment.assignable_type == "Group" ? @groups_by_id[assignment.assignable_id] : @person
+              assignable = assignment.assignable
+              role_label = role_display_name(assignment.role, @lineup_numbers, show: @show)
               is_auto_selected = @all_assignments.size == 1
+              headshot_variant = assignable.safe_headshot_variant(:thumb)
             %>
-            <label class="flex items-center gap-3 p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                   data-vacancy-form-target="assignmentRow"
-                   data-action="click->vacancy-form#selectAssignment">
-              <input type="radio"
-                     name="role_ids[]"
-                     value="<%= assignment_key %>"
-                     class="sr-only"
-                     data-vacancy-form-target="assignmentInput"
-                     <%= "checked" if is_auto_selected %>>
+            <% if @choose_several %>
+              <%# Every act starts ticked; unticking one keeps it. %>
+              <label class="flex items-center gap-3 p-4 cursor-pointer transition-colors bg-pink-50" data-vacancy-form-target="actRow">
+                <input type="checkbox"
+                       name="role_ids[]"
+                       value="<%= assignment_key %>"
+                       checked
+                       class="h-5 w-5 flex-shrink-0 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500"
+                       data-action="change->vacancy-form#refresh">
 
-              <!-- Headshot -->
-              <% headshot_variant = assignable.safe_headshot_variant(:thumb) %>
-              <% if headshot_variant %>
-                <%= image_tag headshot_variant,
-                    alt: assignable.name,
-                    class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
-              <% else %>
-                <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm flex-shrink-0">
-                  <%= assignable.respond_to?(:initials) ? assignable.initials : assignable.name[0] %>
+                <% if headshot_variant %>
+                  <%= image_tag headshot_variant, alt: assignable.name, class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                <% else %>
+                  <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm flex-shrink-0">
+                    <%= assignable.respond_to?(:initials) ? assignable.initials : assignable.name[0] %>
+                  </div>
+                <% end %>
+
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-gray-900 truncate"><%= role_label %></p>
+                  <p class="text-xs text-gray-500 truncate" data-held-by><%= assignable.name %></p>
+                  <p class="hidden text-xs text-gray-600" data-kept>You're keeping this <%= @unit %>.</p>
                 </div>
-              <% end %>
+              </label>
+            <% else %>
+              <label class="flex items-center gap-3 p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                     data-vacancy-form-target="assignmentRow"
+                     data-action="click->vacancy-form#selectAssignment">
+                <input type="radio"
+                       name="role_ids[]"
+                       value="<%= assignment_key %>"
+                       class="sr-only"
+                       data-vacancy-form-target="assignmentInput"
+                       <%= "checked" if is_auto_selected %>>
 
-              <!-- Name and Role -->
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 truncate">
-                  <%= assignable.name %>
-                </p>
-                <p class="text-xs text-gray-500">as <span class="font-medium"><%= assignment.role.name %></span></p>
-              </div>
+                <!-- Headshot -->
+                <% if headshot_variant %>
+                  <%= image_tag headshot_variant,
+                      alt: assignable.name,
+                      class: "w-10 h-10 rounded-lg object-cover flex-shrink-0" %>
+                <% else %>
+                  <div class="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-sm flex-shrink-0">
+                    <%= assignable.respond_to?(:initials) ? assignable.initials : assignable.name[0] %>
+                  </div>
+                <% end %>
 
-              <!-- Selection indicator -->
-              <div class="flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors"
-                   data-vacancy-form-target="indicator"
-                   data-selected-class="border-pink-500 bg-pink-500"
-                   data-unselected-class="border-gray-300">
-                <svg class="w-3 h-3 text-white hidden" data-vacancy-form-target="checkmark" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                </svg>
-              </div>
-            </label>
+                <!-- Name and Role -->
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-gray-900 truncate">
+                    <%= assignable.name %>
+                  </p>
+                  <p class="text-xs text-gray-500">as <span class="font-medium"><%= role_label %></span></p>
+                </div>
+
+                <!-- Selection indicator -->
+                <div class="flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors"
+                     data-vacancy-form-target="indicator"
+                     data-selected-class="border-pink-500 bg-pink-500"
+                     data-unselected-class="border-gray-300">
+                  <svg class="w-3 h-3 text-white hidden" data-vacancy-form-target="checkmark" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                  </svg>
+                </div>
+              </label>
+            <% end %>
           <% end %>
         </div>
       </div>
@@ -136,9 +173,10 @@
 
       <div class="flex flex-col gap-3">
         <%= render "shared/button",
-            text: "I confirm that I can't make it",
+            text: @choose_several ? "I confirm that I can't make these #{pluralize(@all_assignments.size, @unit)}" : "I confirm that I can't make it",
             variant: "primary",
             type: :submit,
+            data: { vacancy_form_target: "submit" },
             classes: "w-full" %>
 
         <%= render "shared/button",

@@ -44,6 +44,43 @@ class VacancyNotificationService
       )
     end
 
+    # Notify team when one person gives up several at once (a performer with
+    # several acts in a show, VacancyController#confirm): one notice that
+    # names every act, not one notice per act (Tim, 2026-11-24).
+    def notify_vacancies_created(vacancies, sender: nil)
+      vacancies = Array(vacancies)
+      return notify_vacancy_created(vacancies.first, sender: sender) if vacancies.size == 1
+
+      vacancy = vacancies.first
+      show = vacancy&.show
+      production = show&.production
+      return empty_result unless production
+
+      recipients = find_notifiable_users(production)
+      vacancies.map(&:vacated_by).uniq.grep(Group).each do |group|
+        recipients.concat(group.group_memberships.includes(person: :user).select(&:notifications_enabled?).filter_map { |gm| gm.person.user })
+      end
+      recipients.uniq!
+      return empty_result if recipients.empty?
+
+      numbers = show.act_based? ? Role.lineup_numbers_for(show.available_roles.to_a) : {}
+      roles = vacancies.map(&:role).sort_by { |role| [ numbers[role.id] || 0, role.position || 0 ] }
+      unit = roles.all? { |role| role.act?(show: show) } ? "act" : "assignment"
+
+      send_notifications(
+        vacancy: vacancy,
+        production: production,
+        recipients: recipients,
+        sender: sender,
+        template_key: VacancyTemplates::SEVERAL,
+        extra_variables: {
+          person_name: vacancies.filter_map { |v| v.vacated_by&.name }.uniq.to_sentence.presence || "A cast member",
+          how_many: "#{roles.size} #{unit.pluralize(roles.size)}",
+          names: roles.map { |role| role.display_name(number: numbers[role.id], show: show) }.to_sentence
+        }
+      )
+    end
+
     # Notify team when a vacancy is filled
     def notify_vacancy_filled(vacancy, sender: nil)
       production = vacancy.show&.production

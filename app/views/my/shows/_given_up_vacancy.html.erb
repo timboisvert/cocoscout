@@ -1,0 +1,33 @@
+<%# One act or role this person gave up on a show that isn't linked: what it
+    was, where finding a replacement stands, and the way back while the show
+    is still ahead. Locals: vacancy, show, cast_numbers, first (no rule above it). %>
+<%
+  given_up_name = role_display_name(vacancy.role, cast_numbers, show: show)
+  given_up_words = if vacancy.finding_replacement?
+    "You've indicated that you can't make #{given_up_name}, and a replacement is being sought"
+  elsif vacancy.not_filling?
+    "You've indicated that you can't make #{given_up_name}, and no replacement is being sought"
+  else
+    "You've indicated that you can't make #{given_up_name}"
+  end
+%>
+<div class="flex items-center gap-2 <%= 'mt-3 pt-3 border-t border-gray-200' unless first %>" data-given-up-vacancy="<%= vacancy.id %>">
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-amber-600 flex-shrink-0">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+  </svg>
+  <p class="flex-1 min-w-0 text-xs text-amber-600 font-medium"><%= given_up_words %></p>
+  <% if !show.canceled && show.date_and_time > Time.current %>
+    <% reclaim_cid = "confirm-reclaim-vacancy-#{vacancy.id}" %>
+    <%= render "shared/button",
+        text: "Actually, I can make it",
+        variant: "secondary",
+        size: "small",
+        type: :button,
+        data: { controller: "modal", action: "click->modal#open", modal_id: reclaim_cid } %>
+    <%= render "shared/confirm_modal", id: reclaim_cid,
+          title: "Restore #{given_up_name}?",
+          message: "This will cancel the vacancy and restore your assignment.",
+          confirm_text: "Actually, I can make it",
+          url: my_reclaim_vacancy_path(show, vacancy), method: :post %>
+  <% end %>
+</div>

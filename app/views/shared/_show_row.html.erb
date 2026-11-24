@@ -60,8 +60,14 @@
   has_link = local_assigns[:link_path].present?
   has_availability = local_assigns[:entity_key].present?
   current_status = local_assigns[:availability]&.status || 'unset'
-  # Don't show "Can't make it" button if user already has a vacancy for this show
-  can_show_vacancy = show_cant_make_it && cant_make_it_person.present? && !is_canceled && show.date_and_time > Time.current && my_vacancies.empty?
+  # "Can't make it?" stays while the person still holds something on the show:
+  # someone who gave up two of their three acts can still give up the third
+  # (Tim, 2026-11-24). On a linked show the assignment stays on the cast until
+  # the production team decides and a vacancy speaks for all of it, so there
+  # the first one still takes the button away.
+  still_cast = entity_assignments.any? || role_assignments.any?
+  can_show_vacancy = show_cant_make_it && cant_make_it_person.present? && !is_canceled && show.date_and_time > Time.current &&
+                     (my_vacancies.empty? || (!show.linked? && still_cast))
   has_right_panel = right_panel.present?
 
   # Check if user has notified they can't make it
@@ -73,6 +79,15 @@
   my_unresolved_vacancies = my_vacancies.select { |v| !v.filled? && !v.cancelled? }
   show_vacancy_indicator = my_unresolved_vacancies.any?
   is_vacancy_only = !is_linked_event && my_unresolved_vacancies.any? && entity_assignments.empty?
+  # Still on the cast of a show that isn't linked, having given up part of
+  # it: the line names what was given up, once, since what is listed above it
+  # is what the person still holds.
+  gave_up_part = !is_linked_event && still_cast && my_unresolved_vacancies.any?
+  vacancy_note = if gave_up_part || (!is_linked_event && my_unresolved_vacancies.size > 1)
+    "You've indicated that you can't make #{my_unresolved_vacancies.filter_map { |v| v.role&.display_name(show: show) }.uniq.to_sentence}"
+  else
+    "You've indicated that you can't make it"
+  end
 %>
 
 <%# Build data attributes for availability rows %>
@@ -255,13 +270,13 @@
                 <strong class="text-pink-500"><%= ra[:role_name] %></strong>
               </div>
             <% end %>
-            <% if show_vacancy_indicator %>
-              <div class="flex items-center gap-1 mt-1">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 text-amber-600">
+            <% if show_vacancy_indicator && (!gave_up_part || idx == entity_assignments.size - 1) %>
+              <div class="flex items-center gap-1 mt-1" data-vacancy-note>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 text-amber-600 flex-shrink-0">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                 </svg>
                 <span class="text-xs text-amber-600 font-medium">
-                  You've indicated that you can't make it
+                  <%= vacancy_note %>
                 </span>
               </div>
             <% end %>
@@ -291,12 +306,12 @@
           </div>
         <% end %>
         <% if show_vacancy_indicator %>
-          <div class="flex items-center gap-1 mt-1">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 text-amber-600">
+          <div class="flex items-center gap-1 mt-1" data-vacancy-note>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 text-amber-600 flex-shrink-0">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
             </svg>
             <span class="text-xs text-amber-600 font-medium">
-              You've indicated that you can't make it
+              <%= vacancy_note %>
             </span>
           </div>
         <% end %>
@@ -311,7 +326,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
         </svg>
         <span class="text-xs text-amber-600 font-medium">
-          You've indicated you can't make it
+          <%= my_unresolved_vacancies.size > 1 ? vacancy_note : "You've indicated you can't make it" %>
         </span>
       </div>
     </div>

@@ -42,6 +42,11 @@ class RoleVacancy < ApplicationRecord
   # Send notification to team when vacancy is created
   after_commit :notify_team_of_creation, on: :create
 
+  # Set by whoever creates several vacancies at once and sends the
+  # production team one notice that names them all (VacancyController#confirm:
+  # a performer giving up several acts), so each doesn't send its own.
+  attr_accessor :noticed_together
+
   def fill!(person, by: nil)
     transaction do
       # Get all shows in the linkage or just the primary show
@@ -159,6 +164,8 @@ class RoleVacancy < ApplicationRecord
   private
 
   def notify_team_of_creation
+    return if noticed_together
+
     # Don't notify for vacancies on past shows
     return if show&.date_and_time && show.date_and_time < Time.current
 

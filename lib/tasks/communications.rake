@@ -294,6 +294,17 @@ namespace :communications do
       callers: [ "VacancyNotificationService.notify_vacancy_created" ],
       notes: "Service-rendered: VacancyNotificationService renders template via dynamic template_key, passes to mailer"
     },
+    vacancy_created_several: {
+      name: "Vacancies Created (several acts at once)",
+      category: :shows,
+      channel: :both,
+      mailer: "VacancyNotificationMailer#vacancy_notification",
+      service: "VacancyNotificationService",
+      template_key: "vacancy_created_several",
+      description: "Notify team that one person can't make several of their acts in a show: one notice that names every act",
+      callers: [ "VacancyNotificationService.notify_vacancies_created" ],
+      notes: "Seeded by VacancyTemplates. Sent in place of one vacancy_created per act (VacancyController#confirm)"
+    },
     vacancy_filled: {
       name: "Vacancy Filled",
       category: :shows,

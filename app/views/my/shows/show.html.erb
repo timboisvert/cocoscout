@@ -234,6 +234,15 @@
         has_vacancy_without_assignment = my_assignments.empty? && my_open_vacancy.present?
 
         can_show_cant_make_it = my_assignments.any? && !@show.canceled && @show.date_and_time > Time.current
+
+        # On a show that isn't linked, giving up an act takes it off the cast
+        # at once: what is still listed is still held, and each act given up
+        # is its own line with its own way back (Tim, 2026-11-24: someone
+        # with several acts chooses which they can't make). A linked show
+        # keeps the cast until the production team decides, so there a
+        # vacancy still speaks for the whole assignment.
+        speaks_for_all = @show.linked?
+        given_up_vacancies = speaks_for_all ? [] : (@my_vacancies + @my_group_vacancies).select { |v| v.show_id == @show.id && !v.filled? && !v.cancelled? }
       %>
       <div class="flex flex-col lg:flex-row gap-4">
         <!-- My Cast Assignment (left side) -->
@@ -256,7 +265,7 @@
                     # We match by entity (type + id) only, not role_id, because linked events have different role IDs per show
                     entity_key = [assignment.assignable_type, assignment.assignable_id]
                     assignment_vacancy = @vacancies_by_entity[entity_key]
-                    has_vacancy = assignment_vacancy.present? && !assignment_vacancy.cancelled?
+                    has_vacancy = speaks_for_all && assignment_vacancy.present? && !assignment_vacancy.cancelled?
                   %>
                   <div class="<%= 'pb-3 border-b border-gray-200' if group_index < my_assignment_groups.size - 1 %>">
                     <div class="flex items-center gap-3">
@@ -316,7 +325,7 @@
                 # Check if any of my assignments have an unresolved vacancy (open, finding_replacement, or not_filling)
                 # Use entity key (type + id) since linked events have different role IDs per show
                 # Note: not_filling means person still can't make it, they should be able to reclaim
-                has_unresolved_vacancy = my_assignments.any? do |a|
+                has_unresolved_vacancy = speaks_for_all && my_assignments.any? do |a|
                   key = [a.assignable_type, a.assignable_id]
                   v = @vacancies_by_entity[key]
                   v.present? && !v.filled? && !v.cancelled?
@@ -326,6 +335,9 @@
                   @vacancies_by_entity[key]
                 }.compact.find { |v| !v.filled? && !v.cancelled? }
               %>
+              <% given_up_vacancies.each do |vacancy| %>
+                <%= render "my/shows/given_up_vacancy", vacancy: vacancy, show: @show, cast_numbers: cast_numbers, first: false %>
+              <% end %>
               <% if can_show_cant_make_it %>
                 <div class="mt-4 pt-3 border-t border-gray-200">
                   <% if has_unresolved_vacancy && unresolved_vacancy %>
@@ -354,6 +366,11 @@
           <div class="lg:w-1/2 border border-gray-200 rounded-lg overflow-hidden bg-white">
             <%= render "shared/section_heading", padding: "px-4 py-3", title: "Your Status" %>
             <div class="p-4">
+              <% if given_up_vacancies.size > 1 %>
+                <% given_up_vacancies.each_with_index do |vacancy, index| %>
+                  <%= render "my/shows/given_up_vacancy", vacancy: vacancy, show: @show, cast_numbers: cast_numbers, first: index.zero? %>
+                <% end %>
+              <% else %>
               <div class="flex items-start gap-3">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
@@ -387,6 +404,7 @@
                         confirm_text: "Actually, I can make it",
                         url: my_reclaim_vacancy_path(@show, my_open_vacancy), method: :post %>
                 </div>
+              <% end %>
               <% end %>
             </div>
           </div>
