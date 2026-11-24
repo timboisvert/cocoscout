@@ -245,7 +245,7 @@ RSpec.describe "Production ticketing", type: :request do
     org.ticket_discount_codes.create!(production: production, code: "FRIENDS", kind: "fixed", amount_cents: 500)
     get manage_production_ticketing_codes_export_path(production)
     expect(response.headers["Content-Disposition"]).to include("rising-stars-discount-codes.csv")
-    expect(response.body.lines.map(&:chomp)).to eq([ "Code,Kind,Amount,Most uses,Shared with", "FRIENDS,$ off,5.00,,Production team and cast" ])
+    expect(response.body.lines.map(&:chomp)).to eq([ "Code,Kind,Amount,Most uses,Minimum tickets,Shared with", "FRIENDS,$ off,5.00,,,Production team and cast" ])
 
     file = Rack::Test::UploadedFile.new(StringIO.new("Code,Kind,Amount\nFRIENDS,$ off,5\nCAST,% off,20\n"), "text/csv", original_filename: "codes.csv")
     post manage_production_ticketing_codes_import_path(production), params: { file: file }

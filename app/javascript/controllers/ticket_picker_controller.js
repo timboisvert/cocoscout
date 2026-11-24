@@ -8,17 +8,28 @@ import { orderTotalCents, money } from "controllers/lib/ticket_pricing"
 // reused, or swapped if they change their mind). The math is
 // TicketPricing's (our 50¢ per paid ticket, card processing grossed up once
 // per order when buyers pay the fees, tax added on top), so the total is what
-// checkout charges — before any code — and never more than the ticket prices
-// shown added up.
+// checkout charges and never more than the ticket prices shown added up.
+//
+// A discount code on the page shows right here (Tim, 2026-11-24): each
+// covered ticket type's price with the code, a line for what it takes off,
+// and the total. A code with a minimum number of tickets waits for it: under
+// the minimum the prices stay full and a note says how many more tickets it
+// takes. Applying or removing a code reloads the page; the tickets chosen
+// and the place on the page are kept across that reload (keepCart).
 export default class extends Controller {
     static targets = ["row", "count", "input", "minus", "plus", "summary", "total", "totalDetails", "totalSummary", "breakdown", "submit",
-        "holdInput", "holdNote", "code"]
+        "holdInput", "holdNote", "code", "codeLine", "codeNote"]
     static values = { feeMode: String, platformFee: Number, perMille: Number, fixed: Number, taxLabel: String,
-        listingId: Number, holdUrl: String }
+        listingId: Number, holdUrl: String, codeLabel: String, codeMin: Number, codeSentence: String }
 
     connect() {
+        this.restoreCart()
         this.render()
         this.restoreHold()
+        // The code form and Remove sit beside this form, not inside it.
+        this.keepCart = this.keepCart.bind(this)
+        this.cartKeepers = Array.from(this.element.parentElement?.querySelectorAll("[data-keep-cart]") || [])
+        this.cartKeepers.forEach((el) => el.addEventListener(el.dataset.keepCart, this.keepCart))
         // Back/forward can show the page from the browser's cache: check again.
         this.onPageShow = (event) => { if (event.persisted) this.restoreHold() }
         window.addEventListener("pageshow", this.onPageShow)
@@ -27,6 +38,45 @@ export default class extends Controller {
     disconnect() {
         window.removeEventListener("pageshow", this.onPageShow)
         clearInterval(this.holdTimer)
+        this.cartKeepers?.forEach((el) => el.removeEventListener(el.dataset.keepCart, this.keepCart))
+    }
+
+    cartKey() {
+        return `cocoscout:ticket-cart:${this.listingIdValue}`
+    }
+
+    // About to reload for a code: remember what's chosen and where the page is.
+    keepCart() {
+        const quantities = {}
+        this.rowTargets.forEach((row) => {
+            const n = Number(row.querySelector("[data-ticket-picker-target='input']").value)
+            if (n > 0) quantities[row.dataset.tierId] = n
+        })
+        try {
+            window.sessionStorage.setItem(this.cartKey(), JSON.stringify({ quantities, y: window.scrollY, at: Date.now() }))
+        } catch (_e) {
+            // Without it the page still works; they pick again.
+        }
+    }
+
+    // Back from that reload: the same tickets, the same place. Only a cart
+    // kept in the last minute counts, so a later visit starts empty.
+    restoreCart() {
+        let kept = null
+        try {
+            kept = JSON.parse(window.sessionStorage.getItem(this.cartKey()) || "null")
+            window.sessionStorage.removeItem(this.cartKey())
+        } catch (_e) {
+            return
+        }
+        if (!kept || !kept.quantities || Date.now() - Number(kept.at) > 60000) return
+
+        this.rowTargets.forEach((row) => {
+            const n = Number(kept.quantities[row.dataset.tierId] || 0)
+            row.querySelector("[data-ticket-picker-target='input']").value = Math.max(0, Math.min(Number(row.dataset.max) || 0, n))
+        })
+        this.cartRestored = true
+        if (Number.isFinite(kept.y)) requestAnimationFrame(() => window.scrollTo(0, kept.y))
     }
 
     holdKey() {
@@ -59,7 +109,8 @@ export default class extends Controller {
             // Their own held seats are theirs to pick again, not taken.
             const left = row.dataset.left === "" ? Infinity : Number(row.dataset.left) + held
             row.dataset.max = Math.min(left, Number(row.dataset.perOrder))
-            row.querySelector("[data-ticket-picker-target='input']").value = held
+            // A cart just kept across a code's reload is newer than the hold.
+            if (!this.cartRestored) row.querySelector("[data-ticket-picker-target='input']").value = held
         })
         this.holdInputTarget.value = token
         if (hold.code && !this.hasCodeTarget) {
@@ -117,24 +168,43 @@ export default class extends Controller {
     }
 
     render() {
+        const quantity = (row) => Number(row.querySelector("[data-ticket-picker-target='input']").value)
+        // The code is on once the tickets it covers reach its minimum; a
+        // code without one is on from the start.
+        const hasCode = this.codeLabelValue !== ""
+        const counted = this.rowTargets.reduce((sum, row) =>
+            sum + (row.dataset.counts ? quantity(row) * Number(row.dataset.admits || 1) : 0), 0)
+        const codeOn = hasCode && (this.codeMinValue <= 1 || counted >= this.codeMinValue)
+
         let count = 0
         let base = 0
         let paid = 0
         let face = 0
         let tax = 0
+        let discount = 0
         const lines = []
         this.rowTargets.forEach((row) => {
-            const input = row.querySelector("[data-ticket-picker-target='input']")
-            const n = Number(input.value)
+            const n = quantity(row)
             const price = Number(row.dataset.price)
             // A 4-pack admits four: four tickets, four 50¢ fees.
             const admits = Number(row.dataset.admits || 1)
+            const covered = codeOn && row.dataset.counts
+            const off = covered ? Number(row.dataset.off || 0) : 0
+            const rowTax = covered ? Number(row.dataset.offTax || 0) : Number(row.dataset.tax)
             count += n * admits
             face += n * price
-            tax += n * Number(row.dataset.tax)
-            base += n * (price + Number(row.dataset.tax))
-            if (price > 0) paid += n * admits
+            discount += n * off
+            tax += n * rowTax
+            base += n * (price - off + rowTax)
+            // A ticket the code makes free carries no fee, as at checkout.
+            paid += n * (covered ? Number(row.dataset.offPaid || 0) : (price > 0 ? admits : 0))
             if (n > 0) lines.push([`${n} × ${row.dataset.name}`, n * price])
+            // The price with the code, in place of the price without it.
+            const offPrice = row.querySelector("[data-off-price]")
+            if (offPrice) {
+                offPrice.hidden = !codeOn
+                row.querySelector("[data-full-price]").hidden = codeOn
+            }
             // A sold-out type has no steppers.
             const counter = row.querySelector("[data-ticket-picker-target='count']")
             if (counter) counter.textContent = n
@@ -147,17 +217,35 @@ export default class extends Controller {
         const total = this.totalCents(base, paid)
         this.summaryTarget.textContent = count === 0 ? "Choose your tickets" : `${count} ${count === 1 ? "ticket" : "tickets"}`
         this.totalTarget.textContent = count === 0 ? "" : this.money(total)
-        // The lines checkout shows: the tickets, the fees (whatever's left
-        // after the tickets and tax), and the tax.
-        const fees = total - face - tax
+        // The lines checkout shows: the tickets, what the code takes off, the
+        // fees (whatever's left after the tickets and tax), and the tax.
+        if (discount > 0) lines.push([this.codeLabelValue, -discount])
+        const fees = total - (face - discount) - tax
         if (fees > 0) lines.push(["Fees", fees])
         if (tax > 0) lines.push([this.taxLabelValue || "Tax", tax])
-        const open = count > 0 && total > 0 && lines.length > 1
+        // A free order (a code for 100% off) has a total worth opening too.
+        const open = count > 0 && (total > 0 || discount > 0) && lines.length > 1
         this.renderBreakdown(open ? lines : [], total)
         this.totalTarget.classList.toggle("underline", open)
         this.totalSummaryTarget.classList.toggle("pointer-events-none", !open)
         if (!open) this.totalDetailsTarget.open = false
         this.submitTarget.disabled = count === 0
+        if (hasCode) this.renderCode(codeOn, counted, discount)
+    }
+
+    // The code's own line (what it takes off this order) and its note: what
+    // the code does, and under its minimum, how many more tickets it takes.
+    renderCode(codeOn, counted, discount) {
+        if (this.hasCodeLineTarget) {
+            this.codeLineTarget.classList.toggle("hidden", discount === 0)
+            this.codeLineTarget.querySelector("[data-code-amount]").textContent = this.money(-discount)
+        }
+        if (!this.hasCodeNoteTarget) return
+
+        const short = this.codeMinValue - counted
+        const more = !codeOn && counted > 0 ? ` Add ${short} more ${short === 1 ? "ticket" : "tickets"} to use it.` : ""
+        this.codeNoteTarget.textContent = this.codeSentenceValue + more
+        this.codeNoteTarget.classList.toggle("hidden", discount > 0)
     }
 
     renderBreakdown(lines, total) {
@@ -182,7 +270,8 @@ export default class extends Controller {
             perMille: this.perMilleValue, fixed: this.fixedValue })
     }
 
+    // "$15.00", or "−$15.00" for what a code takes off.
     money(cents) {
-        return money(cents)
+        return cents < 0 ? `−${money(-cents)}` : money(cents)
     }
 }

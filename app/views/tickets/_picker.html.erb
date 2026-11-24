@@ -20,6 +20,10 @@
   # and fees; the tap still opens every cent, and the total below is real.
   price_extras = ticket_price_extras(listing, tax_added: tax_added)
   price_note = ticket_price_note(listing, taxed: taxed, tax_added: tax_added)
+  # The discount a code on the page takes off (Tim, 2026-11-24): shown here,
+  # in each price and in the total, not only at checkout. A code that only
+  # unlocks a hidden ticket type has none.
+  discount = code.present? ? TicketCheckout.find_discount(listing, code) : nil
 %>
 <div class="rounded-2xl border border-gray-200 bg-white overflow-hidden">
   <% if show.canceled || listing.status == "canceled" %>
@@ -39,7 +43,10 @@
                   ticket_picker_platform_fee_value: TicketPricing::PLATFORM_FEE_CENTS,
                   ticket_picker_per_mille_value: TicketPricing::PROCESSING_PER_MILLE,
                   ticket_picker_fixed_value: TicketPricing::PROCESSING_FIXED_CENTS,
-                  ticket_picker_tax_label_value: tax_label } do %>
+                  ticket_picker_tax_label_value: tax_label,
+                  ticket_picker_code_label_value: (discount ? "#{discount.code}, #{discount.off_words}" : ""),
+                  ticket_picker_code_min_value: (discount&.minimum? ? discount.min_tickets : 0),
+                  ticket_picker_code_sentence_value: discount&.buyer_sentence.to_s } do %>
       <%= hidden_field_tag :code, code, data: { ticket_picker_target: "code" } if code %>
       <%= hidden_field_tag :hold, nil, id: nil, data: { ticket_picker_target: "holdInput" } %>
       <%= hidden_field_tag :embed, "1" if embed? %>
@@ -52,12 +59,29 @@
           <% most = [ left || tier.units_for(max_per_order), tier.units_for(max_per_order) ].min %>
           <% added_tax = tax_added ? tier.seat_prices.sum { |cents| TaxCalculator.for_ticket(listing, tier.base_tier, cents).added_cents } : 0 %>
           <% breakdown = tier.free? ? nil : ticket_price_breakdown(listing, tier) %>
-          <li class="flex items-center gap-3 px-5 py-4" data-ticket-picker-target="row" data-name="<%= tier.name %>" data-tier-id="<%= tier.id %>"
-              data-price="<%= tier.price_cents %>" data-tax="<%= added_tax %>" data-max="<%= [ most, 0 ].max %>"
-              data-admits="<%= tier.admits %>" data-left="<%= left %>" data-per-order="<%= tier.units_for(max_per_order) %>">
+          <%# What the code takes off one of these, with the tax and the count
+              of paid tickets that go with the lower price (a 4-pack splits
+              both across its four tickets, as checkout does). %>
+          <% covered = discount&.applies_to?(listing, tier) %>
+          <% off = covered ? discount.discount_cents_for(tier.price_cents) : 0 %>
+          <% off_data = covered ? { counts: 1, off: off, off_tax: (tax_added ? TicketPricing.added_tax_cents(listing, tier, off: off) : 0),
+                                   off_paid: tier.seat_prices.zip(tier.seat_prices(off)).count { |cents, seat_off| cents - seat_off > 0 } } : {} %>
+          <%= tag.li class: "flex items-center gap-3 px-5 py-4", data: { ticket_picker_target: "row", name: tier.name, tier_id: tier.id,
+                price: tier.price_cents, tax: added_tax, max: [ most, 0 ].max, admits: tier.admits, left: left.to_s,
+                per_order: tier.units_for(max_per_order).to_s, **off_data } do %>
             <div class="min-w-0 flex-1">
               <div class="font-semibold text-gray-900"><%= tier.name %></div>
               <% if tier.description.present? %><div class="text-sm text-gray-600"><%= tier.description %></div><% end %>
+              <% if off.positive? %>
+                <%# The price with the code, beside the price without it: shown
+                    once the order reaches the code's minimum (ticket-picker). %>
+                <div class="text-sm font-semibold mt-0.5" data-off-price hidden>
+                  <span class="font-normal text-gray-500 line-through"><%= ticket_price(TicketPricing.shown_price_cents(listing, tier)) %></span>
+                  <span class="text-pink-700"><%= ticket_price(TicketPricing.shown_price_cents(listing, tier, off: off)) %></span>
+                  <% if price_note %><span class="text-xs font-normal text-gray-600"><%= price_note %></span><% end %>
+                </div>
+              <% end %>
+              <div data-full-price>
               <% if breakdown && breakdown.rows.size > 1 %>
                 <details class="mt-0.5">
                   <summary class="<%= summary_class %> text-sm font-semibold text-gray-900">
@@ -79,6 +103,7 @@
                   <% if !tier.free? && price_note %><span class="text-xs font-normal text-gray-600"><%= price_note %></span><% end %>
                 </div>
               <% end %>
+              </div>
               <% if (low = listing.low_stock_note(left)) %><div class="text-xs font-semibold text-amber-700"><%= low %></div><% end %>
             </div>
             <%= hidden_field_tag "quantities[#{tier.id}]", 0, data: { ticket_picker_target: "input" } %>
@@ -95,7 +120,7 @@
             <% else %>
               <span class="text-sm font-medium text-gray-600">Sold out</span>
             <% end %>
-          </li>
+          <% end %>
         <% end %>
       </ul>
       <div class="px-5 py-4 border-t border-gray-100 space-y-3">
@@ -109,22 +134,43 @@
           </summary>
           <dl class="<%= panel_class %> text-sm" data-ticket-picker-target="breakdown"></dl>
         </details>
+        <% if discount %>
+          <%# What the code takes off this order, as soon as it does. %>
+          <div class="hidden" data-ticket-picker-target="codeLine" aria-live="polite">
+            <p class="flex items-baseline justify-between gap-4 text-sm font-medium text-pink-700">
+              <span><%= discount.code %>, <%= discount.off_words %></span>
+              <span class="tabular-nums" data-code-amount></span>
+            </p>
+          </div>
+        <% end %>
         <%= render "shared/button", text: "Continue to checkout", variant: "primary", size: "jumbo", type: :submit, classes: "disabled:opacity-50",
               data: { ticket_picker_target: "submit" } %>
-        <% if code %>
+        <% if discount %>
+          <%# What the code does, and under its minimum, how many more tickets it takes. %>
+          <p class="text-sm text-center text-pink-800 bg-pink-50 rounded-lg px-3 py-2" data-ticket-picker-target="codeNote" aria-live="polite"><%= discount.buyer_sentence %></p>
+        <% elsif code %>
           <p class="text-xs text-center text-gray-600">Your code <span class="font-medium uppercase"><%= code %></span> is applied at checkout.</p>
         <% end %>
       </div>
     <% end %>
-    <details class="border-t border-gray-100 px-5 py-3 text-sm" <%= "open" if code || @code_error %>>
-      <summary class="cursor-pointer text-pink-700 hover:text-pink-800 text-center list-none">Have a code?</summary>
-      <%= form_with url: code_url, method: :get, data: { turbo: false }, class: "mt-3 flex gap-2" do %>
-        <%= hidden_field_tag :embed, "1" if embed? %>
-        <%= text_field_tag :code, code, placeholder: "Discount or access code", "aria-label": "Discount or access code",
-              class: "flex-1 min-w-0 px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 uppercase placeholder:normal-case placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
-        <%= render "shared/button", text: "Apply", variant: "secondary", size: "small", type: :submit %>
-      <% end %>
-      <% if @code_error %><p class="mt-2 text-center text-xs font-medium text-red-600" role="alert"><%= @code_error %></p><% end %>
-    </details>
+    <%# Applying or removing a code reloads the page, and the tickets already
+        chosen come back with it (data-keep-cart, ticket-picker). %>
+    <% if discount %>
+      <div class="border-t border-gray-100 px-5 py-3 text-sm flex items-center justify-between gap-3" data-applied-code>
+        <p class="min-w-0 text-gray-700"><span class="font-semibold"><%= discount.code %></span> · <%= discount.terms_words %></p>
+        <%= render "shared/button", text: "Remove", variant: "secondary", size: "small", type: :link, path: code_url, data: { turbo: false, keep_cart: "click" } %>
+      </div>
+    <% else %>
+      <details class="border-t border-gray-100 px-5 py-3 text-sm" <%= "open" if code || @code_error %>>
+        <summary class="cursor-pointer text-pink-700 hover:text-pink-800 text-center list-none">Have a code?</summary>
+        <%= form_with url: code_url, method: :get, data: { turbo: false, keep_cart: "submit" }, class: "mt-3 flex gap-2" do %>
+          <%= hidden_field_tag :embed, "1" if embed? %>
+          <%= text_field_tag :code, code, placeholder: "Discount or access code", "aria-label": "Discount or access code",
+                class: "flex-1 min-w-0 px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-gray-900 uppercase placeholder:normal-case placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+          <%= render "shared/button", text: "Apply", variant: "secondary", size: "small", type: :submit %>
+        <% end %>
+        <% if @code_error %><p class="mt-2 text-center text-xs font-medium text-red-600" role="alert"><%= @code_error %></p><% end %>
+      </details>
+    <% end %>
   <% end %>
 </div>

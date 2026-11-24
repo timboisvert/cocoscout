@@ -6,10 +6,10 @@ require "csv"
 # or a date lists, exported as a CSV, and a CSV's codes added in bulk, onto
 # another production or date or after editing them in a spreadsheet. The
 # columns are the ones a manager types when adding one code (code, kind,
-# amount, most uses, who it's shared with); uses aren't carried, they're
+# amount, most uses, minimum tickets, who it's shared with); uses aren't carried, they're
 # counted from orders.
 class DiscountCodeCsv
-  HEADERS = [ "Code", "Kind", "Amount", "Most uses", "Shared with" ].freeze
+  HEADERS = [ "Code", "Kind", "Amount", "Most uses", "Minimum tickets", "Shared with" ].freeze
 
   Result = Data.define(:added, :skipped, :errors) do
     def ok?
@@ -31,13 +31,9 @@ class DiscountCodeCsv
     CSV.generate do |csv|
       csv << HEADERS
       codes.each do |code|
-        csv << [ code.code, code.kind == "percent" ? "% off" : "$ off", amount_words(code), code.max_uses, TicketDiscountCode::SHARED_WITH_LABELS[code.shared_with] ]
+        csv << [ code.code, code.kind == "percent" ? "% off" : "$ off", code.amount_words, code.max_uses, code.min_tickets, TicketDiscountCode::SHARED_WITH_LABELS[code.shared_with] ]
       end
     end
-  end
-
-  def self.amount_words(code)
-    code.kind == "percent" ? format("%g", code.percent) : format("%.2f", code.amount_cents.to_i / 100.0)
   end
 
   # file: an uploaded CSV; text: pasted lines (either). scope: production: or
@@ -56,7 +52,7 @@ class DiscountCodeCsv
       next if row.values.all?(&:blank?)
 
       raw = { code: row["code"], kind: kind_from(row["kind"], row["amount"]), amount: row["amount"],
-              max_uses: row["most uses"].presence, shared_with: shared_with_from(row["shared with"]) }
+              max_uses: row["most uses"].presence, min_tickets: row["minimum tickets"].presence, shared_with: shared_with_from(row["shared with"]) }
       code = organization.ticket_discount_codes.new(TicketDiscountCode.attributes_from_form(raw).merge(scope))
       if existing.include?(code.code)
         skipped << code.code
@@ -95,5 +91,5 @@ class DiscountCodeCsv
 
     TicketDiscountCode::SHARED_WITH_LABELS.find { |key, label| text == key || text == label.downcase }&.first || "team_and_cast"
   end
-  private_class_method :parse, :kind_from, :shared_with_from, :amount_words
+  private_class_method :parse, :kind_from, :shared_with_from
 end

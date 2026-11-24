@@ -15,7 +15,7 @@ RSpec.describe DiscountCodeCsv do
     org.ticket_discount_codes.create!(production: production, code: "cast", kind: "percent", percent: 20)
 
     csv = described_class.export(org.ticket_discount_codes.where(production: production).order(:code))
-    expect(csv.lines.map(&:chomp)).to eq([ "Code,Kind,Amount,Most uses,Shared with", "CAST,% off,20,,Production team and cast", "FRIENDS,$ off,5.00,20,Production team only" ])
+    expect(csv.lines.map(&:chomp)).to eq([ "Code,Kind,Amount,Most uses,Minimum tickets,Shared with", "CAST,% off,20,,,Production team and cast", "FRIENDS,$ off,5.00,20,,Production team only" ])
 
     result = described_class.import(organization: org, production: other, text: csv)
     expect(result).to be_ok

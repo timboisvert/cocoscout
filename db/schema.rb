@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_23_040100) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_24_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -4391,6 +4391,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_040100) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "shared_with", default: "team_and_cast", null: false
+    t.integer "min_tickets"
     t.index ["organization_id", "code"], name: "index_ticket_discount_codes_on_organization_id_and_code"
     t.index ["organization_id"], name: "index_ticket_discount_codes_on_organization_id"
     t.index ["production_id"], name: "index_ticket_discount_codes_on_production_id"

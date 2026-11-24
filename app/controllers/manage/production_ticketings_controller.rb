@@ -85,7 +85,7 @@ module Manage
 
     def create_code
       code = Current.organization.ticket_discount_codes.new(
-        production: @production, **TicketDiscountCode.attributes_from_form(params.require(:ticket_discount_code).permit(:code, :kind, :amount, :max_uses, :shared_with))
+        production: @production, **code_attributes
       )
       if code.save
         redirect_to section_path("codes"), notice: "#{code.code} works for every date of #{@production.name}."
@@ -112,15 +112,28 @@ module Manage
       redirect_to section_path("codes"), (result.ok? ? :notice : :alert) => result.summary
     end
 
-    # Who sees the code beside the ticket link (TicketDiscountCode::SHARED_WITH).
+    # A code's row: who sees it beside the ticket link (the select, on its
+    # own), or Edit's modal with every field of Add (Tim, 2026-11-24).
     def update_code
       code = Current.organization.ticket_discount_codes.where(production: @production).find(params[:code_id])
-      shared_with = params[:shared_with].to_s.presence_in(TicketDiscountCode::SHARED_WITH)
-      code.update!(shared_with: shared_with) if shared_with
-      redirect_to section_path("codes"), notice: "#{code.code} is shared with #{code.shared_with_words}."
+      if params[:ticket_discount_code].present?
+        if code.update(code_attributes)
+          redirect_to section_path("codes"), notice: "Saved #{code.code}."
+        else
+          redirect_to section_path("codes"), alert: code.errors.full_messages.to_sentence
+        end
+      else
+        shared_with = params[:shared_with].to_s.presence_in(TicketDiscountCode::SHARED_WITH)
+        code.update!(shared_with: shared_with) if shared_with
+        redirect_to section_path("codes"), notice: "#{code.code} is shared with #{code.shared_with_words}."
+      end
     end
 
     private
+
+    def code_attributes
+      TicketDiscountCode.attributes_from_form(params.require(:ticket_discount_code).permit(*TicketDiscountCode::FORM_FIELDS))
+    end
 
     # Which dates, and when their sales open and close.
     def update_dates

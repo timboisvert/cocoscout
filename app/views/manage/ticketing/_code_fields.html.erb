@@ -1,24 +1,64 @@
-<%# A new discount code's fields, each with its label, shared by a
-    production's and a date's Discount codes tabs. On a phone the code has
-    its own line, then the kind and amount, then the most uses.
-    Locals: cf (the form builder), input_class. %>
-<% label_class = "block text-xs font-medium text-gray-600 mb-1" %>
-<div class="grid grid-cols-2 sm:grid-cols-[minmax(0,1fr)_7rem_7rem_7rem] gap-x-2 gap-y-3">
+<%# A discount code's fields, each with its label, shared by a production's
+    and a date's Discount codes tabs, and by Add and Edit (the same form,
+    Tim, 2026-11-24). On a phone the code has its own line, then the kind
+    and amount. The two limits are toggles: turning one on shows its number.
+    Locals: cf (the form builder), input_class, code (the code being
+    edited, nil when adding), uid (a suffix that keeps this form's ids apart
+    from the page's other code forms). %>
+<%
+  label_class = "block text-xs font-medium text-gray-600 mb-1"
+  code = local_assigns[:code]
+  uid = local_assigns[:uid] || "new"
+  limit_id = "code-limit-uses-#{uid}"
+  minimum_id = "code-require-minimum-#{uid}"
+  number_class = "w-20 px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm text-center text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition"
+  uses = code ? code.uses_count : 0
+%>
+<div class="grid grid-cols-2 sm:grid-cols-[minmax(0,1fr)_7rem_7rem] gap-x-2 gap-y-3">
   <div class="col-span-2 sm:col-span-1">
-    <%= cf.label :code, "Code", class: label_class %>
-    <%= cf.text_field :code, placeholder: "FRIENDS", class: "#{input_class} uppercase" %>
+    <%= cf.label :code, "Code", for: "code-code-#{uid}", class: label_class %>
+    <%= cf.text_field :code, value: code&.code, id: "code-code-#{uid}", placeholder: "FRIENDS", class: "#{input_class} uppercase" %>
   </div>
   <div>
-    <%= cf.label :kind, "Kind", class: label_class %>
-    <%= cf.select :kind, options_for_select([ [ "$ off", "fixed" ], [ "% off", "percent" ] ]), {}, class: input_class %>
+    <%= cf.label :kind, "Kind", for: "code-kind-#{uid}", class: label_class %>
+    <%= cf.select :kind, options_for_select([ [ "$ off", "fixed" ], [ "% off", "percent" ] ], code&.kind), {}, id: "code-kind-#{uid}", class: input_class %>
   </div>
   <div>
-    <%= cf.label :amount, "Amount", class: label_class %>
-    <%= cf.text_field :amount, inputmode: "decimal", placeholder: "5", class: input_class %>
+    <%= cf.label :amount, "Amount", for: "code-amount-#{uid}", class: label_class %>
+    <%= cf.text_field :amount, value: code&.amount_words, id: "code-amount-#{uid}", inputmode: "decimal", placeholder: "5", class: input_class %>
   </div>
-  <div class="col-span-2 sm:col-span-1">
-    <%= cf.label :max_uses, "Most uses", class: label_class %>
-    <%= cf.number_field :max_uses, min: 1, placeholder: "No limit", class: input_class %>
+</div>
+<%# The two limits (Tim, 2026-11-24): off, the code has none; on, its number shows. %>
+<div class="mt-3 rounded-lg border border-gray-200 divide-y divide-gray-100" data-controller="show-when" data-code-limits>
+  <div class="flex items-start gap-3 px-4 py-3">
+    <%= render "shared/toggle_switch", name: "ticket_discount_code[limit_uses]", id: limit_id, checked: code&.max_uses.present?,
+          hidden_false: true, aria_label: "Limit the number of uses" %>
+    <div class="min-w-0 flex-1">
+      <label for="<%= limit_id %>" class="block text-sm font-medium text-gray-900 cursor-pointer">Limit the number of uses</label>
+      <p class="mt-0.5 text-xs text-gray-500" data-show-unless="<%= limit_id %>">The code can be used any number of times.</p>
+      <div data-show-when="<%= limit_id %>">
+        <div class="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-700">
+          <label for="code-max-uses-<%= uid %>">The code stops working after</label>
+          <%= cf.number_field :max_uses, value: code&.max_uses, id: "code-max-uses-#{uid}", min: 1, inputmode: "numeric", class: number_class %>
+          <span>orders.<%= " It has been used #{pluralize(uses, 'time')}." if uses.positive? %></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="flex items-start gap-3 px-4 py-3">
+    <%= render "shared/toggle_switch", name: "ticket_discount_code[require_minimum]", id: minimum_id, checked: code&.min_tickets.present?,
+          hidden_false: true, aria_label: "Require a minimum number of tickets" %>
+    <div class="min-w-0 flex-1">
+      <label for="<%= minimum_id %>" class="block text-sm font-medium text-gray-900 cursor-pointer">Require a minimum number of tickets</label>
+      <p class="mt-0.5 text-xs text-gray-500" data-show-unless="<%= minimum_id %>">The code works on an order of any size.</p>
+      <div data-show-when="<%= minimum_id %>">
+        <div class="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-700">
+          <label for="code-min-tickets-<%= uid %>">The code only works on an order of</label>
+          <%= cf.number_field :min_tickets, value: code&.min_tickets, id: "code-min-tickets-#{uid}", min: 1, inputmode: "numeric", class: number_class %>
+          <span>or more tickets.</span>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 <%# Who sees the code beside the ticket link on their pages (Tim, 2026-10-17). %>
@@ -27,7 +67,7 @@
   <div class="flex flex-wrap gap-x-5 gap-y-2">
     <% TicketDiscountCode::SHARED_WITH.each do |value| %>
       <label class="flex items-center gap-2 text-sm text-gray-900">
-        <%= cf.radio_button :shared_with, value, checked: value == "team_and_cast", class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
+        <%= cf.radio_button :shared_with, value, checked: value == (code&.shared_with || "team_and_cast"), id: "code-shared-#{value}-#{uid}", class: "h-4 w-4 text-pink-600 border-gray-300 focus:ring-pink-500 accent-pink-500" %>
         <%= TicketDiscountCode::SHARED_WITH_LABELS[value] %>
       </label>
     <% end %>

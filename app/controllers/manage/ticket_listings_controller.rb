@@ -24,7 +24,7 @@ module Manage
     SETTINGS_GROUPS = { "sales" => "What you sell", "tickets" => "What you sell", "products" => "What you sell", "codes" => "What you sell",
                         "fees" => "Money", "comps" => "Money", "refunds" => "Money", "page" => "Buyers' pages" }.freeze
 
-    before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code destroy_code export_codes import_codes cancel
+    before_action :set_listing, only: %i[show guests door_list edit update change_status destroy create_code update_code destroy_code export_codes import_codes cancel
                                            change_review tell_change mark_change_told outside_sales tier_availability]
     before_action :set_settings_section, only: %i[edit update]
 
@@ -230,12 +230,21 @@ module Manage
       redirect_to settings_path("codes"), notice: own ? "This date uses its own codes; #{name} don't work on it." : "This date uses #{name} codes."
     end
 
-    # Who sees the code beside the ticket link (TicketDiscountCode::SHARED_WITH).
+    # A code's row: who sees it beside the ticket link (the select, on its
+    # own), or Edit's modal with every field of Add (Tim, 2026-11-24).
     def update_code
       code = @listing.ticket_discount_codes.find(params[:code_id])
-      shared_with = params[:shared_with].to_s.presence_in(TicketDiscountCode::SHARED_WITH)
-      code.update!(shared_with: shared_with) if shared_with
-      redirect_to settings_path("codes"), notice: "#{code.code} is shared with #{code.shared_with_words}."
+      if params[:ticket_discount_code].present?
+        if code.update(code_params)
+          redirect_to settings_path("codes"), notice: "Saved #{code.code}."
+        else
+          redirect_to settings_path("codes"), alert: code.errors.full_messages.to_sentence
+        end
+      else
+        shared_with = params[:shared_with].to_s.presence_in(TicketDiscountCode::SHARED_WITH)
+        code.update!(shared_with: shared_with) if shared_with
+        redirect_to settings_path("codes"), notice: "#{code.code} is shared with #{code.shared_with_words}."
+      end
     end
 
     # Codes that have been used are switched off, never deleted: orders keep
@@ -425,7 +434,7 @@ module Manage
     end
 
     def code_params
-      TicketDiscountCode.attributes_from_form(params.require(:ticket_discount_code).permit(:code, :kind, :amount, :max_uses, :shared_with))
+      TicketDiscountCode.attributes_from_form(params.require(:ticket_discount_code).permit(*TicketDiscountCode::FORM_FIELDS))
     end
   end
 end

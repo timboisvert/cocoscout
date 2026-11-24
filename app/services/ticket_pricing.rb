@@ -100,9 +100,9 @@ class TicketPricing
   # requires fees in the price; including tax as well means no surprise.)
   # A type that admits several people (a 4-pack) is priced as its tickets
   # together: 50¢ for each person, processing once.
-  def self.all_in_price_cents(listing, tier)
-    items = tier.seat_prices.map do |cents|
-      { price_cents: cents, discount_cents: 0, tax_cents: TaxCalculator.for_ticket(listing, tier.base_tier, cents).added_cents }
+  def self.all_in_price_cents(listing, tier, off: 0)
+    items = tier.seat_prices.zip(tier.seat_prices(off)).map do |cents, seat_off|
+      { price_cents: cents, discount_cents: seat_off, tax_cents: TaxCalculator.for_ticket(listing, tier.base_tier, cents - seat_off).added_cents }
     end
     quote(items: items, fee_mode: listing.effective_fee_mode).total_cents
   end
@@ -110,13 +110,15 @@ class TicketPricing
   # The price a ticket type is shown at before anyone picks it: the all-in
   # price, or the ticket's own price when the box office shows prices before
   # taxes and fees (the page then names what's added: "+ taxes & fees").
-  def self.shown_price_cents(listing, tier)
-    listing.prices_before_extras? ? tier.price_cents : all_in_price_cents(listing, tier)
+  # off: what a discount code takes off one of them (the picker shows the
+  # price with the code beside the price without it).
+  def self.shown_price_cents(listing, tier, off: 0)
+    listing.prices_before_extras? ? tier.price_cents - off : all_in_price_cents(listing, tier, off: off)
   end
 
   # The tax added on top of one ticket type (0 when tax is inside the price).
-  def self.added_tax_cents(listing, tier)
-    tier.seat_prices.sum { |cents| TaxCalculator.for_ticket(listing, tier.base_tier, cents).added_cents }
+  def self.added_tax_cents(listing, tier, off: 0)
+    tier.seat_prices.zip(tier.seat_prices(off)).sum { |cents, seat_off| TaxCalculator.for_ticket(listing, tier.base_tier, cents - seat_off).added_cents }
   end
 
   # What one product really adds for a buyer, fees and tax in, by the same

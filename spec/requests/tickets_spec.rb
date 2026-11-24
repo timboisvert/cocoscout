@@ -289,9 +289,10 @@ RSpec.describe "Public ticketing", type: :request do
       expect(response.body).not_to include("is applied")
       expect(response.body).not_to include('name="code" id="code" value="ELSEWHERE"')
 
+      # A discount shows right there, not only at checkout (Tim, 2026-11-24).
       get event_path, params: { code: "friends" }
-      expect(response.body).to include("Your code <span class=\"font-medium uppercase\">FRIENDS</span> is applied")
-      expect(response.body).not_to include("doesn&#39;t work")
+      expect(response.body).to include("Your code FRIENDS takes 10% off.")
+      expect(response.body).not_to include("doesn&#39;t work", "is applied at checkout")
     end
 
     # "Only N left" from 5 unless the production says otherwise, and a date

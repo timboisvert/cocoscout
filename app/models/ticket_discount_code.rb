@@ -11,6 +11,8 @@ class TicketDiscountCode < ApplicationRecord
   # cast, the team only, or nobody. Buyers never see it unless someone
   # gives it to them.
   SHARED_WITH = %w[team_and_cast team nobody].freeze
+  # What Add and Edit's form sends (manage/ticketing/_code_fields).
+  FORM_FIELDS = %i[code kind amount limit_uses max_uses require_minimum min_tickets shared_with].freeze
   SHARED_WITH_LABELS = { "team_and_cast" => "Production team and cast", "team" => "Production team only", "nobody" => "Nobody" }.freeze
 
   belongs_to :organization
@@ -25,14 +27,21 @@ class TicketDiscountCode < ApplicationRecord
   validates :amount_cents, numericality: { only_integer: true, greater_than: 0 }, if: -> { kind == "fixed" }
   validates :percent, numericality: { greater_than: 0, less_than_or_equal_to: 100 }, if: -> { kind == "percent" }
   validates :max_uses, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
+  validate :minimum_is_a_ticket_count
   validates :shared_with, inclusion: { in: SHARED_WITH }
   validate :one_scope
 
   # A code typed into a manager's form: "$ off" or "% off", an amount like
-  # "5" or "$5.00" or "20%", and optionally the most uses.
+  # "5" or "$5.00" or "20%", and optionally the most uses and the minimum
+  # number of tickets. The form puts each of those two numbers behind a
+  # toggle (limit_uses, require_minimum): off clears the number, and on with
+  # nothing typed is an error the form reports. A spreadsheet row has no
+  # toggles, so there a number that's present is the limit.
   def self.attributes_from_form(raw)
     amount = raw[:amount].to_s.delete("$,%").strip
-    attrs = { code: raw[:code], kind: raw[:kind].presence_in(KINDS) || "fixed", max_uses: raw[:max_uses].presence }
+    attrs = { code: raw[:code], kind: raw[:kind].presence_in(KINDS) || "fixed",
+              max_uses: number_behind_toggle(raw, :limit_uses, :max_uses),
+              min_tickets: number_behind_toggle(raw, :require_minimum, :min_tickets) }
     attrs[:shared_with] = raw[:shared_with].presence_in(SHARED_WITH) if raw.key?(:shared_with)
     if attrs[:kind] == "percent"
       attrs[:percent] = amount.presence && BigDecimal(amount)
@@ -41,8 +50,17 @@ class TicketDiscountCode < ApplicationRecord
     end
     attrs
   rescue ArgumentError
-    { code: raw[:code], kind: "fixed" }
+    # An amount that isn't a number: nothing to take off, so the code doesn't save.
+    { code: raw[:code], kind: "fixed", amount_cents: nil }
   end
+
+  def self.number_behind_toggle(raw, toggle, field)
+    return raw[field].presence unless raw.key?(toggle)
+    return nil unless ActiveModel::Type::Boolean.new.cast(raw[toggle])
+
+    raw[field].presence || 0
+  end
+  private_class_method :number_behind_toggle
 
   def uses_count
     ticket_orders.paid_like.count
@@ -79,6 +97,11 @@ class TicketDiscountCode < ApplicationRecord
     kind == "percent" ? "#{format('%g', percent)}% off" : "#{ActiveSupport::NumberHelper.number_to_currency(amount_cents.to_i / 100.0)} off"
   end
 
+  # The amount as a manager types it into the form: "20" or "5.00".
+  def amount_words
+    kind == "percent" ? format("%g", percent) : format("%.2f", amount_cents.to_i / 100.0)
+  end
+
   def shared_with_words
     SHARED_WITH_LABELS.fetch(shared_with, "Nobody").downcase_first
   end
@@ -92,6 +115,41 @@ class TicketDiscountCode < ApplicationRecord
 
     ids = ticket_tier_ids.map(&:to_i)
     ids.include?(tier.id) || (tier.source_tier_id.present? && ids.include?(tier.source_tier_id))
+  end
+
+  # A minimum of 1 is no minimum: every order has a ticket.
+  def minimum?
+    min_tickets.to_i > 1
+  end
+
+  # "6 or more tickets", or nil without a minimum.
+  def minimum_words
+    "#{min_tickets} or more tickets" if minimum?
+  end
+
+  # "10% off", or "10% off 6 or more tickets": what a buyer is told.
+  def terms_words
+    [ off_words, minimum_words ].compact.join(" ")
+  end
+
+  # What the ticket page tells a buyer who applied the code: "Your code
+  # GROUP10 takes 10% off an order of 6 or more tickets." ("$5.00 off each
+  # ticket" for a fixed amount.)
+  def buyer_sentence
+    off = kind == "percent" ? off_words : "#{off_words} each ticket"
+    order = "#{'on ' unless kind == 'percent'}an order of #{minimum_words}" if minimum?
+    "Your code #{code} takes #{[ off, order ].compact.join(' ')}."
+  end
+
+  # How many of an order's tickets count toward the minimum: the people
+  # admitted on the ticket types this code takes money off (a table for four
+  # is four). requests: { tier => purchases }, as TicketCheckout has them.
+  def tickets_counted(listing, requests)
+    requests.sum { |tier, count| applies_to?(listing, tier) ? count.to_i * tier.admits.to_i.clamp(1, 20) : 0 }
+  end
+
+  def minimum_met?(listing, requests)
+    !minimum? || tickets_counted(listing, requests) >= min_tickets
   end
 
   def usable?(at = Time.current)
@@ -108,6 +166,13 @@ class TicketDiscountCode < ApplicationRecord
   end
 
   private
+
+  def minimum_is_a_ticket_count
+    return if min_tickets.nil?
+    return if min_tickets_before_type_cast.to_s.match?(/\A\s*[1-9]\d*\s*\z/)
+
+    errors.add(:base, "Enter the minimum number of tickets, 1 or more")
+  end
 
   def one_scope
     errors.add(:base, "A code applies to one show or one production, not both") if ticket_listing_id && production_id

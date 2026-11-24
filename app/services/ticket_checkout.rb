@@ -38,6 +38,10 @@ class TicketCheckout
 
     discount = code && find_discount(listing, code)
     raise Error, "That code doesn't work for this show." if code && discount.nil? && requests.keys.none?(&:hidden?)
+    # A code with a minimum number of tickets waits for it (Tim, 2026-11-24):
+    # under it the order goes through at full price, which is the total the
+    # page showed, and isn't counted as a use of the code.
+    discount = nil if discount && !discount.minimum_met?(listing, requests)
 
     held = replacing.present? ? listing.ticket_orders.holding.find_by(token: replacing.to_s) : nil
     return held if held && same_request?(held, requests, discount)
