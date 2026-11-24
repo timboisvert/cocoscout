@@ -80,7 +80,7 @@ module Manage
       @all_sign_up_forms.sort_by! { |f| f[:instance]&.show&.date_and_time || 100.years.from_now }
 
       # The week, show by show (Design B, Tim 2026-10-27): seven days from
-      # the week's Monday, or three days from the day asked for (?days=3,
+      # the week's Sunday, or three days from the day asked for (?days=3,
       # remembered). A phone works one day at a time (?day=).
       @home_days = params[:days].present? ? (params[:days].to_s == "3" ? 3 : 7) : (session[:home_days] == "3" ? 3 : 7)
       session[:home_days] = @home_days.to_s if params[:days].present?

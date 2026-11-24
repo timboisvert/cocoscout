@@ -226,7 +226,7 @@ class BooksReport
 
   private
 
-  # Weeks across the period (Monday to Sunday, clipped to the range); all
+  # Weeks across the period (Sunday through Saturday, clipped to the range); all
   # time means the weeks from the first line to today.
   def weeks(lines, accounts, range)
     date_column = @basis == :cash ? "journal_entries.cash_date" : "journal_entries.entry_date"

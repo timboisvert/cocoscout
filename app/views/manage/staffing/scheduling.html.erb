@@ -85,7 +85,7 @@
               prev_path: manage_staffing_scheduling_path(week_start: (@week_start - 7.days).to_s),
               next_path: manage_staffing_scheduling_path(week_start: (@week_start + 7.days).to_s),
               today_path: (@week_start == Date.current.beginning_of_week ? nil : manage_staffing_scheduling_path),
-              week_path: ->(monday) { manage_staffing_scheduling_path(week_start: monday.to_s) },
+              week_path: ->(week_start) { manage_staffing_scheduling_path(week_start: week_start.to_s) },
               selected_week: @week_start, week_statuses: @week_statuses %>
       <% end %>
       <%# 1 day lands on today when it's in this week, else the week's first busy day. %>

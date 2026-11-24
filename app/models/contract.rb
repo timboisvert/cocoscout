@@ -86,6 +86,12 @@ class Contract < ApplicationRecord
   # {{license_schedule}} → the dates/stage/rent grid; {{services}} → the service
   # line items. When a template uses either, the appended block is suppressed so
   # nothing is duplicated — see #render_document_for.
+  # A "weekly" settlement period runs Monday to Sunday, due the Monday after.
+  # The app's week starts on Sunday (config.beginning_of_week, 2026-11-24),
+  # but payments on existing contracts are dated by these weeks, so they
+  # keep their own start; contract_payments_controller.js computes the same.
+  SETTLEMENT_WEEK_STARTS_ON = :monday
+
   LICENSE_SCHEDULE_TOKEN = "{{license_schedule}}"
   SERVICES_TOKEN = "{{services}}"
   APPENDIXES_TOKEN = "{{appendixes}}"
@@ -1890,7 +1896,7 @@ class Contract < ApplicationRecord
     # Grouping an already date-sorted list keeps the groups in date order too.
     case settlement_cadence
     when "weekly"
-      shows.group_by { |s| s.date_and_time.to_date.beginning_of_week }.values
+      shows.group_by { |s| s.date_and_time.to_date.beginning_of_week(SETTLEMENT_WEEK_STARTS_ON) }.values
     when "monthly"
       shows.group_by { |s| s.date_and_time.to_date.beginning_of_month }.values
     else # per_event, next_day, same_day — every show settles on its own
@@ -1940,7 +1946,7 @@ class Contract < ApplicationRecord
     label =
       case settlement_cadence
       when "once" then nil
-      when "weekly" then "week of #{payment.due_date.beginning_of_week.strftime('%b %-d')}"
+      when "weekly" then "week of #{payment.due_date.beginning_of_week(SETTLEMENT_WEEK_STARTS_ON).strftime('%b %-d')}"
       when "monthly" then payment.due_date.strftime("%B %Y")
       else
         night = Array(shows).filter_map(&:date_and_time).min || covered.filter_map(&:date_and_time).min || payment.due_date
@@ -1965,7 +1971,7 @@ class Contract < ApplicationRecord
 
     case settlement_cadence
     when "once" then money_shows
-    when "weekly" then money_shows.select { |s| s.date_and_time.to_date.beginning_of_week == payment.due_date.beginning_of_week }
+    when "weekly" then money_shows.select { |s| s.date_and_time.to_date.beginning_of_week(SETTLEMENT_WEEK_STARTS_ON) == payment.due_date.beginning_of_week(SETTLEMENT_WEEK_STARTS_ON) }
     when "monthly" then money_shows.select { |s| s.date_and_time.to_date.beginning_of_month == payment.due_date.beginning_of_month }
     else money_shows.select { |s| s.date_and_time.to_date == payment.due_date }
     end
@@ -2071,8 +2077,8 @@ class Contract < ApplicationRecord
           candidate if candidate && (candidate.show_id.nil? || candidate.show_id == show.id)
         end
     when "weekly"
-      show_week_start = show.date_and_time.to_date.beginning_of_week
-      revenue_payments.find { |p| p.due_date.beginning_of_week == show_week_start }
+      show_week_start = show.date_and_time.to_date.beginning_of_week(SETTLEMENT_WEEK_STARTS_ON)
+      revenue_payments.find { |p| p.due_date.beginning_of_week(SETTLEMENT_WEEK_STARTS_ON) == show_week_start }
     else # monthly
       show_month = show.date_and_time.to_date.beginning_of_month
       revenue_payments.find { |p| p.due_date.beginning_of_month == show_month }
@@ -2132,8 +2138,8 @@ class Contract < ApplicationRecord
         []
       end
     when "weekly"
-      week_start = payment.due_date.beginning_of_week
-      all_shows.select { |s| s.date_and_time.to_date.beginning_of_week == week_start }
+      week_start = payment.due_date.beginning_of_week(SETTLEMENT_WEEK_STARTS_ON)
+      all_shows.select { |s| s.date_and_time.to_date.beginning_of_week(SETTLEMENT_WEEK_STARTS_ON) == week_start }
     else # monthly
       month_start = payment.due_date.beginning_of_month
       all_shows.select { |s| s.date_and_time.to_date.beginning_of_month == month_start }

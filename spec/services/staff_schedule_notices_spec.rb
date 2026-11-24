@@ -14,7 +14,7 @@ RSpec.describe StaffScheduleNotices do
   let!(:annex) { create(:location, organization: org, name: "The Annex") }
   let!(:bar) { create(:house_role, organization: org, name: "Bartender", location: annex) }
   let!(:door) { create(:house_role, organization: org, name: "Door", location: annex) }
-  let(:week_start) { Date.new(2026, 11, 9) }
+  let(:week_start) { Date.new(2026, 11, 8) } # a Sunday: the schedule week runs Sunday through Saturday
   let(:friday) { Time.zone.local(2026, 11, 13, 18, 0) }
   let(:saturday) { Time.zone.local(2026, 11, 14, 18, 0) }
 
@@ -41,7 +41,7 @@ RSpec.describe StaffScheduleNotices do
   def send_updates(people = nil, everyone: false)
     n = notices
     n.send!(people: people || (everyone ? n.plan[:all_people] : n.plan[:update].map { |u| u[:person] }),
-            everyone: everyone, subject: "Your work schedule — week of Nov 9", intro: "Here's what changed:")
+            everyone: everyone, subject: "Your work schedule — week of Nov 8", intro: "Here's what changed:")
   end
 
   def last_notification(person)
@@ -63,7 +63,7 @@ RSpec.describe StaffScheduleNotices do
 
     n = last_notification(jamie)
     expect(n.kind).to eq("staff_schedule_notification")
-    expect(n.title).to eq("Your shifts for the week of November 9 are set · 2 shifts")
+    expect(n.title).to eq("Your shifts for the week of November 8 are set · 2 shifts")
     expect(n.body).to include("Friday, Nov 13", "6:00–11:30 PM", "Bartender", "The Annex", "Saturday, Nov 14", "Door")
     expect(n.body).to include("/my/shifts#shift-#{friday_shift.id}")
     expect(n.body).to include("so the team can sort out cover")
@@ -175,14 +175,14 @@ RSpec.describe StaffScheduleNotices do
     send_updates
     expect(last_notification(jamie).body).to include("so you have that evening back")
 
-    matinee = shift(bar, Time.zone.local(2026, 11, 15, 13, 0), hours: 4)
+    matinee = shift(bar, Time.zone.local(2026, 11, 8, 13, 0), hours: 4) # the week's Sunday
     row = matinee.shift_assignments.create!(person: dan, position: 1)
     told!(row)
     StaffScheduleRemoval.record!(row)
     row.destroy!
     send_updates
     n = last_notification(dan)
-    expect(n.title).to eq("No longer scheduled: Bartender, Sun Nov 15, 1:00 PM.")
+    expect(n.title).to eq("No longer scheduled: Bartender, Sun Nov 8, 1:00 PM.")
     expect(n.body).to include("so you have that afternoon back")
   end
 
@@ -217,7 +217,7 @@ RSpec.describe StaffScheduleNotices do
     send_updates
     n = last_notification(jamie)
     expect(n.kind).to eq("staff_schedule_changes")
-    expect(n.title).to eq("2 changes to your shifts, week of November 9: 2 changed")
+    expect(n.title).to eq("2 changes to your shifts, week of November 8: 2 changed")
     expect(n.body).to include("Instead of <s>Bartender, 6:00–11:30 PM</s> → <strong>Door, 6:00–11:00 PM</strong>")
     expect(n.body).to include("<s>6:00–10:00 PM</s> → <strong>5:00–10:00 PM</strong>")
     expect(n.body).not_to include("No longer scheduled")

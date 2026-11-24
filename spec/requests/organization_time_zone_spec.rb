@@ -62,7 +62,7 @@ RSpec.describe "Organization time zone", type: :request do
   it "shows the viewer's shifts in each organization's clock on My Shifts" do
     shift = create(:shift, organization: org, house_role: bar, starts_at: seven_pacific, ends_at: seven_pacific + 4.hours)
     shift.shift_assignments.create!(person: jamie, position: 1, notified_at: 1.day.ago)
-    create(:staffing_finalization, organization: org, week_start: Date.new(2026, 11, 9), finalized_at: Time.current)
+    create(:staffing_finalization, organization: org, week_start: Date.new(2026, 11, 8), finalized_at: Time.current)
     get signout_path
     post handle_signin_path, params: { email_address: jamie.user.email_address, password: "Password123!" }
     travel_to Time.find_zone("Central Time (US & Canada)").local(2026, 11, 10, 12, 0) do

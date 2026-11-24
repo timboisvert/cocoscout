@@ -20,7 +20,7 @@ module My
         .to_a
 
       # Drafts are hidden: a shift only shows once its org has finalized that
-      # week's schedule. Keyed by (organization_id, Monday-of-week).
+      # week's schedule. Keyed by (organization_id, the week's Sunday).
       finalized_weeks = StaffingFinalization.finalized.pluck(:organization_id, :week_start).to_set
       assignments.select! do |a|
         finalized_weeks.include?([ a.shift.organization_id, a.shift.starts_at.to_date.beginning_of_week ])

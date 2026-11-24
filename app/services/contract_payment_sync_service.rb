@@ -92,6 +92,12 @@ class ContractPaymentSyncService
   end
 
   # For weekly/monthly settlement: aggregate all shows in the period
+  # The start of a date's settlement period. A settlement week runs Monday
+  # to Sunday whatever the app's week does (Contract::SETTLEMENT_WEEK_STARTS_ON).
+  def period_of(date, period_method)
+    period_method == :beginning_of_week ? date.beginning_of_week(Contract::SETTLEMENT_WEEK_STARTS_ON) : date.public_send(period_method)
+  end
+
   def sync_period(period_method)
     # Find all settlement payments. Direction-agnostic: a revenue split can run
     # either way, and a minus-fee settlement flips to face whichever way the
@@ -102,8 +108,8 @@ class ContractPaymentSyncService
     all_shows = @contract.deal_shows_scope(@contract.contract_shows).includes(:show_financials).to_a
 
     revenue_payments.each do |payment|
-      period_start = payment.due_date.public_send(period_method)
-      period_shows = all_shows.select { |s| s.date_and_time.to_date.public_send(period_method) == period_start }
+      period_start = period_of(payment.due_date, period_method)
+      period_shows = all_shows.select { |s| period_of(s.date_and_time.to_date, period_method) == period_start }
 
       confirmed_shows = period_shows.select { |s| s.show_financials&.has_data? }
 

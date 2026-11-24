@@ -140,7 +140,7 @@ module HomeHelper
     days == 3 ? manage_path(day: day.iso8601, days: 3) : manage_path(day: day.iso8601)
   end
 
-  def home_week_path(monday)
-    manage_path(week_start: monday.to_s, days: 7)
+  def home_week_path(week_start)
+    manage_path(week_start: week_start.to_s, days: 7)
   end
 end

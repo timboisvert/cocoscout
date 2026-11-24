@@ -10,8 +10,8 @@
     today_text     default "This week"
     months         the Dates (one per month) the calendar can page through
     pick           :week (default) or :day: what a click in the calendar picks
-    week_path      lambda(monday) => path, selected_week         (pick: :week)
-    week_statuses  { monday => status }, optional                 (pick: :week)
+    week_path      lambda(the week's Sunday) => path, selected_week         (pick: :week)
+    week_statuses  { the week's Sunday => status }, optional                 (pick: :week)
     day_path       lambda(date) => path, selected_day, show_dates (pick: :day)
     legend         true (default) draws the status legend         (pick: :week)
     dot_text       what a dotted day means, default "Days with shows" (pick: :day)

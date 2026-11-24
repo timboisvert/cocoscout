@@ -33,7 +33,7 @@
     <%= render "shared/week_picker", label: label, months: @calendar_months,
           prev_path: home_week_path(@week_start - 7), next_path: home_week_path(@week_start + 7),
           today_path: (@week_start == Date.current.beginning_of_week ? nil : manage_path(days: 7)),
-          week_path: ->(monday) { home_week_path(monday) }, selected_week: @week_start,
+          week_path: ->(week_start) { home_week_path(week_start) }, selected_week: @week_start,
           week_statuses: @week_statuses, legend: @home.staffing_on? %>
   <% end %>
   <span class="inline-flex rounded-md border border-gray-300 overflow-hidden bg-white" role="group" aria-label="Days shown" data-days-toggle>

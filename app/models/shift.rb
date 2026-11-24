@@ -58,7 +58,8 @@ class Shift < ApplicationRecord
     ShiftWords.location(self)
   end
 
-  # The week this shift belongs to on the staffing schedule (Monday).
+  # The week this shift belongs to on the staffing schedule: its Sunday. The
+  # schedule week runs Sunday through Saturday (config.beginning_of_week).
   def week_start
     starts_at.to_date.beginning_of_week
   end

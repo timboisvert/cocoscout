@@ -62,13 +62,37 @@ RSpec.describe "Calendars start on Sunday", type: :view do
   end
 
   # The week picker on Scheduling and Home picks a week of the staff schedule,
-  # which runs Monday to Sunday (Shift#week_start), so each row is that week.
-  it "keeps the week picker's rows on the staff schedule's week" do
+  # which runs Sunday through Saturday: each row is that week, named by its Sunday.
+  it "draws the week picker's rows Sunday through Saturday" do
     doc = html(partial: "shared/mini_month",
-               locals: { month: december.to_date, pick: :week, week_path: ->(week) { "/week/#{week}" }, selected_week: Date.new(2026, 12, 7) })
+               locals: { month: december.to_date, pick: :week, week_path: ->(week) { "/week/#{week}" }, selected_week: Date.new(2026, 12, 6) })
 
-    expect(doc.css(".grid.grid-cols-7").first.element_children.map(&:text)).to eq(%w[M T W T F S S])
-    expect(doc.css("[data-week-row]").map { |row| row["data-week-row"] }).to all(satisfy { |day| Date.iso8601(day).monday? })
+    expect(doc.css(".grid.grid-cols-7").first.element_children.map(&:text)).to eq(%w[S M T W T F S])
+    rows = doc.css("[data-week-row]")
+    expect(rows.map { |row| row["data-week-row"] }).to eq(%w[2026-11-29 2026-12-06 2026-12-13 2026-12-20 2026-12-27])
+    expect(rows[1]["class"]).to include("bg-pink-500")
+    expect(rows[1].css("span").first(7).map(&:text)).to eq(%w[6 7 8 9 10 11 12])
+  end
+
+  describe "the week itself" do
+    it "starts on Sunday for the staff schedule and everything else that asks for a week" do
+      expect(Date.beginning_of_week).to eq(:sunday)
+      expect(Date.new(2026, 12, 9).beginning_of_week).to eq(Date.new(2026, 12, 6))
+      expect(Date.new(2026, 12, 9).end_of_week).to eq(Date.new(2026, 12, 12))
+      expect(build(:shift, starts_at: Time.zone.local(2026, 12, 12, 23)).week_start).to eq(Date.new(2026, 12, 6))
+      expect(build(:shift, starts_at: Time.zone.local(2026, 12, 13, 10)).week_start).to eq(Date.new(2026, 12, 13))
+    end
+
+    # Weekly contract settlement is the one place that keeps Monday weeks:
+    # payments on existing contracts are dated by them.
+    it "is asked for Monday by name only where weekly contract payments are settled" do
+      files = Dir[Rails.root.join("app/**/*.{rb,erb}")].select { |path| File.read(path).match?(/:monday\b|SETTLEMENT_WEEK_STARTS_ON/) }
+
+      expect(files.map { |path| Pathname(path).relative_path_from(Rails.root).to_s }.sort)
+        .to eq(%w[app/models/contract.rb app/services/contract_payment_sync_service.rb])
+      expect(Contract::SETTLEMENT_WEEK_STARTS_ON).to eq(:monday)
+      expect(Date.new(2026, 12, 9).beginning_of_week(Contract::SETTLEMENT_WEEK_STARTS_ON)).to eq(Date.new(2026, 12, 7))
+    end
   end
 
   it "has no view that asks a calendar for another first day" do

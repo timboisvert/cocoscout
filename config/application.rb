@@ -28,6 +28,15 @@ module Cocoscout
     # This is a temporary hack that will be revisited at some point
     config.time_zone = "Central Time (US & Canada)"
 
+    # The week starts on Sunday (Tim, 2026-11-24: "that's what Americans
+    # expect"): every calendar, the staff schedule's week (Sunday through
+    # Saturday, and the day a published week is stored by), and the weekly
+    # rows of reports. beginning_of_week and end_of_week follow this. The one
+    # exception asks for Monday by name: weekly contract settlement
+    # (Contract, ContractPaymentSyncService), whose payments are already
+    # dated by Monday-to-Sunday weeks.
+    config.beginning_of_week = :sunday
+
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # Common ones are `templates`, `generators`, or `middleware`, for example.

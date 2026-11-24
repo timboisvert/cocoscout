@@ -6,8 +6,9 @@ RSpec.describe SchedulingRuleMatcher do
   let(:organization) { create(:organization, :pro) }
   let(:production) { create(:production, organization: organization) }
   let(:week_start) { Date.current.beginning_of_week + 1.week } # a fully future week
-  let(:tuesday) { week_start + 1 }
-  let(:thursday) { week_start + 3 }
+  # The schedule week starts on Sunday.
+  let(:tuesday) { week_start + 2 }
+  let(:thursday) { week_start + 4 }
 
   let(:tech_role) { create(:house_role, organization: organization, name: "Tech", role_type: :show_specific) }
   let(:bar_role)  { create(:house_role, organization: organization, name: "Bartender", role_type: :house) }

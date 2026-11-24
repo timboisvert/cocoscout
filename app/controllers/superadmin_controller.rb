@@ -1978,7 +1978,7 @@ class SuperadminController < ApplicationController
     start_date = weeks.weeks.ago.beginning_of_week.to_date
     end_date = Date.current.beginning_of_week.to_date
 
-    # Get raw counts grouped by week start (Monday)
+    # Get raw counts grouped by week start (Sunday)
     # Use DATE_TRUNC for PostgreSQL, falls back to Ruby grouping for SQLite
     raw_data = model.where("created_at >= ?", start_date.beginning_of_day)
                     .group_by { |r| r.created_at.to_date.beginning_of_week }
