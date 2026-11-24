@@ -17,8 +17,8 @@ RSpec.describe "My work availability", type: :request do
       expect(response).to have_http_status(:ok)
       body = response.body
       expect(body).to include(Date.current.strftime("%B")).and include("My usual week").and include("When I'm available to work")
-      # Monday-first, like the staffing week.
-      expect(body.index(">Mon<")).to be < body.index(">Sun<")
+      # Sunday first, like every calendar (Tim, 2026-11-24).
+      expect(body.index(">Sun<")).to be < body.index(">Mon<")
       expect(body).to include("Some hours")
       # My usual week lists every day, each opening the week sheet on itself.
       expect(body.scan(/data-wdays="\[\d\]"/).size).to eq(7)

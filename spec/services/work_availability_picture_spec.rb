@@ -40,9 +40,9 @@ RSpec.describe WorkAvailabilityPicture do
     writer.set_weekdays!([ 5, 6 ], state: "hours", windows: [ { from: "17:00", to: "00:00" } ])
 
     expect(picture.week_summary).to eq([
+      [ "Sun", "Anytime" ],
       [ "Mon – Thu", "Not working" ],
-      [ "Fri, Sat", "After 5:00 PM" ],
-      [ "Sun", "Anytime" ]
+      [ "Fri, Sat", "After 5:00 PM" ]
     ])
   end
 

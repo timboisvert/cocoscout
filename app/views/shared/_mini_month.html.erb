@@ -22,7 +22,11 @@
 %>
 <%
   first = month.beginning_of_month
-  weeks = (first.beginning_of_week..first.end_of_month.end_of_week).each_slice(7).to_a
+  # Picking a day, the week starts on Sunday, as on every calendar (Tim,
+  # 2026-11-24). Picking a week, each row is one week of the staff schedule,
+  # which runs Monday to Sunday (Shift#week_start), so the rows follow it.
+  first_day = pick == :week ? :monday : :sunday
+  weeks = (first.beginning_of_week(first_day)..first.end_of_month.end_of_week(first_day)).each_slice(7).to_a
   statuses = local_assigns[:week_statuses] || {}
   dates = local_assigns[:show_dates] || Set.new
   day_statuses = local_assigns[:day_statuses]
@@ -34,7 +38,7 @@
 <div data-month-pager-target="month" data-month="<%= first.strftime("%Y-%m") %>">
   <div class="text-sm font-semibold text-gray-900 text-center mb-2"><%= first.strftime("%B %Y") %></div>
   <div class="grid grid-cols-7 <%= 'pr-4' if pick == :week %> text-[10px] font-semibold uppercase tracking-wide text-gray-400 text-center mb-1">
-    <% %w[M T W T F S S].each do |d| %><span><%= d %></span><% end %>
+    <% weeks.first.each do |d| %><span><%= d.strftime("%a").first %></span><% end %>
   </div>
   <% if pick == :week %>
     <div class="space-y-0.5">

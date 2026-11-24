@@ -13,8 +13,8 @@
 # as the hours it leaves open.
 class WorkAvailabilityPicture
   DAY = StaffAvailabilityEntry::DAY
-  # Monday first, like the staffing week.
-  WEEK_ORDER = [ 1, 2, 3, 4, 5, 6, 0 ].freeze
+  # Sunday first, like every calendar (Tim, 2026-11-24).
+  WEEK_ORDER = [ 0, 1, 2, 3, 4, 5, 6 ].freeze
 
   Answer = Struct.new(:state, :windows, :label, :said, :set_by, keyword_init: true) do
     # [{ from: "17:00", to: "00:00" }] for the edit sheet's time fields.
