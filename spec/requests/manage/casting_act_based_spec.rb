@@ -415,6 +415,33 @@ RSpec.describe "Manage::Casting act-based board", type: :request do
     end
   end
 
+  # Production, 2026-11-23: a producer's Can't Make It on an act-based show
+  # 404'd, because the act is the show's own role and the lookup only took
+  # production roles. It now opens the vacancy, as a performer's own does.
+  describe "a producer's Can't Make It on an act" do
+    it "opens a vacancy for the act and goes to find a replacement" do
+      act = show.custom_roles.find_by!(name: "Variety")
+      create(:show_person_role_assignment, show: show, role: act, assignable: performer)
+
+      expect {
+        post manage_casting_show_create_vacancy_path(production, show),
+             params: { role_id: act.id, assignable_type: "Person", assignable_id: performer.id }
+      }.to change(RoleVacancy, :count).by(1)
+
+      vacancy = RoleVacancy.last
+      expect(vacancy).to have_attributes(show_id: show.id, role_id: act.id, vacated_by: performer, status: "open")
+      expect(show.show_person_role_assignments.where(role: act, assignable: performer)).not_to exist
+      expect(response).to redirect_to(manage_casting_vacancy_path(production, vacancy))
+    end
+
+    it "sends the producer back to the board when the act is no longer in the lineup" do
+      post manage_casting_show_create_vacancy_path(production, show),
+           params: { role_id: 0, assignable_type: "Person", assignable_id: performer.id }
+
+      expect(response).to redirect_to(manage_casting_show_cast_path(production, show))
+    end
+  end
+
   describe "per-show lineup tweaks (custom roles) accept breaks only in act mode" do
     it "creates an intermission row for an act-based show" do
       # Copy-at-creation already filled the custom lineup; this spec wants it bare.

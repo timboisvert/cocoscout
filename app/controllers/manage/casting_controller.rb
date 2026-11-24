@@ -798,7 +798,17 @@ module Manage
     # Create a vacancy from an existing role assignment
     # This removes the assignment and creates an open vacancy
     def create_vacancy
-      role = @production.roles.find(params[:role_id])
+      # The show's own lineup: an act-based (or custom-roles) show's roles
+      # belong to the show, so @production.roles (show_id IS NULL) misses them.
+      role = @show.available_roles.find_by(id: params[:role_id])
+
+      unless role
+        respond_to do |format|
+          format.html { redirect_to manage_casting_show_cast_path(@production, @show), alert: "This show's lineup has changed. Reload the page and try again." }
+          format.json { render_stale_lineup_error }
+        end
+        return
+      end
 
       # Find the specific assignment by role AND assignable (not just role)
       assignment = if params[:assignable_type].present? && params[:assignable_id].present?
