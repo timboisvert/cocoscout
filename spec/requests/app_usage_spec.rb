@@ -118,7 +118,7 @@ RSpec.describe "App usage", type: :request do
 
         report = AppUsageReport.new
         expect(report.ever).to include(total: 2, ios: 1, android: 1)
-        expect(report.growth.last).to include(week: Date.new(2026, 11, 9), new: { "ios" => 0, "android" => 1 }, total: 2)
+        expect(report.growth.last).to include(week: Date.new(2026, 11, 8), new: { "ios" => 0, "android" => 1 }, total: 2)
         expect(report.new_people(7)).to eq(now: 1, before: 0)
         expect(AppUsageReport.new(platform: "ios").ever[:total]).to eq(1)
       end
