@@ -51,6 +51,7 @@ class AuditionNotificationService
           person: assignment[:person],
           talent_pool: assignment[:talent_pool],
           custom_body: assignment[:body],
+          custom_words: assignment[:custom_words],
           custom_subject: assignment[:subject],
           email_batch: email_batch
         )
@@ -66,6 +67,7 @@ class AuditionNotificationService
           sender: sender,
           person: rejection[:person],
           custom_body: rejection[:body],
+          custom_words: rejection[:custom_words],
           custom_subject: rejection[:subject],
           email_batch: email_batch
         )
@@ -97,6 +99,7 @@ class AuditionNotificationService
           sender: sender,
           person: invitation[:person],
           custom_body: invitation[:body],
+          custom_words: invitation[:custom_words],
           email_batch: email_batch
         )
         results[:messages_sent] += result[:messages_sent]
@@ -111,6 +114,7 @@ class AuditionNotificationService
           sender: sender,
           person: rejection[:person],
           custom_body: rejection[:body],
+          custom_words: rejection[:custom_words],
           email_batch: email_batch
         )
         results[:messages_sent] += result[:messages_sent]
@@ -124,7 +128,7 @@ class AuditionNotificationService
 
     # Send "added to cast" notification
     def send_cast_notification(production:, audition_cycle:, sender:,
-                               person:, talent_pool:, custom_body:, custom_subject: nil, email_batch:)
+                               person:, talent_pool:, custom_body:, custom_subject: nil, email_batch:, custom_words: nil)
       template_key = "audition_added_to_cast"
 
       template_vars = {
@@ -146,7 +150,7 @@ class AuditionNotificationService
 
       send_notification(
         template_key: template_key,
-        custom_words: ManagerWords.changed?([ custom_subject, raw_template(template_key)&.subject ], [ custom_body, raw_template(template_key)&.body ]),
+        custom_words: custom_words.nil? ? ManagerWords.changed?([ custom_subject, raw_template(template_key)&.subject ], [ custom_body, raw_template(template_key)&.body ]) : custom_words,
         subject: subject,
         body: body,
         push_body: rendered&.dig(:push_body),
@@ -161,7 +165,7 @@ class AuditionNotificationService
 
     # Send "not being added" notification
     def send_rejection_notification(production:, audition_cycle:, sender:,
-                                    person:, custom_body:, custom_subject: nil, email_batch:)
+                                    person:, custom_body:, custom_subject: nil, email_batch:, custom_words: nil)
       template_key = "audition_not_cast"
 
       template_vars = {
@@ -182,7 +186,7 @@ class AuditionNotificationService
 
       send_notification(
         template_key: template_key,
-        custom_words: ManagerWords.changed?([ custom_subject, raw_template(template_key)&.subject ], [ custom_body, raw_template(template_key)&.body ]),
+        custom_words: custom_words.nil? ? ManagerWords.changed?([ custom_subject, raw_template(template_key)&.subject ], [ custom_body, raw_template(template_key)&.body ]) : custom_words,
         subject: subject,
         body: body,
         push_body: rendered&.dig(:push_body),
@@ -197,7 +201,7 @@ class AuditionNotificationService
 
     # Send "invited to audition" notification
     def send_invitation_notification(production:, audition_cycle:, sender:,
-                                     person:, custom_body:, custom_subject: nil, email_batch:)
+                                     person:, custom_body:, custom_subject: nil, email_batch:, custom_words: nil)
       template_key = "audition_invitation"
 
       # Look up the audition for this person to get session details
@@ -243,7 +247,7 @@ class AuditionNotificationService
 
       send_notification(
         template_key: template_key,
-        custom_words: ManagerWords.changed?([ custom_subject, raw_template(template_key)&.subject ], [ custom_body, raw_template(template_key)&.body ]),
+        custom_words: custom_words.nil? ? ManagerWords.changed?([ custom_subject, raw_template(template_key)&.subject ], [ custom_body, raw_template(template_key)&.body ]) : custom_words,
         subject: subject,
         body: body,
         push_body: rendered&.dig(:push_body),
@@ -259,7 +263,7 @@ class AuditionNotificationService
 
     # Send "not invited to audition" notification
     def send_not_invited_notification(production:, audition_cycle:, sender:,
-                                      person:, custom_body:, custom_subject: nil, email_batch:)
+                                      person:, custom_body:, custom_subject: nil, email_batch:, custom_words: nil)
       template_key = "audition_not_invited"
 
       template_vars = {
@@ -280,7 +284,7 @@ class AuditionNotificationService
 
       send_notification(
         template_key: template_key,
-        custom_words: ManagerWords.changed?([ custom_subject, raw_template(template_key)&.subject ], [ custom_body, raw_template(template_key)&.body ]),
+        custom_words: custom_words.nil? ? ManagerWords.changed?([ custom_subject, raw_template(template_key)&.subject ], [ custom_body, raw_template(template_key)&.body ]) : custom_words,
         subject: subject,
         body: body,
         push_body: rendered&.dig(:push_body),

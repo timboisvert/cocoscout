@@ -22,11 +22,12 @@ RSpec.describe Mics::NotificationService do
         create(:city_hub_membership, city_hub: hub, user: captain, role: CityHubMembership.roles[:editor])
       end
 
-      it "sends a message to the captain" do
+      it "sends a notification to the captain, and no message" do
         claim = create(:mic_claim, mic: mic, claimant: submitter)
         expect {
           described_class.notify_claim(claim: claim)
-        }.to change { MessageRecipient.where(recipient: captain.primary_person).count }.by(1)
+        }.to change { Notification.where(user: captain).count }.by(1)
+          .and change(Message, :count).by(0)
       end
     end
 
@@ -37,7 +38,7 @@ RSpec.describe Mics::NotificationService do
         claim = create(:mic_claim, mic: mic, claimant: submitter)
         expect {
           described_class.notify_claim(claim: claim)
-        }.to change { MessageRecipient.where(recipient: admin.primary_person).count }.by(1)
+        }.to change { Notification.where(user: admin).count }.by(1)
       end
     end
   end

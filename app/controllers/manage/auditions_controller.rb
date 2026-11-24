@@ -153,14 +153,8 @@ module Manage
 
       # Default messages for the Review & Notify modal (manager can edit them).
       # "[Name]" is replaced per-recipient when sending.
-      @invited_default_message = default_message_html(
-        "audition_invitation",
-        "<div>Hi [Name],</div><div><br></div><div>Great news — you've been scheduled for an audition for #{ERB::Util.html_escape(@production.name)}. We look forward to seeing you!</div>"
-      )
-      @not_invited_default_message = default_message_html(
-        "audition_not_invited",
-        "<div>Hi [Name],</div><div><br></div><div>Thank you so much for your interest in #{ERB::Util.html_escape(@production.name)}. After careful consideration, we won't be moving forward with an audition at this time. We truly appreciate you and hope to see you audition with us again.</div>"
-      )
+      @invited_default_message = invited_default_message
+      @not_invited_default_message = not_invited_default_message
     end
 
     # GET /auditions/:id/notify_preview — who's getting an audition vs not,
@@ -590,6 +584,8 @@ module Manage
       # [Name], filled in per person below). Blank falls back to the template.
       cast_draft = edited_email_draft(:cast_email_draft)
       not_cast_draft = edited_email_draft(:not_cast_email_draft)
+      cast_custom = results_draft_changed?(cast_draft, "audition_added_to_cast")
+      not_cast_custom = results_draft_changed?(not_cast_draft, "audition_not_cast")
 
       # Get pending stages grouped by decision type
       pending_cast_stages = cast_assignment_stages.where(status: :pending, decision_type: :cast)
@@ -631,7 +627,8 @@ module Manage
             person: person,
             talent_pool: talent_pool,
             body: personalized_body,
-            subject: email_subject.gsub("[Name]", person.name)
+            subject: email_subject.gsub("[Name]", person.name),
+            custom_words: cast_custom
           }
         end
 
@@ -657,7 +654,8 @@ module Manage
           rejection_notifications << {
             person: person,
             body: personalized_body,
-            subject: email_subject.gsub("[Name]", person.name)
+            subject: email_subject.gsub("[Name]", person.name),
+            custom_words: not_cast_custom
           }
         end
 
@@ -722,6 +720,8 @@ module Manage
       # recipient, and invited people get their session time(s) appended.
       invited_body_custom = params[:invited_body].presence
       not_invited_body_custom = params[:not_invited_body].presence
+      invited_custom = ManagerWords.changed?([ invited_body_custom, invited_default_message ])
+      not_invited_custom = ManagerWords.changed?([ not_invited_body_custom, not_invited_default_message ])
       session_details = audition_cycle.audition_sessions.includes(:auditions).order(:start_at)
         .each_with_object(Hash.new { |h, k| h[k] = [] }) do |s, acc|
           label = s.start_at.strftime("%A, %b %-d at %-l:%M %p")
@@ -819,10 +819,10 @@ module Manage
                   personalized_body
                 end
               end
-            invitation_notifications << { person: recipient, body: body }
+            invitation_notifications << { person: recipient, body: body, custom_words: invited_custom }
           else
             next unless personalized_body.present?
-            not_invited_notifications << { person: recipient, body: personalized_body }
+            not_invited_notifications << { person: recipient, body: personalized_body, custom_words: not_invited_custom }
           end
         end
 
@@ -895,6 +895,39 @@ module Manage
         formats: [ :html ],
         locals: { session: session, production: session.production, audition_cycle: audition_cycle }
       )
+    end
+
+    # The words the Review & Notify modal starts from. The send compares what
+    # came back with these: sent as they came, a notice is a Notification
+    # only, never a Message from the manager too (Tim, 2026-11-24).
+    def invited_default_message
+      default_message_html(
+        "audition_invitation",
+        "<div>Hi [Name],</div><div><br></div><div>Great news — you've been scheduled for an audition for #{ERB::Util.html_escape(@production.name)}. We look forward to seeing you!</div>"
+      )
+    end
+
+    def not_invited_default_message
+      default_message_html(
+        "audition_not_invited",
+        "<div>Hi [Name],</div><div><br></div><div>Thank you so much for your interest in #{ERB::Util.html_escape(@production.name)}. After careful consideration, we won't be moving forward with an audition at this time. We truly appreciate you and hope to see you audition with us again.</div>"
+      )
+    end
+
+    # The subject and body the finalize form starts from, as its view renders
+    # them ([Name] and [date] still in place).
+    def results_draft_default(key)
+      variables = { recipient_name: "[Name]", production_name: @production.name }
+      variables[:confirm_by_date] = "[date]" if key == "audition_added_to_cast"
+      { subject: ContentTemplateService.render_subject(key, variables), body: ContentTemplateService.render_body(key, variables) }
+    end
+
+    # Whether the manager changed the finalize form's words for this notice.
+    def results_draft_changed?(draft, key)
+      default = results_draft_default(key)
+      ManagerWords.changed?([ draft[:subject], default[:subject] ], [ draft[:body], default[:body] ])
+    rescue ContentTemplateService::TemplateNotFoundError
+      false
     end
 
     # HTML default for an editable rich-text notify message; falls back

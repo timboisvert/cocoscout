@@ -76,8 +76,18 @@ module NotificationGroups
     "staff_hours_approved" => "pay",
     # Pay and Contracts, from senders that still go through messages
     "staff_1099_ready" => "pay", "contract_person_added" => "contracts",
+    # A receipt for a contract payment (InvoiceDelivery#send_receipt!): its
+    # email goes as before; in the app it is a notification, never a message
+    # (Tim, 2026-11-24).
+    "contract_payment_receipt" => "contracts",
     # Ticketing: the Tap to Pay launch (TapToPayLaunch), to everyone who can sell at a door that has it
-    "tap_to_pay_launch_message" => "ticketing_milestones"
+    "tap_to_pay_launch_message" => "ticketing_milestones",
+    # The Mics queue (Mics::NotificationService), to the hub's captains or,
+    # with none, CocoScout's superadmins: automated, so a notification and
+    # never a message (Tim, 2026-11-24). No group of its own; a captain has
+    # no switch for it.
+    "mic_submission_filed" => "platform", "mic_claim_filed" => "platform",
+    "mic_challenge_filed" => "platform", "mic_suggestion_filed" => "platform"
   }.freeze
   # Notices a manager can write or edit before sending (V1.1 plan §9,
   # option 3, Tim 2026-10-20): always a Notification, and also a Message

@@ -36,6 +36,33 @@ RSpec.describe AuditionNotificationService do
       end
     end
 
+    # The controller knows the words its form started from, so it decides
+    # whether the manager changed them (Tim, 2026-11-24): results sent as they
+    # came are a Notification only.
+    context "when the caller decides whether the words were changed" do
+      let(:talent_pool) { create(:talent_pool, production: production) }
+
+      def send_results(custom_words)
+        described_class.send_casting_results(
+          production: production, audition_cycle: audition_cycle, sender: sender,
+          cast_assignments: [ { person: person, talent_pool: talent_pool, subject: "Welcome to the show", body: "Welcome!", custom_words: custom_words } ],
+          rejections: []
+        )
+      end
+
+      it "sends a notification and no message when the words are the form's own" do
+        expect { send_results(false) }
+          .to change { Notification.where(user: recipient_user, kind: "audition_added_to_cast").count }.by(1)
+          .and change(Message, :count).by(0)
+      end
+
+      it "also sends a message when the words were changed" do
+        expect { send_results(true) }
+          .to change { Notification.where(user: recipient_user, kind: "audition_added_to_cast").count }.by(1)
+          .and change(Message, :count).by(1)
+      end
+    end
+
     context "with message channel template" do
       it "sends messages to users with accounts" do
         talent_pool = create(:talent_pool, production: production)
