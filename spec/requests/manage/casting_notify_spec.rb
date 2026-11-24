@@ -181,6 +181,31 @@ RSpec.describe "Manage::Casting per-individual notify", type: :request do
     end
   end
 
+  describe "a linked show's untouched words" do
+    # The modal writes the subject for the show and its linked shows
+    # ("November 25 & November 28"); sent as it came, the notice is a
+    # Notification and never a Message as well (Tim, 2026-11-24).
+    it "sends a notification and no message" do
+      ContentTemplate.find_by!(key: "cast_notification").update!(subject: "Cast Confirmation: {{show_dates}}")
+      linkage = EventLinkage.create!(production: production)
+      show.update!(event_linkage: linkage)
+      other = create(:show, production: production, event_linkage: linkage, date_and_time: show.date_and_time + 3.days)
+      person = create(:person, user: create(:user))
+      show.show_person_role_assignments.where(role: roles.first).destroy_all
+      create(:show_person_role_assignment, show: show, role: roles.first, assignable: person)
+
+      dates = [ show, other ].map { |s| s.date_and_time.strftime("%B %-d") }.join(" & ")
+
+      expect {
+        post manage_casting_show_notify_path(production, show), params: {
+          assignable_keys: [ "Person:#{person.id}" ],
+          cast_email_draft: { title: "Cast Confirmation: #{dates}", body: "You're cast" }
+        }
+      }.to change { Notification.where(user: person.user, kind: "cast_notification").count }.by(1)
+        .and change(Message, :count).by(0)
+    end
+  end
+
   describe "notification state follows adds and removals on a running order" do
     before { org.update!(comped_indefinitely: true) } # second production
 

@@ -874,6 +874,12 @@ module Manage
         return
       end
 
+      # The words in the modal were written for this show and its linked
+      # shows ("November 25 & November 28"), so the defaults they're compared
+      # with have to be too. Without this a linked show's untouched notice
+      # read as the manager's own words and went out as a Message as well.
+      @linked_shows = @show.linked? ? @show.linked_shows.to_a : []
+
       cast_draft_params = params[:cast_email_draft] || {}
       removed_draft_params = params[:removed_email_draft] || {}
       cast_subject = cast_draft_params[:title].presence || default_cast_email_subject
