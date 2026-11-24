@@ -279,6 +279,12 @@ class StripeWebhooksController < ApplicationController
     BillingInvoiceEmailJob.perform_later(record.id, "bill") if event_type == "invoice.finalized"
     BillingInvoiceRefreshJob.set(wait: 2.hours).perform_later(record.id) if event_type == "invoice.finalized" && record.status == "open"
     BillingInvoiceEmailJob.perform_later(record.id, "receipt") if event_type == "invoice.paid"
+    # A payment that didn't go through is emailed too (Stripe's own emails
+    # are off). Not a new subscription's first payment: the person is at the
+    # checkout, watching it fail.
+    if event_type == "invoice.payment_failed" && invoice.to_hash[:billing_reason] != "subscription_create"
+      BillingInvoiceEmailJob.perform_later(record.id, "failed")
+    end
   end
 
   def handle_invoice_event(invoice)

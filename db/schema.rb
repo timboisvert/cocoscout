@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_24_190000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_24_210100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -536,6 +536,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_24_190000) do
     t.bigint "credit_notes_cents", default: 0, null: false
     t.bigint "balance_credited_cents", default: 0, null: false
     t.bigint "balance_applied_cents", default: 0, null: false
+    t.string "failure_emailed_for"
     t.index ["organization_id", "period_start"], name: "index_billing_invoices_on_organization_id_and_period_start"
     t.index ["organization_id"], name: "index_billing_invoices_on_organization_id"
     t.index ["stripe_invoice_id"], name: "index_billing_invoices_on_stripe_invoice_id", unique: true
@@ -2400,6 +2401,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_24_190000) do
     t.jsonb "payout_pay_order", default: ["staffing", "contractor", "performer"], null: false
     t.integer "payout_bank_after_days", default: 3, null: false
     t.boolean "payout_waits_on_balance", default: true, null: false
+    t.datetime "renewal_reminded_for"
     t.index ["books_categories_set_up_by_id"], name: "index_organizations_on_books_categories_set_up_by_id"
     t.index ["books_locked_by_id"], name: "index_organizations_on_books_locked_by_id"
     t.index ["invite_token"], name: "index_organizations_on_invite_token", unique: true

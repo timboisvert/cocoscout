@@ -79,6 +79,7 @@ class BillingInvoiceSync
 
     error = plain(invoice)["last_finalization_error"]
     record.update!(failed_at: Time.current, failure_message: error.is_a?(Hash) && error["message"].presence || "The payment didn't go through.")
+    record
   end
 
   def self.plain(object)

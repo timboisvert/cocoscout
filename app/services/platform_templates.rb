@@ -86,6 +86,28 @@ class PlatformTemplates
                    { "name" => "lines", "description" => "What was on the bill, line by line" },
                    { "name" => "invoice_url", "description" => "CocoScout's invoice for the bill (PDF)" },
                    { "name" => "billing_url", "description" => "Their Billing & Plan page" } ] },
+    # A payment for a CocoScout bill failed (BillingInvoiceEmailJob): one email
+    # for each failed attempt, stating what happens next. CocoScout's own,
+    # since Stripe's emails to organizations are switched off (Tim, 2026-11-24).
+    { key: "cocoscout_payment_failed", name: "CocoScout payment failed", channel: "email",
+      subject: "Your CocoScout payment didn't go through: {{bill_title}}, {{amount}}",
+      body: %(<p>Hi {{first_name}},</p><p>The payment for {{organization_name}}'s CocoScout bill for <strong>{{bill_title}}</strong>, {{amount}}, didn't go through.</p><p>{{next_step}}</p><p>You can pay the bill or update your payment method on your <a href="{{billing_url}}">Billing &amp; Plan page</a>.</p><p>Questions? Just reply to this email.</p>),
+      variables: [ { "name" => "first_name", "description" => "The billing contact's first name" },
+                   { "name" => "organization_name", "description" => "The organization" },
+                   { "name" => "bill_title", "description" => "What the bill is for, e.g. September 2026 usage" },
+                   { "name" => "amount", "description" => "The amount owed, e.g. $41.00" },
+                   { "name" => "next_step", "description" => "Whether and when the payment is tried again" },
+                   { "name" => "billing_url", "description" => "Their Billing & Plan page" } ] },
+    # A yearly Pro plan renews in 30 days (ProRenewalReminder): once for each
+    # renewal, with the amount Stripe will charge.
+    { key: "cocoscout_pro_renewal", name: "Yearly Pro renewal reminder", channel: "email",
+      subject: "CocoScout Pro renews on {{renews_on}}",
+      body: %(<p>Hi {{first_name}},</p><p>{{organization_name}}'s yearly CocoScout Pro plan renews on <strong>{{renews_on}}</strong> for another year. {{charge_line}}</p><p>There's nothing to do to keep Pro. To change the payment method or cancel before then, choose <strong>Manage subscription</strong> on your <a href="{{billing_url}}">Billing &amp; Plan page</a>.</p><p>Questions? Just reply to this email.</p>),
+      variables: [ { "name" => "first_name", "description" => "The billing contact's first name" },
+                   { "name" => "organization_name", "description" => "The organization" },
+                   { "name" => "renews_on", "description" => "The day the plan renews, e.g. December 24, 2026" },
+                   { "name" => "charge_line", "description" => "What will be charged that day" },
+                   { "name" => "billing_url", "description" => "Their Billing & Plan page" } ] },
     { key: "pro_comp_ending", name: "Complimentary Pro ending", channel: "email",
       subject: "Your complimentary CocoScout Pro ends {{ends_on}}",
       body: %(<p>Hi {{first_name}},</p><p>{{organization_name}}'s complimentary CocoScout Pro ends on <strong>{{ends_on}}</strong>, {{days_left}} from now.</p>{{value_lines}}<p>To keep all of it, choose <strong>Keep Pro</strong> on your <a href="{{keep_url}}">Billing &amp; Plan page</a>. Pro picks up the day your complimentary access ends, with nothing to set up again. {{price_line}}</p><p>If you don't, {{organization_name}} moves to the free Producer plan on {{ends_on}}, without:</p>{{lose_lines}}<p>Questions? Just reply to this email.</p>),

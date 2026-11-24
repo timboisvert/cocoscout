@@ -62,6 +62,9 @@ development:
   pro_comp_ending:
     class: ProCompEndingJob
     schedule: at 10am every day
+  pro_renewal_reminder:
+    class: ProRenewalReminderJob
+    schedule: at 10am every day
   platform_reconciliation:
     class: PlatformReconciliationJob
     schedule: at 6am every day
@@ -187,6 +190,9 @@ production:
     schedule: at 3am every day
   pro_comp_ending:
     class: ProCompEndingJob
+    schedule: at 10am every day
+  pro_renewal_reminder:
+    class: ProRenewalReminderJob
     schedule: at 10am every day
   platform_reconciliation:
     class: PlatformReconciliationJob
