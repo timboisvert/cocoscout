@@ -183,9 +183,11 @@ final class WebViewController: HotwireWebViewController {
         // Narrower beside a back button, and for Coco on the right. The title
         // is cut with "…" before the bar runs out of room: past that, iOS 26
         // folds the icons on the right into its "more" button (measured on a
-        // 402pt-wide iPhone).
+        // 402pt-wide iPhone). Without a back button the title has about
+        // 185pt before Messages: 120 let "My Tasks & Availability" run to
+        // 228pt and fold Notifications and Coco away (Tim, 2026-11-27).
         let hasBackButton = navigationController?.viewControllers.first !== self
-        let taken: CGFloat = (hasBackButton ? 225 : 120) + (showsMenuButton ? MenuButton.size + 10 : 0)
+        let taken: CGFloat = (hasBackButton ? 225 : 170) + (showsMenuButton ? MenuButton.size + 10 : 0)
         let width = min(titleLabel.intrinsicContentSize.width, view.bounds.width - taken)
         titleWidth.constant = ceil(width)
     }

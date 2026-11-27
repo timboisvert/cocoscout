@@ -1,4 +1,7 @@
-<% content_for :title, "My Tasks & Availability" %>
+<%# In the app, the menu's own name: the full one is wider than the app's
+    top bar, and 1.4.1 folds Notifications and Coco into iOS's "more"
+    button beside it (Tim, 2026-11-27). %>
+<% content_for :title, turbo_native_app? ? "My Tasks" : "My Tasks & Availability" %>
 
 <div class="w-full">
 

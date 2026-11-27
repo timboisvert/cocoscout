@@ -60,6 +60,10 @@ RSpec.describe "The module header", type: :request do
     expect(Nokogiri::HTML(response.body).at_css("[data-module-header] h1").text.squish).to eq("My Shows & Events")
     get my_tasks_path
     expect(Nokogiri::HTML(response.body).at_css("[data-module-header] h1").text.squish).to eq("My Tasks & Availability")
+    # The app's top bar takes the menu's short name: the full one folded
+    # Notifications and Coco into iOS's "more" button (Tim, 2026-11-27).
+    get my_tasks_path, headers: { "User-Agent" => "CocoScout/1.4.1 (14; nav 2) CocoMenu/bar CocoAuth/1 Hotwire Native iOS; Turbo Native iOS" }
+    expect(Nokogiri::HTML(response.body).at_css("title").text).to end_with("My Tasks")
     get my_courses_path
     header = Nokogiri::HTML(response.body).at_css("[data-module-header]")
     expect(header.at_css("h1").text.squish).to eq("My Courses")
