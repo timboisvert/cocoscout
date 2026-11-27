@@ -218,6 +218,11 @@
                 uncancel_label = "Uncancel #{event_label}"
               %>
               <div class="flex flex-wrap gap-2 items-center">
+                <% record = Current.organization.date_changes.applied.where.not(kind: "delete")
+                                   .where("show_ids @> ? OR also_show_ids @> ?", [ @show.id ].to_json, [ @show.id ].to_json).order(:created_at).last %>
+                <% if record %>
+                  <%= render "shared/button", text: "What was done", path: manage_date_change_path(record), variant: "secondary", size: "small" %>
+                <% end %>
                 <% if is_canceled %>
                   <%= render "shared/button", text: "Bring this date back", path: manage_new_date_restore_path(@production, @show), variant: "primary", size: "small" %>
                 <% else %>

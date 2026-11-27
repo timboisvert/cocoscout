@@ -111,6 +111,10 @@ RSpec.describe "Cancel or move this date", type: :request do
       expect(response).to have_http_status(:ok)
       expect(page.text).to include("Canceled by", "Progress")
       expect(page.css("[data-progress-steps] li[data-status='done']").size).to eq(change.steps.size)
+
+      # The date's own page links to the record, and offers to bring it back.
+      get manage_show_path(production, dec4)
+      expect(response.body).to include(manage_date_change_path(change), manage_new_date_restore_path(production, dec4))
     end
   end
 
