@@ -16,6 +16,13 @@
 
   <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
     <div class="space-y-6 min-w-0">
+      <% if (warnings = @review.warnings).any? %>
+        <div class="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900" data-review-warnings>
+          <p class="font-semibold">The room is already booked at the new time</p>
+          <ul class="mt-1 list-disc pl-5 space-y-0.5"><% warnings.each do |w| %><li><%= w %></li><% end %></ul>
+          <p class="mt-1">You can still move it there; both will be in the room.</p>
+        </div>
+      <% end %>
       <div class="bg-white border border-gray-200 rounded-xl">
         <%= render "shared/section_heading", title: "When you confirm, CocoScout will:" %>
         <ol class="px-6 py-4 max-sm:px-4 space-y-2.5 text-sm text-gray-800 list-decimal pl-10 max-sm:pl-8" data-review-sentences>

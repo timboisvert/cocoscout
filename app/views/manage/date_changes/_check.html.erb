@@ -29,13 +29,13 @@
       <% if cast_people.any? %>
         <li class="flex gap-2 <%= cast.any? ? 'text-amber-800' : 'text-green-800' %>">
           <span aria-hidden="true"><%= cast.any? ? "!" : raw("&#10003;") %></span>
-          <span><%= cast_people.size - cast.size %> of <%= cast_people.size %> cast are free.<% cast.each do |c| %> <%= c.words %>.<% end %><%= cast.any? ? " You'll choose what happens on the next step." : "" %></span>
+          <span><%= cast.empty? ? (cast_people.size == 1 ? "The 1 cast member is free." : "All #{cast_people.size} cast are free.") : "#{cast_people.size - cast.size} of #{cast_people.size} cast are free." %><% cast.each do |c| %> <%= c.words %>.<% end %><%= cast.any? ? " You'll choose what happens on the next step." : "" %></span>
         </li>
       <% end %>
       <% if staff_people.any? %>
         <li class="flex gap-2 <%= staff.any? ? 'text-amber-800' : 'text-green-800' %>">
           <span aria-hidden="true"><%= staff.any? ? "!" : raw("&#10003;") %></span>
-          <span><%= staff_people.size - staff.map(&:person).uniq.size %> of <%= staff_people.size %> staff are free.<% staff.each do |c| %> <%= c.words %>.<% end %></span>
+          <span><%= staff.empty? ? (staff_people.size == 1 ? "The 1 person on staff is free." : "All #{staff_people.size} staff are free.") : "#{staff_people.size - staff.map(&:person).uniq.size} of #{staff_people.size} staff are free." %><% staff.each do |c| %> <%= c.words %>.<% end %></span>
         </li>
       <% end %>
       <% same_day.reject { |s| room.any? { |c| c.words.include?(s.display_name.to_s) } }.first(3).each do |other| %>

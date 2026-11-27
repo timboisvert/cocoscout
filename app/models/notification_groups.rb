@@ -55,7 +55,7 @@ module NotificationGroups
   TEMPLATES = {
     # Casting and vacancies
     "casting_table_notification" => "casting", "show_canceled" => "casting", "show_moved" => "casting",
-    "show_back_on" => "casting", "date_change_role_opened" => "casting", "date_change_cover_not_needed" => "casting",
+    "show_back_on" => "casting", "show_new_place" => "casting", "date_change_role_opened" => "casting", "date_change_cover_not_needed" => "casting",
     "vacancy_created" => "casting", "vacancy_created_several" => "casting",
     "vacancy_filled" => "casting", "vacancy_reclaimed" => "casting",
     "vacancy_invitation" => "casting", "request_agreement_signature" => "casting",
@@ -71,7 +71,7 @@ module NotificationGroups
     "shift_declined_manager" => "shifts", "shift_vacancy_invitation" => "shifts",
     "shift_vacancy_filled" => "shifts", "shift_vacancy_reclaimed" => "shifts",
     "shift_vacancy_covered_invitee" => "shifts",
-    "shift_canceled" => "shifts", "shift_moved" => "shifts", "shift_back_on" => "shifts", "date_change_shift_opened" => "shifts",
+    "shift_canceled" => "shifts", "shift_moved" => "shifts", "shift_back_on" => "shifts", "shift_new_place" => "shifts", "date_change_shift_opened" => "shifts",
     "staff_shift_added" => "shifts", "staff_shift_changed" => "shifts", "staff_shift_removed" => "shifts",
     "shift_claim_confirmed" => "shifts", "staff_shift_reminder" => "shifts",
     "staff_hours_approved" => "pay",
@@ -123,7 +123,8 @@ module NotificationGroups
   # back (Tim, 2026-11-09: "stuff related to shifts ... should all be
   # emails. We might have been a little overzealous"): with almost nobody
   # on the app yet, a missed shift notice is a missed shift.
-  EMAILS_TOO = %w[show_canceled show_moved show_back_on date_change_role_opened shift_back_on date_change_shift_opened
+  EMAILS_TOO = %w[show_canceled show_moved show_back_on show_new_place date_change_role_opened
+                  shift_back_on shift_new_place date_change_shift_opened
                   vacancy_invitation shift_vacancy_invitation
                   shift_canceled shift_moved staff_shift_changed staff_shift_removed
                   staff_shift_added staff_schedule_notification staff_schedule_changes shift_claim_confirmed].freeze

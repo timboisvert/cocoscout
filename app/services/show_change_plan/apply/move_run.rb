@@ -17,6 +17,8 @@ class ShowChangePlan
         dests = Moves.destinations(change)
         moving = dests.select(&:moves?)
         @was = moving.to_h { |d| [ d.show.id, d.was_starts ] }
+        # Read before the move: afterwards the date is already at its new place.
+        @place_only = moving.select { |d| d.offset.zero? && d.location_changed? }
         staff = plan.staff
         open_before = staff.open_shifts.map { |l| [ l.shift, l.shift.starts_at ] }
         staying = staff.staying
@@ -24,13 +26,15 @@ class ShowChangePlan
         staff_conflicts = choices_hash(:staff_conflicts)
         signups = plan.signups
 
-        step(:dates, moving.size == 1 ? "Moved to #{day_time(moving.first.now_starts)}" : "#{moving.size} dates moved") do
-          move_dates!(dests, moving)
+        step(:dates, moving.size == 1 ? "Moved to #{day_time(moving.first.now_starts)}" : "#{moving.size} dates moved", critical: true) do
+          # All of the dates or none: one that can't move leaves every date
+          # where it was, and nobody is notified.
+          ActiveRecord::Base.transaction { move_dates!(dests, moving) }
         end
 
         buyers!(moving) if plan.listings.any?
         cast!(moving, conflicts) if plan.cast.people.any?
-        staff!(moving, staff, staff_conflicts, open_before, staying) if staff.any?
+        staff!(moving, staff, staff_conflicts, open_before, staying) if staff.any? || notices.section("staff_moved")
         signups!(signups) if signups.registrations.any? || signups.instances.any?
         students! if plan.class_offerings.any?
       end
@@ -51,9 +55,6 @@ class ShowChangePlan
             show.location_id = dest.location_id if dest.location_id
             show.location_space_id = dest.location_space_id
             show.save!
-          rescue ActiveRecord::RecordInvalid => e
-            change.add_problem!(key: "move-#{show.id}", kind: "show", label: "#{show.production.name}, #{day_time(dest.was_starts)} couldn't move.",
-                                detail: e.record.errors.full_messages.to_sentence)
           end
         end
         kept = dests.select { |d| d.choice == "keep" }
@@ -109,7 +110,6 @@ class ShowChangePlan
 
         step(:buyers, "Buyers emailed the new date and time") do
           subject, body = words(:buyers, :move)
-          offer = change.on?(:buyers_refund_offer)
           orders = []
           moving.each do |dest|
             listing = TicketListing.find_by(show_id: dest.show.id)
@@ -119,11 +119,11 @@ class ShowChangePlan
           end
           groups = orders.group_by { |o| o.buyer_email.to_s.strip.downcase }
           groups.each_value do |list|
-            variables = BuyerWords.moved_variables(change, list, was_by_show: @was, offer_refund: offer)
+            variables = BuyerWords.moved_variables(list)
             TicketOrderMailer.date_change(list.first, subject: subject, body: body, variables: variables).deliver_later
           end
           orders.group_by(&:ticket_listing).each { |listing, list| TicketShowChange.mark_told!(listing, TicketOrder.where(id: list.map(&:id))) }
-          "#{groups.size} #{groups.size == 1 ? 'buyer' : 'buyers'} emailed#{offer ? ', with a refund link' : ''}"
+          "#{groups.size} #{groups.size == 1 ? 'buyer' : 'buyers'} emailed"
         end
       end
 
@@ -158,6 +158,7 @@ class ShowChangePlan
               told = list.send!("cast_moved", person_ids: ids, subject: subject, body: body, sender: by) if ids.any?
             end
           end
+          told += new_place_cast!(moving) if change.on?(:cast_notify)
           parts = [ change.on?(:cast_notify) ? "#{told} cast notified" : "The cast weren't notified" ]
           parts << "#{opened.uniq.size} #{opened.uniq.size == 1 ? 'role' : 'roles'} opened for cover" if opened.any?
           parts.join("; ")
@@ -166,7 +167,9 @@ class ShowChangePlan
 
       def staff!(moving, staff, conflicts, open_before, staying)
         move_shifts = change.on?(:shifts_move)
-        tell = change.on?(:staff_notify)
+        # A contract date's page has one choice for its staff: move them and
+        # notify them, or neither.
+        tell = change.contract_id ? move_shifts : change.on?(:staff_notify)
         step(:staff, "Shifts moved; staff notified") do
           opened = []
           conflicts.each do |assignment_key, choice|
@@ -211,12 +214,52 @@ class ShowChangePlan
               moved_open += 1
             end
           end
+          told += new_place_staff!(moving, staff) if tell
           added = add_shifts!(moving, staying)
           parts = [ move_shifts ? "#{staff.changing_shifts.size} #{staff.changing_shifts.size == 1 ? 'shift' : 'shifts'} moved with the date" : "The shifts stayed where they were" ]
           parts << "#{told} on staff notified" if tell
           parts << "#{opened.size} #{opened.size == 1 ? 'shift' : 'shifts'} opened for cover" if opened.any?
           parts << "#{added} #{added == 1 ? 'shift' : 'shifts'} added at the new time, open for cover" if added.positive?
           parts.join("; ")
+        end
+      end
+
+      # The same time at another place: the time notices have nothing to
+      # say, so the cast and staff get one about the place.
+      def place_only(_moving = nil) = @place_only || []
+
+      def place_words(dest)
+        show = dest.show.reload
+        [ show.location_space&.name, show.location&.name ].compact.uniq.join(", ").presence || "a new place"
+      end
+
+      def new_place_cast!(moving)
+        place_only(moving).sum do |dest|
+          ids = ShowChanges.cast_entries(dest.show).map { |e| e["person_id"] }
+          Person.where(id: ids).includes(:user).count do |person|
+            next false unless person.user || person.email.present?
+
+            deliver_person("show_new_place", person, {
+              recipient_name: first_name(person), organization_name: organization.name, production_name: dest.show.production.name,
+              dates: day_time(dest.now_starts), place: place_words(dest)
+            }, show: dest.show)
+            true
+          end
+        end
+      end
+
+      def new_place_staff!(moving, staff)
+        place_only(moving).sum do |dest|
+          staff.changing.count do |line|
+            next false unless line.shift.covered_shows.map(&:id).include?(dest.show.id)
+            next false unless line.person.user || line.person.email.present?
+
+            deliver_person("shift_new_place", line.person, {
+              recipient_name: first_name(line.person), organization_name: organization.name, production_name: dest.show.production.name,
+              headline: "#{line.shift.role_label}, #{day_time(line.shift.starts_at)}", place: place_words(dest)
+            }, show: dest.show)
+            true
+          end
         end
       end
 

@@ -3,7 +3,7 @@
 class ShowChangePlan
   # The Which dates step: the series a date is part of, what's on each date,
   # and the events tied to the chosen dates (linked to them, or in the same
-  # room the same night) that the manager may want to include.
+  # room the same day) that the manager may want to include.
   module Dates
     module_function
 
@@ -69,7 +69,7 @@ class ShowChangePlan
 
     # Events tied to the chosen dates that aren't chosen: the ones linked to
     # them (chosen by default; a warm-up without its show makes no sense),
-    # and other events in the same room the same night (left to the manager).
+    # and other events in the same room the same day (left to the manager).
     def ties(shows, organization)
       chosen = shows.map(&:id).to_set
       linked = shows.flat_map { |s| s.event_linkage ? s.event_linkage.shows.to_a : [] }
@@ -93,7 +93,7 @@ class ShowChangePlan
           taken << other.id
           place = other.location_space&.name || other.location&.name
           ties << Tie.new(key: "night-#{other.id}", label: "#{other.display_name.presence || other.production.name}, #{other.date_and_time.strftime('%a, %b %-d at %-l:%M %p')}",
-                          detail: "#{place}, the same night. Choose it if the whole night is off.", shows: [ other ], default: false)
+                          detail: "#{place}, the same day. Choose it if the whole day is off.", shows: [ other ], default: false)
         end
       end
       ties

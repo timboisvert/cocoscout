@@ -19,31 +19,30 @@
   cast_choice = (change.choice(:cast_conflicts) || {})
   staff_choice = (change.choice(:staff_conflicts) || {})
   add_choice = (change.choice(:add_shifts) || {})
+  place_only = moving.any? && moving.all? { |d| d.offset.zero? }
+  what_new = place_only ? "new place" : "new date"
   second = ->(words, name) { words.sub(/\A#{Regexp.escape(name)} is /, "You're ").sub(/\A#{Regexp.escape(name)} marked /, "You marked ") }
 %>
 
 <% if plan.listings.any? && b.orders.any? %>
   <%= render "manage/date_changes/section", key: "buyers", title: "Ticket buyers",
-        summary: change.on?(:buyers_email) ? "Email #{b.buyer_count == 1 ? 'the buyer' : "all #{b.buyer_count}"} the new date#{change.on?(:buyers_refund_offer) ? ', offer refunds' : ''}" : "Don't email them",
+        summary: change.on?(:buyers_email) ? "Email #{b.buyer_count == 1 ? 'the buyer' : "all #{b.buyer_count}"} the new date" : "Don't email them",
         intro: "#{pluralize(b.buyer_count(b.paying), 'buyer')} #{b.buyer_count(b.paying) == 1 ? 'holds' : 'hold'} #{pluralize(b.paying.sum(&:tickets), 'ticket')}#{b.comps.any? ? "; #{pluralize(b.buyer_count(b.comps), 'person', plural: 'people')} #{b.buyer_count(b.comps) == 1 ? 'holds' : 'hold'} comps" : ''}" do %>
     <%= render "manage/date_changes/toggle", change: change, key: :buyers_email,
-          title: "Email everyone the new date and time#{b.comps.any? ? ', comp holders too' : ''}.",
-          detail: "Their tickets work at the new time as they are.",
+          title: "Email everyone the #{place_only ? 'new place' : 'new date and time'}#{b.comps.any? ? ', comp holders too' : ''}.",
+          detail: "Their tickets work #{place_only ? 'there' : 'at the new time'} as they are. Anyone it doesn't work for replies to the email.",
           extra: tag.button("Read and edit the email", type: "button", class: "block mt-1 text-pink-600 hover:text-pink-700 font-medium cursor-pointer", data: { controller: "modal", action: "click->modal#open", modal_id: "msg-buyers" }) %>
-    <%= render "manage/date_changes/toggle", change: change, key: :buyers_refund_offer,
-          title: "Offer a refund to anyone who can't make it.",
-          detail: "The email has a link; a refund requested before the show starts goes through by itself, and each one shows on the change's page." %>
   <% end %>
   <%= render "manage/date_changes/message_modal", id: "msg-buyers", title: "The email to ticket buyers", prefix: "buyers",
         subject: change.choice(:buyers_subject).presence || buyers_draft[:subject], body: change.choice(:buyers_body).presence || buyers_draft[:body],
-        hint: "{{first_name}}, {{show_title}}, and {{changes}} (each of their dates, was and now) are filled in for each buyer. {{refund_link}} is left out when you don't offer refunds, and for comp holders." %>
+        hint: "{{first_name}}, {{show_title}}, {{what_changed}} (date, time, place, or a combination), and {{changes}} (each of their dates, was and now) are filled in for each buyer." %>
 <% end %>
 
 <% if cast.people.any? %>
   <%= render "manage/date_changes/section", key: "cast", title: "Cast",
         summary: "#{change.on?(:cast_notify) ? (cast.people.size == 1 ? 'Notify 1 person' : "Notify all #{cast.people.size}") : "Don't notify"}#{@cast_conflicts.any? ? ", #{@cast_conflicts.size} can't make it" : ''}",
         intro: "#{pluralize(cast.people.size, 'person', plural: 'people')}#{@dests.any?(&:linked_to) ? ', in the show and the events moving with it' : ''}" do %>
-    <%= render "manage/date_changes/toggle", change: change, key: :cast_notify, title: "Notify the cast of the new date.",
+    <%= render "manage/date_changes/toggle", change: change, key: :cast_notify, title: "Notify the cast of the #{what_new}.",
           extra: (cast_section ? tag.button("Read and edit the message", type: "button", class: "block mt-1 text-pink-600 hover:text-pink-700 font-medium cursor-pointer", data: { controller: "modal", action: "click->modal#open", modal_id: "msg-cast" }) : nil) %>
     <% @cast_conflicts.each do |conflict| %>
       <% pid = conflict.person.id %>
@@ -62,7 +61,7 @@
     <%= render "manage/date_changes/message_modal", id: "msg-cast", title: "The message to the cast", prefix: "cast", html: true,
           subject: change.choice(:cast_subject).presence || draft[:subject], body: change.choice(:cast_body).presence || draft[:body],
           hint: previews.hint(cast_section),
-          examples: cast_section.recipients.first(3).map { |r| [ previews.filled_in_label(cast_section).sub("each person", r.person.name), previews.filled_in(cast_section, r) ] } %>
+          examples: !previews.per_person?(cast_section) ? [] : cast_section.recipients.first(3).map { |r| [ previews.filled_in_label(cast_section).sub("each person", r.person.name), previews.filled_in(cast_section, r) ] } %>
   <% end %>
 <% end %>
 
@@ -70,10 +69,12 @@
   <%= render "manage/date_changes/section", key: "staff", title: "Staff",
         summary: "#{change.on?(:shifts_move) ? "Move #{staff.changing_shifts.size}" : 'Leave the shifts'}#{@staff_conflicts.any? ? ", #{@staff_conflicts.size} clash" : ''}#{staff.staying.any? ? ", #{staff.staying.map(&:shift).uniq.size} #{staff.staying.map(&:shift).uniq.size == 1 ? 'stays' : 'stay'}" : ''}",
         intro: "#{pluralize(staff.changing_shifts.size, 'shift')} made for #{moving.size == 1 ? 'this date' : 'these dates'}#{staff.staying.any? ? ", and #{pluralize(staff.staying.map(&:shift).uniq.size, 'shift')} that also #{staff.staying.map(&:shift).uniq.size == 1 ? 'covers' : 'cover'} something else" : ''}" do %>
-    <%= render "manage/date_changes/toggle", change: change, key: :shifts_move, title: "Move the shifts with the date",
-          detail: "by as much as it moves, the ones nobody is on yet too." %>
+    <% unless place_only %>
+      <%= render "manage/date_changes/toggle", change: change, key: :shifts_move, title: "Move the shifts with the date",
+            detail: "by as much as it moves, the ones nobody is on yet too." %>
+    <% end %>
     <% if staff.people.any? %>
-      <%= render "manage/date_changes/toggle", change: change, key: :staff_notify, title: "Notify the staff,", detail: "by email and notification, naming each shift.",
+      <%= render "manage/date_changes/toggle", change: change, key: :staff_notify, title: "Notify the staff#{place_only ? ' of the new place,' : ','}", detail: "by email and notification, naming each shift.",
             extra: (staff_section ? tag.button("Read and edit the message", type: "button", class: "block mt-1 text-pink-600 hover:text-pink-700 font-medium cursor-pointer", data: { controller: "modal", action: "click->modal#open", modal_id: "msg-staff" }) : nil) %>
     <% end %>
     <ul class="py-2 border-t border-gray-100 divide-y divide-gray-100">
@@ -121,7 +122,7 @@
     <%= render "manage/date_changes/message_modal", id: "msg-staff", title: "The message to the staff", prefix: "staff", html: true,
           subject: change.choice(:staff_subject).presence || draft[:subject], body: change.choice(:staff_body).presence || draft[:body],
           hint: previews.hint(staff_section),
-          examples: staff_section.recipients.first(3).map { |r| [ previews.filled_in_label(staff_section).sub("each person", r.person.name), previews.filled_in(staff_section, r) ] } %>
+          examples: !previews.per_person?(staff_section) ? [] : staff_section.recipients.first(3).map { |r| [ previews.filled_in_label(staff_section).sub("each person", r.person.name), previews.filled_in(staff_section, r) ] } %>
   <% end %>
 <% end %>
 

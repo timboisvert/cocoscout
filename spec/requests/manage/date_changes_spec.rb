@@ -119,7 +119,7 @@ RSpec.describe "Cancel or move this date", type: :request do
   end
 
   describe "moving" do
-    it "moves the date in place, its shift with it, emails buyers with a refund link, and notifies the cast" do
+    it "moves the date in place, its shift with it, emails buyers what changed, and notifies the cast" do
       jordan = sold(1, name: "Jordan Lee", email: "jordan@example.com")
       saturday = dec4.date_and_time.to_date + 1
 
@@ -140,7 +140,7 @@ RSpec.describe "Cancel or move this date", type: :request do
       expect(response).to have_http_status(:ok)
       expect(page.at_css("[data-touch-section='staff']").text).to include("Kai Turner", "Moves, notified")
 
-      patch manage_date_change_touches_path(change), params: { commit: "review", choices: { buyers_email: "1", buyers_refund_offer: "1", shifts_move: "1", staff_notify: "1", cast_notify: "1" } }
+      patch manage_date_change_touches_path(change), params: { commit: "review", choices: { buyers_email: "1", shifts_move: "1", staff_notify: "1", cast_notify: "1" } }
       follow_redirect!
       expect(page.css("[data-review-sentences] li").map(&:text).join(" ")).to include("from #{dec4.date_and_time.strftime('%a, %b %-d')}, 8:00 PM to #{saturday.strftime('%a, %b %-d')}, 8:00 PM")
 
@@ -155,16 +155,13 @@ RSpec.describe "Cancel or move this date", type: :request do
 
       mail = ActionMailer::Base.deliveries.find { |m| m.to == [ "jordan@example.com" ] }
       body = mail.html_part&.body&.decoded || mail.body.decoded
-      expect(body).to include("are now for #{saturday.strftime('%A, %B %-d')} at 8:00 PM")
-      link = body[%r{https?://[^"<\s]+/change/#{change.id}/refund}]
-      expect(link).to be_present
-
-      # The buyer's own refund, from the link, before the show.
-      get tickets_date_change_refund_path(token: jordan.token, change_id: change.id)
-      expect(page.text).to include("Refund my tickets")
-      post tickets_date_change_refund_issue_path(token: jordan.token, change_id: change.id)
-      expect(jordan.reload.status).to eq("refunded")
-      expect(change.reload.summary["buyer_refunds"].sole["order_id"]).to eq(jordan.id)
+      expect(mail.subject).to eq("#{listing.display_title} has a new date")
+      expect(Nokogiri::HTML(body).text).to include("Your tickets were for #{(saturday - 1).strftime('%A, %B %-d')} at 8:00 PM", "They're now for #{saturday.strftime('%A, %B %-d')} at 8:00 PM")
+      # Someone it doesn't work for replies to the email: there's no
+      # click-to-refund link (Tim, 2026-11-27).
+      expect(Nokogiri::HTML(body).text).to include("If the change doesn't work for you, just reply to this email.")
+      expect(body).not_to include("/refund")
+      expect(jordan.reload.status).to eq("paid")
     end
 
     it "moves a run of dates to another weekday, keeping a date whose room is booked where it is" do

@@ -13,7 +13,7 @@
   <%= render "manage/date_changes/header", change: @change, show: show, production: @production,
         title: "#{@change.cancel? ? 'Cancel' : 'Move'} #{name}", index: 2 %>
 
-  <%= form_with url: manage_date_change_touches_path(@change), method: :patch, data: { turbo_action: "replace" } do %>
+  <%= form_with url: manage_date_change_touches_path(@change), method: :patch, data: { controller: "auto-submit", turbo_action: "replace" } do %>
     <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div class="space-y-4 sm:space-y-6 min-w-0">
         <p class="text-sm text-gray-600">
@@ -46,7 +46,7 @@
             <% review.sentences.first(6).each do |line| %><li><%= line %></li><% end %>
           </ul>
           <div class="mt-4 hidden sm:flex flex-col gap-2">
-            <%= render "shared/button", text: "Review", variant: "primary", size: "medium", type: :submit, name: "commit", value: "review", classes: "w-full" %>
+            <%= render "shared/button", text: "Review", variant: "primary", size: "medium", type: :submit, name: "commit", value: "review", data: { turbo_action: "advance" }, classes: "w-full" %>
             <%= link_to back do %>
               <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", type: :button, classes: "w-full" %>
             <% end %>
@@ -59,7 +59,7 @@
       <%= link_to back, class: "flex-1" do %>
         <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", type: :button, classes: "w-full" %>
       <% end %>
-      <%= render "shared/button", text: "Review", variant: "primary", size: "medium", type: :submit, name: "commit", value: "review", classes: "flex-[2] w-full" %>
+      <%= render "shared/button", text: "Review", variant: "primary", size: "medium", type: :submit, name: "commit", value: "review", data: { turbo_action: "advance" }, classes: "flex-[2] w-full" %>
     </div>
   <% end %>
 </div>

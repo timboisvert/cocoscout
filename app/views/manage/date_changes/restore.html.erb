@@ -50,8 +50,8 @@
         <%= hidden_field_tag :dates, dates_choice %>
         <% if plan.listings.any? %>
           <%= render "manage/date_changes/section", key: "buyers", title: "Ticket buyers",
-                summary: refunded.any? ? (@change.on?(:buyers_email, default: false) ? "Email the #{refunded.map(&:buyer_email).uniq.size} refunded buyers" : "Sales reopen; no email") : "Sales reopen" do %>
-            <p class="py-3 text-sm text-gray-700"><%= refunded.any? ? "The #{pluralize(refunded.map(&:buyer_email).uniq.size, 'buyer')} #{refunded.size == 1 ? 'was' : 'were'} refunded, so their tickets don't come back." : "Nobody had tickets to refund." %> Sales reopen with the <%= shows.one? ? "date" : "dates" %>, on the same ticket types.</p>
+                summary: refunded.any? ? "Sales reopen; emailing refunded buyers is your choice" : "Sales reopen" do %>
+            <p class="py-3 text-sm text-gray-700"><%= refunded.any? ? "#{pluralize(refunded.map(&:buyer_email).uniq.size, 'buyer')} #{refunded.map(&:buyer_email).uniq.size == 1 ? 'was' : 'were'} refunded, so their tickets don't come back." : "Nobody had tickets to refund." %> Sales reopen with the <%= shows.one? ? "date" : "dates" %>, on the same ticket types.</p>
             <% if refunded.any? %>
               <div class="border-t border-gray-100">
                 <%= render "manage/date_changes/toggle", change: @change, key: :buyers_email, default: false,
@@ -68,21 +68,21 @@
         <% end %>
 
         <% if cast.any? %>
-          <%= render "manage/date_changes/section", key: "cast", title: "Cast", summary: @change.on?(:cast_notify) ? "Notify #{cast.size} it's back on" : "Don't notify them" do %>
-            <p class="py-3 text-sm text-gray-700">The cast stayed in their roles: <%= pluralize(cast.size, "person", plural: "people") %> across <%= shows.one? ? "the date" : "the #{shows.size} dates" %>.</p>
+          <%= render "manage/date_changes/section", key: "cast", title: "Cast", summary: "Still in their roles; notify them or not" do %>
+            <p class="py-3 text-sm text-gray-700">The cast stayed in their roles: <%= pluralize(cast.size, "person", plural: "people") %> <%= shows.one? ? "on the date" : "across the #{shows.size} dates" %>.</p>
             <div class="border-t border-gray-100">
               <%= render "manage/date_changes/toggle", change: @change, key: :cast_notify, title: "Notify the #{pluralize(cast.size, 'cast member')} it's back on." %>
             </div>
             <% unavailable.each do |person, s| %>
-              <p class="pb-3 text-sm text-amber-800"><%= person.name %> has since marked <%= s.date_and_time.strftime("%b %-d") %> as unavailable, so <%= person.name %>'s role that night opens for cover.</p>
+              <p class="pb-3 text-sm text-amber-800"><%= person.name %> has since marked <%= s.date_and_time.strftime("%b %-d") %> as unavailable, so <%= person.name %>'s role on that date opens for cover.</p>
             <% end %>
           <% end %>
         <% end %>
 
         <% if undo_shifts.any? %>
           <% people_count = undo_shifts.flat_map { |r| Array(r["person_ids"]) }.uniq.size %>
-          <%= render "manage/date_changes/section", key: "staff", title: "Staff", summary: @change.on?(:staff_back) ? "Put #{people_count} back on, notify them" : "Leave the shifts off" do %>
-            <p class="py-3 text-sm text-gray-700">The <%= pluralize(undo_shifts.size, "shift") %> came off the schedule with the cancel and read Not needed.</p>
+          <%= render "manage/date_changes/section", key: "staff", title: "Staff", summary: "Back on their shifts, or left off" do %>
+            <p class="py-3 text-sm text-gray-700"><%= pluralize(undo_shifts.size, "shift") %> came off the schedule with the cancel and <%= undo_shifts.size == 1 ? "reads" : "read" %> Not needed.</p>
             <div class="border-t border-gray-100">
               <%= render "manage/date_changes/toggle", change: @change, key: :staff_back,
                     title: "Put the #{pluralize(people_count, 'person', plural: 'people')} on staff back on their shifts and notify them.",

@@ -71,46 +71,7 @@ class TicketOrdersController < ApplicationController
                 notice: "You won't get reminder emails for this order.", status: :see_other
   end
 
-  # A refund offered when the organization moved the date, or canceled it
-  # and moved the tickets to another date (DateChange): the buyer's own, any
-  # time before the show starts. A page with one button, so a mail scanner
-  # opening the link changes nothing.
-  def date_change_refund
-    @change = refund_offer_change
-  end
-
-  def date_change_refund_issue
-    @change = refund_offer_change
-    unless @change && refund_offer_open?
-      return redirect_to tickets_date_change_refund_path(token: @order.token, change_id: params[:change_id], **embed_params), status: :see_other
-    end
-
-    refund = TicketOrderRefund.issue!(@order, reason: "Requested after the date changed", notify: true, outside_policy: true, reprice: false)
-    @change.with_lock do
-      list = Array(@change.summary["buyer_refunds"]) + [ { "order_id" => @order.id, "name" => @order.buyer_name, "cents" => refund.amount_cents, "at" => Time.current.iso8601 } ]
-      @change.update_columns(summary: @change.summary.merge("buyer_refunds" => list))
-    end
-    redirect_to tickets_order_path(token: @order.token, **embed_params), status: :see_other,
-                notice: "Refunded #{ActiveSupport::NumberHelper.number_to_currency(refund.amount_cents / 100.0)}. #{TicketOrderMailer.refund_where_words(refund)}"
-  rescue TicketOrderRefund::Error => e
-    redirect_to tickets_date_change_refund_path(token: @order.token, change_id: params[:change_id], **embed_params), alert: e.message, status: :see_other
-  end
-
   private
-
-  def refund_offer_change
-    change = DateChange.applied.find_by(id: params[:change_id], organization_id: @listing.organization_id)
-    return nil unless change
-
-    offered = change.move? && change.on?(:buyers_refund_offer) && change.all_show_ids.include?(@listing.show_id)
-    offered ||= change.cancel? && Array(change.undo["rebooked_order_ids"]).map(&:to_i).include?(@order.id)
-    offered ? change : nil
-  end
-
-  helper_method :refund_offer_open?
-  def refund_offer_open?
-    @order.paid? && @order.money_path != "none" && !@listing.show.canceled? && @listing.show.date_and_time > Time.current
-  end
 
   def set_order
     @order = TicketOrder.includes(tickets: :ticket_tier, ticket_listing: [ :organization, :production, { show: %i[location location_space] } ])

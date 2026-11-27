@@ -54,27 +54,26 @@ class ShowChangePlan
       )
     end
 
-    # A buyer's orders on moved dates: was and now for each, and the refund
-    # link when the manager offers one (never for comps).
-    def moved_variables(change, orders, was_by_show:, offer_refund:)
-      lines = orders.map do |order|
-        show = order.ticket_listing.show
-        was = was_by_show[show.id] || order.told_starts_at
-        "Your tickets for #{when_words(was)} are now for #{when_words(show.date_and_time)}."
-      end
-      paying = orders.find { |o| o.money_path != "none" }
+    # A buyer's orders on dates that moved: what changed (date, time, place),
+    # and was and now for each with its place. Read before the orders are
+    # marked as told: was is what each buyer was last told. Someone the
+    # change doesn't work for replies to the email (Tim, 2026-11-27: no
+    # click-to-refund link).
+    def moved_variables(orders)
+      told = orders.map { |order| TicketShowChange.variables(order) }
+      lines = told.map { |v| "Your tickets were for #{v[:was]}. They're now for #{v[:now]}." }
+      what = %w[date time place].select { |word| told.any? { |v| v[:what_changed].to_s.split(/\W+/).include?(word) } }
       common(orders.first, orders).merge(
-        "changes" => lines.uniq.join(" "),
-        "refund_link" => (offer_refund && paying ? refund_url(change, paying) : "")
+        "what_changed" => what.to_sentence.presence || "time",
+        "changes" => lines.uniq.join(" ")
       )
     end
 
-    def rebooked_variables(change, old_order, new_order, offer_refund:)
+    def rebooked_variables(old_order, new_order)
       common(old_order, [ old_order ]).merge(
         "was" => when_words(old_order.ticket_listing.show.date_and_time),
         "now" => when_words(new_order.ticket_listing.show.date_and_time),
-        "order_url" => routes.tickets_order_url(token: new_order.token, **TicketOrderMailer.url_options),
-        "refund_link" => (offer_refund && new_order.money_path != "none" ? refund_url(change, new_order) : "")
+        "order_url" => routes.tickets_order_url(token: new_order.token, **TicketOrderMailer.url_options)
       )
     end
 
@@ -84,10 +83,6 @@ class ShowChangePlan
         "dates" => orders.map { |o| when_words(o.ticket_listing.show.date_and_time) }.uniq.to_sentence,
         "buy_url" => buy_url(listing)
       )
-    end
-
-    def refund_url(change, order)
-      routes.tickets_date_change_refund_url(token: order.token, change_id: change.id, **TicketOrderMailer.url_options)
     end
 
     def buy_url(listing)

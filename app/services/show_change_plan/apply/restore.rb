@@ -21,8 +21,8 @@ class ShowChangePlan
         shows = plan.acting_shows
         ids = shows.map(&:id)
 
-        step(:dates, "#{shows.size == 1 ? 'The date is' : "#{shows.size} dates are"} back on") do
-          bring_back!(shows, ids)
+        step(:dates, "#{shows.size == 1 ? 'The date is' : "#{shows.size} dates are"} back on", critical: true) do
+          ActiveRecord::Base.transaction { bring_back!(shows, ids) }
         end
         buyers!(ids) if change.on?(:buyers_email, default: false)
         cast!(shows) if change.on?(:cast_notify)
@@ -30,29 +30,34 @@ class ShowChangePlan
       end
 
       def bring_back!(shows, ids)
+        # The room first, while the dates are still canceled: a booking
+        # can't be made over a date that's on and has no booking.
+        rooms = rebook_rooms!(ids)
         shows.each do |show|
+          show.reload
           show.canceled = false
           show.save!
-        rescue ActiveRecord::RecordInvalid => e
-          change.add_problem!(key: "restore-#{show.id}", kind: "show", label: "#{show.production.name}, #{day_time(show.date_and_time)} couldn't come back.",
-                              detail: e.record.errors.full_messages.to_sentence)
         end
+        # Sales reopen as they were when the cancel stopped them. A date
+        # canceled before CocoScout kept that is left closed, for the manager
+        # to reopen from its ticket page.
         statuses = undo["listing_statuses"] || {}
+        reopened = 0
         TicketListing.where(show_id: ids, status: "canceled").find_each do |listing|
           was = statuses[listing.id.to_s].presence
-          was = "on_sale" if was.nil? || was == "canceled"
-          listing.update_columns(status: was, updated_at: Time.current)
+          next if was.nil? || was == "canceled"
+
+          listing.update!(status: was)
+          reopened += 1
         end
         Array(undo["table_events"]).each do |row|
           next unless ids.include?(row["show_id"].to_i)
+          next unless CastingTable.exists?(row["casting_table_id"])
 
           CastingTableEvent.find_or_create_by!(casting_table_id: row["casting_table_id"], show_id: row["show_id"])
-        rescue StandardError => e
-          Rails.logger.error("[DateChange #{change.id}] table event: #{e.message}")
         end
-        rooms = rebook_rooms!(ids)
         [ "#{shows.size == 1 ? 'The date is' : "#{shows.size} dates are"} back on",
-          (plan.listings.any? ? "ticket sales reopened" : nil), rooms ].compact.join("; ")
+          (reopened.positive? ? "ticket sales reopened" : nil), rooms ].compact.join("; ")
       end
 
       # The room the cancel let go, booked again if it's still free.
@@ -107,7 +112,7 @@ class ShowChangePlan
               next if roles.empty?
 
               opened += 1
-              cover = "You marked #{day(show.date_and_time)} as unavailable, so #{roles.compact.to_sentence} that night is open for cover."
+              cover = "You marked #{day(show.date_and_time)} as unavailable, so #{roles.compact.to_sentence} on that date is open for cover."
             end
             next unless entry.reachable?
 
@@ -134,7 +139,10 @@ class ShowChangePlan
           rows.each do |row|
             shift = organization.shifts.find_by(id: row["shift_id"])
             next unless shift
-            next unless (shift.covered_shows.map(&:id) & ids).any? || shift.source.nil?
+            # Only the shifts of the dates coming back: a date's own, or a
+            # house shift of one of their nights.
+            days = plan.acting_shows.map { |s| s.date_and_time.to_date }
+            next unless (shift.covered_shows.map(&:id) & ids).any? || (shift.covered_shows.empty? && days.include?(shift.starts_at.to_date))
 
             shift.update!(coverage_mode: row["coverage_mode"].presence || "needs_assignment") if shift.not_needed?
             Array(row["person_ids"]).each do |person_id|

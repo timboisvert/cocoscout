@@ -24,6 +24,14 @@ module DateChangesHelper
     lines
   end
 
+  # Why something didn't work, without the payment provider's name (never
+  # said to people) or its internal ids.
+  def date_change_reason(text)
+    text.to_s.sub(/\AStripe couldn't refund it: /, "The card payment couldn't be refunded: ")
+        .gsub(/No such payment_intent: '[^']*'/, "the original payment can't be found")
+        .gsub(/\bStripe\b/, "the payment processor")
+  end
+
   def date_change_time(time) = "#{time.strftime('%a, %b %-d')}, #{time.strftime('%-l:%M %p').strip}"
 
   def date_change_kind_word(change)

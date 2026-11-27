@@ -144,6 +144,21 @@ module Manage
                    action: v == 1 ? { path: manage_casting_vacancy_path(@all_open_vacancies.first[:production], @all_open_vacancies.first[:vacancy]) }
                                   : { modal: "home-vacancies" } }
       end
+      # A date change with something CocoScout couldn't finish (a refund that
+      # failed, someone to tell directly), or one still going: its page has
+      # what to do. It drops off once nothing is left (Tim, 2026-11-27).
+      Current.organization.date_changes.applied
+             .where("status = 'applying' OR problems @> ?", [ { status: "open" } ].to_json)
+             .includes(:production).order(:created_at).last(5).each do |change|
+        next unless change.production && Current.user.manager_for_production?(change.production)
+
+        left = change.open_problems.size
+        did = { "cancel" => "Canceling", "move" => "Moving", "restore" => "Bringing back" }[change.kind]
+        done = { "cancel" => "canceled", "move" => "moved", "restore" => "brought back" }[change.kind]
+        items << { key: "date-change-#{change.id}", topic: "Shows", tone: :amber,
+                   text: left.zero? ? "#{did} #{change.production.name}'s dates is still going" : "#{change.production.name}'s dates were #{done}: #{left} #{left == 1 ? 'thing' : 'things'} left to sort out",
+                   action: { path: manage_date_change_path(change) } }
+      end
       if (n = @home.unnotified_shows.size).positive?
         items << { key: "notify", topic: "Casting", tone: :amber,
                    text: n == 1 ? "#{@home.unnotified_shows.first.production&.name}'s cast hasn't been notified" : "#{n} shows' cast not notified yet",

@@ -73,7 +73,7 @@
         </div>
 
         <div class="bg-white border border-gray-200 rounded-xl px-6 py-5 max-sm:px-4 space-y-4">
-          <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="grid gap-3 grid-cols-2 2xl:grid-cols-4">
             <label class="block text-sm font-medium text-gray-700">Date
               <%= date_field_tag "move[date]", move["date"].presence || times[:rental_starts].to_date.iso8601, disabled: what == "show", class: "mt-1 #{input}", data: { action: "change->auto-submit#submit" } %>
             </label>
@@ -94,7 +94,7 @@
             <span class="text-sm font-medium text-gray-900">The show runs at different times than the rental</span>
           </label>
           <% if times[:own] || what == "show" %>
-            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="grid gap-3 grid-cols-2 2xl:grid-cols-4">
               <label class="block text-sm font-medium text-gray-700">Show starts
                 <%= time_field_tag "move[show_starts]", times[:show_starts].strftime("%H:%M"), disabled: what == "rental", class: "mt-1 #{input}", data: { action: "change->auto-submit#submit" } %>
               </label>
@@ -119,8 +119,10 @@
           <%= render "shared/section_heading", title: "The contract" %>
           <ul class="px-6 py-2 max-sm:px-4 divide-y divide-gray-100 text-sm text-gray-700">
             <li class="py-2.5">The contract's dates read <%= times[:rental_starts].strftime("%A, %B %-d") %>. The deal doesn't change.</li>
+            <% day_shift = (times[:show_starts].to_date - was[:show_starts].to_date).to_i %>
             <% pending.each do |p| %>
-              <li class="py-2.5">The <%= number_to_currency(p.amount) %> <%= p.description.presence || "payment" %> for this night, not paid yet, is now due <%= (p.due_date + (times[:show_starts].to_date - was[:show_starts].to_date).to_i).strftime("%B %-d") %>.</li>
+              <% next if day_shift.zero? %>
+              <li class="py-2.5">The pending payment<%= p.amount.to_f.positive? ? " of #{number_to_currency(p.amount)}" : "" %><%= p.description.present? ? " (#{p.description})" : "" %> for this night moves with it, to <%= (p.due_date + day_shift).strftime("%B %-d") %>.</li>
             <% end %>
             <% if request %><li class="py-2.5"><%= request.requested_by.person&.name || "The" %>'s request closes as done, and <%= request.requested_by.person&.name || "they" %> <%= request.requested_by.person ? "is" : "are" %> notified.</li><% end %>
             <% if connected %><li class="py-2.5"><%= contract.contractor_name.presence || "They" %> <%= contract.contractor_name.present? ? "uses" : "use" %> CocoScout, so their own copy of this date moves with it.</li><% end %>
@@ -139,14 +141,12 @@
             <div class="px-6 py-1 max-sm:px-4 divide-y divide-gray-100">
               <% if b.orders.any? %>
                 <%= render "manage/date_changes/toggle", change: @change, key: :buyers_email,
-                      title: "You sell this show's tickets: email the #{pluralize(b.buyer_count, 'buyer')} the new date,", detail: "and offer a refund to anyone who can't make it." %>
-                <%= hidden_field_tag "choices[buyers_refund_offer]", "1" %>
+                      title: "You sell this show's tickets: email the #{pluralize(b.buyer_count, 'buyer')} the new date.", detail: "Their tickets work as they are; anyone it doesn't work for replies to the email." %>
               <% end %>
               <% if my_staff.any? %>
                 <%= render "manage/date_changes/toggle", change: @change, key: :shifts_move,
                       title: "Move your #{pluralize(my_staff.size, 'person', plural: 'people')} on staff with the night,",
                       detail: "#{rental_shifts.any? ? 'shifts made for the rental on its times and ' : ''}show shifts on the show's, and notify them." %>
-                <%= hidden_field_tag "choices[staff_notify]", @change.on?(:shifts_move) ? "1" : "0" %>
               <% end %>
             </div>
           </div>
@@ -159,7 +159,7 @@
           <p class="text-lg font-semibold text-gray-900"><%= times[:rental_starts].strftime("%a, %b %-d") %>, <%= hm.call(times[:show_starts]) %></p>
           <p class="mt-2 text-sm text-gray-600">Same as any date: this page is its What it touches step, then Review.</p>
           <div class="mt-4 hidden sm:flex flex-col gap-2">
-            <%= render "shared/button", text: "Review", variant: "primary", size: "medium", type: :submit, name: "commit", value: "review", classes: "w-full" %>
+            <%= render "shared/button", text: "Review", variant: "primary", size: "medium", type: :submit, name: "commit", value: "review", data: { turbo_action: "advance" }, classes: "w-full" %>
             <%= link_to manage_contract_path(contract) do %>
               <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", type: :button, classes: "w-full" %>
             <% end %>
@@ -172,7 +172,7 @@
       <%= link_to manage_contract_path(contract), class: "flex-1" do %>
         <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", type: :button, classes: "w-full" %>
       <% end %>
-      <%= render "shared/button", text: "Review", variant: "primary", size: "medium", type: :submit, name: "commit", value: "review", classes: "flex-[2] w-full" %>
+      <%= render "shared/button", text: "Review", variant: "primary", size: "medium", type: :submit, name: "commit", value: "review", data: { turbo_action: "advance" }, classes: "flex-[2] w-full" %>
     </div>
   <% end %>
 </div>

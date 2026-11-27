@@ -463,10 +463,6 @@ Rails.application.routes.draw do
     get  "orders/:token/receipt",      to: "ticket_orders#receipt",   as: "order_receipt"
     get  "orders/:token/calendar",     to: "ticket_orders#calendar",  as: "order_calendar"
     get  "orders/:token/pdf",          to: "ticket_orders#pdf",       as: "order_pdf"
-    # A refund offered when a date moved or was canceled (DateChange): the
-    # buyer's own, before the show starts.
-    get  "orders/:token/change/:change_id/refund", to: "ticket_orders#date_change_refund", as: "date_change_refund"
-    post "orders/:token/change/:change_id/refund", to: "ticket_orders#date_change_refund_issue", as: "date_change_refund_issue"
     post "orders/:token/resend",       to: "ticket_orders#resend",    as: "order_resend"
     post "orders/:token/deals/:offer", to: "ticket_orders#add_deal",  as: "order_add_deal"
     get  "orders/:token/reminders",    to: "ticket_orders#reminders", as: "order_reminders"

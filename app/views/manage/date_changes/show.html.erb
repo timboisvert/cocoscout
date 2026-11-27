@@ -24,14 +24,23 @@
     <div class="space-y-6 min-w-0">
       <div class="bg-white border border-gray-200 rounded-xl px-6 py-5 max-sm:px-4">
         <span class="inline-block text-[11px] font-semibold rounded-full border px-2 py-0.5 <%= tone %>"><%= date_change_kind_word(@change) %></span>
-        <h1 class="mt-2 text-2xl coustard-regular text-gray-900"><%= name %>, <%= shows.size == 1 ? date_change_time(shows.first.date_and_time) : pluralize(shows.size, "date") %></h1>
+        <% moved = Array(@change.summary["moved"]) %>
+        <% if @change.move? && moved.one? %>
+          <h1 class="mt-2 text-2xl coustard-regular text-gray-900"><%= name %>, <%= date_change_time(Time.zone.parse(moved.first["now"])) %></h1>
+          <p class="text-sm text-gray-500">Was <%= date_change_time(Time.zone.parse(moved.first["was"])) %></p>
+        <% elsif @change.move? && moved.any? %>
+          <h1 class="mt-2 text-2xl coustard-regular text-gray-900"><%= name %>, <%= pluralize(moved.size, "date") %></h1>
+          <ul class="mt-1 text-sm text-gray-600"><% moved.each do |m| %><li><%= date_change_time(Time.zone.parse(m["was"])) %> is now <%= date_change_time(Time.zone.parse(m["now"])) %></li><% end %></ul>
+        <% else %>
+          <h1 class="mt-2 text-2xl coustard-regular text-gray-900"><%= name %>, <%= shows.size == 1 ? date_change_time(shows.first.date_and_time) : pluralize(shows.size, "date") %></h1>
+        <% end %>
         <p class="mt-1 text-sm text-gray-600"><%= date_change_kind_word(@change) %> by <%= who %> on <%= at.strftime("%A, %B %-d at %-l:%M %p") %>. This page keeps the record: what was done, and who was notified.</p>
-        <% if shows.size > 1 %>
-          <p class="mt-2 text-sm text-gray-700"><%= shows.map { |s| "#{s.display_name.presence || s.production.name} #{s.date_and_time.strftime('%b %-d')}" }.to_sentence %></p>
+        <% if shows.size > 1 && !@change.move? %>
+          <p class="mt-2 text-sm text-gray-700"><%= shows.group_by { |s| s.display_name.presence || s.production.name }.map { |title, list| "#{title}: #{list.map { |s| s.date_and_time.strftime('%b %-d') }.to_sentence}" }.join(" · ") %></p>
         <% end %>
       </div>
 
-      <%= render "manage/date_changes/progress", change: @change %>
+      <%= render "manage/date_changes/progress", change: @change, reloads: true %>
 
       <% if to_cancel.any? %>
         <div class="bg-white border border-gray-200 rounded-xl px-6 py-4 max-sm:px-4 text-sm">

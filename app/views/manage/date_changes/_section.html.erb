@@ -2,10 +2,16 @@
   One thing a change touches, as a card. On a phone (Tim's rule: one row,
   then a sheet) the card is a row with what will happen; tapping it opens
   the card's contents as a sheet, so there is one set of fields either way.
-  Locals: key, title, intro (optional), summary (the phone row's line)
+  Locals: key, title, intro (optional), summary (the phone row's line),
+  save (optional): closing the sheet saves the step and redraws it, so the
+  row says what was just chosen. On by default on What it touches, whose
+  form saves a draft; never where the form's submit does the change itself
+  (Bring back). The form needs data-controller="auto-submit" for a tap
+  outside the sheet to save too.
   Block: the card's contents.
 %>
 <% body = capture { yield } %>
+<% save = local_assigns.fetch(:save, controller.action_name == "touches") %>
 <section class="bg-white border border-gray-200 rounded-xl" data-touch-section="<%= key %>">
   <button type="button" class="sm:hidden w-full flex items-center gap-3 px-4 py-3.5 text-left min-h-[44px] cursor-pointer"
           data-controller="modal" data-action="click->modal#open" data-modal-id="sheet-<%= key %>">
@@ -16,7 +22,7 @@
     <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
   </button>
   <div id="sheet-<%= key %>" class="hidden sm:block max-sm:fixed max-sm:inset-0 max-sm:z-50 max-sm:bg-black/45"
-       data-controller="modal" data-action="click->modal#closeOnBackdrop">
+       data-controller="modal" data-action="click->modal#closeOnBackdrop<%= ' click->auto-submit#submit' if save %>">
     <div class="max-sm:absolute max-sm:inset-x-0 max-sm:bottom-0 max-sm:max-h-[85vh] max-sm:flex max-sm:flex-col max-sm:bg-white max-sm:rounded-t-2xl"
          data-action="click->modal#stopPropagation" role="group" aria-label="<%= title %>">
       <div class="sm:hidden mx-auto mt-2.5 h-1.5 w-10 rounded-full bg-gray-300" aria-hidden="true"></div>
@@ -25,7 +31,7 @@
         <%= body %>
       </div>
       <div class="sm:hidden px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+16px)] border-t border-gray-100">
-        <%= render "shared/button", text: "Done", variant: "primary", size: "medium", type: :button, classes: "w-full", data: { action: "click->modal#close" } %>
+        <%= render "shared/button", text: "Done", variant: "primary", size: "medium", type: (save ? :submit : :button), classes: "w-full", data: { action: "click->modal#close" } %>
       </div>
     </div>
   </div>

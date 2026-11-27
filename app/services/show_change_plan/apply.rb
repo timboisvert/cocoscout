@@ -17,15 +17,29 @@ class ShowChangePlan
       @organization = change.organization
     end
 
+    # The dates themselves couldn't change, so nothing else is done.
+    class Stopped < StandardError; end
+
     def call
       change.update!(batch: change.batch.presence || SecureRandom.uuid)
       @plan = ShowChangePlan.new(change)
-      Current.set(show_change_batch: change.batch, show_change_off_ids: (change.cancel? ? plan.acting_ids : nil)) do
-        case change.kind
-        when "cancel" then Cancel.new(self).run
-        when "restore" then Restore.new(self).run
-        when "move" then MoveRun.new(self).run
+      begin
+        Current.set(show_change_batch: change.batch, show_change_off_ids: (change.cancel? ? plan.acting_ids : nil)) do
+          case change.kind
+          when "cancel" then Cancel.new(self).run
+          when "restore" then Restore.new(self).run
+          when "move" then MoveRun.new(self).run
+          end
         end
+      rescue Stopped
+        skip_the_rest!("Not done: the dates didn't change.")
+      rescue StandardError => e
+        # Never left spinning: whatever was running is a problem, the rest
+        # is marked not done, and the page says so.
+        Rails.logger.error("[DateChange #{change.id}] #{e.class}: #{e.message}\n#{e.backtrace&.first(8)&.join("\n")}")
+        Sentry.capture_exception(e) if defined?(Sentry)
+        change.add_problem!(key: "stopped", kind: "step", label: "CocoScout stopped partway through.", detail: e.message)
+        skip_the_rest!("Not done: CocoScout stopped before this step.")
       end
       # The change is the record now: its cast and staff notices were sent
       # from here (or left out on purpose), so Home doesn't list them again.
@@ -35,17 +49,37 @@ class ShowChangePlan
       change
     end
 
+    def skip_the_rest!(words)
+      change.reload.steps.each do |entry|
+        next if entry["status"].in?(%w[done problem skipped])
+
+        if entry["status"] == "running"
+          change.mark_step!(entry["key"], status: "problem", detail: "This step stopped partway.")
+        else
+          change.mark_step!(entry["key"], status: "skipped", detail: "#{entry['label']}. #{words}")
+        end
+      end
+    end
+
     # Runs one step: marks it running, yields, marks it done with whatever
-    # the block returns as its detail. A failure is the step's problem.
-    def step(key, label)
+    # the block returns as its detail. A failure is the step's problem, and
+    # the steps after it still run; critical: true (the dates themselves)
+    # stops everything after it instead.
+    def step(key, label, critical: false)
       change.mark_step!(key, label: label, status: "running")
       detail = yield
       change.mark_step!(key, status: "done", detail: detail.is_a?(String) ? detail : nil)
     rescue StandardError => e
       Rails.logger.error("[DateChange #{change.id}] #{key}: #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}")
-      Sentry.capture_exception(e) if defined?(Sentry)
-      change.mark_step!(key, status: "problem", detail: "This step stopped partway: #{e.message}")
-      change.add_problem!(key: "step-#{key}", kind: "step", label: "#{label} stopped partway.", detail: e.message)
+      Sentry.capture_exception(e) if defined?(Sentry) && !e.is_a?(ActiveRecord::RecordInvalid)
+      reason = e.is_a?(ActiveRecord::RecordInvalid) ? e.record.errors.full_messages.to_sentence : e.message
+      if critical
+        change.mark_step!(key, status: "problem", detail: "#{label.sub(/\A\w/, &:upcase)}: this couldn't be done, so nothing else was. #{reason}")
+        change.add_problem!(key: "step-#{key}", kind: "step", label: "The dates couldn't change, so nothing else was done.", detail: reason)
+        raise Stopped
+      end
+      change.mark_step!(key, status: "problem", detail: "This step stopped partway: #{reason}")
+      change.add_problem!(key: "step-#{key}", kind: "step", label: "#{label} stopped partway.", detail: reason)
     end
 
     def remember!(key, value)
@@ -117,8 +151,11 @@ class ShowChangePlan
             "person_ids" => shift.active_assignments.filter_map(&:person_id) }
         end
 
-        step(:dates, "#{shows.size == 1 ? 'The date' : "#{shows.size} dates"} canceled, ticket sales stopped") do
-          cancel_dates!(shows, releasing, money.contract_payments)
+        step(:dates, "#{shows.size == 1 ? 'The date' : "#{shows.size} dates"} canceled, ticket sales stopped", critical: true) do
+          # All of the dates or none: a date that can't be canceled (one that
+          # follows another organization's contract, say) leaves every date
+          # as it was, and nobody is refunded or notified.
+          ActiveRecord::Base.transaction { cancel_dates!(shows, releasing, money.contract_payments) }
           "#{shows.size == 1 ? '1 date' : "#{shows.size} dates"} canceled#{plan.listings.any? ? ', ticket sales stopped' : ''}"
         end
 
@@ -140,11 +177,8 @@ class ShowChangePlan
           show.duration_minutes ||= show.space_rental&.effective_duration_minutes if show.space_rental_id
           show.canceled = true
           show.save!
-        rescue ActiveRecord::RecordInvalid => e
-          change.add_problem!(key: "cancel-#{show.id}", kind: "show", label: "#{show.production.name}, #{day_time(show.date_and_time)} couldn't be canceled.",
-                              detail: e.record.errors.full_messages.to_sentence)
         end
-        plan.listings.each { |listing| listing.update_columns(status: "canceled", updated_at: Time.current) unless listing.status == "canceled" }
+        plan.listings.each { |listing| listing.update!(status: "canceled") unless listing.status == "canceled" }
 
         # Pending money for the dates comes off; anything paid or on a payout
         # run already moved, and stays with the canceled date.
@@ -172,7 +206,7 @@ class ShowChangePlan
         card_cents = 0
 
         main_key = rebook ? :rebook : :refunds
-        main_label = rebook ? "Moving #{buyers.buyer_count} buyers' tickets to #{day(rebook.show.date_and_time)}" : "Refunding #{buyers.buyer_count(card)} #{buyers.buyer_count(card) == 1 ? 'buyer' : 'buyers'}"
+        main_label = rebook ? "Moving #{buyers.buyer_count == 1 ? "1 buyer's" : "#{buyers.buyer_count} buyers'"} tickets to #{day(rebook.show.date_and_time)}" : "Refunding #{buyers.buyer_count(card)} #{buyers.buyer_count(card) == 1 ? 'buyer' : 'buyers'}"
         change.mark_step!(main_key, label: main_label, status: "running", total: (rebook ? buyers.orders.size : card.size), done_count: 0, cents: 0) if card.any? || rebook
         if buyers.other.any? || buyers.pass.any?
           change.mark_step!(:other_paid, label: other_label(buyers, mark_other), status: "running")
@@ -187,9 +221,8 @@ class ShowChangePlan
               if rebook && row.kind != :pass
                 exchange = TicketOrderExchange.exchange!(order, target: rebook, by: by, email_them: false, outside_policy: true)
                 counts[:rebooked] += 1
-                remember_rebooked!(exchange.to_order_id)
                 if order.buyer_email.present?
-                  variables = BuyerWords.rebooked_variables(change, order, exchange.to_order, offer_refund: true)
+                  variables = BuyerWords.rebooked_variables(order, exchange.to_order)
                   rb_subject, rb_body = words(:rebook, :rebook)
                   TicketOrderMailer.date_change(exchange.to_order, subject: rb_subject, body: rb_body, variables: variables).deliver_later
                 end
@@ -242,7 +275,10 @@ class ShowChangePlan
         if card.any? || rebook
           failed = change.open_problems.count { |p| p["kind"] == "refund" }
           detail = if rebook then "#{counts[:rebooked]} #{counts[:rebooked] == 1 ? 'order' : 'orders'} moved to #{day(rebook.show.date_and_time)}, and the buyers emailed"
-          else "#{refunded_ids.size - counts[:marked]} buyers refunded #{BuyerWords.money(card_cents)} and emailed#{failed.positive? ? "; #{failed} didn't go through" : ''}"
+          else
+            done = refunded_ids.size - counts[:marked]
+            went = done.zero? ? nil : "#{done} #{done == 1 ? 'order' : 'orders'} refunded #{BuyerWords.money(card_cents)}, and #{done == 1 ? 'the buyer' : 'the buyers'} emailed"
+            [ went, (failed.positive? ? "#{failed} #{failed == 1 ? "refund didn't" : "refunds didn't"} go through" : nil) ].compact.join("; ").upcase_first
           end
           change.mark_step!(main_key, status: (failed.positive? ? "problem" : "done"), detail: detail)
         end
@@ -288,21 +324,16 @@ class ShowChangePlan
         end
       end
 
-      def remember_rebooked!(order_id)
-        change.with_lock do
-          change.update_columns(undo: change.undo.merge("rebooked_order_ids" => Array(change.undo["rebooked_order_ids"]) + [ order_id ]))
-        end
-      end
-
       def refund_problem!(row, error)
         order = row.order
         name = order.buyer_name.presence || order.buyer_email.presence || "Order #{order.code}"
         label = case row.kind
-        when :card then "#{name}'s refund didn't go through."
+        when :card then (change.choice(:buyers_action) == "rebook" ? "#{name}'s tickets couldn't move to the other date, and weren't refunded." : "#{name}'s refund didn't go through.")
         when :pass then "#{name}'s pass credit couldn't be returned."
         else "#{name}'s order couldn't be canceled."
         end
-        change.add_problem!(key: "order-#{order.id}", kind: (row.kind == :card ? "refund" : "order"), label: label,
+        # Try again refunds the order (a pass's credit can't be refunded on its own).
+        change.add_problem!(key: "order-#{order.id}", kind: (row.kind == :pass ? "order" : "refund"), label: label,
                             detail: error.message, order_id: order.id)
       end
 

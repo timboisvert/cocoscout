@@ -44,7 +44,7 @@
           <div class="px-6 py-5 max-sm:px-4 space-y-4">
             <% if series %>
               <p class="text-sm text-gray-700">Every <%= show.date_and_time.strftime("%A at %-l:%M %p") %> becomes every</p>
-              <div class="grid gap-3 sm:grid-cols-3">
+              <div class="grid gap-3 grid-cols-1 sm:grid-cols-3">
                 <label class="block text-sm font-medium text-gray-700">Day
                   <%= select_tag "move[wday]", options_for_select(Date::DAYNAMES.each_with_index.map { |d, i| [ d, i ] }, (move["wday"].presence || show.date_and_time.wday).to_i), class: "mt-1 #{input}", data: { action: "change->auto-submit#submit" } %>
                 </label>
@@ -57,7 +57,7 @@
               </div>
               <p class="text-sm text-gray-600">Each date moves to that day of its week and keeps its tickets, cast, shifts, and sign-ups. The dates that already happened stay as they were.</p>
             <% else %>
-              <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div class="grid gap-3 grid-cols-2 2xl:grid-cols-4">
                 <label class="block text-sm font-medium text-gray-700">Date
                   <%= date_field_tag "move[date]", move["date"].presence || show.date_and_time.to_date.iso8601, class: "mt-1 #{input}", data: { action: "change->auto-submit#submit" } %>
                 </label>
@@ -138,9 +138,13 @@
           <% else %>
             <p class="mt-1 text-sm text-gray-600">Nothing moves yet.</p>
           <% end %>
+          <% if moving.empty? && series %>
+            <p class="mt-2 text-sm text-gray-600">Each room is booked at the new time, so every date stays where it is. Choose another day or time, or another time for a date below.</p>
+          <% else %>
           <p class="mt-2 text-sm text-gray-600">The same <%= moving.size > 1 ? "dates move" : "date moves" %><% if moving.size > 1 %>, each with everything on it<% elsif facts && !facts.empty? %>: <%= [ (facts.tickets.positive? ? pluralize(facts.tickets, "ticket") : nil), (facts.cast.positive? ? "#{facts.cast} cast" : nil), (facts.shifts.positive? ? pluralize(facts.shifts, "shift") : nil), (facts.signups.positive? ? pluralize(facts.signups, "sign-up") : nil) ].compact.to_sentence %> go with <%= moving.size > 1 ? "them" : "it" %><% end %>. Next, you'll choose who is notified and what happens to anything that clashes.</p>
+          <% end %>
           <div class="mt-4 hidden sm:flex flex-col gap-2">
-            <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit, name: "commit", value: "continue", classes: "w-full" %>
+            <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit, name: "commit", value: "continue", data: { turbo_action: "advance" }, classes: "w-full" %>
             <%= link_to manage_new_date_change_path(@production, show, kind: "move") do %>
               <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", type: :button, classes: "w-full" %>
             <% end %>
@@ -153,7 +157,7 @@
       <%= link_to manage_new_date_change_path(@production, show, kind: "move"), class: "flex-1" do %>
         <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", type: :button, classes: "w-full" %>
       <% end %>
-      <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit, name: "commit", value: "continue", classes: "flex-[2] w-full" %>
+      <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit, name: "commit", value: "continue", data: { turbo_action: "advance" }, classes: "flex-[2] w-full" %>
     </div>
   <% end %>
 </div>

@@ -1,7 +1,8 @@
 <%#
   The steps of a change as they finish, and anything that couldn't be
   done. Reloads itself every two seconds until everything is done
-  (date_change_progress_controller). Locals: change
+  (date_change_progress_controller). Locals: change, reloads (true on the
+  page, which reloads this; never in the answer to a reload)
 %>
 <%
   steps = change.steps
@@ -11,20 +12,26 @@
   problems = change.open_problems
   fmt = ->(iso) { iso ? Time.zone.parse(iso).strftime("%-l:%M %p") : nil }
 %>
-<turbo-frame id="date-change-progress" src="<%= manage_date_change_progress_path(change) %>" data-controller="date-change-progress" data-date-change-progress-finished-value="<%= finished %>">
-  <div class="space-y-6">
+<%# target="_top": a button in here (Try again, Mark refunded) is a page
+    visit, not a load into the frame. The controller is on the contents, so
+    each reload reads a fresh "finished". %>
+<%# Only the page's own frame carries the address to reload from. The
+    answer to a reload must not: Turbo refuses a frame whose address points
+    back at itself, and leaves the frame empty. %>
+<%= tag.turbo_frame id: "date-change-progress", target: "_top", src: (manage_date_change_progress_path(change) if local_assigns[:reloads]) do %>
+  <div class="space-y-6" data-controller="date-change-progress" data-date-change-progress-finished-value="<%= finished %>">
     <div class="bg-white border border-gray-200 rounded-xl">
       <%= render "shared/section_heading", title: "Progress",
-            intro: finished ? "#{done} of #{steps.size} done" : "#{done} of #{steps.size} done#{running ? " · #{running['label'].to_s.downcase_first}" : ''}" %>
+            intro: finished ? (done == steps.size ? "All #{steps.size} done" : "#{done} of #{steps.size} done; the rest are below") : "#{done} of #{steps.size} done#{running ? " · #{running['label'].to_s.downcase_first}" : ''}" %>
       <ul class="divide-y divide-gray-100" data-progress-steps>
         <% steps.each do |s| %>
           <% status = s["status"] %>
           <li class="px-6 py-3 max-sm:px-4 flex items-start gap-3 text-sm" data-step="<%= s['key'] %>" data-status="<%= status %>">
-            <span class="mt-0.5 w-5 h-5 shrink-0 rounded-full flex items-center justify-center <%= { 'done' => 'bg-pink-500 text-white', 'problem' => 'bg-amber-100 text-amber-800', 'running' => 'border-2 border-pink-500 border-t-transparent animate-spin' }[status] || 'border-2 border-gray-300' %>" aria-hidden="true">
-              <% if status == "done" %><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg><% elsif status == "problem" %>!<% end %>
+            <span class="mt-0.5 w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold <%= { 'done' => 'bg-pink-500 text-white', 'problem' => 'bg-amber-100 text-amber-800', 'skipped' => 'bg-gray-100 text-gray-500', 'running' => 'border-2 border-pink-500 border-t-transparent animate-spin' }[status] || 'border-2 border-gray-300' %>" aria-hidden="true">
+              <% if status == "done" %><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg><% elsif status == "problem" %>!<% elsif status == "skipped" %>&ndash;<% end %>
             </span>
             <span class="flex-1 min-w-0">
-              <span class="block text-gray-900 <%= 'font-medium' if status == 'running' %>"><%= s["detail"].presence || s["label"] %></span>
+              <span class="block text-gray-900 <%= 'font-medium' if status == 'running' %>"><%= date_change_reason(s["detail"].presence || s["label"]) %></span>
               <% if status == "running" && s["total"].to_i.positive? %>
                 <span class="block text-gray-600"><%= s["done_count"].to_i %> of <%= s["total"] %> done<%= s["cents"].to_i.positive? ? ", #{number_to_currency(s['cents'].to_i / 100.0)} so far" : "" %></span>
               <% end %>
@@ -35,13 +42,18 @@
       </ul>
     </div>
 
-    <% refunds = Array(change.summary["buyer_refunds"]) %>
-    <% if refunds.any? %>
-      <div class="bg-white border border-gray-200 rounded-xl" data-buyer-refunds>
-        <%= render "shared/section_heading", title: "Refunds buyers requested", intro: "From the link in their email, before the show." %>
+    <% settled = change.problems.reject { |p| p["status"] == "open" } %>
+    <% if settled.any? %>
+      <div class="bg-white border border-gray-200 rounded-xl" data-settled>
+        <%= render "shared/section_heading", title: "Dealt with since" %>
         <ul class="divide-y divide-gray-100">
-          <% refunds.each do |r| %>
-            <li class="px-6 py-2.5 max-sm:px-4 flex justify-between gap-3 text-sm"><span class="text-gray-900"><%= r["name"].presence || "A buyer" %>, <%= number_to_currency(r["cents"].to_i / 100.0) %></span><span class="text-gray-500"><%= Time.zone.parse(r["at"]).strftime("%b %-d, %-l:%M %p") %></span></li>
+          <% settled.each do |p| %>
+            <% who = User.find_by(id: p["resolved_by_user_id"]) %>
+            <% words = { "refunded_elsewhere" => "Refunded another way. The order still reads paid in Ticketing: no money left through CocoScout.", "told" => "Told directly.", "resolved" => (p["kind"] == "refund" ? "Refunded." : "Dealt with.") }[p["status"]] %>
+            <li class="px-6 py-2.5 max-sm:px-4 text-sm text-gray-700">
+              <span class="text-gray-900"><%= p["label"] %></span> <%= words %>
+              <span class="text-gray-500"><%= [ who&.person&.name || who&.email_address, (Time.zone.parse(p["resolved_at"]).strftime("%b %-d, %-l:%M %p") if p["resolved_at"]) ].compact.join(", ") %></span>
+            </li>
           <% end %>
         </ul>
       </div>
@@ -54,16 +66,16 @@
           <% problems.each do |p| %>
             <li class="px-6 py-4 max-sm:px-4 text-sm" data-problem="<%= p['key'] %>">
               <p class="font-medium text-gray-900"><%= p["label"] %></p>
-              <% if p["detail"].present? %><p class="text-gray-600 mt-0.5"><%= p["detail"] %></p><% end %>
+              <% if p["detail"].present? %><p class="text-gray-600 mt-0.5"><%= date_change_reason(p["detail"]) %></p><% end %>
               <div class="mt-2 flex flex-wrap gap-2">
                 <% case p["kind"] %>
                 <% when "refund" %>
-                  <%= render "shared/button", text: "Try again", variant: "primary", size: "small", path: manage_retry_date_change_problem_path(change, p["key"]), method: :post, data: { turbo_frame: "_top" } %>
-                  <%= render "shared/button", text: "Mark refunded", variant: "secondary", size: "small", path: manage_resolve_date_change_problem_path(change, p["key"]), method: :post, data: { turbo_frame: "_top" } %>
+                  <%= render "shared/button", text: "Try again", variant: "primary", size: "small", path: manage_retry_date_change_problem_path(change, p["key"]), method: :post %>
+                  <%= render "shared/button", text: "Refunded another way", variant: "secondary", size: "small", path: manage_resolve_date_change_problem_path(change, p["key"]), method: :post %>
                 <% when "untold" %>
-                  <%= render "shared/button", text: "Mark as told", variant: "secondary", size: "small", path: manage_resolve_date_change_problem_path(change, p["key"]), method: :post, data: { turbo_frame: "_top" } %>
+                  <%= render "shared/button", text: "Mark as told", variant: "secondary", size: "small", path: manage_resolve_date_change_problem_path(change, p["key"]), method: :post %>
                 <% else %>
-                  <%= render "shared/button", text: "Mark as dealt with", variant: "secondary", size: "small", path: manage_resolve_date_change_problem_path(change, p["key"]), method: :post, data: { turbo_frame: "_top" } %>
+                  <%= render "shared/button", text: "Mark as dealt with", variant: "secondary", size: "small", path: manage_resolve_date_change_problem_path(change, p["key"]), method: :post %>
                 <% end %>
               </div>
             </li>
@@ -72,4 +84,4 @@
       </div>
     <% end %>
   </div>
-</turbo-frame>
+<% end %>

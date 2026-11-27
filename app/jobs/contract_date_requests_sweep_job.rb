@@ -14,6 +14,9 @@ class ContractDateRequestsSweepJob < ApplicationJob
     ContractDateRequests.sweep!(now: now)
     ContractConnections.sweep!(now: now)
     LinkedDates.sweep!
+    # A date change someone started and never confirmed (Cancel or move this
+    # date) is only its draft; a week old, it goes.
+    DateChange.drafts.where(updated_at: ...7.days.ago).delete_all
     # ...and the followers shared through connected contracts are brought up to date.
     SharedFollowersSyncJob.perform_later
   end

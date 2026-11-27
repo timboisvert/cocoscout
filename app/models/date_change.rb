@@ -74,7 +74,7 @@ class DateChange < ApplicationRecord
       entry["label"] = label if label
       entry["status"] = status
       entry["detail"] = detail if detail
-      entry["done_at"] = Time.current.iso8601 if status.in?(%w[done problem])
+      entry["done_at"] = Time.current.iso8601 if status.in?(%w[done problem skipped])
       extra.each { |k, v| entry[k.to_s] = v }
       update_columns(steps: list, updated_at: Time.current)
     end
@@ -100,8 +100,12 @@ class DateChange < ApplicationRecord
   end
 
   def open_problems = problems.select { |p| p["status"] == "open" }
-  def steps_done = steps.count { |s| s["status"].in?(%w[done problem]) }
-  def finished? = applied? && steps.all? { |s| s["status"].in?(%w[done problem]) }
+  # A step is over when it's done, when it had a problem, or when it was
+  # skipped because the dates themselves couldn't change.
+  OVER = %w[done problem skipped].freeze
+
+  def steps_done = steps.count { |s| s["status"] == "done" }
+  def finished? = applied? && steps.all? { |s| s["status"].in?(OVER) }
   def unfinished? = applied? && (!finished? || open_problems.any?)
 
   # The dates a cancel took off that are still canceled (what Bring back

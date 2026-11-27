@@ -75,7 +75,7 @@
 
         <% if @ties.any? %>
           <div class="bg-white border border-gray-200 rounded-xl">
-            <%= render "shared/section_heading", title: "Cancel these too?", intro: "Events tied to these dates, or in the same room the same night." %>
+            <%= render "shared/section_heading", title: "Cancel these too?", intro: "Events tied to these dates, or in the same room the same day." %>
             <div class="px-6 py-2 max-sm:px-4 divide-y divide-gray-100">
               <% @ties.each do |tie| %>
                 <% ids = tie.shows.map(&:id) %>
@@ -103,7 +103,7 @@
           </div>
           <p class="mt-3 text-sm text-gray-600">Next, you'll choose what happens for each of them. Nothing changes until you confirm on the last step.</p>
           <div class="mt-4 hidden sm:flex flex-col gap-2">
-            <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit, name: "commit", value: "continue", classes: "w-full" %>
+            <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit, name: "commit", value: "continue", data: { turbo_action: "advance" }, classes: "w-full" %>
             <%= link_to manage_new_date_change_path(@production, show, kind: "cancel") do %>
               <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", type: :button, classes: "w-full" %>
             <% end %>
@@ -116,7 +116,7 @@
       <%= link_to manage_new_date_change_path(@production, show, kind: "cancel"), class: "flex-1" do %>
         <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", type: :button, classes: "w-full" %>
       <% end %>
-      <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit, name: "commit", value: "continue", classes: "flex-[2] w-full" %>
+      <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit, name: "commit", value: "continue", data: { turbo_action: "advance" }, classes: "flex-[2] w-full" %>
     </div>
   <% end %>
 </div>

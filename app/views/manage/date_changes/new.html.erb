@@ -44,6 +44,10 @@
         </div>
       </div>
 
+      <% if @follows %>
+        <%= render "shared/alert_panel", eyebrow: "Booked at #{@follows}", headline: "This date follows #{@follows}'s contract",
+              body: "It moves or cancels when #{@follows} moves or cancels it on the contract, so it can't be changed from here. Request the change from #{@follows} on My Contracts." %>
+      <% else %>
       <fieldset class="space-y-3">
         <legend class="text-lg font-semibold text-gray-900 mb-3">What would you like to do with <%= day %>?</legend>
         <%= option.call("cancel", "Cancel it", "It isn't going to happen. It stays on your calendar as Canceled, and CocoScout takes care of the buyers, the cast, the staff, and the money.") %>
@@ -61,6 +65,7 @@
         <% end %>
         <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit, classes: "max-sm:w-full" %>
       </div>
+      <% end %>
     <% end %>
 
     <aside class="hidden lg:block text-sm text-gray-600 space-y-3">

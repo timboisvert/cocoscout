@@ -35,7 +35,7 @@
           <%= radio_button_tag "choices[buyers_action]", "rebook", rebook, disabled: targets.empty?, class: "mt-1 h-4 w-4 accent-pink-500" %>
           <span class="text-sm flex-1 min-w-0">
             <span class="block font-semibold text-gray-900">Move them to another date</span>
-            <span class="block text-gray-600"><%= targets.empty? ? "There's no other date on sale to move them to." : "Their tickets move to the date you choose. The email links to a refund for anyone who can't make it." %></span>
+            <span class="block text-gray-600"><%= targets.empty? ? "There's no other date on sale to move them to." : "Their tickets move to the date you choose. Anyone who can't make it replies to the email." %></span>
             <% if targets.any? %>
               <%= select_tag "choices[rebook_listing_id]", options_for_select(targets.map { |l| [ "#{l.show.date_and_time.strftime('%a, %b %-d, %-l:%M %p')} · #{l.display_title}", l.id ] }, change.choice(:rebook_listing_id)),
                     class: "mt-2 block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
@@ -87,7 +87,7 @@
   <% if targets.any? %>
     <%= render "manage/date_changes/message_modal", id: "msg-rebook", title: "The email to buyers moved to another date", prefix: "rebook",
           subject: change.choice(:rebook_subject).presence || rebook_draft[:subject], body: change.choice(:rebook_body).presence || rebook_draft[:body],
-          hint: "{{was}}, {{now}}, {{order_url}}, and {{refund_link}} are filled in for each buyer." %>
+          hint: "{{was}}, {{now}}, and {{order_url}} are filled in for each buyer." %>
   <% end %>
 <% end %>
 
@@ -128,7 +128,7 @@
     <%= render "manage/date_changes/message_modal", id: "msg-cast", title: "The message to the cast", prefix: "cast", html: true,
           subject: change.choice(:cast_subject).presence || draft[:subject], body: change.choice(:cast_body).presence || draft[:body],
           hint: previews.hint(cast_section),
-          examples: cast_section.recipients.first(3).map { |r| [ "#{previews.filled_in_label(cast_section).sub('each person', r.person.name)}", previews.filled_in(cast_section, r) ] } %>
+          examples: !previews.per_person?(cast_section) ? [] : cast_section.recipients.first(3).map { |r| [ "#{previews.filled_in_label(cast_section).sub('each person', r.person.name)}", previews.filled_in(cast_section, r) ] } %>
   <% end %>
 <% end %>
 
@@ -162,7 +162,7 @@
     <%= render "manage/date_changes/message_modal", id: "msg-staff", title: "The message to the staff", prefix: "staff", html: true,
           subject: change.choice(:staff_subject).presence || draft[:subject], body: change.choice(:staff_body).presence || draft[:body],
           hint: previews.hint(staff_section),
-          examples: staff_section.recipients.first(3).map { |r| [ "#{previews.filled_in_label(staff_section).sub('each person', r.person.name)}", previews.filled_in(staff_section, r) ] } %>
+          examples: !previews.per_person?(staff_section) ? [] : staff_section.recipients.first(3).map { |r| [ "#{previews.filled_in_label(staff_section).sub('each person', r.person.name)}", previews.filled_in(staff_section, r) ] } %>
   <% end %>
 <% end %>
 

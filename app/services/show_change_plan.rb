@@ -174,7 +174,7 @@ class ShowChangePlan
         reason = if others.any?
           "also covers #{others.map { |s| "#{s.display_name.presence || s.production.name} at #{s.date_and_time.strftime('%-l:%M %p').strip}" }.to_sentence}, which #{others.one? ? "isn't" : "aren't"} #{change.cancel? ? 'canceled' : 'moving'}"
         else
-          "is a house shift for the whole night, and other events are still on that night"
+          "is a house shift for the whole day, and other events are still on that day"
         end
         people = shift.active_assignments.filter_map(&:person)
         (people.presence || [ nil ]).each { |p| lines << ShiftLine.new(shift: shift, person: p, status: :stays, reason: reason) }
@@ -270,7 +270,7 @@ class ShowChangePlan
       lines << "Your Google Calendar shows #{n == 1 ? 'it' : 'them'} as canceled." if GoogleCalendarSync.on_for?(organization.id)
       lines << "Reminders for #{n == 1 ? 'this date' : 'these dates'} don't go out."
       rooms = acting_shows.filter_map { |s| s.location_space&.name || s.location&.name }.uniq
-      lines << "#{rooms.to_sentence} #{rooms.one? ? 'is' : 'are'} free #{n == 1 ? 'that night' : 'those nights'} for other bookings." if rooms.any?
+      lines << "#{rooms.to_sentence} #{rooms.one? ? 'is' : 'are'} free for other bookings then." if rooms.any?
       following_copies.map { |s| s.production.organization.name }.uniq.each do |name|
         lines << "#{name}'s own copy of #{n == 1 ? 'the date' : 'these dates'} is canceled too."
       end

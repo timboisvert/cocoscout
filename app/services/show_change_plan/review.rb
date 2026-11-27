@@ -60,6 +60,18 @@ class ShowChangePlan
       end
     end
 
+    # What the manager should know before confirming a move: a room that's
+    # already booked at the new time. CocoScout doesn't stop it (two events
+    # can share a room on purpose), but it never passes unsaid.
+    def warnings
+      return [] unless change.move?
+
+      dests.select(&:moves?).reject(&:linked_to).flat_map do |dest|
+        probe = change.contract_id ? dest.with(now_starts: Moves.contract_times(dest.show, change.move)[:rental_starts], now_ends: Moves.contract_times(dest.show, change.move)[:rental_ends]) : dest
+        Moves.room_conflicts(probe, change).map { |c| "#{day(dest.now_starts)}: #{c.words}." }
+      end.uniq
+    end
+
     def sentences
       case change.kind
       when "cancel" then cancel_sentences
@@ -80,13 +92,13 @@ class ShowChangePlan
       if b.card.any?
         if change.choice(:buyers_action) == "rebook"
           target = TicketListing.find_by(id: change.choice(:rebook_listing_id))
-          list << "Move #{people(b.buyer_count, 'buyer', 'buyers')}' tickets to #{target ? day_time(target.show.date_and_time) : 'the date you chose'}, and email each of them, with a link to a refund."
+          list << "Move #{b.buyer_count == 1 ? "1 buyer's" : "#{b.buyer_count} buyers'"} tickets to #{target ? day_time(target.show.date_and_time) : 'the date you chose'}, and email #{b.buyer_count == 1 ? 'them' : 'each of them'}."
         else
-          list << "Refund #{people(b.buyer_count(b.card), 'buyer', 'buyers')} #{money(b.card_cents)}, tax and fees included, and email each of them."
+          list << "Refund #{people(b.buyer_count(b.card), 'buyer', 'buyers')} #{money(b.card_cents)}, tax and fees included, and email #{b.buyer_count(b.card) == 1 ? 'them' : 'each of them'}."
         end
       end
       if b.other.any?
-        list << (on?(:other_paid) ? "Mark #{b.other.size} #{b.other.size == 1 ? 'order' : 'orders'} paid another way (#{money(b.other_cents)}) as refunded, and email those buyers." : "Leave the #{b.other.size} #{b.other.size == 1 ? 'order' : 'orders'} paid another way as they are.")
+        list << (on?(:other_paid) ? "Mark #{b.other.size} #{b.other.size == 1 ? 'order' : 'orders'} paid another way (#{money(b.other_cents)}) as refunded, and email #{b.other.size == 1 ? 'that buyer' : 'those buyers'}." : "Leave the #{b.other.size} #{b.other.size == 1 ? 'order' : 'orders'} paid another way as they are.")
       end
       list << "Return pass credits to #{people(b.buyer_count(b.pass), 'pass holder', 'pass holders')}, and email them." if b.pass.any?
       if b.comps.any? || b.comp_requests.any?
@@ -132,6 +144,8 @@ class ShowChangePlan
     def move_sentences
       list = []
       moving = dests.select(&:moves?)
+      place_only = moving.any? && moving.all? { |d| d.offset.zero? }
+      what_new = place_only ? "new place" : "new date"
       kept = dests.select { |d| d.choice == "keep" }
       canceling = dests.select { |d| d.choice == "cancel" }
       moving.reject(&:linked_to).each do |d|
@@ -144,13 +158,13 @@ class ShowChangePlan
       list << "Leave #{canceling.map { |d| day(d.was_starts) }.to_sentence} on the old day for now; the change's page offers to cancel #{canceling.one? ? 'it' : 'them'} next." if canceling.any?
       if plan.listings.any?
         b = plan.buyers
-        list << (on?(:buyers_email) ? "Email #{people(b.buyer_count, 'buyer', 'buyers')} the new date and time#{on?(:buyers_refund_offer) ? ', with a link to a refund for anyone who can\'t make it' : ''}." : "Don't email the buyers. Their tickets work at the new time.")
+        list << (on?(:buyers_email) ? "Email #{people(b.buyer_count, 'buyer', 'buyers')} the #{place_only ? 'new place' : 'new date and time'}." : "Don't email the buyers. Their tickets work #{place_only ? 'at the new place' : 'at the new time'}.")
       end
       cast = plan.cast.people
       if cast.any?
         opened = (change.choice(:cast_conflicts) || {}).select { |_, v| v == "open" }.keys.map(&:to_i)
         names = cast.select { |c| opened.include?(c.person.id) }.map { |c| c.person.name }
-        line = on?(:cast_notify) ? "Notify #{people(cast.size - names.size, 'cast member', 'cast members')} of the new date" : "Don't notify the cast"
+        line = on?(:cast_notify) ? "Notify #{people(cast.size - names.size, 'cast member', 'cast members')} of the #{what_new}" : "Don't notify the cast"
         line += ", and open #{names.map { |n| "#{n}'s role" }.to_sentence} for cover, notifying #{names.one? ? names.first : 'each of them'}" if names.any?
         list << "#{line}."
       end
@@ -158,8 +172,10 @@ class ShowChangePlan
       if s.any?
         opened = (change.choice(:staff_conflicts) || {}).select { |_, v| v == "open" }.keys
         n = s.changing_shifts.size
-        line = on?(:shifts_move) ? "Move #{n} #{n == 1 ? 'shift' : 'shifts'} with the date" : "Leave the shifts where they are"
-        line += on?(:staff_notify) ? " and notify the staff" : ""
+        tell = change.contract_id ? on?(:shifts_move) : on?(:staff_notify)
+        line = if place_only then tell ? "Notify the staff of the new place" : "Don't notify the staff"
+        else "#{on?(:shifts_move) ? "Move #{n} #{n == 1 ? 'shift' : 'shifts'} with the date" : 'Leave the shifts where they are'}#{tell ? ' and notify the staff' : ''}"
+        end
         line += ", opening #{opened.size} for cover" if opened.any?
         list << "#{line}."
         stay = s.staying.filter_map(&:person).uniq
@@ -174,6 +190,10 @@ class ShowChangePlan
       end
       list << (on?(:students_email) ? "Email the students the new time." : "Don't email the students.") if plan.class_offerings.any?
       if change.contract_id
+        rental_staff = contract_rental_staff
+        if rental_staff.positive? && plan.staff.changing_shifts.empty?
+          list << (on?(:shifts_move) ? "Move the #{rental_staff == 1 ? 'shift' : "#{rental_staff} shifts"} made for the rental with it, and notify the staff." : "Leave the shifts made for the rental where they are.")
+        end
         list << "Notify the other people on the contract." if on?(:contract_notify)
         list << "Close #{change.contract_date_request.requested_by.person&.name || 'the'}'s request as done, and notify them." if change.contract_date_request
       end
@@ -187,6 +207,14 @@ class ShowChangePlan
       list << "Notify the #{people(plan.cast.people.size, 'cast member', 'cast members')} that it's back on." if on?(:cast_notify) && plan.cast.people.any?
       list << "Put the staff back on their shifts and notify them; a shift whose person has since taken another that overlaps opens for cover." if on?(:staff_back) && change.restores&.undo&.dig("shifts").present?
       list
+    end
+
+    # Shifts made for a contract date's rental (setup, strike), with people on them.
+    def contract_rental_staff
+      rental_id = change.main_shows.first&.space_rental_id
+      return 0 unless rental_id
+
+      Shift.where(source_type: "SpaceRental", source_id: rental_id).joins(:shift_assignments).merge(ShiftAssignment.active).distinct.count
     end
 
     # What people will receive, one row per kind of message.
@@ -243,7 +271,7 @@ class ShowChangePlan
         k = [ %w[dates Moving the dates] ]
         k << %w[buyers Emailing the buyers] if plan.listings.any? && on?(:buyers_email)
         k << %w[cast Notifying the cast] if plan.cast.people.any?
-        k << %w[staff The staff and their shifts] if plan.staff.any?
+        k << %w[staff The staff and their shifts] if plan.staff.any? || (change.contract_id && contract_rental_staff.positive?)
         k << %w[signups Sign-ups] if plan.signups.registrations.any? || plan.signups.instances.any?
         k << %w[students Students] if plan.class_offerings.any? && on?(:students_email)
         k

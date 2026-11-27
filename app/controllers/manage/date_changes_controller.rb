@@ -20,18 +20,22 @@ module Manage
       buyers_action rebook_listing_id buyers_subject buyers_body rebook_subject rebook_body other_paid comps_email
       cast_notify cast_subject cast_body shifts_off staff_notify staff_subject staff_body signups_cancel
       students_email students_subject students_body clear_pay respread followers
-      buyers_email buyers_refund_offer shifts_move signups_action signups_notify contract_notify staff_back
+      buyers_email shifts_move signups_action signups_notify contract_notify staff_back
       back_on_subject back_on_body
     ].freeze
 
     # Step 1: what to do with the date.
     def new
+      return redirect_to manage_new_date_restore_path(@production, @show) if @show.canceled?
+
+      # A date that follows another organization's contract is theirs to
+      # move or cancel; this organization requests the change from them.
+      @follows = @show.follows_contract? && !@show.released_from_contract? ? (@show.followed_organization&.name || "the organization it's booked with") : nil
       @facts = ShowChangePlan::Dates.facts([ @show ])[@show.id]
       @series = ShowChangePlan::Dates.series(@show)
       @following = ShowChangePlan::Dates.following(@show)
       @delete_blockers = ShowChangePlan::Delete.blockers([ @show ])
       @linked = @show.event_linkage ? @show.event_linkage.shows.reject { |s| s.id == @show.id || s.canceled? } : []
-      return redirect_to manage_new_date_restore_path(@production, @show) if @show.canceled?
 
       @kind = params[:kind].presence_in(%w[cancel move delete]) || "cancel"
       @kind = "move" if params[:move].present?
@@ -40,6 +44,10 @@ module Manage
     def create
       kind = params[:kind].presence_in(%w[cancel move delete])
       return redirect_to(manage_new_date_change_path(@production, @show), alert: "Choose what you'd like to do with the date.") unless kind
+      return redirect_to(manage_new_date_restore_path(@production, @show)) if @show.canceled?
+      if @show.follows_contract? && !@show.released_from_contract?
+        return redirect_to(manage_new_date_change_path(@production, @show), alert: "This date follows another organization's contract, so it's theirs to move or cancel.")
+      end
       return redirect_to(manage_new_date_change_path(@production, @show, kind: "delete", delete: 1)) if kind == "delete"
       return redirect_to(manage_move_contract_date_path(@show.space_rental.contract_id, @show)) if kind == "move" && @show.space_rental_id
 
@@ -64,7 +72,8 @@ module Manage
       else chosen_ids
       end
       ids = [ @change.show_id ] if ids.empty?
-      also = Array(params[:also_show_ids]).flat_map { |v| v.to_s.split(",") }.map(&:to_i)
+      offered = ties_for(org_shows(ids)).flat_map(&:shows).map(&:id)
+      also = Array(params[:also_show_ids]).flat_map { |v| v.to_s.split(",") }.map(&:to_i) & offered
       if refreshing? && (scope != @change.scope || ids.sort != @change.show_ids.map(&:to_i).sort)
         also = default_ties(org_shows(ids), @change.kind)
       end
@@ -92,8 +101,23 @@ module Manage
         move["location_id"] = location&.id&.to_s
         move["location_space_id"] = location&.location_spaces&.find_by(id: space_id)&.id&.to_s
       end
+      before = @change.move || {}
       move["mode"] = scope == "following" ? "series" : "single"
       move["per_date"] = fields[:per_date].to_h if fields.key?(:per_date)
+      if move["mode"] == "series"
+        # A new day, time, or place is a new question for every date: the
+        # choices made about the old one's clashes don't carry over. Then a
+        # date whose room is booked at the new time stays where it is unless
+        # the manager chooses otherwise.
+        move["per_date"] = {} if %w[wday starts location_id location_space_id].any? { |key| move[key].to_s != before[key].to_s } || scope != @change.scope
+        probe = @change.dup.tap { |c| c.assign_attributes(scope: scope, show_ids: ids, also_show_ids: [], move: move.merge("per_date" => {})) }
+        ShowChangePlan::Moves.destinations(probe).each do |dest|
+          key = dest.show.id.to_s
+          next if move["per_date"][key].present?
+
+          move["per_date"][key] = { "choice" => "keep" } if ShowChangePlan::Moves.room_conflicts(dest, probe).any?
+        end
+      end
       also = ActiveModel::Type::Boolean.new.cast(move["linked"]) ? linked_for(org_shows(ids)).map(&:id) : []
       @change.update!(scope: scope, show_ids: ids, also_show_ids: also, move: move)
       return redirect_to(manage_date_change_when_path(@change)) if refreshing?
@@ -156,10 +180,23 @@ module Manage
 
     def apply
       @change.update!(choices: (@change.choices || {}).merge(choice_params)) if params[:choices].present?
-      @change.update!(status: "applying", applied_at: Time.current, created_by_user: Current.user,
-                      steps: ShowChangePlan::Review.new(@change, ShowChangePlan.new(@change)).planned_steps)
-      DateChangeApplyJob.perform_later(@change.id, Current.user.id)
-      redirect_to manage_date_change_path(@change)
+      plan = ShowChangePlan.new(@change)
+      if plan.acting_shows.empty?
+        return redirect_to(@show ? manage_show_path(@production, @show) : manage_production_shows_path(@production),
+                           alert: @change.restore? ? "Those dates are already back on." : "Those dates have already been canceled, so there's nothing left to do.")
+      end
+
+      steps = ShowChangePlan::Review.new(@change, plan).planned_steps
+      if @change.move?
+        moved = ShowChangePlan::Moves.destinations(@change).select(&:moves?).map { |d| { "show_id" => d.show.id, "was" => d.was_starts.iso8601, "now" => d.now_starts.iso8601 } }
+        @change.update_columns(summary: (@change.summary || {}).merge("moved" => moved))
+      end
+      # Claimed once: a second press of the button (or a second tab) finds
+      # it already going, and lands on the same page.
+      claimed = DateChange.where(id: @change.id, status: "draft")
+                          .update_all(status: "applying", applied_at: Time.current, created_by_user_id: Current.user.id, steps: steps, updated_at: Time.current)
+      DateChangeApplyJob.perform_later(@change.id, Current.user.id) if claimed == 1
+      redirect_to manage_date_change_path(@change), status: :see_other
     end
 
     # The record: what was done, who was notified, what couldn't be done.
@@ -184,7 +221,7 @@ module Manage
         @change.resolve_problem!(problem["key"], status: "resolved", by: Current.user)
         redirect_to manage_date_change_path(@change), notice: "#{order.buyer_name.presence || 'The buyer'} was refunded #{ShowChangePlan::BuyerWords.money(refund.amount_cents)}.", status: :see_other
       rescue StandardError => e
-        redirect_to manage_date_change_path(@change), alert: "It still didn't go through: #{e.message}", status: :see_other
+        redirect_to manage_date_change_path(@change), alert: "It still didn't go through: #{helpers.date_change_reason(e.message)}", status: :see_other
       end
     end
 
@@ -192,11 +229,10 @@ module Manage
       problem = @change.open_problems.find { |p| p["key"] == params[:key] }
       return redirect_to(manage_date_change_path(@change), status: :see_other) unless problem
 
-      if problem["kind"] == "refund" && (order = TicketOrder.where(organization: Current.organization).find_by(id: problem["order_id"]))
-        # Refunded another way: the books say so, and nothing more is sent.
-        order.update!(status: "refunded") if order.paid?
-      end
-      @change.resolve_problem!(problem["key"], status: (problem["kind"] == "untold" ? "told" : "resolved"), by: Current.user)
+      # A refund made another way is the manager's word, kept on this page.
+      # The order and the books are left alone: no money left through
+      # CocoScout, so nothing here says it did.
+      @change.resolve_problem!(problem["key"], status: { "untold" => "told", "refund" => "refunded_elsewhere" }.fetch(problem["kind"], "resolved"), by: Current.user)
       redirect_to manage_date_change_path(@change), status: :see_other
     end
 
@@ -315,15 +351,29 @@ module Manage
 
     def chosen_ids
       ids = Array(params[:show_ids]).map(&:to_i)
-      org_shows(ids).reject(&:canceled?).map(&:id)
+      mine(org_shows(ids)).reject(&:canceled?).map(&:id)
+    end
+
+    # Only dates of productions this person manages: someone who manages one
+    # production can't cancel another's from Choose dates or "Cancel these too".
+    def mine(shows)
+      @manages ||= Hash.new { |h, production| h[production] = Current.user.manager_for_production?(production) }
+      shows.select { |show| @manages[show.production] }
+    end
+
+    def ties_for(shows)
+      ShowChangePlan::Dates.ties(shows, Current.organization).filter_map do |tie|
+        allowed = mine(tie.shows)
+        tie.with(shows: allowed) if allowed.size == tie.shows.size
+      end
     end
 
     def linked_for(shows)
-      ShowChangePlan::Dates.ties(shows, Current.organization).select { |t| t.key.start_with?("linked") }.flat_map(&:shows)
+      ties_for(shows).select { |t| t.key.start_with?("linked") }.flat_map(&:shows)
     end
 
     def default_ties(shows, kind)
-      ties = ShowChangePlan::Dates.ties(shows, Current.organization)
+      ties = ties_for(shows)
       ties = ties.select { |t| t.key.start_with?("linked") } if kind == "move"
       ties.select(&:default).flat_map(&:shows).map(&:id)
     end
@@ -342,10 +392,10 @@ module Manage
       @series = ShowChangePlan::Dates.series(@change.show)
       @following = ShowChangePlan::Dates.following(@change.show)
       @past = ShowChangePlan::Dates.past_in_series(@change.show)
-      @choosable = @change.scope == "chosen" ? ShowChangePlan::Dates.choosable(@change.show, Current.organization) : []
+      @choosable = @change.scope == "chosen" ? mine(ShowChangePlan::Dates.choosable(@change.show, Current.organization)) : []
       @main = @change.main_shows
       @facts = ShowChangePlan::Dates.facts(@main + @change.also_shows)
-      @ties = ShowChangePlan::Dates.ties(@main, Current.organization)
+      @ties = ties_for(@main)
     end
 
     def load_when_step
