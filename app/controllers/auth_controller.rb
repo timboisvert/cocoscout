@@ -300,7 +300,8 @@ class AuthController < ApplicationController
     @code_sent = state["sent"] if @step == "code"
     @code_purpose = state["purpose"] if @step == "code"
     @signup_token ||= SignupFormToken.generate if @step == "start"
-    render :signin, status: status
+    # The sign-in screen is a page, whatever the request asked for.
+    render :signin, status: status, formats: [ :html ]
   end
 
   def sign_in_state

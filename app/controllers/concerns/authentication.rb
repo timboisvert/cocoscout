@@ -33,6 +33,12 @@ module Authentication
   end
 
   def request_authentication
+    # A page's JSON fetch (a poll after the session ended) gets a 401, not a
+    # redirect it would follow to the sign-in page as JSON, which has no
+    # JSON to give (Sentry, AuthController#signin MissingTemplate; Tim,
+    # 2026-11-27).
+    return head(:unauthorized) if request.format.json?
+
     session[:return_to_after_authenticating] = return_to_after_authenticating_url
     # The app opens on its welcome screen, not straight onto the form.
     redirect_to request.user_agent.to_s.include?("Turbo Native") ? welcome_path : signin_path
