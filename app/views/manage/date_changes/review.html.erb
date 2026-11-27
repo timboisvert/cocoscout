@@ -76,7 +76,7 @@
       <div class="bg-white border border-gray-200 rounded-xl px-5 py-4 lg:sticky lg:top-4">
         <p class="text-lg font-semibold text-gray-900"><%= @review.headline %></p>
         <p class="mt-2 text-sm text-gray-600">
-          <% if @change.cancel? %>Refunds and messages can't be taken back once they go. Everything else comes back if you bring the dates back.<% else %>Messages can't be taken back once they go. The date can be moved again any time.<% end %>
+          <% if @change.cancel? %><%= @plan.buyers.any? ? "Refunds and messages" : "Messages" %> can't be taken back once they go. Everything else comes back if you bring the dates back.<% else %>Messages can't be taken back once they go. The date can be moved again any time.<% end %>
         </p>
         <%= form_with url: manage_apply_date_change_path(@change), method: :post, class: "mt-4 flex flex-col gap-2", id: "apply-change" do %>
           <%= render "shared/button", text: @review.button, variant: "primary", size: "medium", type: :submit, classes: "w-full" %>

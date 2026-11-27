@@ -55,7 +55,7 @@
                   <%= select_tag "move[place]", options_for_select(location_options, place_value), class: "mt-1 #{input}", data: { action: "change->auto-submit#submit" } %>
                 </label>
               </div>
-              <p class="text-sm text-gray-600">Each date moves to that day of its week and keeps its tickets, cast, shifts, and sign-ups. The dates that already happened stay as they were.</p>
+              <p class="text-sm text-gray-600">Each date moves to that day of its week and keeps its <%= date_change_keeps %>. The dates that already happened stay as they were.</p>
             <% else %>
               <div class="grid gap-3 grid-cols-2 2xl:grid-cols-4">
                 <label class="block text-sm font-medium text-gray-700">Date

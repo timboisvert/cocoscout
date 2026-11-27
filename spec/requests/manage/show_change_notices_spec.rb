@@ -161,7 +161,7 @@ RSpec.describe "Telling people a show changed", type: :request do
     delete manage_delete_show_path(production, seven), params: { scope: "this" }
     expect(response).to redirect_to(manage_new_date_change_path(production, seven, kind: "cancel"))
     expect(Show.exists?(seven.id)).to be(true)
-    expect(flash[:alert]).to include("can't be deleted", "1 cast and 1 staff scheduled")
+    expect(flash[:alert]).to include("can't be deleted", "1 person cast and 1 staff scheduled")
   end
 
   it "records nothing for a show in the past, or one nobody is on" do

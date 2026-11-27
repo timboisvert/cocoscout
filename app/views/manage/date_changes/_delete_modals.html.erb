@@ -23,7 +23,7 @@
     <% if blockers.empty? %>
       <%= form_with url: manage_delete_dates_path(production, show), method: :delete, id: "#{id}-form" do %>
         <div class="px-6 py-5 space-y-4 text-sm text-gray-700">
-          <p>It comes off your calendar as if it had never been entered. Nobody was cast or scheduled for it, and no tickets were sold, so there's nobody to notify.</p>
+          <p>It comes off your calendar as if it had never been entered. Nobody was cast<%= " or scheduled" if date_change_has?(:staff) %> for it<%= ", and no tickets were sold" if date_change_has?(:tickets) %>, so there's nobody to notify.</p>
           <% if show.recurring? %>
             <fieldset class="space-y-1">
               <legend class="font-semibold text-gray-900 mb-1">It's part of a series of <%= series.size %> dates</legend>
@@ -47,7 +47,7 @@
         <ul class="list-disc pl-5 space-y-1">
           <% blockers.each do |reason| %><li><%= reason.upcase_first %></li><% end %>
         </ul>
-        <p>Cancel it instead. You'll choose how the buyers are refunded and who is notified, and CocoScout does the rest.</p>
+        <p>Cancel it instead. You'll choose <%= "how the buyers are refunded and " if date_change_has?(:tickets) %>who is notified, and CocoScout does the rest.</p>
       </div>
       <div class="px-4 sm:px-6 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] sm:py-4 bg-gray-50 border-t border-gray-200 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 [&>*]:w-full sm:[&>*]:w-auto [&_button]:w-full sm:[&_button]:w-auto">
         <%= render "shared/button", text: "Keep it", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>

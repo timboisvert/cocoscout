@@ -20,8 +20,28 @@ module DateChangesHelper
     end
     lines << "Reminders go out for the new #{one ? 'date' : 'dates'}."
     lines << "Your calendar, public pages#{GoogleCalendarSync.on_for?(change.organization_id) ? ', and Google Calendar' : ''} show the new #{one ? 'date' : 'dates'}."
-    lines << "The #{one ? "date's" : "dates'"} money, settle up, and cast pay go with #{one ? 'it' : 'them'}."
+    lines << "The #{one ? "date's" : "dates'"} money, settle up, and cast pay go with #{one ? 'it' : 'them'}." if change.organization.feature_available?(:money)
     lines
+  end
+
+  # What this organization's plan includes, for the flow's general wording
+  # (Tim, 2026-11-27): ticketing, staffing, and money are Pro, so someone on
+  # the Producer plan is never told about ticket buyers, staff, shifts, or
+  # pay. Cast comes with every organization. Sections that list real things
+  # (orders, shifts) show whenever those exist, whatever the plan.
+  def date_change_has?(feature, organization = Current.organization)
+    organization.feature_available?({ tickets: :ticketing, staff: :staffing, money: :money }.fetch(feature))
+  end
+
+  # "the ticket buyers, the cast, the staff, and the money", by plan.
+  def date_change_cares_for
+    [ ("the ticket buyers" if date_change_has?(:tickets)), "the cast", ("the staff" if date_change_has?(:staff)),
+      ("the money" if date_change_has?(:money)) ].compact.to_sentence
+  end
+
+  # "its tickets, cast, shifts, and sign-ups", by plan.
+  def date_change_keeps
+    [ ("tickets" if date_change_has?(:tickets)), "cast", ("shifts" if date_change_has?(:staff)), "sign-ups" ].compact.to_sentence
   end
 
   # Why something didn't work, without the payment provider's name (never

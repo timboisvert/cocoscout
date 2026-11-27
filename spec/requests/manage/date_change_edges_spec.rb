@@ -269,6 +269,52 @@ RSpec.describe "Cancel or move this date, the edges", type: :request do
     expect(nights.last.shift_assignments.active).to be_empty
   end
 
+  # Ticketing, staffing, and money are Pro (Tim, 2026-11-27): someone on the
+  # Producer plan is never told about ticket buyers, staff, shifts, or pay.
+  # Cast comes with every organization.
+  context "on the Producer plan" do
+    let!(:org) { create(:organization, owner: owner, name: "The Parlor Room") }
+    let!(:general) { nil }
+    let(:pro_words) { /ticket|buyer|refund|staff|shift|scheduled|money|settle up|\bpay\b/i }
+
+    it "talks about the cast only, on every step" do
+      ana = create(:person, name: "Ana Diaz", user: create(:user))
+      org.people << ana
+      create(:show_person_role_assignment, show: show, assignable: ana)
+
+      get manage_new_date_change_path(production, show)
+      expect(page.at_css("main").text).to include("CocoScout takes care of the cast.")
+      expect(page.at_css("form").text).not_to match(pro_words)
+
+      change = start("cancel")
+      get manage_date_change_dates_path(change)
+      expect(page.css("table thead th").map(&:text)).to eq(%w[Date Cast Sign-ups])
+      expect(page.at_css("main").text).not_to match(pro_words)
+
+      get manage_date_change_touches_path(change)
+      expect(page.css("[data-touch-section]").map { |sec| sec["data-touch-section"] }).to eq([ "cast" ])
+      expect(page.at_css("main").text).not_to match(pro_words)
+
+      get manage_date_change_review_path(change)
+      expect(page.at_css("main").text).to include("Messages can't be taken back once they go.")
+      expect(page.at_css("main").text).not_to match(pro_words)
+
+      perform_enqueued_jobs(only: DateChangeApplyJob) { post manage_apply_date_change_path(change) }
+      get manage_date_change_path(change)
+      expect(page.at_css("main").text).to include("puts the cast back")
+      expect(page.at_css("main").text).not_to match(pro_words)
+
+      move = start("move", on: next_show)
+      patch manage_date_change_when_path(move), params: { scope: "this", commit: "continue", move: { date: (next_show.date_and_time.to_date + 1).iso8601, starts: "20:00", ends: "22:00" } }
+      get manage_date_change_touches_path(move)
+      expect(page.at_css("main").text).not_to match(pro_words)
+
+      spare = create(:show, production: production, date_and_time: show.date_and_time + 3.weeks)
+      get manage_new_date_change_path(production, spare, kind: "delete", delete: 1)
+      expect(page.at_css("#delete-date-#{spare.id}").text).to include("Nobody was cast for it, so there's nobody to notify.")
+    end
+  end
+
   describe "a contract date" do
     let!(:contractor) { create(:contractor, organization: org) }
     let!(:rented) { create(:production, organization: org, production_type: "third_party", name: "Northside Sketch Co.") }

@@ -50,7 +50,7 @@
       <% else %>
       <fieldset class="space-y-3">
         <legend class="text-lg font-semibold text-gray-900 mb-3">What would you like to do with <%= day %>?</legend>
-        <%= option.call("cancel", "Cancel it", "It stays on your calendar as Canceled. CocoScout takes care of the ticket buyers, the cast, the staff, and the money.") %>
+        <%= option.call("cancel", "Cancel it", "It stays on your calendar as Canceled. CocoScout takes care of #{date_change_cares_for}.") %>
         <%= option.call("move", "Move it", "Change the date, time, or place. Everything tied to it stays, and everyone who needs to know is notified.") %>
         <% if can_delete %>
           <%= option.call("delete", "Delete it", "For shows and events created by mistake.") %>

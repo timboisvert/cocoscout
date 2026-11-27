@@ -28,8 +28,8 @@ class ShowChangePlan
       staff = ShiftAssignment.active.where(shift_id: Shift.where(source_type: "Show", source_id: ids).select(:id))
                              .or(ShiftAssignment.active.where(shift_id: ShiftShow.where(show_id: ids).select(:shift_id))).distinct.count(:person_id)
       if cast.positive? || staff.positive?
-        words = [ (cast.positive? ? "#{cast} cast" : nil), (staff.positive? ? "#{staff} staff" : nil) ].compact.join(" and ")
-        reasons << "#{words} scheduled"
+        reasons << [ (cast.positive? ? "#{cast} #{cast == 1 ? 'person' : 'people'} cast" : nil),
+                     (staff.positive? ? "#{staff} staff scheduled" : nil) ].compact.join(" and ")
       end
       signups = SignUpRegistration.active.where(sign_up_slot_id: SignUpSlot.where(sign_up_form_instance_id: SignUpFormInstance.where(show_id: ids).select(:id)).select(:id)).count
       reasons << "#{signups} #{signups == 1 ? 'sign-up' : 'sign-ups'}" if signups.positive?

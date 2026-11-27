@@ -60,7 +60,7 @@
     <aside class="space-y-4">
       <% if still.any? %>
         <div class="bg-white border border-gray-200 rounded-xl px-5 py-4">
-          <p class="text-sm text-gray-700">Changed your mind? Bringing the dates back reopens ticket sales and puts the cast and staff back, and you choose who hears about it.</p>
+          <p class="text-sm text-gray-700">Changed your mind? Bringing the dates back <%= "reopens ticket sales and " if date_change_has?(:tickets) %>puts the cast<%= " and staff" if date_change_has?(:staff) %> back, and you choose who hears about it.</p>
           <%= link_to manage_new_date_restore_path(still.first.production, still.first), class: "block mt-3" do %>
             <%= render "shared/button", text: still.size == 1 ? "Bring this date back" : "Bring these dates back", variant: "secondary", size: "medium", type: :button, classes: "w-full" %>
           <% end %>
