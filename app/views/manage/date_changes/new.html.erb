@@ -10,7 +10,7 @@
   later = @following.size - 1
   can_delete = @delete_blockers.empty?
   option = ->(value, title, words, disabled: false) {
-    tag.label(class: "flex gap-3 rounded-xl border px-4 py-4 #{disabled ? 'border-gray-200 bg-gray-50 cursor-not-allowed' : 'border-gray-200 bg-white cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 has-[:checked]:ring-1 has-[:checked]:ring-pink-500'}") do
+    tag.label(class: "flex gap-3 rounded-xl border px-4 py-4 #{disabled ? 'border-gray-200 bg-gray-50 cursor-not-allowed' : 'border-gray-200 bg-white cursor-pointer has-[input:checked]:border-pink-500 has-[input:checked]:bg-pink-50 has-[input:checked]:ring-1 has-[input:checked]:ring-pink-500'}") do
       safe_join([
         radio_button_tag(:kind, value, @kind == value && !disabled, disabled: disabled, class: "mt-1 h-4 w-4 shrink-0 accent-pink-500 text-pink-600 focus:ring-pink-500"),
         tag.span(class: "min-w-0") { safe_join([ tag.span(title, class: "block text-base font-semibold #{disabled ? 'text-gray-500' : 'text-gray-900'}"), tag.span(words, class: "block mt-1 text-sm #{disabled ? 'text-gray-500' : 'text-gray-600'} leading-relaxed") ]) }

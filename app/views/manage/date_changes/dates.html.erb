@@ -24,9 +24,9 @@
                 intro: show.recurring? ? "#{name} is a series of #{@series.size} dates, from #{@series.first.date_and_time.strftime('%b %-d')} to #{@series.last.date_and_time.strftime('%b %-d')}." : nil %>
           <div class="px-6 py-4 max-sm:px-4 space-y-2">
             <% [ [ "this", "Only #{show.date_and_time.strftime('%A, %B %-d')}", show.recurring? ? "The rest of the series goes on." : nil ],
-                 (later.positive? ? [ "following", "#{show.date_and_time.strftime('%B %-d')} and the #{later == 1 ? 'date' : "#{later} dates"} after it", "Ends the series early.#{@past.positive? ? " The #{@past} #{@past == 1 ? 'date' : 'dates'} that already happened stay as #{@past == 1 ? 'it is' : 'they are'}." : ''}" ] : nil),
+                 (later.positive? ? [ "following", "#{show.date_and_time.strftime('%B %-d')} and the #{later == 1 ? 'date' : "#{later} dates"} after it", "Ends the series early.#{@past == 1 ? ' The date that already happened stays as it is.' : (@past > 1 ? " The #{@past} dates that already happened stay as they are." : '')}" ] : nil),
                  [ "chosen", "Choose dates", "Pick any dates still to come, from this production or others." ] ].compact.each do |value, title, words| %>
-              <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+              <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[input:checked]:border-pink-500 has-[input:checked]:bg-pink-50">
                 <%= radio_button_tag :scope, value, @change.scope == value, class: "mt-1 h-4 w-4 accent-pink-500", data: { action: "change->auto-submit#submit" } %>
                 <span><span class="block text-sm font-semibold text-gray-900"><%= title %></span><% if words %><span class="block text-sm text-gray-600"><%= words %></span><% end %></span>
               </label>

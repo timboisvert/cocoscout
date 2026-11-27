@@ -151,7 +151,7 @@ module Manage
     def review
       @plan = ShowChangePlan.new(@change)
       @dests = ShowChangePlan::Moves.destinations(@change) if @change.move?
-      @review = ShowChangePlan::Review.new(@change, @plan, dests: @dests)
+      @review = ShowChangePlan::Review.new(@change, @plan, dests: @dests, previews: preview_notices)
     end
 
     def apply

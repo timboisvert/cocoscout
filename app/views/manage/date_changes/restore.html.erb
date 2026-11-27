@@ -34,11 +34,11 @@
         <%= form_with url: manage_date_change_restore_path(@change), method: :get, data: { controller: "auto-submit", turbo_action: "replace" }, class: "bg-white border border-gray-200 rounded-xl" do %>
           <%= render "shared/section_heading", title: "Which dates" %>
           <div class="px-6 py-4 max-sm:px-4 space-y-2">
-            <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+            <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[input:checked]:border-pink-500 has-[input:checked]:bg-pink-50">
               <%= radio_button_tag :dates, "this", dates_choice == "this", class: "mt-1 h-4 w-4 accent-pink-500", data: { action: "change->auto-submit#submit" } %>
               <span class="text-sm font-semibold text-gray-900">Only <%= show.date_and_time.strftime("%A, %B %-d") %></span>
             </label>
-            <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+            <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[input:checked]:border-pink-500 has-[input:checked]:bg-pink-50">
               <%= radio_button_tag :dates, "all", dates_choice == "all", class: "mt-1 h-4 w-4 accent-pink-500", data: { action: "change->auto-submit#submit" } %>
               <span class="text-sm font-semibold text-gray-900">Everything canceled with it: <%= pluralize(@all_ids.size, "date") %></span>
             </label>

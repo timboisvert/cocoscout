@@ -22,16 +22,16 @@
 %>
 
 <% if b.any? %>
-  <% summary = b.card.any? ? (rebook ? "Move their tickets to another date" : "Refund all #{b.buyer_count(b.card)} and email them") : "Email the comp holders" %>
+  <% summary = b.card.any? ? (rebook ? "Move their tickets to another date" : (b.buyer_count(b.card) == 1 ? "Refund the buyer and email them" : "Refund all #{b.buyer_count(b.card)} and email them")) : "Email the comp holders" %>
   <%= render "manage/date_changes/section", key: "buyers", title: "Ticket buyers", summary: summary,
         intro: "#{pluralize(b.buyer_count, 'buyer')} #{b.buyer_count == 1 ? 'holds' : 'hold'} #{pluralize(b.ticket_count, 'ticket')}#{b.paid_cents.positive? ? ", #{money_.call(b.paid_cents)} paid" : ''}" do %>
     <% if b.card.any? %>
       <div class="py-3 space-y-2">
-        <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+        <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[input:checked]:border-pink-500 has-[input:checked]:bg-pink-50">
           <%= radio_button_tag "choices[buyers_action]", "refund", !rebook, class: "mt-1 h-4 w-4 accent-pink-500" %>
           <span class="text-sm"><span class="block font-semibold text-gray-900">Refund everyone and email them</span><span class="block text-gray-600">What each buyer paid, tax and fees included, goes back the way they paid.</span></span>
         </label>
-        <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 <%= 'opacity-60' if targets.empty? %>">
+        <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[input:checked]:border-pink-500 has-[input:checked]:bg-pink-50 <%= 'opacity-60' if targets.empty? %>">
           <%= radio_button_tag "choices[buyers_action]", "rebook", rebook, disabled: targets.empty?, class: "mt-1 h-4 w-4 accent-pink-500" %>
           <span class="text-sm flex-1 min-w-0">
             <span class="block font-semibold text-gray-900">Move them to another date</span>
@@ -45,7 +45,7 @@
       </div>
       <div class="py-3 border-t border-gray-100 text-sm">
         <p class="font-medium text-gray-900">The email, one per buyer, listing all of their tickets</p>
-        <p class="text-gray-600 mt-1"><%= change.choice(:buyers_subject).presence || buyers_draft[:subject] %></p>
+        <p class="text-gray-600 mt-1"><%= (change.choice(:buyers_subject).presence || buyers_draft[:subject]).gsub("{{show_title}}", plan.acting_shows.map { |s| s.display_name.presence || s.production.name }.uniq.to_sentence) %></p>
         <button type="button" class="mt-1 text-pink-600 hover:text-pink-700 font-medium cursor-pointer" data-controller="modal" data-action="click->modal#open" data-modal-id="msg-buyers">Read and edit</button>
         <% if targets.any? %>
           <span class="text-gray-300 mx-1">·</span>
@@ -92,7 +92,7 @@
 <% end %>
 
 <% if cast.any? %>
-  <% summary = [ (cast.people.any? ? (change.on?(:cast_notify) ? "Notify #{cast.people.size}" : "Don't notify") : nil), (cast.vacancies.any? ? "close #{cast.vacancies.size} cover #{cast.vacancies.size == 1 ? 'request' : 'requests'}" : nil) ].compact.join(", ") %>
+  <% summary = [ (cast.people.any? ? (change.on?(:cast_notify) ? (cast.people.size == 1 ? "Notify 1 person" : "Notify all #{cast.people.size}") : "Don't notify") : nil), (cast.vacancies.any? ? "close #{cast.vacancies.size} cover #{cast.vacancies.size == 1 ? 'request' : 'requests'}" : nil) ].compact.join(", ") %>
   <%= render "manage/date_changes/section", key: "cast", title: "Cast", summary: summary,
         intro: cast.people.any? ? "#{pluralize(cast.people.size, 'person', plural: 'people')} across #{plan.acting_shows.size == 1 ? 'the date' : "the #{plan.acting_shows.size} dates"}" : nil do %>
     <% if cast.people.any? %>

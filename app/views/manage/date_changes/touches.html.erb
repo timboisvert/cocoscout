@@ -37,7 +37,7 @@
         <% end %>
       </div>
 
-      <aside>
+      <aside class="hidden sm:block">
         <div class="bg-white border border-gray-200 rounded-xl px-5 py-4 lg:sticky lg:top-4">
           <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">When you confirm</p>
           <% review = ShowChangePlan::Review.new(@change, @plan, dests: @dests) %>

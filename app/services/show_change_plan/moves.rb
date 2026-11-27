@@ -164,7 +164,8 @@ class ShowChangePlan
           .where(date_and_time: (dest.now_starts - 1.day)..dest.now_ends).where.not(id: moving)
           .includes(:production, :location_space).each do |other|
         next if dest.location_space_id && other.location_space_id && other.location_space_id != dest.location_space_id
-        next if other.space_rental_id && other.space_rental_id == dest.show.space_rental_id
+        # A contract's show is listed by its booking, below, which holds the room longer.
+        next if other.space_rental_id
         next unless overlaps?(dest.now_starts, dest.now_ends, other.date_and_time, other.ends_at)
 
         place = other.location_space&.name || other.location&.name

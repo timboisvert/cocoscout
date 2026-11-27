@@ -53,7 +53,7 @@
         <%= render "shared/button", text: "Keep it", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
         <%= form_with url: manage_create_date_change_path(production, show), method: :post do %>
           <%= hidden_field_tag :kind, "cancel" %>
-          <%= render "shared/button", text: "Cancel it instead", variant: "primary", size: "medium", type: :submit %>
+          <%= render "shared/button", text: "Cancel it instead", variant: "primary", size: "medium", type: :submit, classes: "w-full sm:w-auto" %>
         <% end %>
       </div>
     <% end %>

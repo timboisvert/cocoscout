@@ -63,7 +63,7 @@
               <% [ [ "night", "The whole night", "The rental and the show move together, to a new date or time." ],
                    [ "show", "Only the show's times", "A new start or end inside the same rental." ],
                    [ "rental", "Only the rental", "Earlier load-in or later strike. The show keeps its times, and has to stay inside." ] ].each do |value, title, words| %>
-                <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+                <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[input:checked]:border-pink-500 has-[input:checked]:bg-pink-50">
                   <%= radio_button_tag "move[what]", value, what == value, class: "mt-1 h-4 w-4 accent-pink-500", data: { action: "change->auto-submit#submit" } %>
                   <span><span class="block text-sm font-semibold text-gray-900"><%= title %></span><span class="block text-sm text-gray-600"><%= words %></span></span>
                 </label>

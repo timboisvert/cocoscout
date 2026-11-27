@@ -7,13 +7,25 @@ class ShowChangePlan
   class Review
     Message = Data.define(:who, :how, :count, :subject, :body)
 
-    attr_reader :change, :plan, :dests
+    attr_reader :change, :plan, :dests, :previews
 
-    def initialize(change, plan, dests: nil)
+    # previews: the cast and staff notices built before the change
+    # (ShowChangeNotices), whose drafts are the words when none were edited.
+    def initialize(change, plan, dests: nil, previews: nil)
       @change = change
       @plan = plan
       @dests = dests || (change.move? ? Moves.destinations(change) : [])
+      @previews = previews
     end
+
+    # The edited words for a send, or its draft as the notices would write it.
+    def notice_words(prefix, section_key)
+      section = previews&.section(section_key)
+      draft = section ? previews.draft(section) : {}
+      [ change.choice("#{prefix}_subject").presence || draft[:subject], change.choice("#{prefix}_body").presence || draft[:body] ]
+    end
+
+    def titled(text) = text.to_s.gsub("{{show_title}}", plan.acting_shows.map { |s| s.display_name.presence || s.production.name }.uniq.to_sentence)
 
     def h = ActionController::Base.helpers
     def money(cents) = BuyerWords.money(cents)
@@ -185,22 +197,22 @@ class ShowChangePlan
         b = plan.buyers
         draft = BuyerWords.draft(:cancel)
         count = b.emailable.reject { |o| (o.kind == :other && !on?(:other_paid)) || (o.kind == :comp && !on?(:comps_email)) }.map(&:email).uniq.size
-        rows << Message.new(who: "Ticket buyers", how: "email", count: count, subject: change.choice(:buyers_subject).presence || draft[:subject], body: change.choice(:buyers_body).presence || draft[:body]) if count.positive?
-        rows << Message.new(who: "Cast", how: "notification and email", count: plan.cast.people.count(&:reachable?), subject: change.choice(:cast_subject), body: change.choice(:cast_body)) if on?(:cast_notify) && plan.cast.people.any?
-        rows << Message.new(who: "Staff", how: "email and notification", count: plan.staff.people.size, subject: change.choice(:staff_subject), body: change.choice(:staff_body)) if on?(:staff_notify) && plan.staff.people.any?
+        rows << Message.new(who: "Ticket buyers", how: "email", count: count, subject: titled(change.choice(:buyers_subject).presence || draft[:subject]), body: change.choice(:buyers_body).presence || draft[:body]) if count.positive?
+        rows << Message.new(who: "Cast", how: "notification and email", count: plan.cast.people.count(&:reachable?), subject: notice_words(:cast, "cast_off").first, body: notice_words(:cast, "cast_off").last) if on?(:cast_notify) && plan.cast.people.any?
+        rows << Message.new(who: "Staff", how: "email and notification", count: plan.staff.people.size, subject: notice_words(:staff, "staff_off").first, body: notice_words(:staff, "staff_off").last) if on?(:staff_notify) && plan.staff.people.any?
         rows << Message.new(who: "People invited to cover", how: "notification", count: plan.cast.invited_count, subject: "Cover is no longer needed", body: nil) if plan.cast.invited_count.positive?
         rows << Message.new(who: "Sign-ups", how: "notification, or email for those without a login", count: plan.signups.registrations.size, subject: "Your sign-up is canceled", body: nil) if on?(:signups_cancel) && plan.signups.registrations.any?
         rows << Message.new(who: "Students", how: "email", count: plan.students.size, subject: change.choice(:students_subject).presence || CourseSessionCancellation.default_email.first, body: nil) if on?(:students_email) && plan.students.any?
       when "move"
         b = plan.buyers
         draft = BuyerWords.draft(:move)
-        rows << Message.new(who: "Ticket buyers", how: "email", count: b.emailable.map(&:email).uniq.size, subject: change.choice(:buyers_subject).presence || draft[:subject], body: change.choice(:buyers_body).presence || draft[:body]) if on?(:buyers_email) && b.emailable.any?
-        rows << Message.new(who: "Cast", how: "notification and email", count: plan.cast.people.count(&:reachable?), subject: change.choice(:cast_subject), body: change.choice(:cast_body)) if on?(:cast_notify) && plan.cast.people.any?
-        rows << Message.new(who: "Staff", how: "email and notification", count: plan.staff.people.size, subject: change.choice(:staff_subject), body: change.choice(:staff_body)) if on?(:staff_notify) && plan.staff.people.any?
+        rows << Message.new(who: "Ticket buyers", how: "email", count: b.emailable.map(&:email).uniq.size, subject: titled(change.choice(:buyers_subject).presence || draft[:subject]), body: change.choice(:buyers_body).presence || draft[:body]) if on?(:buyers_email) && b.emailable.any?
+        rows << Message.new(who: "Cast", how: "notification and email", count: plan.cast.people.count(&:reachable?), subject: notice_words(:cast, "cast_moved").first, body: notice_words(:cast, "cast_moved").last) if on?(:cast_notify) && plan.cast.people.any?
+        rows << Message.new(who: "Staff", how: "email and notification", count: plan.staff.people.size, subject: notice_words(:staff, "staff_moved").first, body: notice_words(:staff, "staff_moved").last) if on?(:staff_notify) && plan.staff.people.any?
         rows << Message.new(who: "Sign-ups", how: "notification, or email for those without a login", count: plan.signups.registrations.size, subject: "Your slot has a new time", body: nil) if on?(:signups_notify) && plan.signups.registrations.any?
       when "restore"
         draft = BuyerWords.draft(:back_on)
-        rows << Message.new(who: "Refunded ticket buyers", how: "email", count: plan.refunded_orders.map(&:buyer_email).compact.uniq.size, subject: change.choice(:back_on_subject).presence || draft[:subject], body: change.choice(:back_on_body).presence || draft[:body]) if on?(:buyers_email, default: false) && plan.refunded_orders.any?
+        rows << Message.new(who: "Refunded ticket buyers", how: "email", count: plan.refunded_orders.map(&:buyer_email).compact.uniq.size, subject: titled(change.choice(:back_on_subject).presence || draft[:subject]), body: change.choice(:back_on_body).presence || draft[:body]) if on?(:buyers_email, default: false) && plan.refunded_orders.any?
         rows << Message.new(who: "Cast", how: "notification and email", count: plan.cast.people.count(&:reachable?), subject: "Back on", body: nil) if on?(:cast_notify) && plan.cast.people.any?
       end
       rows

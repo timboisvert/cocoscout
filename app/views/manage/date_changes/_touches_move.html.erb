@@ -24,7 +24,7 @@
 
 <% if plan.listings.any? && b.orders.any? %>
   <%= render "manage/date_changes/section", key: "buyers", title: "Ticket buyers",
-        summary: change.on?(:buyers_email) ? "Email #{b.buyer_count} the new date#{change.on?(:buyers_refund_offer) ? ', offer refunds' : ''}" : "Don't email them",
+        summary: change.on?(:buyers_email) ? "Email #{b.buyer_count == 1 ? 'the buyer' : "all #{b.buyer_count}"} the new date#{change.on?(:buyers_refund_offer) ? ', offer refunds' : ''}" : "Don't email them",
         intro: "#{pluralize(b.buyer_count(b.paying), 'buyer')} #{b.buyer_count(b.paying) == 1 ? 'holds' : 'hold'} #{pluralize(b.paying.sum(&:tickets), 'ticket')}#{b.comps.any? ? "; #{pluralize(b.buyer_count(b.comps), 'person', plural: 'people')} #{b.buyer_count(b.comps) == 1 ? 'holds' : 'hold'} comps" : ''}" do %>
     <%= render "manage/date_changes/toggle", change: change, key: :buyers_email,
           title: "Email everyone the new date and time#{b.comps.any? ? ', comp holders too' : ''}.",
@@ -41,7 +41,7 @@
 
 <% if cast.people.any? %>
   <%= render "manage/date_changes/section", key: "cast", title: "Cast",
-        summary: "#{change.on?(:cast_notify) ? "Notify #{cast.people.size}" : "Don't notify"}#{@cast_conflicts.any? ? ", #{@cast_conflicts.size} can't make it" : ''}",
+        summary: "#{change.on?(:cast_notify) ? (cast.people.size == 1 ? 'Notify 1 person' : "Notify all #{cast.people.size}") : "Don't notify"}#{@cast_conflicts.any? ? ", #{@cast_conflicts.size} can't make it" : ''}",
         intro: "#{pluralize(cast.people.size, 'person', plural: 'people')}#{@dests.any?(&:linked_to) ? ', in the show and the events moving with it' : ''}" do %>
     <%= render "manage/date_changes/toggle", change: change, key: :cast_notify, title: "Notify the cast of the new date.",
           extra: (cast_section ? tag.button("Read and edit the message", type: "button", class: "block mt-1 text-pink-600 hover:text-pink-700 font-medium cursor-pointer", data: { controller: "modal", action: "click->modal#open", modal_id: "msg-cast" }) : nil) %>
@@ -131,11 +131,11 @@
   <%= render "manage/date_changes/section", key: "signups", title: "Sign-ups", summary: reopen ? "Cancel #{n}, reopen the slots" : "Move #{n} with the date",
         intro: "#{plan.signup_form_names.to_sentence} · #{pluralize(n, 'person', plural: 'people')} registered" do %>
     <div class="py-3 space-y-2">
-      <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+      <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[input:checked]:border-pink-500 has-[input:checked]:bg-pink-50">
         <%= radio_button_tag "choices[signups_action]", "move", !reopen, class: "mt-1 h-4 w-4 accent-pink-500" %>
         <span class="text-sm"><span class="block font-semibold text-gray-900">Move the slots with the date</span><span class="block text-gray-600">Everyone keeps their place; timed slots take the new times.</span></span>
       </label>
-      <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+      <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[input:checked]:border-pink-500 has-[input:checked]:bg-pink-50">
         <%= radio_button_tag "choices[signups_action]", "reopen", reopen, class: "mt-1 h-4 w-4 accent-pink-500" %>
         <span class="text-sm"><span class="block font-semibold text-gray-900">Cancel the registrations and reopen every slot</span><span class="block text-gray-600">For a new time that changes who can come.</span></span>
       </label>

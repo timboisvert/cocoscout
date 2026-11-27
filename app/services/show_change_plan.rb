@@ -262,7 +262,7 @@ class ShowChangePlan
   def automatic
     lines = []
     n = acting_shows.size
-    dates = n == 1 ? "the date" : "all #{n} dates"
+    dates = { 1 => "the date", 2 => "both dates" }[n] || "all #{n} dates"
     case change.kind
     when "cancel"
       lines << "Ticket sales stop on #{dates}." if listings.any?
