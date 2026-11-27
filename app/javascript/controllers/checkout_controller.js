@@ -84,13 +84,19 @@ export default class extends Controller {
             if (data.error) return this.fail(data.error)
             if (data.redirect) return window.location.assign(data.redirect)
 
+            // Stripe leaves the page only for a payment method that needs to
+            // (a wallet or pay-later site). A card is confirmed here, and the
+            // buyer goes on to their tickets from this page. That matters in
+            // an embed: Stripe's own redirect moves the whole tab, off the
+            // organization's site, instead of this frame.
             const { error } = await this.stripe.confirmPayment({
                 elements: this.elements,
                 clientSecret: data.client_secret,
-                confirmParams: { return_url: this.returnUrlValue }
+                confirmParams: { return_url: this.returnUrlValue },
+                redirect: "if_required"
             })
-            // Only reached when confirming failed; success redirects away.
-            if (error) this.fail(error.message)
+            if (error) return this.fail(error.message)
+            window.location.assign(this.returnUrlValue)
         } catch (_e) {
             this.fail("Something went wrong. Please try again.")
         }
