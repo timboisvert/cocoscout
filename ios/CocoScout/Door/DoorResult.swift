@@ -31,9 +31,12 @@ struct DoorResult: Decodable, Equatable {
     let items: [Item]
     /// The same result redrawn (an item just delivered): no sound or buzz.
     let quiet: Bool
+    /// False when the door page's Sound switch is off on this phone: the
+    /// buzz without the beep (Tim, 2026-11-27). Absent means on.
+    let sound: Bool
 
     enum CodingKeys: String, CodingKey {
-        case tone, lines, items, quiet
+        case tone, lines, items, quiet, sound
         case undoTicketID = "undo_ticket_id"
     }
 
@@ -44,6 +47,7 @@ struct DoorResult: Decodable, Equatable {
         undoTicketID = try container.decodeIfPresent(String.self, forKey: .undoTicketID)
         items = try container.decodeIfPresent([Item].self, forKey: .items) ?? []
         quiet = try container.decodeIfPresent(Bool.self, forKey: .quiet) ?? false
+        sound = (try? container.decodeIfPresent(Bool.self, forKey: .sound)) ?? true
     }
 
     /// Something still to hand over keeps the result up until the next scan.

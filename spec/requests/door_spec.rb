@@ -49,6 +49,24 @@ RSpec.describe "Door", type: :request do
     expect([ row["data-price"], row["data-tax"], row["data-cash-tax"] ]).to eq(%w[2000 205 0])
   end
 
+  # The beep on each scan can be turned off on this phone (Tim, 2026-11-27):
+  # offered in a browser and in app builds that take the switch, never in an
+  # install that beeps its own way regardless.
+  it "offers the Sound switch where it works" do
+    sign_in(owner)
+    switch = -> { Nokogiri::HTML(response.body).at_css("[data-door-target='soundSwitch']") }
+
+    get door_path(listing)
+    expect(switch.call).to be_present
+
+    app = "CocoScout/1.4.1 (14; nav 2) CocoMenu/bar CocoAuth/1 Hotwire Native iOS; Turbo Native iOS"
+    get door_path(listing), headers: { "User-Agent" => app }
+    expect(switch.call).to be_nil
+
+    get door_path(listing), headers: { "User-Agent" => app.sub("CocoAuth/1", "CocoAuth/1 CocoDoorSound/1") }
+    expect(switch.call).to be_present
+  end
+
   it "needs a sign-in" do
     get door_path(listing)
     expect(response).to redirect_to(signin_path)

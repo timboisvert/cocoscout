@@ -67,7 +67,7 @@ class ScannerController(title: String, subtitle: String, private val onEvent: (E
         model.waiting = false
         model.delivering.clear()
         model.result = result
-        if (!result.quiet) view?.let { feedback.play(result.tone, it) }
+        if (!result.quiet) view?.let { feedback.play(result.tone, it, sound = result.sound) }
         // Gone after a few seconds, unless something is still to hand over.
         handler.removeCallbacks(hideResult)
         if (!result.waitingOnDelivery) handler.postDelayed(hideResult, RESULT_MS)

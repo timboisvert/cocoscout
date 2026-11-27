@@ -38,11 +38,13 @@ enum AppConfig {
     /// it (NativeAppVersion.menu_in_bar?). "CocoAuth/1": this build has its own
     /// sign-in screens (SignInScreen), which the server's JSON steps answer
     /// only for builds that say so (NativeAppVersion.native_sign_in?).
+    /// "CocoDoorSound/1": the door scanner beeps on silent and takes the door
+    /// page's Sound switch (NativeAppVersion.door_sound?).
     static let userAgentPrefix: String = {
         let info = Bundle.main.infoDictionary
         let version = info?["CFBundleShortVersionString"] as? String ?? "0"
         let build = info?["CFBundleVersion"] as? String ?? "0"
-        return "CocoScout/\(version) (\(build); nav \(navGeneration)) CocoMenu/bar CocoAuth/1"
+        return "CocoScout/\(version) (\(build); nav \(navGeneration)) CocoMenu/bar CocoAuth/1 CocoDoorSound/1"
     }()
 
     static func url(_ path: String) -> URL {

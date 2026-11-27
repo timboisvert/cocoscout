@@ -98,7 +98,7 @@ final class ScannerViewController: UIViewController {
         model.waiting = false
         model.delivering.removeAll()
         withAnimation(.easeOut(duration: 0.15)) { model.result = result }
-        if !result.quiet { feedback.play(result.tone) }
+        if !result.quiet { feedback.play(result.tone, sound: result.sound) }
 
         // Gone after a few seconds, unless something is still to hand over.
         hideTimer?.invalidate()

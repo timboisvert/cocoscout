@@ -19,12 +19,14 @@ class DoorFeedback {
     private val chirp = tone(frequency = 880.0, seconds = 0.15, square = false)
     private val buzz = tone(frequency = 220.0, seconds = 0.4, square = true)
 
-    fun play(tone: DoorResult.Tone, view: View) {
-        val track = if (tone == DoorResult.Tone.ADMITTED) chirp else buzz
-        runCatching {
-            track.stop()
-            track.reloadStaticData()
-            track.play()
+    fun play(tone: DoorResult.Tone, view: View, sound: Boolean = true) {
+        if (sound) {
+            val track = if (tone == DoorResult.Tone.ADMITTED) chirp else buzz
+            runCatching {
+                track.stop()
+                track.reloadStaticData()
+                track.play()
+            }
         }
         val haptic = when {
             android.os.Build.VERSION.SDK_INT >= 30 && tone == DoorResult.Tone.ADMITTED -> HapticFeedbackConstants.CONFIRM
@@ -39,7 +41,11 @@ class DoorFeedback {
         buzz.release()
     }
 
-    /** A tone made on the spot, with a few milliseconds of fade at each end so it doesn't click. */
+    /**
+     * A tone made on the spot, with a few milliseconds of fade at each end so it doesn't click.
+     * On the media volume, so a phone set to silent or vibrate still beeps, as the iPhone does
+     * (Tim, 2026-11-27); the door page's Sound switch turns it off.
+     */
     private fun tone(frequency: Double, seconds: Double, square: Boolean): AudioTrack {
         val rate = 44_100
         val count = (rate * seconds).toInt()
@@ -53,7 +59,7 @@ class DoorFeedback {
         return AudioTrack.Builder()
             .setAudioAttributes(
                 AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build()
             )

@@ -11,16 +11,20 @@ final class DoorFeedback {
     private let haptics = UINotificationFeedbackGenerator()
 
     init() {
-        // Plays over whatever else is on and stays quiet on silent; the buzz
-        // in the hand still comes.
-        try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
+        // Plays over whatever else is on, and with the phone on silent: a door
+        // phone is often on silent, and the beep is the point (Tim,
+        // 2026-11-27; it was .ambient, which silent mutes). The door page's
+        // Sound switch turns the beep off; the buzz in the hand still comes.
+        try? AVAudioSession.sharedInstance().setCategory(.playback, options: [.mixWithOthers])
         haptics.prepare()
     }
 
-    func play(_ tone: DoorResult.Tone) {
-        let player = tone == .admitted ? chirp : buzz
-        player?.currentTime = 0
-        player?.play()
+    func play(_ tone: DoorResult.Tone, sound: Bool = true) {
+        if sound {
+            let player = tone == .admitted ? chirp : buzz
+            player?.currentTime = 0
+            player?.play()
+        }
         switch tone {
         case .admitted: haptics.notificationOccurred(.success)
         case .already: haptics.notificationOccurred(.warning)

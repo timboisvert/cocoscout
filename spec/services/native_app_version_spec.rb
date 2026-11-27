@@ -20,6 +20,12 @@ RSpec.describe NativeAppVersion do
     expect(described_class.production_mode?(v1_1_ios)).to be(true)
   end
 
+  it "offers the door's Sound switch in browsers and in builds that say they take it" do
+    expect(described_class.door_sound?(browser)).to be(true)
+    expect(described_class.door_sound?(v1_1_ios)).to be(false)
+    expect(described_class.door_sound?(v1_1_ios.sub("(12; nav 2)", "(12; nav 2) CocoMenu/bar CocoAuth/1 CocoDoorSound/1"))).to be(true)
+  end
+
   it "leaves browsers outside the app, with production mode" do
     expect(described_class.nav(browser)).to be_nil
     expect(described_class.production_mode?(browser)).to be(true)

@@ -28,8 +28,10 @@ object AppConfig {
      * (NativeAppVersion.menu_in_bar?). "CocoAuth/1": this build has its own
      * sign-in screens (signin/SignInOverlay), which the server's JSON steps
      * answer only for builds that say so (NativeAppVersion.native_sign_in?).
+     * "CocoDoorSound/1": the door scanner beeps on silent and takes the door
+     * page's Sound switch (NativeAppVersion.door_sound?).
      */
-    val userAgentPrefix = "CocoScout/${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}; nav $NAV_GENERATION) CocoMenu/bar CocoAuth/1"
+    val userAgentPrefix = "CocoScout/${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}; nav $NAV_GENERATION) CocoMenu/bar CocoAuth/1 CocoDoorSound/1"
 
     fun url(path: String): String = if (path.startsWith("http")) path else baseUrl + path
 }

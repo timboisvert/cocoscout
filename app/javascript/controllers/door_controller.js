@@ -12,7 +12,7 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
     static targets = ["video", "viewport", "startButton", "stopButton", "banner", "checkedIn", "sold", "comped", "available", "tierLeft", "deliveries",
                       "modeButton", "listPanel", "scanPanel", "filterInput", "filterChip", "deliverChip", "results", "party", "nobody",
-                      "sellPanel", "passHolders", "partySheet"]
+                      "sellPanel", "passHolders", "partySheet", "soundSwitch"]
     static values = { checkInUrl: String, statsUrl: String, listUrl: String, undoUrl: String, deliveriesUrl: String, listingId: Number,
                       passesUrl: String, inApp: Boolean, ahead: Boolean }
 
@@ -22,6 +22,7 @@ export default class extends Controller {
         error: "bg-red-600 text-white"
     }
     static ACTIVE = ["ring-2", "ring-pink-500", "!bg-pink-50", "!text-pink-700"]
+    static SOUND_KEY = "cocoscout:door-sound"
 
     connect() {
         this.recentCodes = new Map()
@@ -33,6 +34,7 @@ export default class extends Controller {
         const first = this.aheadValue ? (this.hasSellPanelTarget ? "sell" : "list") : this.rememberedMode()
         this.applyMode(first, { start: !this.inAppValue })
         this.applyFilter()
+        if (this.hasSoundSwitchTarget) this.soundSwitchTarget.checked = this.soundOn
         this.pollTimer = setInterval(() => this.refreshStats(), 5000)
         this.listTimer = setInterval(() => this.refreshList(), 30000)
     }
@@ -266,9 +268,11 @@ export default class extends Controller {
     // quiet: the same banner redrawn, with no sound.
     showBanner(tone, lines, undoTicketId = null, items = [], { quiet = false } = {}) {
         this.lastBanner = { tone, lines, undoTicketId, items }
-        this.dispatch("result", {
-            detail: { tone, lines: [].concat(lines), undo_ticket_id: undoTicketId ? String(undoTicketId) : null, items, quiet }
-        })
+        // sound: false only when the Sound switch is off, so the app's
+        // scanner buzzes without the beep (app builds after 1.4.1 read it).
+        const detail = { tone, lines: [].concat(lines), undo_ticket_id: undoTicketId ? String(undoTicketId) : null, items, quiet }
+        if (!this.soundOn) detail.sound = false
+        this.dispatch("result", { detail })
         const banner = this.bannerTarget
         banner.className = `mt-4 rounded-xl px-4 py-4 text-center ${this.constructor.BANNER_CLASSES[tone]}`
         banner.replaceChildren()
@@ -362,10 +366,25 @@ export default class extends Controller {
         this.nativeScanning = false
     }
 
+    // The Sound switch in the Scan panel, for this phone (Tim, 2026-11-27).
+    setSound(event) {
+        try { window.localStorage.setItem(this.constructor.SOUND_KEY, event.currentTarget.checked ? "on" : "off") } catch { /* fine without */ }
+    }
+
+    get soundOn() {
+        try { return window.localStorage.getItem(this.constructor.SOUND_KEY) !== "off" } catch { return true }
+    }
+
     // A rising chirp for admitted, a low buzz for anything else, and a
-    // vibration where the phone allows it.
+    // vibration where the phone allows it. The Sound switch off leaves just
+    // the vibration.
     feedback(tone) {
+        if (navigator.vibrate) navigator.vibrate(tone === "admitted" ? 60 : [120, 80, 120])
+        if (!this.soundOn) return
         try {
+            // Safari mutes page sound on silent unless the page says it's
+            // playback; the switch is how to quiet it (Safari 16.4 and later).
+            if (navigator.audioSession) navigator.audioSession.type = "playback"
             this.audio ||= new (window.AudioContext || window.webkitAudioContext)()
             const osc = this.audio.createOscillator()
             const gain = this.audio.createGain()
@@ -377,7 +396,6 @@ export default class extends Controller {
             osc.start()
             osc.stop(this.audio.currentTime + (tone === "admitted" ? 0.15 : 0.4))
         } catch { /* no sound is fine */ }
-        if (navigator.vibrate) navigator.vibrate(tone === "admitted" ? 60 : [120, 80, 120])
     }
 
     // The list filters as you type, on the rows already on the page. Pass

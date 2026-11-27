@@ -45,6 +45,14 @@ module NativeAppVersion
     user_agent.to_s.include?("CocoAuth/1")
   end
 
+  # Builds whose door scanner beeps with the phone on silent and takes the
+  # door page's Sound switch say "CocoDoorSound/1" (Tim, 2026-11-27). Earlier
+  # installs beep only off silent and always, so the switch isn't offered
+  # there. Everywhere on the web the page makes the beep itself.
+  def door_sound?(user_agent)
+    nav(user_agent).nil? || user_agent.to_s.include?("CocoDoorSound/1")
+  end
+
   # Production mode and the generation-2 menu: everywhere on the web, and in
   # app builds that draw it.
   def production_mode?(user_agent)

@@ -17,7 +17,9 @@ data class DoorResult(
     @SerialName("undo_ticket_id") val undoTicketId: String? = null,
     val items: List<Item> = emptyList(),
     /** The same result redrawn (an item just delivered): no sound or buzz. */
-    val quiet: Boolean = false
+    val quiet: Boolean = false,
+    /** False when the door page's Sound switch is off on this phone: the buzz without the beep (Tim, 2026-11-27). */
+    val sound: Boolean = true
 ) {
     @Serializable
     enum class Tone {
