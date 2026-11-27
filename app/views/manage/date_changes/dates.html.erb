@@ -1,0 +1,122 @@
+<% content_for :title, "Cancel: which dates" %>
+<%#
+  Step 2 of a cancel: which dates (this one, this and the ones after it, or
+  dates chosen from anywhere), what's on each, and the events tied to them
+  that should probably go too. Changing a choice redraws the page in place.
+%>
+<%
+  show = @change.show
+  name = show.display_name.presence || @production.name
+  later = @following.size - 1
+  chosen = @change.show_ids.map(&:to_i)
+  also = @change.also_show_ids.map(&:to_i)
+  all_facts = @facts.values
+  b = @plan.buyers
+%>
+<div class="w-full mb-10">
+  <%= render "manage/date_changes/header", change: @change, show: show, production: @production, title: "Cancel #{name}", index: 1 %>
+
+  <%= form_with url: manage_date_change_dates_path(@change), method: :patch, data: { controller: "auto-submit", turbo_action: "replace" } do %>
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div class="space-y-6 min-w-0">
+        <div class="bg-white border border-gray-200 rounded-xl">
+          <%= render "shared/section_heading", title: "Which dates are you canceling?",
+                intro: show.recurring? ? "#{name} is a series of #{@series.size} dates, from #{@series.first.date_and_time.strftime('%b %-d')} to #{@series.last.date_and_time.strftime('%b %-d')}." : nil %>
+          <div class="px-6 py-4 max-sm:px-4 space-y-2">
+            <% [ [ "this", "Only #{show.date_and_time.strftime('%A, %B %-d')}", show.recurring? ? "The rest of the series goes on." : nil ],
+                 (later.positive? ? [ "following", "#{show.date_and_time.strftime('%B %-d')} and the #{later == 1 ? 'date' : "#{later} dates"} after it", "Ends the series early.#{@past.positive? ? " The #{@past} #{@past == 1 ? 'date' : 'dates'} that already happened stay as #{@past == 1 ? 'it is' : 'they are'}." : ''}" ] : nil),
+                 [ "chosen", "Choose dates", "Pick any dates still to come, from this production or others." ] ].compact.each do |value, title, words| %>
+              <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+                <%= radio_button_tag :scope, value, @change.scope == value, class: "mt-1 h-4 w-4 accent-pink-500", data: { action: "change->auto-submit#submit" } %>
+                <span><span class="block text-sm font-semibold text-gray-900"><%= title %></span><% if words %><span class="block text-sm text-gray-600"><%= words %></span><% end %></span>
+              </label>
+            <% end %>
+          </div>
+          <% if @change.scope == "chosen" %>
+            <div class="px-6 pb-5 max-sm:px-4">
+              <div class="max-h-80 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+                <% @choosable.group_by(&:production).each do |production, list| %>
+                  <p class="px-3 py-2 bg-gray-50 text-xs font-semibold text-gray-700 sticky top-0"><%= production.name %></p>
+                  <% list.each do |s| %>
+                    <label class="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 min-h-[44px]">
+                      <%= check_box_tag "show_ids[]", s.id, chosen.include?(s.id), id: "choose-#{s.id}", class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500",
+                            data: { action: "change->auto-submit#submit" } %>
+                      <span><%= s.date_and_time.strftime("%a, %b %-d, %-l:%M %p") %><% if s.display_name.present? && s.display_name != production.name %> · <%= s.display_name %><% end %></span>
+                    </label>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <%= render "shared/section_heading", title: "The dates", intro: "What's on each, read now." %>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead class="bg-gray-50 text-left text-xs font-semibold text-gray-600">
+                <tr><th class="px-6 py-2 max-sm:px-4">Date</th><th class="px-3 py-2">Tickets</th><th class="px-3 py-2">Cast</th><th class="px-3 py-2">Staff</th><th class="px-3 py-2">Sign-ups</th></tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <% @main.each do |s| %>
+                  <% f = @facts[s.id] %>
+                  <tr>
+                    <td class="px-6 py-2.5 max-sm:px-4 whitespace-nowrap font-medium text-gray-900"><%= s.date_and_time.strftime("%a, %b %-d, %-l:%M %p") %><% if s.production_id != @production.id %><span class="block text-xs font-normal text-gray-500"><%= s.production.name %></span><% end %></td>
+                    <td class="px-3 py-2.5 text-gray-700 whitespace-nowrap"><%= f&.tickets.to_i.positive? ? "#{f.tickets} sold to #{f.buyers} #{f.buyers == 1 ? 'buyer' : 'buyers'}" : (TicketListing.exists?(show_id: s.id) ? "None sold" : "Not on sale") %></td>
+                    <td class="px-3 py-2.5 text-gray-700"><%= f&.cast.to_i.positive? ? f.cast : "None" %></td>
+                    <td class="px-3 py-2.5 text-gray-700 whitespace-nowrap"><%= f&.shifts.to_i.positive? ? "#{f.shifts} #{f.shifts == 1 ? 'shift' : 'shifts'}" : "None" %></td>
+                    <td class="px-3 py-2.5 text-gray-700"><%= f&.signups.to_i.positive? ? f.signups : "None" %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <% if @ties.any? %>
+          <div class="bg-white border border-gray-200 rounded-xl">
+            <%= render "shared/section_heading", title: "Cancel these too?", intro: "Events tied to these dates, or in the same room the same night." %>
+            <div class="px-6 py-2 max-sm:px-4 divide-y divide-gray-100">
+              <% @ties.each do |tie| %>
+                <% ids = tie.shows.map(&:id) %>
+                <label class="flex items-start gap-3 py-3 cursor-pointer">
+                  <%= check_box_tag "also_show_ids[]", ids.join(","), (ids - also).empty?, id: "tie-#{tie.key}",
+                        class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500",
+                        data: { action: "change->auto-submit#submit" } %>
+                  <span class="text-sm"><span class="font-medium text-gray-900"><%= tie.label %></span><span class="block text-gray-600"><%= tie.detail %></span></span>
+                </label>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <aside class="space-y-4">
+        <div class="bg-white border border-gray-200 rounded-xl px-5 py-4 lg:sticky lg:top-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Canceling</p>
+          <p class="mt-1 text-lg font-semibold text-gray-900"><%= pluralize(@main.size, "date") %><%= also.any? ? " and #{pluralize(also.size, 'event')} tied to them" : "" %></p>
+          <div class="mt-3 divide-y divide-gray-100">
+            <%= render "manage/date_changes/summary_row", label: "Tickets", value: b.orders.any? ? "#{b.ticket_count}, from #{pluralize(b.buyer_count, 'buyer')}" : "None" %>
+            <%= render "manage/date_changes/summary_row", label: "Cast", value: @plan.cast.people.any? ? pluralize(@plan.cast.people.size, "person", plural: "people") : "None" %>
+            <%= render "manage/date_changes/summary_row", label: "Staff", value: @plan.staff.any? ? "#{pluralize(@plan.staff.people.size, 'person', plural: 'people')}, #{pluralize(@plan.staff.changing_shifts.size, 'shift')}" : "None" %>
+            <%= render "manage/date_changes/summary_row", label: "Sign-ups", value: @plan.signups.registrations.any? ? @plan.signups.registrations.size : "None" %>
+          </div>
+          <p class="mt-3 text-sm text-gray-600">Next, you'll choose what happens for each of them. Nothing changes until you confirm on the last step.</p>
+          <div class="mt-4 hidden sm:flex flex-col gap-2">
+            <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit, name: "commit", value: "continue", classes: "w-full" %>
+            <%= link_to manage_new_date_change_path(@production, show, kind: "cancel") do %>
+              <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", type: :button, classes: "w-full" %>
+            <% end %>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="sm:hidden sticky bottom-0 -mx-4 mt-6 px-4 py-3 bg-white border-t border-gray-200 flex gap-3">
+      <%= link_to manage_new_date_change_path(@production, show, kind: "cancel"), class: "flex-1" do %>
+        <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", type: :button, classes: "w-full" %>
+      <% end %>
+      <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit, name: "commit", value: "continue", classes: "flex-[2] w-full" %>
+    </div>
+  <% end %>
+</div>

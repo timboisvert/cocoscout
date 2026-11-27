@@ -51,6 +51,13 @@
             <%= place %><% if rental %> · <%= rental.confirmed? ? "Confirmed" : "Pending" %><% end %>
           </div>
         <% end %>
+        <%# Cancel or move this date (Tim, 2026-11-27): a night still to come. %>
+        <% if show && rental && !show.canceled? && show.date_and_time > Time.current %>
+          <div class="text-xs mt-1 flex gap-3" data-contract-date-actions>
+            <%= link_to "Move", manage_move_contract_date_path(contract, show), class: "font-medium text-pink-600 hover:text-pink-700" %>
+            <%= link_to "Cancel", manage_new_date_change_path(show.production, show, kind: "cancel"), class: "font-medium text-pink-600 hover:text-pink-700" %>
+          </div>
+        <% end %>
       <% else %>
         <div class="flex items-center gap-2 flex-wrap">
           <span class="inline-flex items-center rounded-md bg-white px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-300">Payment</span>

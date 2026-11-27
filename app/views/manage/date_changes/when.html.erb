@@ -1,0 +1,159 @@
+<% content_for :title, "Move: where it goes" %>
+<%#
+  Step 2 of a move: which dates are moving and where they go, checked as
+  you change it (the room, the cast, the staff). A run of dates moves by a
+  rule (every Friday becomes every Saturday), each date checked on its own.
+%>
+<%
+  show = @change.show
+  name = show.display_name.presence || @production.name
+  later = @following.size - 1
+  move = @change.move || {}
+  series = @change.scope == "following"
+  lead = @dests.find { |d| d.show.id == show.id } || @dests.first
+  facts = ShowChangePlan::Dates.facts([ show ])[show.id]
+  input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  location_options = @locations.flat_map { |l| [ [ l.name, "#{l.id}:" ] ] + l.location_spaces.map { |sp| [ "#{l.name} · #{sp.name}", "#{l.id}:#{sp.id}" ] } }
+  place_value = "#{lead&.location_id}:#{lead&.location_space_id}"
+  per = move["per_date"] || {}
+%>
+<div class="w-full mb-10">
+  <%= render "manage/date_changes/header", change: @change, show: show, production: @production, title: "Move #{name}", index: 1 %>
+
+  <%= form_with url: manage_date_change_when_path(@change), method: :patch, data: { controller: "auto-submit", turbo_action: "replace" } do %>
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div class="space-y-6 min-w-0">
+        <% if later.positive? %>
+          <div class="bg-white border border-gray-200 rounded-xl">
+            <%= render "shared/section_heading", title: "Which dates are moving?" %>
+            <div class="px-6 py-4 max-sm:px-4 space-y-2">
+              <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+                <%= radio_button_tag :scope, "this", !series, class: "mt-1 h-4 w-4 accent-pink-500", data: { action: "change->auto-submit#submit" } %>
+                <span><span class="block text-sm font-semibold text-gray-900">Only <%= show.date_and_time.strftime("%A, %B %-d") %></span><span class="block text-sm text-gray-600">It stays part of the series, on its new date.</span></span>
+              </label>
+              <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+                <%= radio_button_tag :scope, "following", series, class: "mt-1 h-4 w-4 accent-pink-500", data: { action: "change->auto-submit#submit" } %>
+                <span><span class="block text-sm font-semibold text-gray-900"><%= show.date_and_time.strftime("%B %-d") %> and the <%= later == 1 ? "date" : "#{later} dates" %> after it</span><span class="block text-sm text-gray-600">A new day, a new time, or both, for the rest of the series.</span></span>
+              </label>
+            </div>
+          </div>
+        <% end %>
+
+        <div class="bg-white border border-gray-200 rounded-xl">
+          <%= render "shared/section_heading", title: series ? "Where do they go?" : "Where does it go?" %>
+          <div class="px-6 py-5 max-sm:px-4 space-y-4">
+            <% if series %>
+              <p class="text-sm text-gray-700">Every <%= show.date_and_time.strftime("%A at %-l:%M %p") %> becomes every</p>
+              <div class="grid gap-3 sm:grid-cols-3">
+                <label class="block text-sm font-medium text-gray-700">Day
+                  <%= select_tag "move[wday]", options_for_select(Date::DAYNAMES.each_with_index.map { |d, i| [ d, i ] }, (move["wday"].presence || show.date_and_time.wday).to_i), class: "mt-1 #{input}", data: { action: "change->auto-submit#submit" } %>
+                </label>
+                <label class="block text-sm font-medium text-gray-700">Starts
+                  <%= time_field_tag "move[starts]", move["starts"].presence || show.date_and_time.strftime("%H:%M"), class: "mt-1 #{input}", data: { action: "change->auto-submit#submit" } %>
+                </label>
+                <label class="block text-sm font-medium text-gray-700">Place
+                  <%= select_tag "move[place]", options_for_select(location_options, place_value), class: "mt-1 #{input}", data: { action: "change->auto-submit#submit" } %>
+                </label>
+              </div>
+              <p class="text-sm text-gray-600">Each date moves to that day of its week and keeps its tickets, cast, shifts, and sign-ups. The dates that already happened stay as they were.</p>
+            <% else %>
+              <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <label class="block text-sm font-medium text-gray-700">Date
+                  <%= date_field_tag "move[date]", move["date"].presence || show.date_and_time.to_date.iso8601, class: "mt-1 #{input}", data: { action: "change->auto-submit#submit" } %>
+                </label>
+                <label class="block text-sm font-medium text-gray-700">Starts
+                  <%= time_field_tag "move[starts]", move["starts"].presence || show.date_and_time.strftime("%H:%M"), class: "mt-1 #{input}", data: { action: "change->auto-submit#submit" } %>
+                </label>
+                <label class="block text-sm font-medium text-gray-700">Ends
+                  <%= time_field_tag "move[ends]", move["ends"].presence || show.ends_at.strftime("%H:%M"), class: "mt-1 #{input}", data: { action: "change->auto-submit#submit" } %>
+                </label>
+                <label class="block text-sm font-medium text-gray-700">Place
+                  <%= select_tag "move[place]", options_for_select(location_options, place_value), include_blank: show.location_id.nil? ? "Online" : false, class: "mt-1 #{input}", data: { action: "change->auto-submit#submit" } %>
+                </label>
+              </div>
+              <p class="text-sm text-gray-600">Was <%= show.date_and_time.strftime("%A, %B %-d, %-l:%M") %> to <%= show.ends_at.strftime("%-l:%M %p") %><%= show.location ? ", #{show.location_space&.name || show.location.name}" : "" %>.<%= show.respond_to?(:call_time_enabled?) && show.call_time_enabled? && show.call_time ? " Call time moves with it." : "" %></p>
+            <% end %>
+            <% if @linked.any? %>
+              <label class="flex items-start gap-3 pt-1 cursor-pointer">
+                <%= hidden_field_tag "move[linked]", "0", id: nil %>
+                <%= check_box_tag "move[linked]", "1", move.key?("linked") ? ActiveModel::Type::Boolean.new.cast(move["linked"]) : true, id: "move-linked",
+                      class: "mt-0.5 h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500", data: { action: "change->auto-submit#submit" } %>
+                <span class="text-sm"><span class="font-medium text-gray-900">Move the linked <%= @linked.map { |l| l.display_name.presence || l.production.name }.uniq.to_sentence %> with it,</span> <span class="text-gray-600">by as much.</span></span>
+              </label>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-xl">
+          <% if series %>
+            <%= render "shared/section_heading", title: "Each date, checked" %>
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-sm">
+                <thead class="bg-gray-50 text-left text-xs font-semibold text-gray-600"><tr><th class="px-6 py-2 max-sm:px-4">Was</th><th class="px-3 py-2">Now</th><th class="px-3 py-2">Checked</th></tr></thead>
+                <tbody class="divide-y divide-gray-100">
+                  <% @dests.reject(&:linked_to).each do |dest| %>
+                    <% probe = dest.with(choice: "move", now_starts: ShowChangePlan::Moves.series_destinations([ dest.show ], move.merge("per_date" => {})).first.now_starts, now_ends: ShowChangePlan::Moves.series_destinations([ dest.show ], move.merge("per_date" => {})).first.now_ends) %>
+                    <% room = ShowChangePlan::Moves.room_conflicts(probe, @change) %>
+                    <% choice = per.dig(dest.show.id.to_s, "choice").presence || (room.any? ? "keep" : "move") %>
+                    <tr class="align-top">
+                      <td class="px-6 py-2.5 max-sm:px-4 whitespace-nowrap"><%= date_change_time(dest.was_starts) %></td>
+                      <td class="px-3 py-2.5 whitespace-nowrap"><%= date_change_time(probe.now_starts) %></td>
+                      <td class="px-3 py-2.5">
+                        <% if room.empty? %>
+                          <span class="text-green-800">Room free</span>
+                          <%= hidden_field_tag "move[per_date][#{dest.show.id}][choice]", "move" %>
+                        <% else %>
+                          <p class="text-red-700"><%= room.map(&:words).to_sentence %></p>
+                          <div class="mt-1 space-y-1">
+                            <label class="flex items-center gap-2"><%= radio_button_tag "move[per_date][#{dest.show.id}][choice]", "keep", choice == "keep", class: "h-4 w-4 accent-pink-500", data: { action: "change->auto-submit#submit" } %> Keep it where it is</label>
+                            <label class="flex items-center gap-2 flex-wrap"><%= radio_button_tag "move[per_date][#{dest.show.id}][choice]", "other", choice == "other", class: "h-4 w-4 accent-pink-500", data: { action: "change->auto-submit#submit" } %> Choose another time
+                              <%= datetime_local_field_tag "move[per_date][#{dest.show.id}][at]", per.dig(dest.show.id.to_s, "at"), class: "px-2 py-1 border border-gray-300 rounded text-sm", data: { action: "change->auto-submit#submit" } %></label>
+                            <label class="flex items-center gap-2"><%= radio_button_tag "move[per_date][#{dest.show.id}][choice]", "cancel", choice == "cancel", class: "h-4 w-4 accent-pink-500", data: { action: "change->auto-submit#submit" } %> Cancel this date (after the move)</label>
+                          </div>
+                        <% end %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% else %>
+            <%= render "shared/section_heading", title: lead&.moves? ? "#{lead.now_starts.strftime('%A, %B %-d')}, checked" : "The new time, checked", intro: "Updates as you change it." %>
+            <div class="px-6 py-4 max-sm:px-4">
+              <%= render "manage/date_changes/check", change: @change, dests: @dests, plan: @plan %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <aside>
+        <div class="bg-white border border-gray-200 rounded-xl px-5 py-4 lg:sticky lg:top-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Moving</p>
+          <% moving = @dests.select(&:moves?).reject(&:linked_to) %>
+          <% if moving.one? %>
+            <p class="mt-1 text-sm text-gray-500 line-through"><%= date_change_time(moving.first.was_starts) %></p>
+            <p class="text-lg font-semibold text-gray-900"><%= date_change_time(moving.first.now_starts) %></p>
+          <% elsif moving.any? %>
+            <p class="mt-1 text-lg font-semibold text-gray-900"><%= pluralize(moving.size, "date") %></p>
+          <% else %>
+            <p class="mt-1 text-sm text-gray-600">Nothing moves yet.</p>
+          <% end %>
+          <p class="mt-2 text-sm text-gray-600">The same <%= moving.size > 1 ? "dates move" : "date moves" %><% if facts && !facts.empty? %>: <%= [ (facts.tickets.positive? ? pluralize(facts.tickets, "ticket") : nil), (facts.cast.positive? ? "#{facts.cast} cast" : nil), (facts.shifts.positive? ? pluralize(facts.shifts, "shift") : nil), (facts.signups.positive? ? pluralize(facts.signups, "sign-up") : nil) ].compact.to_sentence %> go with <%= moving.size > 1 ? "them" : "it" %><% end %>. Next, you'll choose who is notified and what happens to anything that clashes.</p>
+          <div class="mt-4 hidden sm:flex flex-col gap-2">
+            <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit, name: "commit", value: "continue", classes: "w-full" %>
+            <%= link_to manage_new_date_change_path(@production, show, kind: "move") do %>
+              <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", type: :button, classes: "w-full" %>
+            <% end %>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="sm:hidden sticky bottom-0 -mx-4 mt-6 px-4 py-3 bg-white border-t border-gray-200 flex gap-3">
+      <%= link_to manage_new_date_change_path(@production, show, kind: "move"), class: "flex-1" do %>
+        <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", type: :button, classes: "w-full" %>
+      <% end %>
+      <%= render "shared/button", text: "Continue", variant: "primary", size: "medium", type: :submit, name: "commit", value: "continue", classes: "flex-[2] w-full" %>
+    </div>
+  <% end %>
+</div>

@@ -46,13 +46,18 @@ RSpec.describe "Course session notices (manage)", type: :request do
   end
 
   it "offers to email the students when a class session is canceled, and does" do
-    get manage_cancel_show_form_path(production, session_show)
-    expect(response.body).to include("Email the students", "1 student", "{{sessions}}", "Dana Scully")
+    # Cancel or move this date (Tim, 2026-11-27): the students are one of
+    # the things a cancel touches.
+    post manage_create_date_change_path(production, session_show), params: { kind: "cancel" }
+    change = DateChange.last
+    get manage_date_change_touches_path(change)
+    expect(response.body).to include("Students", "Email the students", "1 student")
 
-    patch manage_cancel_show_path(production, session_show),
-          params: { scope: "this", notify_cast: "0", email_students: "1", course_email_subject: "{{course_title}}: {{sessions}} canceled", course_email_body: "Sorry, {{first_name}}." }
-    expect(flash[:notice]).to include("Emailing 1 student")
+    patch manage_date_change_touches_path(change), params: { commit: "review",
+          choices: { cast_notify: "0", students_email: "1", students_subject: "{{course_title}}: {{sessions}} canceled", students_body: "Sorry, {{first_name}}." } }
+    perform_enqueued_jobs(only: DateChangeApplyJob) { post manage_apply_date_change_path(change) }
     expect(session_show.reload.canceled).to be(true)
+    expect(change.reload.step("students")["detail"]).to eq("1 student emailed")
     expect { perform_enqueued_jobs(only: CourseSessionCancellationJob) }.to change { ActionMailer::Base.deliveries.size }.by(1)
     expect(ActionMailer::Base.deliveries.last.subject).to eq("Improv 101: the Tuesday, November 10 session canceled")
   end

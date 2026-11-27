@@ -12,31 +12,29 @@
   </div>
 
   <% if @show.canceled %>
-    <%# Restore %>
+    <%# Bring back (Cancel or move this date, Tim 2026-11-27) %>
     <div class="bg-white border border-gray-200 rounded-xl overflow-hidden [&>div:last-child]:border-b-0">
-      <%= render "shared/section_heading", title: "Restore this #{@show.event_type}",
-            intro: "This event is canceled. Restore it to the calendar." do %>
-        <%= render "shared/button", text: "Uncancel", variant: "secondary", size: "small", type: :button,
-              data: { controller: "modal", action: "click->modal#open", modal_id: "danger-uncancel-modal" } %>
+      <%= render "shared/section_heading", title: "Bring this date back",
+            intro: "It's canceled. Bring it back, and choose who hears about it." do %>
+        <%= render "shared/button", text: "Bring this date back", variant: "secondary", size: "small", path: manage_new_date_restore_path(@production, @show) %>
       <% end %>
     </div>
   <% else %>
-    <%# Cancel %>
+    <%# Cancel or move (Cancel or move this date, Tim 2026-11-27) %>
     <div class="bg-white border border-gray-200 rounded-xl overflow-hidden [&>div:last-child]:border-b-0">
-      <%= render "shared/section_heading", title: "Cancel this #{@show.event_type}",
-            intro: "Mark it canceled but keep it on the calendar (preserves history). You can uncancel later." do %>
-        <%= render "shared/button", text: "Cancel #{event_label}", variant: "primary", size: "small", type: :button,
-              data: { controller: "modal", action: "click->modal#open", modal_id: "danger-cancel-modal" } %>
+      <%= render "shared/section_heading", title: "Cancel or move this date",
+            intro: "Cancel it, move it to a new date, time, or place, and CocoScout takes care of everyone it touches." do %>
+        <%= render "shared/button", text: "Cancel or move this date", variant: "primary", size: "small", path: manage_new_date_change_path(@production, @show) %>
       <% end %>
     </div>
   <% end %>
 
-  <%# Delete %>
+  <%# Delete, for a date entered by mistake %>
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden [&>div:last-child]:border-b-0">
-    <%= render "shared/section_heading", title: "Permanently delete",
-          intro: "Remove this #{@show.event_type} and all its data. This can't be undone." do %>
-      <%= render "shared/button", text: "Delete #{event_label}", variant: "primary", size: "small", type: :button,
-            data: { controller: "modal", action: "click->modal#open", modal_id: "danger-delete-modal" } %>
+    <%= render "shared/section_heading", title: "Delete this date",
+          intro: "For a date entered by mistake, that nobody ever counted on. It comes off your calendar as if it had never been entered." do %>
+      <%= render "shared/button", text: "Delete this date", variant: "primary", size: "small", type: :button,
+            data: { controller: "modal", action: "click->modal#open", modal_id: "delete-date-#{@show.id}" } %>
     <% end %>
   </div>
 </div>

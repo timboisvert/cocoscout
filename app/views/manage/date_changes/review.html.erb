@@ -1,0 +1,83 @@
+<% content_for :title, "Review and confirm" %>
+<%#
+  Step 4: everything that will happen, in sentences that follow the
+  choices made, what people will receive, and one button. Nothing has
+  happened yet; the button does all of it.
+%>
+<%
+  show = @change.show
+  name = show.display_name.presence || @production.name
+  verb = @change.cancel? ? "Cancel" : "Move"
+  back = manage_date_change_touches_path(@change)
+%>
+<div class="w-full mb-10">
+  <%= render "manage/date_changes/header", change: @change, show: show, production: @production,
+        title: @change.contract_id ? "Move #{@change.contract.contractor_name.presence || name}'s date" : "#{verb} #{name}", index: @change.contract_id ? 1 : 3 %>
+
+  <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <div class="space-y-6 min-w-0">
+      <div class="bg-white border border-gray-200 rounded-xl">
+        <%= render "shared/section_heading", title: "When you confirm, CocoScout will:" %>
+        <ol class="px-6 py-4 max-sm:px-4 space-y-2.5 text-sm text-gray-800 list-decimal pl-10 max-sm:pl-8" data-review-sentences>
+          <% @review.sentences.each do |line| %><li><%= line %></li><% end %>
+        </ol>
+      </div>
+
+      <% messages = @review.messages %>
+      <% if messages.any? %>
+        <div class="bg-white border border-gray-200 rounded-xl">
+          <%= render "shared/section_heading", title: "What people will receive" %>
+          <ul class="divide-y divide-gray-100">
+            <% messages.each_with_index do |m, i| %>
+              <li class="px-6 py-3 max-sm:px-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-sm">
+                <span class="min-w-0">
+                  <span class="font-medium text-gray-900"><%= m.who %></span>
+                  <span class="text-gray-500"> · <%= m.how %> · <%= pluralize(m.count, "person", plural: "people") %></span>
+                  <% if m.subject.present? %><span class="block text-gray-700"><%= m.subject %></span><% end %>
+                </span>
+                <% if m.body.present? %>
+                  <button type="button" class="text-pink-600 hover:text-pink-700 font-medium cursor-pointer" data-controller="modal" data-action="click->modal#open" data-modal-id="read-<%= i %>">Read</button>
+                <% end %>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+        <% messages.each_with_index do |m, i| %>
+          <% next if m.body.blank? %>
+          <div id="read-<%= i %>" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" data-controller="modal" data-action="click->modal#closeOnBackdrop">
+            <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-2xl max-h-[90vh] flex flex-col overflow-hidden" data-action="click->modal#stopPropagation">
+              <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+                <h3 class="text-lg font-semibold text-white"><%= m.who %></h3>
+                <button type="button" data-action="click->modal#close" aria-label="Close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 cursor-pointer"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+              </div>
+              <div class="px-6 py-5 overflow-y-auto text-sm text-gray-800 space-y-3">
+                <p class="font-semibold"><%= m.subject %></p>
+                <% if m.body.to_s.include?("<") %>
+                  <div class="prose prose-sm max-w-none"><%= sanitize m.body %></div>
+                <% else %>
+                  <%= simple_format(m.body) %>
+                <% end %>
+                <p class="text-xs text-gray-500">The {{placeholders}} are filled in for each person. Change the words on the step before.</p>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+
+    <aside>
+      <div class="bg-white border border-gray-200 rounded-xl px-5 py-4 lg:sticky lg:top-4">
+        <p class="text-lg font-semibold text-gray-900"><%= @review.headline %></p>
+        <p class="mt-2 text-sm text-gray-600">
+          <% if @change.cancel? %>Refunds and messages can't be taken back once they go. Everything else comes back if you bring the dates back.<% else %>Messages can't be taken back once they go. The date can be moved again any time.<% end %>
+        </p>
+        <%= form_with url: manage_apply_date_change_path(@change), method: :post, class: "mt-4 flex flex-col gap-2", id: "apply-change" do %>
+          <%= render "shared/button", text: @review.button, variant: "primary", size: "medium", type: :submit, classes: "w-full" %>
+          <%= link_to back do %>
+            <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", type: :button, classes: "w-full" %>
+          <% end %>
+        <% end %>
+      </div>
+    </aside>
+  </div>
+</div>

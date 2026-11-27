@@ -46,6 +46,7 @@ class Organization < ApplicationRecord
   has_many :organization_staff_members, dependent: :destroy
   has_many :shifts, dependent: :destroy
   has_many :show_changes, dependent: :delete_all
+  has_many :date_changes, dependent: :delete_all
   has_many :staffing_finalizations, dependent: :destroy
   has_many :scheduling_rules, dependent: :destroy
   has_many :staff_schedule_removals, dependent: :destroy

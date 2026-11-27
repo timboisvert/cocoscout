@@ -133,16 +133,17 @@ module ShowChanges
   # (unless the shift still covers another live show), the booking's shifts
   # when the show is taken away, and the whole night's when it was the last
   # show left that night.
-  def shifts_for(show, kind)
+  def shifts_for(show, kind, off_ids: Current.show_change_off_ids)
     organization = show.production.organization
-    last_of_night = !other_live_show_that_night?(show)
+    off = Array(off_ids).map(&:to_i).to_set
+    last_of_night = !other_live_show_that_night?(show, off_ids: off)
 
     tied = Shift.where(organization: organization, source_type: "Show", source_id: show.id)
                 .or(Shift.where(organization: organization, id: ShiftShow.where(show_id: show.id).select(:shift_id)))
                 .includes(:house_role, :additional_roles, :source, :shows, shift_assignments: :person).to_a
     tied = tied.select do |shift|
       (shift.house_role&.show_specific? || last_of_night) &&
-        shift.covered_shows.none? { |s| s.id != show.id && !s.canceled? }
+        shift.covered_shows.none? { |s| s.id != show.id && !s.canceled? && !off.include?(s.id) }
     end
 
     booking = if kind == "removed" && show.space_rental_id
@@ -164,11 +165,11 @@ module ShowChanges
     (tied + booking + night).uniq(&:id)
   end
 
-  def other_live_show_that_night?(show)
+  def other_live_show_that_night?(show, off_ids: Current.show_change_off_ids)
     Show.joins(:production)
         .where(productions: { organization_id: show.production.organization_id }, canceled: false)
         .where(date_and_time: show.date_and_time.all_day)
-        .where.not(id: show.id).exists?
+        .where.not(id: [ show.id, *Array(off_ids).map(&:to_i) ]).exists?
   end
 
   # Everyone still on these shifts (not who said they can't make it).

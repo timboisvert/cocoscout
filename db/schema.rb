@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_24_210100) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_27_190100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_stat_statements"
@@ -1242,6 +1242,39 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_24_210100) do
     t.index ["stripe_checkout_session_id"], name: "index_course_registrations_on_stripe_checkout_session_id", unique: true
     t.index ["token"], name: "index_course_registrations_on_token", unique: true
     t.index ["user_id"], name: "index_course_registrations_on_user_id"
+  end
+
+  create_table "date_changes", force: :cascade do |t|
+    t.datetime "applied_at"
+    t.jsonb "also_show_ids", default: [], null: false
+    t.string "batch"
+    t.jsonb "choices", default: {}, null: false
+    t.bigint "contract_date_request_id"
+    t.bigint "contract_id"
+    t.datetime "created_at", null: false
+    t.bigint "created_by_user_id"
+    t.string "kind", null: false
+    t.jsonb "move", default: {}, null: false
+    t.bigint "organization_id", null: false
+    t.jsonb "problems", default: [], null: false
+    t.bigint "production_id"
+    t.bigint "restores_id"
+    t.string "scope"
+    t.bigint "show_id"
+    t.jsonb "show_ids", default: [], null: false
+    t.string "status", default: "draft", null: false
+    t.jsonb "steps", default: [], null: false
+    t.jsonb "summary", default: {}, null: false
+    t.jsonb "undo", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.index ["contract_date_request_id"], name: "index_date_changes_on_contract_date_request_id"
+    t.index ["contract_id"], name: "index_date_changes_on_contract_id"
+    t.index ["created_by_user_id"], name: "index_date_changes_on_created_by_user_id"
+    t.index ["organization_id", "status"], name: "index_date_changes_on_organization_id_and_status"
+    t.index ["organization_id"], name: "index_date_changes_on_organization_id"
+    t.index ["production_id"], name: "index_date_changes_on_production_id"
+    t.index ["restores_id"], name: "index_date_changes_on_restores_id"
+    t.index ["show_id"], name: "index_date_changes_on_show_id"
   end
 
   create_table "departments", force: :cascade do |t|
@@ -5365,6 +5398,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_24_210100) do
   add_foreign_key "course_registrations", "people"
   add_foreign_key "course_registrations", "users"
   add_foreign_key "course_registrations", "users", column: "added_by_id"
+  add_foreign_key "date_changes", "contract_date_requests", on_delete: :nullify
+  add_foreign_key "date_changes", "contracts", on_delete: :nullify
+  add_foreign_key "date_changes", "date_changes", column: "restores_id", on_delete: :nullify
+  add_foreign_key "date_changes", "organizations", on_delete: :cascade
+  add_foreign_key "date_changes", "productions", on_delete: :nullify
+  add_foreign_key "date_changes", "shows", on_delete: :nullify
+  add_foreign_key "date_changes", "users", column: "created_by_user_id", on_delete: :nullify
   add_foreign_key "departments", "organizations"
   add_foreign_key "device_tokens", "app_sessions", on_delete: :cascade
   add_foreign_key "device_tokens", "sessions", on_delete: :cascade

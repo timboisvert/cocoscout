@@ -1,0 +1,118 @@
+<% content_for :title, "Bring a canceled date back" %>
+<%#
+  Bring canceled dates back (Tim, 2026-11-27): which dates, then what comes
+  back with them and what can't (refunds stand), and what's changed since
+  the cancel (someone unavailable now, a shift taken in the meantime).
+%>
+<%
+  show = @change.show
+  name = show.display_name.presence || @production.name
+  cancel = @cancel
+  dates_choice = @change.scope == "chosen" ? "all" : "this"
+  plan = @plan
+  shows = plan.acting_shows
+  refunded = plan.refunded_orders.select { |o| shows.map(&:id).include?(o.ticket_listing.show_id) }
+  undo_shifts = Array(cancel&.undo&.dig("shifts"))
+  cast = plan.cast.people
+  unavailable = shows.flat_map { |s| ShowAvailability.where(show: s, status: :unavailable, available_entity_type: "Person", available_entity_id: cast.map { |c| c.person.id }).includes(:available_entity).map { |a| [ a.available_entity, s ] } }
+  back_on = ShowChangePlan::BuyerWords.draft(:back_on)
+  who = cancel&.created_by_user&.person&.name&.split&.first
+%>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+        breadcrumbs: [ [ "Shows & Events", manage_production_shows_path(@production) ], [ show.date_and_time.strftime("%a, %b %-d"), manage_show_path(@production, show) ] ],
+        text: "Bring #{name} back", links: [] } %>
+
+  <% if cancel %>
+    <p class="text-sm text-gray-600 mb-4">Canceled on <%= (cancel.applied_at || cancel.created_at).strftime("%b %-d") %><%= who ? " by #{who}" : "" %><%= @all_ids.size > 1 ? ", with #{pluralize(@all_ids.size - 1, 'more date')}" : "" %>. Choose which to bring back; the same list shows what comes back with them and what can't.</p>
+  <% end %>
+
+  <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <div class="space-y-4 sm:space-y-6 min-w-0">
+      <% if @all_ids.size > 1 %>
+        <%= form_with url: manage_date_change_restore_path(@change), method: :get, data: { controller: "auto-submit", turbo_action: "replace" }, class: "bg-white border border-gray-200 rounded-xl" do %>
+          <%= render "shared/section_heading", title: "Which dates" %>
+          <div class="px-6 py-4 max-sm:px-4 space-y-2">
+            <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+              <%= radio_button_tag :dates, "this", dates_choice == "this", class: "mt-1 h-4 w-4 accent-pink-500", data: { action: "change->auto-submit#submit" } %>
+              <span class="text-sm font-semibold text-gray-900">Only <%= show.date_and_time.strftime("%A, %B %-d") %></span>
+            </label>
+            <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+              <%= radio_button_tag :dates, "all", dates_choice == "all", class: "mt-1 h-4 w-4 accent-pink-500", data: { action: "change->auto-submit#submit" } %>
+              <span class="text-sm font-semibold text-gray-900">Everything canceled with it: <%= pluralize(@all_ids.size, "date") %></span>
+            </label>
+          </div>
+        <% end %>
+      <% end %>
+
+      <%= form_with url: manage_apply_date_change_restore_path(@change), method: :post, id: "restore-form", class: "space-y-4 sm:space-y-6" do %>
+        <%= hidden_field_tag :dates, dates_choice %>
+        <% if plan.listings.any? %>
+          <%= render "manage/date_changes/section", key: "buyers", title: "Ticket buyers",
+                summary: refunded.any? ? (@change.on?(:buyers_email, default: false) ? "Email the #{refunded.map(&:buyer_email).uniq.size} refunded buyers" : "Sales reopen; no email") : "Sales reopen" do %>
+            <p class="py-3 text-sm text-gray-700"><%= refunded.any? ? "The #{pluralize(refunded.map(&:buyer_email).uniq.size, 'buyer')} #{refunded.size == 1 ? 'was' : 'were'} refunded, so their tickets don't come back." : "Nobody had tickets to refund." %> Sales reopen with the <%= shows.one? ? "date" : "dates" %>, on the same ticket types.</p>
+            <% if refunded.any? %>
+              <div class="border-t border-gray-100">
+                <%= render "manage/date_changes/toggle", change: @change, key: :buyers_email, default: false,
+                      title: "Email the refunded buyers that it's back on,", detail: "with a link to buy again.",
+                      extra: tag.button("Read and edit the email", type: "button", class: "block mt-1 text-pink-600 hover:text-pink-700 font-medium cursor-pointer", data: { controller: "modal", action: "click->modal#open", modal_id: "msg-back-on" }) %>
+              </div>
+            <% end %>
+          <% end %>
+          <% if refunded.any? %>
+            <%= render "manage/date_changes/message_modal", id: "msg-back-on", title: "The email to refunded buyers", prefix: "back_on",
+                  subject: @change.choice(:back_on_subject).presence || back_on[:subject], body: @change.choice(:back_on_body).presence || back_on[:body],
+                  hint: "{{first_name}}, {{show_title}}, {{dates}}, and {{buy_url}} are filled in for each buyer." %>
+          <% end %>
+        <% end %>
+
+        <% if cast.any? %>
+          <%= render "manage/date_changes/section", key: "cast", title: "Cast", summary: @change.on?(:cast_notify) ? "Notify #{cast.size} it's back on" : "Don't notify them" do %>
+            <p class="py-3 text-sm text-gray-700">The cast stayed in their roles: <%= pluralize(cast.size, "person", plural: "people") %> across <%= shows.one? ? "the date" : "the #{shows.size} dates" %>.</p>
+            <div class="border-t border-gray-100">
+              <%= render "manage/date_changes/toggle", change: @change, key: :cast_notify, title: "Notify the #{pluralize(cast.size, 'cast member')} it's back on." %>
+            </div>
+            <% unavailable.each do |person, s| %>
+              <p class="pb-3 text-sm text-amber-800"><%= person.name %> has since marked <%= s.date_and_time.strftime("%b %-d") %> as unavailable, so <%= person.name %>'s role that night opens for cover.</p>
+            <% end %>
+          <% end %>
+        <% end %>
+
+        <% if undo_shifts.any? %>
+          <% people_count = undo_shifts.flat_map { |r| Array(r["person_ids"]) }.uniq.size %>
+          <%= render "manage/date_changes/section", key: "staff", title: "Staff", summary: @change.on?(:staff_back) ? "Put #{people_count} back on, notify them" : "Leave the shifts off" do %>
+            <p class="py-3 text-sm text-gray-700">The <%= pluralize(undo_shifts.size, "shift") %> came off the schedule with the cancel and read Not needed.</p>
+            <div class="border-t border-gray-100">
+              <%= render "manage/date_changes/toggle", change: @change, key: :staff_back,
+                    title: "Put the #{pluralize(people_count, 'person', plural: 'people')} on staff back on their shifts and notify them.",
+                    detail: "Anyone who has since taken another shift that overlaps stays off it, and that shift opens for cover." %>
+            </div>
+          <% end %>
+        <% end %>
+
+        <% if plan.signups.instances.any? %>
+          <div class="bg-white border border-gray-200 rounded-xl px-6 py-4 max-sm:px-4 text-sm text-gray-700">
+            <span class="font-semibold text-gray-900">Sign-ups.</span> Registrations canceled with the date stay canceled; the sign-up reopens for <%= shows.one? ? "the date" : "these dates" %> with its slots open.
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+
+    <aside>
+      <div class="bg-white border border-gray-200 rounded-xl px-5 py-4 lg:sticky lg:top-4">
+        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Bringing back</p>
+        <p class="mt-1 text-lg font-semibold text-gray-900"><%= pluralize(shows.size, "date") %></p>
+        <ul class="mt-3 space-y-1.5 text-sm text-gray-700 list-disc pl-5">
+          <% ShowChangePlan::Review.new(@change, plan).sentences.drop(1).each do |line| %><li><%= line %></li><% end %>
+        </ul>
+        <div class="mt-4 flex flex-col gap-2">
+          <%= render "shared/button", text: "Bring back #{shows.one? ? 'the date' : "#{shows.size} dates"}", variant: "primary", size: "medium", type: :submit, form_id: "restore-form", classes: "w-full" %>
+          <%= link_to manage_show_path(@production, show) do %>
+            <%= render "shared/button", text: "Leave #{shows.one? ? 'it' : 'them'} canceled", variant: "secondary", size: "medium", type: :button, classes: "w-full" %>
+          <% end %>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>

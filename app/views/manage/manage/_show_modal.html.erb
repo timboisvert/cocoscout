@@ -18,7 +18,13 @@
     "#{rental.starts_at.strftime("%-l:%M")}–#{rental.ends_at.strftime("%-l:%M %p")}"
   end
   footer = capture do
-    render "shared/button", text: "Open the show", variant: "secondary", size: "small", type: :link, path: manage_show_path(show.production, show)
+    concat render("shared/button", text: "Open the show", variant: "secondary", size: "small", type: :link, path: manage_show_path(show.production, show))
+    # Cancel or move this date (Tim, 2026-11-27); a canceled one comes back.
+    if show.canceled?
+      concat render("shared/button", text: "Bring this date back", variant: "secondary", size: "small", type: :link, path: manage_new_date_restore_path(show.production, show))
+    elsif show.date_and_time > Time.current
+      concat render("shared/button", text: "Cancel or move this date", variant: "secondary", size: "small", type: :link, path: manage_new_date_change_path(show.production, show))
+    end
   end
   section = "px-4 sm:px-6 py-3 border-t border-gray-100 first:border-t-0"
   heading = "flex items-center justify-between gap-3 mb-1.5"

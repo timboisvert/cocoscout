@@ -219,18 +219,13 @@
               %>
               <div class="flex flex-wrap gap-2 items-center">
                 <% if is_canceled %>
-                  <% uncancel_cid = "confirm-#{SecureRandom.hex(6)}" %>
-                  <%= render "shared/button", text: uncancel_label, variant: "primary", size: "small", type: :button, data: { controller: "modal", action: "click->modal#open", modal_id: uncancel_cid } %>
-                  <%= render "shared/confirm_modal", id: uncancel_cid, title: "Uncancel #{event_label.downcase}?",
-                        message: "Are you sure you want to uncancel this #{event_label.downcase}?", confirm_text: uncancel_label,
-                        url: manage_uncancel_show_path(@production, @show), method: :patch %>
-                  <%= render "shared/button", text: delete_label, path: manage_cancel_show_form_path(@production, @show), variant: "primary", size: "small" %>
+                  <%= render "shared/button", text: "Bring this date back", path: manage_new_date_restore_path(@production, @show), variant: "primary", size: "small" %>
                 <% else %>
                   <%# Always show edit button, even for past events %>
                   <%= render "shared/button", text: edit_label, path: manage_edit_show_path(@production, @show), variant: "primary", size: "small" %>
                   <%= render "shared/button", text: duplicate_label, path: manage_shows_wizard_path(@production, duplicate: @show.id), variant: "primary", size: "small" %>
                   <% unless is_past %>
-                    <%= render "shared/button", text: cancel_label, path: manage_cancel_show_form_path(@production, @show), variant: "primary", size: "small" %>
+                    <%= render "shared/button", text: "Cancel or move this date", path: manage_new_date_change_path(@production, @show), variant: "primary", size: "small" %>
                   <% end %>
                   <%= render "shared/button", text: "Transfer Show", path: manage_transfer_show_select_path(@production, @show), variant: "primary", size: "small" %>
                 <% end %>

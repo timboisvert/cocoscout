@@ -1,0 +1,17 @@
+<%#
+  One thing CocoScout will do, on or off. A one-time option on an action
+  form, so a plain pink checkbox (the switch is for saved settings).
+  Locals: change, key, title, detail (optional, may hold HTML), default
+  (optional, true), extra (optional HTML after the detail)
+%>
+<% on = change.on?(local_assigns[:key], default: local_assigns.fetch(:default, true)) %>
+<label class="flex items-start gap-3 py-3 cursor-pointer">
+  <%= hidden_field_tag "choices[#{key}]", "0", id: nil %>
+  <%= check_box_tag "choices[#{key}]", "1", on, id: "choice-#{key}",
+        class: "mt-0.5 h-4 w-4 shrink-0 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+  <span class="text-sm text-gray-700 leading-relaxed">
+    <span class="font-medium text-gray-900"><%= title %></span>
+    <% if local_assigns[:detail].present? %> <%= local_assigns[:detail] %><% end %>
+    <%= local_assigns[:extra] %>
+  </span>
+</label>

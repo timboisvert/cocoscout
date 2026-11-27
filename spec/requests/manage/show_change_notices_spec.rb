@@ -103,22 +103,23 @@ RSpec.describe "Telling people a show changed", type: :request do
     expect(home_chip(seven, "staffing").text).to include("Staff notified")
   end
 
-  it "shows on the cancel screen exactly who each way of canceling would notify" do
+  it "shows on Cancel or move this date exactly who canceling the chosen dates would notify" do
     series = SecureRandom.uuid
     seven.update!(recurrence_group_id: series)
     later = create(:show, production: production, date_and_time: seven.date_and_time + 1.week, duration_minutes: 60, recurrence_group_id: series)
     create(:show_person_role_assignment, show: later, assignable: miles)
 
-    get manage_cancel_show_form_path(production, seven)
+    post manage_create_date_change_path(production, seven), params: { kind: "cancel" }
+    change = DateChange.last
+    get manage_date_change_touches_path(change)
     page = Nokogiri::HTML(response.body)
-    this = page.at_css("[data-cancel-notify-people] [data-scope='this']")
-    expect(this.at_css("[data-notify-box='cast']").text).to include("Ana Ruiz")
-    expect(this.at_css("[data-notify-box='cast']").text).not_to include("Miles Rowe")
-    expect(this.at_css("[data-notify-box='staff']").text).to include("Tess Ng", "Booth Tech")
-    future = page.at_css("[data-cancel-notify-people] [data-scope='this_and_future']")
-    expect(future["class"]).to include("hidden")
-    expect(future.at_css("[data-notify-box='cast']").text).to include("Ana Ruiz", "Miles Rowe")
-    expect(future.text).to include("Across the 2 dates still to come")
+    expect(page.at_css("[data-touch-section='cast']").text).to include("1 person")
+    expect(page.at_css("[data-touch-section='staff']").text).to include("Tess Ng", "Booth Tech")
+
+    patch manage_date_change_dates_path(change), params: { scope: "following", commit: "continue" }
+    get manage_date_change_touches_path(change)
+    page = Nokogiri::HTML(response.body)
+    expect(page.at_css("[data-touch-section='cast']").text).to include("2 people across the 2 dates")
   end
 
   it "counts the night's crew in when the last show of the night goes" do
@@ -154,19 +155,13 @@ RSpec.describe "Telling people a show changed", type: :request do
     expect(home_chip(seven, "cast").text).not_to include("notified")
   end
 
-  it "keeps who a deleted show had, and offers Tell people on the next page" do
+  # Delete is for a date entered by mistake (Cancel or move this date, Tim
+  # 2026-11-27): one people are on is canceled instead.
+  it "won't delete a date people are on, and points to canceling it" do
     delete manage_delete_show_path(production, seven), params: { scope: "this" }
-    change = ShowChange.last
-    expect(change).to have_attributes(kind: "removed", show_id: nil, show_label: "Mr. Mystery Machine · #{saturday.strftime('%a, %b %-d')}, 7:00 PM")
-    expect(change.cast_person_ids).to eq([ ana.id ])
-
-    follow_redirect!
-    notice = Nokogiri::HTML(response.body).at_css("[data-show-changes-notice]")
-    expect(notice.text).to include("took 1 date off", "haven't been notified", "Notify them")
-    expect(notice.at_css("a")["href"]).to eq(manage_show_changes_path(change.batch))
-
-    get manage_show_changes_path(change.batch)
-    expect(response.body).to include("Taken off", "Ana Ruiz", "Tess Ng")
+    expect(response).to redirect_to(manage_new_date_change_path(production, seven, kind: "cancel"))
+    expect(Show.exists?(seven.id)).to be(true)
+    expect(flash[:alert]).to include("can't be deleted", "1 cast and 1 staff scheduled")
   end
 
   it "records nothing for a show in the past, or one nobody is on" do

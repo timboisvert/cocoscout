@@ -34,11 +34,17 @@ class StaffShiftRemindersJob < ApplicationJob
   end
 
   # The rows to remind for a day, in the current zone (the organization's).
+  # A shift that's Not needed, or that only works shows that are all
+  # canceled, isn't a shift anymore: nobody is reminded of it, whether or not
+  # anyone took the people off it.
   def self.due(organization, day)
     ShiftAssignment.active.where(reminded_at: nil)
                    .joins(:shift, person: :user)
                    .where(shifts: { organization_id: organization.id, starts_at: day.all_day })
+                   .where.not(shifts: { coverage_mode: Shift.coverage_modes[:not_needed] })
                    .includes(:person, shift: [ :house_role, :additional_roles, :organization, :source, { shows: :production } ])
+                   .to_a
+                   .reject { |row| (shows = row.shift.covered_shows).any? && shows.all?(&:canceled?) }
   end
 
   private
@@ -46,7 +52,7 @@ class StaffShiftRemindersJob < ApplicationJob
   def remind(organization, day)
     return unless StaffingFinalization.published?(organization, day)
 
-    self.class.due(organization, day).to_a.group_by(&:person).each do |person, rows|
+    self.class.due(organization, day).group_by(&:person).each do |person, rows|
       ids = rows.map(&:id)
       next if ShiftAssignment.where(id: ids, reminded_at: nil).update_all(reminded_at: Time.current).zero?
 

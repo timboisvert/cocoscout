@@ -23,7 +23,7 @@
     { text: "Orders", description: "Every order for this show", path: manage_ticket_orders_path(listing_id: @listing.id), icon: icons[:orders] },
     { text: "Settings", description: "Prices, seats, sales window, page, and image", path: manage_edit_ticket_listing_path(@listing), icon: icons[:cog] },
     { text: "Visibility", description: "Who can see this show's sales", path: manage_ticket_listing_visibility_path(@listing), icon: icons[:share] },
-    ({ text: "Cancel this show", description: "In Shows & Events, with refunds for buyers", path: manage_cancel_show_form_path(@listing.production, show), icon: icons[:cancel], tone: :muted } if @listing.status != "canceled" && !show.canceled && upcoming)
+    ({ text: "Cancel or move this show", description: "Refunds or emails the buyers, and notifies everyone else", path: manage_new_date_change_path(@listing.production, show), icon: icons[:cancel], tone: :muted } if @listing.status != "canceled" && !show.canceled && upcoming)
   ]
 %>
 

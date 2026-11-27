@@ -278,32 +278,32 @@ RSpec.describe "Manage ticketing money", type: :request do
     expect(response.body).to include("Sales tax,10.25%,,40.00,0.00,40.00,4.10,0.00,4.10")
   end
 
-  # Tim (2026-10-02): canceling happens in Shows & Events; its cancel screen
-  # carries the ticket buyers and their email.
-  it "cancels a show in Shows & Events, refunding ticket buyers with an email read first" do
+  # Canceling happens in Cancel or move this date (Tim, 2026-11-27): the
+  # buyers are the first thing it touches, with their email read first.
+  it "cancels a show from its ticket page, refunding ticket buyers with an email read first" do
     sold(1)
     show = listing.show
     get manage_ticket_listing_path(listing)
-    expect(response.body).to include(manage_cancel_show_form_path(show.production, show))
+    expect(response.body).to include(manage_new_date_change_path(show.production, show))
 
-    get manage_cancel_show_form_path(show.production, show)
-    expect(response.body).to include("Refund ticket buyers and email them", "1 buyer", "Dana Scully", "{{show_title}} on {{show_date}} is canceled")
+    post manage_create_date_change_path(show.production, show), params: { kind: "cancel" }
+    change = DateChange.last
+    get manage_date_change_touches_path(change)
+    expect(response.body).to include("Refund everyone and email them", "1 buyer", "{{show_title}} is canceled")
 
-    perform_enqueued_jobs do
-      patch manage_cancel_show_path(show.production, show),
-            params: { scope: "this", notify_cast: "0", refund_tickets: "1", ticket_email_subject: "Canceled", ticket_email_body: "Hi {{first_name}}" }
-    end
-    expect(flash[:notice]).to include("Refunds are on their way to 1 ticket buyer.")
+    patch manage_date_change_touches_path(change), params: { commit: "review", choices: { buyers_action: "refund", buyers_subject: "Canceled", buyers_body: "Hi {{first_name}}" } }
+    perform_enqueued_jobs { post manage_apply_date_change_path(change) }
     expect([ show.reload.canceled, listing.reload.status ]).to eq([ true, "canceled" ])
     expect(listing.ticket_orders.sole.status).to eq("refunded")
+    expect(ActionMailer::Base.deliveries.map(&:subject)).to include("Canceled")
   end
 
   it "won't delete a date that sold tickets; it points to canceling instead" do
     sold(1)
     show = listing.show
     delete manage_delete_show_path(show.production, show), params: { scope: "this" }
-    expect(response).to redirect_to(manage_cancel_show_form_path(show.production, show))
-    expect(flash[:alert]).to include("can't be deleted. Cancel it instead")
+    expect(response).to redirect_to(manage_new_date_change_path(show.production, show, kind: "cancel"))
+    expect(flash[:alert]).to include("can't be deleted", "Cancel it instead")
     expect(Show.exists?(show.id)).to be(true)
   end
 

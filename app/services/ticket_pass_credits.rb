@@ -148,6 +148,29 @@ class TicketPassCredits
   # card's processing (which Stripe keeps) comes out of the organization's
   # money. A used pass can't be refunded from here: its tickets were paid for
   # with it.
+  # A date the organization canceled: the credits used on it go back on the
+  # pass (Tim, 2026-11-27, "Cancel or move this date"). The tickets stop
+  # working and the order reads canceled; the credit's posting is withdrawn,
+  # so the pass's money is unused credit again, not that show's sales.
+  def self.return!(order, by: nil)
+    raise Error, "That order didn't use a pass." unless order.channel.in?(%w[pass door_pass])
+
+    tickets = order.tickets.where(status: Ticket::SOLD_STATUSES).to_a
+    return 0 if tickets.empty?
+
+    listing = order.ticket_listing
+    ActiveRecord::Base.transaction do
+      Ticket.where(id: tickets.map(&:id)).update_all(status: "void", updated_at: Time.current)
+      order.update!(status: "canceled")
+      # Posting the credit again with nothing left in it withdraws the one
+      # that stood (LedgerPosting is restated per source and kind).
+      LedgerPosting.post!(organization: order.organization, source: order, kind: "pass_credit", entry_date: Date.current,
+                          memo: "Pass credit returned, #{listing.display_title} canceled", lines: [])
+    end
+    TicketSalesSync.sync!(listing.show)
+    tickets.size
+  end
+
   def self.refund!(holding, by: nil)
     raise Error, "Only a live pass can be refunded." unless holding.status == "active"
     raise Error, "This pass has been used, so it can't be refunded here." if holding.credits_used.positive?

@@ -47,31 +47,31 @@ RSpec.describe "Deleting shows under revenue-share contracts", type: :request do
       expect(flash[:notice]).to include("pending contract payment")
     end
 
-    it "deletes a show with a paid payment, unlinking but keeping the payment" do
+    # A paid payment means the date existed: it's canceled, never deleted
+    # (Cancel or move this date, Tim 2026-11-27).
+    it "won't delete a show whose payment was paid, and points to canceling it" do
       show = build_show!(2.weeks.from_now.change(hour: 20))
       payment = build_payment!(show, status: "paid")
 
       delete manage_delete_show_path(production, show)
 
-      expect(response).to redirect_to(manage_production_shows_path(production))
-      expect(Show.exists?(show.id)).to be(false)
-      expect(payment.reload.show_id).to be_nil
+      expect(response).to redirect_to(manage_new_date_change_path(production, show, kind: "cancel"))
+      expect(Show.exists?(show.id)).to be(true)
+      expect(payment.reload.show_id).to eq(show.id)
     end
 
-    it "deletes a whole recurring series with linked payments" do
+    it "deletes a whole recurring series with pending payments, which go with it" do
       group_id = SecureRandom.uuid
       shows = [ 2.weeks.from_now, 3.weeks.from_now ].map do |t|
         build_show!(t.change(hour: 20), recurrence_group_id: group_id)
       end
-      paid = build_payment!(shows.first, status: "paid")
-      pending = build_payment!(shows.last)
+      pending = shows.map { |s| build_payment!(s) }
 
       delete manage_delete_show_path(production, shows.first, scope: "all")
 
       expect(response).to redirect_to(manage_production_shows_path(production))
       expect(Show.where(id: shows.map(&:id))).to be_empty
-      expect(paid.reload.show_id).to be_nil
-      expect(ContractPayment.exists?(pending.id)).to be(false)
+      expect(ContractPayment.where(id: pending.map(&:id))).to be_empty
     end
   end
 

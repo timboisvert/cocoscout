@@ -1,0 +1,32 @@
+<% show = @listing.show %>
+<% content_for :title, "Get a refund · #{@listing.display_title}" %>
+<% content_for :head do %><meta name="robots" content="noindex"><% end %>
+<%#
+  The refund a buyer was offered when the date moved (DateChange): one
+  button, before the show starts.
+%>
+<div class="mx-auto max-w-lg">
+  <h1 class="text-2xl sm:text-3xl coustard-regular text-gray-900">Get a refund</h1>
+  <p class="mt-2 text-gray-700"><%= @listing.display_title %> · <%= show.date_and_time.strftime("%A, %B %-d · %-l:%M %p") %></p>
+
+  <div class="mt-6 rounded-xl border border-gray-200 p-5">
+    <% if @change.nil? %>
+      <p class="text-gray-700">This link doesn't offer a refund. If the new time doesn't work for you, reply to the email from <%= @listing.organization.name %>.</p>
+    <% elsif !@order.paid? %>
+      <p class="text-gray-700">This order was already refunded.</p>
+    <% elsif !refund_offer_open? %>
+      <p class="text-gray-700">The show has started, so a refund can't be requested here anymore. Reply to the email from <%= @listing.organization.name %> if you need help.</p>
+    <% else %>
+      <% count = @order.tickets.count { |t| Ticket::SOLD_STATUSES.include?(t.status) } %>
+      <p class="text-gray-700"><%= @listing.organization.name %> <%= @change.cancel? ? "canceled the date you'd bought for and moved your tickets to this one" : "moved this show" %>, and offers a refund to anyone who can't make <%= @change.cancel? ? "it" : "the new time" %>. Your <%= pluralize(count, "ticket") %> would stop working, and what you paid goes back the way you paid.</p>
+      <div class="mt-4">
+        <%= render "shared/button", text: "Refund my tickets", variant: "primary", size: "medium",
+              path: tickets_date_change_refund_issue_path(token: @order.token, change_id: @change.id, **embed_params), method: :post %>
+      </div>
+    <% end %>
+  </div>
+
+  <p class="mt-4 text-sm">
+    <%= link_to "Back to your tickets", tickets_order_path(token: @order.token, **embed_params), class: "text-pink-600 hover:text-pink-700" %>
+  </p>
+</div>

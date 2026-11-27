@@ -3,7 +3,7 @@
     "Change series schedule" modal (extend, reschedule, change the pattern).
     Locals: form, input_class. %>
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-<%= render layout: "manage/shows/edit/card", locals: { title: "When", intro: (@show.recurring? ? "This event's own date and time. The series' schedule changes from the button below." : nil) } do %>
+<%= render layout: "manage/shows/edit/card", locals: { title: "When", intro: (@show.recurring? ? "This event's own date and time. Moving it, or it and the dates after it, works out everyone it touches. Adding dates to the series is the button below." : "Moving it works out everyone it touches and notifies them.") } do %>
   <% if @show.recurring? %>
     <%
       series = @show.recurrence_group.order(:date_and_time)
@@ -28,16 +28,18 @@
     </div>
   <% end %>
 
-  <div class="flex flex-wrap gap-4">
+  <%# The date and time change through Cancel or move this date (Tim,
+      2026-11-27), which works out who and what it touches and notifies
+      them; this form keeps everything else. %>
+  <div class="flex flex-wrap items-center justify-between gap-4">
     <div>
-      <%= form.label :date_and_time, "Date and time", class: "block text-sm font-medium text-gray-700 mb-1.5" %>
-      <%= form.datetime_field :date_and_time, class: "#{input_class} sm:w-64 #{'!border-pink-500' if @show.errors[:date_and_time].any?}" %>
+      <p class="text-sm font-medium text-gray-900"><%= @show.date_and_time.strftime("%A, %B %-d, %Y") %></p>
+      <p class="text-sm text-gray-600"><%= @show.date_and_time.strftime("%-l:%M %p").strip %> to <%= @show.ends_at.strftime("%-l:%M %p").strip %></p>
     </div>
-    <div>
-      <p class="block text-sm font-medium text-gray-700 mb-1.5">How long</p>
-      <%= render "shared/duration_field", name: "#{form.object_name}[duration_minutes]",
-            value: @show.duration_minutes || Show::DEFAULT_DURATION_MINUTES, max_hours: 24 %>
-    </div>
+    <% unless @show.canceled? %>
+      <%= render "shared/button", text: "Move this date", variant: "secondary", size: "small",
+            path: (@show.space_rental_id ? manage_move_contract_date_path(@show.space_rental.contract_id, @show) : manage_new_date_change_path(@production, @show, kind: "move")) %>
+    <% end %>
   </div>
 <% end %>
 

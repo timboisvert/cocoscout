@@ -1,0 +1,75 @@
+<%#
+  The steps of a change as they finish, and anything that couldn't be
+  done. Reloads itself every two seconds until everything is done
+  (date_change_progress_controller). Locals: change
+%>
+<%
+  steps = change.steps
+  done = change.steps_done
+  running = steps.find { |s| s["status"] == "running" }
+  finished = change.finished?
+  problems = change.open_problems
+  fmt = ->(iso) { iso ? Time.zone.parse(iso).strftime("%-l:%M %p") : nil }
+%>
+<turbo-frame id="date-change-progress" src="<%= manage_date_change_progress_path(change) %>" data-controller="date-change-progress" data-date-change-progress-finished-value="<%= finished %>">
+  <div class="space-y-6">
+    <div class="bg-white border border-gray-200 rounded-xl">
+      <%= render "shared/section_heading", title: "Progress",
+            intro: finished ? "#{done} of #{steps.size} done" : "#{done} of #{steps.size} done#{running ? " · #{running['label'].to_s.downcase_first}" : ''}" %>
+      <ul class="divide-y divide-gray-100" data-progress-steps>
+        <% steps.each do |s| %>
+          <% status = s["status"] %>
+          <li class="px-6 py-3 max-sm:px-4 flex items-start gap-3 text-sm" data-step="<%= s['key'] %>" data-status="<%= status %>">
+            <span class="mt-0.5 w-5 h-5 shrink-0 rounded-full flex items-center justify-center <%= { 'done' => 'bg-pink-500 text-white', 'problem' => 'bg-amber-100 text-amber-800', 'running' => 'border-2 border-pink-500 border-t-transparent animate-spin' }[status] || 'border-2 border-gray-300' %>" aria-hidden="true">
+              <% if status == "done" %><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg><% elsif status == "problem" %>!<% end %>
+            </span>
+            <span class="flex-1 min-w-0">
+              <span class="block text-gray-900 <%= 'font-medium' if status == 'running' %>"><%= s["detail"].presence || s["label"] %></span>
+              <% if status == "running" && s["total"].to_i.positive? %>
+                <span class="block text-gray-600"><%= s["done_count"].to_i %> of <%= s["total"] %> done<%= s["cents"].to_i.positive? ? ", #{number_to_currency(s['cents'].to_i / 100.0)} so far" : "" %></span>
+              <% end %>
+            </span>
+            <span class="text-xs text-gray-500 whitespace-nowrap"><%= status == "running" ? "Going" : fmt.call(s["done_at"]) %></span>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+
+    <% refunds = Array(change.summary["buyer_refunds"]) %>
+    <% if refunds.any? %>
+      <div class="bg-white border border-gray-200 rounded-xl" data-buyer-refunds>
+        <%= render "shared/section_heading", title: "Refunds buyers requested", intro: "From the link in their email, before the show." %>
+        <ul class="divide-y divide-gray-100">
+          <% refunds.each do |r| %>
+            <li class="px-6 py-2.5 max-sm:px-4 flex justify-between gap-3 text-sm"><span class="text-gray-900"><%= r["name"].presence || "A buyer" %>, <%= number_to_currency(r["cents"].to_i / 100.0) %></span><span class="text-gray-500"><%= Time.zone.parse(r["at"]).strftime("%b %-d, %-l:%M %p") %></span></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <% if problems.any? %>
+      <div class="bg-white border border-amber-200 rounded-xl" data-problems>
+        <%= render "shared/section_heading", title: "#{problems.size} #{problems.size == 1 ? 'thing' : 'things'} CocoScout couldn't finish" %>
+        <ul class="divide-y divide-gray-100">
+          <% problems.each do |p| %>
+            <li class="px-6 py-4 max-sm:px-4 text-sm" data-problem="<%= p['key'] %>">
+              <p class="font-medium text-gray-900"><%= p["label"] %></p>
+              <% if p["detail"].present? %><p class="text-gray-600 mt-0.5"><%= p["detail"] %></p><% end %>
+              <div class="mt-2 flex flex-wrap gap-2">
+                <% case p["kind"] %>
+                <% when "refund" %>
+                  <%= render "shared/button", text: "Try again", variant: "primary", size: "small", path: manage_retry_date_change_problem_path(change, p["key"]), method: :post, data: { turbo_frame: "_top" } %>
+                  <%= render "shared/button", text: "Mark refunded", variant: "secondary", size: "small", path: manage_resolve_date_change_problem_path(change, p["key"]), method: :post, data: { turbo_frame: "_top" } %>
+                <% when "untold" %>
+                  <%= render "shared/button", text: "Mark as told", variant: "secondary", size: "small", path: manage_resolve_date_change_problem_path(change, p["key"]), method: :post, data: { turbo_frame: "_top" } %>
+                <% else %>
+                  <%= render "shared/button", text: "Mark as dealt with", variant: "secondary", size: "small", path: manage_resolve_date_change_problem_path(change, p["key"]), method: :post, data: { turbo_frame: "_top" } %>
+                <% end %>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+  </div>
+</turbo-frame>

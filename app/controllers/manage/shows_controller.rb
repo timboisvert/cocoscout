@@ -772,7 +772,10 @@ module Manage
     end
 
     def cancel
-      # Shows the cancel/delete options page
+      # A date still on goes to Cancel or move this date (Tim, 2026-11-27);
+      # this page stays for a date canceled before it, whose buyers may still
+      # need refunding.
+      return redirect_to(manage_new_date_change_path(@production, @show)) unless @show.canceled?
 
       # Who'll be notified next, for each way of canceling: the cast and staff
       # of exactly the occurrences it takes, dates still to come.
@@ -812,9 +815,10 @@ module Manage
       if scope == "all" && @show.recurring?
         # Cancel all occurrences in the recurrence group
         shows_to_cancel = @show.recurrence_group.where(canceled: false).to_a
-        count = @show.recurrence_group.update_all(canceled: true)
-        # update_all skips the show's own callbacks: record what was canceled here.
-        shows_to_cancel.each { |show| ShowChanges.record_cancel(show) }
+        # One at a time, so each date's own callbacks run (sign-ups close,
+        # Google Calendar, linked copies, date requests, ShowChanges).
+        shows_to_cancel.each { |show| show.update!(canceled: true) }
+        count = shows_to_cancel.size
         dropped = drop_contract_payments_for(shows_to_cancel)
         refunding = cancel_ticket_sales_for(shows_to_cancel)
         students = tell_course_students_for(shows_to_cancel)
@@ -827,10 +831,8 @@ module Manage
         shows_to_cancel = @show.recurrence_group
                                .where("date_and_time >= ?", @show.date_and_time)
                                .where(canceled: false).to_a
-        count = @show.recurrence_group
-                     .where("date_and_time >= ?", @show.date_and_time)
-                     .update_all(canceled: true)
-        shows_to_cancel.each { |show| ShowChanges.record_cancel(show) }
+        shows_to_cancel.each { |show| show.update!(canceled: true) }
+        count = shows_to_cancel.size
         dropped = drop_contract_payments_for(shows_to_cancel)
         refunding = cancel_ticket_sales_for(shows_to_cancel)
         students = tell_course_students_for(shows_to_cancel)
@@ -925,6 +927,12 @@ module Manage
       # it. Cancel it instead, and the cancel screen refunds them. Abandoned
       # checkouts and comps given back don't count; they go with it.
       shows_in_scope = scope.in?(%w[all this_and_future]) && @show.recurring? ? @show.recurrence_group.to_a : [ @show ]
+      blockers = ShowChangePlan::Delete.blockers(shows_in_scope)
+      if blockers.any?
+        return redirect_to(manage_new_date_change_path(@production, @show, kind: "cancel"),
+                           alert: "#{shows_in_scope.one? ? 'This date' : 'These dates'} can't be deleted: #{blockers.to_sentence}. Cancel #{shows_in_scope.one? ? 'it' : 'them'} instead.",
+                           status: :see_other)
+      end
       if TicketListing.where(show_id: shows_in_scope.map(&:id)).any?(&:worth_keeping?)
         return redirect_to(manage_cancel_show_form_path(@production, @show),
                            alert: "Tickets were sold for #{shows_in_scope.one? ? 'this date' : 'one of these dates'}, so it can't be deleted. Cancel it instead, and its buyers are refunded.",
@@ -972,8 +980,7 @@ module Manage
       # went through) leaves every date, and its payments, as they were.
       ActiveRecord::Base.transaction do
         dropped = drop_contract_payments_for(shows)
-        ContractPayment.where(show_id: shows.map(&:id)).update_all(show_id: nil)
-        Show.without_contract_payment_sync { shows.each(&:destroy!) }
+        ShowChangePlan::Delete.delete!(shows)
         dropped
       end
     end
@@ -984,16 +991,19 @@ module Manage
 
       if scope == "all" && @show.recurring?
         # Uncancel all canceled occurrences in the recurrence group
-        count = @show.recurrence_group.where(canceled: true).update_all(canceled: false)
+        # One at a time, so each date's own callbacks run (sign-ups reopen,
+        # Google Calendar, linked copies, and its cancel notice closes).
+        shows = @show.recurrence_group.where(canceled: true).to_a
+        shows.each { |show| show.update!(canceled: false) }
+        count = shows.size
         redirect_to manage_production_shows_path(@production),
                     notice: "Successfully uncanceled #{count} #{event_label.pluralize.downcase}",
                     status: :see_other
       elsif scope == "this_and_future" && @show.recurring?
         # Uncancel this and all future canceled occurrences
-        count = @show.recurrence_group
-                     .where("date_and_time >= ?", @show.date_and_time)
-                     .where(canceled: true)
-                     .update_all(canceled: false)
+        shows = @show.recurrence_group.where("date_and_time >= ?", @show.date_and_time).where(canceled: true).to_a
+        shows.each { |show| show.update!(canceled: false) }
+        count = shows.size
         redirect_to manage_production_shows_path(@production),
                     notice: "Successfully uncanceled #{count} #{event_label.pluralize.downcase}",
                     status: :see_other
@@ -1522,41 +1532,58 @@ module Manage
         return
       end
 
+      # Rebuilding deletes the dates it replaces. One that people count on
+      # (tickets, cast, staff, sign-ups, money) can't be deleted: it moves in
+      # place instead, through Cancel or move this date (Tim, 2026-11-27).
+      blockers = ShowChangePlan::Delete.blockers(plan[:removing])
+      if blockers.any?
+        first = plan[:removing].min_by(&:date_and_time)
+        redirect_to manage_new_date_change_path(@production, first, kind: "move"),
+                    alert: "These dates have #{blockers.to_sentence}, so they can't be deleted and made again. Move them instead: choose this date and the ones after it."
+        return
+      end
+
       template = plan[:series].last
       call_time_lead = template.call_time_enabled? && template.call_time && template.date_and_time ? (template.date_and_time - template.call_time) : nil
 
-      # Contract payments point at shows by FK and the financials cascade would
-      # re-link a payment to the show being deleted (see Show.without_contract_
-      # payment_sync). Detach first; the rebuilt run re-links them by due date.
-      ContractPayment.where(show_id: plan[:removing].map(&:id)).update_all(show_id: nil)
-      Show.without_contract_payment_sync { plan[:removing].each(&:destroy!) }
-
       created_count = 0
-      plan[:dates].each do |datetime|
-        show = @production.shows.new(
-          event_type: template.event_type,
-          secondary_name: template.secondary_name,
-          duration_minutes: template.duration_minutes,
-          location_id: template.location_id,
-          location_space_id: template.location_space_id,
-          is_online: template.is_online,
-          online_location_info: template.online_location_info,
-          casting_enabled: Show.casting_default_for(@production, template.event_type, like: template),
-          casting_source: template.casting_source,
-          casting_mode: template.casting_mode,
-          public_profile_visible: template.public_profile_visible,
-          call_time_enabled: template.call_time_enabled,
-          call_time: call_time_lead && (datetime - call_time_lead),
-          date_and_time: datetime,
-          recurrence_group_id: @recurrence_group_id,
-          recurrence_pattern: plan[:pattern]
-        )
-        created_count += 1 if show.save
+      # All or nothing: a date that won't go, or won't be made, leaves the
+      # series as it was.
+      ActiveRecord::Base.transaction do
+        # Contract payments point at shows by FK and the financials cascade would
+        # re-link a payment to the show being deleted (see Show.without_contract_
+        # payment_sync). Detach first; the rebuilt run re-links them by due date.
+        ShowChangePlan::Delete.delete!(plan[:removing]) if plan[:removing].any?
+
+        plan[:dates].each do |datetime|
+          show = @production.shows.new(
+            event_type: template.event_type,
+            secondary_name: template.secondary_name,
+            duration_minutes: template.duration_minutes,
+            location_id: template.location_id,
+            location_space_id: template.location_space_id,
+            is_online: template.is_online,
+            online_location_info: template.online_location_info,
+            casting_enabled: Show.casting_default_for(@production, template.event_type, like: template),
+            casting_source: template.casting_source,
+            casting_mode: template.casting_mode,
+            public_profile_visible: template.public_profile_visible,
+            call_time_enabled: template.call_time_enabled,
+            call_time: call_time_lead && (datetime - call_time_lead),
+            date_and_time: datetime,
+            recurrence_group_id: @recurrence_group_id,
+            recurrence_pattern: plan[:pattern]
+          )
+          show.save!
+          created_count += 1
+        end
       end
 
       phrase = helpers.series_pattern_phrase(plan[:pattern], Show.new(date_and_time: plan[:from]))
       redirect_to manage_production_shows_path(@production),
                   notice: "Schedule changed from #{plan[:from].strftime('%b %-d')}: #{plan[:removing].length} #{'event'.pluralize(plan[:removing].length)} replaced with #{created_count}, #{phrase.downcase} at #{plan[:from].strftime('%-I:%M %p')}."
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotDestroyed => e
+      redirect_to manage_production_shows_path(@production), alert: "The schedule couldn't change, so nothing did: #{e.message}"
     end
 
     private

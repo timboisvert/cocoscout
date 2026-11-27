@@ -207,7 +207,9 @@ class Contract < ApplicationRecord
         # payment to the show being deleted, violating the FK we just cleared.
         Show.without_contract_payment_sync { contract_shows.destroy_all }
       else
-        contract_shows.update_all(canceled: true)
+        # One at a time, so each date's own callbacks run (sign-ups close,
+        # Google Calendar, linked copies, ShowChanges).
+        contract_shows.where(canceled: false).find_each { |show| show.update!(canceled: true) }
       end
 
       update!(

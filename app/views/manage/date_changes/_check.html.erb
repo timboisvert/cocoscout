@@ -1,0 +1,46 @@
+<%#
+  What's in the way at the new time, for each date: the room, the cast,
+  the staff. Locals: change, dests, plan
+%>
+<%
+  moving = dests.select(&:moves?).reject(&:linked_to)
+%>
+<% if moving.empty? %>
+  <p class="text-sm text-gray-600">Choose a new date, time, or place, and CocoScout checks it here.</p>
+<% else %>
+  <% moving.first(1).each do |dest| %>
+    <%
+      room = ShowChangePlan::Moves.room_conflicts(dest, change)
+      cast_people = ShowChanges.cast_entries(dest.show).map { |e| e["person_id"] }.uniq
+      cast = ShowChangePlan::Moves.cast_conflicts(dest, change)
+      lines = plan.staff.changing.select { |l| l.shift.covered_shows.map(&:id).include?(dest.show.id) }
+      staff = ShowChangePlan::Moves.staff_conflicts(dest, change, lines)
+      staff_people = lines.filter_map(&:person).uniq
+      place = LocationSpace.find_by(id: dest.location_space_id)&.name || Location.find_by(id: dest.location_id)&.name
+      same_day = Show.joins(:production).where(productions: { organization_id: change.organization_id }, canceled: false)
+                     .where(date_and_time: dest.now_starts.all_day).where.not(id: change.all_show_ids).includes(:production, :location_space, :location).to_a
+    %>
+    <ul class="space-y-2.5 text-sm">
+      <% if room.empty? %>
+        <li class="flex gap-2 text-green-800"><span aria-hidden="true">&#10003;</span><span><%= place || "The place" %> is free from <%= dest.now_starts.strftime("%-l:%M") %> to <%= dest.now_ends.strftime("%-l:%M %p") %>.</span></li>
+      <% else %>
+        <% room.each do |c| %><li class="flex gap-2 text-red-700"><span aria-hidden="true">!</span><span><%= c.words %>.</span></li><% end %>
+      <% end %>
+      <% if cast_people.any? %>
+        <li class="flex gap-2 <%= cast.any? ? 'text-amber-800' : 'text-green-800' %>">
+          <span aria-hidden="true"><%= cast.any? ? "!" : raw("&#10003;") %></span>
+          <span><%= cast_people.size - cast.size %> of <%= cast_people.size %> cast are free.<% cast.each do |c| %> <%= c.words %>.<% end %><%= cast.any? ? " You'll choose what happens on the next step." : "" %></span>
+        </li>
+      <% end %>
+      <% if staff_people.any? %>
+        <li class="flex gap-2 <%= staff.any? ? 'text-amber-800' : 'text-green-800' %>">
+          <span aria-hidden="true"><%= staff.any? ? "!" : raw("&#10003;") %></span>
+          <span><%= staff_people.size - staff.map(&:person).uniq.size %> of <%= staff_people.size %> staff are free.<% staff.each do |c| %> <%= c.words %>.<% end %></span>
+        </li>
+      <% end %>
+      <% same_day.reject { |s| room.any? { |c| c.words.include?(s.display_name.to_s) } }.first(3).each do |other| %>
+        <li class="flex gap-2 text-gray-600"><span aria-hidden="true">&middot;</span><span><%= other.display_name.presence || other.production.name %> is also on <%= other.date_and_time.strftime("%B %-d at %-l:%M %p") %><%= other.location ? ", in #{other.location_space&.name || other.location.name}" : "" %>. <%= other.location_id == dest.location_id && (other.location_space_id.nil? || other.location_space_id == dest.location_space_id) ? "" : "Different room, so nothing clashes; it's here so you know." %></span></li>
+      <% end %>
+    </ul>
+  <% end %>
+<% end %>

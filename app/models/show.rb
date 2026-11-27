@@ -1374,7 +1374,8 @@ class Show < ApplicationRecord
     end
   rescue StandardError => e
     # A date change already saved never fails because another organization's
-    # copy couldn't follow; the daily pass (LinkedDatesSweepJob) catches up.
+    # copy couldn't follow; the daily pass (LinkedDates.sweep!, from
+    # ContractDateRequestsSweepJob) catches up.
     Rails.logger.error("[LinkedDates] show #{id}: #{e.class}: #{e.message}")
   end
 end

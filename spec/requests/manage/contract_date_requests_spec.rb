@@ -41,7 +41,8 @@ RSpec.describe "Manage contract date requests", type: :request do
     expect(response.body).to include("A request about a date")
     expect(response.body).to include("#{contractor.name} requests to move")
     expect(response.body).to include("We agreed on 7:30.")
-    expect(response.body).to include(amend_dates_manage_contract_path(contract, request: date_request.id).gsub("&", "&amp;"))
+    # Move it runs Cancel or move this date, filled in from the request (Tim, 2026-11-27).
+    expect(response.body).to include(manage_move_contract_date_path(contract, show, request_id: date_request.id).gsub("&", "&amp;"))
     expect(response.body).to include("Keep 8:00 PM")
   end
 

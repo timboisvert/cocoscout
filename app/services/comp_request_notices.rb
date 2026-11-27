@@ -31,6 +31,7 @@ class CompRequestNotices
 
     def closed(request)
       words = if request.closed_reason == "showtime" then "the date started before anyone decided it"
+      elsif request.closed_reason == "canceled" then "the date is canceled"
       else "#{request.organization.name} no longer takes comp requests for that date"
       end
       to_requester(request, kind: "comp_request_closed", variables: { closed_words: words })

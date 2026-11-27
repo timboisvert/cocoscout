@@ -262,4 +262,5 @@ def seed_content_templates
   ContractConnectionTemplates.ensure!(overwrite: true)
   CompRequestTemplates.ensure!(overwrite: true)
   VacancyTemplates.ensure!(overwrite: true)
+  DateChangeTemplates.ensure!(overwrite: true)
 end

@@ -1,0 +1,178 @@
+<% content_for :title, "Move a contract date" %>
+<%#
+  A contract date's move (Tim, 2026-11-27): the night is the space rental,
+  when the room is theirs; inside it the show runs at its own times, which
+  tickets, the cast, and show staff go by. Move the whole night, only the
+  show's times, or only the rental. A contractor's request fills it in.
+  This page is the date's What it touches step; Review follows.
+%>
+<%
+  show = @change.main_shows.first
+  rental = show.space_rental
+  contract = @change.contract
+  move = @change.move || {}
+  times = ShowChangePlan::Moves.contract_times(show, move)
+  was = times[:was]
+  what = times[:what]
+  request = @change.contract_date_request
+  input = "block w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+  span = (times[:rental_ends] - times[:rental_starts]).to_f
+  left = span.positive? ? ((times[:show_starts] - times[:rental_starts]) / span * 100).clamp(0, 100) : 0
+  width = span.positive? ? ((times[:show_ends] - times[:show_starts]) / span * 100).clamp(4, 100 - left) : 100
+  hm = ->(t) { t.strftime("%-l:%M %p").strip }
+  dest = ShowChangePlan::Moves.contract_destination(show, move)
+  room_dest = dest.with(now_starts: times[:rental_starts], now_ends: times[:rental_ends])
+  room = ShowChangePlan::Moves.room_conflicts(room_dest, @change)
+  error = ShowChangePlan::Moves.contract_error(show, move)
+  spaces = rental.location&.location_spaces&.order(:name).to_a
+  b = @plan.buyers
+  staff = @plan.staff
+  rental_shifts = Shift.where(source_type: "SpaceRental", source_id: rental.id).includes(:house_role, shift_assignments: :person).to_a
+  my_staff = (staff.changing.map(&:person) + rental_shifts.flat_map { |s| s.active_assignments.filter_map(&:person) }).compact.uniq
+  pending = ContractPayment.where(contract: contract, status: %w[pending overdue]).where("show_id = ? OR due_date = ?", show.id, was[:show_starts].to_date).to_a
+  people = contract.respond_to?(:contract_people) ? contract.contract_people.includes(:person).map(&:person).compact.reject { |p| p.id == request&.requested_by&.person&.id } : []
+  connected = Show.where(linked_show_id: show.id).exists?
+%>
+<div class="w-full mb-10">
+  <%= render "manage/date_changes/header", change: @change, show: show, production: @production,
+        title: "Move #{contract.contractor_name.presence || @production.name}'s date", index: 0 %>
+
+  <%= form_with url: manage_date_change_touches_path(@change), method: :patch, data: { controller: "auto-submit", turbo_action: "replace" } do %>
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div class="space-y-4 sm:space-y-6 min-w-0">
+        <% if request %>
+          <div class="bg-pink-50 border border-pink-200 rounded-xl px-5 py-4 text-sm text-gray-700">
+            <span class="font-semibold text-gray-900"><%= request.requested_by.person&.name || request.requested_by.email_address %> requested this move on <%= request.created_at.strftime("%b %-d") %>:</span>
+            <% if request.note.present? %>"<%= request.note %>"<% end %>
+            The new date below is filled in from the request, and confirming it answers the request.
+          </div>
+        <% end %>
+
+        <div class="bg-white border border-gray-200 rounded-xl">
+          <%= render "shared/section_heading", title: "What's moving?",
+                intro: "The night is the space rental, #{hm.call(was[:rental_starts])} to #{hm.call(was[:rental_ends])}, when the room is theirs. Inside it, the show runs at its own times, #{hm.call(was[:show_starts])} to #{hm.call(was[:show_ends])}: that's what tickets, the cast, and show staff go by." %>
+          <div class="px-6 py-4 max-sm:px-4 space-y-4">
+            <div role="img" aria-label="The rental from <%= hm.call(times[:rental_starts]) %> to <%= hm.call(times[:rental_ends]) %>, the show from <%= hm.call(times[:show_starts]) %> to <%= hm.call(times[:show_ends]) %>">
+              <div class="relative h-14 rounded-lg bg-pink-100">
+                <div class="absolute left-2 top-1.5 text-xs font-semibold text-pink-800">Space rental · <%= hm.call(times[:rental_starts]) %> to <%= hm.call(times[:rental_ends]) %></div>
+                <div class="absolute bottom-1.5 h-6 rounded-md bg-pink-500 text-white text-[11px] font-semibold flex items-center justify-center whitespace-nowrap overflow-hidden" style="left: <%= left.round(2) %>%; width: <%= width.round(2) %>%">Show · <%= hm.call(times[:show_starts]) %> to <%= hm.call(times[:show_ends]) %></div>
+              </div>
+              <div class="mt-1 flex justify-between text-[11px] text-gray-500"><span><%= hm.call(times[:rental_starts]) %></span><span><%= hm.call(times[:rental_ends]) %></span></div>
+            </div>
+            <div class="space-y-2">
+              <% [ [ "night", "The whole night", "The rental and the show move together, to a new date or time." ],
+                   [ "show", "Only the show's times", "A new start or end inside the same rental." ],
+                   [ "rental", "Only the rental", "Earlier load-in or later strike. The show keeps its times, and has to stay inside." ] ].each do |value, title, words| %>
+                <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+                  <%= radio_button_tag "move[what]", value, what == value, class: "mt-1 h-4 w-4 accent-pink-500", data: { action: "change->auto-submit#submit" } %>
+                  <span><span class="block text-sm font-semibold text-gray-900"><%= title %></span><span class="block text-sm text-gray-600"><%= words %></span></span>
+                </label>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-xl px-6 py-5 max-sm:px-4 space-y-4">
+          <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label class="block text-sm font-medium text-gray-700">Date
+              <%= date_field_tag "move[date]", move["date"].presence || times[:rental_starts].to_date.iso8601, disabled: what == "show", class: "mt-1 #{input}", data: { action: "change->auto-submit#submit" } %>
+            </label>
+            <label class="block text-sm font-medium text-gray-700">Rental starts
+              <%= time_field_tag "move[rental_starts]", times[:rental_starts].strftime("%H:%M"), disabled: what == "show", class: "mt-1 #{input}", data: { action: "change->auto-submit#submit" } %>
+            </label>
+            <label class="block text-sm font-medium text-gray-700">Rental ends
+              <%= time_field_tag "move[rental_ends]", times[:rental_ends].strftime("%H:%M"), disabled: what == "show", class: "mt-1 #{input}", data: { action: "change->auto-submit#submit" } %>
+            </label>
+            <label class="block text-sm font-medium text-gray-700">Room
+              <%= select_tag "move[location_space_id]", options_for_select(spaces.map { |sp| [ sp.name, sp.id ] }, (move["location_space_id"].presence || rental.location_space_id).to_i), include_blank: spaces.empty? ? (rental.location&.name || "The whole venue") : "The whole venue", class: "mt-1 #{input}", data: { action: "change->auto-submit#submit" } %>
+            </label>
+          </div>
+          <label class="flex items-center gap-3 cursor-pointer">
+            <%= hidden_field_tag "move[own_times]", "0", id: nil %>
+            <%= check_box_tag "move[own_times]", "1", times[:own], id: "move-own-times", disabled: what == "show",
+                  class: "h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500", data: { action: "change->auto-submit#submit" } %>
+            <span class="text-sm font-medium text-gray-900">The show runs at different times than the rental</span>
+          </label>
+          <% if times[:own] || what == "show" %>
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <label class="block text-sm font-medium text-gray-700">Show starts
+                <%= time_field_tag "move[show_starts]", times[:show_starts].strftime("%H:%M"), disabled: what == "rental", class: "mt-1 #{input}", data: { action: "change->auto-submit#submit" } %>
+              </label>
+              <label class="block text-sm font-medium text-gray-700">Show ends
+                <%= time_field_tag "move[show_ends]", times[:show_ends].strftime("%H:%M"), disabled: what == "rental", class: "mt-1 #{input}", data: { action: "change->auto-submit#submit" } %>
+              </label>
+            </div>
+          <% end %>
+          <% if what == "night" %>
+            <p class="text-sm text-gray-600">Moving the whole night keeps the show <%= ((was[:show_starts] - was[:rental_starts]) / 3600.0).then { |h| h == h.to_i ? h.to_i : h.round(1) } %> <%= (was[:show_starts] - was[:rental_starts]) == 3600 ? "hour" : "hours" %> into the rental, as it was, unless you set its own times. The show's times must stay inside the rental.</p>
+          <% end %>
+          <% if error %>
+            <p class="text-sm text-red-700"><%= error %></p>
+          <% elsif room.any? %>
+            <% room.each do |c| %><p class="text-sm text-red-700"><%= c.words %>.</p><% end %>
+          <% else %>
+            <p class="text-sm text-green-800 font-medium"><%= spaces.find { |sp| sp.id == (move["location_space_id"].presence || rental.location_space_id).to_i }&.name || rental.location&.name || "The room" %> is free on <%= times[:rental_starts].strftime("%A, %B %-d") %> from <%= hm.call(times[:rental_starts]) %> to <%= hm.call(times[:rental_ends]) %>.</p>
+          <% end %>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-xl">
+          <%= render "shared/section_heading", title: "The contract" %>
+          <ul class="px-6 py-2 max-sm:px-4 divide-y divide-gray-100 text-sm text-gray-700">
+            <li class="py-2.5">The contract's dates read <%= times[:rental_starts].strftime("%A, %B %-d") %>. The deal doesn't change.</li>
+            <% pending.each do |p| %>
+              <li class="py-2.5">The <%= number_to_currency(p.amount) %> <%= p.description.presence || "payment" %> for this night, not paid yet, is now due <%= (p.due_date + (times[:show_starts].to_date - was[:show_starts].to_date).to_i).strftime("%B %-d") %>.</li>
+            <% end %>
+            <% if request %><li class="py-2.5"><%= request.requested_by.person&.name || "The" %>'s request closes as done, and <%= request.requested_by.person&.name || "they" %> <%= request.requested_by.person ? "is" : "are" %> notified.</li><% end %>
+            <% if connected %><li class="py-2.5"><%= contract.contractor_name.presence || "They" %> <%= contract.contractor_name.present? ? "uses" : "use" %> CocoScout, so their own copy of this date moves with it.</li><% end %>
+          </ul>
+          <% if people.any? %>
+            <div class="px-6 max-sm:px-4 border-t border-gray-100">
+              <%= render "manage/date_changes/toggle", change: @change, key: :contract_notify,
+                    title: "Notify the #{pluralize(people.size, request ? 'other person' : 'person', plural: request ? 'other people' : 'people')} on the contract of the new date." %>
+            </div>
+          <% end %>
+        </div>
+
+        <% if b.orders.any? || my_staff.any? %>
+          <div class="bg-white border border-gray-200 rounded-xl">
+            <%= render "shared/section_heading", title: "Your side of the night" %>
+            <div class="px-6 py-1 max-sm:px-4 divide-y divide-gray-100">
+              <% if b.orders.any? %>
+                <%= render "manage/date_changes/toggle", change: @change, key: :buyers_email,
+                      title: "You sell this show's tickets: email the #{pluralize(b.buyer_count, 'buyer')} the new date,", detail: "and offer a refund to anyone who can't make it." %>
+                <%= hidden_field_tag "choices[buyers_refund_offer]", "1" %>
+              <% end %>
+              <% if my_staff.any? %>
+                <%= render "manage/date_changes/toggle", change: @change, key: :shifts_move,
+                      title: "Move your #{pluralize(my_staff.size, 'person', plural: 'people')} on staff with the night,",
+                      detail: "#{rental_shifts.any? ? 'shifts made for the rental on its times and ' : ''}show shifts on the show's, and notify them." %>
+                <%= hidden_field_tag "choices[staff_notify]", @change.on?(:shifts_move) ? "1" : "0" %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <aside>
+        <div class="bg-white border border-gray-200 rounded-xl px-5 py-4 lg:sticky lg:top-4">
+          <p class="text-sm text-gray-500 line-through"><%= was[:rental_starts].strftime("%a, %b %-d") %>, <%= hm.call(was[:show_starts]) %></p>
+          <p class="text-lg font-semibold text-gray-900"><%= times[:rental_starts].strftime("%a, %b %-d") %>, <%= hm.call(times[:show_starts]) %></p>
+          <p class="mt-2 text-sm text-gray-600">Same as any date: this page is its What it touches step, then Review.</p>
+          <div class="mt-4 hidden sm:flex flex-col gap-2">
+            <%= render "shared/button", text: "Review", variant: "primary", size: "medium", type: :submit, name: "commit", value: "review", classes: "w-full" %>
+            <%= link_to manage_contract_path(contract) do %>
+              <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", type: :button, classes: "w-full" %>
+            <% end %>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="sm:hidden sticky bottom-0 -mx-4 mt-6 px-4 py-3 bg-white border-t border-gray-200 flex gap-3">
+      <%= link_to manage_contract_path(contract), class: "flex-1" do %>
+        <%= render "shared/button", text: "Back", variant: "secondary", size: "medium", type: :button, classes: "w-full" %>
+      <% end %>
+      <%= render "shared/button", text: "Review", variant: "primary", size: "medium", type: :submit, name: "commit", value: "review", classes: "flex-[2] w-full" %>
+    </div>
+  <% end %>
+</div>

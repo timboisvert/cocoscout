@@ -75,7 +75,7 @@
             "#{organization.name} declined the request for #{CompRequestNotices.more_comps(comp_request.quantity)} on #{on_day.call(comp_request.decided_at)}. Your comps for this date are unchanged." ]
         else
           [ "Closed", "bg-gray-200 text-gray-700",
-            comp_request.closed_reason == "showtime" ? "The request for #{CompRequestNotices.more_comps(comp_request.quantity)} closed when the date started." : "The request for #{CompRequestNotices.more_comps(comp_request.quantity)} was closed: #{organization.name} no longer takes comp requests for this date." ]
+            comp_request.closed_reason == "showtime" ? "The request for #{CompRequestNotices.more_comps(comp_request.quantity)} closed when the date started." : comp_request.closed_reason == "canceled" ? "The request for #{CompRequestNotices.more_comps(comp_request.quantity)} closed when the date was canceled." : "The request for #{CompRequestNotices.more_comps(comp_request.quantity)} was closed: #{organization.name} no longer takes comp requests for this date." ]
         end
       %>
       <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 flex flex-wrap items-start justify-between gap-3" data-comp-request-status="<%= comp_request.status %>">

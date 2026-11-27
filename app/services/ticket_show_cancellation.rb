@@ -16,8 +16,12 @@ class TicketShowCancellation
     end
   end
 
+  # Card orders only: a pass's credits can't be refunded on their own (the
+  # pass paid for them), so those go back on the pass instead
+  # (TicketPassCredits.return!).
   def self.orders(listing)
-    listing.ticket_orders.paid_like.where(money_path: "cocoscout").includes(:tickets).order(:buyer_name)
+    listing.ticket_orders.paid_like.where(money_path: "cocoscout").where.not(channel: %w[pass door_pass])
+           .includes(:tickets).order(:buyer_name)
   end
 
 

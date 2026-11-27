@@ -1,0 +1,61 @@
+<%#
+  Delete a date entered by mistake: one small confirm (Tim, 2026-11-27).
+  When people count on the date, it can't be deleted, and the modal says
+  why and offers Cancel instead. open: shown at once (the Start page's
+  Continue with Delete chosen). The trigger elsewhere opens
+  "delete-date-<show id>".
+  Locals: show, production, series, following, blockers, open
+%>
+<%
+  id = "delete-date-#{show.id}"
+  day = show.date_and_time.strftime("%A, %B %-d")
+  later = following.size - 1
+%>
+<div id="<%= id %>" class="<%= 'hidden' unless local_assigns[:open] %> fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+     data-controller="modal" data-action="click->modal#closeOnBackdrop">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-md overflow-hidden" data-action="click->modal#stopPropagation">
+    <div class="flex items-center justify-between bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4">
+      <h3 class="text-lg font-semibold text-white"><%= blockers.empty? ? "Delete #{day}?" : "This date can't be deleted" %></h3>
+      <button type="button" data-action="click->modal#close" aria-label="Close" class="rounded-full p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <% if blockers.empty? %>
+      <%= form_with url: manage_delete_dates_path(production, show), method: :delete, id: "#{id}-form" do %>
+        <div class="px-6 py-5 space-y-4 text-sm text-gray-700">
+          <p>It comes off your calendar as if it had never been entered. Nobody was cast or scheduled for it, and no tickets were sold, so there's nobody to notify.</p>
+          <% if show.recurring? %>
+            <fieldset class="space-y-1">
+              <legend class="font-semibold text-gray-900 mb-1">It's part of a series of <%= series.size %> dates</legend>
+              <label class="flex items-center gap-3 min-h-[44px]"><%= radio_button_tag :scope, "this", true, class: "h-4 w-4 accent-pink-500" %> Only <%= show.date_and_time.strftime("%B %-d") %></label>
+              <% if later.positive? %>
+                <label class="flex items-center gap-3 min-h-[44px]"><%= radio_button_tag :scope, "following", false, class: "h-4 w-4 accent-pink-500" %> <%= show.date_and_time.strftime("%B %-d") %> and the <%= later == 1 ? "date" : "#{later} dates" %> after it</label>
+              <% end %>
+              <label class="flex items-center gap-3 min-h-[44px]"><%= radio_button_tag :scope, "all", false, class: "h-4 w-4 accent-pink-500" %> The whole series, all <%= series.size %></label>
+            </fieldset>
+            <p class="text-xs text-gray-500">Dates that someone counts on can't be deleted with the rest; CocoScout checks each one first.</p>
+          <% end %>
+        </div>
+      <% end %>
+      <div class="px-4 sm:px-6 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] sm:py-4 bg-gray-50 border-t border-gray-200 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 [&_button]:w-full sm:[&_button]:w-auto">
+        <%= render "shared/button", text: "Keep it", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+        <%= render "shared/button", text: "Delete it", variant: "primary", size: "medium", type: :submit, form_id: "#{id}-form" %>
+      </div>
+    <% else %>
+      <div class="px-6 py-5 space-y-3 text-sm text-gray-700">
+        <p>People are counting on <%= day %>, so deleting it would leave them without a word:</p>
+        <ul class="list-disc pl-5 space-y-1">
+          <% blockers.each do |reason| %><li><%= reason.upcase_first %></li><% end %>
+        </ul>
+        <p>Cancel it instead. You'll choose how the buyers are refunded and who is notified, and CocoScout does the rest.</p>
+      </div>
+      <div class="px-4 sm:px-6 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] sm:py-4 bg-gray-50 border-t border-gray-200 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 [&>*]:w-full sm:[&>*]:w-auto [&_button]:w-full sm:[&_button]:w-auto">
+        <%= render "shared/button", text: "Keep it", variant: "secondary", size: "medium", type: :button, data: { action: "click->modal#close" } %>
+        <%= form_with url: manage_create_date_change_path(production, show), method: :post do %>
+          <%= hidden_field_tag :kind, "cancel" %>
+          <%= render "shared/button", text: "Cancel it instead", variant: "primary", size: "medium", type: :submit %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

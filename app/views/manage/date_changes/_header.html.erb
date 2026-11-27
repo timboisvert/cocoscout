@@ -1,0 +1,29 @@
+<%#
+  The top of every step of a date change: the breadcrumb and the step bar.
+  Locals: change (optional; nil on step 1), show, production, title, index
+%>
+<%
+  change = local_assigns[:change]
+  kind = change&.kind || local_assigns[:kind] || "cancel"
+  steps = if change&.contract_id
+    [ { name: "The new date and time" }, { name: "Review" } ]
+  elsif kind == "move"
+    [ { name: "What to do", path: manage_new_date_change_path(production, show, kind: "move") },
+      { name: "Which dates, and where to", path: (change ? manage_date_change_when_path(change) : nil) },
+      { name: "What it touches", path: (change ? manage_date_change_touches_path(change) : nil) },
+      { name: "Review" } ]
+  else
+    [ { name: "What to do", path: manage_new_date_change_path(production, show, kind: "cancel") },
+      { name: "Which dates", path: (change ? manage_date_change_dates_path(change) : nil) },
+      { name: "What it touches", path: (change ? manage_date_change_touches_path(change) : nil) },
+      { name: "Review" } ]
+  end
+  crumbs = [ [ "Shows & Events", manage_production_shows_path(production) ] ]
+  crumbs << [ show.date_and_time.strftime("%a, %b %-d"), manage_show_path(production, show) ] if show
+  if change&.contract
+    crumbs = [ [ "Contracts", manage_contracts_path ], [ change.contract.contractor_name.presence || "Contract", manage_contract_path(change.contract) ] ]
+  end
+%>
+<%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+<%= render partial: "shared/top_menu", locals: { breadcrumbs: crumbs, text: local_assigns[:title], links: [] } %>
+<%= render "shared/wizard_steps", steps: steps, current_index: local_assigns[:index] || 0 %>

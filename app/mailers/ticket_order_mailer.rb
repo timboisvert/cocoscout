@@ -210,6 +210,17 @@ class TicketOrderMailer < ApplicationMailer
     deliver_from_theater(ContentTemplate.interpolate(subject.to_s, variables))
   end
 
+  # A date change's email to one buyer (ShowChangePlan::Apply): the
+  # manager's words, filled in for this buyer, about all of their tickets on
+  # the dates that changed. Sent from one of their orders, so it carries the
+  # organization's name and reply-to. A bare link in the words becomes a link.
+  def date_change(order, subject:, body:, variables:)
+    @order = order
+    filled = ContentTemplate.interpolate(body.to_s, variables.transform_keys(&:to_s))
+    @body_html = self.class.paragraphs(filled).to_s.gsub(%r{https?://[^\s<>"]+[^\s<>".,;:!?)]}) { |url| %(<a href="#{url}">#{url}</a>) }
+    deliver_from_theater(ContentTemplate.interpolate(subject.to_s, variables.transform_keys(&:to_s)).squish, template_name: "canceled")
+  end
+
   # The variables both refund emails fill in. A preview passes the amount and
   # count a refund would have, before there is one.
   def self.variables_for(order, refund = nil, amount_cents: refund&.amount_cents, ticket_count: refund&.ticket_ids&.size)

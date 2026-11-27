@@ -1,0 +1,67 @@
+<% content_for :title, "#{date_change_kind_word(@change)}: #{@production.name}" %>
+<%#
+  The record of a date change (Tim loved this page, 2026-11-27): who did
+  it and when, each step finishing as it happens, who was notified, and
+  anything CocoScout couldn't finish, with what to do about it. Each
+  canceled date's page links here; Home lists it until nothing is left.
+%>
+<%
+  shows = @shows
+  name = (@change.show&.display_name.presence || @production.name)
+  who = @change.created_by_user&.person&.name&.split&.first || @change.created_by_user&.email_address || "Someone"
+  at = @change.applied_at || @change.created_at
+  still = @change.cancel? ? @change.still_canceled_shows : []
+  to_cancel = Show.where(id: Array(@change.summary["to_cancel_ids"])).where(canceled: false).order(:date_and_time).to_a
+  tone = { "cancel" => "bg-red-50 text-red-700 border-red-200", "move" => "bg-amber-50 text-amber-800 border-amber-200", "restore" => "bg-green-50 text-green-800 border-green-200" }[@change.kind]
+%>
+<div class="w-full mb-10">
+  <%= render partial: "shared/notice", locals: { notice: notice, alert: alert } %>
+  <%= render partial: "shared/top_menu", locals: {
+        breadcrumbs: [ [ "Shows & Events", manage_production_shows_path(@production) ] ] + (@change.show ? [ [ name, manage_show_path(@production, @change.show) ] ] : []),
+        text: "Changes", links: [] } %>
+
+  <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <div class="space-y-6 min-w-0">
+      <div class="bg-white border border-gray-200 rounded-xl px-6 py-5 max-sm:px-4">
+        <span class="inline-block text-[11px] font-semibold rounded-full border px-2 py-0.5 <%= tone %>"><%= date_change_kind_word(@change) %></span>
+        <h1 class="mt-2 text-2xl coustard-regular text-gray-900"><%= name %>, <%= shows.size == 1 ? date_change_time(shows.first.date_and_time) : pluralize(shows.size, "date") %></h1>
+        <p class="mt-1 text-sm text-gray-600"><%= date_change_kind_word(@change) %> by <%= who %> on <%= at.strftime("%A, %B %-d at %-l:%M %p") %>. This page keeps the record: what was done, and who was notified.</p>
+        <% if shows.size > 1 %>
+          <p class="mt-2 text-sm text-gray-700"><%= shows.map { |s| "#{s.display_name.presence || s.production.name} #{s.date_and_time.strftime('%b %-d')}" }.to_sentence %></p>
+        <% end %>
+      </div>
+
+      <%= render "manage/date_changes/progress", change: @change %>
+
+      <% if to_cancel.any? %>
+        <div class="bg-white border border-gray-200 rounded-xl px-6 py-4 max-sm:px-4 text-sm">
+          <p class="font-medium text-gray-900"><%= to_cancel.map { |s| s.date_and_time.strftime("%b %-d") }.to_sentence %> <%= to_cancel.one? ? "is" : "are" %> still on the old day: you chose to cancel <%= to_cancel.one? ? "it" : "them" %>.</p>
+          <div class="mt-2 flex flex-wrap gap-2">
+            <% to_cancel.each do |s| %>
+              <%= form_with url: manage_create_date_change_path(s.production, s), method: :post do %>
+                <%= hidden_field_tag :kind, "cancel" %>
+                <%= render "shared/button", text: "Cancel #{s.date_and_time.strftime('%b %-d')}", variant: "primary", size: "small", type: :submit %>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <aside class="space-y-4">
+      <% if still.any? %>
+        <div class="bg-white border border-gray-200 rounded-xl px-5 py-4">
+          <p class="text-sm text-gray-700">Changed your mind? Bringing the dates back reopens ticket sales and puts the cast and staff back, and you choose who hears about it.</p>
+          <%= link_to manage_new_date_restore_path(still.first.production, still.first), class: "block mt-3" do %>
+            <%= render "shared/button", text: still.size == 1 ? "Bring this date back" : "Bring these dates back", variant: "secondary", size: "medium", type: :button, classes: "w-full" %>
+          <% end %>
+        </div>
+      <% end %>
+      <% if @change.restores %>
+        <div class="bg-white border border-gray-200 rounded-xl px-5 py-4 text-sm text-gray-700">
+          These dates were canceled on <%= (@change.restores.applied_at || @change.restores.created_at).strftime("%B %-d") %>. <%= link_to "The cancel's record", manage_date_change_path(@change.restores), class: "text-pink-600 hover:text-pink-700 font-medium" %>
+        </div>
+      <% end %>
+    </aside>
+  </div>
+</div>

@@ -1,0 +1,157 @@
+<%#
+  What moving touches: buyers, cast (and anyone who can't make the new
+  time), staff (shifts that move, clash, or stay with an event that isn't
+  moving), sign-ups and students (Tim, 2026-11-27).
+  Locals: change, plan, previews. Reads @dests, @cast_conflicts,
+  @staff_conflicts from the controller.
+%>
+<%
+  b = plan.buyers
+  cast = plan.cast
+  staff = plan.staff
+  signups = plan.signups
+  moving = @dests.select(&:moves?)
+  lead = moving.reject(&:linked_to).first || moving.first
+  new_day = lead ? lead.now_starts.strftime("%A, %B %-d") : "the new date"
+  buyers_draft = ShowChangePlan::BuyerWords.draft(:move)
+  cast_section = previews.section("cast_moved")
+  staff_section = previews.section("staff_moved")
+  cast_choice = (change.choice(:cast_conflicts) || {})
+  staff_choice = (change.choice(:staff_conflicts) || {})
+  add_choice = (change.choice(:add_shifts) || {})
+  second = ->(words, name) { words.sub(/\A#{Regexp.escape(name)} is /, "You're ").sub(/\A#{Regexp.escape(name)} marked /, "You marked ") }
+%>
+
+<% if plan.listings.any? && b.orders.any? %>
+  <%= render "manage/date_changes/section", key: "buyers", title: "Ticket buyers",
+        summary: change.on?(:buyers_email) ? "Email #{b.buyer_count} the new date#{change.on?(:buyers_refund_offer) ? ', offer refunds' : ''}" : "Don't email them",
+        intro: "#{pluralize(b.buyer_count(b.paying), 'buyer')} #{b.buyer_count(b.paying) == 1 ? 'holds' : 'hold'} #{pluralize(b.paying.sum(&:tickets), 'ticket')}#{b.comps.any? ? "; #{pluralize(b.buyer_count(b.comps), 'person', plural: 'people')} #{b.buyer_count(b.comps) == 1 ? 'holds' : 'hold'} comps" : ''}" do %>
+    <%= render "manage/date_changes/toggle", change: change, key: :buyers_email,
+          title: "Email everyone the new date and time#{b.comps.any? ? ', comp holders too' : ''}.",
+          detail: "Their tickets work at the new time as they are.",
+          extra: tag.button("Read and edit the email", type: "button", class: "block mt-1 text-pink-600 hover:text-pink-700 font-medium cursor-pointer", data: { controller: "modal", action: "click->modal#open", modal_id: "msg-buyers" }) %>
+    <%= render "manage/date_changes/toggle", change: change, key: :buyers_refund_offer,
+          title: "Offer a refund to anyone who can't make it.",
+          detail: "The email has a link; a refund requested before the show starts goes through by itself, and each one shows on the change's page." %>
+  <% end %>
+  <%= render "manage/date_changes/message_modal", id: "msg-buyers", title: "The email to ticket buyers", prefix: "buyers",
+        subject: change.choice(:buyers_subject).presence || buyers_draft[:subject], body: change.choice(:buyers_body).presence || buyers_draft[:body],
+        hint: "{{first_name}}, {{show_title}}, and {{changes}} (each of their dates, was and now) are filled in for each buyer. {{refund_link}} is left out when you don't offer refunds, and for comp holders." %>
+<% end %>
+
+<% if cast.people.any? %>
+  <%= render "manage/date_changes/section", key: "cast", title: "Cast",
+        summary: "#{change.on?(:cast_notify) ? "Notify #{cast.people.size}" : "Don't notify"}#{@cast_conflicts.any? ? ", #{@cast_conflicts.size} can't make it" : ''}",
+        intro: "#{pluralize(cast.people.size, 'person', plural: 'people')}#{@dests.any?(&:linked_to) ? ', in the show and the events moving with it' : ''}" do %>
+    <%= render "manage/date_changes/toggle", change: change, key: :cast_notify, title: "Notify the cast of the new date.",
+          extra: (cast_section ? tag.button("Read and edit the message", type: "button", class: "block mt-1 text-pink-600 hover:text-pink-700 font-medium cursor-pointer", data: { controller: "modal", action: "click->modal#open", modal_id: "msg-cast" }) : nil) %>
+    <% @cast_conflicts.each do |conflict| %>
+      <% pid = conflict.person.id %>
+      <div class="py-3 border-t border-gray-100">
+        <p class="text-sm"><span class="font-medium text-gray-900"><%= conflict.person.name %></span> <span class="text-amber-800"><%= conflict.words.sub(/\A#{Regexp.escape(conflict.person.name)} /, "") %>.</span></p>
+        <%= hidden_field_tag "choices[cast_conflict_reason_#{pid}]", second.call(conflict.words, conflict.person.name) %>
+        <div class="mt-2 space-y-1">
+          <label class="flex items-center gap-3 text-sm min-h-[40px]"><%= radio_button_tag "choices[cast_conflicts][#{pid}]", "open", cast_choice[pid.to_s] != "keep", class: "h-4 w-4 accent-pink-500" %> Open <%= conflict.person.name %>'s role for cover on <%= new_day %>, and notify <%= conflict.person.name %></label>
+          <label class="flex items-center gap-3 text-sm min-h-[40px]"><%= radio_button_tag "choices[cast_conflicts][#{pid}]", "keep", cast_choice[pid.to_s] == "keep", class: "h-4 w-4 accent-pink-500" %> Keep <%= conflict.person.name %> cast; I'll sort it out with <%= conflict.person.name %></label>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+  <% if cast_section %>
+    <% draft = previews.draft(cast_section) %>
+    <%= render "manage/date_changes/message_modal", id: "msg-cast", title: "The message to the cast", prefix: "cast", html: true,
+          subject: change.choice(:cast_subject).presence || draft[:subject], body: change.choice(:cast_body).presence || draft[:body],
+          hint: previews.hint(cast_section),
+          examples: cast_section.recipients.first(3).map { |r| [ previews.filled_in_label(cast_section).sub("each person", r.person.name), previews.filled_in(cast_section, r) ] } %>
+  <% end %>
+<% end %>
+
+<% if staff.any? %>
+  <%= render "manage/date_changes/section", key: "staff", title: "Staff",
+        summary: "#{change.on?(:shifts_move) ? "Move #{staff.changing_shifts.size}" : 'Leave the shifts'}#{@staff_conflicts.any? ? ", #{@staff_conflicts.size} clash" : ''}#{staff.staying.any? ? ", #{staff.staying.map(&:shift).uniq.size} #{staff.staying.map(&:shift).uniq.size == 1 ? 'stays' : 'stay'}" : ''}",
+        intro: "#{pluralize(staff.changing_shifts.size, 'shift')} made for #{moving.size == 1 ? 'this date' : 'these dates'}#{staff.staying.any? ? ", and #{pluralize(staff.staying.map(&:shift).uniq.size, 'shift')} that also #{staff.staying.map(&:shift).uniq.size == 1 ? 'covers' : 'cover'} something else" : ''}" do %>
+    <%= render "manage/date_changes/toggle", change: change, key: :shifts_move, title: "Move the shifts with the date",
+          detail: "by as much as it moves, the ones nobody is on yet too." %>
+    <% if staff.people.any? %>
+      <%= render "manage/date_changes/toggle", change: change, key: :staff_notify, title: "Notify the staff,", detail: "by email and notification, naming each shift.",
+            extra: (staff_section ? tag.button("Read and edit the message", type: "button", class: "block mt-1 text-pink-600 hover:text-pink-700 font-medium cursor-pointer", data: { controller: "modal", action: "click->modal#open", modal_id: "msg-staff" }) : nil) %>
+    <% end %>
+    <ul class="py-2 border-t border-gray-100 divide-y divide-gray-100">
+      <% staff.lines.each do |line| %>
+        <% conflict = line.person && @staff_conflicts.find { |c| c.shift.id == line.shift.id && c.person.id == line.person.id } %>
+        <% offset = lead&.offset.to_i %>
+        <li class="py-2.5 text-sm">
+          <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <span class="min-w-0">
+              <span class="font-medium text-gray-900"><%= line.person&.name || "Nobody yet" %></span>
+              <span class="text-gray-600"> · <%= line.shift.role_label %>, <%= (line.status == :stays ? line.shift.starts_at : line.shift.starts_at + offset).strftime("%a %b %-d, %-l:%M") %> to <%= (line.status == :stays ? line.shift.ends_at : line.shift.ends_at + offset).strftime("%-l:%M %p") %></span>
+            </span>
+            <span class="text-xs font-semibold rounded-full px-2 py-0.5 <%= conflict ? 'bg-amber-50 text-amber-800' : (line.status == :stays ? 'bg-gray-100 text-gray-700' : 'bg-pink-50 text-pink-700') %>">
+              <%= conflict ? "Clashes" : (line.status == :stays ? "Stays" : (line.person ? "Moves, notified" : "Moves")) %>
+            </span>
+          </div>
+          <% if conflict %>
+            <% key = "#{line.shift.id}-#{line.person.id}" %>
+            <p class="mt-1 text-amber-800"><%= conflict.words.sub(/\A#{Regexp.escape(line.person.name)} /, "").upcase_first %>.</p>
+            <%= hidden_field_tag "choices[staff_conflict_reason_#{key}]", conflict.words.sub(/\A#{Regexp.escape(line.person.name)} is already on /, "").sub(/\A#{Regexp.escape(line.person.name)} /, "") %>
+            <div class="mt-1 flex flex-wrap gap-x-5">
+              <label class="flex items-center gap-2 min-h-[40px]"><%= radio_button_tag "choices[staff_conflicts][#{key}]", "open", staff_choice[key] != "keep", class: "h-4 w-4 accent-pink-500" %> Open it for cover</label>
+              <label class="flex items-center gap-2 min-h-[40px]"><%= radio_button_tag "choices[staff_conflicts][#{key}]", "keep", staff_choice[key] == "keep", class: "h-4 w-4 accent-pink-500" %> Keep <%= line.person.name %> on it</label>
+            </div>
+          <% elsif line.status == :stays %>
+            <p class="mt-1 text-gray-500 text-[13px]">The shift <%= line.reason %>, so it stays where it is<%= line.person ? " and #{line.person.name} isn't notified" : "" %>.</p>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+    <% staff.staying.map(&:shift).uniq.each do |shift| %>
+      <% next unless lead %>
+      <div class="border-t border-gray-100">
+        <label class="flex items-start gap-3 py-3 cursor-pointer">
+          <%= hidden_field_tag "choices[add_shifts][#{shift.id}]", "0", id: nil %>
+          <%= check_box_tag "choices[add_shifts][#{shift.id}]", "1", ActiveModel::Type::Boolean.new.cast(add_choice[shift.id.to_s]), id: "add-shift-#{shift.id}",
+                class: "mt-0.5 h-4 w-4 shrink-0 text-pink-600 border-gray-300 rounded focus:ring-pink-500 accent-pink-500" %>
+          <span class="text-sm text-gray-700"><span class="font-medium text-gray-900">Add a <%= shift.role_label %> shift on <%= new_day %>, <%= (shift.starts_at + lead.offset).strftime("%-l:%M") %> to <%= (shift.ends_at + lead.offset).strftime("%-l:%M %p") %>,</span> open for cover.</span>
+        </label>
+      </div>
+    <% end %>
+  <% end %>
+  <% if staff_section %>
+    <% draft = previews.draft(staff_section) %>
+    <%= render "manage/date_changes/message_modal", id: "msg-staff", title: "The message to the staff", prefix: "staff", html: true,
+          subject: change.choice(:staff_subject).presence || draft[:subject], body: change.choice(:staff_body).presence || draft[:body],
+          hint: previews.hint(staff_section),
+          examples: staff_section.recipients.first(3).map { |r| [ previews.filled_in_label(staff_section).sub("each person", r.person.name), previews.filled_in(staff_section, r) ] } %>
+  <% end %>
+<% end %>
+
+<% if signups.registrations.any? %>
+  <% n = signups.registrations.size %>
+  <% reopen = change.choice(:signups_action) == "reopen" %>
+  <%= render "manage/date_changes/section", key: "signups", title: "Sign-ups", summary: reopen ? "Cancel #{n}, reopen the slots" : "Move #{n} with the date",
+        intro: "#{plan.signup_form_names.to_sentence} · #{pluralize(n, 'person', plural: 'people')} registered" do %>
+    <div class="py-3 space-y-2">
+      <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+        <%= radio_button_tag "choices[signups_action]", "move", !reopen, class: "mt-1 h-4 w-4 accent-pink-500" %>
+        <span class="text-sm"><span class="block font-semibold text-gray-900">Move the slots with the date</span><span class="block text-gray-600">Everyone keeps their place; timed slots take the new times.</span></span>
+      </label>
+      <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+        <%= radio_button_tag "choices[signups_action]", "reopen", reopen, class: "mt-1 h-4 w-4 accent-pink-500" %>
+        <span class="text-sm"><span class="block font-semibold text-gray-900">Cancel the registrations and reopen every slot</span><span class="block text-gray-600">For a new time that changes who can come.</span></span>
+      </label>
+    </div>
+    <%= render "manage/date_changes/toggle", change: change, key: :signups_notify, title: "Notify the #{pluralize(n, 'person', plural: 'people')}", detail: "of their slot's new date and time, or that it's canceled." %>
+  <% end %>
+<% end %>
+
+<% if plan.class_offerings.any? %>
+  <% offering = plan.class_offerings.first %>
+  <% draft = CourseSessionChange.draft(offering) %>
+  <%= render "manage/date_changes/section", key: "students", title: "Students", summary: change.on?(:students_email) ? "Email them the new time" : "Don't email them",
+        intro: "Registered for #{plan.class_offerings.map(&:title).to_sentence}" do %>
+    <%= render "manage/date_changes/toggle", change: change, key: :students_email, title: "Email the students the new time.",
+          extra: tag.button("Read and edit the email", type: "button", class: "block mt-1 text-pink-600 hover:text-pink-700 font-medium cursor-pointer", data: { controller: "modal", action: "click->modal#open", modal_id: "msg-students" }) %>
+  <% end %>
+  <%= render "manage/date_changes/message_modal", id: "msg-students", title: "The email to students", prefix: "students",
+        subject: change.choice(:students_subject).presence || draft.subject, body: change.choice(:students_body).presence || draft.body %>
+<% end %>

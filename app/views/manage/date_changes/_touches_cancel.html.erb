@@ -1,0 +1,226 @@
+<%#
+  What canceling touches: buyers, cast, staff, sign-ups, students, money,
+  and follower emails, each with its default (Tim, 2026-11-27).
+  Locals: change, plan, previews (ShowChangeNotices built before the change)
+%>
+<%
+  b = plan.buyers
+  cast = plan.cast
+  staff = plan.staff
+  signups = plan.signups
+  money = plan.money
+  drafts = plan.follower_drafts
+  money_ = ->(cents) { number_to_currency(cents / 100.0) }
+  rebook = change.choice(:buyers_action) == "rebook"
+  targets = TicketListing.joins(:show).where(production_id: plan.productions.map(&:id)).where(shows: { canceled: false })
+                         .where("shows.date_and_time > ?", Time.current).where.not(show_id: plan.acting_ids)
+                         .where(status: %w[on_sale paused draft]).includes(:show).order("shows.date_and_time").limit(60).to_a
+  buyers_draft = ShowChangePlan::BuyerWords.draft(:cancel)
+  rebook_draft = ShowChangePlan::BuyerWords.draft(:rebook)
+  cast_section = previews.section("cast_off")
+  staff_section = previews.section("staff_off")
+%>
+
+<% if b.any? %>
+  <% summary = b.card.any? ? (rebook ? "Move their tickets to another date" : "Refund all #{b.buyer_count(b.card)} and email them") : "Email the comp holders" %>
+  <%= render "manage/date_changes/section", key: "buyers", title: "Ticket buyers", summary: summary,
+        intro: "#{pluralize(b.buyer_count, 'buyer')} #{b.buyer_count == 1 ? 'holds' : 'hold'} #{pluralize(b.ticket_count, 'ticket')}#{b.paid_cents.positive? ? ", #{money_.call(b.paid_cents)} paid" : ''}" do %>
+    <% if b.card.any? %>
+      <div class="py-3 space-y-2">
+        <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50">
+          <%= radio_button_tag "choices[buyers_action]", "refund", !rebook, class: "mt-1 h-4 w-4 accent-pink-500" %>
+          <span class="text-sm"><span class="block font-semibold text-gray-900">Refund everyone and email them</span><span class="block text-gray-600">What each buyer paid, tax and fees included, goes back the way they paid.</span></span>
+        </label>
+        <label class="flex gap-3 rounded-lg border border-gray-200 px-4 py-3 cursor-pointer has-[:checked]:border-pink-500 has-[:checked]:bg-pink-50 <%= 'opacity-60' if targets.empty? %>">
+          <%= radio_button_tag "choices[buyers_action]", "rebook", rebook, disabled: targets.empty?, class: "mt-1 h-4 w-4 accent-pink-500" %>
+          <span class="text-sm flex-1 min-w-0">
+            <span class="block font-semibold text-gray-900">Move them to another date</span>
+            <span class="block text-gray-600"><%= targets.empty? ? "There's no other date on sale to move them to." : "Their tickets move to the date you choose. The email links to a refund for anyone who can't make it." %></span>
+            <% if targets.any? %>
+              <%= select_tag "choices[rebook_listing_id]", options_for_select(targets.map { |l| [ "#{l.show.date_and_time.strftime('%a, %b %-d, %-l:%M %p')} · #{l.display_title}", l.id ] }, change.choice(:rebook_listing_id)),
+                    class: "mt-2 block w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500" %>
+            <% end %>
+          </span>
+        </label>
+      </div>
+      <div class="py-3 border-t border-gray-100 text-sm">
+        <p class="font-medium text-gray-900">The email, one per buyer, listing all of their tickets</p>
+        <p class="text-gray-600 mt-1"><%= change.choice(:buyers_subject).presence || buyers_draft[:subject] %></p>
+        <button type="button" class="mt-1 text-pink-600 hover:text-pink-700 font-medium cursor-pointer" data-controller="modal" data-action="click->modal#open" data-modal-id="msg-buyers">Read and edit</button>
+        <% if targets.any? %>
+          <span class="text-gray-300 mx-1">·</span>
+          <button type="button" class="text-pink-600 hover:text-pink-700 font-medium cursor-pointer" data-controller="modal" data-action="click->modal#open" data-modal-id="msg-rebook">Read the email for buyers moved to another date</button>
+        <% end %>
+      </div>
+    <% end %>
+    <% if b.other.any? %>
+      <% cash = b.other.count { |o| o.order.money_path == "cash" } %>
+      <% outside = b.other.size - cash %>
+      <div class="border-t border-gray-100">
+        <%= render "manage/date_changes/toggle", change: change, key: :other_paid,
+              title: "Mark them refunded, so the books are right, and email those buyers too.",
+              detail: "#{pluralize(b.other.size, 'order was', plural: 'orders were')} paid another way: #{[ (cash.positive? ? "#{cash} at the door" : nil), (outside.positive? ? "#{outside} sold elsewhere" : nil) ].compact.to_sentence}, #{money_.call(b.other_cents)}. CocoScout can't send that money back. Their email says to reply about getting it back." %>
+      </div>
+    <% end %>
+    <% if b.pass.any? %>
+      <p class="py-3 border-t border-gray-100 text-sm text-gray-700"><%= pluralize(b.buyer_count(b.pass), "pass holder") %> used credits on these dates. Their credits come back to their passes, and they get the same email.</p>
+    <% end %>
+    <% if b.comps.any? %>
+      <div class="border-t border-gray-100">
+        <%= render "manage/date_changes/toggle", change: change, key: :comps_email,
+              title: "Email the #{pluralize(b.buyer_count(b.comps), 'comp holder')}.",
+              detail: "Nothing to refund. Their comp tickets stop working either way." %>
+      </div>
+    <% end %>
+    <% if b.comp_requests.any? %>
+      <p class="py-3 border-t border-gray-100 text-sm text-gray-700">
+        <% b.comp_requests.each do |r| %>
+          <% who = r.requested_by.person&.name || r.requested_by.email_address %>
+          The request for <%= pluralize(r.quantity, "more comp") %> on <%= r.ticket_listing.show.date_and_time.strftime("%b %-d") %> closes, and <%= who %>, who requested it, is notified.
+        <% end %>
+      </p>
+    <% end %>
+  <% end %>
+  <%= render "manage/date_changes/message_modal", id: "msg-buyers", title: "The email to ticket buyers", prefix: "buyers",
+        subject: change.choice(:buyers_subject).presence || buyers_draft[:subject], body: change.choice(:buyers_body).presence || buyers_draft[:body],
+        hint: "{{first_name}}, {{show_title}}, and {{dates}} are filled in for each buyer. {{what_happens}} says what happened to each of their orders: refunded to the card, a pass credit back, comps that no longer work, or, for orders paid another way, to reply about getting the money back." %>
+  <% if targets.any? %>
+    <%= render "manage/date_changes/message_modal", id: "msg-rebook", title: "The email to buyers moved to another date", prefix: "rebook",
+          subject: change.choice(:rebook_subject).presence || rebook_draft[:subject], body: change.choice(:rebook_body).presence || rebook_draft[:body],
+          hint: "{{was}}, {{now}}, {{order_url}}, and {{refund_link}} are filled in for each buyer." %>
+  <% end %>
+<% end %>
+
+<% if cast.any? %>
+  <% summary = [ (cast.people.any? ? (change.on?(:cast_notify) ? "Notify #{cast.people.size}" : "Don't notify") : nil), (cast.vacancies.any? ? "close #{cast.vacancies.size} cover #{cast.vacancies.size == 1 ? 'request' : 'requests'}" : nil) ].compact.join(", ") %>
+  <%= render "manage/date_changes/section", key: "cast", title: "Cast", summary: summary,
+        intro: cast.people.any? ? "#{pluralize(cast.people.size, 'person', plural: 'people')} across #{plan.acting_shows.size == 1 ? 'the date' : "the #{plan.acting_shows.size} dates"}" : nil do %>
+    <% if cast.people.any? %>
+      <div class="flex flex-wrap gap-1.5 py-3">
+        <% cast.people.first(12).each do |c| %>
+          <% v = c.person.safe_headshot_variant(:thumb) %>
+          <% if v %>
+            <%= image_tag v, alt: c.person.name, title: c.person.name, class: "w-8 h-8 rounded-lg object-cover" %>
+          <% else %>
+            <span title="<%= c.person.name %>" class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-[11px]"><%= c.person.initials %></span>
+          <% end %>
+        <% end %>
+        <% if cast.people.size > 12 %><span class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 text-[11px]">+<%= cast.people.size - 12 %></span><% end %>
+      </div>
+      <%= render "manage/date_changes/toggle", change: change, key: :cast_notify,
+            title: "Notify the cast.", detail: "One notification each, by email too, listing only their own dates and roles.",
+            extra: (cast_section ? tag.button("Read and edit the message", type: "button", class: "block mt-1 text-pink-600 hover:text-pink-700 font-medium cursor-pointer", data: { controller: "modal", action: "click->modal#open", modal_id: "msg-cast" }) : nil) %>
+      <% if cast.unreachable.any? %>
+        <p class="pb-3 text-sm text-amber-800"><%= cast.unreachable.map { |c| c.person.name }.to_sentence %> <%= cast.unreachable.one? ? "has" : "have" %> no CocoScout login or email, so the record page will remind you to tell <%= cast.unreachable.one? ? cast.unreachable.first.person.name : "them" %> directly.</p>
+      <% end %>
+    <% end %>
+    <% if cast.vacancies.any? %>
+      <p class="py-3 border-t border-gray-100 text-sm text-gray-700">
+        <%= pluralize(cast.vacancies.size, "\"can't make it\" request") %> for <%= cast.vacancies.map { |v| v.show.date_and_time.strftime("%b %-d") }.uniq.to_sentence %> <%= cast.vacancies.one? ? "closes" : "close" %><%= cast.invited_count.positive? ? ", and the #{pluralize(cast.invited_count, 'person', plural: 'people')} invited to cover #{cast.invited_count == 1 ? 'is' : 'are'} notified that cover is no longer needed" : "" %>.
+      </p>
+    <% end %>
+    <% if cast.table_events.any? %>
+      <p class="py-3 border-t border-gray-100 text-sm text-gray-700">The dates come off <%= cast.table_events.map { |e| e.casting_table.name }.uniq.to_sentence %>. Cast assignments stay on the canceled dates, so bringing them back restores them.</p>
+    <% end %>
+  <% end %>
+  <% if cast_section %>
+    <% draft = previews.draft(cast_section) %>
+    <%= render "manage/date_changes/message_modal", id: "msg-cast", title: "The message to the cast", prefix: "cast", html: true,
+          subject: change.choice(:cast_subject).presence || draft[:subject], body: change.choice(:cast_body).presence || draft[:body],
+          hint: previews.hint(cast_section),
+          examples: cast_section.recipients.first(3).map { |r| [ "#{previews.filled_in_label(cast_section).sub('each person', r.person.name)}", previews.filled_in(cast_section, r) ] } %>
+  <% end %>
+<% end %>
+
+<% if staff.any? %>
+  <% n = staff.changing_shifts.size %>
+  <% summary = "#{change.on?(:shifts_off) ? "#{n} #{n == 1 ? 'shift' : 'shifts'} off" : 'Shifts stay'}#{staff.people.any? ? (change.on?(:staff_notify) ? ", notify #{staff.people.size}" : ', no notices') : ''}#{staff.staying.any? ? "; #{staff.staying.filter_map(&:person).uniq.size} #{staff.staying.filter_map(&:person).uniq.size == 1 ? 'stays' : 'stay'}" : ''}" %>
+  <%= render "manage/date_changes/section", key: "staff", title: "Staff", summary: summary,
+        intro: "#{pluralize(staff.people.size, 'person', plural: 'people')} on #{pluralize(staff.changing.map(&:shift).uniq.size, 'shift')}#{staff.open_shifts.any? ? ", and #{pluralize(staff.open_shifts.size, 'shift')} nobody is on yet" : ''}" do %>
+    <%= render "manage/date_changes/toggle", change: change, key: :shifts_off, title: "Take the shifts off the schedule.",
+          detail: "Each reads Not needed#{staff.vacancies.any? ? ", and #{staff.vacancies.size == 1 ? 'its cover request closes' : 'their cover requests close'}" : ''}. Day-before reminders stop." %>
+    <% if staff.people.any? %>
+      <%= render "manage/date_changes/toggle", change: change, key: :staff_notify, title: "Notify the staff,",
+            detail: "by email and notification, naming each shift.",
+            extra: (staff_section ? tag.button("Read and edit the message", type: "button", class: "block mt-1 text-pink-600 hover:text-pink-700 font-medium cursor-pointer", data: { controller: "modal", action: "click->modal#open", modal_id: "msg-staff" }) : nil) %>
+    <% end %>
+    <ul class="py-2 border-t border-gray-100 divide-y divide-gray-100">
+      <% staff.lines.each do |line| %>
+        <li class="py-2.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-sm">
+          <span class="min-w-0">
+            <span class="font-medium text-gray-900"><%= line.person&.name || "Nobody yet" %></span>
+            <span class="text-gray-600"> · <%= line.shift.role_label %>, <%= line.shift.starts_at.strftime("%a %b %-d, %-l:%M") %> to <%= line.shift.ends_at.strftime("%-l:%M %p") %></span>
+            <% if line.status == :stays %><span class="block text-gray-500 text-[13px]">The shift <%= line.reason %>, so it stays<%= line.person ? " and #{line.person.name} isn't notified" : "" %>.</span><% end %>
+          </span>
+          <span class="text-xs font-semibold rounded-full px-2 py-0.5 <%= line.status == :stays ? 'bg-gray-100 text-gray-700' : 'bg-pink-50 text-pink-700' %>"><%= line.status == :stays ? "Stays" : "Comes off" %></span>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+  <% if staff_section %>
+    <% draft = previews.draft(staff_section) %>
+    <%= render "manage/date_changes/message_modal", id: "msg-staff", title: "The message to the staff", prefix: "staff", html: true,
+          subject: change.choice(:staff_subject).presence || draft[:subject], body: change.choice(:staff_body).presence || draft[:body],
+          hint: previews.hint(staff_section),
+          examples: staff_section.recipients.first(3).map { |r| [ "#{previews.filled_in_label(staff_section).sub('each person', r.person.name)}", previews.filled_in(staff_section, r) ] } %>
+  <% end %>
+<% end %>
+
+<% if signups.registrations.any? %>
+  <% n = signups.registrations.size %>
+  <%= render "manage/date_changes/section", key: "signups", title: "Sign-ups", summary: change.on?(:signups_cancel) ? "Cancel #{n} and notify them" : "Leave the #{n} registrations",
+        intro: "#{plan.signup_form_names.to_sentence} · #{pluralize(n, 'person', plural: 'people')} registered" do %>
+    <%= render "manage/date_changes/toggle", change: change, key: :signups_cancel,
+          title: "Cancel the #{pluralize(n, 'registration')} and notify those people.",
+          detail: "The sign-up closes for #{plan.acting_shows.size == 1 ? 'the date' : 'these dates'} either way." %>
+  <% end %>
+<% end %>
+
+<% if plan.students.any? %>
+  <% draft = CourseSessionCancellation.default_email %>
+  <%= render "manage/date_changes/section", key: "students", title: "Students", summary: change.on?(:students_email) ? "Email #{plan.students.size}" : "Don't email them",
+        intro: "#{pluralize(plan.students.size, 'student')} registered for #{plan.class_offerings.map(&:title).to_sentence}" do %>
+    <%= render "manage/date_changes/toggle", change: change, key: :students_email,
+          title: "Email the students that #{plan.acting_shows.size == 1 ? 'the class is' : 'these classes are'} canceled.",
+          extra: tag.button("Read and edit the email", type: "button", class: "block mt-1 text-pink-600 hover:text-pink-700 font-medium cursor-pointer", data: { controller: "modal", action: "click->modal#open", modal_id: "msg-students" }) %>
+  <% end %>
+  <%= render "manage/date_changes/message_modal", id: "msg-students", title: "The email to students", prefix: "students",
+        subject: change.choice(:students_subject).presence || draft.first, body: change.choice(:students_body).presence || draft.last %>
+<% end %>
+
+<% if money.any? || plan.rentals_to_release.any? %>
+  <%= render "manage/date_changes/section", key: "money", title: "Money", summary: "Pending money comes off; nothing paid moves",
+        intro: money.payouts.any? ? "Pay worked out for #{money.payouts.size == 1 ? 'one date' : "#{money.payouts.size} dates"}, not paid yet" : "No pay has gone out for these dates" do %>
+    <% if b.card.any? %>
+      <p class="py-3 text-sm text-gray-700">The ticket money for these dates pays the refunds.</p>
+    <% end %>
+    <% if money.payouts.any? %>
+      <div class="border-t border-gray-100">
+        <%= render "manage/date_changes/toggle", change: change, key: :clear_pay,
+              title: "Clear the unpaid pay for #{money.payouts.map { |p| p.show.date_and_time.strftime('%b %-d') }.to_sentence}.",
+              detail: "It was worked out but isn't on a payout run." %>
+      </div>
+    <% end %>
+    <% money.expenses.each do |expense| %>
+      <div class="border-t border-gray-100">
+        <%= render "manage/date_changes/toggle", change: change, key: :respread,
+              title: "Spread #{expense.name} over the dates still on.",
+              detail: "#{money_.call((expense.total_amount.to_f * 100).round)} is spread over #{pluralize(expense.applicable_shows.size, 'date')} now; it would be #{pluralize(plan.expense_dates_after(expense), 'date')}." %>
+      </div>
+    <% end %>
+    <% if money.contract_payments.any? %>
+      <p class="py-3 border-t border-gray-100 text-sm text-gray-700"><%= pluralize(money.contract_payments.size, "pending contract payment") %> for these dates <%= money.contract_payments.one? ? "comes" : "come" %> off. Anything already paid stays with the canceled date.</p>
+    <% end %>
+    <% if plan.rentals_to_release.any? %>
+      <p class="py-3 border-t border-gray-100 text-sm text-gray-700">The room booked on the contract for <%= plan.rentals_to_release.map { |r| r.starts_at.strftime("%b %-d") }.to_sentence %> is let go, so it's free for other bookings.</p>
+    <% end %>
+  <% end %>
+<% end %>
+
+<% if drafts.any? %>
+  <%= render "manage/date_changes/section", key: "followers", title: "Followers", summary: change.on?(:followers) ? "Take the dates out of the draft" : "Leave the draft as it is",
+        intro: "#{drafts.size == 1 ? "A draft email, \"#{drafts.first.subject.presence || 'Untitled'}\"," : "#{drafts.size} draft emails"} #{drafts.size == 1 ? 'features' : 'feature'} these dates" do %>
+    <%= render "manage/date_changes/toggle", change: change, key: :followers,
+          title: "Take the canceled dates out of the #{drafts.size == 1 ? 'draft' : 'drafts'}.", detail: "Nothing is sent; the draft waits for you as before." %>
+  <% end %>
+<% end %>
