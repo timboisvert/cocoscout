@@ -72,7 +72,9 @@ class VacancyNotificationService
         production: production,
         recipients: recipients,
         sender: sender,
-        template_key: VacancyTemplates::SEVERAL,
+        # VacancyTemplates::SEVERAL, spelled out: communications:validate
+        # reads this file for the key in quotes, as it finds the other three.
+        template_key: "vacancy_created_several",
         extra_variables: {
           person_name: vacancies.filter_map { |v| v.vacated_by&.name }.uniq.to_sentence.presence || "A cast member",
           how_many: "#{roles.size} #{unit.pluralize(roles.size)}",

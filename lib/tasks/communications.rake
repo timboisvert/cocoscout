@@ -303,7 +303,10 @@ namespace :communications do
       template_key: "vacancy_created_several",
       description: "Notify team that one person can't make several of their acts in a show: one notice that names every act",
       callers: [ "VacancyNotificationService.notify_vacancies_created" ],
-      notes: "Seeded by VacancyTemplates. Sent in place of one vacancy_created per act (VacancyController#confirm)"
+      notes: "Service-rendered: VacancyNotificationService renders the template and passes it to the mailer. Seeded by VacancyTemplates. Sent in place of one vacancy_created per act (VacancyController#confirm)",
+      # VacancyNotificationService.notify_vacancies_created's extra_variables,
+      # which the tracer can't follow into send_notifications
+      variables: %w[person_name how_many names]
     },
     vacancy_filled: {
       name: "Vacancy Filled",
