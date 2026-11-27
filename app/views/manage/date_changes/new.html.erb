@@ -50,12 +50,12 @@
       <% else %>
       <fieldset class="space-y-3">
         <legend class="text-lg font-semibold text-gray-900 mb-3">What would you like to do with <%= day %>?</legend>
-        <%= option.call("cancel", "Cancel it", "It isn't going to happen. It stays on your calendar as Canceled, and CocoScout takes care of the buyers, the cast, the staff, and the money.") %>
-        <%= option.call("move", "Move it", "It's still happening, at a new date, time, or place. It keeps everything on it, and everyone who needs to know is notified.") %>
+        <%= option.call("cancel", "Cancel it", "It stays on your calendar as Canceled. CocoScout takes care of the ticket buyers, the cast, the staff, and the money.") %>
+        <%= option.call("move", "Move it", "Change the date, time, or place. Everything tied to it stays, and everyone who needs to know is notified.") %>
         <% if can_delete %>
-          <%= option.call("delete", "Delete it", "For a date entered by mistake, that nobody ever counted on. It comes off your calendar as if it had never been entered.") %>
+          <%= option.call("delete", "Delete it", "For shows and events created by mistake.") %>
         <% else %>
-          <%= option.call("delete", "Delete it", "For a date entered by mistake, that nobody ever counted on. This one has #{@delete_blockers.to_sentence}, so it really existed. Cancel it instead.", disabled: true) %>
+          <%= option.call("delete", "Delete it", "For shows and events created by mistake. This one has #{@delete_blockers.to_sentence}, so it can't be deleted. Cancel it instead.", disabled: true) %>
         <% end %>
       </fieldset>
 

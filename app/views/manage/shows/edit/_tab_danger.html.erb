@@ -32,7 +32,7 @@
   <%# Delete, for a date entered by mistake %>
   <div class="bg-white border border-gray-200 rounded-xl overflow-hidden [&>div:last-child]:border-b-0">
     <%= render "shared/section_heading", title: "Delete this date",
-          intro: "For a date entered by mistake, that nobody ever counted on. It comes off your calendar as if it had never been entered." do %>
+          intro: "For shows and events created by mistake." do %>
       <%= render "shared/button", text: "Delete this date", variant: "primary", size: "small", type: :button,
             data: { controller: "modal", action: "click->modal#open", modal_id: "delete-date-#{@show.id}" } %>
     <% end %>
