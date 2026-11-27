@@ -29,7 +29,10 @@
         if (window.parent === window) return;
         var last = 0;
         function send() {
-          var height = document.documentElement.scrollHeight;
+          // scrollHeight rounds down: a page 350.6px tall says 350, and the
+          // frame shows a scrollbar for the last pixel. Round the body up.
+          var height = Math.max(document.documentElement.scrollHeight,
+                                Math.ceil(document.body.getBoundingClientRect().bottom + window.scrollY));
           if (height === last) return;
           last = height;
           window.parent.postMessage({ type: "cocoscout:height", height: height }, "*");
