@@ -6,8 +6,11 @@ import UserNotifications
 /// notification points to. The web side files the token under the signed-in
 /// person (PushComponent → bridge/push_controller.js → /my/push-token).
 ///
-/// Never asks on its own: iPhone's "Allow notifications?" appears only when
-/// someone taps Turn on (the Home card, or Settings → Notifications).
+/// iPhone's "Allow notifications?" comes once, right after someone signs in
+/// in the app (Tim, 2026-11-27: a fresh install never asked, and a manager
+/// landing in production mode never saw Home's card). After that, only a tap
+/// on Turn on (the Home card, or Settings → Notifications) asks again, and
+/// iPhone shows its question only the first time.
 @MainActor
 final class PushRegistrar: NSObject, UNUserNotificationCenterDelegate {
     static let shared = PushRegistrar()
@@ -50,6 +53,16 @@ final class PushRegistrar: NSObject, UNUserNotificationCenterDelegate {
             return State(status: Self.name(settings.authorizationStatus), token: token, environment: Self.environment)
         default:
             return State(status: Self.name(settings.authorizationStatus), token: savedToken, environment: Self.environment)
+        }
+    }
+
+    /// After signing in: iPhone's question, if it has never been asked on
+    /// this phone. The next page the app opens files the token.
+    func askAfterSignIn() {
+        Task {
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
+            guard settings.authorizationStatus == .notDetermined else { return }
+            _ = await request()
         }
     }
 

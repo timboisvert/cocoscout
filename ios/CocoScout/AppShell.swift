@@ -280,13 +280,21 @@ final class AppShell {
             open(path: path)
         }
         // A code or password sign-in: offer Face ID for next time, once the
-        // first page is up (PasskeyOffer).
+        // first page is up (PasskeyOffer). Then, or without it, iPhone's
+        // "Allow notifications?" (PushRegistrar.askAfterSignIn).
         if let account, PasskeyOffer.shouldOffer(after: account) {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
                 guard let self, self.signInScreen == nil else { return }
                 var offer: UIViewController?
-                offer = PasskeyOffer.controller(for: account) { offer?.dismiss(animated: false) }
+                offer = PasskeyOffer.controller(for: account) {
+                    offer?.dismiss(animated: false) { PushRegistrar.shared.askAfterSignIn() }
+                }
                 if let offer { self.topViewController().present(offer, animated: false) }
+            }
+        } else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+                guard let self, self.signInScreen == nil else { return }
+                PushRegistrar.shared.askAfterSignIn()
             }
         }
     }

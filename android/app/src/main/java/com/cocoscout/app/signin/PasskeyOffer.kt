@@ -84,6 +84,8 @@ object PasskeyOffer {
 
     /** The account the sheet is offering a passkey for, while it's up. */
     var showing by mutableStateOf<KnownAccount?>(null)
+    /** Shown right after signing in: Android's notifications question follows it (AppShell.didSignIn). */
+    var askForNotificationsAfter = false
 
     sealed interface Outcome {
         data class Added(val name: String) : Outcome
@@ -165,6 +167,10 @@ fun PasskeyOfferOverlay() {
         scope.launch {
             delay(300)
             PasskeyOffer.showing = null
+            if (PasskeyOffer.askForNotificationsAfter) {
+                PasskeyOffer.askForNotificationsAfter = false
+                com.cocoscout.app.AppShell.askForNotificationsAfterSignIn()
+            }
         }
     }
 

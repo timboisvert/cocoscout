@@ -257,13 +257,26 @@ object AppShell {
             }
         }
         // A code or password sign-in: offer the fingerprint for next time,
-        // once the first page is up (PasskeyOffer).
+        // once the first page is up (PasskeyOffer). Then, or without it,
+        // Android's "Allow notifications?" (askForNotificationsAfterSignIn).
         val account = com.cocoscout.app.signin.SignInFlow.justSignedIn
-        activity?.let { context ->
-            if (com.cocoscout.app.signin.PasskeyOffer.shouldOffer(context, account)) {
-                handler.postDelayed({ com.cocoscout.app.signin.PasskeyOffer.showing = account }, 1200)
-            }
+        val context = activity ?: return
+        if (com.cocoscout.app.signin.PasskeyOffer.shouldOffer(context, account)) {
+            com.cocoscout.app.signin.PasskeyOffer.askForNotificationsAfter = true
+            handler.postDelayed({ com.cocoscout.app.signin.PasskeyOffer.showing = account }, 1200)
+        } else {
+            handler.postDelayed({ askForNotificationsAfterSignIn() }, 1200)
         }
+    }
+
+    /**
+     * Android's "Allow notifications?" once, right after someone signs in in
+     * the app (Tim, 2026-11-27: a fresh install never asked). The next page
+     * the app opens files the token.
+     */
+    fun askForNotificationsAfterSignIn() {
+        val activity = activity ?: return
+        activity.lifecycleScope.launch { com.cocoscout.app.push.PushRegistrar.askOnce(activity) }
     }
 
     /**

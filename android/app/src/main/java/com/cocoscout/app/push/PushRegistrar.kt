@@ -23,8 +23,9 @@ import kotlin.coroutines.resume
  * the token under the signed-in person (PushComponent →
  * bridge/push_controller.js → /my/push-token). Like PushRegistrar.swift.
  *
- * Never asks on its own: Android's "Allow notifications?" appears only when
- * someone taps Turn on (the Home card, or Settings → Notifications).
+ * Android's "Allow notifications?" comes once, right after someone signs in
+ * in the app (askOnce; Tim, 2026-11-27). After that, only a tap on Turn on
+ * (the Home card, or Settings → Notifications) asks again.
  */
 object PushRegistrar {
     /**
@@ -48,6 +49,13 @@ object PushRegistrar {
         val status = status(activity)
         val token = if (status == "authorized") currentToken(activity) else savedToken(activity)
         return State(status, token)
+    }
+
+    /** After signing in: Android's question, if this phone has never been asked. */
+    suspend fun askOnce(activity: MainActivity) {
+        if (Build.VERSION.SDK_INT >= 33 && !prefs(activity).getBoolean(ASKED_KEY, false) && status(activity) == "notDetermined") {
+            request(activity)
+        }
     }
 
     /** Android's own question (Android 13 and later), then where that leaves things. */
