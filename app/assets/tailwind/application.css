@@ -13,6 +13,28 @@ select:focus {
     @apply ring-2 ring-pink-500 outline-none;
 }
 
+/* Date and time boxes on an iPhone (Tim, 2026-11-27): iOS WebKit gives
+   them a minimum width of their own that w-full can't shrink, so on a
+   phone they ran off the right of Verify your hours and every other
+   narrow form. Without the native look they size like any input, keep a
+   line's height while empty, and read left to right like the rest. Only
+   where WebKit is iOS's (-webkit-touch-callout), so desktop pickers keep
+   their calendar button. */
+@supports (-webkit-touch-callout: none) {
+    input[type="date"],
+    input[type="datetime-local"],
+    input[type="time"],
+    input[type="month"] {
+        -webkit-appearance: none;
+        appearance: none;
+        min-width: 0;
+    }
+    input::-webkit-date-and-time-value {
+        min-height: 1.5em;
+        text-align: left;
+    }
+}
+
 /* A progress bar that hasn't heard a percentage yet: a pink segment slides
    across it (Tap to Pay on iPhone getting ready, Apple 3.9.1). */
 @keyframes progress-slide {
