@@ -45,11 +45,14 @@ module App
     # GET /app/sign_in/nonce: the nonce the app's Apple or Google sheet signs
     # into its ID token, so a token can't be replayed into another session,
     # and the website's Google client id, which Android's Credential Manager
-    # names as the token's audience (kept out of the app's code).
+    # names as the token's audience (kept out of the app's code). "status"
+    # is there because the iPhone app (1.4 and 1.4.1) reads every answer as a
+    # SignInReply, which requires it: without it the nonce never arrived and
+    # its Continue with Apple button stayed disabled (Tim, 2026-11-27).
     def nonce
       value = SecureRandom.urlsafe_base64(24)
       session[:app_sign_in_nonce] = value
-      render json: { nonce: value, google_client_id: (SignIn::Providers.google_client_id if SignIn::Providers.configured?("google")) }.compact
+      render json: { status: "ready", nonce: value, google_client_id: (SignIn::Providers.google_client_id if SignIn::Providers.configured?("google")) }.compact
     end
 
     # GET /app/sign_in/passkey_options: for the phone's passkey sheet (Face

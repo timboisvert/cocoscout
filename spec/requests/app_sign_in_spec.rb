@@ -103,6 +103,10 @@ RSpec.describe "The apps' sign-in screens", type: :request do
       expect(SignIn::OAuth).to have_received(:exchange).with("apple", code: "code-1", redirect_uri: nil, client_id: "com.cocoscout.app")
     end
 
+    it "answers the nonce with a status, which the iPhone app requires of every answer" do
+      expect(app_get(app_sign_in_nonce_path)).to include("status" => "ready", "nonce" => be_present)
+    end
+
     it "checks Google's nonce as given" do
       reply = app_get(app_sign_in_nonce_path)
       expect(reply["google_client_id"]).to eq("google-client")
